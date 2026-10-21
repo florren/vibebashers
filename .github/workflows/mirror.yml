@@ -1,0 +1,14 @@
+name: mirror-to-gitverse
+on: [push, create, delete]
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - run: |
+          git remote add gitverse "https://${{ secrets.GV_USER }}:${{ secrets.GV_TOKEN }}@gitverse.ru/florren/vibebashers.git"
+          git push --prune --force gitverse 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
