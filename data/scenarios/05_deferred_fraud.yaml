@@ -10,3 +10,9 @@ expected:
   clarification: screenshot
   sleep_hours: 24
   escalate_on_silence: true
+description_ru: 'Подозрение на мошенничество: агент маршрутизирует в антифрод и запрашивает подтверждающие данные.'
+inject:
+- channel: chat
+  client:
+    segment: premium
+  text: Вижу подозрительную операцию на 4 500 руб. в магазине, которую я не совершал. Похоже на мошенников. Что делать?

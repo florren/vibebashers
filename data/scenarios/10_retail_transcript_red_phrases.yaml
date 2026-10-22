@@ -18,3 +18,5 @@ expected:
   script_steps_missed:
   - needs
   - summary
+description_ru: 'Импорт транскрипта розничного диалога: грубость и неверная ставка, пропущенные шаги скрипта.'
+requires: B07

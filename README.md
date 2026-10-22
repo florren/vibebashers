@@ -4,6 +4,7 @@
 
 ## Документы
 - `AGENTS.md` — правила для кодирующих агентов (читать первым), `CLAUDE.md`, `.cursor/rules/`.
+- `docs/SETUP.md` — настройка стенда и безопасная передача ключей; `docs/DEMO-SCRIPT.md` — сценарий демо; `docs/USER-GUIDE.md` — руководство пользователя; `docs/ONE-PAGER.md` — одностраничник о продукте.
 - `docs/TZ.md` — техническое задание v1.4; `docs/BRD.md`, `docs/TZ-additional.md` — исходные требования; `docs/BRD-merge-analysis.md` — анализ слияния.
 - `docs/PLAN-14D.md` — спринт до демо 9 ноября; `docs/TEAM-SPLIT.md` — слои и роли; `docs/WORKFLOW.md` — рабочий цикл `scripts/cx.py`; `docs/REPO-BOOTSTRAP.md` — репозиторий и CI.
 - `docs/tasks/` — 150 карточек задач (индекс в `docs/tasks/README.md`).
@@ -13,7 +14,9 @@
 ```bash
 cp .env.example .env            # ключи GigaChat (без них — LLM_PROVIDER=mock)
 ./install.sh --profile lite     # docker compose: PostgreSQL 16, backend (+ собранный фронт), миграции, сид
-make test                       # проверки контрактов, backend, frontend
+make test                       # контракты, unit, интеграционные и сценарные тесты (DATABASE_URL_TEST)
+make scenario ID=2              # демо-сценарий ТЗ на работающем стенде (make scenario — все девять)
+make e2e                        # дымовые Playwright-тесты интерфейса против стенда (E2E_BASE_URL)
 python scripts/cx.py next       # что делать дальше по плану спринта
 ```
 

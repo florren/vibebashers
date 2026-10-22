@@ -14,3 +14,45 @@ expected:
   flag: mass_impact
   preventive_notice: true
   map_zone: red
+description_ru: 'Массовая задержка смс и push в одном округе: несколько жалоб склеиваются в один инцидент с флагом массовости.'
+inject:
+- channel: chat
+  client:
+    district: yufo
+    operation:
+      error_code: NOTIF-DELAY
+      product_code: debit_card
+      op_type: transfer
+      method: online
+      system_path: &id001
+      - mobile_app
+      - processing
+      - core_abs
+      - notification_gw
+      amount_rub: 4500
+      fee_amount: 0
+  text: Не приходит смс-код для подтверждения перевода уже час, push тоже не работает.
+- channel: call
+  client:
+    district: yufo
+    operation:
+      error_code: NOTIF-DELAY
+      product_code: debit_card
+      op_type: transfer
+      method: online
+      system_path: *id001
+      amount_rub: 4500
+      fee_amount: 0
+  text: Смс с кодом не приходит, не могу оплатить. Сбой у вас?
+- channel: social
+  client:
+    district: yufo
+    operation:
+      error_code: NOTIF-DELAY
+      product_code: debit_card
+      op_type: transfer
+      method: online
+      system_path: *id001
+      amount_rub: 4500
+      fee_amount: 0
+  text: У кого ещё не приходят push и смс от банка? Полчаса жду код, ошибка.

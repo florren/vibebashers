@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest",
     "preview": "vite preview",
-    "gen:types": "openapi-typescript ../contracts/api/openapi.yaml -o src/shared/api/types.ts"
+    "gen:types": "openapi-typescript ../contracts/api/openapi.yaml -o src/shared/api/types.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/inter": "^5.1.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
+    "@playwright/test": "^1.59.0",
     "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
     "@types/node": "^22.7.9",

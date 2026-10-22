@@ -18,3 +18,22 @@ expected:
   public_reply: true
   abs_widget: true
   fast_path_p50_s: 10
+description_ru: 'Комиссия за QR-оплату, которой быть не должно: бизнес-правило RULE-QR-FEE-001 подтверждает ошибку, агент оформляет возврат и отвечает публично.'
+inject:
+- channel: review_portal
+  client:
+    segment: mass
+    operation:
+      error_code: PROC-QR-FEE-CHARGED
+      product_code: debit_card
+      op_type: card_payment
+      method: qr_sbp
+      system_path:
+      - mobile_app
+      - processing
+      - sub_debit
+      - core_abs
+      amount_rub: 3200
+      fee_amount: 450
+      merchant: Кофейня «Зерно»
+  text: Оплатил по QR на 3 200 руб., а банк списал комиссию 450 руб. Верните комиссию, иначе оставлю отзыв везде, где смогу.

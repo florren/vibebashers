@@ -21,3 +21,22 @@ expected:
   incident_team: team_processing
   public_reply: true
   move_to_private: true
+description_ru: 'Публичная саркастичная жалоба на двойное списание комиссии: сарказм и угроза ухода распознаются, инцидент P1 команде процессинга.'
+inject:
+- channel: social
+  client:
+    segment: mass
+    psychotype: public_emotional
+    operation:
+      error_code: PROC-DOUBLE-DEBIT
+      product_code: debit_card
+      op_type: transfer
+      method: online
+      system_path:
+      - mobile_app
+      - processing
+      - sub_debit
+      - core_abs
+      amount_rub: 12000
+      fee_amount: 350
+  text: Ну конечно, опять двойное списание комиссии за перевод, 350 руб. Отличный сервис, как всегда )) Третий раз за месяц пишу. Если не вернёте — закрою карту и уйду в другой банк, и все узнают.

@@ -11,3 +11,10 @@ expected:
   clarification: true
   sleeps: true
   wake_on_reply: true
+description_ru: 'Неидентифицированный человек пишет в бот: агент задаёт уточняющий вопрос и откладывает обращение до ответа.'
+inject:
+- channel: telegram_bot
+  client:
+    unidentified: true
+    nick: '@ivan_potential'
+  text: Отказали в кредитной карте без объяснений. Почему?

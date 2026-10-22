@@ -62,4 +62,9 @@ ignore_errors = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["integration: нужна PostgreSQL (DATABASE_URL_TEST)"]
+markers = [
+    "integration: нужна PostgreSQL (DATABASE_URL_TEST)",
+    "scenario: сценарии ТЗ §18 на mock (tests/scenarios)",
+    "slow: долгие прогоны (бенчи, кассеты)",
+    "llm: нужны живые ключи провайдера",
+]

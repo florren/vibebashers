@@ -14,3 +14,10 @@ expected:
   clarification: true
   escalation_on_silence: true
   escalation_role: cx_lead
+description_ru: 'Сарказм в соцсети со скрытым негативом: агент распознаёт тональность, задаёт уточнение, при молчании — эскалация CX-лиду.'
+inject:
+- channel: social
+  client:
+    segment: mass
+    psychotype: public_emotional
+  text: Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.
