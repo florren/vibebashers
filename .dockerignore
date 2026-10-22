@@ -1,0 +1,13 @@
+# контекст сборки backend/Dockerfile: не тащим локальные окружения, кэши и фронт
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+frontend/dist
+.git
+.env
+.env.*
+data/models/stt/vosk-model-ru-0.42
+data/baseline/*.dump
