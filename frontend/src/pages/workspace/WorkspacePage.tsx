@@ -10,6 +10,9 @@ import { SignalDrawer } from './SignalDrawer'
 import { IncidentsBoard } from './IncidentsBoard'
 import { HitlQueue } from './HitlQueue'
 import { DeferredList } from './DeferredList'
+import { DashboardTab } from './DashboardTab'
+import { MapTab } from './MapTab'
+import { NotificationsTab } from './NotificationsTab'
 
 type Tab = 'signals' | 'incidents' | 'hitl' | 'deferred' | 'tasks' | 'map' | 'dashboard' | 'teams' | 'notifications'
 const TABS: Tab[] = ['signals', 'incidents', 'hitl', 'deferred', 'map', 'dashboard', 'tasks', 'teams', 'notifications']
@@ -47,7 +50,10 @@ export function WorkspacePage() {
         {tab === 'incidents' && <IncidentsBoard runId={runId} />}
         {tab === 'hitl' && <HitlQueue runId={runId} onOpenSignal={setSignalId} />}
         {tab === 'deferred' && <DeferredList runId={runId} onOpenSignal={setSignalId} />}
-        {(tab === 'map' || tab === 'dashboard' || tab === 'tasks' || tab === 'teams' || tab === 'notifications') && (
+        {tab === 'map' && <MapTab />}
+        {tab === 'dashboard' && <DashboardTab />}
+        {tab === 'notifications' && <NotificationsTab runId={runId} />}
+        {(tab === 'tasks' || tab === 'teams') && (
           <Empty title={t('common.notImplemented')} hint={t(`placeholder.${tab}`)} />
         )}
       </div>

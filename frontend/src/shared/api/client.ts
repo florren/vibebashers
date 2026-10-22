@@ -31,6 +31,28 @@ export type FeedStats = Schemas['FeedStats']
 export type AccountsView = Schemas['AccountsView'] & { client?: Schemas['ClientBrief'] & { city_name?: string | null } }
 export type LedgerEntry = Schemas['LedgerEntry']
 export type BusinessRule = Schemas['BusinessRule']
+export type RegionHeat = Schemas['RegionHeat'] & { name_ru?: string; district_code?: string; lat?: number; lon?: number }
+export type CityHeat = Schemas['CityHeat'] & { population?: number }
+export type MapZone = Schemas['MapZone']
+export type MapZonesResponse = { thresholds?: Schemas['MapZoneThresholds']; no_geo_count?: number; items?: MapZone[] }
+export type EconomicsGroup = NonNullable<Schemas['EconomicsSummary']['groups']>[number] & { at_risk_open_rub?: number }
+export type EconomicsSummary = Omit<Schemas['EconomicsSummary'], 'groups'> & { refund_rub?: number; group_by?: string; groups?: EconomicsGroup[] }
+export type DashboardMetrics = Schemas['DashboardMetrics'] & {
+  run_id?: number | null
+  signals_total?: number
+  critical_total?: number
+  agent_runs?: number
+  agent_latency_p50_ms?: number
+  tokens_total?: number
+  incidents_total?: number
+  incidents_open?: number
+  sla_overdue_count?: number
+  churned_clients?: number
+  retained_clients?: number
+  economics?: EconomicsSummary
+}
+export type EconomicsFact = Schemas['EconomicsFact']
+export type NotificationItem = Schemas['Notification'] & { team_code?: string | null; signal_id?: number | null; client_name?: string | null; segment_code?: string | null; incident_public_id?: string | null }
 export type ComplianceAlert = Schemas['ComplianceAlert'] & { kind?: 'threshold' | 'immediate' | 'report'; patterns?: string[]; transcript_id?: number | null; trigger_count?: number }
 export type AudioSession = Schemas['AudioSession']
 export type AudioSessionDetail = Schemas['AudioSessionDetail']
