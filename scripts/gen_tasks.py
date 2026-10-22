@@ -1343,6 +1343,16 @@ dict(id=221, title="Миграция 0003 и OpenAPI 1.4 в коде: модел
         "Модели SQLAlchemy: transcripts, ingest_sources, ingest_messages, escalations, service_scripts; представления v_tickets/v_map_zones как read-only модели."],
  accept=["alembic upgrade head проходит на пустой БД и на дампе v1.3; contracts_check зелёный.", "Фронт и бэкенд собираются с типами 1.4."],
  check=["alembic upgrade head && alembic downgrade 0002 && alembic upgrade head", "make sync-contracts && make lint"]),
+dict(id=222, title="Логирование и репортинг качества: JSONL-журнал, HTTP-метрики, отчёт «что сломалось / работает не так / доработать», вкладка «Качество»", epic="E11", agent="SA-QA", size="M", wave=4,
+ goal="Люди и агенты видят по одному отчёту, где система падает (ошибки, 5xx, failed), где работает не так (правки HITL, fallback на правила, ложные алерты, проваленные сценарии) и что доработать (рекомендации с указанием, куда смотреть). docs/REPORTS.md.",
+ tz=["12.2", "12.5", "16.4"], contracts=["api/openapi.yaml: /api/reports/quality, /api/reports/http, /api/reports/log (QualityReport, HttpStats)"],
+ deps=[141, 142],
+ steps=["structlog → JSONL-файл var/log/app.jsonl (ротация), уровни, request_id; middleware HTTP: длительность, статус, счётчики по маршрутам, кольцевой буфер ошибок.",
+        "app/observability/quality.py: агрегаты по agent_runs/agent_steps (ошибки, fallback, латентность, токены по узлам), human_decisions (modify/reject = «работает, но не так»), SLA, scenarios.last_result, комплаенс (ложные алерты, транскрипты failed), HTTP; правила рекомендаций; индекс здоровья; Markdown.",
+        "API /api/reports/*; scripts/quality_report.py (make report) пишет data/reports/quality-<ts>.md/.json; вкладка «Качество» на /engine.",
+        "docs/REPORTS.md: как читать отчёт человеку и агенту, какие события логируются, как добавить новую проверку."],
+ accept=["GET /api/reports/quality?format=md отдаёт отчёт с разделами и рекомендациями; make report сохраняет файлы.", "Ошибки запросов и шагов агента видны в журнале и отчёте без доступа к stdout."],
+ check=["make report", "curl -s localhost:8000/api/reports/quality?format=md | head -40", "tail -f backend/var/log/app.jsonl | jq -c 'select(.level!=\"debug\")'"]),
 ]
 
 

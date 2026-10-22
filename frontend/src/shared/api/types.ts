@@ -3345,6 +3345,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Отчёт о качестве — что сломалось, что работает не так, что доработать (JSON или Markdown) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    format?: "json" | "md";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QualityReport"];
+                        "text/markdown": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/http": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** HTTP-метрики процесса — счётчики по маршрутам (5xx/501/4xx/медленные) и последние ошибки */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HttpStats"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Хвост JSONL-журнала приложения (var/log/app.jsonl), warning и выше по умолчанию */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: components["parameters"]["Limit"];
+                    level?: "debug" | "info" | "warning" | "error";
+                    event?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        }[];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bench/datasets": {
         parameters: {
             query?: never;
@@ -7120,6 +7239,77 @@ export interface components {
             } | null;
             /** Format: date-time */
             ts?: string;
+        };
+        /** @description Снимок качества по БД и метрикам процесса; разделы agent/hitl/incidents/scenarios/compliance/http — см. docs/REPORTS.md */
+        QualityReport: {
+            version: string;
+            summary: {
+                /** Format: date-time */
+                generated_at?: string;
+                run_id?: number | null;
+                /** @description Индекс здоровья 0–100 */
+                health?: number;
+                agent_runs?: number;
+                agent_failed?: number;
+                steps_fallback_pct?: number;
+                hitl_override_pct?: number;
+                sla_breached?: number;
+                scenarios_failed?: string[];
+                compliance_false_pct?: number;
+                http_5xx?: number | null;
+                http_501?: number | null;
+            } & {
+                [key: string]: unknown;
+            };
+            agent?: {
+                [key: string]: unknown;
+            };
+            hitl?: {
+                [key: string]: unknown;
+            };
+            incidents?: {
+                [key: string]: unknown;
+            };
+            scenarios?: {
+                [key: string]: unknown;
+            }[];
+            compliance?: {
+                [key: string]: unknown;
+            };
+            http?: components["schemas"]["HttpStats"] | null;
+            recommendations: {
+                /** @enum {string} */
+                severity: "high" | "medium" | "low";
+                /** @enum {string} */
+                area: "agent" | "llm" | "process" | "scenario" | "compliance" | "api" | "product" | "ok";
+                text: string;
+                /** @description Где смотреть — эндпоинт */
+                where: string;
+            }[];
+        };
+        HttpStats: {
+            since?: number;
+            requests?: number;
+            s5xx?: number;
+            s501?: number;
+            s4xx?: number;
+            slow?: number;
+            routes?: {
+                method?: string;
+                route?: string;
+                total?: number;
+                s2xx?: number;
+                s4xx?: number;
+                s5xx?: number;
+                s501?: number;
+                s422?: number;
+                avg_ms?: number;
+                max_ms?: number;
+                slow?: number;
+            }[];
+            recent_errors?: {
+                [key: string]: unknown;
+            }[];
         };
         BenchRun: {
             id?: number;

@@ -49,6 +49,7 @@ contracts/                контракты: db/, api/, events/  — источ
 backend/                  FastAPI-приложение
   app/api/                роутеры по тегам OpenAPI (setup, settings, sim, signals, incidents, hitl, tasks, clients, map, metrics, engine, bench, public, feed, abs, rules, compliance, stt, demo)
   app/db/                 models.py (SQLAlchemy), session.py, repositories/
+  app/observability/      JSONL-журнал structlog (var/log/app.jsonl), HTTP-метрики, отчёт о качестве (docs/REPORTS.md)
   app/sim/                симулятор: clock.py, generators/, behavior/ (психотипы, состояния, двойники), teams.py, sla.py, scenarios/
   app/agent/              graph.py, nodes/ (+ check_rules, act_instant), tools/ (+ router_tools.py — фасады ДТЗ), prompts/ (versioned, + hidden_negativity.md), policies.py (+ политика эскалации), schemas.py (Pydantic из contracts/events/agent)
   app/ingest/             v1.4: schemas.py (UnifiedMessage, Transcript), normalizer.py (все входы → единая схема → signals), transcripts.py (парсеры JSON/TXT, анализы), sources.py (адаптеры rest/polling/file), mock_feed.py
@@ -112,6 +113,7 @@ make scenario ID=retail_transcript_red_phrases   # сценарий 10 (ДТЗ) 
 make scenario ID=social_sarcasm_escalation       # сценарий 11 (ДТЗ) — сарказм → уточнение → эскалация
 make bench SET=sentiment_v1           # accuracy трёхклассной тональности (порог 0,80)
 make import-transcripts               # импорт data/import/transcripts/ (JSON/TXT)
+make report                           # отчёт о качестве → data/reports/ (что сломалось / работает не так / доработать; docs/REPORTS.md)
 python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий цикл карточки/пакета в отдельном worktree (docs/WORKFLOW.md)
 ```
 
@@ -287,4 +289,5 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 - API: `contracts/api/openapi.yaml`; локально Swagger UI на `/docs`.
 - События: `contracts/README.md`.
 - Решения архитектуры: `docs/adr/`.
+- Что сломалось или работает не так на стенде: `make report` или `GET /api/reports/quality?format=md`, журнал `backend/var/log/app.jsonl` — `docs/REPORTS.md`. Перед тем как чинить «вслепую», агент читает отчёт: в нём указано, где смотреть.
 - Вопросы — техлиду в чат команды с указанием номера карточки и раздела ТЗ.

@@ -20,6 +20,7 @@ from app.config import get_settings
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import build_chain, default_profile
 from app.logging import configure_logging, get_logger
+from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
 from app.sim.engine import Simulator
@@ -30,7 +31,7 @@ log = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     s = get_settings()
-    configure_logging(s.app_env)
+    configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
     app.state.llm_chain = build_chain(s)
     app.state.llm_profile = default_profile(s)
     log.info(
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )
+    app.add_middleware(RequestLogMiddleware)
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)

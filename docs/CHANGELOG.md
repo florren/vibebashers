@@ -1,5 +1,8 @@
 # Журнал изменений пакета документации и контрактов
 
+## v1.5.1 — 22.10.2026 — логирование и отчёт о качестве (T-222)
+- JSONL-журнал structlog `backend/var/log/app.jsonl`, HTTP-метрики процесса, отчёт «что сломалось / работает не так / доработать» с рекомендациями и индексом здоровья: `GET /api/reports/quality|http|log`, `make report` → `data/reports/`, вкладка «Качество» на `/engine`. Контракт: `QualityReport`, `HttpStats`. Руководство — `docs/REPORTS.md`.
+
 ## v1.5.0 — 22.10.2026 — B07 комплаенс-контроль по транскриптам (cross-layer, contract-change)
 - Backend `app/compliance/`: TXT/JSON-парсер транскриптов, таксономия и rule-детектор (8 паттернов, нечёткие фразы, факт-чек по `products.tariffs`, скрипт обслуживания с отрицаниями), LLM-детектор (`misselling_detect`, `transcript_report`; mock = правила; откат на правила при сбое), сессии/триггеры/счётчик/алерты/инциденты, отчёт (json|md) и отправка руководителю. API `/api/ingest/transcripts*`, `/api/compliance/*` реализованы (501 только для mic/file — B10).
 - Сценарии 9 и 10 работают по файлам корпуса; корпус `data/import/transcripts` (20) проверяется тестом `tests/compliance/test_corpus.py` против `data/bench/transcripts_v1`.

@@ -21,7 +21,7 @@ pytest с живой PostgreSQL, фикстуры данных, mock-LLM по у
 
 ## Зависимости
 - Зависит от: [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-049](T-049-mock-provajder-pravila-shablony-determinizm.md)
-- Блокирует: [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-145](T-145-ci-konvejer-polnogo-cikla.md)
+- Блокирует: [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-145](T-145-ci-konvejer-polnogo-cikla.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md)
 
 ## Что сделать
 1. pytest-asyncio, testcontainers-postgres (или compose-сервис в CI), фабрики данных (factory_boy/ручные), фикстура sim_clock, фикстура mock-профиля; маркеры: slow, llm (требует ключей, пропускается в CI).

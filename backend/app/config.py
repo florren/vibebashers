@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -53,6 +54,18 @@ class Settings(BaseSettings):
     mailpit_enabled: bool = False
     compliance_alert_threshold: int = 3  # N подтверждённых срабатываний за встречу → алерт руководителю (ДТЗ FR-2.4)
     stt_provider: Literal["vosk", "browser", "none"] = "none"
+
+    # наблюдаемость (docs/REPORTS.md)
+    log_dir: str = "var/log"  # относительно backend/; JSONL-журнал app.jsonl, ротация 20 МБ ×3
+    log_jsonl: bool = True
+    log_jsonl_level: Literal["debug", "info", "warning"] = "info"
+
+    @property
+    def log_path(self) -> Path:
+        base = Path(self.log_dir)
+        if not base.is_absolute():
+            base = Path(__file__).resolve().parents[1] / base
+        return base / "app.jsonl"
 
     @property
     def is_test(self) -> bool:

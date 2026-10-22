@@ -70,6 +70,9 @@ i18n-check:                 ## ключи словаря frontend/src/shared/i18
 scenario:                   ## прогон демо-сценариев на работающем стенде: make scenario ID=2 (или all); CX_BASE_URL, DATABASE_URL
 	$(PY) scripts/scenario_check.py $(or $(ID),all) --base $(or $(CX_BASE_URL),http://localhost:8000)
 
+report:                     ## отчёт о качестве → data/reports/quality-<ts>.md/.json (RUN=id — один запуск; CX_BASE_URL — через API стенда)
+	$(PY) scripts/quality_report.py $(if $(RUN),--run $(RUN)) $(if $(CX_BASE_URL),--base $(CX_BASE_URL))
+
 test-scenarios:             ## сценарные тесты ТЗ §18 на mock (нужна DATABASE_URL_TEST)
 	cd backend && .venv/bin/pytest -q tests/scenarios
 
