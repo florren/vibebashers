@@ -2320,14 +2320,19 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @enum {string} */
-                        action: "reroute" | "reply_client" | "close" | "request_client_data" | "escalate" | "reject" | "mark_duplicate" | "change_priority";
+                        /**
+                         * @description take — взять в работу (new/classified/routed → in_progress)
+                         * @enum {string}
+                         */
+                        action: "take" | "reroute" | "reply_client" | "close" | "request_client_data" | "escalate" | "reject" | "mark_duplicate" | "change_priority";
                         team_code?: string;
                         text?: string;
                         channel_code?: string;
                         duplicate_of_id?: number;
                         priority?: number;
                         reason?: string;
+                        /** @description Кто выполнил действие (логин/роль), пишется в incident_status_history.actor_ref */
+                        actor?: string;
                     };
                 };
             };

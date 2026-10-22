@@ -703,13 +703,14 @@ paths:
               type: object
               required: [action]
               properties:
-                action: { type: string, enum: [reroute, reply_client, close, request_client_data, escalate, reject, mark_duplicate, change_priority] }
+                action: { type: string, enum: [take, reroute, reply_client, close, request_client_data, escalate, reject, mark_duplicate, change_priority], description: "take — взять в работу (new/classified/routed → in_progress)" }
                 team_code: { type: string }
                 text: { type: string }
                 channel_code: { type: string }
                 duplicate_of_id: { type: integer }
                 priority: { type: integer, minimum: 1, maximum: 4 }
                 reason: { type: string }
+                actor: { type: string, description: "Кто выполнил действие (логин/роль), пишется в incident_status_history.actor_ref" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentDetail" } } } }
         "409": { $ref: "#/components/responses/Problem", description: Недопустимый переход статуса }

@@ -52,6 +52,14 @@ export type DashboardMetrics = Schemas['DashboardMetrics'] & {
   economics?: EconomicsSummary
 }
 export type EconomicsFact = Schemas['EconomicsFact']
+export type Ticket = Schemas['Ticket'] & { criticality?: string; incident_type?: string; sla_due_sim?: string | null; sla_breached?: boolean; primary_client_id?: number | null; client_name?: string | null; escalations_count?: number }
+export type Escalation = Schemas['Escalation'] & { incident_title?: string | null; incident_status?: string | null; team_code?: string | null; criticality?: string | null; client_name?: string | null; client_segment?: string | null; channel?: string | null }
+export type EscalationDetail = Escalation & Schemas['EscalationDetail'] & { human_decision?: Record<string, unknown> | null }
+export type TicketDetail = Ticket & Schemas['TicketDetail'] & { history?: StatusHistoryItem[] }
+export type TeamLoad = Schemas['TeamLoad'] & { name_ru?: string; lead_display_name?: string | null; critical_open?: number; total?: number }
+export type IncidentAction = NonNullable<paths['/api/incidents/{id}/actions']['post']['requestBody']>['content']['application/json'] & { actor?: string }
+export type EscalationCreate = NonNullable<paths['/api/escalations']['post']['requestBody']>['content']['application/json'] & { actor?: string }
+export type EscalationAck = NonNullable<paths['/api/escalations/{id}/ack']['post']['requestBody']>['content']['application/json']
 export type NotificationItem = Schemas['Notification'] & { team_code?: string | null; signal_id?: number | null; client_name?: string | null; segment_code?: string | null; incident_public_id?: string | null }
 export type ComplianceAlert = Schemas['ComplianceAlert'] & { kind?: 'threshold' | 'immediate' | 'report'; patterns?: string[]; transcript_id?: number | null; trigger_count?: number }
 export type AudioSession = Schemas['AudioSession']
