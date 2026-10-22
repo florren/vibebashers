@@ -45,4 +45,4 @@ pytest backend/tests/unit/test_sentiment_thresholds.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. Трёхклассная тональность: normalize → sentiment positive/neutral/negative согласован с negativity (≤33/≤66/>66), сарказм/угроза ухода → negative; classify наследует sentiment нормализации и правит tone; пишется signals.sentiment (фильтр /api/incidents?sentiment= через v_tickets). Промпт `normalize.md` описывает критерии и скрытый негатив. **Отклонение:** прогон бенча sentiment (data/bench/*) и метрики — в T-129 (bench-раннер). Время: ~20 мин.

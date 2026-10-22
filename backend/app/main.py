@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app import api as api_pkg
+from app.agent.runner import AgentService
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.llm.failover import build_chain, default_profile
@@ -38,8 +39,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         version=__version__,
     )
     app.state.sim = None
+    app.state.agent = None
     if not s.is_test:
         bridge.start()
+        app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
+        app.state.agent.start()
         sim = Simulator(seed=s.sim_seed)
         try:
             await sim.load_state()
@@ -47,6 +51,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     yield
+    if app.state.agent is not None:
+        await app.state.agent.stop()
     if app.state.sim is not None:
         await app.state.sim.shutdown()
     await bridge.stop()

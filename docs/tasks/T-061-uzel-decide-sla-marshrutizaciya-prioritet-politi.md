@@ -41,4 +41,4 @@ pytest backend/tests/unit/test_node_decide.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. Узел decide: LLM даёт тексты (title_ru, text_ru, team_notice_ru, rationale_ru), код — все детерминированные поля: `sla.py` (effective_criticality с учётом флагов/сегмента/массовости, priority P1–P4, sla_for по sla_matrix и рабочим дням/часам `app.sim.clock`, complexity_for, pick_gift 300/600/1000 +200 за повтор), маршрут по routing_rules (первое совпадение по priority, ключи signal_type/error_code/system/product/channel/incident_type), incident_action create/link_existing (дедуп по error_code в окне)/none (gratitude/suggestion/info_request), политики HITL/эскалации/уточнения (`policies.py`), запрещённые формулировки → fallback на шаблон, policy_checks. Решение валидируется по `agent/decision`, пишется в signals.decision. fee_refund + easy при подтверждённом правиле. Время: ~1 ч.

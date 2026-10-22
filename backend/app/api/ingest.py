@@ -1,12 +1,16 @@
-"""Роутер тега `ingest` (OpenAPI 1.4.0). Заглушки 501 — реализация: карточка T-207."""
+"""Роутер тега `ingest` (OpenAPI 1.4.0). Реализовано (B04/T-207): POST /api/ingest/messages. Транскрипты и адаптеры — T-207/T-208."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
+from app.api.common import db
 from app.errors import NotImplementedYet
+from app.ingest.normalizer import IngestError, create_signal
 
 router = APIRouter(tags=["ingest"])
 
@@ -15,8 +19,22 @@ router = APIRouter(tags=["ingest"])
     "/api/ingest/messages",
     summary="[ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала",
 )
-async def post_ingest_messages(request: Request) -> Any:
-    raise NotImplementedYet("T-207")
+async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dict[str, Any]]) -> Any:
+    """Единая точка входа внешних источников: UnifiedMessage или массив (≤ 500); идемпотентность по (source_code, external_id)."""
+    items = body if isinstance(body, list) else [body]
+    if len(items) > 500:
+        raise HTTPException(status_code=422, detail="не больше 500 сообщений за запрос")
+    source = request.headers.get("x-source-code") or "api"
+    results = []
+    async with db() as conn:
+        for msg in items:
+            try:
+                results.append(await create_signal(conn, dict(msg), source_code=source))
+            except IngestError as exc:
+                results.append(
+                    {"external_id": msg.get("external_id"), "status": "rejected", "signal_id": None, "error": str(exc)}
+                )
+    return JSONResponse({"items": jsonable_encoder(results)}, status_code=202)
 
 
 @router.get("/api/ingest/transcripts", summary="[ДТЗ FR-1.1] Список импортированных транскриптов")
