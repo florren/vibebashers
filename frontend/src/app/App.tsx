@@ -10,6 +10,7 @@ import { EnginePage } from '@/pages/engine/EnginePage'
 import { CompliancePage } from '@/pages/compliance/CompliancePage'
 import { FeedPage } from '@/pages/feed/FeedPage'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
+import { SetupPage } from '@/pages/setup/SetupPage'
 
 export function App() {
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
@@ -28,6 +29,7 @@ export function App() {
             <Route path="compliance" element={<CompliancePage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="feed" element={<FeedPage />} />
+            <Route path="setup" element={<SetupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

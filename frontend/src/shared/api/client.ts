@@ -123,3 +123,24 @@ export async function api<T>(path: string, init?: RequestInit & { query?: Query 
 }
 
 export const post = <T>(path: string, body: unknown, query?: Query) => api<T>(path, { method: 'POST', body: JSON.stringify(body), query })
+export const put = <T>(path: string, body: unknown) => api<T>(path, { method: 'PUT', body: JSON.stringify(body) })
+export const patch = <T>(path: string, body: unknown) => api<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
+export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' })
+
+// ---- T-009/T-010: мастер настройки ----
+export type SetupStatus = paths['/api/setup/status']['get']['responses']['200']['content']['application/json']
+export type SetupPayload = Schemas['SetupPayload'] & { economics?: EconomicsSettingsT }
+export type DcltvRate = NonNullable<Schemas['EconomicsSettings']['rates']>[number]
+export type EconomicsSettingsT = Omit<Schemas['EconomicsSettings'], 'rates'> & { rates?: DcltvRate[]; updated_at?: string }
+export type SlaCell = Schemas['SlaCell']
+export type RoutingRule = Schemas['RoutingRule']
+export type LlmProfileT = Schemas['LlmProfile']
+export type LlmApiKey = Schemas['LlmApiKey'] & { key_hint?: string }
+export type GiftCatalogItem = Schemas['GiftCatalogItem']
+export type NotificationTemplateT = Schemas['NotificationTemplate']
+export type PsychotypeSettings = Schemas['PsychotypeSettings']
+export type TestLlmResult = paths['/api/setup/test-llm']['post']['responses']['200']['content']['application/json']
+export type TestLlmBody = NonNullable<paths['/api/setup/test-llm']['post']['requestBody']>['content']['application/json']
+export type GenerateStatus = paths['/api/setup/generate']['get']['responses']['200']['content']['application/json']
+export type GenerateBody = NonNullable<paths['/api/setup/generate']['post']['requestBody']>['content']['application/json'] & { reset_history?: boolean; clients?: number | null }
+

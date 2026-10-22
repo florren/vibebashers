@@ -9,6 +9,23 @@ import {
   type CityHeat,
   type DashboardMetrics,
   type EconomicsFact,
+  type EconomicsSettingsT,
+  type GenerateBody,
+  type GenerateStatus,
+  type GiftCatalogItem,
+  type LlmApiKey,
+  type LlmProfileT,
+  type NotificationTemplateT,
+  type PsychotypeSettings,
+  type RoutingRule,
+  type SetupPayload,
+  type SetupStatus,
+  type SlaCell,
+  type TestLlmBody,
+  type TestLlmResult,
+  del,
+  patch,
+  put,
   type Escalation,
   type EscalationAck,
   type EscalationCreate,
@@ -355,4 +372,73 @@ export function useAckEscalation() {
     mutationFn: ({ id, ...body }: EscalationAck & { id: number }) => post<Escalation>(`/api/escalations/${id}/ack`, body),
     onSuccess: () => invalidateTicketing(qc),
   })
+}
+
+// ---- T-009/T-010: мастер настройки и настройки стенда ----
+export const useSetupStatus = () => useQuery({ queryKey: ['setup', 'status'], queryFn: () => api<SetupStatus>('/api/setup/status') })
+export const useSetupPayload = () => useQuery({ queryKey: ['setup', 'payload'], queryFn: () => api<SetupPayload>('/api/setup') })
+export function useSaveSetup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Partial<SetupPayload>) => put<SetupPayload>('/api/setup', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['setup'] })
+      void qc.invalidateQueries({ queryKey: ['settings'] })
+      void qc.invalidateQueries({ queryKey: ['sim'] })
+    },
+  })
+}
+export function useFinishSetup() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: () => post<void>('/api/setup', {}), onSuccess: () => void qc.invalidateQueries({ queryKey: ['setup'] }) })
+}
+export const useTestLlm = () => useMutation({ mutationFn: (body: TestLlmBody) => post<TestLlmResult>('/api/setup/test-llm', body) })
+export const useTestTgBot = () => useMutation({ mutationFn: (token: string) => post<{ ok: boolean; username?: string; error?: string }>('/api/setup/test-tgbot', { token }) })
+export const useGenerateStatus = (poll: boolean) =>
+  useQuery({ queryKey: ['setup', 'generate'], queryFn: () => api<GenerateStatus>('/api/setup/generate'), refetchInterval: poll ? 1_000 : false })
+export function useStartGenerate() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: GenerateBody) => post<{ job_id: string }>('/api/setup/generate', body), onSuccess: () => void qc.invalidateQueries({ queryKey: ['setup'] }) })
+}
+
+function settingsQuery<T>(name: string, path: string) {
+  return () => useQuery({ queryKey: ['settings', name], queryFn: () => api<T>(path) })
+}
+export const useSlaMatrix = settingsQuery<SlaCell[]>('sla', '/api/settings/sla-matrix')
+export const useRoutingRules = settingsQuery<RoutingRule[]>('routing', '/api/settings/routing-rules')
+export const useLlmProfiles = settingsQuery<LlmProfileT[]>('llm-profiles', '/api/settings/llm-profiles')
+export const useLlmKeys = settingsQuery<LlmApiKey[]>('llm-keys', '/api/settings/llm-keys')
+export const useTemplates = settingsQuery<NotificationTemplateT[]>('templates', '/api/settings/templates')
+export const useGifts = settingsQuery<GiftCatalogItem[]>('gifts', '/api/settings/gifts')
+export const useEconomicsSettings = settingsQuery<EconomicsSettingsT>('economics', '/api/settings/economics')
+export const usePsychotypes = settingsQuery<PsychotypeSettings>('psychotypes', '/api/settings/psychotypes')
+
+export function useSaveSetting<T>(name: string, path: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: T) => put<void>(path, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['settings', name] })
+      void qc.invalidateQueries({ queryKey: ['metrics'] })
+    },
+  })
+}
+export function useLlmKeyOps() {
+  const qc = useQueryClient()
+  const inv = () => void qc.invalidateQueries({ queryKey: ['settings', 'llm-keys'] })
+  const add = useMutation({ mutationFn: (b: { provider: string; label: string; key: string }) => post<LlmApiKey>('/api/settings/llm-keys', b), onSuccess: inv })
+  const remove = useMutation({ mutationFn: (id: number) => del<void>(`/api/settings/llm-keys/${id}`), onSuccess: inv })
+  return { add, remove }
+}
+export function useLlmProfileOps() {
+  const qc = useQueryClient()
+  const inv = () => void qc.invalidateQueries({ queryKey: ['settings', 'llm-profiles'] })
+  const add = useMutation({ mutationFn: (b: LlmProfileT) => post<void>('/api/settings/llm-profiles', b), onSuccess: inv })
+  const save = useMutation({ mutationFn: ({ id, ...b }: LlmProfileT & { id: number }) => patch<void>(`/api/settings/llm-profiles/${id}`, b), onSuccess: inv })
+  const remove = useMutation({ mutationFn: (id: number) => del<void>(`/api/settings/llm-profiles/${id}`), onSuccess: inv })
+  return { add, save, remove }
+}
+export function useImportSettings() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: unknown) => post<void>('/api/settings/import', body), onSuccess: () => void qc.invalidateQueries({ queryKey: ['settings'] }) })
 }

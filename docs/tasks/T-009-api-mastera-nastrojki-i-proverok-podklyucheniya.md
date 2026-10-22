@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `in_progress` |
+| Статус | `done` |
 
 ## Цель
 Бэкенд для 9 шагов мастера: сохранение, проверка LLM и бота, запуск генерации данных.
@@ -41,5 +41,5 @@ pytest backend/tests/integration/test_setup_api.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b15-setup-wizard`. `api/setup.py`: статус шагов (`settings.setup_state`), `PUT /api/setup` по разделам с реальным эффектом (sim_state.seed/intensities, settings.policies для агента, роли llm_profiles, economics_settings), проверка LLM через реальных провайдеров (`app/llm/*`), getMe Telegram, фоновая генерация `scripts/seed/run.py` с логом/прогрессом/покрытием. `api/settings.py`: все разделы настроек поверх таблиц `settings`, `sla_matrix`, `routing_rules`, `llm_profiles`, `notification_templates`, `gift_catalog`, `economics_settings` + `dcltv_rates`, `psychotypes` + `segment_psychotype_mix`; ключи — `settings.llm_keys`, зашифрованы `app/llm/secrets.py` (HMAC-CTR + тег, ключ из APP_SECRET; `cryptography` в зависимостях нет). Ограничение: рабочая цепочка провайдеров агента по-прежнему задаётся `LLM_CHAIN`/ключами из `.env` — ключи из мастера используются для проверки подключения и хранения, переключение агента на них — отдельная карточка.
 Частично в PR «L4: фронт»: `GET /api/refs/{name}` реализован (regions, cities?region_code, segments, products, systems, teams, channels, error_codes, signal_types, federal_districts; whitelisted SELECT, 404 для неизвестного имени) — нужен фронту для названий команд/сегментов/каналов. Остальные эндпоинты мастера настройки (`/api/setup*`) — как в карточке.

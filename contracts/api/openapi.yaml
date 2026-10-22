@@ -2013,7 +2013,7 @@ components:
         bank: { type: object, properties: { name: { type: string }, clients_profile: { type: string, enum: [lite, demo, stress] }, regions_mode: { type: string }, region_codes: { type: array, items: { type: string } }, segment_shares: { type: object, additionalProperties: { type: number } } } }
         sim: { type: object, properties: { sim_hour_real_minutes: { type: number }, seed: { type: integer }, intensities: { type: object, additionalProperties: { type: number } }, fault_rate: { type: number } } }
         channels: { type: object, properties: { enabled: { type: array, items: { type: string } }, mailpit: { type: boolean }, tgbot_enabled: { type: boolean } } }
-        policies: { type: object, properties: { confidence_threshold: { type: number }, hitl_rules: { type: object }, dedup_window_hours: { type: integer } } }
+        policies: { type: object, properties: { confidence_threshold: { type: number }, hitl_rules: { type: object, additionalProperties: { type: number }, description: "Переопределения DEFAULT_POLICIES агента (clarification_threshold, fraud_amount_rub, repeat_hitl_count, escalation_negativity, escalation_signals_7d, refund_autonomy_limit_rub, refund_autonomy_limit_premium_rub, mass_refund_threshold)" }, dedup_window_hours: { type: integer } } }
         economics: { $ref: "#/components/schemas/EconomicsSettings" }
         ui: { type: object, properties: { lang: { type: string, enum: [ru, en] }, theme: { type: string, enum: [dark, light, circadian] } } }
     CoverageMatrix:
@@ -2116,6 +2116,8 @@ components:
             churned: { type: number }
         calibration_mode: { type: string, enum: [manual, simulated] }
         fallback_rate_code: { type: string, default: bank_average }
+        misselling_case_cost_rub: { type: [number, "null"], description: "Стоимость одного кейса мисселинга (economics_settings.misselling_case_cost_rub)" }
+        map_zone_thresholds: { type: [object, "null"], additionalProperties: true, description: "Пороги зон карты: yellow, red, critical_red, copilot_weight, window_sim_hours" }
         rates:
           type: array
           items:
