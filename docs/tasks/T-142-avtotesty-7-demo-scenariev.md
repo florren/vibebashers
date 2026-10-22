@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-038](T-038-dvizhok-scenariev-yaml-i-7-demo-scenariev.md), [T-141](T-141-testovaya-infrastruktura-backend.md)
-- Блокирует: [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md)
+- Блокирует: [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md)
 
 ## Что сделать
 1. backend/tests/scenarios/test_<id>.py: запуск сценария, проверка ожиданий (инциденты, команды, уведомления, статусы, подарки, экономика, состояния клиентов), валидация событий по схемам; фикстуры эталонных событий в fixtures/.

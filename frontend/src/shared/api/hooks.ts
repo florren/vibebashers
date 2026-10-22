@@ -9,6 +9,7 @@ import {
   type ComplianceEmployeeStats,
   type MissellingPattern,
   type Problem,
+  type QualityReport,
   type TranscriptBrief,
   type TranscriptDetail,
   type TranscriptReport,
@@ -206,3 +207,6 @@ export function useSendReport() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['compliance'] }),
   })
 }
+
+export const useQualityReport = (runId: 'all' | 'current') =>
+  useQuery({ queryKey: ['reports', 'quality', runId], queryFn: () => api<QualityReport>('/api/reports/quality', { query: { run_id: runId } }), refetchInterval: 30_000 })

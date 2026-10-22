@@ -6,7 +6,7 @@
 - `AGENTS.md` — правила для кодирующих агентов (читать первым), `CLAUDE.md`, `.cursor/rules/`.
 - `docs/SETUP.md` — настройка стенда и безопасная передача ключей; `docs/DEMO-SCRIPT.md` — сценарий демо; `docs/USER-GUIDE.md` — руководство пользователя; `docs/ONE-PAGER.md` — одностраничник о продукте.
 - `docs/TZ.md` — техническое задание v1.4; `docs/BRD.md`, `docs/TZ-additional.md` — исходные требования; `docs/BRD-merge-analysis.md` — анализ слияния.
-- `docs/PLAN-14D.md` — спринт до демо 9 ноября; `docs/TEAM-SPLIT.md` — слои и роли; `docs/WORKFLOW.md` — рабочий цикл `scripts/cx.py`; `docs/REPO-BOOTSTRAP.md` — репозиторий и CI.
+- `docs/PLAN-14D.md` — спринт до демо 9 ноября; `docs/TEAM-SPLIT.md` — слои и роли; `docs/WORKFLOW.md` — рабочий цикл `scripts/cx.py`; `docs/REPO-BOOTSTRAP.md` — репозиторий и CI; `docs/REPORTS.md` — журнал и отчёт о качестве (`make report`).
 - `docs/tasks/` — 150 карточек задач (индекс в `docs/tasks/README.md`).
 - `contracts/` — источник истины: `db/schema.sql` + миграции, `api/openapi.yaml`, `events/*.schema.json` (см. `contracts/README.md`).
 

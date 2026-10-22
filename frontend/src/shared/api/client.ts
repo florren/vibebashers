@@ -21,6 +21,7 @@ export type DecisionChain = Schemas['decision_chain.schema']
 export type Task = Schemas['Task']
 export type Followup = Schemas['Followup']
 export type TranscriptBrief = Schemas['TranscriptBrief']
+export type QualityReport = Schemas['QualityReport']
 export type TranscriptDetail = Schemas['TranscriptDetail']
 export type TranscriptReport = Schemas['TranscriptReport']
 export type ComplianceAlert = Schemas['ComplianceAlert'] & { kind?: 'threshold' | 'immediate' | 'report'; patterns?: string[]; transcript_id?: number | null; trigger_count?: number }

@@ -156,6 +156,7 @@
 | [T-217](T-217-ui-vkladka-transkripty-na-compliance-zagruzka-sp.md) UI: вкладка «Транскрипты» на /compliance (загрузка, список, отчёт с подсветкой семейств), раздел «Отчёты по транскриптам» на /manager | E18 | L4 | `SA-UI-Compliance` | M | да | T-216, T-187, T-188 |
 | [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md) Карта: слой «Зоны» (зелёная/жёлтая/красная) по v_map_zones, настройка порогов, счётчик «без гео», живой тикер экономики | E18 | L4 | `SA-Map` | M | да | T-088, T-093, T-132, T-207, T-215 |
 | [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md) Сценарии 10 «Транскрипт розничного диалога» и 11 «Сарказм → уточнение → эскалация»: YAML, автотесты, кассеты, блок D демо-скрипта | E18 | L5 | `SA-QA` | M | да | T-216, T-213, T-214, T-217, T-218, T-209, T-198 |
+| [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md) Логирование и репортинг качества: JSONL-журнал, HTTP-метрики, отчёт «что сломалось / работает не так / доработать», вкладка «Качество» | E11 | L5 | `SA-QA` | M | — | T-141, T-142 |
 
 ### Волна 5 — Тесты, i18n, документация, панели сравнения
 
@@ -192,7 +193,7 @@
 | `L2` Симулятор и данные | 32 | 24 | 62 | 47 | в2: 17, в3: 10, в4: 5 |
 | `L3` Агент и контуры | 42 | 30 | 74 | 58 | в2: 8, в3: 22, в4: 10, в5: 2 |
 | `L4` Фронт | 30 | 24 | 54 | 47 | в1: 1, в2: 2, в3: 5, в4: 20, в5: 2 |
-| `L5` Качество | 10 | 5 | 13 | 8 | в1: 1, в4: 3, в5: 6 |
+| `L5` Качество | 11 | 5 | 14 | 8 | в1: 1, в4: 4, в5: 6 |
 
 ### `L1` Базис
 
@@ -227,7 +228,7 @@
 ### `L5` Качество
 
 - Волна 1: [T-141](T-141-testovaya-infrastruktura-backend.md)
-- Волна 4: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Волна 4: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md) (откл.)
 - Волна 5: [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md) (откл.), [T-144](T-144-proverka-proizvoditelnosti-profilya-demo.md) (откл.), [T-145](T-145-ci-konvejer-polnogo-cikla.md) (откл.), [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md) (откл.), [T-167](T-167-statisticheskie-testy-modeli-povedeniya.md) (откл.)
 
 ## По эпикам
@@ -242,7 +243,7 @@
 - **E8 «Под капотом»** — 6 карточек: [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-107](T-107-graf-langgraph-s-podsvetkoj-uzla-i-graf-suschnos.md), [T-108](T-108-lenta-izmenenij-bd-schetchiki-tablic-prosmotr-st.md), [T-109](T-109-panel-ii-protiv-pravil.md), [T-110](T-110-dialog-agent-dvojnik-i-sostoyanie-klienta.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md). Субагенты: `SA-UI-Engine`.
 - **E9 Лендинг, трекинг, Telegram-бот** — 5 карточек: [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md), [T-122](T-122-qr-kod-bota-zhyuri-rezhim-i-instrukcii-dlya-fina.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md). Субагенты: `SA-Landing`, `SA-TgBot`, `SA-UI-Compliance`.
 - **E10 Бенчмарки и экономика** — 6 карточек: [T-129](T-129-benchmark-ranner-i-metriki.md), [T-130](T-130-ui-benchmarkov.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md). Субагенты: `SA-Bench`, `SA-Economics`.
-- **E11 Сценарии и тесты** — 6 карточек: [T-141](T-141-testovaya-infrastruktura-backend.md), [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-144](T-144-proverka-proizvoditelnosti-profilya-demo.md), [T-145](T-145-ci-konvejer-polnogo-cikla.md), [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md). Субагенты: `SA-QA`.
+- **E11 Сценарии и тесты** — 7 карточек: [T-141](T-141-testovaya-infrastruktura-backend.md), [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-144](T-144-proverka-proizvoditelnosti-profilya-demo.md), [T-145](T-145-ci-konvejer-polnogo-cikla.md), [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md). Субагенты: `SA-QA`.
 - **E12 Документация и защита** — 6 карточек: [T-151](T-151-readme-i-demo-skript.md), [T-152](T-152-licenses-md-i-istochniki-dannyh.md), [T-153](T-153-nachalnyj-nabor-adr.md), [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md), [T-204](T-204-demo-skript-7-8-i-3-5-minut-readme-razdelov-zhiv.md), [T-205](T-205-agents-md-v1-3-pravila-14-15-podsistemy-6-7-6-9.md). Субагенты: `SA-Docs`.
 - **E13 Локализация** — 3 карточек: [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md). Субагенты: `SA-i18n`.
 - **E14 Поведение клиентов и калькулятор «Факт»** — 7 карточек: [T-161](T-161-parametricheskaya-model-sostoyanij-klienta.md), [T-162](T-162-detekciya-snizheniya-aktivnosti-molchalivyj-uhod.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md), [T-167](T-167-statisticheskie-testy-modeli-povedeniya.md). Субагенты: `SA-Behavior`, `SA-Economics`, `SA-QA`.
@@ -367,6 +368,7 @@ graph LR
     T144[T-144]
     T145[T-145]
     T146[T-146]
+    T222[T-222]
   end
   subgraph E12[E12 Документация и защита]
     T151[T-151]
@@ -848,11 +850,13 @@ graph LR
   T198 --> T220
   T199 --> T221
   T200 --> T221
+  T141 --> T222
+  T142 --> T222
 ```
 
 ## Сводка
 
-- Всего карточек: 150; по оценкам: S — 36, M — 89, L — 25.
+- Всего карточек: 151; по оценкам: S — 36, M — 90, L — 25.
 - Критический путь (ядро): T-001 → T-005 → T-006 → T-046 → T-056 → T-057 → T-058 → T-061 → T-062 → T-063 → T-090 → T-142 → T-151.
 - Критический путь v1.3 (BRD-1): T-005 → T-199 → T-171 → T-172 → T-174 → T-176 → T-177 → T-179; (BRD-2): T-181 → T-183 → T-185 → T-186 → T-187 → T-192; подстраховка T-194 → T-195 → T-198 нужна до первой репетиции.
 - Демо-минимум (если времени не хватает): все карточки волн 1–3 (включая T-040 запуски и T-041 возобновление) плюс T-077, T-078, T-090, T-094, T-106, T-107, T-108, T-119, T-120, T-131, T-142, T-151. Бот (T-121/122), бенчмарк-UI (T-130), калькулятор «Факт» (T-166) и перф-тесты можно отложить без потери ключевого сценария.

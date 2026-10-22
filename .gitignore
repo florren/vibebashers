@@ -15,6 +15,10 @@ frontend/dist/
 data/models/stt/vosk-model-ru-0.42/
 data/baseline/*.dump
 backend/schema.sql.bak
+# наблюдаемость (docs/REPORTS.md): журнал и сгенерированные отчёты только локально
+backend/var/
+data/reports/*
+!data/reports/README.md
 # IDE
 .idea/
 .vscode/

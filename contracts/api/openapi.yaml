@@ -972,6 +972,37 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DbActivity" } } } } }
 
+  # ---------------------------------------------------------------- reports (качество, docs/REPORTS.md)
+  /api/reports/quality:
+    get:
+      tags: [engine]
+      summary: Отчёт о качестве — что сломалось, что работает не так, что доработать (JSON или Markdown)
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: format, in: query, schema: { type: string, enum: [json, md], default: json } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/QualityReport" } }
+            text/markdown: { schema: { type: string } }
+  /api/reports/http:
+    get:
+      tags: [engine]
+      summary: HTTP-метрики процесса — счётчики по маршрутам (5xx/501/4xx/медленные) и последние ошибки
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HttpStats" } } } }
+  /api/reports/log:
+    get:
+      tags: [engine]
+      summary: Хвост JSONL-журнала приложения (var/log/app.jsonl), warning и выше по умолчанию
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { name: level, in: query, schema: { type: string, enum: [debug, info, warning, error], default: warning } }
+        - { name: event, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+
   # ---------------------------------------------------------------- bench
   /api/bench/datasets:
     get:
@@ -2567,6 +2598,70 @@ components:
         pk: { type: string }
         summary: { type: [object, "null"], additionalProperties: true }
         ts: { type: string, format: date-time }
+    QualityReport:
+      type: object
+      description: Снимок качества по БД и метрикам процесса; разделы agent/hitl/incidents/scenarios/compliance/http — см. docs/REPORTS.md
+      required: [version, summary, recommendations]
+      properties:
+        version: { type: string }
+        summary:
+          type: object
+          additionalProperties: true
+          properties:
+            generated_at: { type: string, format: date-time }
+            run_id: { type: [integer, "null"] }
+            health: { type: integer, minimum: 0, maximum: 100, description: Индекс здоровья 0–100 }
+            agent_runs: { type: integer }
+            agent_failed: { type: integer }
+            steps_fallback_pct: { type: number }
+            hitl_override_pct: { type: number }
+            sla_breached: { type: integer }
+            scenarios_failed: { type: array, items: { type: string } }
+            compliance_false_pct: { type: number }
+            http_5xx: { type: [integer, "null"] }
+            http_501: { type: [integer, "null"] }
+        agent: { type: object, additionalProperties: true }
+        hitl: { type: object, additionalProperties: true }
+        incidents: { type: object, additionalProperties: true }
+        scenarios: { type: array, items: { type: object, additionalProperties: true } }
+        compliance: { type: object, additionalProperties: true }
+        http: { oneOf: [{ $ref: "#/components/schemas/HttpStats" }, { type: "null" }] }
+        recommendations:
+          type: array
+          items:
+            type: object
+            required: [severity, area, text, where]
+            properties:
+              severity: { type: string, enum: [high, medium, low] }
+              area: { type: string, enum: [agent, llm, process, scenario, compliance, api, product, ok] }
+              text: { type: string }
+              where: { type: string, description: Где смотреть — эндпоинт, таблица, файл }
+    HttpStats:
+      type: object
+      properties:
+        since: { type: number }
+        requests: { type: integer }
+        s5xx: { type: integer }
+        s501: { type: integer }
+        s4xx: { type: integer }
+        slow: { type: integer }
+        routes:
+          type: array
+          items:
+            type: object
+            properties:
+              method: { type: string }
+              route: { type: string }
+              total: { type: integer }
+              s2xx: { type: integer }
+              s4xx: { type: integer }
+              s5xx: { type: integer }
+              s501: { type: integer }
+              s422: { type: integer }
+              avg_ms: { type: integer }
+              max_ms: { type: integer }
+              slow: { type: integer }
+        recent_errors: { type: array, items: { type: object, additionalProperties: true } }
     BenchRun:
       type: object
       properties:
