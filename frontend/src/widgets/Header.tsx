@@ -41,6 +41,7 @@ export function Header() {
         <Nav to="/compliance" label={t('nav.compliance')} />
         <Nav to="/manager" label={t('nav.manager')} />
         <Nav to="/feed" label={t('nav.feed')} />
+        <Nav to="/setup" label={t('nav.settings')} />
       </nav>
 
       <div className="mx-auto flex shrink-0 items-center gap-2">

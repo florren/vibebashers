@@ -6484,7 +6484,10 @@ export interface components {
             };
             policies?: {
                 confidence_threshold?: number;
-                hitl_rules?: Record<string, never>;
+                /** @description Переопределения DEFAULT_POLICIES агента (clarification_threshold, fraud_amount_rub, repeat_hitl_count, escalation_negativity, escalation_signals_7d, refund_autonomy_limit_rub, refund_autonomy_limit_premium_rub, mass_refund_threshold) */
+                hitl_rules?: {
+                    [key: string]: number;
+                };
                 dedup_window_hours?: number;
             };
             economics?: components["schemas"]["EconomicsSettings"];
@@ -6600,6 +6603,12 @@ export interface components {
             calibration_mode?: "manual" | "simulated";
             /** @default bank_average */
             fallback_rate_code: string;
+            /** @description Стоимость одного кейса мисселинга (economics_settings.misselling_case_cost_rub) */
+            misselling_case_cost_rub?: number | null;
+            /** @description Пороги зон карты: yellow, red, critical_red, copilot_weight, window_sim_hours */
+            map_zone_thresholds?: {
+                [key: string]: unknown;
+            } | null;
             rates?: {
                 code: string;
                 name_ru: string;

@@ -227,7 +227,7 @@ function TicketDrawer({ id, onClose, onOpenEsc }: { id: number | null; onClose: 
 
           <Section title={t('tickets.actions')}>
             <div className="flex flex-col gap-2 p-3">
-              <textarea className="input h-16 w-full resize-none py-1.5" placeholder={t('tickets.textPh')} value={text} onChange={(e) => setText(e.target.value)} />
+              <textarea className="input w-full resize-none py-1.5" style={{ height: 64 }} placeholder={t('tickets.textPh')} value={text} onChange={(e) => setText(e.target.value)} />
               <div className="flex flex-wrap gap-1.5">
                 <button className="btn btn-sm" disabled={act.isPending || closed || d.incident_status === 'in_progress'} onClick={() => act.mutate({ action: 'take', reason: text || undefined })}>
                   {t('tickets.act.take')}

@@ -62,7 +62,7 @@ backend/                  FastAPI-приложение
   app/compliance/         sessions.py, speakers.py (stereo/manual/auto), rules_detector.py, llm_detector.py, counter.py, alerts.py (ТЗ 22); v1.4: batch.py (pacing=batch, transcript_report), fact_check.py, scripts.py (service_scripts), recommendations.py
   app/replay/             провайдер replay: кассеты записанных ответов моделей, запись LLM_RECORD (ТЗ 5.4)
   app/demo/               статус провайдеров, failover, запуск предзаписанных входов, активы (ТЗ 12.7)
-  app/llm/                provider.py, gigachat.py, openai_compat.py, mock.py, failover.py (таймауты по контексту), ratelimit.py, keys.py
+  app/llm/                provider.py, gigachat.py, openai_compat.py, mock.py, failover.py (таймауты по контексту), ratelimit.py, keys.py, secrets.py (шифрование ключей в settings.llm_keys ключом APP_SECRET)
   app/economics/          dcltv.py, calibration.py
   app/realtime/           ws.py, notify.py (LISTEN/NOTIFY → WebSocket)
   app/bench/              runner.py, metrics.py
