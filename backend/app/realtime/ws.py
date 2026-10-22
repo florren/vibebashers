@@ -1,4 +1,4 @@
-"""/ws/stream — единый WebSocket (OpenAPI 1.4.0). Heartbeat каждые 20 с. /ws/audio/{session_id} — карточка T-181."""
+"""/ws/stream — единый WebSocket (OpenAPI 1.4.0). Heartbeat каждые 20 с. /ws/audio/{session_id} — app/stt/audio_ws.py (B10)."""
 
 from __future__ import annotations
 
@@ -35,9 +35,3 @@ async def ws_stream(ws: WebSocket) -> None:
         with contextlib.suppress(asyncio.CancelledError):
             await hb
         await hub.disconnect(ws)
-
-
-@router.websocket("/ws/audio/{session_id}")
-async def ws_audio(ws: WebSocket, session_id: int) -> None:
-    await ws.accept()
-    await ws.close(code=1011, reason="STT не реализован: карточка T-181")

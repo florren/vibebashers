@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Надёжный захват микрофона ноутбука и доставка PCM16 16 кГц на сервер; понятные состояния при отсутствии HTTPS/разрешения (ТЗ 5, 16.1, 22.2).
@@ -43,4 +43,4 @@ npx playwright test e2e/voice-input.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b17-tasks-stt-env`. `frontend/src/shared/audio/mic.ts`: getUserMedia → AudioWorklet (собирается из Blob) → ресемплинг до 16 кГц → PCM16 interleaved кадрами 100 мс, уровень сигнала; `webSpeech.ts` — обёртка Web Speech API с автоперезапуском. `pages/compliance/LiveMeeting.tsx`: hello/бинарные кадры/`speaker`/`end`, partial и final, пробел — переключение спикера.

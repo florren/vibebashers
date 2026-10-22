@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Сессия как единица анализа: источники mic/file/transcript, роли сотрудника и клиента режимами stereo/manual/auto (ТЗ 22.2–22.3).
@@ -44,4 +44,4 @@ pytest backend/tests/integration/test_audio_sessions.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b17-tasks-stt-env`. `POST /api/compliance/sessions` с `source=mic` (валидация провайдера и режима, `audio_ws_url`), `app/stt/live.py` (реплики → `ComplianceService.add_utterance`/`process_utterance` → алерты → отчёт `_finish_report` и `close_session`, `stt_metrics`), `app/stt/audio_ws.py` (`/ws/audio/{id}`, тишина 90 с). Режимы: stereo (канал = роль), manual (переключатель), auto (`app/stt/speakers.py`, эвристика по маркерам речи + чередование; speaker_source = llm). Тест `tests/integration/test_stt_live.py`.

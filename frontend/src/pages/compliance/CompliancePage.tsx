@@ -1,11 +1,12 @@
 import { clsx } from 'clsx'
-import { FileUp, FolderInput, Send } from 'lucide-react'
+import { FileUp, FolderInput, Mic, Send } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import type { TranscriptDetail, TranscriptReport } from '@/shared/api/client'
 import { useComplianceStats, useImportTranscripts, useSendReport, useTranscript, useTranscriptReport, useTranscripts, useUploadTranscripts } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
+import { LiveMeeting } from './LiveMeeting'
 import { fmtDateTime } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, SkeletonRows, Tabs } from '@/shared/ui'
 
@@ -31,6 +32,7 @@ export function CompliancePage() {
   const imp = useImportTranscripts()
   const fileRef = useRef<HTMLInputElement>(null)
   const items = list.data?.items ?? []
+  const [live, setLive] = useState(false)
 
   return (
     <div className="flex h-full">
@@ -38,11 +40,14 @@ export function CompliancePage() {
         <div className="flex h-10 shrink-0 items-center gap-1 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('compliance.transcripts')}</span>
           <span className="num ml-1 text-muted">{items.length}</span>
-          <button className="btn btn-ghost btn-sm ml-auto whitespace-nowrap" onClick={() => fileRef.current?.click()} disabled={upload.isPending} title={t('compliance.uploadHint')}>
-            <FileUp size={14} /> {t('compliance.upload')}
+          <button className={clsx('btn btn-sm ml-auto whitespace-nowrap', live ? 'btn-primary' : 'btn-ghost')} onClick={() => setLive(true)} title={t('live.hintServer')}>
+            <Mic size={14} /> {t('live.button')}
           </button>
-          <button className="btn btn-ghost btn-sm whitespace-nowrap" onClick={() => imp.mutate()} disabled={imp.isPending} title="data/import/transcripts">
-            <FolderInput size={14} /> {t('compliance.importCorpus')}
+          <button className="btn btn-ghost btn-sm whitespace-nowrap" onClick={() => fileRef.current?.click()} disabled={upload.isPending} title={t('compliance.uploadHint')}>
+            <FileUp size={14} /> <span className="sr-only">{t('compliance.upload')}</span>
+          </button>
+          <button className="btn btn-ghost btn-sm whitespace-nowrap" onClick={() => imp.mutate()} disabled={imp.isPending} title={`${t('compliance.importCorpus')} · data/import/transcripts`}>
+            <FolderInput size={14} /> <span className="sr-only">{t('compliance.importCorpus')}</span>
           </button>
           <input
             ref={fileRef}
@@ -98,7 +103,9 @@ export function CompliancePage() {
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          {tab === 'stats' ? (
+          {live ? (
+            <LiveMeeting onClose={() => setLive(false)} />
+          ) : tab === 'stats' ? (
             <StatsTable />
           ) : selected == null ? (
             <Empty title={t('compliance.pick')} />

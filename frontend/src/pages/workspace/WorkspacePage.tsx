@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useHitlQueue, useSimState } from '@/shared/api/hooks'
-import { Empty, Tabs } from '@/shared/ui'
+import { Tabs } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { KpiStrip } from '@/widgets/KpiStrip'
 import { SignalsFeed } from './SignalsFeed'
@@ -15,6 +15,7 @@ import { MapTab } from './MapTab'
 import { NotificationsTab } from './NotificationsTab'
 import { TicketsTab } from './TicketsTab'
 import { TeamsTab } from './TeamsTab'
+import { TasksTab } from './TasksTab'
 
 type Tab = 'signals' | 'incidents' | 'hitl' | 'deferred' | 'tickets' | 'tasks' | 'map' | 'dashboard' | 'teams' | 'notifications'
 const TABS: Tab[] = ['signals', 'incidents', 'hitl', 'tickets', 'deferred', 'map', 'dashboard', 'teams', 'notifications', 'tasks']
@@ -57,9 +58,7 @@ export function WorkspacePage() {
         {tab === 'notifications' && <NotificationsTab runId={runId} />}
         {tab === 'tickets' && <TicketsTab runId={runId} />}
         {tab === 'teams' && <TeamsTab />}
-        {tab === 'tasks' && (
-          <Empty title={t('common.notImplemented')} hint={t(`placeholder.${tab}`)} />
-        )}
+        {tab === 'tasks' && <TasksTab runId={runId} />}
       </div>
       <SignalDrawer id={signalId} onClose={() => setSignalId(null)} />
     </div>

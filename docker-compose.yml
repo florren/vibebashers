@@ -26,12 +26,14 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://cx:cx@postgres:5432/cx_pulse
       CASSETTES_DIR: /data/cassettes
+      ENV_FILE: /data/env/.env
     ports: ["8000:8000"]
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ./data:/data
+      - ./.env:/data/env/.env   # мастер настройки (/setup) правит .env на месте
 
   mailpit:
     image: axllent/mailpit:latest

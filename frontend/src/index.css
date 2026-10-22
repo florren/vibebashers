@@ -63,6 +63,9 @@ body {
 .btn-ghost {
   @apply border-transparent bg-transparent hover:bg-raised;
 }
+.btn-danger {
+  @apply border-transparent bg-danger text-white hover:bg-[#b83a3a];
+}
 .btn-sm {
   @apply h-7 px-2 text-xs;
 }

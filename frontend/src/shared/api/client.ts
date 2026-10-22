@@ -144,3 +144,51 @@ export type TestLlmBody = NonNullable<paths['/api/setup/test-llm']['post']['requ
 export type GenerateStatus = paths['/api/setup/generate']['get']['responses']['200']['content']['application/json']
 export type GenerateBody = NonNullable<paths['/api/setup/generate']['post']['requestBody']>['content']['application/json'] & { reset_history?: boolean; clients?: number | null }
 
+export type TaskItem = {
+  id: number
+  run_id: number
+  kind: 'gift' | 'callback' | 'manual_review' | 'clarify_client' | 'report_reminder' | 'closure_review'
+  incident_id: number | null
+  assignee: string | null
+  payload: Record<string, unknown> & { gift?: { gift_code?: string; points?: number; privilege_code?: string | null; when?: string }; issued?: { label: string }; decision?: { action: string; comment?: string | null } }
+  status: 'open' | 'approved' | 'changed' | 'rejected' | 'done' | 'cancelled'
+  requires_hitl: boolean
+  due_sim: string | null
+  created_sim: string | null
+  resolved_sim: string | null
+  incident_public_id: string | null
+  incident_title: string | null
+  incident_status: string | null
+  incident_criticality: string | null
+  gift_name: string | null
+  ready: boolean
+  overdue: boolean
+  client: ClientBrief | null
+}
+export type TaskList = { items: TaskItem[]; next_cursor: string | null; counts: Record<string, number> }
+
+export type EnvVar = Schemas['EnvVar']
+export type EnvUpdate = Schemas['EnvUpdate']
+export type EnvResult = Schemas['EnvResult']
+export type EnvState = { path: string; exists: boolean; writable: boolean; items: EnvVar[] }
+
+export type Branch = Schemas['Branch']
+export type SttProvider = Schemas['SttProvider']
+export type MicSession = AudioSession & { audio_ws_url: string; sample_rate: number; channels: 1 | 2 }
+export type SttMessage = {
+  type: 'ready' | 'partial' | 'final' | 'error' | 'closed' | 'pong'
+  session_id: number
+  channel?: number
+  text?: string
+  seq?: number | null
+  latency_ms?: number | null
+  provider?: string | null
+  error?: string | null
+  model?: string | null
+  diarization_mode?: string
+  session_public_id?: string
+  utterance?: { utterance_id: number; seq: number; speaker: 'employee' | 'client' | 'unknown'; speaker_confidence: number; speaker_source: string; text: string; t0_ms: number; t1_ms: number }
+  trigger?: { id: number; pattern_code: string; confidence: number; quote: string; explanation_ru: string; recommendation_ru: string; status: string } | null
+  session?: { trigger_count: number; status: string; alert_threshold: number }
+  report?: Record<string, unknown> & { findings?: Array<{ turn_seq: number; pattern_code: string; family: string; confidence: number; quote: string; explanation_ru: string; recommendation_ru?: string }>; overall_ru?: string; confidence?: number }
+}

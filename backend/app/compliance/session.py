@@ -124,6 +124,9 @@ class ComplianceService:
         pacing: str = "batch",
         transcript_id: int | None = None,
         diarization_mode: str = "manual",
+        stt_provider: str = "none",
+        stt_model: str | None = None,
+        alert_threshold: int | None = None,
     ) -> Session:
         br = await resolve_branch(self.conn, branch_code)
         if not br:
@@ -133,8 +136,8 @@ class ComplianceService:
             raise ValueError(f"сотрудник не найден: {employee_public_id or desk_no} в {br[1]}")
         row = await (
             await self.conn.execute(
-                "insert into audio_sessions (run_id, branch_id, employee_id, client_id, deal_product, source, stt_provider, diarization_mode, status, trigger_count, alert_threshold, started_at, started_sim, store_audio, pacing, transcript_id) "
-                "values (%s, %s, %s, %s, %s, %s, 'none', %s, 'live', 0, %s, now(), %s, false, %s, %s) returning id, public_id",
+                "insert into audio_sessions (run_id, branch_id, employee_id, client_id, deal_product, source, stt_provider, stt_model, diarization_mode, status, trigger_count, alert_threshold, started_at, started_sim, store_audio, pacing, transcript_id) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'live', 0, %s, now(), %s, false, %s, %s) returning id, public_id",
                 (
                     self.run_id,
                     br[0],
@@ -142,8 +145,10 @@ class ComplianceService:
                     client_id,
                     deal_product,
                     source,
+                    stt_provider,
+                    stt_model,
                     diarization_mode,
-                    self.alert_threshold,
+                    alert_threshold or self.alert_threshold,
                     self.sim_time,
                     pacing,
                     transcript_id,
@@ -165,7 +170,7 @@ class ComplianceService:
             pacing=pacing,
             status="live",
             trigger_count=0,
-            alert_threshold=self.alert_threshold,
+            alert_threshold=alert_threshold or self.alert_threshold,
             incident_id=None,
             transcript_id=transcript_id,
         )
@@ -213,18 +218,24 @@ class ComplianceService:
         t0_ms: int | None = None,
         t1_ms: int | None = None,
         speaker_source: str = "transcript",
+        speaker_confidence: float = 1.0,
+        stt_confidence: float | None = None,
+        latency_ms: int | None = None,
     ) -> int:
         row = await (
             await self.conn.execute(
-                "insert into utterances (session_id, seq, speaker, speaker_confidence, speaker_source, text, t0_ms, t1_ms, is_final) values (%s, %s, %s, 1.0, %s, %s, %s, %s, true) returning id",
+                "insert into utterances (session_id, seq, speaker, speaker_confidence, speaker_source, text, t0_ms, t1_ms, is_final, stt_confidence, latency_ms) values (%s, %s, %s, %s, %s, %s, %s, %s, true, %s, %s) returning id",
                 (
                     s.id,
                     seq,
                     speaker,
+                    speaker_confidence,
                     speaker_source,
                     text,
                     t0_ms or 0,
                     t1_ms if t1_ms is not None else (t0_ms or 0) + max(1000, len(text) * 60),
+                    stt_confidence,
+                    latency_ms,
                 ),
             )
         ).fetchone()
@@ -233,10 +244,10 @@ class ComplianceService:
             "utterance_id": uid,
             "seq": seq,
             "speaker": speaker,
-            "speaker_confidence": 1.0,
+            "speaker_confidence": speaker_confidence,
             "text": text[:400],
             "is_final": True,
-            "latency_ms": None,
+            "latency_ms": latency_ms,
         }
         if t0_ms is not None:
             utt["t0_ms"] = int(t0_ms)

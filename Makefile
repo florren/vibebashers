@@ -79,6 +79,9 @@ test-scenarios:             ## сценарные тесты ТЗ §18 на mock
 e2e:                        ## дымовые Playwright-тесты фронта против стенда (E2E_BASE_URL, по умолчанию :8000); браузер: npx playwright install chromium
 	cd frontend && npx playwright test
 
+stt-model:                  ## скачать малую русскую модель Vosk (≈45 МБ) в data/models/stt — для живого распознавания с микрофона
+	python3 scripts/stt_model.py
+
 bench:
 	@echo "цель $@ реализуется в E10/E13 — см. AGENTS.md раздел 4"
 

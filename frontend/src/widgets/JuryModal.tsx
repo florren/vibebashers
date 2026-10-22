@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useClients, useJury, useRefs } from '@/shared/api/hooks'
 import { ErrorBox, Modal } from '@/shared/ui'
+import { VoiceInput } from '@/shared/audio/VoiceInput'
 
 const ANON_CHANNELS = new Set(['social', 'review_portal', 'landing'])
 
@@ -38,7 +39,10 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
     <Modal open={open} onClose={close} title={t('jury.title')}>
       <div className="space-y-3">
         <label className="block">
-          <span className="mb-1 block text-xs text-muted">{t('jury.text')}</span>
+          <span className="mb-1 flex items-center justify-between text-xs text-muted">
+            {t('jury.text')}
+            <VoiceInput onText={(tx) => setText((v) => (v ? `${v} ${tx}` : tx))} />
+          </span>
           <textarea
             className="input h-28 w-full resize-y py-2"
             value={text}

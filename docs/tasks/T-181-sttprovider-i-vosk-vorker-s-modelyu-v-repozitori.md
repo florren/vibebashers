@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Офлайн-потоковое распознавание русской речи внутри backend по интерфейсу STTProvider (ТЗ 5.3): partial/final с таймкодами слов, словарь терминов, метрики.
@@ -46,4 +46,4 @@ python scripts/stt_bench.py --dataset stt_v1
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b17-tasks-stt-env`. `app/stt/base.py` (интерфейс STTProvider/STTStream, split стерео), `app/stt/vosk_provider.py` (ленивая загрузка модели, рекогнайзер на канал, слова с таймкодами, partial/final с задержкой), `app/stt/registry.py` (vosk по умолчанию при наличии модели, иначе browser), `api/stt.py` (providers, test с WER по `data/stt/sample_ru_16k.wav`, transcribe). Отклонение от карточки: модель в git не хранится — `make stt-model` скачивает `vosk-model-small-ru-0.22` в `data/models/stt` (≈45 МБ; `.gitignore`/`.dockerignore`), путь — `STT_MODEL_PATH`.
