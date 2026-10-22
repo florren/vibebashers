@@ -88,7 +88,7 @@ def test_full_pass_creates_incident_and_notifications(seeded: str, conn: psycopg
     ).fetchone()
     assert (
         inc
-        and inc[1] in ("routed", "escalated")
+        and inc[1] in ("routed", "escalated", "resolved")  # resolved — комиссия возвращена через Mock-АБС (B06)
         and inc[2]
         and 1 <= inc[3] <= 4
         and inc[4] is not None

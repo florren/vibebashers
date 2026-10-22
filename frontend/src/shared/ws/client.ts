@@ -38,7 +38,7 @@ export const useWs = create<WsState>((set) => ({
     }),
 }))
 
-export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest'] as const
+export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs'] as const
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 const INVALIDATE: Record<string, string[][]> = {
@@ -53,6 +53,8 @@ const INVALIDATE: Record<string, string[][]> = {
   tickets: [['tickets']],
   compliance: [['compliance'], ['transcripts']],
   ingest: [['transcripts']],
+  feed: [['feed'], ['signals']],
+  abs: [['abs'], ['feed']],
 }
 
 let socket: WebSocket | null = null

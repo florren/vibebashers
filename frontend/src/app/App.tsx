@@ -8,6 +8,7 @@ import { WorkspacePage } from '@/pages/workspace/WorkspacePage'
 import { IncidentPage } from '@/pages/incident/IncidentPage'
 import { EnginePage } from '@/pages/engine/EnginePage'
 import { CompliancePage } from '@/pages/compliance/CompliancePage'
+import { FeedPage } from '@/pages/feed/FeedPage'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
             <Route path="engine/:runId" element={<EnginePage />} />
             <Route path="compliance" element={<CompliancePage />} />
             <Route path="manager" element={<ManagerPage />} />
+            <Route path="feed" element={<FeedPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

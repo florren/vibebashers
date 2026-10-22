@@ -20,6 +20,7 @@ from typing import Any
 import psycopg
 import yaml
 
+from app.abs import service as abs_svc
 from app.ingest.normalizer import create_signal
 from app.sim.events import dumps
 
@@ -225,13 +226,14 @@ async def inject_operation(
             ),
         )
     ).fetchone()
-    return int(_col(row, 0))
+    op_id = int(_col(row, 0))
+    await abs_svc.ensure_operation_posted(conn, op_id)
+    return op_id
 
 
 # ---------------------------------------------------------------- проверка ожиданий
 
 NOT_YET = {
-    "public_reply": "B08 (публичный ответ в ленте)",
     "move_to_private": "B08 (перевод в личные сообщения)",
     "proactive_notice": "B06 (проактивные уведомления по сбою)",
     "preventive_notice": "B06",
@@ -240,13 +242,11 @@ NOT_YET = {
     "escalate_on_silence": "B05",
     "escalation_on_silence": "B05",
     "map_zone": "B14 (карта)",
-    "abs_widget": "B09 (виджет АБС)",
     "fast_path_p50_s": "замер латентности — только на live",
     "proactive_on_activity_drop": "B06 (модель поведения)",
     "regression_incident": "B06 (регрессия сбоя)",
     "retained": "B06 (модель поведения)",
     "complaints": "B06 (генератор массового сбоя)",
-    "refund": "B09 (возврат через АБС); пока проверяется правило RULE-QR-FEE-001",
 }
 
 
@@ -284,7 +284,49 @@ async def _run_data(conn: psycopg.AsyncConnection[Any], run_id: int) -> dict[str
         )
     ).fetchall()
     rules = {m.get("rule_code") for r in rules_rows for m in (_col(r, 0) or []) if isinstance(m, dict)}
+    refunds = await (
+        await conn.execute(
+            "select l.id, l.amount, l.created_by, l.rule_id, a.client_id from ledger_entries l join accounts a on a.id = l.account_id "
+            "where l.kind = 'refund' and (l.run_id = %s or l.operation_id in (select source_operation_id from signals where run_id = %s and origin = 'scenario'))",
+            (run_id, run_id),
+        )
+    ).fetchall()
+    replies = await (
+        await conn.execute(
+            "select r.id, r.author, r.latency_ms, p.status, p.author_client_id from external_replies r join external_posts p on p.id = r.post_id "
+            "join signals s on s.id = p.signal_id where s.run_id = %s and s.origin = 'scenario'",
+            (run_id,),
+        )
+    ).fetchall()
+    accounts = await (
+        await conn.execute(
+            "select a.client_id, a.balance, (select count(*) from ledger_entries l where l.account_id = a.id) from accounts a "
+            "where a.client_id in (select client_id from signals where run_id = %s and origin = 'scenario' and client_id is not null)",
+            (run_id,),
+        )
+    ).fetchall()
     return {
+        "refunds": [
+            {
+                "id": _col(r, 0),
+                "amount": float(_col(r, 1)),
+                "by": _col(r, 2),
+                "rule": _col(r, 3),
+                "client_id": _col(r, 4),
+            }
+            for r in refunds
+        ],
+        "replies": [
+            {
+                "id": _col(r, 0),
+                "author": _col(r, 1),
+                "latency_ms": _col(r, 2),
+                "post_status": _col(r, 3),
+                "identified": _col(r, 4) is not None,
+            }
+            for r in replies
+        ],
+        "accounts": [{"client_id": _col(r, 0), "balance": float(_col(r, 1)), "entries": _col(r, 2)} for r in accounts],
         "rules": sorted(r for r in rules if r),
         "signals": [
             {
@@ -401,6 +443,31 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
                     key,
                     len(d["incidents"]) == 1,
                     f"инцидентов {len(d['incidents'])} (массовых {n}), сигналов {len(d['signals'])}",
+                )
+            )
+        elif key == "refund":
+            ok = bool(d["refunds"]) == bool(want)
+            by = sorted({r["by"] for r in d["refunds"]})
+            total = sum(r["amount"] for r in d["refunds"])
+            checks.append(_check(key, ok, f"возвратов {len(d['refunds'])} на {total:.2f} ₽ ({', '.join(by) or '—'})"))
+        elif key == "public_reply":
+            agent_replies = [r for r in d["replies"] if r["author"] == "agent"]
+            ok = bool(agent_replies) == bool(want)
+            lat = [r["latency_ms"] for r in agent_replies if r["latency_ms"] is not None]
+            checks.append(
+                _check(
+                    key,
+                    ok,
+                    f"публичных ответов агента {len(agent_replies)}; статусы постов {sorted({r['post_status'] for r in d['replies']})}; латентность мс {lat[:3]}",
+                )
+            )
+        elif key == "abs_widget":
+            ok = bool(d["accounts"]) and any(a["entries"] > 0 for a in d["accounts"])
+            checks.append(
+                _check(
+                    key,
+                    ok == bool(want),
+                    f"счетов {len(d['accounts'])}, проводок {[a['entries'] for a in d['accounts']]}",
                 )
             )
         elif key == "sentiment":

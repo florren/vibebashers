@@ -11,6 +11,7 @@ import psycopg
 from psycopg.rows import tuple_row
 
 from app.contracts.registry import validate
+from app.feed import service as feed_svc
 from app.sim.events import dumps
 
 CHANNELS = {
@@ -165,6 +166,36 @@ async def create_signal(
         ),
     )
     signal_id = int(row[0])  # type: ignore[index]
+    meta = msg.get("meta") or {}
+    if meta.get("external_post_id"):
+        await feed_svc.link_signal(conn, int(meta["external_post_id"]), signal_id)
+    elif msg["channel"] in feed_svc.PLATFORM_BY_CHANNEL:
+        # публичное обращение без готового поста (сценарий, жюри, API) — создаём пост на эмуляторе площадки (ТЗ 21.2)
+        origin = {
+            "sim": "background",
+            "scenario": "scenario",
+            "jury": "demo",
+            "telegram_bot": "telegram_bot",
+            "api": "api",
+        }.get(msg["origin"], "api")
+        post = await feed_svc.create_post(
+            conn,
+            run_id=run_id,
+            platform=feed_svc.PLATFORM_BY_CHANNEL[msg["channel"]],
+            author_nick=str(hints.get("nickname") or hints.get("name") or f"guest_{signal_id}"),
+            text=msg["text"],
+            posted_sim=received_sim,
+            origin=origin,
+            author_client_id=msg["client"].get("client_id"),
+            match_confidence=1.0 if msg["client"].get("client_id") else None,
+            mentions={
+                k: v
+                for k, v in {"card_last4": hints.get("card_last4"), "city": (msg.get("meta") or {}).get("city")}.items()
+                if v
+            },
+            signal_id=signal_id,
+        )
+        await conn.execute("update signals set external_post_id = %s where id = %s", (post["post_id"], signal_id))
     await conn.execute(
         "insert into ingest_messages (run_id, source_code, external_id, payload, status, signal_id) values (%s, %s, %s, %s::jsonb, 'accepted', %s)",
         (run_id, source_code, msg["external_id"], dumps(msg), signal_id),

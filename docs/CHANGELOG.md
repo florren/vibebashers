@@ -1,5 +1,13 @@
 # Журнал изменений пакета документации и контрактов
 
+## v1.6.0 — 22.10.2026 — B06/B16 Mock-АБС и публичная лента (cross-layer)
+- Backend `app/abs/`: счёт на клиента, проводки двойной записи (`ledger_entries`: debit/credit/fee/refund), идемпотентный возврат по `correlation_id`, инвариант `balance = Σ проводок`, догоняющие проводки для операций сида/сценариев (`backfill_ledger` при старте, `post_operation` в генераторе). Политика автономии (ТЗ 9.3) теперь читает факты из АБС: «уже был возврат по операции», «возвратов за 30 дней».
+- Агент: узел `act` возвращает комиссию инструментом `refund_fee` (автономно в лимите или после решения человека), закрывает инцидент как `resolved`, сканирует затронутых (`find_affected_clients`) и при массовом ударе ставит задачу `mass_refund` (HITL); текст клиенту — факт «возвращено», не обещание.
+- `app/feed/`: посты эмулятора площадки (`external_posts`/`external_replies`), ответ под постом без ПДн и обещаний (`sanitize_public_text`), статусы `replied|escalated_to_dm`, статистика `v_feed_latency`. Посты создаются для всех публичных сигналов: симулятор, сценарии, жюри, `POST /api/public/reviews` (сопоставление автора по `card_last4`).
+- API: `/api/abs/accounts/{client_id}`, `/api/abs/ledger`, `POST /api/abs/refunds` (HITL/массовый), `/api/public/feed[/{id}]`, `POST /api/public/reviews`, `POST /api/feed/{id}/reply`, `/api/feed/stats`, `/api/rules` (GET/PUT с версионированием, `POST evaluate`, `GET evaluations`).
+- Frontend `/feed`: лента с фильтром по площадке, форма публикации отзыва, ветка ответов с латентностью, виджет «АБС (эмуляция)» с подсветкой возврата; WS-топики `feed`, `abs`.
+- Сценарий 8 проверяет `refund`, `public_reply`, `abs_widget` (ранее NOT_YET). Тесты: `tests/integration/test_abs_feed.py`, `tests/unit/test_feed_sanitize.py`.
+
 ## v1.5.1 — 22.10.2026 — логирование и отчёт о качестве (T-222)
 - JSONL-журнал structlog `backend/var/log/app.jsonl`, HTTP-метрики процесса, отчёт «что сломалось / работает не так / доработать» с рекомендациями и индексом здоровья: `GET /api/reports/quality|http|log`, `make report` → `data/reports/`, вкладка «Качество» на `/engine`. Контракт: `QualityReport`, `HttpStats`. Руководство — `docs/REPORTS.md`.
 

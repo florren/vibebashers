@@ -419,7 +419,13 @@ async def escalate_to_manager(
     )
     assert row is not None
     if incident_id:
-        await update_incident(ctx, incident_id, "escalated", reason, {"routing_status": "escalated"})
+        cur_row = await ctx.fetchone("select status from incidents where id = %s", (incident_id,))
+        if cur_row and "escalated" in STATUS_TRANSITIONS.get(str(cur_row[0]), set()):
+            await update_incident(ctx, incident_id, "escalated", reason, {"routing_status": "escalated"})
+        else:  # связанный инцидент уже resolved/closed — эскалация фиксируется, статус не откатываем
+            await ctx.conn.execute(
+                "update incidents set routing_status = 'escalated', updated_at = now() where id = %s", (incident_id,)
+            )
     data = {
         "escalation_id": int(row[0]),
         "public_id": row[1],

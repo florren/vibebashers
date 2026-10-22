@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import re
 import time
@@ -17,6 +18,7 @@ from app.agent import policies as pol
 from app.agent import sla as slam
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
+from app.agent.tools import abs as abs_tools
 from app.agent.tools import read as rt
 from app.agent.tools import write as wt
 from app.agent.tools.base import ToolContext, mask_name
@@ -818,6 +820,28 @@ def _context_for_prompt(state: AgentState) -> dict[str, Any]:
     }
 
 
+async def _abs_refund_state(deps: Deps, client_id: int | None, operation_ids: list[Any]) -> dict[str, Any]:
+    """Факты из Mock-АБС для политики автономного возврата: уже был возврат по операции; возвратов клиенту за 30 сим-дней."""
+    ops = [int(o) for o in operation_ids if o is not None]
+    already = False
+    if ops:
+        row = await deps.ctx.fetchone(
+            "select 1 from ledger_entries r join ledger_entries f on r.refund_of_entry_id = f.id "
+            "where r.kind = 'refund' and f.operation_id = any(%s) limit 1",
+            (ops,),
+        )
+        already = row is not None
+    refunds_30d = 0
+    if client_id:
+        row = await deps.ctx.fetchone(
+            "select count(*) from ledger_entries l join accounts a on a.id = l.account_id "
+            "where a.client_id = %s and l.kind = 'refund' and l.posted_sim >= %s",
+            (client_id, deps.ctx.sim_time - dt.timedelta(days=30)),
+        )
+        refunds_30d = int(row[0]) if row else 0
+    return {"already_refunded": already, "refunds_30d": refunds_30d}
+
+
 def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
     client, ctx, c = state.get("client") or {}, state["context"], state["classification"]
     hist = ctx.get("client_history") or {}
@@ -992,13 +1016,15 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         },
     ]
     if fee_rule:
+        abs_state = await _abs_refund_state(deps, (client or {}).get("client_id"), fee_rule.get("operation_ids") or [])
+        pctx = dataclasses.replace(pctx, refunds_30d=abs_state["refunds_30d"])
         ok, why = pol.refund_allowed(
             float(fee_rule.get("amount_rub") or 0),
             segment,
             rule_confirmed=True,
             ident_conf=float((ctx.get("identification") or {}).get("confidence") or 0),
             class_conf=float(c["confidence"]),
-            already_refunded=False,
+            already_refunded=abs_state["already_refunded"],
             ctx=pctx,
             policies=deps.policies,
         )
@@ -1224,6 +1250,25 @@ def apply_human_decision(state: AgentState, decision: str, modified: dict[str, A
     return state
 
 
+def _refund_text(base: str, amount: float, already: float = 0.0) -> str:
+    """Текст клиенту после фактического возврата: не обещание «вернём», а факт «возвращено» (или «была возвращена ранее»)."""
+    if "возвращ" in base.lower():
+        return base
+    if amount:
+        fact = f"Комиссия {amount:.0f} ₽ списана ошибочно и уже возвращена на ваш счёт."
+    else:
+        fact = f"Комиссия {already:.0f} ₽ была списана ошибочно и уже возвращена на ваш счёт ранее — проверьте, пожалуйста, выписку."
+    first = base.split(". ")[0].strip().rstrip(".")
+    return (
+        f"{first}. {fact} Приносим извинения за неудобства." if first else f"{fact} Приносим извинения за неудобства."
+    )
+
+
+def _public_fallback(client: dict[str, Any] | None) -> str:
+    name = mask_name((client or {}).get("name"))
+    return f"{name}, спасибо, что написали. Мы уже разбираемся и напишем вам в личные сообщения, чтобы уточнить детали."
+
+
 async def act(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение решения через инструменты записи — идемпотентно (повторный вход не дублирует побочные эффекты)."""
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
@@ -1289,7 +1334,75 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             d["escalation"]["to_role"],
         )
         mark("escalation", escalation_id=esc.get("escalation_id"))
+    # --- Mock-АБС: возврат ошибочной комиссии (ТЗ 9.2–9.3, 21.4): автономно в лимите или после решения человека
+    fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
+    refund_check = next((pc for pc in (d.get("policy_checks") or []) if pc.get("rule") == "refund_autonomy"), None)
+    refund_ok = bool(fee_rule) and (
+        human in ("accept", "modify") or (human is None and bool(refund_check and refund_check.get("passed")))
+    )
+    refund_total = refund_dup = 0.0
+    if fee_rule and refund_ok and "refund" not in done:
+        for op_id in fee_rule.get("operation_ids") or []:
+            if op_id is None:
+                continue
+            try:
+                rf = await abs_tools.refund_fee(
+                    deps.ctx,
+                    int(op_id),
+                    None,
+                    fee_rule.get("rule_code"),
+                    f"{fee_rule.get('error_code') or 'правило'}: {d['title_ru']}"[:160],
+                )
+            except Exception as exc:  # AbsError / ToolError — без побочных эффектов, фиксируем причину
+                mark("refund_failed", operation_id=op_id, error=str(exc)[:200])
+                continue
+            if rf.get("duplicate"):
+                refund_dup += float(rf.get("amount_rub") or 0)
+            else:
+                refund_total += float(rf.get("amount_rub") or 0)
+            mark(
+                "refund",
+                operation_id=op_id,
+                entry_id=rf.get("entry_id"),
+                amount_rub=rf.get("amount_rub"),
+                duplicate=rf.get("duplicate"),
+            )
+        if refund_total and incident_id:
+            try:
+                await wt.update_incident(
+                    deps.ctx,
+                    incident_id,
+                    "resolved",
+                    "Комиссия возвращена (Mock-АБС)",
+                    {"resolution_summary": f"Комиссия {refund_total:.2f} ₽ возвращена на счёт клиента"},
+                )
+            except Exception as exc:  # статусный переход может быть запрещён — не ломаем проход
+                mark("incident_update_failed", error=str(exc)[:160])
+        if fee_rule.get("error_code") and "affected_scan" not in done:
+            aff = await abs_tools.find_affected_clients(deps.ctx, str(fee_rule["error_code"]), 72)
+            mark("affected_scan", **{k: v for k, v in aff.items() if k != "operations"})
+            threshold = int(pol.merged(deps.policies).get("mass_refund_threshold") or 50)
+            if aff.get("pending_count", 0) >= threshold and "mass_refund_task" not in done:
+                task = await wt.create_task(
+                    deps.ctx,
+                    "manual_review",
+                    incident_id,
+                    None,
+                    {
+                        "kind": "mass_refund",
+                        "error_code": fee_rule["error_code"],
+                        "pending_count": aff["pending_count"],
+                        "pending_fee_rub": aff["pending_fee_rub"],
+                        "operations": aff.get("operations") or [],
+                        "title": f"Массовый возврат комиссии {fee_rule['error_code']}: {aff['pending_count']} операций на {aff['pending_fee_rub']:.2f} ₽",
+                    },
+                    requires_hitl=True,
+                )
+                mark("mass_refund_task", task=task, pending_count=aff["pending_count"])
+
     ca = d["client_action"]
+    if (refund_total or refund_dup) and ca["kind"] != "none":
+        ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup)}
     if ca["kind"] != "none" and "notify_client" not in done:
         name = mask_name((client or {}).get("name"))
         summary = re.sub(r"[;,]?\s*тональность.*$", "", c.get("summary_ru") or "").strip().rstrip(".") or (
@@ -1346,6 +1459,23 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                 consents=consents,
             )
             mark("notify_client", notification_id=n.get("notification_id"))
+    # --- публичная лента (ТЗ 21.2, 21.5): ответ под постом, без ПДн и обещаний, с приглашением в личный канал
+    post_id = sig.get("external_post_id")
+    if post_id and "feed_reply" not in done and ca["kind"] != "none":
+        escalate = client is None and ca["kind"] != "public_reply_and_dm"
+        try:
+            fr = await abs_tools.publish_public_reply(
+                deps.ctx, int(post_id), str(ca.get("text_ru") or _public_fallback(client)), incident_id, True, escalate
+            )
+            mark(
+                "feed_reply",
+                post_id=post_id,
+                reply_id=fr.get("reply_id"),
+                latency_ms=fr.get("latency_ms"),
+                status=fr.get("status"),
+            )
+        except Exception as exc:
+            mark("feed_reply_failed", post_id=post_id, error=str(exc)[:160])
     if incident_id and d["incident_action"] == "create" and "notify_team" not in done:
         tn = await wt.notify_team(
             deps.ctx,

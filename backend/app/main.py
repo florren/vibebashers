@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import psycopg
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -15,8 +16,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app import api as api_pkg
+from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
 from app.config import get_settings
+from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import build_chain, default_profile
 from app.logging import configure_logging, get_logger
@@ -26,6 +29,15 @@ from app.realtime.notify import bridge
 from app.sim.engine import Simulator
 
 log = get_logger(__name__)
+
+
+async def _abs_backfill() -> None:
+    """Mock-АБС: проводки для операций, появившихся без проводок (сид/старые запуски) — идемпотентно, при старте."""
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+        done = await backfill_ledger(conn)
+        await conn.commit()
+    if any(done.values()):
+        log.info("abs_backfill", **done)
 
 
 @asynccontextmanager
@@ -52,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             await sim.load_state()
             app.state.sim = sim
+            await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     yield

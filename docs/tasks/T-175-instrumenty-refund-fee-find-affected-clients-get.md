@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Единственный путь движения денег для агента — инструмент с проверкой правила, лимита и идемпотентности; массовые последствия — отдельный инцидент с HITL (ТЗ 9.2–9.3, 21.4 п. 6).
@@ -42,4 +42,4 @@ pytest backend/tests/unit/test_tools_refund.py backend/tests/integration/test_ma
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b06-b16-abs-feed`. `backend/app/agent/tools/abs.py`: `refund_fee` (uuid5 корреляция `refund:{run}:{op}`, требует подтверждённое правило, сумма ≤ комиссии, повтор → `duplicate`), `get_account_balance`, `find_affected_clients` (операции с кодом ошибки за окно, сколько уже возвращено), `publish_public_reply`. Узел `act`: возврат автономно (политика `refund_autonomy` c фактами из АБС) или после `accept/modify`; инцидент → `resolved` с `resolution_summary`; массовый удар ≥ `mass_refund_threshold` → задача `manual_review` c `payload.kind=mass_refund` (HITL). Проверено сценарием 8 и ручным отзывом через `/feed` c решением в HITL.
