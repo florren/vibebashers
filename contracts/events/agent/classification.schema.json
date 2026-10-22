@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/classification.schema.json",
+  "title": "Выход узла classify (structured output основной модели; хранится в signals.classification)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signal_type",
+    "product",
+    "system",
+    "cause_hypothesis",
+    "criticality",
+    "tone",
+    "flags",
+    "churn_risk",
+    "confidence",
+    "rationale_ru",
+    "summary_ru",
+    "sentiment",
+    "problem_summary"
+  ],
+  "properties": {
+    "signal_type": {
+      "$ref": "../common.schema.json#/$defs/signal_type"
+    },
+    "secondary_types": {
+      "type": "array",
+      "items": {
+        "$ref": "../common.schema.json#/$defs/signal_type"
+      },
+      "maxItems": 2,
+      "description": "Например tech_fault + tariff_terms в ключевом сценарии"
+    },
+    "product": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/product"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "system": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/system"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Система-источник по гипотезе"
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/error_code"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Если найден в логах через инструменты"
+    },
+    "cause_hypothesis": {
+      "type": "string",
+      "enum": [
+        "tech_fault",
+        "client_error",
+        "tariff_terms",
+        "service_quality",
+        "fraud_suspicion",
+        "info_request",
+        "gratitude",
+        "suggestion",
+        "legal_regulatory",
+        "unknown"
+      ]
+    },
+    "criticality": {
+      "$ref": "../common.schema.json#/$defs/criticality"
+    },
+    "tone": {
+      "$ref": "../common.schema.json#/$defs/tone"
+    },
+    "flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/flag"
+      }
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "amount_rub": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "operation_date_sim": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "promo_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mentions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "churn",
+              "court",
+              "regulator",
+              "fraud",
+              "media",
+              "competitor"
+            ]
+          }
+        },
+        "masked_card": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\*{4} \\d{4}$"
+        }
+      }
+    },
+    "churn_risk": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "related_incident_ids": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Кандидаты на связывание (из find_related_incidents)"
+    },
+    "summary_ru": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "rationale_ru": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 1200,
+      "description": "2–4 предложения, показываются CX и жюри"
+    },
+    "language": {
+      "type": "string",
+      "default": "ru"
+    },
+    "negativity": {
+      "$ref": "../common.schema.json#/$defs/percent",
+      "description": "Уровень негатива текста 0–100 (BRD FR 1.2); копируется из normalization"
+    },
+    "intents": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/intent"
+      }
+    },
+    "sentiment": {
+      "$ref": "../common.schema.json#/$defs/sentiment"
+    },
+    "problem_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "problem",
+        "severity",
+        "suggested_team"
+      ],
+      "description": "[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)",
+      "properties": {
+        "problem": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 300
+        },
+        "severity": {
+          "$ref": "../common.schema.json#/$defs/severity"
+        },
+        "suggested_team": {
+          "$ref": "../common.schema.json#/$defs/team"
+        }
+      }
+    }
+  }
+}

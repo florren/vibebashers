@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/compliance/stt_result.schema.json",
+  "title": "Сообщение сервера в /ws/audio/{session_id}: partial | final | error (ТЗ 5.3, 22.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "session_id",
+    "channel",
+    "text"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "partial",
+        "final",
+        "error",
+        "ready"
+      ]
+    },
+    "session_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "channel": {
+      "type": "integer",
+      "enum": [
+        1,
+        2
+      ],
+      "description": "1 — сотрудник, 2 — клиент (для stereo); в manual/auto всегда 1"
+    },
+    "text": {
+      "type": "string"
+    },
+    "seq": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "words": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "w",
+          "t0",
+          "t1"
+        ],
+        "properties": {
+          "w": {
+            "type": "string"
+          },
+          "t0": {
+            "type": "number"
+          },
+          "t1": {
+            "type": "number"
+          },
+          "conf": {
+            "$ref": "../common.schema.json#/$defs/confidence"
+          }
+        }
+      }
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/confidence"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latency_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "provider": {
+      "$ref": "../common.schema.json#/$defs/stt_provider"
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "type": "partial",
+      "session_id": 12,
+      "channel": 1,
+      "text": "без страховки вам",
+      "seq": null,
+      "words": [],
+      "confidence": null,
+      "latency_ms": 310,
+      "provider": "vosk",
+      "error": null
+    }
+  ]
+}

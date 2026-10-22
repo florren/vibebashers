@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/op.schema.json",
+  "title": "op.* — операция клиента",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "operation_id",
+    "client_id",
+    "product",
+    "op_type",
+    "system_path",
+    "status",
+    "started_sim"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "op.started",
+        "op.succeeded",
+        "op.failed",
+        "op.pending",
+        "op.reversed"
+      ]
+    },
+    "operation_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "client_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "segment": {
+      "$ref": "../common.schema.json#/$defs/segment"
+    },
+    "region_code": {
+      "type": "string"
+    },
+    "product": {
+      "$ref": "../common.schema.json#/$defs/product"
+    },
+    "op_type": {
+      "type": "string",
+      "enum": [
+        "deposit_open",
+        "deposit_topup",
+        "deposit_close",
+        "transfer",
+        "card_payment",
+        "loan_payment",
+        "card_issue",
+        "limit_request",
+        "promo_apply",
+        "login",
+        "statement"
+      ]
+    },
+    "system_path": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/system"
+      }
+    },
+    "amount_rub": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending",
+        "reversed"
+      ]
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/error_code"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fault_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "promo_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Для deposit_open: применённая акция (нужно для ключевого сценария)"
+    },
+    "started_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    },
+    "finished_sim": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/sim_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

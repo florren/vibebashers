@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/tool_call.schema.json",
+  "title": "Запись вызова инструмента в agent_steps.tool_calls[] (ТЗ 9.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "args",
+    "ms",
+    "ok"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "enum": [
+        "get_client_profile",
+        "get_client_products",
+        "get_recent_operations",
+        "get_system_logs",
+        "find_related_incidents",
+        "search_similar_signals",
+        "create_incident",
+        "link_signal_to_incident",
+        "update_incident",
+        "notify_client",
+        "notify_team",
+        "create_task",
+        "request_human_decision",
+        "schedule_followup",
+        "verify_service_delivered",
+        "close_incident",
+        "compute_economics",
+        "detect_activity_drop",
+        "match_client_by_hints",
+        "check_business_rules",
+        "refund_fee",
+        "publish_public_reply",
+        "find_affected_clients",
+        "get_account_balance",
+        "route_to_department",
+        "notify_customer",
+        "escalate_to_manager",
+        "request_clarification"
+      ]
+    },
+    "args": {
+      "type": "object"
+    },
+    "result": {},
+    "ok": {
+      "type": "boolean"
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "side_effect": {
+      "type": "boolean",
+      "description": "true для инструментов, меняющих БД — все записи только через них"
+    },
+    "source": {
+      "$ref": "../common.schema.json#/$defs/llm_source",
+      "description": "Для инструментов, вызванных по решению модели: откуда взят ответ модели"
+    },
+    "wraps": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "[ДТЗ] для роутер-инструментов: вложенные внутренние инструменты (create_incident, notify_client, …)"
+    }
+  }
+}

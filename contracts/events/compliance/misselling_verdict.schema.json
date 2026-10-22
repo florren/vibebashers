@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/compliance/misselling_verdict.schema.json",
+  "title": "Structured output LLM-детектора мисселлинга по одной реплике сотрудника (ТЗ 22.4)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "is_misselling",
+    "pattern_code",
+    "confidence",
+    "quote",
+    "explanation_ru"
+  ],
+  "properties": {
+    "is_misselling": {
+      "type": "boolean"
+    },
+    "pattern_code": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/misselling_pattern"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "confidence": {
+      "$ref": "../common.schema.json#/$defs/confidence"
+    },
+    "quote": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "Дословная цитата из реплики (подстрока)"
+    },
+    "explanation_ru": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "counter_argument_ru": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300,
+      "description": "Почему это может быть законная консультация"
+    },
+    "family": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/violation_family"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recommendation_ru": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 400,
+      "description": "[ДТЗ FR-4.3] рекомендация руководителю по отработке"
+    },
+    "fact_check": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true,
+      "description": "Только для misinformation: {claim, truth, source_table, source_key, verified}"
+    }
+  },
+  "examples": [
+    {
+      "is_misselling": true,
+      "pattern_code": "tie_in",
+      "confidence": 0.92,
+      "quote": "без страховки вам вклад не одобрят",
+      "explanation_ru": "Условие получения продукта искусственно связано с покупкой страховки",
+      "counter_argument_ru": null,
+      "family": "misselling",
+      "recommendation_ru": "Разобрать с сотрудником недопустимость условий «только со страховкой»; модуль «Этика продаж»",
+      "fact_check": null
+    },
+    {
+      "is_misselling": false,
+      "pattern_code": null,
+      "confidence": 0.81,
+      "quote": "страховка снизит ставку на два пункта, решение за вами",
+      "explanation_ru": "Информирование об опции без принуждения",
+      "counter_argument_ru": null,
+      "family": null,
+      "recommendation_ru": null,
+      "fact_check": null
+    }
+  ]
+}

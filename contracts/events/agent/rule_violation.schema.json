@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/rule_violation.schema.json",
+  "title": "Результат check_business_rules (ТЗ 9.6): список сработавших правил с доказательствами",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "violations",
+    "evaluated"
+  ],
+  "properties": {
+    "evaluated": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Коды проверенных правил"
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rule_code",
+          "rule_version",
+          "proposed_action",
+          "evidence",
+          "confidence"
+        ],
+        "properties": {
+          "rule_code": {
+            "type": "string",
+            "pattern": "^RULE-[A-Z0-9-]+$"
+          },
+          "rule_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "proposed_action": {
+            "$ref": "../common.schema.json#/$defs/rule_action"
+          },
+          "amount_rub": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "operation_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "../common.schema.json#/$defs/id"
+                }
+              },
+              "ledger_entry_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "../common.schema.json#/$defs/id"
+                }
+              },
+              "tariff_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "error_code": {
+                "anyOf": [
+                  {
+                    "$ref": "../common.schema.json#/$defs/error_code"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "explanation_ru": {
+                "type": "string",
+                "maxLength": 400
+              }
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "const": 1.0,
+            "description": "Правила детерминированы: всегда 1.0"
+          },
+          "within_autonomy_limit": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "evaluated": [
+        "RULE-QR-FEE-001",
+        "RULE-DOUBLE-DEBIT-001"
+      ],
+      "violations": [
+        {
+          "rule_code": "RULE-QR-FEE-001",
+          "rule_version": 1,
+          "proposed_action": "refund_fee",
+          "amount_rub": 450,
+          "evidence": {
+            "operation_ids": [
+              88123
+            ],
+            "ledger_entry_ids": [
+              501,
+              502
+            ],
+            "tariff_id": 7,
+            "error_code": "PROC-QR-FEE-CHARGED",
+            "explanation_ru": "Оплата по QR (СБП) 3 200 ₽, списана комиссия 450 ₽; по тарифу комиссия 0 ₽"
+          },
+          "confidence": 1.0,
+          "within_autonomy_limit": true
+        }
+      ]
+    }
+  ]
+}

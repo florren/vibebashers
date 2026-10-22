@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/client_twin_reaction.schema.json",
+  "title": "Структурированный ответ «цифрового двойника» клиента (лёгкая модель или mock), ТЗ 4.5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reaction",
+    "tone",
+    "satisfaction",
+    "churn_intent",
+    "text_ru"
+  ],
+  "properties": {
+    "reaction": {
+      "type": "string",
+      "enum": [
+        "satisfied",
+        "asks_again",
+        "escalates",
+        "silent",
+        "thanks",
+        "churn_intent",
+        "closes_account"
+      ]
+    },
+    "tone": {
+      "$ref": "../common.schema.json#/$defs/tone"
+    },
+    "satisfaction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "churn_intent": {
+      "type": "boolean"
+    },
+    "text_ru": {
+      "type": "string",
+      "maxLength": 1500,
+      "description": "Пусто при reaction = silent"
+    },
+    "next_channel": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/channel"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Куда напишет при escalates"
+    },
+    "wants": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "explanation",
+          "deadline",
+          "compensation",
+          "apology",
+          "human_call",
+          "privilege",
+          "nothing"
+        ]
+      }
+    },
+    "perceived_care": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "clarity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "respect": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "rationale_ru": {
+      "type": "string",
+      "maxLength": 600,
+      "description": "Внутреннее объяснение двойника для экрана «Под капотом»"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "reaction": {
+            "const": "silent"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "text_ru": {
+            "maxLength": 0
+          }
+        }
+      }
+    }
+  ]
+}

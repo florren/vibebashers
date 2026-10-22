@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/signal.schema.json",
+  "title": "signal.received | signal.repeat | signal.noise | signal.appended — обращение клиента в канале",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "signal_id",
+    "channel",
+    "text",
+    "received_sim",
+    "origin"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "signal.received",
+        "signal.repeat",
+        "signal.noise",
+        "signal.appended"
+      ]
+    },
+    "signal_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "channel": {
+      "$ref": "../common.schema.json#/$defs/channel"
+    },
+    "channel_subtype": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "client_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "external_contact": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "nick": {
+          "type": "string"
+        },
+        "region_code": {
+          "type": "string"
+        },
+        "city_id": {
+          "type": "integer"
+        },
+        "telegram_chat_id": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "sim",
+        "scenario",
+        "jury",
+        "landing",
+        "telegram_bot",
+        "proactive",
+        "twin"
+      ]
+    },
+    "source_operation_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "source_fault_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "parent_signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "generator_hint": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Служебно для тестов: истинные метки генератора (агенту не передаётся)",
+      "properties": {
+        "true_type": {
+          "$ref": "../common.schema.json#/$defs/signal_type"
+        },
+        "true_product": {
+          "$ref": "../common.schema.json#/$defs/product"
+        },
+        "true_system": {
+          "$ref": "../common.schema.json#/$defs/system"
+        },
+        "tone": {
+          "$ref": "../common.schema.json#/$defs/tone"
+        },
+        "psychotype": {
+          "$ref": "../common.schema.json#/$defs/psychotype"
+        }
+      },
+      "additionalProperties": false
+    },
+    "received_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

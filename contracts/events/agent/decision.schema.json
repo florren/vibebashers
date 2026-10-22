@@ -1,0 +1,445 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/decision.schema.json",
+  "title": "Выход узла decide — план действий агента (signals.decision, human_decisions.agent_proposal)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "client_action",
+    "complexity",
+    "criticality",
+    "incident_action",
+    "needs_human",
+    "priority",
+    "rationale_ru",
+    "route",
+    "router_action"
+  ],
+  "properties": {
+    "incident_action": {
+      "type": "string",
+      "enum": [
+        "create",
+        "link_existing",
+        "none"
+      ]
+    },
+    "link_incident_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "incident_type": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/incident_type"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title_ru": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "complexity": {
+      "$ref": "../common.schema.json#/$defs/complexity"
+    },
+    "criticality": {
+      "$ref": "../common.schema.json#/$defs/criticality"
+    },
+    "priority": {
+      "$ref": "../common.schema.json#/$defs/priority"
+    },
+    "sla": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fix_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "report_days": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "take_hours": {
+          "type": "integer"
+        },
+        "due_sim": {
+          "$ref": "../common.schema.json#/$defs/sim_time"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "team"
+      ],
+      "properties": {
+        "team": {
+          "$ref": "../common.schema.json#/$defs/team"
+        },
+        "co_teams": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/team"
+          }
+        },
+        "rule_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "routing_rules.id, если сработало правило; null = решение модели"
+        }
+      }
+    },
+    "client_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "reply",
+            "acknowledge",
+            "proactive_notice",
+            "request_data",
+            "public_reply_and_dm",
+            "none"
+          ]
+        },
+        "channel": {
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/channel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_ru": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000,
+          "description": "Итоговый текст клиенту (после шаблона и тона сегмента)"
+        },
+        "question_ru": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Для request_data"
+        },
+        "promise_check": {
+          "type": "boolean",
+          "description": "true = текст проверен на запрещённые формулировки (обещания сроков вне SLA, обвинения)"
+        }
+      }
+    },
+    "team_notice_ru": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1500
+    },
+    "gift": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "gift_code": {
+          "type": "string",
+          "enum": [
+            "bonus_points",
+            "lounge_pass",
+            "restaurant_special",
+            "business_class_discount",
+            "personal_call"
+          ]
+        },
+        "points": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 300,
+          "maximum": 1000
+        },
+        "privilege_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when": {
+          "type": "string",
+          "enum": [
+            "after_resolved",
+            "now"
+          ]
+        },
+        "requires_hitl": {
+          "type": "boolean"
+        }
+      }
+    },
+    "followup": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "wake_in_sim_hours": {
+          "type": "number",
+          "minimum": 0.25
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "awaiting_client",
+            "awaiting_team",
+            "promo_end",
+            "verify_fix",
+            "report_due",
+            "escalation_check"
+          ]
+        }
+      }
+    },
+    "needs_human": {
+      "type": "boolean"
+    },
+    "human_reason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "low_confidence",
+            "ultra_vip",
+            "legal_regulatory",
+            "fraud_amount",
+            "partner_privilege",
+            "repeat_3plus",
+            "classifier_conflict",
+            "policy_other"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "human_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "label_ru"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "label_ru": {
+            "type": "string"
+          },
+          "label_en": {
+            "type": "string"
+          },
+          "description_ru": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "human_recommendation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "economics_preview": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "affected_count": {
+          "type": "integer"
+        },
+        "rate_code": {
+          "type": "string"
+        },
+        "potential_loss_rub": {
+          "type": "number"
+        }
+      }
+    },
+    "rationale_ru": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 1500
+    },
+    "policy_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule",
+          "passed"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Какие политики 9.3 проверены — показывается в трассировке"
+    },
+    "fast_path": {
+      "type": "boolean",
+      "default": false,
+      "description": "true = решение принято на быстром пути по подтверждённому правилу (ТЗ 21.4); детали — instant_decision.schema.json"
+    },
+    "rule_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Коды business_rules, на которые опирается решение (обязательны при любом движении денег)"
+    },
+    "router_action": {
+      "$ref": "../common.schema.json#/$defs/router_action",
+      "description": "[ДТЗ FR-3.1] обязательный ответ в терминах ДТЗ; должен быть согласован с вызванными инструментами (policy_checks)"
+    },
+    "escalation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "severity",
+        "to_role"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "severity": {
+          "$ref": "../common.schema.json#/$defs/severity"
+        },
+        "to_role": {
+          "$ref": "../common.schema.json#/$defs/escalation_role"
+        }
+      },
+      "description": "Аргументы escalate_to_manager, если router_action = escalate"
+    },
+    "clarification_question_ru": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 400,
+      "description": "Вопрос клиенту при router_action = request_clarification"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "incident_action": {
+            "const": "link_existing"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "link_incident_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "incident_action": {
+            "const": "create"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "incident_type",
+          "title_ru",
+          "sla"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "needs_human": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "human_reason",
+          "human_options",
+          "human_recommendation"
+        ],
+        "properties": {
+          "human_reason": {
+            "type": "string"
+          },
+          "human_options": {
+            "minItems": 2
+          },
+          "human_recommendation": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

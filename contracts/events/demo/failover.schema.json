@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/demo/failover.schema.json",
+  "title": "demo.failover — переключение режимов подстраховки (ТЗ 12.7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "component",
+    "from",
+    "to",
+    "reason",
+    "automatic"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "demo.failover"
+    },
+    "component": {
+      "type": "string",
+      "enum": [
+        "llm",
+        "stt",
+        "telegram"
+      ]
+    },
+    "from": {
+      "type": "string"
+    },
+    "to": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "timeout",
+        "provider_error",
+        "offline_mode",
+        "restore"
+      ]
+    },
+    "automatic": {
+      "type": "boolean"
+    },
+    "agent_run_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "session_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "actor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "event_type": "demo.failover",
+      "component": "llm",
+      "from": "gigachat",
+      "to": "replay",
+      "reason": "timeout",
+      "automatic": true,
+      "agent_run_id": 9912,
+      "session_id": null,
+      "actor": null
+    }
+  ]
+}

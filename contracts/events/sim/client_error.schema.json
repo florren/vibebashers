@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/client_error.schema.json",
+  "title": "client_error.* — ошибка или непонимание клиента (не сбой банка)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "client_id",
+    "kind",
+    "sim_time"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "client_error.wrong_details",
+        "client_error.promo_expired",
+        "client_error.fee_misread",
+        "client_error.missed_payment",
+        "client_error.app_misuse"
+      ]
+    },
+    "client_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "wrong_details",
+        "promo_expired",
+        "fee_misread",
+        "missed_payment",
+        "app_misuse"
+      ]
+    },
+    "product": {
+      "$ref": "../common.schema.json#/$defs/product"
+    },
+    "operation_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "sim_time": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

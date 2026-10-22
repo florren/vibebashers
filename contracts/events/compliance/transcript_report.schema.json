@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/compliance/transcript_report.schema.json",
+  "title": "Structured output пакетного анализа транскрипта (ТЗ 22.8–22.9): находки по семействам, соблюдение скрипта, рекомендации",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "findings",
+    "script_compliance",
+    "overall_ru",
+    "action_plan_ru",
+    "confidence"
+  ],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "turn_seq",
+          "pattern_code",
+          "family",
+          "confidence",
+          "quote",
+          "explanation_ru",
+          "recommendation_ru"
+        ],
+        "properties": {
+          "turn_seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pattern_code": {
+            "$ref": "../common.schema.json#/$defs/misselling_pattern"
+          },
+          "family": {
+            "$ref": "../common.schema.json#/$defs/violation_family"
+          },
+          "confidence": {
+            "$ref": "../common.schema.json#/$defs/confidence"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "Подстрока реплики"
+          },
+          "explanation_ru": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "recommendation_ru": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "training_module": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fact_check": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "claim",
+              "truth",
+              "source_table",
+              "verified"
+            ],
+            "properties": {
+              "claim": {
+                "type": "string"
+              },
+              "truth": {
+                "type": "string"
+              },
+              "source_table": {
+                "type": "string",
+                "enum": [
+                  "products",
+                  "tariffs",
+                  "dcltv_rates",
+                  "service_scripts",
+                  "economics_settings"
+                ]
+              },
+              "source_key": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            }
+          },
+          "alert_policy": {
+            "$ref": "../common.schema.json#/$defs/alert_policy"
+          }
+        }
+      }
+    },
+    "script_compliance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "script_code",
+        "steps"
+      ],
+      "properties": {
+        "script_code": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "status"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "done",
+                  "partial",
+                  "missed",
+                  "not_applicable"
+                ]
+              },
+              "evidence_turn_seq": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "overall_ru": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "action_plan_ru": {
+      "type": "string",
+      "maxLength": 800
+    },
+    "confidence": {
+      "$ref": "../common.schema.json#/$defs/confidence"
+    }
+  },
+  "examples": [
+    {
+      "findings": [
+        {
+          "turn_seq": 3,
+          "pattern_code": "misinformation",
+          "family": "conduct",
+          "confidence": 0.9,
+          "quote": "ставка четырнадцать процентов",
+          "explanation_ru": "По тарифной таблице ставка вклада «Накопительный» 9,5 %",
+          "recommendation_ru": "Письменно направить клиенту верные условия и извинение; сотруднику — модуль «Продукты: вклады»",
+          "training_module": "products_deposits",
+          "fact_check": {
+            "claim": "ставка вклада «Накопительный» 14 %",
+            "truth": "9,5 % годовых",
+            "source_table": "products",
+            "source_key": "deposit_savings",
+            "verified": true
+          },
+          "alert_policy": "immediate"
+        },
+        {
+          "turn_seq": 5,
+          "pattern_code": "rudeness",
+          "family": "conduct",
+          "confidence": 0.94,
+          "quote": "Вы вообще читали условия, прежде чем сюда идти?",
+          "explanation_ru": "Обвинение клиента и пренебрежительный тон",
+          "recommendation_ru": "Извиниться перед клиентом; сотруднику — модуль «Клиентоориентированная коммуникация»",
+          "training_module": "communication_basics",
+          "fact_check": null,
+          "alert_policy": "immediate"
+        },
+        {
+          "turn_seq": 1,
+          "pattern_code": "script_violation",
+          "family": "conduct",
+          "confidence": 0.8,
+          "quote": "Слушаю.",
+          "explanation_ru": "Пропущены приветствие и идентификация клиента",
+          "recommendation_ru": "Напомнить этапы скрипта: приветствие, идентификация, выявление потребности",
+          "training_module": "service_script",
+          "fact_check": null,
+          "alert_policy": "report"
+        }
+      ],
+      "script_compliance": {
+        "script_code": "retail_service_v1",
+        "steps": [
+          {
+            "code": "greeting",
+            "status": "missed",
+            "evidence_turn_seq": 1
+          },
+          {
+            "code": "identification",
+            "status": "missed",
+            "evidence_turn_seq": null
+          },
+          {
+            "code": "needs",
+            "status": "partial",
+            "evidence_turn_seq": 2
+          },
+          {
+            "code": "offer",
+            "status": "done",
+            "evidence_turn_seq": 3
+          },
+          {
+            "code": "summary",
+            "status": "missed",
+            "evidence_turn_seq": null
+          }
+        ]
+      },
+      "overall_ru": "Диалог содержит грубость и неверную информацию о ставке; скрипт обслуживания нарушен на трёх этапах.",
+      "action_plan_ru": "1) Руководителю связаться с клиентом и направить верные условия. 2) Провести беседу с сотрудником, назначить два учебных модуля. 3) Контрольное прослушивание через неделю.",
+      "confidence": 0.88
+    }
+  ]
+}

@@ -1,0 +1,312 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/ws/message.schema.json",
+  "title": "Сообщение WebSocket /ws/stream (сервер → клиент) и команды клиента",
+  "oneOf": [
+    {
+      "title": "Команда клиента",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "subscribe",
+            "unsubscribe",
+            "ping"
+          ]
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "signals",
+              "agent",
+              "agent_tokens",
+              "incidents",
+              "notifications",
+              "sim",
+              "db",
+              "hitl",
+              "tasks",
+              "clients",
+              "bench",
+              "runs",
+              "feed",
+              "abs",
+              "compliance",
+              "stt",
+              "demo",
+              "ingest",
+              "escalations",
+              "tickets",
+              "zones",
+              "metrics"
+            ]
+          }
+        },
+        "filters": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "например {region_code, incident_id, run_id}"
+        }
+      }
+    },
+    {
+      "title": "Сообщение сервера",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "type",
+        "ts",
+        "data"
+      ],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "enum": [
+            "signals",
+            "agent",
+            "agent_tokens",
+            "incidents",
+            "notifications",
+            "sim",
+            "db",
+            "hitl",
+            "tasks",
+            "clients",
+            "bench",
+            "system",
+            "runs",
+            "feed",
+            "abs",
+            "compliance",
+            "stt",
+            "demo",
+            "ingest",
+            "escalations",
+            "tickets",
+            "zones",
+            "metrics"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "description": "signals: created|updated; agent: run_started|step_started|step_finished|run_finished|tool_called; agent_tokens: delta; incidents: created|status_changed|sla_warning|sla_breached|artifact_added; notifications: sent; sim: tick|state|event; db: activity|counts; hitl: requested|decided; tasks: created|updated; clients: state_changed|reaction|churned; bench: progress|finished; system: heartbeat|error; runs: started|paused|resumed|stopped|interrupted|baseline_restore_started|baseline_restore_finished; v1.3 — feed: posted|replied|escalated|status_changed; abs: fee_charged|refund_posted|balance_changed; compliance: session_started|utterance|trigger|alert|session_closed|alert_acknowledged; stt: partial|final (дубль /ws/audio для экранов-наблюдателей); demo: failover|mode_changed; v1.4 — ingest: transcript_received|transcript_analyzed|message_accepted|source_polled; escalations: created|acknowledged|resolved|dismissed; tickets: created|updated (алиас incidents в терминах ДТЗ); zones: changed; metrics: economics_live (тикер CLV под риском / предотвращено)"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sim_time": {
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/sim_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "seq": {
+          "type": "integer",
+          "description": "Монотонный номер для дозагрузки после разрыва"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "agent_tokens_delta": {
+      "title": "data для agent_tokens/delta",
+      "type": "object",
+      "required": [
+        "run_id",
+        "step_seq",
+        "node",
+        "delta"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "integer"
+        },
+        "step_seq": {
+          "type": "integer"
+        },
+        "node": {
+          "type": "string"
+        },
+        "delta": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "reasoning",
+            "content",
+            "tool_args"
+          ]
+        },
+        "done": {
+          "type": "boolean"
+        }
+      }
+    },
+    "agent_step": {
+      "title": "data для agent/step_*",
+      "type": "object",
+      "required": [
+        "run_id",
+        "seq",
+        "node",
+        "status"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "integer"
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "node": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "started",
+            "ok",
+            "retry",
+            "fallback",
+            "error"
+          ]
+        },
+        "latency_ms": {
+          "type": "integer"
+        },
+        "tokens": {
+          "type": "integer"
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "../agent/tool_call.schema.json"
+          }
+        }
+      }
+    },
+    "sim_tick": {
+      "title": "data для sim/tick",
+      "type": "object",
+      "required": [
+        "sim_time",
+        "day_no",
+        "phase",
+        "speed",
+        "running"
+      ],
+      "properties": {
+        "sim_time": {
+          "type": "string"
+        },
+        "day_no": {
+          "type": "integer"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "morning",
+            "day",
+            "evening",
+            "night"
+          ]
+        },
+        "speed": {
+          "type": "number"
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "counters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "compliance_event": {
+      "title": "data для compliance/*",
+      "$ref": "../compliance/session_event.schema.json"
+    },
+    "feed_event": {
+      "title": "data для feed/*",
+      "$ref": "../sim/review.schema.json"
+    },
+    "abs_event": {
+      "title": "data для abs/*",
+      "$ref": "../sim/abs.schema.json"
+    },
+    "stt_event": {
+      "title": "data для stt/*",
+      "$ref": "../compliance/stt_result.schema.json"
+    },
+    "demo_event": {
+      "title": "data для demo/failover",
+      "$ref": "../demo/failover.schema.json"
+    },
+    "ingest_event": {
+      "title": "data для ingest/*",
+      "$ref": "../ingest/ingest_event.schema.json"
+    },
+    "escalation_event": {
+      "title": "data для escalations/*",
+      "$ref": "../sim/escalation.schema.json"
+    },
+    "zone_event": {
+      "title": "data для zones/changed",
+      "$ref": "../sim/zone.schema.json"
+    },
+    "economics_live": {
+      "title": "data для metrics/economics_live",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "clv_at_risk_rub",
+        "prevented_rub",
+        "potential_loss_rub",
+        "computed_at"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "integer"
+        },
+        "clv_at_risk_rub": {
+          "type": "number"
+        },
+        "prevented_rub": {
+          "type": "number"
+        },
+        "potential_loss_rub": {
+          "type": "number"
+        },
+        "open_incidents": {
+          "type": "integer"
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

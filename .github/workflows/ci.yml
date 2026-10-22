@@ -1,0 +1,118 @@
+# CI CX Pulse Control — «ревьюер-машина» (docs/TEAM-SPLIT.md §3, docs/REPO-BOOTSTRAP.md).
+# Имена job'ов contracts / db / tests зафиксированы: они указаны в ruleset ветки main как обязательные проверки.
+# Job'ы работают уже на пакете контрактов (без кода приложения) и усиливаются карточкой T-001 без смены имён.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Проверка JSON-схем, OpenAPI и карточек
+        run: |
+          uv venv .venv && . .venv/bin/activate
+          uv pip install pyyaml jsonschema openapi-spec-validator referencing pglast
+          python scripts/contracts_check.py
+          python scripts/gen_tasks.py && git diff --exit-code -- docs/tasks || (echo "::error::docs/tasks устарели — запустите python scripts/gen_tasks.py"; exit 1)
+          python - <<'PY'
+          import pglast, pathlib
+          for f in ["contracts/db/schema.sql", *sorted(pathlib.Path("contracts/db/migrations").glob("*.sql"))]:
+              pglast.parse_sql(pathlib.Path(f).read_text()); print("parse ok", f)
+          PY
+      - name: Дрейф OpenAPI ↔ код (когда появится backend)
+        run: test -f scripts/check_openapi_drift.py && test -d backend/app && (uv venv .venv2 && . .venv2/bin/activate && uv pip install pyyaml && python scripts/check_openapi_drift.py) || echo "backend ещё нет — пропуск"
+
+  db:
+    name: db
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: cx, POSTGRES_PASSWORD: cx, POSTGRES_DB: cx_pulse }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cx -d cx_pulse" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: cx
+      PGPASSWORD: cx
+      PGDATABASE: cx_pulse
+    steps:
+      - uses: actions/checkout@v4
+      - name: psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+      - name: schema.sql на чистой БД
+        run: psql -v ON_ERROR_STOP=1 -q -f contracts/db/schema.sql
+      - name: Миграции 0002/0003 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
+        run: |
+          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql; do
+            psql -v ON_ERROR_STOP=1 -q -f "$f"; psql -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: Инварианты схемы
+        run: |
+          psql -v ON_ERROR_STOP=1 -At -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" | tee /tmp/tables
+          test "$(cat /tmp/tables)" -ge 74 || (echo "::error::ожидалось ≥ 74 таблиц"; exit 1)
+          psql -v ON_ERROR_STOP=1 -q -c "select * from v_tickets limit 0; select * from v_map_zones limit 0; select * from v_feed_latency limit 0;"
+      - name: Alembic (когда появится backend)
+        run: |
+          if [ -f backend/alembic.ini ]; then
+            pip install -q alembic sqlalchemy psycopg[binary]
+            psql -q -c "drop schema public cascade; create schema public;"
+            (cd backend && DATABASE_URL=postgresql+psycopg://cx:cx@localhost:5432/cx_pulse alembic upgrade head && alembic downgrade 0002 && alembic upgrade head)
+          else
+            echo "backend/alembic.ini ещё нет — пропуск"
+          fi
+
+  owners:
+    name: owners
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Границы слоя карточки (CODEOWNERS)
+        run: |
+          case "${{ github.event.pull_request.title }}" in
+            *contract-change*|*cross-layer*) echo "метка cross-layer/contract-change — сливает владелец L1"; python scripts/check_owners.py --base origin/${{ github.base_ref }} --allow-cross ;;
+            *) python scripts/check_owners.py --base origin/${{ github.base_ref }} ;;
+          esac
+
+  tests:
+    name: tests
+    needs: [contracts, db]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: cx, POSTGRES_PASSWORD: cx, POSTGRES_DB: cx_pulse_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cx" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://cx:cx@localhost:5432/cx_pulse_test
+      LLM_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Backend lint + tests
+        run: |
+          if [ -f backend/pyproject.toml ]; then
+            cd backend && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest -q
+          else echo "backend ещё нет — пропуск"; fi
+      - name: Frontend lint + tests + build
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm test -- --run && npm run build
+          else echo "frontend ещё нет — пропуск"; fi
+      - name: i18n
+        run: test -f scripts/i18n_check.py && python scripts/i18n_check.py || echo "i18n_check появится в T-001/T-156"

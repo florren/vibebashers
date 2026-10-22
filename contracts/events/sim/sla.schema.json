@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/sla.schema.json",
+  "title": "sla.* — тик пересчёта SLA и производные события",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "sim_time"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "sla.tick",
+        "sla.warning",
+        "sla.breached",
+        "sla.report_due",
+        "sla.report_missing",
+        "sla.escalated",
+        "sla.take_overdue",
+        "sla.first_response_overdue"
+      ]
+    },
+    "incident_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "team": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/team"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "remaining_pct": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "due_sim": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/sim_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "report_day": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "escalate_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "cx_lead | team_lead"
+    },
+    "counts": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Для sla.tick: сводка",
+      "properties": {
+        "open": {
+          "type": "integer"
+        },
+        "warning": {
+          "type": "integer"
+        },
+        "breached": {
+          "type": "integer"
+        },
+        "reports_due": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sim_time": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

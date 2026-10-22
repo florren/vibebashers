@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/ingest/ingest_event.schema.json",
+  "title": "ingest.transcript_received | ingest.transcript_analyzed | ingest.message_accepted | ingest.message_duplicate | ingest.source_polled (ТЗ 3.7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ingest.transcript_received",
+        "ingest.transcript_analyzed",
+        "ingest.message_accepted",
+        "ingest.message_duplicate",
+        "ingest.message_rejected",
+        "ingest.source_polled"
+      ]
+    },
+    "transcript_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "transcript_public_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/transcript_kind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "turns_count": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "analyses": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "audio_session_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "latency_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "source_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "external_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accepted": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "duplicates": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "event_type": "ingest.transcript_analyzed",
+      "transcript_id": 3,
+      "transcript_public_id": "TR-000003",
+      "kind": "branch_retail",
+      "turns_count": 5,
+      "analyses": [
+        "client_signal",
+        "employee_quality"
+      ],
+      "signal_id": 5130,
+      "audio_session_id": 14,
+      "latency_ms": 8200,
+      "source_code": null,
+      "external_id": "scenario10_retail",
+      "accepted": null,
+      "duplicates": null,
+      "error": null
+    }
+  ]
+}

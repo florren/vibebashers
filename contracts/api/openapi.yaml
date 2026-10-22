@@ -1,0 +1,3145 @@
+openapi: 3.1.0
+info:
+  title: CX Pulse Control API
+  version: 1.4.0
+  summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
+  description: |
+    Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
+    - Все пути под `/api`; публичные (без роли) — под `/api/public`. Аутентификации нет (решение заказчика), роль передаётся заголовком `X-Role` (`cx_operator` | `cx_lead` | `engineer` | `jury`) только для отображения и записи актора.
+    - Время: `*_at` — реальное (ISO 8601, UTC), `*_sim` — симуляционное (ISO 8601, календарь симулятора).
+    - Пагинация: `limit` (по умолчанию 50, максимум 500) + `cursor` (непрозрачная строка). Ответы списков — `{items, next_cursor, total?}`.
+    - Ошибки — RFC 9457 `application/problem+json`.
+    - Локализация: тексты интерфейса — на фронте; API отдаёт коды и `label_ru`/`label_en` только для справочников.
+    - Realtime: `GET /ws/stream` (WebSocket), сообщения по схеме `contracts/events/ws/message.schema.json`; бинарный аудиопоток — `GET /ws/audio/{session_id}`.
+    - v1.4 (ДТЗ): теги `ingest` (единая схема сообщения, транскрипты, адаптеры), `tickets` (тикетница над инцидентами), `escalations`; `sentiment`/`problem_summary`/`router_action` в сигналах, инцидентах и решениях; `GET /api/agent/runs/{id}/decision-chain`; слой зон карты `GET /api/map/zones`; живой тикер `GET /api/metrics/economics/live`; пакетный анализ транскриптов `/api/compliance/transcripts/*`.
+    - v1.3 (BRD): теги `feed`, `abs`, `rules`, `compliance`, `stt`, `demo`; роли `X-Role` дополнены `branch_manager` (руководитель отделения) и `compliance`. Живые контуры работают независимо от состояния симулятора (ТЗ 4.7): если текущего запуска нет, backend создаёт запуск `live`.
+  contact:
+    name: vibebashers
+    url: https://gitverse.ru/florren/vibebashers
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8000
+    description: backend в docker compose
+tags:
+  - name: health
+  - name: setup
+    description: "Мастер первичной настройки (ТЗ 12.2, экран 1)"
+  - name: settings
+    description: "Настройки и справочники (экран 5)"
+  - name: sim
+    description: "Управление симуляцией и запусками эмуляции (ТЗ 4, 4.6)"
+  - name: scenarios
+    description: "Демо-сценарии (ТЗ 18)"
+  - name: signals
+    description: "Сигналы клиентов (ТЗ 6–7)"
+  - name: incidents
+    description: "Инциденты (ТЗ 8)"
+  - name: hitl
+    description: "Human-in-the-loop (ТЗ 10)"
+  - name: tasks
+    description: "Подарки и задачи (ТЗ 8.5)"
+  - name: clients
+    description: "Клиент 360"
+  - name: map
+    description: "Тепловая карта РФ"
+  - name: metrics
+    description: "Дашборд, экономика dCLTV, калькулятор «Факт» (ТЗ 14)"
+  - name: engine
+    description: "«Под капотом»: трассировка, графы, БД (ТЗ 12.2 экран 4, 12.5)"
+  - name: bench
+    description: "Бенчмарки LLM (ТЗ 14.3)"
+  - name: public
+    description: "Лендинг, трекинг, Telegram-бот, эмулятор внешней площадки (ТЗ 11, 21.2)"
+  - name: feed
+    description: "Внешние площадки: посты, публичные ответы, статистика (ТЗ 21)"
+  - name: abs
+    description: "Mock-АБС: счета, проводки, возвраты (ТЗ 3.4, 21.4)"
+  - name: rules
+    description: "Детерминированные бизнес-правила (ТЗ 9.6)"
+  - name: compliance
+    description: "Аудиомониторинг отделения и мисселлинг (ТЗ 22)"
+  - name: stt
+    description: "Провайдеры распознавания речи (ТЗ 5.3)"
+  - name: demo
+    description: "Меню демонстратора, режим подстраховки, кассеты replay (ТЗ 5.4, 12.7)"
+  - name: ingest
+    description: "[ДТЗ] Приёмный слой: единая схема сообщения, транскрипты JSON/TXT, адаптеры REST/polling (ТЗ 3.7)"
+  - name: tickets
+    description: "[ДТЗ] Тикетница — представление v_tickets над инцидентами (ТЗ 9.7)"
+  - name: escalations
+    description: "[ДТЗ] Эскалации руководителю (ТЗ 9.7)"
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      summary: Проверка готовности (db, llm, tgbot, sim)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, db, setup_completed]
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+                  db: { type: boolean }
+                  setup_completed: { type: boolean }
+                  llm: { type: object, additionalProperties: { type: string, enum: [ok, error, disabled] } }
+                  tgbot: { type: string, enum: [running, disabled, error] }
+                  sim_running: { type: boolean }
+                  version: { type: string }
+
+  # ---------------------------------------------------------------- setup
+  /api/setup/status:
+    get:
+      tags: [setup]
+      summary: Состояние мастера
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completed: { type: boolean }
+                  current_step: { type: integer, minimum: 1, maximum: 9 }
+                  steps_done: { type: array, items: { type: integer } }
+  /api/setup:
+    put:
+      tags: [setup]
+      summary: Сохранить шаг(и) мастера
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetupPayload" }
+      responses:
+        "200": { description: Сохранено, content: { application/json: { schema: { $ref: "#/components/schemas/SetupPayload" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [setup]
+      summary: Завершить мастер («Готово»)
+      responses:
+        "204": { description: "Мастер завершён, редирект на рабочее место" }
+  /api/setup/test-llm:
+    post:
+      tags: [setup]
+      summary: Проверить подключение к LLM-профилю (кнопка «Проверить подключение»)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, model]
+              properties:
+                provider: { $ref: "#/components/schemas/LlmProvider" }
+                model: { type: string }
+                base_url: { type: string, format: uri }
+                api_key: { type: string, description: "Передаётся один раз, хранится зашифрованно" }
+                api_key_id: { type: integer, description: Либо ссылка на уже сохранённый ключ }
+      responses:
+        "200":
+          description: Результат
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  latency_ms: { type: integer }
+                  model_reported: { type: string }
+                  supports_tools: { type: boolean }
+                  supports_stream: { type: boolean }
+                  quota: { type: object, description: "Остаток лимитов (OpenRouter GET /api/v1/key, токены GigaChat)" }
+                  error: { type: string }
+  /api/setup/test-tgbot:
+    post:
+      tags: [setup]
+      summary: Проверить токен Telegram-бота (getMe)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean }, username: { type: string }, error: { type: string } } } } } }
+  /api/setup/generate:
+    post:
+      tags: [setup]
+      summary: Запустить генерацию синтетических данных (профиль lite/demo/stress)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                profile: { type: string, enum: [lite, demo, stress], default: demo }
+                seed: { type: integer }
+                reset: { type: boolean, default: false }
+                regions_mode: { type: string, enum: [all, cfo_szfo, custom] }
+                region_codes: { type: array, items: { type: string } }
+      responses:
+        "202": { description: Принято, content: { application/json: { schema: { type: object, properties: { job_id: { type: string } } } } } }
+    get:
+      tags: [setup]
+      summary: Прогресс генерации и матрица покрытия
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+                  status: { type: string, enum: [idle, running, done, failed] }
+                  progress: { type: number, minimum: 0, maximum: 1 }
+                  log: { type: array, items: { type: string } }
+                  coverage: { $ref: "#/components/schemas/CoverageMatrix" }
+
+  # ---------------------------------------------------------------- settings
+  /api/settings:
+    get:
+      tags: [settings]
+      summary: Все настройки (ключ → значение)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+    patch:
+      tags: [settings]
+      summary: Изменить настройки (частично)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/export:
+    get:
+      tags: [settings]
+      summary: Экспорт конфигурации (JSON) — настройки, SLA, маршрутизация, шаблоны, профили LLM без ключей
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+  /api/settings/import:
+    post:
+      tags: [settings]
+      summary: Импорт конфигурации
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "200": { description: Импортировано }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/settings/sla-matrix:
+    get:
+      tags: [settings]
+      summary: Матрица SLA
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SlaCell" } } } } }
+    put:
+      tags: [settings]
+      summary: Заменить матрицу SLA (9 ячеек)
+      requestBody: { required: true, content: { application/json: { schema: { type: array, minItems: 9, maxItems: 9, items: { $ref: "#/components/schemas/SlaCell" } } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/routing-rules:
+    get:
+      tags: [settings]
+      summary: Правила маршрутизации
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RoutingRule" } } } } }
+    put:
+      tags: [settings]
+      summary: Заменить правила
+      requestBody: { required: true, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RoutingRule" } } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/llm-profiles:
+    get:
+      tags: [settings]
+      summary: Профили LLM
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LlmProfile" } } } } }
+    post:
+      tags: [settings]
+      summary: Добавить профиль
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LlmProfile" } } } }
+      responses:
+        "201": { description: Создан }
+  /api/settings/llm-profiles/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    patch:
+      tags: [settings]
+      summary: Изменить профиль (в т. ч. роль main/fast/twin, активность)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LlmProfile" } } } }
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [settings]
+      summary: Удалить профиль
+      responses:
+        "204": { description: Удалён }
+  /api/settings/llm-keys:
+    get:
+      tags: [settings]
+      summary: Ключи LLM (без значения ключа) с остатками токенов/лимитов
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LlmApiKey" } } } } }
+    post:
+      tags: [settings]
+      summary: Добавить ключ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, label, key]
+              properties:
+                provider: { $ref: "#/components/schemas/LlmProvider" }
+                label: { type: string }
+                key: { type: string, writeOnly: true }
+                tokens_limit: { type: integer }
+      responses:
+        "201": { description: Создан, content: { application/json: { schema: { $ref: "#/components/schemas/LlmApiKey" } } } }
+  /api/settings/llm-keys/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    delete:
+      tags: [settings]
+      summary: Удалить ключ
+      responses:
+        "204": { description: Удалён }
+  /api/settings/templates:
+    get:
+      tags: [settings]
+      summary: Шаблоны уведомлений
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/NotificationTemplate" } } } } }
+    put:
+      tags: [settings]
+      summary: Заменить набор шаблонов
+      requestBody: { required: true, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/NotificationTemplate" } } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/gifts:
+    get:
+      tags: [settings]
+      summary: Справочник подарков
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GiftCatalogItem" } } } } }
+    put:
+      tags: [settings]
+      summary: Заменить справочник подарков
+      requestBody: { required: true, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GiftCatalogItem" } } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/economics:
+    get:
+      tags: [settings]
+      summary: Параметры экономики и таблица ставок dCLTV
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsSettings" } } } }
+    put:
+      tags: [settings]
+      summary: Изменить параметры экономики/ставки
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsSettings" } } } }
+      responses:
+        "200": { description: OK }
+  /api/settings/psychotypes:
+    get:
+      tags: [settings]
+      summary: Психотипы и доли по сегментам (ТЗ 4.5)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PsychotypeSettings" } } } }
+    put:
+      tags: [settings]
+      summary: Изменить параметры психотипов и доли
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PsychotypeSettings" } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Problem", description: Сумма долей по сегменту ≠ 1 }
+  /api/refs/{name}:
+    get:
+      tags: [settings]
+      summary: Справочник по имени (regions, cities, segments, products, systems, teams, channels, error_codes, signal_types)
+      parameters:
+        - { name: name, in: path, required: true, schema: { type: string, enum: [regions, cities, segments, products, systems, teams, channels, error_codes, signal_types, federal_districts] } }
+        - { name: region_code, in: query, schema: { type: string }, description: Для cities }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+
+  # ---------------------------------------------------------------- sim
+  /api/sim/state:
+    get:
+      tags: [sim]
+      summary: Текущее состояние симуляции
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimState" } } } }
+  /api/sim/control:
+    post:
+      tags: [sim]
+      summary: "Старт/Пауза/Возобновить/Стоп/Шаг/Сброс дня/Скорость"
+      description: |
+        ТЗ 4.6. `start` — создаёт новый запуск kind=free (если текущего нет или он завершён) либо продолжает paused;
+        `pause` — замораживает время (статус paused); `resume` — возобновляет paused/interrupted с того же sim_time;
+        `stop` — завершает текущий запуск (считает summary, статус stopped). Для нового запуска с другим режимом сброса — POST /api/sim/runs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [start, pause, resume, stop, step, reset_day, set_speed, set_preset, jump_to] }
+                label: { type: string, description: "Метка нового запуска (для start)" }
+                speed: { type: number, description: сим-секунд на реальную секунду (для set_speed) }
+                preset: { type: string, enum: [demo_5min, day_12min, realtime] }
+                step_minutes: { type: integer, default: 15 }
+                sim_time: { type: string, format: date-time, description: Для jump_to (только вперёд) }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimState" } } } }
+  /api/sim/events:
+    get:
+      tags: [sim]
+      summary: Лента событий симулятора (шина событий)
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: type, in: query, schema: { type: string }, description: "Префикс, напр. fault. или client." }
+        - { name: since_sim, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimEventList" } } } }
+
+  /api/sim/runs:
+    get:
+      tags: [sim]
+      summary: "История запусков эмуляции (ТЗ 4.6)"
+      parameters:
+        - { name: status, in: query, schema: { type: array, items: { type: string, enum: [running, paused, interrupted, completed, stopped, archived] } }, style: form, explode: false }
+        - { name: kind, in: query, schema: { type: string, enum: [baseline, free, scenario] } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/SimRun" } }, next_cursor: { type: [string, "null"] } } } } } }
+    post:
+      tags: [sim]
+      summary: "Создать и стартовать новый запуск (свободный или сценарный) с выбранным режимом сброса"
+      description: |
+        `reset_mode`: `none` — продолжить поверх текущих данных (новый run_id, счётчики чистые);
+        `counters` — то же, но текущий запуск принудительно завершается со статусом stopped;
+        `baseline` — полный откат к снимку базового состояния (pg_restore) и старт с чистого листа; обязателен для сценариев с именованными клиентами (1, 4, 7).
+        Если есть незавершённый запуск (running/paused/interrupted) и reset_mode = none — 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind: { type: string, enum: [free, scenario] }
+                scenario_id: { type: string }
+                label: { type: string }
+                seed: { type: integer, description: "По умолчанию — сид базового состояния" }
+                reset_mode: { type: string, enum: [none, counters, baseline], default: counters }
+                speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }
+                llm_profile_id: { type: integer }
+      responses:
+        "202": { description: Запуск создан и стартован, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/sim/runs/current:
+    get:
+      tags: [sim]
+      summary: "Текущий запуск с живыми счётчиками (v_run_counters)"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/sim/runs/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [sim]
+      summary: "Запуск: параметры, счётчики, итоговые метрики"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+    delete:
+      tags: [sim]
+      summary: "Удалить запуск вместе с данными (нельзя для baseline и текущего)"
+      responses:
+        "204": { description: Удалён }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/sim/runs/{id}/stop:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [sim]
+      summary: "Завершить запуск (рассчитать summary, статус stopped)"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+  /api/sim/runs/{id}/resume:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [sim]
+      summary: "Возобновить прерванный/приостановленный запуск с того же sim_time"
+      description: "Допустим только для последнего запуска в статусе paused/interrupted; восстанавливает агентов из чекпоинтов, пересчитывает followups."
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/sim/runs/{id}/archive:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [sim]
+      summary: "Архивировать — экспорт в runs/<id>.json и удаление строк данных, summary сохраняется"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SimRun" } } } }
+  /api/sim/runs/{id}/export:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [sim]
+      summary: "Экспорт запуска (JSON с summary и агрегатами или CSV событий)"
+      parameters: [{ name: format, in: query, schema: { type: string, enum: [json, csv], default: json } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, additionalProperties: true } }, text/csv: { schema: { type: string } } } }
+  /api/sim/runs/compare:
+    get:
+      tags: [sim]
+      summary: "Сравнение двух запусков по метрикам 14.1/14.4 и расходу токенов"
+      parameters:
+        - { name: a, in: query, required: true, schema: { type: integer, format: int64 } }
+        - { name: b, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { a: { $ref: "#/components/schemas/SimRun" }, b: { $ref: "#/components/schemas/SimRun" }, diff: { type: object, additionalProperties: { type: number } } } } } } }
+  /api/sim/baseline:
+    get:
+      tags: [sim]
+      summary: "Состояние снимка базового состояния (путь, профиль, размер, контрольная сумма, дата)"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BaselineInfo" } } } }
+    post:
+      tags: [sim]
+      summary: "Пересоздать снимок baseline из текущего базового состояния (только когда нет активного запуска)"
+      responses:
+        "202": { description: Принято }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/sim/baseline/restore:
+    post:
+      tags: [sim]
+      summary: "Откат к снимку baseline без старта нового запуска (режим обслуживания, ≤ 60 с для demo)"
+      responses:
+        "202": { description: Принято, content: { application/json: { schema: { type: object, properties: { job_id: { type: string } } } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- scenarios
+  /api/scenarios:
+    get:
+      tags: [scenarios]
+      summary: Список демо-сценариев
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Scenario" } } } } }
+  /api/scenarios/{id}/run:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [scenarios]
+      summary: "Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)"
+      description: "Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409."
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string } } } } }
+      responses:
+        "202": { description: Запущен, content: { application/json: { schema: { type: object, properties: { run: { $ref: "#/components/schemas/SimRun" }, client_id: { type: integer } } } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  # ---------------------------------------------------------------- signals
+  /api/signals:
+    get:
+      tags: [signals]
+      summary: Лента сигналов с фильтрами
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: channel, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: signal_type, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: segment, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: product, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: region_code, in: query, schema: { type: string } }
+        - { name: city_id, in: query, schema: { type: integer } }
+        - { name: criticality, in: query, schema: { type: string, enum: [low, medium, high] } }
+        - { name: since_sim, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignalList" } } } }
+    post:
+      tags: [signals]
+      summary: Жюри-режим — ввести сообщение клиента вручную
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_code, text]
+              properties:
+                channel_code: { type: string }
+                channel_subtype: { type: string }
+                client_id: { type: [integer, "null"], description: null = неизвестный клиент }
+                external_contact: { $ref: "#/components/schemas/ExternalContact" }
+                text: { type: string, minLength: 3, maxLength: 4000 }
+                compare_with_mock: { type: boolean, default: true, description: Параллельный прогон через mock для панели «ИИ против правил» }
+                voice_meta: { anyOf: [{ $ref: "#/components/schemas/VoiceMeta" }, { type: "null" }], description: "Заполняется при вводе через «Надиктовать» (ТЗ 12.2 экран 7); origin сигнала = voice_input" }
+      responses:
+        "202":
+          description: Принят в обработку
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signal_id: { type: integer }
+                  agent_run_id: { type: integer }
+                  compare_run_id: { type: [integer, "null"] }
+  /api/signals/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [signals]
+      summary: Сигнал с классификацией, решением, связанными инцидентами и запусками агента
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignalDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/signals/deferred:
+    get:
+      tags: [signals]
+      summary: Отложенные («спящие») обращения с причиной и временем пробуждения
+      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeferredList" } } } }
+
+  # ---------------------------------------------------------------- incidents
+  /api/incidents:
+    get:
+      tags: [incidents]
+      summary: Инциденты (доска/таблица)
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: team, in: query, schema: { type: string } }
+        - { name: product, in: query, schema: { type: string } }
+        - { name: criticality, in: query, schema: { type: string } }
+        - { name: complexity, in: query, schema: { type: string } }
+        - { name: incident_type, in: query, schema: { type: string } }
+        - { name: region_code, in: query, schema: { type: string } }
+        - { name: sla_risk, in: query, schema: { type: string, enum: [any, warning, breached] } }
+        - { name: routing_status, in: query, schema: { $ref: "#/components/schemas/RoutingStatus" }, description: "[ДТЗ]" }
+        - { name: sentiment, in: query, schema: { $ref: "#/components/schemas/Sentiment" }, description: "[ДТЗ]" }
+        - { name: sort, in: query, schema: { type: string, enum: [priority, sla_due, created, updated], default: priority } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentList" } } } }
+  /api/incidents/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: Карточка инцидента (сводка + клиент 360 + SLA + экономика)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentDetail" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/incidents/{id}/history:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: История статусов
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StatusHistoryItem" } } } } }
+  /api/incidents/{id}/artifacts:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: Документы команды (RCA, решение о фиксе, промежуточные отчёты, релиз, проверка)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Artifact" } } } } }
+  /api/incidents/{id}/signals:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: Связанные сигналы и логи систем
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signals: { type: array, items: { $ref: "#/components/schemas/Signal" } }
+                  system_logs: { type: array, items: { $ref: "#/components/schemas/SystemLog" } }
+  /api/incidents/{id}/communications:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: Коммуникации с клиентом и реакции двойника
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+                  reactions: { type: array, items: { $ref: "#/components/schemas/ClientReaction" } }
+  /api/incidents/{id}/economics:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [incidents]
+      summary: Развёрнутый расчёт dCLTV по инциденту (все множители)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+  /api/incidents/{id}/actions:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [incidents]
+      summary: Действие сотрудника CX над инцидентом
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [reroute, reply_client, close, request_client_data, escalate, reject, mark_duplicate, change_priority] }
+                team_code: { type: string }
+                text: { type: string }
+                channel_code: { type: string }
+                duplicate_of_id: { type: integer }
+                priority: { type: integer, minimum: 1, maximum: 4 }
+                reason: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentDetail" } } } }
+        "409": { $ref: "#/components/responses/Problem", description: Недопустимый переход статуса }
+  /api/teams/load:
+    get:
+      tags: [incidents]
+      summary: Нагрузка команд и соблюдение SLA (вкладка «Команды»)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TeamLoad" } } } } }
+
+  # ---------------------------------------------------------------- hitl
+  /api/hitl/queue:
+    get:
+      tags: [hitl]
+      summary: Очередь «Требует решения»
+      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlList" } } } }
+  /api/hitl/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [hitl]
+      summary: Карточка HITL (сигнал, контекст, предложение агента, варианты)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
+    post:
+      tags: [hitl]
+      summary: Решение человека — возвращается в граф агента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [accept, modify, reject, delegate] }
+                modified_proposal: { $ref: "../events/agent/decision.schema.json" }
+                comment: { type: string }
+                delegate_to: { type: string, description: роль или команда }
+                use_as_fewshot: { type: boolean, default: true }
+      responses:
+        "200": { description: "Принято, граф продолжен", content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
+        "409": { $ref: "#/components/responses/Problem", description: Уже решено }
+
+  # ---------------------------------------------------------------- tasks
+  /api/tasks:
+    get:
+      tags: [tasks]
+      summary: Задачи (подарки, звонки, ручные проверки, напоминания об отчётах)
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [gift, callback, manual_review, clarify_client, report_reminder, closure_review] } }
+        - { name: status, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TaskList" } } } }
+  /api/tasks/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [tasks]
+      summary: Подтвердить / изменить / отклонить задачу (например, заменить привилегию в подарке)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [approve, change, reject, done] }
+                payload: { type: object, additionalProperties: true, description: Для change — новый gift_code/points/privilege_code }
+                comment: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Task" } } } }
+
+  # ---------------------------------------------------------------- clients
+  /api/clients:
+    get:
+      tags: [clients]
+      summary: Поиск клиента (для жюри-режима и фильтров)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: segment, in: query, schema: { type: string } }
+        - { name: region_code, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ClientBrief" } } } } }
+  /api/clients/{id}/360:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [clients]
+      summary: Клиент 360 — профиль, продукты, операции, сигналы, инциденты, состояние и стиль коммуникации
+      parameters:
+        - { name: ops_hours, in: query, schema: { type: integer, default: 72 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Client360" } } } }
+
+  # ---------------------------------------------------------------- map
+  /api/map/heat:
+    get:
+      tags: [map]
+      summary: Агрегаты по субъектам РФ для тепловой карты
+      parameters:
+        - { name: layer, in: query, schema: { type: string, enum: [signals, critical, incidents_open, churn_risk], default: signals } }
+        - { name: window_hours, in: query, schema: { type: integer, default: 24 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RegionHeat" } } } } }
+  /api/map/regions/{code}/cities:
+    parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [map]
+      summary: Drill-down субъект → города
+      parameters: [{ name: window_hours, in: query, schema: { type: integer, default: 24 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CityHeat" } } } } }
+
+  # ---------------------------------------------------------------- metrics
+  /api/metrics/dashboard:
+    get:
+      tags: [metrics]
+      summary: "KPI рабочего места (ТЗ 14.1) — по умолчанию в рамках текущего запуска"
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d, run], default: run } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DashboardMetrics" } } } }
+  /api/metrics/economics:
+    get:
+      tags: [metrics]
+      summary: Экономика dCLTV — потенциальные, предотвращённые, под риском, реализованные (ТЗ 14.4)
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d], default: 14d } }
+        - { name: group_by, in: query, schema: { type: string, enum: [product, region, segment, team, outcome], default: product } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsSummary" } } } }
+  /api/metrics/economics/fact:
+    get:
+      tags: [metrics]
+      summary: "Калькулятор «Факт по симуляции» (ТЗ 14.5) — по умолчанию текущий запуск"
+      parameters:
+        - { name: product, in: query, schema: { type: string } }
+        - { name: system, in: query, schema: { type: string } }
+        - { name: region_code, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsFact" } } } }
+  /api/metrics/economics/fact/export:
+    get:
+      tags: [metrics]
+      summary: Экспорт факта (CSV/XLSX)
+      parameters: [{ name: format, in: query, schema: { type: string, enum: [csv, xlsx], default: csv } }]
+      responses:
+        "200": { description: Файл, content: { text/csv: { schema: { type: string } }, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+  /api/metrics/economics/calibrate:
+    post:
+      tags: [metrics]
+      summary: «Подставить факт в калькулятор» — переключить calibration_mode
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [mode], properties: { mode: { type: string, enum: [manual, simulated] } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsSettings" } } } }
+  /api/notifications:
+    get:
+      tags: [metrics]
+      summary: Центр уведомлений (все исходящие сообщения)
+      parameters:
+        - { name: recipient_type, in: query, schema: { type: string, enum: [client, team, public, cx] } }
+        - { name: client_id, in: query, schema: { type: integer } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/NotificationList" } } } }
+
+  # ---------------------------------------------------------------- engine
+  /api/agent/runs:
+    get:
+      tags: [engine]
+      summary: Запуски агента (живая трассировка)
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: kind, in: query, schema: { type: string, enum: [agent, client_twin, team_emulator, bench, compare] } }
+        - { name: signal_id, in: query, schema: { type: integer } }
+        - { name: outcome, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AgentRunList" } } } }
+  /api/agent/runs/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [engine]
+      summary: Запуск с деревом шагов (промпты, ответы, инструменты, токены, латентность)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AgentRunDetail" } } } }
+  /api/agent/graph:
+    get:
+      tags: [engine]
+      summary: Схема графа LangGraph (узлы, рёбра) для подсветки текущего узла
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AgentGraph" } } } }
+  /api/agent/compare:
+    post:
+      tags: [engine]
+      summary: Панель «ИИ против правил» — один текст через LLM-профиль и mock параллельно
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, channel_code]
+              properties:
+                text: { type: string }
+                channel_code: { type: string }
+                client_id: { type: [integer, "null"] }
+                llm_profile_id: { type: integer }
+      responses:
+        "200":
+          description: Оба результата с объяснением различий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  llm: { $ref: "../events/agent/classification.schema.json" }
+                  mock: { $ref: "../events/agent/classification.schema.json" }
+                  diff: { type: array, items: { type: object, properties: { field: { type: string }, llm: {}, mock: {} } } }
+                  llm_run_id: { type: integer }
+                  mock_run_id: { type: integer }
+  /api/engine/entity-graph:
+    get:
+      tags: [engine]
+      summary: Граф сущностей клиент–сигнал–инцидент–система–команда (React Flow)
+      parameters:
+        - { name: incident_id, in: query, schema: { type: integer } }
+        - { name: client_id, in: query, schema: { type: integer } }
+        - { name: depth, in: query, schema: { type: integer, default: 2, maximum: 4 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EntityGraph" } } } }
+  /api/engine/db/tables:
+    get:
+      tags: [engine]
+      summary: Счётчики строк по таблицам (реальное время)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { table: { type: string }, rows: { type: integer }, last_change_at: { type: string, format: date-time } } } } } } }
+  /api/engine/db/tables/{name}/rows:
+    parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [engine]
+      summary: Последние записи таблицы (только чтение, allow-list таблиц)
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
+        "403": { $ref: "#/components/responses/Problem", description: Таблица вне allow-list }
+  /api/engine/db/activity:
+    get:
+      tags: [engine]
+      summary: Лента INSERT/UPDATE/DELETE из db_activity_log
+      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DbActivity" } } } } }
+
+  # ---------------------------------------------------------------- bench
+  /api/bench/datasets:
+    get:
+      tags: [bench]
+      summary: Наборы (golden, lite) с числом кейсов
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { id: { type: integer }, code: { type: string }, title_ru: { type: string }, cases: { type: integer } } } } } } }
+  /api/bench/runs:
+    get:
+      tags: [bench]
+      summary: Прогоны и сводные метрики (таблица сравнения)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BenchRun" } } } } }
+    post:
+      tags: [bench]
+      summary: Запустить прогон (с прогнозом расхода токенов и проверкой лимитов)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dataset_id, llm_profile_ids]
+              properties:
+                dataset_id: { type: integer }
+                llm_profile_ids: { type: array, items: { type: integer }, minItems: 1 }
+                repeats: { type: integer, minimum: 1, maximum: 3, default: 1 }
+                dry_run: { type: boolean, default: false, description: Только прогноз расхода }
+      responses:
+        "202":
+          description: Прогоны поставлены в очередь (или прогноз)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run_ids: { type: array, items: { type: integer } }
+                  forecast: { type: array, items: { type: object, properties: { llm_profile_id: { type: integer }, est_tokens: { type: integer }, est_requests: { type: integer }, fits_limits: { type: boolean }, warning: { type: string } } } }
+  /api/bench/runs/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [bench]
+      summary: Прогон с результатами по кейсам
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BenchRunDetail" } } } }
+    delete:
+      tags: [bench]
+      summary: Отменить прогон
+      responses:
+        "204": { description: Отменён }
+  /api/bench/runs/{id}/export:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [bench]
+      summary: Экспорт результатов (CSV/JSON)
+      parameters: [{ name: format, in: query, schema: { type: string, enum: [csv, json], default: csv } }]
+      responses:
+        "200": { description: Файл }
+
+  # ---------------------------------------------------------------- public
+  /api/public/claim:
+    post:
+      tags: [public]
+      summary: Лендинг потенциального/неидентифицированного клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contact, text, consent, captcha]
+              properties:
+                contact: { $ref: "#/components/schemas/ExternalContact" }
+                product_code: { type: string }
+                text: { type: string, minLength: 10, maxLength: 4000 }
+                consent: { type: boolean, const: true }
+                captcha: { type: object, required: [id, answer], properties: { id: { type: string }, answer: { type: integer } } }
+                voice_meta: { anyOf: [{ $ref: "#/components/schemas/VoiceMeta" }, { type: "null" }], description: "Кнопка «Надиктовать» на лендинге (ТЗ 11)" }
+      responses:
+        "201":
+          description: Обращение создано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  public_id: { type: string, example: SIG-000123 }
+                  tracking_token: { type: string }
+                  track_url: { type: string, format: uri }
+                  qr_svg: { type: string, description: SVG QR-кода ссылки трекинга }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/public/captcha:
+    get:
+      tags: [public]
+      summary: Арифметическая антибот-проверка
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { id: { type: string }, question: { type: string, example: "7 + 5 = ?" } } } } } }
+  /api/public/track/{token}:
+    parameters: [{ name: token, in: path, required: true, schema: { type: string, minLength: 24 } }]
+    get:
+      tags: [public]
+      summary: Таймлайн обращения понятным языком
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/TrackingView" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [public]
+      summary: «Дополнить обращение» (ответ на уточняющий вопрос агента)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [text], properties: { text: { type: string, maxLength: 4000 } } } } } }
+      responses:
+        "202": { description: Принято }
+  /api/public/bot/qr:
+    get:
+      tags: [public]
+      summary: QR-код на Telegram-бота для жюри-режима и README
+      responses:
+        "200": { description: SVG, content: { image/svg+xml: { schema: { type: string } } } }
+        "404": { $ref: "#/components/responses/Problem", description: Бот выключен }
+  /api/internal/tgbot/inbound:
+    post:
+      tags: [public]
+      summary: Внутренний приём сообщений от сервиса tgbot (только из docker-сети)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chat_id, text, kind]
+              properties:
+                chat_id: { type: integer }
+                username: { type: string }
+                kind: { type: string, enum: [start, is_client, not_client, free_text, contact, region, append] }
+                text: { type: string }
+                payload: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Что ответить пользователю
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply_text: { type: string }
+                  buttons: { type: array, items: { type: object, properties: { text: { type: string }, data: { type: string } } } }
+                  signal_id: { type: [integer, "null"] }
+                  tracking_token: { type: [string, "null"] }
+
+
+  # ===================== v1.3 — внешние площадки (ТЗ 21) =====================
+  /api/public/reviews:
+    post:
+      tags: [public, feed]
+      summary: Публикация отзыва на эмуляторе внешней площадки (BRD FR 1.1)
+      description: Создаёт пост, событие `review.posted` и сигнал канала `review_portal`; агент стартует немедленно (быстрый путь при подтверждённом правиле, ТЗ 21.4).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platform, author_nick, text]
+              properties:
+                platform: { type: string, enum: [review_portal, telegram_channel] }
+                author_nick: { type: string, minLength: 3, maxLength: 32, pattern: "^@?[A-Za-z0-9_\\.]+$" }
+                text: { type: string, minLength: 10, maxLength: 4000 }
+                mentions:
+                  type: object
+                  properties:
+                    card_last4: { type: [string, "null"], pattern: "^\\d{4}$" }
+                    phone_masked: { type: [string, "null"] }
+                    city: { type: [string, "null"] }
+                compare_with_mock: { type: boolean, default: false }
+      responses:
+        "202":
+          description: Пост принят, агент запущен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  post_id: { type: integer }
+                  public_id: { type: string, example: POST-000017 }
+                  signal_id: { type: integer }
+                  agent_run_id: { type: [integer, "null"] }
+                  feed_url: { type: string, format: uri }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/public/feed:
+    get:
+      tags: [public, feed]
+      summary: Лента эмулятора площадки (без роли)
+      parameters:
+        - { name: platform, in: query, schema: { type: string, enum: [review_portal, telegram_channel] } }
+        - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - $ref: "#/components/parameters/RunId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/ExternalPostList" } } }
+  /api/public/feed/{post_id}:
+    parameters:
+      - { name: post_id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [public, feed]
+      summary: Пост с веткой ответов и временем реакции агента
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/ExternalPostDetail" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/feed/{post_id}/reply:
+    parameters:
+      - { name: post_id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [feed]
+      summary: Ручной публичный ответ сотрудника CX (после HITL или вместо агента)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 5, maxLength: 1500 }
+                incident_id: { type: [integer, "null"] }
+      responses:
+        "201":
+          description: Опубликовано
+          content: { application/json: { schema: { $ref: "#/components/schemas/ExternalReply" } } }
+  /api/feed/stats:
+    get:
+      tags: [feed]
+      summary: Статистика живого контура (v_feed_latency)
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/FeedStats" } } }
+
+  # ===================== v1.3 — Mock-АБС (ТЗ 3.4, 21.4) =====================
+  /api/abs/accounts/{client_id}:
+    parameters:
+      - { name: client_id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [abs]
+      summary: Счета клиента и последние проводки (виджет «АБС (эмуляция)»)
+      parameters:
+        - { name: entries_limit, in: query, schema: { type: integer, default: 20, maximum: 200 } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/AccountsView" } } }
+  /api/abs/ledger:
+    get:
+      tags: [abs]
+      summary: Проводки с фильтрами (для экрана «Данные в БД» и проверок)
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - { name: client_id, in: query, schema: { type: integer } }
+        - { name: operation_id, in: query, schema: { type: integer } }
+        - { name: kind, in: query, schema: { type: array, items: { type: string, enum: [debit, credit, fee, refund, reversal] } }, style: form, explode: false }
+        - { name: rule_id, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/LedgerEntryList" } } }
+  /api/abs/refunds:
+    post:
+      tags: [abs, hitl]
+      summary: Возврат по решению человека (массовый или сверх лимита автономии)
+      description: Служебный вход для HITL; агент выполняет возвраты только инструментом `refund_fee`. Идемпотентен по `correlation_id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, reason]
+              properties:
+                incident_id: { type: [integer, "null"] }
+                human_decision_id: { type: [integer, "null"] }
+                reason: { type: string, maxLength: 400 }
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [operation_id, amount_rub, correlation_id]
+                    properties:
+                      operation_id: { type: integer }
+                      amount_rub: { type: number, minimum: 0.01 }
+                      rule_id: { type: [string, "null"] }
+                      correlation_id: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Возвраты поставлены в очередь; прогресс — в WebSocket `abs`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted: { type: integer }
+                  skipped_duplicates: { type: integer }
+                  job_id: { type: string }
+
+  # ===================== v1.3 — бизнес-правила (ТЗ 9.6) =====================
+  /api/rules:
+    get:
+      tags: [rules]
+      summary: Список бизнес-правил
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BusinessRule" } } } }
+    put:
+      tags: [rules]
+      summary: Полная замена набора правил (экран /settings → Правила); версия каждого изменённого правила увеличивается
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BusinessRule" } } } }
+      responses:
+        "200": { description: Сохранено }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/rules/evaluate:
+    post:
+      tags: [rules]
+      summary: Проверить правила для операции/клиента (отладка, панель Log)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operation_id: { type: [integer, "null"] }
+                client_id: { type: [integer, "null"] }
+                window_hours: { type: integer, default: 72 }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/agent/rule_violation.schema.json" } } }
+  /api/rules/evaluations:
+    get:
+      tags: [rules]
+      summary: История срабатываний правил
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - { name: signal_id, in: query, schema: { type: integer } }
+        - { name: rule_code, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/RuleEvaluation" } }
+                  next_cursor: { type: [string, "null"] }
+
+  # ===================== v1.3 — аудиомониторинг и мисселлинг (ТЗ 22) =====================
+  /api/compliance/branches:
+    get:
+      tags: [compliance]
+      summary: Отделения с сотрудниками (для выбора на экране /compliance)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Branch" } } } }
+  /api/compliance/sessions:
+    get:
+      tags: [compliance]
+      summary: Аудиосессии
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - { name: status, in: query, schema: { type: array, items: { type: string, enum: [live, alerted, closed] } }, style: form, explode: false }
+        - { name: employee_id, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/AudioSessionList" } } }
+    post:
+      tags: [compliance]
+      summary: Начать сессию (микрофон, файл или транскрипт)
+      description: Возвращает URL бинарного WebSocket `/ws/audio/{session_id}` для `source = mic`; для `file|transcript` сервер сам проигрывает актив в реальном темпе.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_id, source, diarization_mode]
+              properties:
+                employee_id: { type: integer }
+                client_id: { type: [integer, "null"] }
+                deal_product: { type: [string, "null"] }
+                source: { type: string, enum: [mic, file, transcript] }
+                demo_asset_id: { type: [integer, "null"], description: "обязателен для file|transcript" }
+                diarization_mode: { type: string, enum: [stereo, manual, auto] }
+                stt_provider: { type: [string, "null"], description: "null = провайдер по умолчанию из настроек" }
+                alert_threshold: { type: integer, minimum: 1, maximum: 10, default: 3 }
+                store_audio: { type: boolean, default: false }
+      responses:
+        "201":
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/AudioSession"
+                  - type: object
+                    properties:
+                      audio_ws_url: { type: [string, "null"], description: "/ws/audio/{id} для source = mic" }
+                      sample_rate: { type: integer, default: 16000 }
+                      channels: { type: integer, enum: [1, 2] }
+  /api/compliance/sessions/{id}:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    get:
+      tags: [compliance]
+      summary: Сессия с репликами, триггерами и алертами
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/AudioSessionDetail" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/compliance/sessions/{id}/role:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    post:
+      tags: [compliance]
+      summary: Ручное переключение активной роли (режим manual, пробел на экране)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [speaker]
+              properties:
+                speaker: { type: string, enum: [employee, client] }
+                at_ms: { type: [integer, "null"] }
+      responses:
+        "204": { description: Применено к следующим финальным репликам }
+  /api/compliance/sessions/{id}/stop:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    post:
+      tags: [compliance]
+      summary: Завершить сессию
+      responses:
+        "200":
+          description: Закрыта
+          content: { application/json: { schema: { $ref: "#/components/schemas/AudioSession" } } }
+  /api/compliance/sessions/{id}/utterances:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    get:
+      tags: [compliance]
+      summary: Финальные реплики сессии (для дозагрузки после разрыва WebSocket)
+      parameters:
+        - { name: since_seq, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Utterance" } } } }
+  /api/compliance/triggers/{id}:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    post:
+      tags: [compliance]
+      summary: Подтвердить или отклонить триггер вручную (руководитель/комплаенс)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [confirmed, dismissed] }
+                comment: { type: [string, "null"] }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/ComplianceTrigger" } } }
+  /api/compliance/alerts:
+    get:
+      tags: [compliance]
+      summary: Лента алертов для устройства руководителя (/manager)
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - { name: branch_code, in: query, schema: { type: string } }
+        - { name: unacknowledged, in: query, schema: { type: boolean } }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ComplianceAlert" } } } }
+  /api/compliance/alerts/{id}/ack:
+    parameters: [ { $ref: "#/components/parameters/IdPath" } ]
+    post:
+      tags: [compliance, hitl]
+      summary: Реакция руководителя («Иду» / ложное / открыть инцидент) — пишется в HITL инцидента misselling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [go, false_positive, open_incident] }
+                comment: { type: [string, "null"] }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/ComplianceAlert" } } }
+  /api/compliance/patterns:
+    get:
+      tags: [compliance, settings]
+      summary: Таксономия мисселлинга
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MissellingPattern" } } } }
+    put:
+      tags: [compliance, settings]
+      summary: Обновить таксономию (включение паттернов, ключевые слова, веса)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MissellingPattern" } } } }
+      responses:
+        "200": { description: Сохранено }
+  /api/compliance/stats:
+    get:
+      tags: [compliance, metrics]
+      summary: Статистика по сотрудникам/отделениям (v_compliance_by_employee)
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ComplianceEmployeeStats" } } } }
+
+  # ===================== v1.3 — STT (ТЗ 5.3) =====================
+  /api/stt/providers:
+    get:
+      tags: [stt, settings]
+      summary: Доступные STT-провайдеры, их возможности и состояние
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SttProvider" } } } }
+  /api/stt/test:
+    post:
+      tags: [stt, setup]
+      summary: Проверка провайдера на коротком предзаписанном файле (мастер, шаг 4)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: { type: string }
+                demo_asset_id: { type: [integer, "null"] }
+      responses:
+        "200":
+          description: Результат
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  provider: { type: string }
+                  model: { type: [string, "null"] }
+                  transcript: { type: string }
+                  wer: { type: [number, "null"] }
+                  partial_latency_ms: { type: [integer, "null"] }
+                  final_latency_ms: { type: [integer, "null"] }
+                  error: { type: [string, "null"] }
+
+  # ===================== v1.3 — меню демонстратора и подстраховка (ТЗ 5.4, 12.7) =====================
+  /api/demo/status:
+    get:
+      tags: [demo]
+      summary: Состояние сети и провайдеров, текущие режимы LLM/STT
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/DemoStatus" } } }
+  /api/demo/failover:
+    post:
+      tags: [demo]
+      summary: Ручное переключение режима (LLM live|replay|mock; STT mic|file|transcript; восстановить онлайн)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [component, to]
+              properties:
+                component: { type: string, enum: [llm, stt, telegram] }
+                to: { type: string }
+      responses:
+        "200":
+          description: Применено; событие demo.failover
+          content: { application/json: { schema: { $ref: "#/components/schemas/DemoStatus" } } }
+  /api/demo/play/{scenario_id}:
+    parameters:
+      - { name: scenario_id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [demo, scenarios]
+      summary: Запустить предзаписанный вход сценария (пост сценария 8, аудио/транскрипт сценария 9)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset_kind: { type: string, enum: [post, audio, transcript] }
+                reset: { type: string, enum: [none, counters, baseline], default: none }
+      responses:
+        "202":
+          description: Запущено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  post_id: { type: [integer, "null"] }
+                  session_id: { type: [integer, "null"] }
+                  agent_run_id: { type: [integer, "null"] }
+  /api/demo/assets:
+    get:
+      tags: [demo]
+      summary: Предзаписанные активы (аудио, транскрипты, посты, кассеты)
+      parameters:
+        - { name: kind, in: query, schema: { type: string, enum: [audio, transcript, post, cassette] } }
+        - { name: scenario_id, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DemoAsset" } } } }
+  /api/cassettes:
+    get:
+      tags: [demo]
+      summary: Кассеты replay (сводка по сценариям и моделям)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CassetteSummary" } } } }
+  /api/cassettes/record:
+    post:
+      tags: [demo]
+      summary: Включить/выключить запись кассет (LLM_RECORD) для текущей сессии показа
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+                scenario_id: { type: [string, "null"] }
+      responses:
+        "200": { description: OK }
+
+  /ws/audio/{session_id}:
+    parameters:
+      - { name: session_id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [compliance, stt]
+      summary: Бинарный WebSocket аудио → STT (ТЗ 5.3, 22.2)
+      description: |
+        Клиент шлёт бинарные кадры PCM16 LE 16 кГц (моно или интерливинг стерео, канал 1 — сотрудник, канал 2 — клиент) чанками по 100 мс.
+        Первый текстовый кадр — `{"type":"hello","sample_rate":16000,"channels":1}`; сервер отвечает `{"type":"ready"}`.
+        Сервер шлёт текстовые сообщения по схеме `contracts/events/compliance/stt_result.schema.json` (`partial` / `final` / `error`).
+        Финальные реплики дублируются в `/ws/stream` (топики `stt`, `compliance`) для экранов-наблюдателей. Требует HTTPS или localhost на стороне браузера (getUserMedia).
+      responses:
+        "101": { description: Switching Protocols }
+
+  /ws/stream:
+    get:
+      tags: [engine]
+      summary: WebSocket — темы signals, agent, agent_tokens, incidents, notifications, sim, db, hitl, tasks, runs, feed, abs, compliance, stt, demo
+      description: |
+        Клиент после подключения отправляет `{"type":"subscribe","topics":["signals","agent", …],"filters":{…}}`.
+        Сервер шлёт сообщения по схеме `contracts/events/ws/message.schema.json`. Heartbeat каждые 20 с.
+        При разрыве клиент переподключается и дозагружает данные REST-запросами с `since_*`.
+      responses:
+        "101": { description: Switching Protocols }
+
+  /api/ingest/messages:
+    post:
+      tags: [ingest]
+      summary: "[ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала"
+      parameters: [{ name: source, in: query, schema: { type: string, default: rest_default }, description: "Код адаптера ingest_sources" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - { $ref: "../events/ingest/unified_message.schema.json" }
+                - { type: array, maxItems: 500, items: { $ref: "../events/ingest/unified_message.schema.json" } }
+      responses:
+        "202":
+          description: Принято (дубли по external_id помечены)
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/IngestResult" } } } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/ingest/transcripts:
+    get:
+      tags: [ingest]
+      summary: "[ДТЗ FR-1.1] Список импортированных транскриптов"
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: kind, in: query, schema: { $ref: "#/components/schemas/TranscriptKind" } }
+        - { name: status, in: query, schema: { type: string, enum: [received, analyzing, done, failed] } }
+        - { name: employee_id, in: query, schema: { type: integer } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/TranscriptBrief" } }, next_cursor: { type: [string, "null"] } } } } }
+    post:
+      tags: [ingest]
+      summary: "[ДТЗ FR-1.1, FR-4.1] Приём транскрипта: JSON по схеме ingest/transcript или multipart с файлами JSON/TXT; запускает анализы client_signal и/или employee_quality"
+      parameters: [{ name: analyses, in: query, schema: { type: array, items: { type: string, enum: [client_signal, employee_quality] } }, style: form, explode: false, description: "Переопределяет analyses из тела/настроек по kind" }]
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "../events/ingest/transcript.schema.json" } }
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files: { type: array, items: { type: string, format: binary }, description: ".json или .txt («[чч:мм:сс] Сотрудник: …» / «Клиент: …»)" }
+                kind: { $ref: "#/components/schemas/TranscriptKind" }
+                branch_code: { type: string }
+                employee_public_id: { type: string }
+      responses:
+        "202":
+          description: Принято, анализ запущен
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/TranscriptBrief" } } } } } }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/ingest/transcripts/import:
+    post:
+      tags: [ingest]
+      summary: "[ДТЗ FR-1.1] Пакетный импорт каталога data/import/transcripts/ (кнопка в настройках)"
+      responses:
+        "202":
+          description: Запущено
+          content: { application/json: { schema: { type: object, properties: { files_found: { type: integer }, accepted: { type: integer }, duplicates: { type: integer }, rejected: { type: integer } } } } }
+  /api/ingest/transcripts/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [ingest]
+      summary: "Транскрипт целиком: реплики, статус анализов, ссылки на сигнал и пакетную сессию, отчёт"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/TranscriptDetail" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/ingest/transcripts/{id}/analyze:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [ingest]
+      summary: "Повторить/дозапустить анализ транскрипта (например, employee_quality для контакт-центра)"
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { analyses: { type: array, items: { type: string, enum: [client_signal, employee_quality] } } } } } }
+      responses:
+        "202": { description: Запущено }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/ingest/sources:
+    get:
+      tags: [ingest]
+      summary: "[ДТЗ FR-1.2] Адаптеры источников (REST / polling / file) и их статистика"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/IngestSource" } } } } } }
+  /api/ingest/sources/{code}:
+    parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [ingest]
+      summary: Создать/обновить адаптер (enabled, interval_s, config.url)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/IngestSourceUpdate" } } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/IngestSource" } } }
+        "422": { $ref: "#/components/responses/Problem" }
+  /api/ingest/sources/{code}/poll:
+    parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [ingest]
+      summary: Внеочередной опрос polling-адаптера (кнопка «Опросить сейчас»)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { fetched: { type: integer }, accepted: { type: integer }, duplicates: { type: integer }, rejected: { type: integer }, cursor: { type: [string, "null"] } } } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/public/mock-social-feed:
+    get:
+      tags: [public, ingest]
+      summary: "[ДТЗ FR-1.2] Встроенная mock-лента соцсети для polling-адаптера demo-профиля (массив сообщений единой схемы, курсор since)"
+      parameters:
+        - { name: since, in: query, schema: { type: string }, description: "Курсор (external_id последнего полученного)" }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: array, items: { $ref: "../events/ingest/unified_message.schema.json" } } } }
+  /api/tickets:
+    get:
+      tags: [tickets]
+      summary: "[ДТЗ FR-3.2] Тикетница: представление v_tickets над инцидентами в терминах ДТЗ"
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: status, in: query, schema: { type: array, items: { type: string, enum: [open, in_progress, resolved, closed, rejected] } }, style: form, explode: false }
+        - { name: department, in: query, schema: { type: string } }
+        - { name: priority, in: query, schema: { type: integer, minimum: 1, maximum: 4 } }
+        - { name: escalated, in: query, schema: { type: boolean } }
+        - { name: routing_status, in: query, schema: { $ref: "#/components/schemas/RoutingStatus" } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Ticket" } }, next_cursor: { type: [string, "null"] }, total: { type: integer } } } } }
+  /api/tickets/{ticket_id}:
+    parameters: [{ name: ticket_id, in: path, required: true, schema: { type: string, pattern: "^INC-\\d{6}$" } }]
+    get:
+      tags: [tickets]
+      summary: Тикет с цепочкой решений агента и эскалациями
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/TicketDetail" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/escalations:
+    get:
+      tags: [escalations]
+      summary: "[ДТЗ FR-3.4] Очередь эскалаций руководителю"
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: status, in: query, schema: { type: array, items: { $ref: "#/components/schemas/EscalationStatus" } }, style: form, explode: false }
+        - { name: to_role, in: query, schema: { $ref: "#/components/schemas/EscalationRole" } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Escalation" } }, next_cursor: { type: [string, "null"] } } } } }
+    post:
+      tags: [escalations]
+      summary: Ручная эскалация оператором (created_by = human)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [reason, severity], properties: { incident_id: { type: integer }, signal_id: { type: integer }, reason: { type: string }, severity: { $ref: "#/components/schemas/Severity" }, to_role: { $ref: "#/components/schemas/EscalationRole" } } } } }
+      responses:
+        "201":
+          description: Создано
+          content: { application/json: { schema: { $ref: "#/components/schemas/Escalation" } } }
+  /api/escalations/{id}:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [escalations]
+      summary: Эскалация с контекстом (сигнал, тикет, цепочка решений)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/EscalationDetail" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/escalations/{id}/ack:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [escalations]
+      summary: Руководитель принял эскалацию (acknowledged) или закрыл (resolved | dismissed) с резолюцией
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [status], properties: { status: { type: string, enum: [acknowledged, resolved, dismissed] }, resolution_ru: { type: string, maxLength: 1000 }, actor: { type: string } } } } }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/Escalation" } } }
+        "409": { $ref: "#/components/responses/Problem" }
+  /api/agent/runs/{id}/decision-chain:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }, { name: format, in: query, schema: { type: string, enum: [json, md], default: json } }]
+    get:
+      tags: [agent, tickets]
+      summary: "[ДТЗ FR-3.5] Компактная цепочка решений «инструмент → аргументы → почему» (JSON или Markdown)"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: { schema: { $ref: "../events/agent/decision_chain.schema.json" } }
+            text/markdown: { schema: { type: string } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/compliance/transcripts/{id}/report:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }, { name: format, in: query, schema: { type: string, enum: [json, md], default: json } }]
+    get:
+      tags: [compliance, ingest]
+      summary: "[ДТЗ FR-4.2–4.3] Отчёт пакетного анализа транскрипта: находки с цитатами, соблюдение скрипта, рекомендации руководителю"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/TranscriptReport" } }
+            text/markdown: { schema: { type: string } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { description: "Анализ ещё не завершён", content: { application/problem+json: { schema: { type: object } } } }
+  /api/compliance/transcripts/{id}/send:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    post:
+      tags: [compliance]
+      summary: "[ДТЗ FR-4.3] Отправить отчёт руководителю: карточка на /manager, запись в notifications, опционально Telegram"
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { to_role: { $ref: "#/components/schemas/EscalationRole" }, telegram: { type: boolean, default: false }, attach_to_incident: { type: boolean, default: false } } } } }
+      responses:
+        "202":
+          description: Отправлено
+          content: { application/json: { schema: { type: object, properties: { notification_id: { type: integer }, alert_id: { type: [integer, "null"] }, incident_id: { type: [integer, "null"] } } } } }
+  /api/compliance/scripts:
+    get:
+      tags: [compliance]
+      summary: Эталонные скрипты обслуживания (service_scripts) для проверки script_violation
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/ServiceScript" } } } } } }
+  /api/map/zones:
+    get:
+      tags: [map]
+      summary: "[ДТЗ FR-5.2] Слой «Зоны»: зелёная/жёлтая/красная по субъектам (v_map_zones) с индексами негатива и сработок copilot"
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { thresholds: { $ref: "#/components/schemas/MapZoneThresholds" }, no_geo_count: { type: integer, description: "Сигналы без гео (легенда «без гео»)" }, items: { type: array, items: { $ref: "#/components/schemas/MapZone" } } } } } }
+  /api/metrics/economics/live:
+    get:
+      tags: [metrics]
+      summary: "[ДТЗ FR-5.4] Живой тикер финансового эффекта: CLV под риском, предотвращённые и потенциальные потери текущего запуска (тот же payload — WS metrics/economics_live)"
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/ws/message.schema.json#/$defs/economics_live" } } }
+  /api/bench/sentiment:
+    get:
+      tags: [bench]
+      summary: "[ДТЗ FR-2.1] Последний отчёт бенчмарка sentiment_v1: accuracy по провайдерам, матрица ошибок, согласованность с порогами negativity"
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "#/components/schemas/SentimentBenchReport" } } }
+components:
+  parameters:
+    IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
+    Cursor: { name: cursor, in: query, schema: { type: string } }
+    RunId: { name: run_id, in: query, schema: { type: string }, description: "Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current." }
+  responses:
+    Problem:
+      description: Ошибка (RFC 9457)
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status]
+            properties:
+              type: { type: string, format: uri }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+              instance: { type: string }
+              errors: { type: array, items: { type: object, properties: { loc: { type: array, items: { type: string } }, msg: { type: string } } } }
+  schemas:
+    LlmProvider: { type: string, enum: [gigachat, openai_compatible, mock] }
+    Complexity: { type: string, enum: [easy, medium, hard] }
+    Criticality: { type: string, enum: [low, medium, high] }
+    IncidentStatus: { type: string, enum: [new, classified, routed, in_progress, fix_proposed, fix_deployed, verifying, resolved, closed, awaiting_human, awaiting_client, escalated, duplicate, rejected] }
+    SignalStatus: { type: string, enum: [new, processing, classified, linked, deferred, awaiting_human, awaiting_client, answered, closed, noise, error] }
+    OutcomeClass: { type: string, enum: [closed_in_sla_with_gift, closed_in_sla, closed_late, closed_with_regression, open, rejected, churned] }
+    ClientState: { type: string, enum: [calm, affected, complaining, waiting, satisfied, asks_again, escalates, churn_intent, retained, churned] }
+
+    SetupPayload:
+      type: object
+      properties:
+        llm: { type: object, properties: { main_profile_id: { type: integer }, fast_profile_id: { type: integer }, twin_profile_id: { type: integer } } }
+        bank: { type: object, properties: { name: { type: string }, clients_profile: { type: string, enum: [lite, demo, stress] }, regions_mode: { type: string }, region_codes: { type: array, items: { type: string } }, segment_shares: { type: object, additionalProperties: { type: number } } } }
+        sim: { type: object, properties: { sim_hour_real_minutes: { type: number }, seed: { type: integer }, intensities: { type: object, additionalProperties: { type: number } }, fault_rate: { type: number } } }
+        channels: { type: object, properties: { enabled: { type: array, items: { type: string } }, mailpit: { type: boolean }, tgbot_enabled: { type: boolean } } }
+        policies: { type: object, properties: { confidence_threshold: { type: number }, hitl_rules: { type: object }, dedup_window_hours: { type: integer } } }
+        economics: { $ref: "#/components/schemas/EconomicsSettings" }
+        ui: { type: object, properties: { lang: { type: string, enum: [ru, en] }, theme: { type: string, enum: [dark, light, circadian] } } }
+    CoverageMatrix:
+      type: object
+      description: Матрица покрытия (ТЗ 4.4) — заполненные комбинации и дефициты
+      properties:
+        signal_type_x_product_x_channel: { type: object, additionalProperties: { type: integer } }
+        sla_cells: { type: object, additionalProperties: { type: integer }, description: "ключ complexity:criticality → инцидентов" }
+        segments: { type: object, additionalProperties: { type: integer } }
+        districts: { type: object, additionalProperties: { type: integer } }
+        psychotypes: { type: object, additionalProperties: { type: integer } }
+        gaps: { type: array, items: { type: string } }
+        passed: { type: boolean }
+    SlaCell:
+      type: object
+      required: [complexity, criticality, fix_days, report_days, take_hours]
+      properties:
+        complexity: { $ref: "#/components/schemas/Complexity" }
+        criticality: { $ref: "#/components/schemas/Criticality" }
+        fix_days: { type: integer, minimum: 1, maximum: 10 }
+        report_days: { type: array, items: { type: integer } }
+        take_hours: { type: integer }
+    RoutingRule:
+      type: object
+      required: [match, team_codes]
+      properties:
+        id: { type: integer }
+        priority: { type: integer }
+        match: { type: object, additionalProperties: true }
+        team_codes: { type: array, items: { type: string }, minItems: 1 }
+        notes_ru: { type: string }
+    LlmProfile:
+      type: object
+      required: [code, provider, model, role]
+      properties:
+        id: { type: integer, readOnly: true }
+        code: { type: string }
+        provider: { $ref: "#/components/schemas/LlmProvider" }
+        model: { type: string }
+        base_url: { type: [string, "null"] }
+        role: { type: string, enum: [main, fast, twin, bench_only] }
+        temperature: { type: number }
+        rpm_limit: { type: [integer, "null"] }
+        rpd_limit: { type: [integer, "null"] }
+        price_in_per_1m: { type: number }
+        price_out_per_1m: { type: number }
+        supports_tools: { type: boolean }
+        supports_stream: { type: boolean }
+        is_active: { type: boolean }
+        api_key_id: { type: [integer, "null"] }
+    LlmApiKey:
+      type: object
+      properties:
+        id: { type: integer }
+        provider: { $ref: "#/components/schemas/LlmProvider" }
+        label: { type: string }
+        tokens_used: { type: integer }
+        tokens_limit: { type: [integer, "null"] }
+        requests_today: { type: integer }
+        rpd_limit: { type: [integer, "null"] }
+        balance_usd: { type: [number, "null"], description: OpenRouter — из GET /api/v1/key }
+        is_active: { type: boolean }
+        last_error: { type: [string, "null"] }
+    NotificationTemplate:
+      type: object
+      required: [code, channel_code, body]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        channel_code: { type: string }
+        segment_code: { type: [string, "null"] }
+        lang: { type: string, default: ru }
+        subject: { type: [string, "null"] }
+        body: { type: string }
+        variables: { type: array, items: { type: string } }
+    GiftCatalogItem:
+      type: object
+      required: [code, name_ru, name_en, segments, rule]
+      properties:
+        code: { type: string }
+        name_ru: { type: string }
+        name_en: { type: string }
+        segments: { type: array, items: { type: string } }
+        rule: { type: object, additionalProperties: true }
+        partner_display_name: { type: [string, "null"] }
+    EconomicsSettings:
+      type: object
+      properties:
+        detractor_share: { type: number, minimum: 0, maximum: 1 }
+        no_return_share: { type: number, minimum: 0, maximum: 1 }
+        retention_factors:
+          type: object
+          properties:
+            closed_in_sla_with_gift: { type: number }
+            closed_in_sla: { type: number }
+            closed_late: { type: number }
+            closed_with_regression: { type: number }
+            open: { type: number }
+            rejected: { type: number }
+            churned: { type: number }
+        calibration_mode: { type: string, enum: [manual, simulated] }
+        fallback_rate_code: { type: string, default: bank_average }
+        rates:
+          type: array
+          items:
+            type: object
+            required: [code, name_ru, rate_rub]
+            properties:
+              code: { type: string }
+              name_ru: { type: string }
+              name_en: { type: string }
+              rate_rub: { type: number }
+              maps_to: { type: object, additionalProperties: true }
+    PsychotypeSettings:
+      type: object
+      properties:
+        psychotypes:
+          type: array
+          items:
+            type: object
+            required: [code, name_ru, name_en, params]
+            properties:
+              code: { type: string }
+              name_ru: { type: string }
+              name_en: { type: string }
+              params: { $ref: "../events/behavior/psychotype_params.schema.json" }
+        segment_mix:
+          type: object
+          description: "segment_code → {psychotype_code: share}; сумма по сегменту = 1"
+          additionalProperties: { type: object, additionalProperties: { type: number } }
+        twins:
+          type: object
+          properties:
+            daily_limit: { type: integer, default: 20 }
+            include_vip: { type: boolean, default: true }
+            include_hitl: { type: boolean, default: true }
+            include_scenarios: { type: boolean, default: true }
+    SimState:
+      type: object
+      properties:
+        sim_time: { type: string, format: date-time }
+        day_no: { type: integer }
+        phase: { type: string, enum: [morning, day, evening, night] }
+        speed: { type: number }
+        running: { type: boolean }
+        seed: { type: integer }
+        is_working_day: { type: boolean }
+        current_run_id: { type: [integer, "null"] }
+        current_run_status: { type: [string, "null"], enum: [running, paused, interrupted, completed, stopped, archived, null] }
+        baseline_available: { type: boolean }
+    SimRun:
+      type: object
+      description: "Запуск эмуляции (ТЗ 4.6, таблица sim_runs + v_run_counters)"
+      required: [id, kind, label, status, seed, started_sim]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string, enum: [baseline, free, scenario] }
+        label: { type: string }
+        scenario_id: { type: [string, "null"] }
+        seed: { type: integer }
+        llm_profile_id: { type: [integer, "null"] }
+        reset_mode: { type: [string, "null"], enum: [none, counters, baseline, null] }
+        parent_run_id: { type: [integer, "null"] }
+        status: { type: string, enum: [running, paused, interrupted, completed, stopped, archived] }
+        started_sim: { type: string, format: date-time }
+        finished_sim: { type: [string, "null"], format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        resumed_count: { type: integer }
+        counters:
+          type: object
+          description: "Живые счётчики (v_run_counters)"
+          properties:
+            signals: { type: integer }
+            incidents: { type: integer }
+            incidents_open: { type: integer }
+            sla_breached: { type: integer }
+            hitl_requests: { type: integer }
+            churned: { type: integer }
+            tokens: { type: integer }
+            prevented_loss_rub: { type: number }
+            realized_loss_rub: { type: number }
+        summary:
+          type: [object, "null"]
+          description: "Итоговые метрики после stop/complete — DashboardMetrics + EconomicsSummary + расход токенов по профилям"
+          additionalProperties: true
+        settings_snapshot: { type: object, additionalProperties: true }
+        export_path: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+    BaselineInfo:
+      type: object
+      properties:
+        available: { type: boolean }
+        path: { type: [string, "null"] }
+        profile: { type: [string, "null"], enum: [lite, demo, stress, null] }
+        seed: { type: [integer, "null"] }
+        size_bytes: { type: [integer, "null"] }
+        sha256: { type: [string, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
+        baseline_run_id: { type: [integer, "null"] }
+    SimEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        run_id: { type: integer, format: int64 }
+        event_type: { type: string }
+        payload: { type: object, additionalProperties: true }
+        sim_time: { type: string, format: date-time }
+        real_time: { type: string, format: date-time }
+        scenario_id: { type: [string, "null"] }
+        correlation_id: { type: string, format: uuid }
+    SimEventList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/SimEvent" } }, next_cursor: { type: [string, "null"] } } }
+    Scenario:
+      type: object
+      properties:
+        id: { type: string }
+        title_ru: { type: string }
+        title_en: { type: string }
+        description_ru: { type: string }
+        duration_sim_hours: { type: number }
+        last_run_at: { type: [string, "null"], format: date-time }
+        last_result: { type: [object, "null"], properties: { passed: { type: boolean }, checks: { type: array, items: { type: object } } } }
+    ExternalContact:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string, description: Только вымышленный диапазон +7 900 000-xx-xx }
+        email: { type: string }
+        nick: { type: string }
+        region_code: { type: string }
+        city_id: { type: integer }
+        telegram_chat_id: { type: integer }
+    Signal:
+      type: object
+      properties:
+        sentiment: { anyOf: [{ $ref: "#/components/schemas/Sentiment" }, { type: "null" }], description: "[ДТЗ]" }
+        geo: { anyOf: [{ $ref: "#/components/schemas/Geo" }, { type: "null" }], description: "[ДТЗ]" }
+        id: { type: integer }
+        public_id: { type: string }
+        channel_code: { type: string }
+        channel_subtype: { type: [string, "null"] }
+        client: { anyOf: [{ $ref: "#/components/schemas/ClientBrief" }, { type: "null" }] }
+        external_contact: { anyOf: [{ $ref: "#/components/schemas/ExternalContact" }, { type: "null" }] }
+        text: { type: string }
+        received_sim: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/SignalStatus" }
+        origin: { type: string }
+        classification: { anyOf: [{ $ref: "../events/agent/classification.schema.json" }, { type: "null" }] }
+        region_code: { type: [string, "null"] }
+        incident_ids: { type: array, items: { type: integer } }
+    SignalList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Signal" } }, next_cursor: { type: [string, "null"] }, total: { type: integer } } }
+    SignalDetail:
+      allOf:
+        - $ref: "#/components/schemas/Signal"
+        - type: object
+          properties:
+            decision: { anyOf: [{ $ref: "../events/agent/decision.schema.json" }, { type: "null" }] }
+            incidents: { type: array, items: { $ref: "#/components/schemas/IncidentBrief" } }
+            agent_runs: { type: array, items: { $ref: "#/components/schemas/AgentRunBrief" } }
+            notifications: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+            followups: { type: array, items: { $ref: "#/components/schemas/Followup" } }
+    Followup:
+      type: object
+      properties:
+        id: { type: integer }
+        wake_sim: { type: string, format: date-time }
+        reason: { type: string }
+        status: { type: string, enum: [scheduled, fired, cancelled] }
+    DeferredList:
+      type: object
+      properties:
+        items: { type: array, items: { type: object, properties: { signal: { $ref: "#/components/schemas/Signal" }, followup: { $ref: "#/components/schemas/Followup" } } } }
+        next_cursor: { type: [string, "null"] }
+    ClientBrief:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string }
+        display_name: { type: string }
+        segment_code: { type: string }
+        region_code: { type: string }
+        city_name: { type: string }
+        churn_risk: { type: integer }
+        is_active: { type: boolean }
+    Client360:
+      allOf:
+        - $ref: "#/components/schemas/ClientBrief"
+        - type: object
+          properties:
+            psychotype: { type: object, properties: { code: { type: string }, name_ru: { type: string }, name_en: { type: string }, communication_hint_ru: { type: string } } }
+            clv_estimate_rub: { type: integer }
+            contacts: { type: object, additionalProperties: true }
+            products: { type: array, items: { type: object, additionalProperties: true } }
+            operations: { type: array, items: { type: object, additionalProperties: true } }
+            signals: { type: array, items: { $ref: "#/components/schemas/Signal" } }
+            incidents: { type: array, items: { $ref: "#/components/schemas/IncidentBrief" } }
+            current_state: { type: object, properties: { state: { $ref: "#/components/schemas/ClientState" }, since_sim: { type: string, format: date-time }, care_score: { type: [number, "null"] }, hazard: { type: [number, "null"] } } }
+            state_history: { type: array, items: { type: object, additionalProperties: true } }
+            gifts: { type: array, items: { $ref: "#/components/schemas/Task" } }
+    IncidentBrief:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string }
+        title: { type: string }
+        incident_type: { type: string }
+        product_code: { type: [string, "null"] }
+        system_code: { type: [string, "null"] }
+        team_code: { type: string }
+        complexity: { $ref: "#/components/schemas/Complexity" }
+        criticality: { $ref: "#/components/schemas/Criticality" }
+        priority: { type: integer }
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+        flags: { type: array, items: { type: string } }
+        mass_impact: { type: integer }
+        region_code: { type: [string, "null"] }
+        created_sim: { type: string, format: date-time }
+        sla_due_sim: { type: string, format: date-time }
+        sla_remaining_pct: { type: number, description: "0–100, отрицательное = просрочен" }
+        sla_breached: { type: boolean }
+        next_report_due_sim: { type: [string, "null"], format: date-time }
+        outcome_class: { anyOf: [{ $ref: "#/components/schemas/OutcomeClass" }, { type: "null" }] }
+        problem_summary: { anyOf: [{ $ref: "#/components/schemas/ProblemSummary" }, { type: "null" }], description: "[ДТЗ FR-5.3] саммари проблемы" }
+        routing_status: { $ref: "#/components/schemas/RoutingStatus" }
+        channel: { type: [string, "null"], description: "[ДТЗ FR-5.3] канал первичного сигнала" }
+        sentiment: { anyOf: [{ $ref: "#/components/schemas/Sentiment" }, { type: "null" }] }
+    IncidentList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/IncidentBrief" } }, next_cursor: { type: [string, "null"] }, total: { type: integer }, by_status: { type: object, additionalProperties: { type: integer } } } }
+    IncidentDetail:
+      allOf:
+        - $ref: "#/components/schemas/IncidentBrief"
+        - type: object
+          properties:
+            co_team_codes: { type: array, items: { type: string } }
+            root_cause: { type: [string, "null"] }
+            resolution_summary: { type: [string, "null"] }
+            agent_rationale_ru: { type: string, description: Обоснование решения агента (из decision.rationale) }
+            decision: { anyOf: [{ $ref: "../events/agent/decision.schema.json" }, { type: "null" }] }
+            primary_client: { anyOf: [{ $ref: "#/components/schemas/ClientBrief" }, { type: "null" }] }
+            fault: { type: [object, "null"], additionalProperties: true }
+            regressions: { type: array, items: { type: object, additionalProperties: true }, description: "Сбои, вызванные фиксом этого инцидента" }
+            economics: { anyOf: [{ $ref: "#/components/schemas/IncidentEconomics" }, { type: "null" }] }
+            take_due_sim: { type: string, format: date-time }
+            report_due_sims: { type: array, items: { type: string, format: date-time } }
+            available_actions: { type: array, items: { type: string } }
+    StatusHistoryItem:
+      type: object
+      properties:
+        from_status: { type: [string, "null"] }
+        to_status: { type: string }
+        actor_type: { type: string }
+        actor_ref: { type: [string, "null"] }
+        reason: { type: [string, "null"] }
+        changed_sim: { type: string, format: date-time }
+    Artifact:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [rca, fix_decision, progress_report, release_note, verification_report, closure_review] }
+        title: { type: string }
+        body_md: { type: string }
+        meta: { type: object, additionalProperties: true }
+        author_team: { type: [string, "null"] }
+        generated_by: { type: string }
+        due_sim: { type: [string, "null"], format: date-time }
+        published_sim: { type: string, format: date-time }
+        is_late: { type: boolean }
+    SystemLog:
+      type: object
+      properties:
+        id: { type: integer }
+        system_code: { type: string }
+        level: { type: string }
+        error_code: { type: [string, "null"] }
+        component: { type: string }
+        message: { type: string }
+        logged_sim: { type: string, format: date-time }
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        recipient_type: { type: string }
+        channel_code: { type: string }
+        template_code: { type: [string, "null"] }
+        subject: { type: [string, "null"] }
+        body: { type: string }
+        status: { type: string }
+        sent_sim: { type: [string, "null"], format: date-time }
+        client_id: { type: [integer, "null"] }
+        incident_id: { type: [integer, "null"] }
+    NotificationList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Notification" } }, next_cursor: { type: [string, "null"] } } }
+    ClientReaction:
+      type: object
+      properties:
+        id: { type: integer }
+        reaction: { type: string }
+        tone: { type: string }
+        satisfaction: { type: [number, "null"] }
+        text: { type: [string, "null"] }
+        generated_by: { type: string, enum: [llm, param, mock] }
+        reacted_sim: { type: string, format: date-time }
+        agent_run_id: { type: [integer, "null"] }
+    IncidentEconomics:
+      type: object
+      properties:
+        affected_count: { type: integer }
+        rate_code: { type: string }
+        rate_rub: { type: number }
+        premium_addon_rub: { type: number }
+        detractor_share: { type: number }
+        no_return_share: { type: number }
+        potential_loss_rub: { type: number }
+        retention_factor: { type: number }
+        retention_source: { type: string, enum: [manual, simulated] }
+        prevented_loss_rub: { type: number }
+        realized_loss_rub: { type: number }
+        formula_ru: { type: string, example: "12 × 10 % × 50 % × (961 + 91,53) = 631,52 ₽" }
+        computed_sim: { type: string, format: date-time }
+    TeamLoad:
+      type: object
+      properties:
+        team_code: { type: string }
+        open: { type: integer }
+        in_progress: { type: integer }
+        sla_warning: { type: integer }
+        sla_breached: { type: integer }
+        reports_due: { type: integer }
+        reports_missing: { type: integer }
+        avg_take_hours: { type: number }
+        sla_compliance_pct: { type: number }
+    HitlItem:
+      type: object
+      properties:
+        id: { type: integer }
+        signal: { $ref: "#/components/schemas/Signal" }
+        incident: { anyOf: [{ $ref: "#/components/schemas/IncidentBrief" }, { type: "null" }] }
+        task: { anyOf: [{ $ref: "#/components/schemas/Task" }, { type: "null" }] }
+        reason: { type: string }
+        agent_proposal: { $ref: "../events/agent/decision.schema.json" }
+        options: { type: array, items: { type: object, properties: { code: { type: string }, label_ru: { type: string }, label_en: { type: string }, description_ru: { type: string } } } }
+        recommendation: { type: [string, "null"] }
+        context_summary_ru: { type: string }
+        requested_sim: { type: string, format: date-time }
+        waiting_minutes: { type: number }
+        decision: { type: [string, "null"] }
+        decided_by: { type: [string, "null"] }
+    HitlList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/HitlItem" } }, next_cursor: { type: [string, "null"] }, total: { type: integer } } }
+    Task:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        incident_id: { type: [integer, "null"] }
+        client: { anyOf: [{ $ref: "#/components/schemas/ClientBrief" }, { type: "null" }] }
+        assignee: { type: string }
+        payload: { type: object, additionalProperties: true }
+        status: { type: string }
+        requires_hitl: { type: boolean }
+        due_sim: { type: [string, "null"], format: date-time }
+        created_sim: { type: string, format: date-time }
+    TaskList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Task" } }, next_cursor: { type: [string, "null"] } } }
+    RegionHeat:
+      type: object
+      properties:
+        region_code: { type: string }
+        value: { type: number }
+        signals: { type: integer }
+        critical: { type: integer }
+        incidents_open: { type: integer }
+        churn_risk_avg: { type: number }
+        intensity: { type: number, minimum: 0, maximum: 1, description: Нормировано для цвета }
+    CityHeat:
+      type: object
+      properties:
+        city_id: { type: integer }
+        name_ru: { type: string }
+        lat: { type: number }
+        lon: { type: number }
+        signals: { type: integer }
+        critical: { type: integer }
+        top_signal_ids: { type: array, items: { type: integer } }
+    DashboardMetrics:
+      type: object
+      properties:
+        signals_today: { type: integer }
+        critical_today: { type: integer }
+        signal_to_incident_p50_min: { type: number }
+        signal_to_incident_p95_min: { type: number }
+        autonomous_share: { type: number }
+        hitl_share: { type: number }
+        human_changed_share: { type: number }
+        sla_risk_count: { type: integer }
+        sla_compliance_pct: { type: number }
+        reports_on_time_pct: { type: number }
+        first_response_by_segment: { type: object, additionalProperties: { type: number } }
+        repeat_signals_share: { type: number }
+        closed_loops: { type: integer }
+        churn_risk_clients: { type: integer }
+        retention_by_outcome: { type: object, additionalProperties: { type: number } }
+        retention_by_psychotype: { type: object, additionalProperties: { type: number } }
+        account_closures: { type: integer }
+        regression_share: { type: number }
+        twin_satisfaction_avg: { type: [number, "null"] }
+        economics: { $ref: "#/components/schemas/EconomicsSummary" }
+    EconomicsSummary:
+      type: object
+      properties:
+        window: { type: string }
+        potential_loss_rub: { type: number }
+        prevented_loss_rub: { type: number }
+        at_risk_open_rub: { type: number }
+        realized_loss_rub: { type: number }
+        calibration_mode: { type: string }
+        groups: { type: array, items: { type: object, properties: { key: { type: string }, label_ru: { type: string }, potential_loss_rub: { type: number }, prevented_loss_rub: { type: number }, realized_loss_rub: { type: number }, incidents: { type: integer } } } }
+    EconomicsFact:
+      type: object
+      properties:
+        faults_matrix: { type: array, items: { type: object, properties: { product_code: { type: string }, system_code: { type: string }, sim_day: { type: string, format: date }, sim_hour: { type: integer }, faults: { type: integer }, operations_affected: { type: integer }, clients_affected: { type: integer }, signals: { type: integer } } } }
+        outcomes: { type: array, items: { type: object, properties: { outcome_class: { $ref: "#/components/schemas/OutcomeClass" }, incidents: { type: integer }, potential_loss_rub: { type: number }, prevented_loss_rub: { type: number }, realized_loss_rub: { type: number } } } }
+        churned: { type: array, items: { type: object, properties: { client: { $ref: "#/components/schemas/ClientBrief" }, psychotype_code: { type: string }, churn_sim: { type: string, format: date-time }, days_after_incident: { type: number }, reason: { type: string }, offered: { type: object }, realized_loss_rub: { type: number }, closure_incident_id: { type: integer } } } }
+        assumptions_vs_fact:
+          type: object
+          properties:
+            detractor_share: { type: object, properties: { assumed: { type: number }, fact: { type: [number, "null"] } } }
+            no_return_share: { type: object, properties: { assumed: { type: number }, fact: { type: [number, "null"] } } }
+            retention_factors: { type: object, additionalProperties: { type: object, properties: { manual: { type: number }, simulated: { type: [number, "null"] }, sample: { type: integer } } } }
+    AgentRunBrief:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        signal_id: { type: [integer, "null"] }
+        llm_profile_code: { type: string }
+        prompt_version: { type: string }
+        outcome: { type: [string, "null"] }
+        needed_human: { type: boolean }
+        total_tokens: { type: integer }
+        total_latency_ms: { type: integer }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        current_node: { type: [string, "null"] }
+    AgentRunList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/AgentRunBrief" } }, next_cursor: { type: [string, "null"] } } }
+    AgentStep:
+      type: object
+      properties:
+        seq: { type: integer }
+        node: { type: string }
+        status: { type: string }
+        input: { type: [object, "null"], additionalProperties: true }
+        output: { type: [object, "null"], additionalProperties: true }
+        prompt: { type: [string, "null"] }
+        response_raw: { type: [string, "null"] }
+        reasoning: { type: [string, "null"] }
+        tool_calls: { type: array, items: { type: object, properties: { name: { type: string }, args: { type: object }, result: {}, ms: { type: integer } } } }
+        model: { type: [string, "null"] }
+        prompt_tokens: { type: integer }
+        completion_tokens: { type: integer }
+        latency_ms: { type: integer }
+    AgentRunDetail:
+      allOf:
+        - $ref: "#/components/schemas/AgentRunBrief"
+        - type: object
+          properties:
+            steps: { type: array, items: { $ref: "#/components/schemas/AgentStep" } }
+            human_decision: { type: [object, "null"], additionalProperties: true }
+            cost_estimate: { type: number }
+    AgentGraph:
+      type: object
+      properties:
+        version: { type: string }
+        nodes: { type: array, items: { type: object, properties: { id: { type: string }, label_ru: { type: string }, label_en: { type: string }, kind: { type: string, enum: [llm, tool, router, wait, end] } } } }
+        edges: { type: array, items: { type: object, properties: { from: { type: string }, to: { type: string }, condition: { type: [string, "null"] } } } }
+    EntityGraph:
+      type: object
+      properties:
+        nodes: { type: array, items: { type: object, properties: { id: { type: string }, type: { type: string, enum: [client, signal, incident, system, team, fault, task] }, label: { type: string }, data: { type: object, additionalProperties: true } } } }
+        edges: { type: array, items: { type: object, properties: { id: { type: string }, source: { type: string }, target: { type: string }, label: { type: string } } } }
+    DbActivity:
+      type: object
+      properties:
+        id: { type: integer }
+        table_name: { type: string }
+        op: { type: string, enum: [INSERT, UPDATE, DELETE] }
+        pk: { type: string }
+        summary: { type: [object, "null"], additionalProperties: true }
+        ts: { type: string, format: date-time }
+    BenchRun:
+      type: object
+      properties:
+        id: { type: integer }
+        dataset_code: { type: string }
+        llm_profile_code: { type: string }
+        prompt_version: { type: string }
+        status: { type: string }
+        repeats: { type: integer }
+        metrics:
+          type: [object, "null"]
+          properties:
+            accuracy_type: { type: number }
+            accuracy_product: { type: number }
+            accuracy_system: { type: number }
+            accuracy_criticality: { type: number }
+            accuracy_route: { type: number }
+            recall_critical: { type: number }
+            json_valid_rate: { type: number }
+            tool_success_rate: { type: number }
+            retries_avg: { type: number }
+            fallback_rate: { type: number }
+            p50_ms: { type: number }
+            p95_ms: { type: number }
+            tokens_total: { type: integer }
+            cost_estimate: { type: number }
+            stability: { type: [number, "null"] }
+        progress: { type: number }
+        started_at: { type: [string, "null"], format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+    BenchRunDetail:
+      allOf:
+        - $ref: "#/components/schemas/BenchRun"
+        - type: object
+          properties:
+            results: { type: array, items: { type: object, properties: { case_id: { type: integer }, text: { type: string }, gold: { type: object }, predicted: { type: object }, correct: { type: object }, latency_ms: { type: integer }, json_valid_first_try: { type: boolean }, retries: { type: integer }, fallback_mock: { type: boolean } } } }
+    TrackingView:
+      type: object
+      properties:
+        public_id: { type: string }
+        status_label_ru: { type: string }
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              step: { type: string, enum: [received, agent_started, classified, incident_created, team_working, progress_update, clarification_needed, answered, resolved, closed] }
+              label_ru: { type: string }
+              text_ru: { type: [string, "null"] }
+              at_sim: { type: string, format: date-time }
+              done: { type: boolean }
+        can_append: { type: boolean }
+        question_from_agent: { type: [string, "null"] }
+        notifications: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+
+    # ===================== v1.3 — схемы живых контуров =====================
+    VoiceMeta:
+      type: object
+      description: Метаданные голосового ввода «Надиктовать» (ТЗ 12.2 экран 7, 11)
+      required: [stt_provider, transcript_raw]
+      properties:
+        stt_provider: { type: string, enum: [vosk, browser, salutespeech, openai_compatible_audio] }
+        stt_model: { type: [string, "null"] }
+        transcript_raw: { type: string, description: "Исходный транскрипт до правки пользователем" }
+        avg_confidence: { type: [number, "null"], minimum: 0, maximum: 1 }
+        duration_ms: { type: [integer, "null"] }
+        latency_ms: { type: [integer, "null"] }
+        edited: { type: boolean, description: "true, если пользователь правил текст перед отправкой" }
+    ExternalPost:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string }
+        platform: { type: string, enum: [review_portal, telegram_channel] }
+        author_nick: { type: string }
+        author_client: { anyOf: [{ $ref: "#/components/schemas/ClientBrief" }, { type: "null" }] }
+        match_confidence: { type: [number, "null"] }
+        text: { type: string }
+        mentions: { type: object, additionalProperties: true }
+        posted_at: { type: string, format: date-time }
+        posted_sim: { type: string, format: date-time }
+        reactions: { type: integer }
+        status: { type: string, enum: [new, processing, replied, escalated_to_dm, ignored] }
+        signal_id: { type: [integer, "null"] }
+        origin: { type: string }
+        replies_count: { type: integer }
+        agent_reply_latency_ms: { type: [integer, "null"] }
+    ExternalPostList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/ExternalPost" } }
+        next_cursor: { type: [string, "null"] }
+    ExternalReply:
+      type: object
+      properties:
+        id: { type: integer }
+        post_id: { type: integer }
+        incident_id: { type: [integer, "null"] }
+        agent_run_id: { type: [integer, "null"] }
+        author: { type: string, enum: [agent, human, client_twin] }
+        text: { type: string }
+        published_at: { type: string, format: date-time }
+        latency_ms: { type: [integer, "null"] }
+        llm_source: { type: [string, "null"], enum: [live, replay, mock, null] }
+    ExternalPostDetail:
+      allOf:
+        - $ref: "#/components/schemas/ExternalPost"
+        - type: object
+          properties:
+            replies: { type: array, items: { $ref: "#/components/schemas/ExternalReply" } }
+            signal: { anyOf: [{ $ref: "#/components/schemas/Signal" }, { type: "null" }] }
+            incident_ids: { type: array, items: { type: integer } }
+            refund: { anyOf: [{ $ref: "#/components/schemas/LedgerEntry" }, { type: "null" }] }
+            effect_line_ru: { type: [string, "null"], description: "«возвращено 450 ₽, предотвращённая потеря ≈ 1 823 ₽»" }
+    FeedStats:
+      type: object
+      properties:
+        run_id: { type: integer }
+        posts: { type: integer }
+        replied: { type: integer }
+        identified: { type: integer }
+        reply_latency_p50_ms: { type: [number, "null"] }
+        reply_latency_p95_ms: { type: [number, "null"] }
+        refunded_rub: { type: number }
+        autonomous_refunds: { type: integer }
+        hitl_refunds: { type: integer }
+    Account:
+      type: object
+      properties:
+        id: { type: integer }
+        client_id: { type: integer }
+        product_id: { type: [integer, "null"] }
+        number_masked: { type: string }
+        currency: { type: string }
+        balance: { type: number }
+        status: { type: string, enum: [active, blocked, closed] }
+    LedgerEntry:
+      type: object
+      properties:
+        id: { type: integer }
+        account_id: { type: integer }
+        operation_id: { type: [integer, "null"] }
+        kind: { type: string, enum: [debit, credit, fee, refund, reversal] }
+        amount: { type: number }
+        counterpart: { type: [string, "null"] }
+        posted_at: { type: string, format: date-time }
+        posted_sim: { type: string, format: date-time }
+        correlation_id: { type: string, format: uuid }
+        refund_of_entry_id: { type: [integer, "null"] }
+        rule_id: { type: [string, "null"] }
+        agent_run_id: { type: [integer, "null"] }
+        created_by: { type: string, enum: [sim, agent, human, scenario] }
+    LedgerEntryList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/LedgerEntry" } }
+        next_cursor: { type: [string, "null"] }
+    AccountsView:
+      type: object
+      properties:
+        client: { $ref: "#/components/schemas/ClientBrief" }
+        accounts: { type: array, items: { $ref: "#/components/schemas/Account" } }
+        entries: { type: array, items: { $ref: "#/components/schemas/LedgerEntry" } }
+    BusinessRule:
+      type: object
+      required: [code, name_ru, name_en, condition, action, owner_team_code, is_active]
+      properties:
+        code: { type: string, pattern: "^RULE-[A-Z0-9-]+$" }
+        name_ru: { type: string }
+        name_en: { type: string }
+        condition: { $ref: "../events/rules/rule_condition.schema.json" }
+        action: { type: string, enum: [refund_fee, propose_hitl, notify_only, suppress_duplicates] }
+        limits: { type: object, additionalProperties: true, description: "{max_amount_rub, requires_rule_confirmation}" }
+        owner_team_code: { type: string }
+        error_code: { type: [string, "null"] }
+        is_active: { type: boolean }
+        version: { type: integer }
+        updated_at: { type: string, format: date-time }
+    RuleEvaluation:
+      type: object
+      properties:
+        id: { type: integer }
+        signal_id: { type: [integer, "null"] }
+        agent_run_id: { type: [integer, "null"] }
+        rule_code: { type: string }
+        rule_version: { type: integer }
+        result: { type: string, enum: [matched, not_matched, error] }
+        evidence: { type: object, additionalProperties: true }
+        proposed_action: { type: [string, "null"] }
+        amount_rub: { type: [number, "null"] }
+        latency_ms: { type: integer }
+        created_at: { type: string, format: date-time }
+    Branch:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name_ru: { type: string }
+        city_name: { type: string }
+        region_code: { type: string }
+        manager_display_name: { type: string }
+        telegram_alerts_enabled: { type: boolean }
+        employees: { type: array, items: { $ref: "#/components/schemas/Employee" } }
+    Employee:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string }
+        display_name: { type: string }
+        branch_id: { type: integer }
+        desk_no: { type: integer }
+        position: { type: string }
+        hired_sim: { type: [string, "null"], format: date-time }
+        violations_count: { type: integer }
+        is_active: { type: boolean }
+    AudioSession:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string }
+        branch: { $ref: "#/components/schemas/Branch" }
+        employee: { $ref: "#/components/schemas/Employee" }
+        client: { anyOf: [{ $ref: "#/components/schemas/ClientBrief" }, { type: "null" }] }
+        deal_product: { type: [string, "null"] }
+        source: { type: string, enum: [mic, file, transcript] }
+        stt_provider: { type: string }
+        stt_model: { type: [string, "null"] }
+        diarization_mode: { type: string, enum: [stereo, manual, auto] }
+        status: { type: string, enum: [live, alerted, closed] }
+        trigger_count: { type: integer }
+        alert_threshold: { type: integer }
+        incident_id: { type: [integer, "null"] }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        store_audio: { type: boolean }
+    AudioSessionList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AudioSession" } }
+        next_cursor: { type: [string, "null"] }
+    Utterance:
+      type: object
+      properties:
+        id: { type: integer }
+        seq: { type: integer }
+        speaker: { type: string, enum: [employee, client, unknown] }
+        speaker_confidence: { type: number }
+        speaker_source: { type: string, enum: [channel, manual, llm, transcript] }
+        text: { type: string }
+        t0_ms: { type: integer }
+        t1_ms: { type: integer }
+        is_final: { type: boolean }
+        stt_confidence: { type: [number, "null"] }
+        latency_ms: { type: [integer, "null"] }
+        trigger: { anyOf: [{ $ref: "#/components/schemas/ComplianceTrigger" }, { type: "null" }] }
+    ComplianceTrigger:
+      type: object
+      properties:
+        id: { type: integer }
+        session_id: { type: integer }
+        utterance_id: { type: integer }
+        pattern_code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee] }
+        pattern_name_ru: { type: string }
+        confidence: { type: number }
+        quote: { type: string }
+        explanation_ru: { type: [string, "null"] }
+        detected_by: { type: string, enum: [rules, llm, both] }
+        status: { type: string, enum: [preliminary, confirmed, dismissed] }
+        agent_run_id: { type: [integer, "null"] }
+        latency_ms: { type: [integer, "null"] }
+    ComplianceAlert:
+      type: object
+      properties:
+        id: { type: integer }
+        session_id: { type: integer }
+        incident_id: { type: [integer, "null"] }
+        branch_code: { type: string }
+        desk_no: { type: integer }
+        employee_display_name: { type: string }
+        summary_ru: { type: string }
+        quotes: { type: array, items: { type: string } }
+        sent_at: { type: string, format: date-time }
+        channels: { type: array, items: { type: string, enum: [ws, telegram] } }
+        latency_ms: { type: [integer, "null"] }
+        acknowledged_at: { type: [string, "null"], format: date-time }
+        acknowledged_by: { type: [string, "null"] }
+        decision: { type: [string, "null"], enum: [go, false_positive, open_incident, null] }
+    AudioSessionDetail:
+      allOf:
+        - $ref: "#/components/schemas/AudioSession"
+        - type: object
+          properties:
+            utterances: { type: array, items: { $ref: "#/components/schemas/Utterance" } }
+            triggers: { type: array, items: { $ref: "#/components/schemas/ComplianceTrigger" } }
+            alerts: { type: array, items: { $ref: "#/components/schemas/ComplianceAlert" } }
+            stt_metrics:
+              type: object
+              properties:
+                partial_latency_p50_ms: { type: [integer, "null"] }
+                final_latency_p50_ms: { type: [integer, "null"] }
+                wer: { type: [number, "null"] }
+    MissellingPattern:
+      type: object
+      required: [code, name_ru, name_en, is_active]
+      properties:
+        code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee] }
+        name_ru: { type: string }
+        name_en: { type: string }
+        description_ru: { type: string }
+        examples: { type: array, items: { type: string } }
+        counter_examples: { type: array, items: { type: string } }
+        keywords: { type: array, items: { type: string } }
+        weight: { type: number }
+        is_active: { type: boolean }
+    ComplianceEmployeeStats:
+      type: object
+      properties:
+        employee_id: { type: integer }
+        display_name: { type: string }
+        branch_code: { type: string }
+        desk_no: { type: integer }
+        sessions: { type: integer }
+        triggers_confirmed: { type: integer }
+        triggers_dismissed: { type: integer }
+        alerts: { type: integer }
+        false_alerts: { type: integer }
+        trigger_latency_p50_ms: { type: [number, "null"] }
+    SttProvider:
+      type: object
+      properties:
+        code: { type: string, enum: [vosk, browser, salutespeech, openai_compatible_audio] }
+        label_ru: { type: string }
+        available: { type: boolean }
+        is_default: { type: boolean }
+        offline: { type: boolean }
+        streaming: { type: boolean }
+        channels: { type: integer, enum: [1, 2] }
+        model: { type: [string, "null"] }
+        external_service: { type: boolean, description: "true = аудио уходит внешнему сервису (бейдж «внешний STT»)" }
+        note_ru: { type: [string, "null"] }
+    Sentiment: { type: string, enum: [positive, neutral, negative], description: "[ДТЗ FR-2.1] трёхклассная тональность" }
+    Severity: { type: string, enum: [low, medium, high, critical], description: "[ДТЗ FR-2.3] problem_summary.severity" }
+    RouterAction: { type: string, enum: [route, escalate, request_clarification, none], description: "[ДТЗ FR-3.1]" }
+    RoutingStatus: { type: string, enum: [pending, routed, escalated, clarification, rejected] }
+    EscalationRole: { type: string, enum: [cx_lead, branch_manager] }
+    EscalationStatus: { type: string, enum: [open, acknowledged, resolved, dismissed] }
+    TranscriptKind: { type: string, enum: [branch_retail, contact_center_call, contact_center_chat] }
+    Zone: { type: string, enum: [green, yellow, red] }
+    ProblemSummary:
+      type: object
+      required: [problem, severity, suggested_team]
+      properties:
+        problem: { type: string, maxLength: 300, description: "≤ 2 предложений" }
+        severity: { $ref: "#/components/schemas/Severity" }
+        suggested_team: { type: string }
+    Geo:
+      type: object
+      properties:
+        region_code: { type: [string, "null"] }
+        city_id: { type: [integer, "null"] }
+        lat: { type: [number, "null"] }
+        lon: { type: [number, "null"] }
+        source: { type: string, enum: [client_profile, message, contact, ip_mock, none] }
+    IngestResult:
+      type: object
+      required: [external_id, status]
+      properties:
+        external_id: { type: string }
+        status: { type: string, enum: [accepted, duplicate, rejected] }
+        signal_id: { type: [integer, "null"] }
+        error: { type: [string, "null"] }
+    TranscriptBrief:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string, description: "TR-000003" }
+        kind: { $ref: "#/components/schemas/TranscriptKind" }
+        source: { type: string, enum: [api, file, import, scenario] }
+        format: { type: string, enum: [json, txt] }
+        filename: { type: [string, "null"] }
+        branch_code: { type: [string, "null"] }
+        employee_public_id: { type: [string, "null"] }
+        client_id: { type: [integer, "null"] }
+        turns_count: { type: integer }
+        analyses: { type: array, items: { type: string, enum: [client_signal, employee_quality] } }
+        status: { type: string, enum: [received, analyzing, done, failed] }
+        signal_id: { type: [integer, "null"] }
+        audio_session_id: { type: [integer, "null"] }
+        findings_count: { type: [integer, "null"] }
+        received_at: { type: string, format: date-time }
+        analyzed_at: { type: [string, "null"], format: date-time }
+    TranscriptDetail:
+      allOf:
+        - { $ref: "#/components/schemas/TranscriptBrief" }
+        - type: object
+          properties:
+            deal_product: { type: [string, "null"] }
+            started_at: { type: [string, "null"], format: date-time }
+            geo: { anyOf: [{ $ref: "#/components/schemas/Geo" }, { type: "null" }] }
+            turns: { type: array, items: { type: object, properties: { seq: { type: integer }, speaker: { type: string, enum: [employee, client] }, text: { type: string }, t0_ms: { type: [integer, "null"] }, t1_ms: { type: [integer, "null"] }, findings: { type: array, items: { type: object, properties: { pattern_code: { type: string }, family: { type: string }, confidence: { type: number } } } } } } }
+            report: { anyOf: [{ $ref: "#/components/schemas/TranscriptReport" }, { type: "null" }] }
+            signal: { anyOf: [{ $ref: "#/components/schemas/Signal" }, { type: "null" }] }
+            error: { type: [string, "null"] }
+    TranscriptReport:
+      description: "Схема contracts/events/compliance/transcript_report.schema.json плюс служебные поля"
+      allOf:
+        - { $ref: "../events/compliance/transcript_report.schema.json" }
+        - type: object
+          properties:
+            transcript_id: { type: integer }
+            audio_session_id: { type: integer }
+            employee_public_id: { type: [string, "null"] }
+            branch_code: { type: [string, "null"] }
+            alerts: { type: array, items: { $ref: "#/components/schemas/ComplianceAlert" } }
+            latency_ms: { type: integer }
+            llm_source: { type: string, enum: [live, replay, mock] }
+    IngestSource:
+      type: object
+      properties:
+        code: { type: string }
+        kind: { type: string, enum: [rest, polling, file] }
+        channel_code: { type: string }
+        config: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+        interval_s: { type: integer }
+        last_polled_at: { type: [string, "null"], format: date-time }
+        cursor: { type: [string, "null"] }
+        is_external: { type: boolean }
+        stats: { type: object, properties: { polls: { type: integer }, accepted: { type: integer }, duplicates: { type: integer }, rejected: { type: integer }, last_error: { type: [string, "null"] } } }
+    IngestSourceUpdate:
+      type: object
+      properties:
+        kind: { type: string, enum: [rest, polling, file] }
+        channel_code: { type: string }
+        config: { type: object, additionalProperties: true }
+        enabled: { type: boolean }
+        interval_s: { type: integer, minimum: 5 }
+    Ticket:
+      type: object
+      properties:
+        ticket_id: { type: string, description: "= incidents.public_id" }
+        incident_id: { type: integer }
+        department: { type: string }
+        priority: { type: integer }
+        summary: { type: string }
+        severity: { anyOf: [{ $ref: "#/components/schemas/Severity" }, { type: "null" }] }
+        status: { type: string, enum: [open, in_progress, resolved, closed, rejected] }
+        incident_status: { $ref: "#/components/schemas/IncidentStatus" }
+        routing_status: { $ref: "#/components/schemas/RoutingStatus" }
+        channel: { type: [string, "null"] }
+        sentiment: { anyOf: [{ $ref: "#/components/schemas/Sentiment" }, { type: "null" }] }
+        client_segment: { type: [string, "null"] }
+        region_code: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        escalated: { type: boolean }
+        agent_run_id: { type: [integer, "null"] }
+    TicketDetail:
+      allOf:
+        - { $ref: "#/components/schemas/Ticket" }
+        - type: object
+          properties:
+            incident: { $ref: "#/components/schemas/IncidentBrief" }
+            escalations: { type: array, items: { $ref: "#/components/schemas/Escalation" } }
+            decision_chain: { anyOf: [{ $ref: "../events/agent/decision_chain.schema.json" }, { type: "null" }] }
+    Escalation:
+      type: object
+      properties:
+        id: { type: integer }
+        public_id: { type: string, description: "ESC-000007" }
+        incident_id: { type: [integer, "null"] }
+        ticket_id: { type: [string, "null"] }
+        signal_id: { type: [integer, "null"] }
+        reason: { type: string }
+        severity: { $ref: "#/components/schemas/Severity" }
+        to_role: { $ref: "#/components/schemas/EscalationRole" }
+        status: { $ref: "#/components/schemas/EscalationStatus" }
+        created_by: { type: string, enum: [agent, human, compliance] }
+        agent_run_id: { type: [integer, "null"] }
+        acknowledged_by: { type: [string, "null"] }
+        acknowledged_at: { type: [string, "null"], format: date-time }
+        resolution_ru: { type: [string, "null"] }
+        created_sim: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    EscalationDetail:
+      allOf:
+        - { $ref: "#/components/schemas/Escalation" }
+        - type: object
+          properties:
+            signal: { anyOf: [{ $ref: "#/components/schemas/Signal" }, { type: "null" }] }
+            ticket: { anyOf: [{ $ref: "#/components/schemas/Ticket" }, { type: "null" }] }
+            decision_chain: { anyOf: [{ $ref: "../events/agent/decision_chain.schema.json" }, { type: "null" }] }
+    ServiceScript:
+      type: object
+      properties:
+        code: { type: string }
+        kind: { type: string, enum: [retail_service, retail_sales, contact_center] }
+        name_ru: { type: string }
+        version: { type: integer }
+        is_active: { type: boolean }
+        steps: { type: array, items: { type: object, properties: { code: { type: string }, name_ru: { type: string }, required: { type: boolean }, markers: { type: array, items: { type: string } }, forbidden_phrases: { type: array, items: { type: string } } } } }
+    MapZoneThresholds:
+      type: object
+      properties:
+        yellow: { type: number }
+        red: { type: number }
+        copilot_weight: { type: number }
+        window_sim_hours: { type: integer }
+    MapZone:
+      type: object
+      properties:
+        region_code: { type: string }
+        zone: { $ref: "#/components/schemas/Zone" }
+        zone_index: { type: number }
+        negativity_index: { type: number }
+        copilot_index: { type: number }
+        critical_count: { type: integer }
+        signals_total: { type: integer }
+        computed_at: { type: string, format: date-time }
+    SentimentBenchReport:
+      type: object
+      properties:
+        dataset: { type: string, example: sentiment_v1 }
+        size: { type: integer }
+        run_at: { type: string, format: date-time }
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              provider: { type: string }
+              model: { type: string }
+              accuracy: { type: number }
+              macro_f1: { type: number }
+              confusion: { type: object, additionalProperties: { type: object, additionalProperties: { type: integer } } }
+              threshold_agreement: { type: number, description: "Доля совпадений sentiment с порогами negativity" }
+              passed: { type: boolean, description: "accuracy ≥ 0.80" }
+    DemoStatus:
+      type: object
+      properties:
+        online: { type: boolean }
+        llm_mode: { type: string, enum: [live, replay, mock] }
+        stt_mode: { type: string, enum: [mic, file, transcript] }
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              component: { type: string, enum: [llm, stt, telegram] }
+              name: { type: string }
+              healthy: { type: boolean }
+              latency_ms: { type: [integer, "null"] }
+              detail: { type: [string, "null"] }
+        recording_cassettes: { type: boolean }
+        current_run: { anyOf: [{ $ref: "#/components/schemas/SimRun" }, { type: "null" }] }
+        badge_ru: { type: [string, "null"], description: "Текст тихого бейджа в футере, например «офлайн-кассета от 20.10»" }
+    DemoAsset:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [audio, transcript, post, cassette] }
+        scenario_id: { type: [string, "null"] }
+        title_ru: { type: string }
+        path: { type: string }
+        checksum: { type: string }
+        duration_ms: { type: [integer, "null"] }
+        has_reference: { type: boolean }
+    CassetteSummary:
+      type: object
+      properties:
+        scenario_id: { type: [string, "null"] }
+        provider: { type: string }
+        model: { type: string }
+        prompt_version: { type: [string, "null"] }
+        entries: { type: integer }
+        recorded_at: { type: string, format: date-time }
+        stale: { type: boolean, description: "true, если версия промпта изменилась после записи" }

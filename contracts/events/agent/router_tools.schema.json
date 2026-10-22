@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/router_tools.schema.json",
+  "title": "Сигнатуры роутер-инструментов (ДТЗ FR-3.2–3.4, ТЗ 9.2): аргументы и результаты фасадов над внутренними инструментами",
+  "$defs": {
+    "route_to_department": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "department",
+        "priority",
+        "summary"
+      ],
+      "properties": {
+        "department": {
+          "$ref": "../common.schema.json#/$defs/team",
+          "description": "Код команды; синонимы «департамента» разрешаются по справочнику teams"
+        },
+        "priority": {
+          "$ref": "../common.schema.json#/$defs/priority"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 300
+        }
+      }
+    },
+    "route_to_department_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ticket_id",
+        "incident_id",
+        "linked"
+      ],
+      "properties": {
+        "ticket_id": {
+          "type": "string",
+          "pattern": "^INC-\\d{6}$"
+        },
+        "incident_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "linked": {
+          "type": "boolean",
+          "description": "true = существующий инцидент по дедупликации"
+        },
+        "department": {
+          "$ref": "../common.schema.json#/$defs/team"
+        }
+      }
+    },
+    "notify_customer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "message"
+      ],
+      "properties": {
+        "channel": {
+          "$ref": "../common.schema.json#/$defs/channel"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        }
+      }
+    },
+    "notify_customer_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notification_id",
+        "delivery"
+      ],
+      "properties": {
+        "notification_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "delivery": {
+          "type": "string",
+          "enum": [
+            "emulated",
+            "telegram",
+            "logged"
+          ]
+        }
+      }
+    },
+    "escalate_to_manager": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "severity"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "severity": {
+          "$ref": "../common.schema.json#/$defs/severity"
+        },
+        "to_role": {
+          "$ref": "../common.schema.json#/$defs/escalation_role",
+          "default": "cx_lead"
+        }
+      }
+    },
+    "escalate_to_manager_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "escalation_id",
+        "public_id"
+      ],
+      "properties": {
+        "escalation_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "public_id": {
+          "type": "string",
+          "pattern": "^ESC-\\d{6}$"
+        },
+        "hitl_item_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "request_clarification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "question",
+        "channel"
+      ],
+      "properties": {
+        "question": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 400
+        },
+        "channel": {
+          "$ref": "../common.schema.json#/$defs/channel"
+        }
+      }
+    },
+    "request_clarification_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notification_id",
+        "followup_at_sim"
+      ],
+      "properties": {
+        "notification_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "followup_at_sim": {
+          "$ref": "../common.schema.json#/$defs/sim_time"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tool",
+    "args"
+  ],
+  "properties": {
+    "tool": {
+      "type": "string",
+      "enum": [
+        "route_to_department",
+        "notify_customer",
+        "escalate_to_manager",
+        "request_clarification"
+      ]
+    },
+    "args": {
+      "type": "object"
+    },
+    "result": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "tool": "route_to_department",
+      "args": {
+        "department": "team_debit",
+        "priority": 2,
+        "summary": "Повторное списание комиссии за обслуживание карты; клиент угрожает уходом."
+      },
+      "result": {
+        "ticket_id": "INC-000412",
+        "incident_id": 412,
+        "linked": false,
+        "department": "team_debit"
+      }
+    },
+    {
+      "tool": "escalate_to_manager",
+      "args": {
+        "reason": "повторная жалоба с угрозой ухода",
+        "severity": "critical",
+        "to_role": "cx_lead"
+      },
+      "result": {
+        "escalation_id": 7,
+        "public_id": "ESC-000007",
+        "hitl_item_id": 91
+      }
+    }
+  ]
+}

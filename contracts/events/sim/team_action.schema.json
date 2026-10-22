@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/team_action.schema.json",
+  "title": "team.* — действие эмулируемой команды по инциденту",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "action_id",
+    "incident_id",
+    "team",
+    "action",
+    "action_sim"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "team.take",
+        "team.clarify",
+        "team.rca",
+        "team.fix_decision",
+        "team.progress_report",
+        "team.release",
+        "team.verify",
+        "team.close",
+        "team.reassign",
+        "team.escalate_ack"
+      ]
+    },
+    "action_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "incident_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "team": {
+      "$ref": "../common.schema.json#/$defs/team"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "take",
+        "clarify",
+        "rca",
+        "fix_decision",
+        "progress_report",
+        "release",
+        "verify",
+        "close",
+        "reassign",
+        "escalate_ack"
+      ]
+    },
+    "artifact_id": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "incident_artifacts.id, если действие породило документ"
+    },
+    "artifact_kind": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "rca",
+            "fix_decision",
+            "progress_report",
+            "release_note",
+            "verification_report"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "report_day": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Для progress_report: контрольный день (3/6/9)"
+    },
+    "on_time": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "clarify: {question}; release: {version, hotfix}; reassign: {to_team}"
+    },
+    "action_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

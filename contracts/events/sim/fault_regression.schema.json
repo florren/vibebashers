@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/fault_regression.schema.json",
+  "title": "fault.regression — «починили одно, сломали рядом»: новый сбой, вызванный релизом фикса",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "fault_id",
+    "caused_by_incident_id",
+    "release_action_id",
+    "system",
+    "error_code",
+    "started_sim"
+  ],
+  "properties": {
+    "event_type": {
+      "const": "fault.regression"
+    },
+    "fault_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "caused_by_incident_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "release_action_id": {
+      "$ref": "../common.schema.json#/$defs/id",
+      "description": "team_actions.id релиза"
+    },
+    "origin_system": {
+      "$ref": "../common.schema.json#/$defs/system"
+    },
+    "system": {
+      "$ref": "../common.schema.json#/$defs/system",
+      "description": "Смежная система, где проявилась регрессия"
+    },
+    "error_code": {
+      "$ref": "../common.schema.json#/$defs/error_code"
+    },
+    "product": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/product"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "delay_min": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Через сколько сим-минут после релиза"
+    },
+    "impact_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "started_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

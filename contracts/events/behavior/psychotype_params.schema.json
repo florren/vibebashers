@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/behavior/psychotype_params.schema.json",
+  "title": "Параметры психотипа (psychotypes.params), ТЗ 4.5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "p_complain",
+    "complain_delay_min",
+    "patience_days",
+    "care_sensitivity",
+    "repeat_prob",
+    "channel_weights",
+    "gift_elasticity",
+    "base_churn_hazard",
+    "thank_you_prob",
+    "tone_default",
+    "escalation_prob",
+    "silent_decline_prob"
+  ],
+  "properties": {
+    "p_complain": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вероятность жалобы при попадании под сбой"
+    },
+    "complain_delay_min": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "[мин, макс] задержка жалобы, сим-минуты"
+    },
+    "patience_days": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "[мин, макс] терпение до churn_intent/ухода, рабочие дни"
+    },
+    "care_sensitivity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Насколько care_score снижает hazard"
+    },
+    "care_weights": {
+      "type": "object",
+      "description": "Веса компонентов care_score (сумма 1)",
+      "properties": {
+        "proactive": {
+          "type": "number"
+        },
+        "speed": {
+          "type": "number"
+        },
+        "sla": {
+          "type": "number"
+        },
+        "gift_fit": {
+          "type": "number"
+        },
+        "tone": {
+          "type": "number"
+        },
+        "explanation": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repeat_prob": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вероятность повторной жалобы при отсутствии ответа в срок первого ответа"
+    },
+    "escalation_prob": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вероятность смены канала/тона при повторе"
+    },
+    "channel_weights": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      },
+      "propertyNames": {
+        "enum": [
+          "social",
+          "call",
+          "chat",
+          "email",
+          "branch",
+          "landing",
+          "telegram_bot",
+          "proactive"
+        ]
+      }
+    },
+    "gift_elasticity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вклад подарка в care_score (bonus_hunter высокий, demanding низкий)"
+    },
+    "privilege_elasticity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вклад привилегий партнёров (status_oriented высокий)"
+    },
+    "base_churn_hazard": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Базовая склонность к уходу за один sla.tick в состоянии waiting/churn_intent"
+    },
+    "silent_decline_prob": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Вероятность не жаловаться, а снизить активность (silent_churner ≈ 0.8)"
+    },
+    "thank_you_prob": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "tone_default": {
+      "$ref": "../common.schema.json#/$defs/tone"
+    },
+    "tone_on_repeat": {
+      "$ref": "../common.schema.json#/$defs/tone"
+    },
+    "satisfaction_bias": {
+      "type": "number",
+      "minimum": -0.5,
+      "maximum": 0.5,
+      "description": "Смещение оценки удовлетворённости двойника"
+    }
+  },
+  "examples": [
+    {
+      "p_complain": 0.1,
+      "complain_delay_min": [
+        0,
+        0
+      ],
+      "patience_days": [
+        5,
+        10
+      ],
+      "care_sensitivity": 0.9,
+      "care_weights": {
+        "proactive": 0.6,
+        "speed": 0.1,
+        "sla": 0.1,
+        "gift_fit": 0.1,
+        "tone": 0.05,
+        "explanation": 0.05
+      },
+      "repeat_prob": 0.05,
+      "escalation_prob": 0.05,
+      "channel_weights": {
+        "chat": 1
+      },
+      "gift_elasticity": 0.3,
+      "privilege_elasticity": 0.1,
+      "base_churn_hazard": 0.08,
+      "silent_decline_prob": 0.8,
+      "thank_you_prob": 0.1,
+      "tone_default": "neutral",
+      "tone_on_repeat": "neutral",
+      "satisfaction_bias": 0
+    }
+  ]
+}

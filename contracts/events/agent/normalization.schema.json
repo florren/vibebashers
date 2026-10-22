@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/normalization.schema.json",
+  "title": "Выход узла normalize (structured output быстрой модели; ТЗ 7, BRD FR 1.2) — хранится в agent_steps.output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "negativity",
+    "intents",
+    "entities",
+    "contacts_hint",
+    "language",
+    "summary_ru",
+    "confidence",
+    "sentiment",
+    "hidden_negativity"
+  ],
+  "properties": {
+    "negativity": {
+      "$ref": "../common.schema.json#/$defs/percent",
+      "description": "0 — благодарность, 50 — нейтральная претензия, ≥ 80 — агрессия/угроза ухода"
+    },
+    "intents": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/intent"
+      }
+    },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "amount_rub": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "product": {
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/product"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operation_hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "qr_payment",
+            "card_payment",
+            "transfer",
+            "withdrawal",
+            "deposit",
+            "loan_payment",
+            "notification",
+            "login",
+            null
+          ]
+        },
+        "date_hint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Как написал клиент: «вчера», «3 октября»"
+        },
+        "error_text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 300
+        },
+        "promo_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "merchant_hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "contacts_hint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nickname": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^@?[A-Za-z0-9_\\.]{3,32}$"
+        },
+        "masked_phone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Как в тексте: «+7 9** *** 12-34»"
+        },
+        "masked_card_last4": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\d{4}$"
+        },
+        "city": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "language": {
+      "type": "string",
+      "default": "ru"
+    },
+    "summary_ru": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "confidence": {
+      "$ref": "../common.schema.json#/$defs/confidence"
+    },
+    "sentiment": {
+      "$ref": "../common.schema.json#/$defs/sentiment",
+      "description": "[ДТЗ FR-2.1] прямой вывод модели; сервис сверяет с порогами negativity"
+    },
+    "hidden_negativity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sarcasm",
+        "passive_aggression",
+        "churn_threat"
+      ],
+      "description": "[ДТЗ FR-2.2] скрытый негатив по few-shot промпту hidden_negativity.md",
+      "properties": {
+        "sarcasm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "present",
+            "confidence"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "$ref": "../common.schema.json#/$defs/confidence"
+            },
+            "evidence_ru": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 300,
+              "description": "Дословная подстрока текста"
+            }
+          }
+        },
+        "passive_aggression": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "present",
+            "confidence"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "$ref": "../common.schema.json#/$defs/confidence"
+            },
+            "evidence_ru": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 300,
+              "description": "Дословная подстрока текста"
+            }
+          }
+        },
+        "churn_threat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "present",
+            "confidence"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "$ref": "../common.schema.json#/$defs/confidence"
+            },
+            "evidence_ru": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 300,
+              "description": "Дословная подстрока текста"
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "negativity": 87,
+      "intents": [
+        "refund_request",
+        "churn_threat"
+      ],
+      "entities": {
+        "amount_rub": 450,
+        "product": "debit_card",
+        "operation_hint": "qr_payment",
+        "date_hint": "сегодня",
+        "error_text": null,
+        "promo_code": null,
+        "merchant_hint": "кафе"
+      },
+      "contacts_hint": {
+        "nickname": "@ivan_v",
+        "masked_phone": null,
+        "masked_card_last4": "4512",
+        "city": "Воронеж",
+        "name": null
+      },
+      "language": "ru",
+      "summary_ru": "Списана комиссия 450 ₽ за оплату по QR, угрожает закрыть счёт",
+      "confidence": 0.91,
+      "sentiment": "negative",
+      "hidden_negativity": {
+        "sarcasm": {
+          "present": false,
+          "confidence": 0.9,
+          "evidence_ru": null
+        },
+        "passive_aggression": {
+          "present": false,
+          "confidence": 0.85,
+          "evidence_ru": null
+        },
+        "churn_threat": {
+          "present": true,
+          "confidence": 0.93,
+          "evidence_ru": "Ещё раз — и закрою счёт"
+        }
+      }
+    }
+  ]
+}

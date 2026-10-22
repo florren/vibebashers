@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/abs.schema.json",
+  "title": "abs.fee_charged | abs.refund_posted | abs.balance_changed — проводки Mock-АБС (ТЗ 3.4, 21.4)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "account_id",
+    "client_id",
+    "entry_id",
+    "kind",
+    "amount_rub",
+    "balance_after_rub",
+    "posted_sim"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "abs.fee_charged",
+        "abs.refund_posted",
+        "abs.balance_changed"
+      ]
+    },
+    "account_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "client_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "entry_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "operation_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "kind": {
+      "$ref": "../common.schema.json#/$defs/ledger_kind"
+    },
+    "amount_rub": {
+      "type": "number",
+      "minimum": 0
+    },
+    "balance_after_rub": {
+      "type": "number"
+    },
+    "refund_of_entry_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "rule_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent_run_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "created_by": {
+      "type": "string",
+      "enum": [
+        "sim",
+        "agent",
+        "human",
+        "scenario"
+      ]
+    },
+    "posted_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  },
+  "examples": [
+    {
+      "event_type": "abs.refund_posted",
+      "account_id": 3301,
+      "client_id": 1042,
+      "entry_id": 503,
+      "operation_id": 88123,
+      "kind": "refund",
+      "amount_rub": 450,
+      "balance_after_rub": 12840.5,
+      "refund_of_entry_id": 502,
+      "rule_code": "RULE-QR-FEE-001",
+      "agent_run_id": 9912,
+      "created_by": "agent",
+      "posted_sim": "2026-10-07T11:30:06Z"
+    }
+  ]
+}

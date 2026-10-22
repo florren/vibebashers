@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/zone.schema.json",
+  "title": "zone.changed — смена зоны субъекта на карте (ТЗ 12.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "region_code",
+    "zone",
+    "previous_zone",
+    "zone_index",
+    "negativity_index",
+    "copilot_index",
+    "critical_count"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "zone.changed"
+    },
+    "region_code": {
+      "type": "string"
+    },
+    "zone": {
+      "$ref": "../common.schema.json#/$defs/zone"
+    },
+    "previous_zone": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/zone"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zone_index": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "negativity_index": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "copilot_index": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "critical_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "trigger": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "signal",
+        "incident",
+        "compliance_alert",
+        "recompute",
+        null
+      ]
+    }
+  },
+  "examples": [
+    {
+      "event_type": "zone.changed",
+      "region_code": "RU-SAM",
+      "zone": "red",
+      "previous_zone": "yellow",
+      "zone_index": 0.62,
+      "negativity_index": 0.42,
+      "copilot_index": 0.4,
+      "critical_count": 1,
+      "trigger": "compliance_alert"
+    }
+  ]
+}

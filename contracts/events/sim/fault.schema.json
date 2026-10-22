@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/fault.schema.json",
+  "title": "fault.started | fault.resolved | fault.escalated — сбой подсистемы",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "fault_id",
+    "system",
+    "error_code",
+    "started_sim"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "fault.started",
+        "fault.resolved",
+        "fault.escalated"
+      ]
+    },
+    "fault_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "system": {
+      "$ref": "../common.schema.json#/$defs/system"
+    },
+    "error_code": {
+      "$ref": "../common.schema.json#/$defs/error_code"
+    },
+    "product": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/product"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "severity": {
+      "$ref": "../common.schema.json#/$defs/criticality"
+    },
+    "region_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Пусто = вся страна"
+    },
+    "impact_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Затронуто операций на момент события"
+    },
+    "affected_clients": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "affected_client_ids_sample": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "integer"
+      },
+      "description": "Выборка для проактивной ветки агента; полный список — запросом к БД"
+    },
+    "expected_duration_min": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "started_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    },
+    "resolved_sim": {
+      "anyOf": [
+        {
+          "$ref": "../common.schema.json#/$defs/sim_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "caused_by_incident_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  }
+}

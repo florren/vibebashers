@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/behavior/client_event.schema.json",
+  "title": "client.* — события модели поведения клиентов (ТЗ 4.5)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "client_id",
+    "psychotype",
+    "from_state",
+    "to_state",
+    "trigger",
+    "sim_time"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "client.affected",
+        "client.state_changed",
+        "client.reaction",
+        "client.churn_intent",
+        "client.activity_drop",
+        "client.retained",
+        "client.account_closure"
+      ]
+    },
+    "client_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "segment": {
+      "$ref": "../common.schema.json#/$defs/segment"
+    },
+    "psychotype": {
+      "$ref": "../common.schema.json#/$defs/psychotype"
+    },
+    "from_state": {
+      "$ref": "../common.schema.json#/$defs/client_state"
+    },
+    "to_state": {
+      "$ref": "../common.schema.json#/$defs/client_state"
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "fault",
+        "signal_sent",
+        "agent_reply",
+        "proactive_notice",
+        "sla_breach",
+        "progress_update",
+        "gift",
+        "timer",
+        "tone_violation",
+        "closure",
+        "scenario"
+      ]
+    },
+    "incident_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "notification_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "care_score": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "hazard": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "reaction": {
+      "anyOf": [
+        {
+          "$ref": "../agent/client_twin_reaction.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Для client.reaction — результат двойника или параметрической модели"
+    },
+    "activity_ratio": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Для client.activity_drop: текущая активность / baseline"
+    },
+    "churn": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Для client.account_closure",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "related_incident_ids",
+        "days_after_incident"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "unresolved_incident",
+            "sla_breach",
+            "repeated_fault",
+            "poor_communication",
+            "silent_decline",
+            "competitor"
+          ]
+        },
+        "related_incident_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "offered": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "days_after_incident": {
+          "type": "number"
+        },
+        "closure_incident_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "generated_by": {
+      "type": "string",
+      "enum": [
+        "param",
+        "llm",
+        "mock",
+        "scenario"
+      ]
+    },
+    "sim_time": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  }
+}

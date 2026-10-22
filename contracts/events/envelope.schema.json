@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/envelope.schema.json",
+  "title": "Конверт события симулятора (строка sim_events и сообщение шины LISTEN/NOTIFY 'sim_events')",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "event_type",
+    "sim_time",
+    "real_time",
+    "correlation_id",
+    "payload"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "run_id": {
+      "$ref": "common.schema.json#/$defs/id",
+      "description": "Запуск эмуляции (sim_runs.id), ТЗ 4.6 — обязателен для всех событий"
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^(op|fault|client_error|signal|team|sla|client|agent|review|abs|compliance|demo|ingest|escalation|zone)\\.[a-z_]+$",
+      "description": "Семейство.подтип. Полный перечень — в sim/*.schema.json и behavior/client_event.schema.json (enum event_type у каждого payload); v1.3: review.* (sim/review), abs.* (sim/abs), compliance.* (compliance/session_event), demo.failover (demo/failover); v1.4: ingest.* (ingest/ingest_event), escalation.* (sim/escalation), zone.changed (sim/zone)"
+    },
+    "sim_time": {
+      "$ref": "common.schema.json#/$defs/sim_time"
+    },
+    "real_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Единый для причинно-связанной цепочки: fault → op → signal → agent → team"
+    },
+    "causation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "correlation_id события-причины (если есть)"
+    },
+    "scenario_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^op\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/op.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "fault.regression"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/fault_regression.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^fault\\.(started|resolved|escalated)$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/fault.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^client_error\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/client_error.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^signal\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/signal.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^team\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/team_action.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^sla\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/sla.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^client\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "behavior/client_event.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^review\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/review.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^abs\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/abs.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^compliance\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "compliance/session_event.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^demo\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "demo/failover.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^ingest\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "ingest/ingest_event.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^escalation\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/escalation.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^zone\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/zone.schema.json"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,527 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/common.schema.json",
+  "title": "Общие перечисления CX Pulse Control v1.4 (единый источник для backend/frontend; синхронизировать с schema.sql)",
+  "$defs": {
+    "segment": {
+      "type": "string",
+      "enum": [
+        "mass",
+        "salary",
+        "social",
+        "youth",
+        "premium",
+        "vip",
+        "ultra_vip"
+      ]
+    },
+    "product": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "debit_card",
+        "credit",
+        "credit_card"
+      ]
+    },
+    "system": {
+      "type": "string",
+      "enum": [
+        "mobile_app",
+        "web_bank",
+        "contact_center",
+        "social_listening",
+        "processing",
+        "notification_gw",
+        "promo_engine",
+        "antifraud",
+        "sub_deposits",
+        "sub_lending",
+        "sub_debit",
+        "core_abs"
+      ]
+    },
+    "team": {
+      "type": "string",
+      "enum": [
+        "team_cx",
+        "team_deposits",
+        "team_lending",
+        "team_debit",
+        "team_front",
+        "team_processing",
+        "team_notifications",
+        "team_contact_center",
+        "team_promo",
+        "team_antifraud",
+        "team_compliance",
+        "team_branch_network"
+      ]
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "social",
+        "call",
+        "chat",
+        "email",
+        "branch",
+        "landing",
+        "telegram_bot",
+        "proactive",
+        "review_portal",
+        "voice_input",
+        "branch_audio"
+      ]
+    },
+    "signal_type": {
+      "type": "string",
+      "enum": [
+        "tech_fault",
+        "client_error",
+        "tariff_terms",
+        "service_quality",
+        "fraud_suspicion",
+        "legal_regulatory",
+        "info_request",
+        "gratitude",
+        "suggestion",
+        "churn"
+      ]
+    },
+    "flag": {
+      "type": "string",
+      "enum": [
+        "churn_intent",
+        "repeat",
+        "sarcasm",
+        "aggression",
+        "mass_impact",
+        "public",
+        "rule_confirmed",
+        "regulator_threat",
+        "passive_aggression",
+        "repeat_contact_7d"
+      ]
+    },
+    "complexity": {
+      "type": "string",
+      "enum": [
+        "instant",
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "criticality": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "psychotype": {
+      "type": "string",
+      "enum": [
+        "loyal_pragmatic",
+        "anxious",
+        "demanding_rational",
+        "public_emotional",
+        "silent_churner",
+        "bonus_hunter",
+        "novice",
+        "status_oriented"
+      ]
+    },
+    "client_state": {
+      "type": "string",
+      "enum": [
+        "calm",
+        "affected",
+        "complaining",
+        "waiting",
+        "satisfied",
+        "asks_again",
+        "escalates",
+        "churn_intent",
+        "retained",
+        "churned"
+      ]
+    },
+    "incident_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "classified",
+        "routed",
+        "in_progress",
+        "fix_proposed",
+        "fix_deployed",
+        "verifying",
+        "resolved",
+        "closed",
+        "awaiting_human",
+        "awaiting_client",
+        "escalated",
+        "duplicate",
+        "rejected"
+      ]
+    },
+    "tone": {
+      "type": "string",
+      "enum": [
+        "neutral",
+        "positive",
+        "irritated",
+        "angry",
+        "sarcastic",
+        "formal"
+      ]
+    },
+    "sim_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Симуляционное время (ISO 8601)"
+    },
+    "id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "error_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,6}(-[A-Z0-9]{2,12}){1,3}$",
+      "examples": [
+        "DEP-TIMEOUT-503",
+        "PROMO-RATE-MISMATCH",
+        "PROC-DOUBLE-DEBIT",
+        "NOTIF-DELAY",
+        "APP-LOGIN-FAIL"
+      ]
+    },
+    "incident_type": {
+      "type": "string",
+      "enum": [
+        "tech_fault",
+        "client_error",
+        "tariff_terms",
+        "service_quality",
+        "fraud_suspicion",
+        "legal_regulatory",
+        "info_request",
+        "suggestion",
+        "account_closure",
+        "proactive",
+        "fee_refund",
+        "misselling"
+      ]
+    },
+    "signal_origin": {
+      "type": "string",
+      "enum": [
+        "sim",
+        "scenario",
+        "jury",
+        "landing",
+        "telegram_bot",
+        "proactive",
+        "twin",
+        "review_portal",
+        "voice_input",
+        "api",
+        "transcript",
+        "polling"
+      ]
+    },
+    "sim_run_kind": {
+      "type": "string",
+      "enum": [
+        "baseline",
+        "free",
+        "scenario",
+        "live"
+      ]
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "churn_threat",
+        "refund_request",
+        "complaint",
+        "question",
+        "public_shaming",
+        "regulator_threat",
+        "gratitude"
+      ],
+      "description": "Намерения автора текста (ТЗ 7, BRD FR 1.2)"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "qr_sbp",
+        "card",
+        "transfer",
+        "cash",
+        "online"
+      ]
+    },
+    "ledger_kind": {
+      "type": "string",
+      "enum": [
+        "debit",
+        "credit",
+        "fee",
+        "refund",
+        "reversal"
+      ]
+    },
+    "rule_action": {
+      "type": "string",
+      "enum": [
+        "refund_fee",
+        "propose_hitl",
+        "notify_only",
+        "suppress_duplicates"
+      ]
+    },
+    "misselling_pattern": {
+      "type": "string",
+      "enum": [
+        "tie_in",
+        "substitution",
+        "concealment",
+        "pressure",
+        "guarantee",
+        "rudeness",
+        "script_violation",
+        "misinformation"
+      ],
+      "description": "Таксономия нарушений сотрудника: семейство misselling (tie_in, substitution, concealment, pressure, guarantee — ТЗ 22.4) и conduct (rudeness, script_violation, misinformation — ТЗ 22.8)"
+    },
+    "speaker": {
+      "type": "string",
+      "enum": [
+        "employee",
+        "client",
+        "unknown"
+      ]
+    },
+    "diarization_mode": {
+      "type": "string",
+      "enum": [
+        "stereo",
+        "manual",
+        "auto"
+      ]
+    },
+    "stt_provider": {
+      "type": "string",
+      "enum": [
+        "vosk",
+        "browser",
+        "salutespeech",
+        "openai_compatible_audio",
+        "none"
+      ]
+    },
+    "audio_source": {
+      "type": "string",
+      "enum": [
+        "mic",
+        "file",
+        "transcript"
+      ]
+    },
+    "trigger_status": {
+      "type": "string",
+      "enum": [
+        "preliminary",
+        "confirmed",
+        "dismissed"
+      ]
+    },
+    "llm_source": {
+      "type": "string",
+      "enum": [
+        "live",
+        "replay",
+        "mock"
+      ],
+      "description": "Откуда взят ответ модели: живой вызов, кассета replay, rule-based mock (ТЗ 5.2, 5.4)"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "review_portal",
+        "telegram_channel"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "percent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "sentiment": {
+      "type": "string",
+      "enum": [
+        "positive",
+        "neutral",
+        "negative"
+      ],
+      "description": "Трёхклассная тональность (ДТЗ FR-2.1); сверяется с порогами negativity ≤33 / 34–66 / ≥67"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL"
+    },
+    "router_action": {
+      "type": "string",
+      "enum": [
+        "route",
+        "escalate",
+        "request_clarification",
+        "none"
+      ],
+      "description": "Решение агента-маршрутизатора в терминах ДТЗ FR-3.1"
+    },
+    "routing_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "routed",
+        "escalated",
+        "clarification",
+        "rejected"
+      ]
+    },
+    "escalation_role": {
+      "type": "string",
+      "enum": [
+        "cx_lead",
+        "branch_manager"
+      ]
+    },
+    "escalation_status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "acknowledged",
+        "resolved",
+        "dismissed"
+      ]
+    },
+    "violation_family": {
+      "type": "string",
+      "enum": [
+        "misselling",
+        "conduct"
+      ]
+    },
+    "alert_policy": {
+      "type": "string",
+      "enum": [
+        "counter",
+        "immediate",
+        "report"
+      ]
+    },
+    "pacing": {
+      "type": "string",
+      "enum": [
+        "realtime",
+        "batch"
+      ]
+    },
+    "transcript_kind": {
+      "type": "string",
+      "enum": [
+        "branch_retail",
+        "contact_center_call",
+        "contact_center_chat"
+      ]
+    },
+    "ingest_source_kind": {
+      "type": "string",
+      "enum": [
+        "rest",
+        "polling",
+        "file"
+      ]
+    },
+    "geo_source": {
+      "type": "string",
+      "enum": [
+        "client_profile",
+        "message",
+        "contact",
+        "ip_mock",
+        "none"
+      ]
+    },
+    "zone": {
+      "type": "string",
+      "enum": [
+        "green",
+        "yellow",
+        "red"
+      ]
+    },
+    "geo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "region_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "city_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "lat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -180,
+          "maximum": 180
+        },
+        "source": {
+          "$ref": "#/$defs/geo_source"
+        }
+      },
+      "description": "Гео единой схемы сообщения (ТЗ 3.7)"
+    }
+  }
+}

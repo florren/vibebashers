@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/client_match.schema.json",
+  "title": "Результат match_client_by_hints (ТЗ 21.3): кандидаты с уверенностью",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidates",
+    "decision"
+  ],
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "client_id",
+          "confidence",
+          "matched_by"
+        ],
+        "properties": {
+          "client_id": {
+            "$ref": "../common.schema.json#/$defs/id"
+          },
+          "confidence": {
+            "$ref": "../common.schema.json#/$defs/confidence"
+          },
+          "matched_by": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "nickname",
+                "card_last4",
+                "masked_phone",
+                "city",
+                "product",
+                "telegram_chat_id",
+                "phone",
+                "email"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "identified",
+        "ambiguous",
+        "not_found"
+      ],
+      "description": "identified — один кандидат ≥ 0.8; ambiguous — уточняющий вопрос/HITL; not_found — неидентифицированный"
+    },
+    "threshold": {
+      "$ref": "../common.schema.json#/$defs/confidence",
+      "default": 0.8
+    }
+  },
+  "examples": [
+    {
+      "candidates": [
+        {
+          "client_id": 1042,
+          "confidence": 0.93,
+          "matched_by": [
+            "nickname",
+            "card_last4"
+          ]
+        }
+      ],
+      "decision": "identified",
+      "threshold": 0.8
+    }
+  ]
+}

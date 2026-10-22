@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/escalation.schema.json",
+  "title": "escalation.created | escalation.acknowledged | escalation.resolved | escalation.dismissed (ТЗ 9.7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "escalation_id",
+    "public_id",
+    "reason",
+    "severity",
+    "to_role",
+    "status",
+    "created_by"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "escalation.created",
+        "escalation.acknowledged",
+        "escalation.resolved",
+        "escalation.dismissed"
+      ]
+    },
+    "escalation_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "public_id": {
+      "type": "string"
+    },
+    "incident_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "severity": {
+      "$ref": "../common.schema.json#/$defs/severity"
+    },
+    "to_role": {
+      "$ref": "../common.schema.json#/$defs/escalation_role"
+    },
+    "status": {
+      "$ref": "../common.schema.json#/$defs/escalation_status"
+    },
+    "created_by": {
+      "type": "string",
+      "enum": [
+        "agent",
+        "human",
+        "compliance"
+      ]
+    },
+    "agent_run_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "acknowledged_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "resolution_ru": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_sim": {
+      "$ref": "../common.schema.json#/$defs/sim_time"
+    }
+  },
+  "examples": [
+    {
+      "event_type": "escalation.created",
+      "escalation_id": 7,
+      "public_id": "ESC-000007",
+      "incident_id": 412,
+      "signal_id": 5120,
+      "reason": "повторная жалоба с угрозой ухода",
+      "severity": "critical",
+      "to_role": "cx_lead",
+      "status": "open",
+      "created_by": "agent",
+      "agent_run_id": 9931,
+      "acknowledged_by": null,
+      "resolution_ru": null,
+      "created_sim": "2026-10-07T12:01:00Z"
+    }
+  ]
+}

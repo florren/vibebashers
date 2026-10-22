@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/compliance/session_event.schema.json",
+  "title": "compliance.session_started | compliance.utterance | compliance.trigger | compliance.alert | compliance.session_closed (ТЗ 22.5–22.6)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "session_id",
+    "employee_id",
+    "branch_code",
+    "desk_no"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "compliance.session_started",
+        "compliance.utterance",
+        "compliance.trigger",
+        "compliance.alert",
+        "compliance.session_closed",
+        "compliance.report_ready"
+      ]
+    },
+    "session_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "employee_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "employee_display_name": {
+      "type": "string"
+    },
+    "branch_code": {
+      "type": "string"
+    },
+    "desk_no": {
+      "type": "integer"
+    },
+    "client_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "deal_product": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source": {
+      "$ref": "../common.schema.json#/$defs/audio_source"
+    },
+    "stt_provider": {
+      "$ref": "../common.schema.json#/$defs/stt_provider"
+    },
+    "diarization_mode": {
+      "$ref": "../common.schema.json#/$defs/diarization_mode"
+    },
+    "utterance": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "utterance_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "speaker": {
+          "$ref": "../common.schema.json#/$defs/speaker"
+        },
+        "speaker_confidence": {
+          "$ref": "../common.schema.json#/$defs/confidence"
+        },
+        "text": {
+          "type": "string"
+        },
+        "t0_ms": {
+          "type": "integer"
+        },
+        "t1_ms": {
+          "type": "integer"
+        },
+        "is_final": {
+          "type": "boolean"
+        },
+        "latency_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "trigger": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "trigger_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "utterance_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "pattern_code": {
+          "$ref": "../common.schema.json#/$defs/misselling_pattern"
+        },
+        "confidence": {
+          "$ref": "../common.schema.json#/$defs/confidence"
+        },
+        "quote": {
+          "type": "string"
+        },
+        "detected_by": {
+          "type": "string",
+          "enum": [
+            "rules",
+            "llm",
+            "both"
+          ]
+        },
+        "status": {
+          "$ref": "../common.schema.json#/$defs/trigger_status"
+        },
+        "latency_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "family": {
+          "$ref": "../common.schema.json#/$defs/violation_family"
+        },
+        "recommendation_ru": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "trigger_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "alert_threshold": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "alert": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "alert_id": {
+          "$ref": "../common.schema.json#/$defs/id"
+        },
+        "incident_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ws",
+              "telegram"
+            ]
+          }
+        },
+        "summary_ru": {
+          "type": "string"
+        },
+        "quotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "latency_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "../common.schema.json#/$defs/alert_policy"
+        },
+        "recommendation_ru": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "live",
+        "alerted",
+        "closed"
+      ]
+    },
+    "pacing": {
+      "$ref": "../common.schema.json#/$defs/pacing"
+    },
+    "transcript_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "event_type": "compliance.alert",
+      "session_id": 12,
+      "employee_id": 7,
+      "employee_display_name": "Петров П. П.",
+      "branch_code": "VSP-0042",
+      "desk_no": 3,
+      "client_id": 2210,
+      "deal_product": "ИСЖ",
+      "source": "mic",
+      "stt_provider": "vosk",
+      "diarization_mode": "manual",
+      "utterance": null,
+      "trigger": {
+        "trigger_id": 31,
+        "utterance_id": 118,
+        "pattern_code": "concealment",
+        "confidence": 0.88,
+        "quote": "подпишите здесь, это формальность",
+        "detected_by": "both",
+        "status": "confirmed",
+        "latency_ms": 1420,
+        "family": "misselling",
+        "recommendation_ru": "Остановить сделку до разъяснения клиенту сути ИСЖ"
+      },
+      "trigger_count": 3,
+      "alert_threshold": 3,
+      "alert": {
+        "alert_id": 4,
+        "incident_id": 5120,
+        "channels": [
+          "ws",
+          "telegram"
+        ],
+        "summary_ru": "Стол 3 · Петров П. П. · 3 нарушения: жёсткая привязка, подмена понятий, утаивание",
+        "quotes": [
+          "без страховки вам вклад не одобрят",
+          "это как вклад, только лучше",
+          "подпишите здесь, это формальность"
+        ],
+        "latency_ms": 610,
+        "kind": "counter",
+        "recommendation_ru": "Подойти к столу 3, приостановить оформление, провести беседу с сотрудником; модуль «Этика продаж»"
+      },
+      "status": "alerted",
+      "pacing": "realtime",
+      "transcript_id": null
+    }
+  ]
+}

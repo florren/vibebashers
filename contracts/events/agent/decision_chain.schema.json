@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/decision_chain.schema.json",
+  "title": "Ответ GET /api/agent/runs/{id}/decision-chain (ДТЗ FR-3.5): цепочка «инструмент → аргументы → почему»",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_run_id",
+    "router_action",
+    "steps"
+  ],
+  "properties": {
+    "agent_run_id": {
+      "$ref": "../common.schema.json#/$defs/id"
+    },
+    "signal_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "ticket_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "router_action": {
+      "$ref": "../common.schema.json#/$defs/router_action"
+    },
+    "llm_source": {
+      "$ref": "../common.schema.json#/$defs/llm_source"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "node",
+          "why_ru"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "node": {
+            "type": "string"
+          },
+          "tool": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "args": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "С маскировкой ПДн"
+          },
+          "result_brief": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300
+          },
+          "why_ru": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "latency_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "wraps": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "agent_run_id": 9931,
+      "signal_id": 5120,
+      "ticket_id": "INC-000412",
+      "router_action": "escalate",
+      "llm_source": "live",
+      "steps": [
+        {
+          "step": 1,
+          "node": "normalize",
+          "tool": null,
+          "args": null,
+          "result_brief": "sentiment=negative, sarcasm=true, churn_threat=true",
+          "why_ru": "Формально вежливый текст с сарказмом и угрозой сменить банк",
+          "latency_ms": 1200,
+          "wraps": null
+        },
+        {
+          "step": 2,
+          "node": "decide",
+          "tool": "request_clarification",
+          "args": {
+            "question": "Уточните, пожалуйста, сумму списания и карту",
+            "channel": "social"
+          },
+          "result_brief": "ожидание ответа",
+          "why_ru": "Нет суммы и продукта — одно уточнение разрешено политикой",
+          "latency_ms": 600,
+          "wraps": [
+            "notify_client",
+            "schedule_followup"
+          ]
+        },
+        {
+          "step": 3,
+          "node": "decide",
+          "tool": "route_to_department",
+          "args": {
+            "department": "team_debit",
+            "priority": 2,
+            "summary": "Повторное списание комиссии…"
+          },
+          "result_brief": "INC-000412",
+          "why_ru": "Претензия к тарифу дебетовой карты, повтор за 14 дней",
+          "latency_ms": 450,
+          "wraps": [
+            "create_incident"
+          ]
+        },
+        {
+          "step": 4,
+          "node": "decide",
+          "tool": "escalate_to_manager",
+          "args": {
+            "reason": "повторная жалоба с угрозой ухода",
+            "severity": "critical"
+          },
+          "result_brief": "ESC-000007",
+          "why_ru": "Политика 9.3: повтор + угроза ухода при негативе ≥ 80",
+          "latency_ms": 300,
+          "wraps": [
+            "request_human_decision",
+            "notify_team"
+          ]
+        }
+      ]
+    }
+  ]
+}

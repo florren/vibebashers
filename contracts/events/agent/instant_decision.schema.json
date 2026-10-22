@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/instant_decision.schema.json",
+  "title": "Выход быстрого пути (один вызов основной модели: классификация + решение + тексты; ТЗ 21.4)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "classification",
+    "rule_codes",
+    "actions",
+    "public_reply_ru",
+    "client_notice_ru",
+    "rationale_ru",
+    "confidence"
+  ],
+  "properties": {
+    "classification": {
+      "$ref": "classification.schema.json"
+    },
+    "rule_codes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      },
+      "description": "Правила, подтверждающие действие; без них быстрый путь запрещён"
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tool",
+          "args"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": [
+              "refund_fee",
+              "create_incident",
+              "publish_public_reply",
+              "notify_client",
+              "create_task",
+              "find_affected_clients"
+            ]
+          },
+          "args": {
+            "type": "object"
+          }
+        }
+      },
+      "description": "Порядок исполнения: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)"
+    },
+    "public_reply_ru": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 700,
+      "description": "Без ПДн; извинение, факт возврата, приглашение в личный канал"
+    },
+    "client_notice_ru": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "gift": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "catalog_code": {
+          "type": "string"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "escalate_to_dm": {
+      "type": "boolean",
+      "default": false
+    },
+    "rationale_ru": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 800
+    },
+    "confidence": {
+      "$ref": "../common.schema.json#/$defs/confidence"
+    }
+  },
+  "examples": [
+    {
+      "classification": {
+        "signal_type": "tech_fault",
+        "secondary_types": [
+          "tariff_terms"
+        ],
+        "product": "debit_card",
+        "system": "processing",
+        "error_code": "PROC-QR-FEE-CHARGED",
+        "cause_hypothesis": "tech_fault",
+        "criticality": "medium",
+        "tone": "angry",
+        "flags": [
+          "churn_intent",
+          "public",
+          "rule_confirmed"
+        ],
+        "churn_risk": 78,
+        "negativity": 87,
+        "intents": [
+          "refund_request",
+          "churn_threat"
+        ],
+        "confidence": 0.9,
+        "summary_ru": "Ошибочная комиссия 450 ₽ за QR-оплату",
+        "rationale_ru": "Правило RULE-QR-FEE-001 подтвердило списание комиссии за оплату по СБП, которая по тарифу бесплатна; клиент публично угрожает уходом.",
+        "sentiment": "negative",
+        "problem_summary": {
+          "problem": "Клиенту ошибочно списана комиссия 450 ₽ за оплату по QR; клиент публично угрожает уходом.",
+          "severity": "high",
+          "suggested_team": "team_processing"
+        }
+      },
+      "rule_codes": [
+        "RULE-QR-FEE-001"
+      ],
+      "actions": [
+        {
+          "tool": "refund_fee",
+          "args": {
+            "operation_id": 88123,
+            "amount_rub": 450,
+            "rule_id": "RULE-QR-FEE-001"
+          }
+        },
+        {
+          "tool": "create_incident",
+          "args": {
+            "incident_type": "fee_refund",
+            "status": "resolved"
+          }
+        },
+        {
+          "tool": "publish_public_reply",
+          "args": {
+            "post_id": 17
+          }
+        },
+        {
+          "tool": "notify_client",
+          "args": {
+            "channel": "chat"
+          }
+        }
+      ],
+      "public_reply_ru": "Иван, простите за ошибку: комиссия за оплату по QR списана неправомерно, 450 ₽ уже вернули на карту. Напишите нам в чат приложения — проверим, всё ли в порядке.",
+      "client_notice_ru": "Мы вернули 450 ₽ комиссии за оплату по QR от сегодняшнего дня. Приносим извинения.",
+      "gift": {
+        "catalog_code": "bonus_points",
+        "points": 300
+      },
+      "escalate_to_dm": true,
+      "rationale_ru": "Сумма 450 ₽ ниже лимита автономии, идентификация 0,93, правило подтверждено — возврат выполняется без человека.",
+      "confidence": 0.9
+    }
+  ]
+}

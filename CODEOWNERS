@@ -1,0 +1,64 @@
+# CODEOWNERS — владение каталогами по слоям (docs/TEAM-SPLIT.md раздел 1).
+# Заменить @layer-* на реальные логины GitHub участников (владелец репозитория — @florren). При одном участнике — везде один логин.
+# Файл читает GitHub (запрос ревью владельцев) и scripts/check_owners.py (проверка границ слоя в CI, job owners).
+# Синтаксис: путь → владельцы. Более поздние строки имеют приоритет над ранними.
+# Проверка границ слоя в PR — python scripts/check_owners.py --base main (слой берётся из имени ветки feat/T-NNN-*).
+
+# L1 Базис
+*                                   @florren
+contracts/                          @florren
+backend/app/db/                     @florren
+backend/alembic/                    @florren
+backend/app/llm/                    @florren
+backend/app/replay/                 @florren
+backend/app/contracts/              @florren
+backend/app/i18n/                   @florren
+scripts/                            @florren
+install.sh                          @florren
+docker-compose.yml                  @florren
+Makefile                            @florren
+.github/                            @florren
+docs/                               @florren
+AGENTS.md                           @florren
+CLAUDE.md                           @florren
+.cursor/                            @florren
+CODEOWNERS                          @florren
+
+# L2 Симулятор и данные
+backend/app/sim/                    @florren
+backend/app/abs/                    @florren
+backend/app/rules/                  @florren
+backend/app/economics/              @florren
+scripts/seed/                       @florren
+data/                               @florren
+
+# L3 Агент и контуры
+backend/app/agent/                  @florren
+backend/app/ingest/                 @florren
+backend/app/tickets/                @florren
+backend/app/feed/                   @florren
+backend/app/stt/                    @florren
+backend/app/compliance/             @florren
+backend/app/demo/                   @florren
+backend/app/bench/                  @florren
+backend/app/realtime/               @florren
+backend/app/api/                    @florren
+tgbot/                              @florren
+data/bench/                         @florren
+data/cassettes/                     @florren
+
+# L4 Фронт
+frontend/                           @florren
+frontend/src/shared/i18n/           @florren
+
+# L5 Качество
+backend/tests/scenarios/            @florren
+backend/tests/e2e/                  @florren
+frontend/e2e/                       @florren
+data/scenarios/                     @florren
+
+# Общие (любой слой добавляет файлы; переписывать чужие нельзя — см. TEAM-SPLIT.md раздел 1)
+backend/tests/unit/                 @florren
+backend/tests/integration/          @florren
+frontend/src/shared/api/            @florren
+docs/tasks/                         @florren

@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/ingest/unified_message.schema.json",
+  "title": "Единая схема сообщения приёмного слоя (ДТЗ FR-1.3): канал, клиент, текст, время, гео. Все входы нормализуются к ней до создания signals",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "channel",
+    "external_id",
+    "client",
+    "text",
+    "timestamp",
+    "geo",
+    "origin"
+  ],
+  "properties": {
+    "channel": {
+      "$ref": "../common.schema.json#/$defs/channel"
+    },
+    "channel_subtype": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "external_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Идентификатор у источника; идемпотентность (source_code, external_id)"
+    },
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "client_id": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "contact_hints": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "phone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "email": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "email"
+            },
+            "nickname": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "card_last4": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^\\d{4}$"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "description": "Либо client_id, либо косвенные контакты для матчинга (ТЗ 21.3)"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Момент возникновения у источника (received_at ставит сервер)"
+    },
+    "geo": {
+      "$ref": "../common.schema.json#/$defs/geo"
+    },
+    "origin": {
+      "$ref": "../common.schema.json#/$defs/signal_origin"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "transcript",
+              "external_post",
+              "file"
+            ]
+          },
+          "ref": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Служебные поля источника (platform, reactions, thread_id, lang)"
+    }
+  },
+  "examples": [
+    {
+      "channel": "social",
+      "channel_subtype": "vk",
+      "external_id": "vk-991237",
+      "client": {
+        "client_id": null,
+        "contact_hints": {
+          "phone": null,
+          "email": null,
+          "nickname": "@olga_k",
+          "card_last4": null,
+          "name": null
+        }
+      },
+      "text": "Спасибо, что опять списали за обслуживание, очень приятно. Второй раз уже. Наверное, пора менять банк",
+      "timestamp": "2026-10-21T09:12:00+03:00",
+      "geo": {
+        "region_code": "RU-SAM",
+        "city_id": 63,
+        "lat": null,
+        "lon": null,
+        "source": "message"
+      },
+      "origin": "polling",
+      "attachments": [],
+      "meta": {
+        "platform": "vk",
+        "lang": "ru"
+      }
+    }
+  ]
+}
