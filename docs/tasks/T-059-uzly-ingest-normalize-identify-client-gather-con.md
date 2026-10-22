@@ -39,4 +39,4 @@ pytest backend/tests/unit/test_nodes_context.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`, `backend/app/agent/nodes.py`: ingest (status processing + NOTIFY signals), normalize (regex-подсказки сумма/карта/промо/операция + LLM normalization, пост-проверки тональности, запись signals.sentiment/lang), identify_client (client_id → профиль; иначе ник в social_handles → card_last4+регион; запись client_id в сигнал), gather_context (продукты/операции/сбои/связанные инциденты/похожие сигналы; hints по неуспешным операциям клиента; активные сбои без операции — только подсказка), check_rules (движок `app/rules/engine.py` по business_rules → rule_evaluations). Промпты: `app/agent/prompts/v1/{system,normalize,classify,decide}.md` с frontmatter (version, model_hints, output_schema); системное сообщение = system.md + промпт узла с контекстом, user = только текст клиента (так MockProvider и реальная модель видят одно и то же). Время: ~1 ч.

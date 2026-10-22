@@ -39,4 +39,4 @@ pytest backend/tests/unit/test_tools_read.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. `backend/app/agent/tools/base.py` — ToolContext (conn/run_id/agent_run_id/sim_time/llm_source), декоратор `@tool(name)`: каждая запись ToolCall валидируется по `contracts/events/agent/tool_call.schema.json`, попадает в agent_steps.tool_calls; `tools/read.py`: get_client_profile (сегмент, психотип, first_response_min, состояние, согласия, маскированные контакты), get_client_products, get_recent_operations (72 сим-ч, с fault_id), get_system_logs (активные сбои + system_logs), find_related_incidents (окно дедупа 4 сим-ч по error_code/системе/региону + открытые инциденты клиента), search_similar_signals (поиск по ключевым словам regex + история клиента 7/14 дней). **Отклонение:** без pg_trgm (расширения нет в БД) — похожесть по пересечению слов; достаточно для демо, trgm — опционально позже. Время: ~40 мин.

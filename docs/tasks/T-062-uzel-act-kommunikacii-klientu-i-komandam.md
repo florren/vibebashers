@@ -40,4 +40,4 @@ make scenario ID=deposit_promo_rate
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. Узел act (идемпотентный, по state.actions): инцидент create/link → эскалация → ответ клиенту (шаблон по сегменту/каналу; social/review_portal → public_reply + ЛС) → team_notice (+соисполнители) → задача gift (after_resolved, requires_hitl для партнёрских привилегий) → manual_review при delegate → followup → client_states. Статусы сигнала: answered/awaiting_client/linked/noise/closed. agent_runs.incident_id. Проверено вживую: QR-комиссия (fee_refund→team_processing), ultra_vip (HITL→accept→act), анонимный соцпост с сарказмом (public_reply_and_dm, team_debit+team_promo), благодарность (без инцидента, шаблон resolved). Время: ~40 мин.

@@ -40,4 +40,4 @@ make bench DATASET=lite_v1
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. Узел classify в `nodes.py` + промпт `prompts/v1/classify.md` (few-shot из human_decisions.use_as_fewshot, до 5). Пост-проверки (`_postcheck_classification`): сработавшее RULE-QR-FEE → tariff_terms/PROC-QR-FEE-CHARGED; неуспешная операция клиента с error_code → tech_fault; продукт↔система (PRODUCT_SYSTEMS); флаги repeat/churn_intent/sarcasm/passive_aggression/regulator_threat/public_shaming/mass_impact из контекста; tone согласован с sentiment; confidence ≤0.85 при исправлении типа; summary_ru ≠ тексту. Ответ модели обрезается по схеме (`prune`) и валидируется `agent/classification`. Запись signals.classification, status classified, NOTIFY signals.classified. Время: ~45 мин.

@@ -42,4 +42,4 @@ pytest backend/tests/unit/test_problem_summary.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b04-agent`. problem_summary {problem ≤2 предложений ≤300 символов (валидатор в коде: обрезка, маскирование ПДн), severity (critical только при основаниях: regulator_threat/legal/массовость/крупный fraud/churn у VIP, иначе понижается до high; и наоборот повышается), suggested_team (из справочника teams, иначе — по routing_rules)} заполняется в classify и пишется в incidents.problem_summary; выдаётся в IncidentBrief/Signal. Время: ~15 мин.
