@@ -66,7 +66,7 @@ jobs:
           if [ -f backend/alembic.ini ]; then
             pip install -q alembic sqlalchemy psycopg[binary]
             psql -q -c "drop schema public cascade; create schema public;"
-            (cd backend && DATABASE_URL=postgresql+psycopg://cx:cx@localhost:5432/cx_pulse alembic upgrade head && alembic downgrade 0002 && alembic upgrade head)
+            (cd backend && export DATABASE_URL=postgresql+psycopg://cx:cx@localhost:5432/cx_pulse && alembic upgrade head && alembic downgrade 0002 && alembic upgrade head && alembic check)
           else
             echo "backend/alembic.ini ещё нет — пропуск"
           fi
