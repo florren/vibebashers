@@ -1,5 +1,5 @@
 # CX Pulse Control — цели зафиксированы в AGENTS.md §4. Python-окружение: uv (backend/.venv).
-.PHONY: dev dev-front install-front build-front lint-front test test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
+.PHONY: dev dev-front install-front build-front lint-front test test-scenarios e2e test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
         scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts migrate seed install-backend
 
 UV ?= uv
@@ -30,7 +30,7 @@ migrate:                    ## alembic upgrade head (DATABASE_URL из .env/ок
 seed:                       ## сид по профилю PROFILE=lite|demo|stress (E2, T-011…T-016)
 	$(PY) scripts/seed/run.py --profile $(or $(PROFILE),lite)
 
-test: contracts-check test-unit test-integration   ## все проверки
+test: contracts-check test-unit test-integration test-scenarios   ## все проверки
 
 test-unit:
 	cd backend && .venv/bin/pytest -q tests/unit
@@ -67,8 +67,17 @@ i18n-check:                 ## ключи словаря frontend/src/shared/i18
 	$(PY) scripts/i18n_check.py
 	cd frontend && npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
 
-scenario bench:
-	@echo "цель $@ реализуется в E5/E10/E11/E13 — см. AGENTS.md раздел 4"
+scenario:                   ## прогон демо-сценариев на работающем стенде: make scenario ID=2 (или all); CX_BASE_URL, DATABASE_URL
+	$(PY) scripts/scenario_check.py $(or $(ID),all) --base $(or $(CX_BASE_URL),http://localhost:8000)
+
+test-scenarios:             ## сценарные тесты ТЗ §18 на mock (нужна DATABASE_URL_TEST)
+	cd backend && .venv/bin/pytest -q tests/scenarios
+
+e2e:                        ## дымовые Playwright-тесты фронта против стенда (E2E_BASE_URL, по умолчанию :8000); браузер: npx playwright install chromium
+	cd frontend && npx playwright test
+
+bench:
+	@echo "цель $@ реализуется в E10/E13 — см. AGENTS.md раздел 4"
 
 cassettes-record stt-bench demo-offline:
 	@echo "цель $@ реализуется в E16/E17 (T-181, T-194, T-197, T-198) — см. AGENTS.md раздел 4"

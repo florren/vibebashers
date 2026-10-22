@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { useJury, useRefs } from '@/shared/api/hooks'
+import { useClients, useJury, useRefs } from '@/shared/api/hooks'
 import { ErrorBox, Modal } from '@/shared/ui'
 
 const ANON_CHANNELS = new Set(['social', 'review_portal', 'landing'])
@@ -14,6 +14,9 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
   const [text, setText] = useState('')
   const [clientId, setClientId] = useState('')
   const [handle, setHandle] = useState('')
+  const [segment, setSegment] = useState('')
+  const segments = useRefs('segments')
+  const clients = useClients({ segment: segment || undefined }, !!segment)
   const jury = useJury()
 
   const submit = () => {
@@ -44,7 +47,7 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
             autoFocus
           />
         </label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs text-muted">{t('jury.channel')}</span>
             <select className="input w-full" value={channel} onChange={(e) => setChannel(e.target.value)}>
@@ -56,8 +59,37 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
             </select>
           </label>
           <label className="block">
+            <span className="mb-1 block text-xs text-muted">{t('jury.segment')}</span>
+            <select
+              className="input w-full"
+              value={segment}
+              onChange={(e) => {
+                setSegment(e.target.value)
+                setClientId('')
+              }}
+            >
+              <option value="">{t('jury.anySegment')}</option>
+              {(segments.data ?? []).map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name_ru}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
             <span className="mb-1 block text-xs text-muted">{t('jury.client')}</span>
-            <input className="input w-full" inputMode="numeric" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="—" />
+            {segment ? (
+              <select className="input w-full" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+                <option value="">—</option>
+                {(clients.data ?? []).map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.display_name} · {c.city_name ?? c.public_id}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input className="input w-full" inputMode="numeric" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="ID" />
+            )}
           </label>
           <label className="block">
             <span className="mb-1 block text-xs text-muted">{t('jury.handle')}</span>

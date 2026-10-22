@@ -166,10 +166,11 @@ class Simulator:
                 async with self._lock:
                     self.run_id = await run_svc.create_run(
                         conn,
-                        kind="free",
+                        kind=kw.get("kind") or "free",
                         label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
                         seed=self.seed,
                         sim_time=self.clock.sim_time,
+                        scenario_id=kw.get("scenario_id"),
                     )
                     self.run_status = "running"
                     self.world = None

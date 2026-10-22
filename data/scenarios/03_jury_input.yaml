@@ -8,3 +8,9 @@ input:
   client: optional
 expected:
   under_the_hood: true
+description_ru: Жюри вводит произвольное сообщение; весь проход агента виден на экране «Под капотом».
+inject:
+- channel: chat
+  client:
+    segment: youth
+  text: Подскажите, почему не приходит смс-код для входа в приложение? Уже три раза запрашивал.

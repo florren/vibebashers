@@ -5,6 +5,7 @@ import {
   type AgentGraph,
   type AgentRunBrief,
   type AgentRunDetail,
+  type ClientBrief,
   type DecisionChain,
   type Followup,
   type HitlDecision,
@@ -35,6 +36,15 @@ export function useRefName(name: string): (code: string | null | undefined) => s
   const map = new Map((q.data ?? []).map((r) => [r.code, r.name_ru]))
   return (code) => (code ? (map.get(code) ?? code) : '—')
 }
+
+/** Поиск клиентов для режима жюри (сегмент/строка). */
+export const useClients = (params: { segment?: string; q?: string }, enabled = true) =>
+  useQuery({
+    queryKey: ['clients', params],
+    queryFn: () => api<ClientBrief[]>('/api/clients', { query: { ...params, limit: 30 } }),
+    enabled,
+    staleTime: 60_000,
+  })
 
 export const useSimState = () => useQuery({ queryKey: ['sim-state'], queryFn: () => api<SimState>('/api/sim/state'), refetchInterval: 15000 })
 export const useSimRuns = () => useQuery({ queryKey: ['sim-runs'], queryFn: () => api<List<SimRun>>('/api/sim/runs', { query: { limit: 20 } }) })

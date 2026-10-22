@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L5` Качество (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 pytest с живой PostgreSQL, фикстуры данных, mock-LLM по умолчанию, маркеры slow/llm.
@@ -37,4 +37,5 @@ pytest -m 'not slow and not llm'
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Ветка `feat/T-142-l5-quality` (cross-layer PR). Добавлены `backend/tests/helpers.py` (`run_agent_on`, `advance_sim`, `new_run`, `events_of`, `assert_event`, `mock_chain`, `MOCK_PROFILE`), маркеры pytest `integration/scenario/slow/llm` в `pyproject.toml`, пакет `tests/scenarios` с conftest, переиспользующим фикстуру `seeded` (alembic head + сид lite) из `tests/integration`.
+- Отклонения: фабрики данных не выделялись в отдельный модуль — клиентов и операции подбирает/создаёт `app.sim.scenarios` (`pick_client`, `inject_operation`), что одинаково работает в тестах и на стенде.

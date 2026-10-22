@@ -28,3 +28,33 @@ expected:
   proactive_notice: true
   gift: bonus_points
   sla_met: true
+description_ru: 'Сбой подсистемы вкладов во время промо-ставки: клиенты не могут открыть вклад, агент собирает жалобы в один инцидент команде вкладов, предлагает бонус.'
+inject:
+- channel: chat
+  client:
+    segment: mass
+    operation:
+      error_code: DEP-TIMEOUT-503
+      product_code: deposit
+      op_type: deposit_open
+      method: online
+      system_path: &id001
+      - mobile_app
+      - promo_engine
+      - sub_deposits
+      - core_abs
+      amount_rub: 50000
+      fee_amount: 0
+  text: Пытаюсь открыть вклад по промо-ставке 16%, приложение висит и выдаёт ошибку 503. Вклад так и не открылся, ставка пропадёт?
+- channel: call
+  client:
+    segment: salary
+    operation:
+      error_code: DEP-TIMEOUT-503
+      product_code: deposit
+      op_type: deposit_open
+      method: online
+      system_path: *id001
+      amount_rub: 50000
+      fee_amount: 0
+  text: Открывал вклад по акции — зависло с ошибкой, деньги списались с карты, а вклада в приложении нет. Разберитесь, пожалуйста.

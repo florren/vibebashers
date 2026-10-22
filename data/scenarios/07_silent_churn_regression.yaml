@@ -14,3 +14,21 @@ expected:
   proactive_on_activity_drop: true
   regression_incident: true
   retained: true
+description_ru: 'Регрессия ранее исправленного сбоя: повторная жалоба на двойное списание после «починили».'
+inject:
+- channel: chat
+  client:
+    segment: mass
+    operation:
+      error_code: PROC-DOUBLE-DEBIT
+      product_code: debit_card
+      op_type: transfer
+      method: online
+      system_path:
+      - mobile_app
+      - processing
+      - sub_debit
+      - core_abs
+      amount_rub: 8000
+      fee_amount: 200
+  text: Снова двойное списание за перевод, вы же писали, что сбой исправлен! Второй раз за месяц, перестал доверять.

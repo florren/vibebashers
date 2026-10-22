@@ -490,6 +490,32 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     return state
 
 
+# слова в тексте, при которых сбой из контекста операций считаем причиной обращения (иначе клиент пишет о другом)
+ERROR_CODE_WORDS: dict[str, tuple[str, ...]] = {
+    "NOTIF-DELAY": ("смс", "sms", "push", "пуш", "код", "уведомлен", "оповещ"),
+    "PROC-QR-FEE-CHARGED": ("qr", "кьюар", "куар", "сбп", "комисси", "по коду"),
+    "PROC-DOUBLE-DEBIT": ("двойн", "дважды", "два раза", "повторн", "списал", "списан", "комисси"),
+    "DEP-TIMEOUT-503": ("вклад", "депозит", "накопител", "ставк"),
+    "PROMO-RATE-MISMATCH": ("ставк", "промо", "акци", "процент"),
+    "APP-LOGIN-FAIL": ("войти", "вход", "логин", "пароль", "авториз", "приложен"),
+    "APP-CRASH-PAY": ("приложен", "вылета", "падает", "закрыва", "завис", "оплат"),
+    "WEB-SESSION-DROP": ("сайт", "браузер", "веб", "интернет-банк", "сесси", "выкидыва", "разлогин"),
+    "AF-FALSE-BLOCK": ("заблок", "блокир", "блок"),
+    "LEND-PAYMENT-NOT-POSTED": ("платёж", "платеж", "кредит", "зачисл", "задолж", "долг"),
+    "CC-GRACE-MISCALC": ("льготн", "грейс", "grace", "процент", "кредитн"),
+    "DEBIT-CASHBACK-MISS": ("кешбэк", "кэшбэк", "cashback", "бонус"),
+    "PROMO-CODE-REJECTED": ("промокод", "код акции", "промо"),
+}
+
+
+def _text_matches_error(text: str, error_code: str) -> bool:
+    words = ERROR_CODE_WORDS.get(error_code)
+    if not words:
+        return True  # неизвестный код — доверяем контексту
+    t = text.lower()
+    return any(w in t for w in words)
+
+
 def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps) -> tuple[dict[str, Any], list[str]]:
     """Пост-проверки классификации (T-059 п. 3, T-212): согласованность, факты из контекста важнее мнения модели."""
     notes: list[str] = []
@@ -508,9 +534,13 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
                 "processing",
                 "PROC-QR-FEE-CHARGED",
             )
-    elif hints.get("error_code") and (
-        stype in ("tech_fault", "client_error")
-        or (stype in ("tariff_terms", "info_request", "service_quality") and int(norm.get("negativity") or 0) >= 50)
+    elif (
+        hints.get("error_code")
+        and (
+            stype in ("tech_fault", "client_error")
+            or (stype in ("tariff_terms", "info_request", "service_quality") and int(norm.get("negativity") or 0) >= 50)
+        )
+        and _text_matches_error(state["signal"].get("text") or "", hints["error_code"])
     ):
         if stype != "tech_fault":
             notes.append(f"активный сбой {hints['error_code']} на пути операции клиента → tech_fault (модель: {stype})")
@@ -548,8 +578,8 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         flags.append("passive_aggression")
     if "regulator_threat" in (norm.get("intents") or []) and "regulator_threat" not in flags:
         flags.append("regulator_threat")
-    if "public_shaming" in (norm.get("intents") or []) and "public_shaming" not in flags:
-        flags.append("public_shaming")
+    if "public_shaming" in (norm.get("intents") or []) and "public" not in flags:
+        flags.append("public")  # флаг по схеме common.flag; намерение остаётся public_shaming
     mass = max(
         [i.get("mass_impact") or 0 for i in ctx.get("related_incidents") or [] if i.get("same_error")]
         + [
@@ -701,7 +731,9 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
                     "passive_aggression",
                     "hidden_negativity",
                     "regulator_threat",
-                    "public_shaming",
+                    "public",
+                    "rule_confirmed",
+                    "repeat_contact_7d",
                 )
             ],
         }
@@ -916,6 +948,23 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         and incident_action != "none"
         and pol.needs_clarification(c, norm, already_asked=already_asked, policies=deps.policies)
     )
+    clarify_kind: str | None = "generic" if clarify else None
+    unidentified = not state.get("client")
+    if human_reason is None and not already_asked:
+        if unidentified and stype not in ("gratitude", "suggestion"):
+            # потенциальный/неопознанный клиент (ТЗ сценарий 4): сначала идентификация, обращение ждёт ответа
+            clarify, clarify_kind = True, "identify"
+            incident_action, link_id = "none", None  # инцидент — только после идентификации
+        elif stype == "fraud_suspicion" and not str(ctx.get("hints", {}).get("error_code") or "").startswith("AF-"):
+            # подозрение на мошенничество без подтверждения антифрода (сценарий 5): просим данные операции и ждём
+            clarify, clarify_kind = True, "fraud_data"
+        elif (
+            "sarcasm" in (c.get("flags") or [])
+            and not (norm.get("entities") or {}).get("amount_rub")
+            and incident_action != "none"
+        ):
+            # сарказм без конкретики (сценарий 11): один уточняющий вопрос
+            clarify, clarify_kind = True, "generic"
     checks += [
         {
             "rule": "confidence>=threshold",
@@ -1005,6 +1054,16 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     if text_ru:
         text_ru = wt.PII_RE.sub("****", text_ru)[:2000]
     question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip() or None
+    if clarify and clarify_kind == "identify":
+        question = (
+            "Чтобы помочь, нам нужно вас найти: напишите, пожалуйста, номер телефона, указанный в заявке, "
+            "или последние 4 цифры карты. Данные обрабатываются конфиденциально."
+        )
+    elif clarify and clarify_kind == "fraud_data":
+        question = (
+            "Пришлите, пожалуйста, скриншот операции (дата, сумма, название магазина) и подтвердите, что карта у вас. "
+            "Мы сразу передадим данные в антифрод; при необходимости карту можно заблокировать в приложении."
+        )
     if clarify and not question:
         question = (
             "Уточните, пожалуйста, дату операции и сумму, о которой идёт речь, — так мы быстрее найдём её в системе."
@@ -1047,7 +1106,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             else None
         ),
         "followup": (
-            {"wake_in_sim_hours": 4.0, "reason": "awaiting_client"}
+            {"wake_in_sim_hours": 24.0 if clarify_kind == "fraud_data" else 4.0, "reason": "awaiting_client"}
             if clarify
             else {"wake_in_sim_hours": max(0.25, float(sla_full["take_hours"] or 2)), "reason": "awaiting_team"}
             if incident_action != "none"
@@ -1177,6 +1236,21 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     def mark(action: str, **kw: Any) -> None:
         actions.append({"action": action, **kw})
 
+    if d["incident_action"] == "create" and "incident" not in done and c.get("error_code"):
+        # гонка параллельных прогонов (массовый сбой): сериализуем создание по коду ошибки и ещё раз ищем открытый инцидент
+        await deps.ctx.conn.execute(
+            "select pg_advisory_xact_lock(hashtext(%s))", (f"incident:{deps.ctx.run_id}:{c['error_code']}",)
+        )
+        dup = await deps.ctx.fetchone(
+            "select id from incidents where run_id = %s and error_code = %s and status not in ('closed','rejected','duplicate') "
+            "and created_sim >= %s - interval '4 hours' and agent_run_id <> %s order by id limit 1",
+            (deps.ctx.run_id, c["error_code"], deps.ctx.sim_time, deps.ctx.agent_run_id),
+        )
+        if dup:
+            d["incident_action"], d["link_incident_id"] = "link_existing", int(dup[0])
+            flags_now = list(dict.fromkeys([*(c.get("flags") or []), "mass_impact"]))
+            c["flags"] = flags_now
+            state["decision"] = d
     if d["incident_action"] == "create" and "incident" not in done:
         spec = {
             **c,
