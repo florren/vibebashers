@@ -594,6 +594,8 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
     text = state["signal"].get("text") or ""
     if not c.get("summary_ru") or c["summary_ru"].strip() == text.strip():
         c["summary_ru"] = norm.get("summary_ru") or text[:200]
+    # служебный хвост «; тональность …» (mock) — тональность уже есть в полях sentiment/negativity
+    c["summary_ru"] = re.sub(r"[;,]?\s*тональность.*$", "", c["summary_ru"]).strip().rstrip(".").strip() or text[:200]
     if not c.get("rationale_ru"):
         c["rationale_ru"] = "Тип определён по правилам и контексту операций; подробности в шагах графа."
     # problem_summary (T-212)
@@ -796,6 +798,20 @@ def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
         amount_rub=float(amount) if amount else None,
         refunds_30d=0,
     )
+
+
+def _decision_rationale(llm: str | None, cls: str | None, own: str) -> str:
+    """Обоснование решения: если модель вернула то же, что в классификации (mock), берём своё резюме маршрута/SLA."""
+    llm = (llm or "").strip()
+    if not llm or llm == (cls or "").strip():
+        return own[:2000]
+    return f"{llm} {own}"[:2000]
+
+
+def _title(raw: str) -> str:
+    """Заголовок инцидента: без служебного хвоста «; тональность…», без PII, до 160 символов."""
+    t = re.sub(r"[;,]?\s*тональность.*$", "", raw).strip().rstrip(".").strip() or "Обращение клиента"
+    return wt.PII_RE.sub("****", t)[:160]
 
 
 async def decide(state: AgentState, deps: Deps) -> AgentState:
@@ -1014,9 +1030,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         "incident_action": incident_action,
         "link_incident_id": link_id,
         "incident_type": incident_type if incident_action != "none" else None,
-        "title_ru": (wt.PII_RE.sub("****", (d.get("title_ru") or c.get("summary_ru") or "Обращение клиента").strip()))[
-            :160
-        ],
+        "title_ru": _title(d.get("title_ru") or c.get("summary_ru") or "Обращение клиента"),
         "complexity": complexity,
         "criticality": crit,
         "priority": prio,
@@ -1054,10 +1068,12 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             else None
         ),
         "clarification_question_ru": question if clarify else None,
-        "rationale_ru": (
-            d.get("rationale_ru")
-            or f"Тип {stype}, критичность {crit}, приоритет P{prio}; маршрут {team} по правилу {rule_id or 'по умолчанию'}; SLA {sla_full['fix_days']} раб. дн."
-        ).strip()[:2000],
+        "rationale_ru": _decision_rationale(
+            d.get("rationale_ru"),
+            c.get("rationale_ru"),
+            f"Тип {stype}, критичность {crit}, приоритет P{prio}; маршрут {team} по правилу {rule_id or 'по умолчанию'}; "
+            f"SLA {sla_full['fix_days']} раб. дн.{' Нужен человек: ' + str(human_reason) + '.' if human_reason else ''}",
+        ),
         "policy_checks": checks,
         "economics_preview": (
             {

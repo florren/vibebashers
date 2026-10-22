@@ -114,6 +114,7 @@ jobs:
         run: |
           if [ -f frontend/package.json ]; then
             cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm test -- --run && npm run build
+            npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
           else echo "frontend ещё нет — пропуск"; fi
       - name: i18n
-        run: test -f scripts/i18n_check.py && python scripts/i18n_check.py || echo "i18n_check появится в T-001/T-156"
+        run: python3 scripts/i18n_check.py

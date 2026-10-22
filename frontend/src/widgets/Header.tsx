@@ -1,0 +1,116 @@
+import { clsx } from 'clsx'
+import { Activity, Gauge, MessageSquarePlus, Moon, Pause, Play, Square, Sun } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { NavLink } from 'react-router-dom'
+import { useSimControl, useSimState } from '@/shared/api/hooks'
+import { fmtSim } from '@/shared/lib/format'
+import { useTheme } from '@/shared/theme'
+import { useWs } from '@/shared/ws/client'
+import { Badge } from '@/shared/ui'
+import { JuryModal } from './JuryModal'
+
+const SPEEDS = [1, 10, 60, 120, 300]
+
+export function Header() {
+  const { t } = useTranslation()
+  const q = useSimState()
+  const live = useWs((s) => s.sim)
+  const wsStatus = useWs((s) => s.status)
+  const sim = live ?? q.data ?? null
+  const ctl = useSimControl()
+  const { theme, toggle } = useTheme()
+  const [jury, setJury] = useState(false)
+
+  const running = !!sim?.running
+  const runStatus = sim?.current_run_status ?? null
+  const canResume = !running && runStatus === 'paused'
+
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-line bg-surface px-3">
+      <NavLink to="/" className="flex items-center gap-2">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
+          <Activity size={16} strokeWidth={2.4} />
+        </span>
+        <span className="hidden text-sm font-semibold sm:block">{t('app.title')}</span>
+      </NavLink>
+
+      <nav className="ml-2 flex shrink-0 items-center gap-0.5">
+        <Nav to="/" label={t('nav.workspace')} end />
+        <Nav to="/engine" label={t('nav.engine')} />
+      </nav>
+
+      <div className="mx-auto flex shrink-0 items-center gap-2">
+        <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
+          <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
+          <span className="num font-mono text-[13px]">{fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
+          <span className="hidden text-xs text-muted md:inline">
+            {sim?.day_no !== undefined && t('sim.day', { n: sim.day_no + 1 })} · {sim?.phase ? t(`sim.phase.${sim.phase}`) : '—'}
+          </span>
+          {sim && !sim.is_working_day && <Badge tone="warn">{t('sim.weekend')}</Badge>}
+          <Badge tone={runStatus === 'running' ? 'ok' : runStatus === 'paused' ? 'warn' : 'neutral'}>{t(`sim.status.${runStatus ?? 'none'}`)}</Badge>
+        </div>
+        <div className="flex items-center gap-1">
+          {running ? (
+            <button className="btn btn-sm" onClick={() => ctl.mutate({ action: 'pause' })} disabled={ctl.isPending} title={t('sim.pause')}>
+              <Pause size={13} /> {t('sim.pause')}
+            </button>
+          ) : (
+            <button className="btn btn-sm btn-primary" onClick={() => ctl.mutate({ action: canResume ? 'resume' : 'start' })} disabled={ctl.isPending}>
+              <Play size={13} /> {canResume ? t('sim.resume') : t('sim.start')}
+            </button>
+          )}
+          <button
+            className="btn btn-sm"
+            onClick={() => ctl.mutate({ action: 'stop' })}
+            disabled={ctl.isPending || !runStatus || runStatus === 'stopped' || runStatus === 'completed'}
+            title={t('sim.stop')}
+          >
+            <Square size={12} />
+          </button>
+          <div className="ml-1 hidden items-center gap-0.5 rounded-lg border border-line p-0.5 lg:flex" title={t('sim.speed')}>
+            <Gauge size={13} className="ml-1 text-muted" />
+            {SPEEDS.map((s) => (
+              <button
+                key={s}
+                onClick={() => ctl.mutate({ action: 'set_speed', speed: s })}
+                className={clsx(
+                  'num h-6 rounded-md px-1.5 text-xs',
+                  (sim?.speed ?? 1) === s ? 'bg-brand-soft font-medium text-ink' : 'text-muted hover:bg-raised',
+                )}
+              >
+                {t('sim.speedX', { n: s })}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <button className="btn btn-sm" onClick={() => setJury(true)}>
+        <MessageSquarePlus size={13} /> {t('common.jury')}
+      </button>
+      <span className={clsx('flex items-center gap-1 text-xs', wsStatus === 'open' ? 'text-muted' : 'text-danger')} title="WebSocket">
+        <span className={clsx('h-1.5 w-1.5 rounded-full', wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-danger')} />
+        {t(`ws.${wsStatus}`)}
+      </span>
+      <button className="btn btn-ghost btn-sm" onClick={toggle} title={t('common.theme')} aria-label={t('common.theme')}>
+        {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+      </button>
+      <JuryModal open={jury} onClose={() => setJury(false)} />
+    </header>
+  )
+}
+
+function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        clsx('h-8 rounded-lg px-2.5 text-[13px] leading-8', isActive ? 'bg-raised font-medium text-ink' : 'text-muted hover:text-ink')
+      }
+    >
+      {label}
+    </NavLink>
+  )
+}

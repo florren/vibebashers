@@ -6,15 +6,18 @@ import importlib
 import pkgutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app import api as api_pkg
 from app.agent.runner import AgentService
 from app.config import get_settings
-from app.errors import install_error_handlers
+from app.errors import Problem, install_error_handlers
 from app.llm.failover import build_chain, default_profile
 from app.logging import configure_logging, get_logger
 from app.realtime import ws as ws_module
@@ -86,7 +89,26 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)
+    mount_frontend(app, s.frontend_dist)
     return app
+
+
+def mount_frontend(app: FastAPI, dist: str | None) -> None:
+    """Раздача собранного фронта (frontend/dist) с SPA-фолбэком. Если каталога нет — ничего не делаем (dev: vite proxy)."""
+    root = Path(dist) if dist else Path(__file__).resolve().parents[2] / "frontend" / "dist"
+    index = root / "index.html"
+    if not index.is_file():
+        return
+    app.mount("/assets", StaticFiles(directory=root / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa(path: str) -> FileResponse:
+        if path.startswith(("api/", "ws/", "docs", "openapi.json")):
+            raise Problem(404, "Не найдено")
+        candidate = root / path
+        if path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(index)
 
 
 app = create_app()

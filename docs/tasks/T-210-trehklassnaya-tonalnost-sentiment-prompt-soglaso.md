@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Каждый сигнал получает sentiment ∈ {positive, neutral, negative}; на sentiment_v1 основной провайдер даёт accuracy ≥ 0,80 (ДТЗ FR-2.1, ТЗ 7, 14.3, критерий 27).

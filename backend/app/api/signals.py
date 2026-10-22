@@ -26,11 +26,11 @@ async def get_signals(
     request: Request,
     run_id: str = Query(default="current"),
     q: str | None = None,
-    channel: str | None = None,
-    signal_type: str | None = None,
-    status: str | None = None,
-    segment: str | None = None,
-    product: str | None = None,
+    channel: list[str] | None = Query(default=None),
+    signal_type: list[str] | None = Query(default=None),
+    status: list[str] | None = Query(default=None),
+    segment: list[str] | None = Query(default=None),
+    product: list[str] | None = Query(default=None),
     region_code: str | None = None,
     city_id: int | None = None,
     criticality: str | None = None,
@@ -49,11 +49,11 @@ async def get_signals(
             where.append("s.text ilike %s")
             args.append(f"%{q}%")
         for expr, val in (
-            ("s.channel_code = %s", channel),
-            ("s.classification->>'signal_type' = %s", signal_type),
-            ("s.status = %s", status),
-            ("c.segment_code = %s", segment),
-            ("s.classification->>'product' = %s", product),
+            ("s.channel_code = any(%s)", channel or None),
+            ("s.classification->>'signal_type' = any(%s)", signal_type or None),
+            ("s.status = any(%s)", status or None),
+            ("c.segment_code = any(%s)", segment or None),
+            ("s.classification->>'product' = any(%s)", product or None),
             ("coalesce(c.region_code, s.geo->>'region_code') = %s", region_code),
             ("c.city_id = %s", city_id),
             ("s.classification->>'criticality' = %s", criticality),
@@ -102,6 +102,17 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     return {"signal_id": res["signal_id"], "agent_run_id": run["id"] if run else None, "compare_run_id": None}
 
 
+@router.get("/api/signals/deferred", summary="Отложенные («спящие») обращения с причиной и временем пробуждения")
+async def get_signals_deferred(request: Request, limit: int = Query(default=50, ge=1, le=500)) -> Any:
+    async with db() as conn:
+        rows = await fetch_all(
+            conn,
+            "select f.id as followup_id, f.signal_id, f.incident_id, f.wake_sim, f.reason, f.status, s.text, s.channel_code, s.status as signal_status from followups f join signals s on s.id = f.signal_id where f.status = 'scheduled' order by f.wake_sim limit %s",
+            (limit,),
+        )
+    return {"items": rows, "next_cursor": None}
+
+
 @router.get("/api/signals/{id}", summary="Сигнал с классификацией, решением, связанными инцидентами и запусками агента")
 async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
     async with db() as conn:
@@ -135,14 +146,3 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
         "notifications": notifications,
         "followups": followups,
     }
-
-
-@router.get("/api/signals/deferred", summary="Отложенные («спящие») обращения с причиной и временем пробуждения")
-async def get_signals_deferred(request: Request, limit: int = Query(default=50, ge=1, le=500)) -> Any:
-    async with db() as conn:
-        rows = await fetch_all(
-            conn,
-            "select f.id as followup_id, f.signal_id, f.incident_id, f.wake_sim, f.reason, f.status, s.text, s.channel_code, s.status as signal_status from followups f join signals s on s.id = f.signal_id where f.status = 'scheduled' order by f.wake_sim limit %s",
-            (limit,),
-        )
-    return {"items": rows, "next_cursor": None}

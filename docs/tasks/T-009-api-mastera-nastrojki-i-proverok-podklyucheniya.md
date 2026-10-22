@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Бэкенд для 9 шагов мастера: сохранение, проверка LLM и бота, запуск генерации данных.
@@ -42,3 +42,4 @@ pytest backend/tests/integration/test_setup_api.py
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Частично в PR «L4: фронт»: `GET /api/refs/{name}` реализован (regions, cities?region_code, segments, products, systems, teams, channels, error_codes, signal_types, federal_districts; whitelisted SELECT, 404 для неизвестного имени) — нужен фронту для названий команд/сегментов/каналов. Остальные эндпоинты мастера настройки (`/api/setup*`) — как в карточке.

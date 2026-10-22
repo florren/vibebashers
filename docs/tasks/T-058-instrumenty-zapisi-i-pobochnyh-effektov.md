@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 create_incident, link_signal_to_incident, update_incident, notify_client, notify_team, create_task, schedule_followup, close_incident, compute_economics, request_human_decision, verify_service_delivered.
