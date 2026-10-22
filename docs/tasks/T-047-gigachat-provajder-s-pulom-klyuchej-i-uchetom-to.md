@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Работа с GigaChat-3-Ultra/Pro/Lightning по Authorization key, два ключа, лимит 50 млн токенов на ключ.
