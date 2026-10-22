@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Готовый транскрипт анализируется целиком ≤ 10 с и даёт отчёт с цитатами и рекомендациями, который уходит руководителю на дашборд и в лог (ДТЗ FR-4.1, FR-4.3; ТЗ 22.8–22.9, критерий 32).
@@ -45,4 +45,4 @@ make scenario ID=retail_transcript_red_phrases
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- `backend/app/compliance/transcripts.py::analyze_transcript`: employee_quality → сессия/триггеры/алерты/отчёт `transcript_report` (находки с цитатами и факт-чеком, `script_compliance`, `overall_ru`, `action_plan_ru`), для контакт-центра без отделения — отчёт без сессии; client_signal → сигнал агенту (origin=transcript) только если клиент жалуется; статусы received→analyzing→done/failed, событие `ingest.transcript_analyzed`. API `GET /api/compliance/transcripts/{id}/report` (json|md), `POST …/send` (notifications + алерт kind=report на /manager). Pacing realtime = задержка между репликами.

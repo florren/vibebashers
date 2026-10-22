@@ -85,7 +85,7 @@ def test_client_invariants(conn) -> None:
 def test_corpora_valid_against_contracts() -> None:
     from app.contracts.registry import validate
 
-    files = sorted((ROOT / "data" / "import" / "transcripts").glob("*"))
+    files = sorted(f for f in (ROOT / "data" / "import" / "transcripts").glob("*") if f.suffix in (".json", ".txt"))
     assert len(files) == 20
     for f in files:
         if f.suffix == ".json":

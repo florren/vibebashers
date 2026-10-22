@@ -2828,7 +2828,7 @@ components:
         id: { type: integer }
         session_id: { type: integer }
         utterance_id: { type: integer }
-        pattern_code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee] }
+        pattern_code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee, rudeness, script_violation, misinformation] }
         pattern_name_ru: { type: string }
         confidence: { type: number }
         quote: { type: string }
@@ -2872,7 +2872,7 @@ components:
       type: object
       required: [code, name_ru, name_en, is_active]
       properties:
-        code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee] }
+        code: { type: string, enum: [tie_in, substitution, concealment, pressure, guarantee, rudeness, script_violation, misinformation] }
         name_ru: { type: string }
         name_en: { type: string }
         description_ru: { type: string }

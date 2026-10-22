@@ -7,6 +7,8 @@ import { Shell } from '@/widgets/Shell'
 import { WorkspacePage } from '@/pages/workspace/WorkspacePage'
 import { IncidentPage } from '@/pages/incident/IncidentPage'
 import { EnginePage } from '@/pages/engine/EnginePage'
+import { CompliancePage } from '@/pages/compliance/CompliancePage'
+import { ManagerPage } from '@/pages/manager/ManagerPage'
 
 export function App() {
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
@@ -22,6 +24,8 @@ export function App() {
             <Route path="incidents/:id" element={<IncidentPage />} />
             <Route path="engine" element={<EnginePage />} />
             <Route path="engine/:runId" element={<EnginePage />} />
+            <Route path="compliance" element={<CompliancePage />} />
+            <Route path="manager" element={<ManagerPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

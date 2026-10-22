@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import psycopg
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.api._compliance_support import analyze_in_background
 from app.api.common import agent_service, db, fetch_all
 from app.db.session import psycopg_dsn
 from app.errors import NotImplementedYet
@@ -60,9 +62,14 @@ async def post_scenarios_id_run(request: Request, id: str, body: ScenarioRunRequ
         await sim.control("set_preset", preset=body.speed_preset)
     run_id = sim.run_id
     assert run_id is not None
+    injected: list[dict[str, Any]] = []
+    transcript: dict[str, Any] | None = None
     async with db() as conn:
         try:
-            injected = await sc.inject(conn, scenario, run_id, sim_time=sim.clock.sim_time)
+            if sc.is_transcript(scenario):
+                transcript = await sc.inject_transcript(conn, scenario, run_id, sim_time=sim.clock.sim_time)
+            else:
+                injected = await sc.inject(conn, scenario, run_id, sim_time=sim.clock.sim_time)
         except LookupError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         await conn.execute("update scenarios set last_run_at = now() where id = %s", (id,))
@@ -70,4 +77,7 @@ async def post_scenarios_id_run(request: Request, id: str, body: ScenarioRunRequ
         run = await run_svc.get_run(tconn, run_id)
     for item in injected:
         svc.submit(item["signal_id"], sim.clock.sim_time)
-    return {"run": run, "client_id": next((i["client_id"] for i in injected if i["client_id"]), None)}
+    if transcript:
+        asyncio.create_task(analyze_in_background(request, transcript["transcript_id"], pacing_delay_s=1.0))
+    client_id = next((i["client_id"] for i in injected if i["client_id"]), None) or (transcript or {}).get("client_id")
+    return {"run": run, "client_id": client_id, "transcript_id": (transcript or {}).get("transcript_id")}

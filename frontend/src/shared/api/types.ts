@@ -7399,7 +7399,7 @@ export interface components {
             session_id?: number;
             utterance_id?: number;
             /** @enum {string} */
-            pattern_code?: "tie_in" | "substitution" | "concealment" | "pressure" | "guarantee";
+            pattern_code?: "tie_in" | "substitution" | "concealment" | "pressure" | "guarantee" | "rudeness" | "script_violation" | "misinformation";
             pattern_name_ru?: string;
             confidence?: number;
             quote?: string;
@@ -7442,7 +7442,7 @@ export interface components {
         };
         MissellingPattern: {
             /** @enum {string} */
-            code: "tie_in" | "substitution" | "concealment" | "pressure" | "guarantee";
+            code: "tie_in" | "substitution" | "concealment" | "pressure" | "guarantee" | "rudeness" | "script_violation" | "misinformation";
             name_ru: string;
             name_en: string;
             description_ru?: string;

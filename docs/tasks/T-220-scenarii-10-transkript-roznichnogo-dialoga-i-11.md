@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L5` Качество (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Оба сценария ДТЗ воспроизводимы кнопкой и в CI, с бюджетами задержек и кассетами replay (ТЗ 18, 19 п. 26–33).
@@ -43,4 +43,4 @@ pytest backend/tests/scenarios/test_scenario_10_11.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Сценарии 9 и 10 запускаются: в YAML добавлено `file:` (`scenario09_isj.json`, `scenario10_retail.txt`), `app/sim/scenarios.py::inject_transcript` + проверки `patterns`, `alert_to_manager`, `counter_threshold`, `findings` (код/алерт/цитата/правда), `script_steps_missed`. Работает через `POST /api/scenarios/{id}/run`, `make scenario ID=9|10` и `tests/scenarios` (mock). На стенде оба OK.

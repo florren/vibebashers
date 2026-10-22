@@ -1,8 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   api,
+  ApiError,
   post,
   type AgentGraph,
+  type AudioSessionDetail,
+  type ComplianceAlert,
+  type ComplianceEmployeeStats,
+  type MissellingPattern,
+  type Problem,
+  type TranscriptBrief,
+  type TranscriptDetail,
+  type TranscriptReport,
   type AgentRunBrief,
   type AgentRunDetail,
   type ClientBrief,
@@ -136,4 +145,64 @@ export function useJury() {
 export function listItems<T>(d: List<T> | T[] | undefined): T[] {
   if (!d) return []
   return Array.isArray(d) ? d : (d.items ?? [])
+}
+
+// ---------------------------------------------------------------- B07: комплаенс и транскрипты
+export const useTranscripts = (query: Query) =>
+  useQuery({ queryKey: ['transcripts', query], queryFn: () => api<List<TranscriptBrief>>('/api/ingest/transcripts', { query }), refetchInterval: 4000 })
+export const useTranscript = (id: number | null) =>
+  useQuery({ queryKey: ['transcripts', 'one', id], queryFn: () => api<TranscriptDetail>(`/api/ingest/transcripts/${id}`), enabled: id != null, refetchInterval: 4000 })
+export const useTranscriptReport = (id: number | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['transcripts', 'report', id],
+    queryFn: () => api<TranscriptReport & { alerts?: ComplianceAlert[] }>(`/api/compliance/transcripts/${id}/report`),
+    enabled: id != null && enabled,
+    retry: false,
+  })
+export const useComplianceAlerts = (query: Query) =>
+  useQuery({ queryKey: ['compliance', 'alerts', query], queryFn: () => api<ComplianceAlert[]>('/api/compliance/alerts', { query }), refetchInterval: 5000 })
+export const useComplianceSession = (id: number | null) =>
+  useQuery({ queryKey: ['compliance', 'session', id], queryFn: () => api<AudioSessionDetail>(`/api/compliance/sessions/${id}`), enabled: id != null })
+export const useCompliancePatterns = () =>
+  useQuery({ queryKey: ['compliance', 'patterns'], queryFn: () => api<MissellingPattern[]>('/api/compliance/patterns'), staleTime: 60_000 })
+export const useComplianceStats = (query: Query) =>
+  useQuery({ queryKey: ['compliance', 'stats', query], queryFn: () => api<ComplianceEmployeeStats[]>('/api/compliance/stats', { query }), refetchInterval: 10_000 })
+
+export function useUploadTranscripts() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (files: File[]) => {
+      const fd = new FormData()
+      files.forEach((f) => fd.append('files', f))
+      const res = await fetch('/api/ingest/transcripts', { method: 'POST', body: fd })
+      if (!res.ok) throw new ApiError(res.status, (await res.json().catch(() => null)) as Problem | null, `${res.status}`)
+      return (await res.json()) as { items: TranscriptBrief[] }
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['transcripts'] }),
+  })
+}
+export function useImportTranscripts() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => post<{ files_found: number; accepted: number; duplicates: number; rejected: number }>('/api/ingest/transcripts/import', {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['transcripts'] }),
+  })
+}
+export function useAckAlert() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision, comment }: { id: number; decision: 'go' | 'false_positive' | 'open_incident'; comment?: string }) =>
+      post<ComplianceAlert>(`/api/compliance/alerts/${id}/ack`, { decision, comment }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['compliance'] })
+      void qc.invalidateQueries({ queryKey: ['incidents'] })
+    },
+  })
+}
+export function useSendReport() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) => post<{ notification_id: number; alert_id: number | null }>(`/api/compliance/transcripts/${id}/send`, { to_role: 'branch_manager' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['compliance'] }),
+  })
 }

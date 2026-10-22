@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Второй этап гибрида: быстрая модель подтверждает или снимает предварительную отметку в пределах 2 с с цитатой и уверенностью (ТЗ 22.4, 16.4).
@@ -43,4 +43,4 @@ make bench DATASET=misselling_v1
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- `backend/app/compliance/llm_detector.py`: промпты `prompts/v1/misselling_detect.md` и `transcript_report.md`, структурированный ответ по `compliance/misselling_verdict` и `compliance/transcript_report`; каждый вызов — `agent_runs(kind='compliance_detector')` + `agent_steps` (prompt, output, статус ok/fallback). На mock-провайдере вердикт = предварительные находки правил через блок `<<mock_verdict>>` (`app/llm/mock.py::_mock_hint`); сбой/невалидный ответ модели → откат на правила (status fallback). Правила — гейт: LLM вызывается только при предварительной находке.

@@ -42,6 +42,21 @@ async def _wait_runs(dsn: str, run_id: int, expected: int, timeout: float) -> No
             await asyncio.sleep(0.5)
 
 
+async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
+    t0 = time.time()
+    async with await psycopg.AsyncConnection.connect(dsn) as conn:
+        while time.time() - t0 < timeout:
+            row = await (
+                await conn.execute(
+                    "select count(*) from transcripts where run_id = %s and source = 'scenario' and status in ('done','failed')",
+                    (run_id,),
+                )
+            ).fetchone()
+            if row and int(row[0]) >= 1:
+                return
+            await asyncio.sleep(0.5)
+
+
 async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
     async with httpx.AsyncClient(base_url=base, timeout=60) as http:
         r = await http.post(f"/api/scenarios/{scenario['id']}/run", json={})
@@ -51,7 +66,10 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
             return True
         r.raise_for_status()
         run_id = int(r.json()["run"]["id"])
-    await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
+    if sc.is_transcript(scenario):
+        await _wait_transcript(dsn, run_id, wait)
+    else:
+        await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
         res = await sc.evaluate(conn, scenario, run_id)
         await sc.save_result(conn, scenario["id"], res)

@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     # интеграции
     telegram_bot_token: str | None = None
     mailpit_enabled: bool = False
+    compliance_alert_threshold: int = 3  # N подтверждённых срабатываний за встречу → алерт руководителю (ДТЗ FR-2.4)
     stt_provider: Literal["vosk", "browser", "none"] = "none"
 
     @property
