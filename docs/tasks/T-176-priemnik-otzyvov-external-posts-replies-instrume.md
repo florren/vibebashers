@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Слушатель внешней площадки (BRD FR 1.1) и публикация ответа агента под постом (FR 1.5) с правилами публичного ответа (ТЗ 9.3, 21.2, 21.5).
@@ -44,4 +44,4 @@ pytest backend/tests/integration/test_public_reviews.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b06-b16-abs-feed`. `backend/app/feed/service.py`: `create_post` (событие `review.posted`), `link_signal`, `publish_reply` (санитизация ПДн/обещаний, латентность от `posted_at`, статусы `replied|escalated_to_dm`, события `review.replied|escalated_to_dm`), `feed_stats`. Посты создаются для публичных каналов в генераторе симулятора (`_emit_signal`) и в нормализаторе (сценарии, жюри, API); `signals.external_post_id` ↔ `external_posts.signal_id`. API `POST /api/public/reviews` (сопоставление по `client_products.card_last4`), `GET /api/public/feed[/{id}]`, `POST /api/feed/{id}/reply`, `GET /api/feed/stats`. Тесты: `tests/unit/test_feed_sanitize.py`, `tests/integration/test_abs_feed.py`.

@@ -3,7 +3,13 @@ import {
   api,
   ApiError,
   post,
+  type AccountsView,
   type AgentGraph,
+  type BusinessRule,
+  type ExternalPost,
+  type ExternalPostDetail,
+  type ExternalReply,
+  type FeedStats,
   type AudioSessionDetail,
   type ComplianceAlert,
   type ComplianceEmployeeStats,
@@ -210,3 +216,41 @@ export function useSendReport() {
 
 export const useQualityReport = (runId: 'all' | 'current') =>
   useQuery({ queryKey: ['reports', 'quality', runId], queryFn: () => api<QualityReport>('/api/reports/quality', { query: { run_id: runId } }), refetchInterval: 30_000 })
+
+// --- B06/B16: публичная лента и Mock-АБС
+export const useFeed = (query: Query) =>
+  useQuery({
+    queryKey: ['feed', 'list', query],
+    queryFn: () => api<{ items: ExternalPost[]; next_cursor: string | null; total: number }>('/api/public/feed', { query }),
+    refetchInterval: 4000,
+  })
+export const usePost = (id: number | null) =>
+  useQuery({ queryKey: ['feed', 'post', id], queryFn: () => api<ExternalPostDetail>(`/api/public/feed/${id}`), enabled: id != null, refetchInterval: 4000 })
+export const useFeedStats = (runId: 'all' | 'current') =>
+  useQuery({ queryKey: ['feed', 'stats', runId], queryFn: () => api<FeedStats>('/api/feed/stats', { query: { run_id: runId } }), refetchInterval: 5000 })
+export const useAbsAccounts = (clientId: number | null) =>
+  useQuery({
+    queryKey: ['abs', 'accounts', clientId],
+    queryFn: () => api<AccountsView>(`/api/abs/accounts/${clientId}`, { query: { entries_limit: 25 } }),
+    enabled: clientId != null,
+    refetchInterval: 5000,
+  })
+export const useRules = () => useQuery({ queryKey: ['rules'], queryFn: () => api<BusinessRule[]>('/api/rules'), staleTime: 60_000 })
+export function usePublishReview() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { platform: 'review_portal' | 'telegram_channel'; author_nick: string; text: string; mentions?: { card_last4?: string; city?: string } }) =>
+      post<{ post_id: number; public_id: string; signal_id: number | null }>('/api/public/reviews', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['feed'] })
+      void qc.invalidateQueries({ queryKey: ['signals'] })
+    },
+  })
+}
+export function useManualReply() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) => post<ExternalReply>(`/api/feed/${id}/reply`, { text }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['feed'] }),
+  })
+}

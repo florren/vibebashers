@@ -120,7 +120,7 @@ async def load_deps(
 
 async def _load_signal(conn: psycopg.AsyncConnection[Any], signal_id: int) -> dict[str, Any] | None:
     cur = await conn.execute(
-        "select id, run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, origin, geo, source_operation_id, source_fault_id, parent_signal_id, status from signals where id = %s",
+        "select id, run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, origin, geo, source_operation_id, source_fault_id, parent_signal_id, status, external_post_id from signals where id = %s",
         (signal_id,),
     )
     r = await cur.fetchone()
@@ -141,6 +141,7 @@ async def _load_signal(conn: psycopg.AsyncConnection[Any], signal_id: int) -> di
         "source_fault_id": r[11],
         "parent_signal_id": r[12],
         "status": r[13],
+        "external_post_id": r[14],
     }
 
 

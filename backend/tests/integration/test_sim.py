@@ -53,7 +53,14 @@ def test_step_generates_contract_valid_events_and_new_run(sim: Simulator, conn: 
     assert rows and any(t.startswith("op.") for t, _ in rows)
     for event_type, payload in rows:
         fam = event_type.split(".")[0]
-        schema = {"op": "sim/op", "fault": "sim/fault", "client_error": "sim/client_error", "signal": "sim/signal"}[fam]
+        schema = {
+            "op": "sim/op",
+            "fault": "sim/fault",
+            "client_error": "sim/client_error",
+            "signal": "sim/signal",
+            "abs": "sim/abs",
+            "review": "sim/review",
+        }[fam]
         assert validate(payload, schema) == [], (event_type, payload)
     assert (
         conn.execute("select count(*) from operations where run_id = %s", (sim.run_id,)).fetchone()[0]

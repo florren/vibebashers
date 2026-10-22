@@ -12,6 +12,8 @@ from typing import Any
 
 import psycopg
 
+from app.abs import service as abs_svc
+from app.feed import service as feed_svc
 from app.logging import get_logger
 from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
@@ -274,6 +276,18 @@ class World:
                 ),
             )
             op_id = (await cur.fetchone())[0]  # type: ignore[index]
+            await abs_svc.post_operation(
+                self.conn,
+                run_id=self.run_id,
+                operation_id=op_id,
+                client_id=client.id,
+                amount_rub=amount,
+                fee_amount=fee,
+                status=status,
+                error_code=error_code,
+                merchant=None,
+                posted_sim=started,
+            )
             corr = fault["corr"] if fault is not None and fault_id else uuid.uuid4()
             payload = {
                 "operation_id": op_id,
@@ -475,6 +489,15 @@ class World:
             await self._emit_signal(p)
         return len(due)
 
+    async def _card_last4(self, client_id: int) -> str | None:
+        row = await (
+            await self.conn.execute(
+                "select card_last4 from client_products where client_id = %s and card_last4 is not null order by status = 'active' desc, id limit 1",
+                (client_id,),
+            )
+        ).fetchone()
+        return str(row[0]) if row else None
+
     async def _emit_signal(self, p: PendingSignal) -> None:
         g = self.textgen.generate(
             p.signal_type, p.product, psychotype=p.client.psychotype, city=p.client.city, card4=p.client.card_last4
@@ -509,6 +532,25 @@ class World:
             ),
         )
         sid = (await cur.fetchone())[0]  # type: ignore[index]
+        if channel in ("social", "review_portal"):
+            # пост на эмуляторе внешней площадки (ТЗ 21.2): сигнал ссылается на пост, пост — на сигнал
+            post = await feed_svc.create_post(
+                self.conn,
+                run_id=self.run_id,
+                platform=feed_svc.PLATFORM_BY_CHANNEL[channel],
+                author_nick=f"@user_{p.client.id}",
+                text=g.text,
+                posted_sim=p.due_sim,
+                origin="background",
+                author_client_id=p.client.id if identified else None,
+                match_confidence=0.95 if identified else round(0.3 + self.rng.random() * 0.4, 2),
+                mentions={"city": p.client.city, "card_last4": await self._card_last4(p.client.id)}
+                if not identified
+                else {"city": p.client.city},
+                reactions=self.rng.randint(0, 40),
+                signal_id=sid,
+            )
+            await self.conn.execute("update signals set external_post_id = %s where id = %s", (post["post_id"], sid))
         await self.bus.emit(
             self.run_id,
             "signal.received",

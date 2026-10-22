@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Stateful-эмуляция core_abs/processing по ТЗ 3.4: у каждого клиента есть счета и проводки, комиссии — отдельной строкой, баланс сходится с проводками; 3–5 % QR-операций с ошибочной комиссией PROC-QR-FEE-CHARGED как триггер сценария 8.
@@ -44,4 +44,4 @@ pytest backend/tests/unit/test_abs_ledger.py backend/tests/integration/test_abs_
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b06-b16-abs-feed`, PR «B06/B16». Сделано: `backend/app/abs/service.py` — `ensure_account`, `post_entry` (идемпотентно по `correlation_id`, события `abs.fee_charged|refund_posted|balance_changed`), `post_operation`/`ensure_operation_posted` (проводки при появлении операции в генераторе и сценарии), `backfill_ledger` (догоняющие проводки для сида, стартовый остаток сохраняет баланс сида, идемпотентно, вызывается при старте приложения), `recompute_balances`, `check_invariant`, `accounts_view`. API `GET /api/abs/accounts/{client_id}`, `GET /api/abs/ledger`, `POST /api/abs/refunds`. Отклонения: несколько счетов на клиента из сида — проводки ведутся по основному (`min(id)` активного). Тесты: `tests/integration/test_abs_feed.py` (инвариант, идемпотентность, отказ без правила).
