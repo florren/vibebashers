@@ -508,7 +508,10 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
                 "processing",
                 "PROC-QR-FEE-CHARGED",
             )
-    elif hints.get("error_code") and stype in ("tech_fault", "client_error", "tariff_terms", "info_request"):
+    elif hints.get("error_code") and (
+        stype in ("tech_fault", "client_error")
+        or (stype in ("tariff_terms", "info_request", "service_quality") and int(norm.get("negativity") or 0) >= 50)
+    ):
         if stype != "tech_fault":
             notes.append(f"активный сбой {hints['error_code']} на пути операции клиента → tech_fault (модель: {stype})")
         stype, c["system"], c["error_code"] = "tech_fault", hints.get("system") or c.get("system"), hints["error_code"]
@@ -549,7 +552,12 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         flags.append("public_shaming")
     mass = max(
         [i.get("mass_impact") or 0 for i in ctx.get("related_incidents") or [] if i.get("same_error")]
-        + [f.get("affected_clients") or 0 for f in (ctx.get("system_logs") or {}).get("active_faults") or []]
+        + [
+            f.get("affected_clients") or 0
+            for f in (ctx.get("system_logs") or {}).get("active_faults") or []
+            if hints.get("error_code")
+            and (f.get("error_code") == hints.get("error_code") or f.get("fault_id") == hints.get("fault_id"))
+        ]
         + [0]
     )
     if mass >= 3 and "mass_impact" not in flags:
