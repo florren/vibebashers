@@ -40,5 +40,5 @@ npx playwright test e2e/incidents.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Дополнение (ветка `feat/b13-tickets-escalations`): `POST /api/incidents/{id}/actions` (take, reroute, reply_client, request_client_data, close, reject, mark_duplicate, change_priority, escalate) с проверкой FSM ТЗ 8.3 и записью в `incident_status_history` (`actor_type = human`), `GET /api/teams/load` (вкладка «Команды» — `pages/workspace/TeamsTab.tsx`), `GET /api/incidents/{id}/artifacts`. Заглушек 501 с меткой T-089 не осталось.
 Сделано в PR «L4: фронт» (`pages/workspace/IncidentsBoard.tsx`): доска по колонкам статусов FSM (новые/направлены/в работе/ожидание/эскалация/решены) и таблица, фильтры команда/SLA-риск, карточка с P-приоритетом, массовостью, командой, сроком и полосой SLA (`SlaBar`: pct 0–100 из API, <50 жёлтая, <25 или просрочка — красная). Бэкенд: `status` принимает список, `sla_risk` — `any|warning|breached` (как в OpenAPI; раньше bool). Время: ~40 мин.

@@ -9,6 +9,14 @@ import {
   type CityHeat,
   type DashboardMetrics,
   type EconomicsFact,
+  type Escalation,
+  type EscalationAck,
+  type EscalationCreate,
+  type EscalationDetail,
+  type IncidentAction,
+  type TeamLoad,
+  type Ticket,
+  type TicketDetail,
   type EconomicsSummary,
   type MapZonesResponse,
   type NotificationItem,
@@ -304,3 +312,47 @@ export const useNotifications = (query: Query) =>
     refetchInterval: 6_000,
     placeholderData: (p) => p,
   })
+
+// ---- B13: тикеты, эскалации, команды, действия оператора ----
+export const useTickets = (query: Query) =>
+  useQuery({
+    queryKey: ['tickets', 'list', query],
+    queryFn: () => api<List<Ticket> & { total?: number }>('/api/tickets', { query }),
+    refetchInterval: 6_000,
+    placeholderData: (p) => p,
+  })
+export const useTicket = (id: number | string | null) =>
+  useQuery({ queryKey: ['tickets', 'one', id], queryFn: () => api<TicketDetail>(`/api/tickets/${id}`), enabled: id !== null })
+export const useEscalations = (query: Query) =>
+  useQuery({
+    queryKey: ['escalations', 'list', query],
+    queryFn: () => api<List<Escalation> & { counts?: Record<string, number> }>('/api/escalations', { query }),
+    refetchInterval: 6_000,
+    placeholderData: (p) => p,
+  })
+export const useEscalation = (id: number | null) =>
+  useQuery({ queryKey: ['escalations', 'one', id], queryFn: () => api<EscalationDetail>(`/api/escalations/${id}`), enabled: id !== null })
+export const useTeamsLoad = (runId: 'all' | 'current' = 'current') =>
+  useQuery({ queryKey: ['teams', 'load', runId], queryFn: () => api<TeamLoad[]>('/api/teams/load', { query: { run_id: runId } }), refetchInterval: 8_000 })
+
+function invalidateTicketing(qc: ReturnType<typeof useQueryClient>) {
+  for (const k of ['tickets', 'escalations', 'incidents', 'notifications', 'metrics', 'teams']) void qc.invalidateQueries({ queryKey: [k] })
+}
+export function useIncidentAction(id: number | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: IncidentAction) => post<IncidentDetail>(`/api/incidents/${id}/actions`, body),
+    onSuccess: () => invalidateTicketing(qc),
+  })
+}
+export function useCreateEscalation() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: EscalationCreate) => post<Escalation>('/api/escalations', body), onSuccess: () => invalidateTicketing(qc) })
+}
+export function useAckEscalation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: EscalationAck & { id: number }) => post<Escalation>(`/api/escalations/${id}/ack`, body),
+    onSuccess: () => invalidateTicketing(qc),
+  })
+}

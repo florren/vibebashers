@@ -13,9 +13,11 @@ import { DeferredList } from './DeferredList'
 import { DashboardTab } from './DashboardTab'
 import { MapTab } from './MapTab'
 import { NotificationsTab } from './NotificationsTab'
+import { TicketsTab } from './TicketsTab'
+import { TeamsTab } from './TeamsTab'
 
-type Tab = 'signals' | 'incidents' | 'hitl' | 'deferred' | 'tasks' | 'map' | 'dashboard' | 'teams' | 'notifications'
-const TABS: Tab[] = ['signals', 'incidents', 'hitl', 'deferred', 'map', 'dashboard', 'tasks', 'teams', 'notifications']
+type Tab = 'signals' | 'incidents' | 'hitl' | 'deferred' | 'tickets' | 'tasks' | 'map' | 'dashboard' | 'teams' | 'notifications'
+const TABS: Tab[] = ['signals', 'incidents', 'hitl', 'tickets', 'deferred', 'map', 'dashboard', 'teams', 'notifications', 'tasks']
 
 /** Экран 1 «Рабочее место» (ТЗ 12.2): KPI-полоса + вкладки. Текущий прогон берём из состояния симулятора. */
 export function WorkspacePage() {
@@ -53,7 +55,9 @@ export function WorkspacePage() {
         {tab === 'map' && <MapTab />}
         {tab === 'dashboard' && <DashboardTab />}
         {tab === 'notifications' && <NotificationsTab runId={runId} />}
-        {(tab === 'tasks' || tab === 'teams') && (
+        {tab === 'tickets' && <TicketsTab runId={runId} />}
+        {tab === 'teams' && <TeamsTab />}
+        {tab === 'tasks' && (
           <Empty title={t('common.notImplemented')} hint={t(`placeholder.${tab}`)} />
         )}
       </div>

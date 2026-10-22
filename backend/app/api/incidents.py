@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+import datetime as dt
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
+from app.agent.tools.write import PII_RE, STATUS_TRANSITIONS
 from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
 from app.economics import dcltv
-from app.errors import NotImplementedYet, Problem
+from app.errors import Problem
+from app.sim.events import dumps
 
 router = APIRouter(tags=["incidents"])
 
@@ -150,8 +154,14 @@ async def get_incidents_id_history(request: Request, id: int) -> Any:  # noqa: A
     "/api/incidents/{id}/artifacts",
     summary="Документы команды (RCA, решение о фиксе, промежуточные отчёты, релиз, проверка)",
 )
-async def get_incidents_id_artifacts(request: Request) -> Any:
-    raise NotImplementedYet("T-089")
+async def get_incidents_id_artifacts(request: Request, id: int) -> Any:  # noqa: A002
+    async with db() as conn:
+        rows = await fetch_all(
+            conn,
+            "select id, kind, title, body_md, meta, author_team, generated_by, due_sim, published_sim, (due_sim is not null and published_sim > due_sim) as is_late from incident_artifacts where incident_id = %s order by published_sim",
+            (id,),
+        )
+    return rows
 
 
 @router.get("/api/incidents/{id}/signals", summary="Связанные сигналы и логи систем")
@@ -195,11 +205,245 @@ async def get_incidents_id_economics(request: Request, id: int) -> Any:  # noqa:
     return res
 
 
+class ActionBody(BaseModel):
+    action: Literal[
+        "reroute",
+        "reply_client",
+        "close",
+        "request_client_data",
+        "escalate",
+        "reject",
+        "mark_duplicate",
+        "change_priority",
+        "take",
+    ]
+    team_code: str | None = None
+    text: str | None = Field(None, max_length=2000)
+    channel_code: str | None = None
+    duplicate_of_id: int | None = None
+    priority: int | None = Field(None, ge=1, le=4)
+    reason: str | None = Field(None, max_length=1000)
+    actor: str = "operator"
+
+
+async def _transition(
+    conn: Any, inc: dict[str, Any], to_status: str, actor: str, reason: str | None, sim_time: Any
+) -> None:
+    cur = str(inc["status"])
+    if to_status == cur:
+        return
+    if to_status not in STATUS_TRANSITIONS.get(cur, set()):
+        raise Problem(409, f"Переход {cur} → {to_status} недопустим по FSM ТЗ 8.3")
+    extra, args = "", [to_status]
+    if to_status == "in_progress":
+        extra, args = ", taken_sim = coalesce(taken_sim, %s)", [to_status, sim_time]
+    elif to_status == "resolved":
+        extra, args = ", resolved_sim = %s, sla_breached = (%s > sla_due_sim)", [to_status, sim_time, sim_time]
+    elif to_status == "closed":
+        extra, args = ", closed_sim = %s", [to_status, sim_time]
+    await conn.execute(f"update incidents set status = %s{extra}, updated_at = now() where id = %s", (*args, inc["id"]))  # noqa: S608 — extra фиксирован кодом
+    await conn.execute(
+        "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
+        (inc["id"], cur, to_status, actor, reason, sim_time),
+    )
+    inc["status"] = to_status
+
+
 @router.post("/api/incidents/{id}/actions", summary="Действие сотрудника CX над инцидентом")
-async def post_incidents_id_actions(request: Request) -> Any:
-    raise NotImplementedYet("T-089")
+async def post_incidents_id_actions(request: Request, id: int, body: ActionBody) -> Any:  # noqa: A002
+    """Ручные действия оператора поверх FSM ТЗ 8.3: все переходы пишутся в историю с actor_type = human, уведомления — в центр уведомлений."""
+    async with db() as conn:
+        inc = await fetch_one(
+            conn,
+            "select id, run_id, status, team_code, priority, primary_client_id, agent_run_id, title from incidents where id = %s",
+            (id,),
+        )
+        if not inc:
+            raise Problem(404, "Инцидент не найден")
+        now = await fetch_one(conn, "select sim_time from sim_state where id = 1")
+        sim_time = (now or {}).get("sim_time") or dt.datetime.now(dt.UTC)
+        reason = body.reason or body.text
+        a = body.action
+        if a == "take":
+            if inc["status"] in ("new", "classified"):
+                await _transition(conn, inc, "routed", body.actor, "взят оператором: маршрутизация", sim_time)
+            await _transition(conn, inc, "in_progress", body.actor, reason or "взят в работу оператором", sim_time)
+        elif a == "reroute":
+            if not body.team_code:
+                raise Problem(422, "Укажите team_code")
+            team = await fetch_one(conn, "select code from teams where code = %s", (body.team_code,))
+            if not team:
+                raise Problem(404, "Команда не найдена")
+            await conn.execute(
+                "update incidents set team_code = %s, routing_status = 'routed', updated_at = now() where id = %s",
+                (body.team_code, id),
+            )
+            if inc["status"] in ("new", "classified", "awaiting_human", "escalated"):
+                await _transition(
+                    conn, inc, "routed", body.actor, reason or f"перенаправлен в {body.team_code}", sim_time
+                )
+            else:
+                await conn.execute(
+                    "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
+                    (
+                        id,
+                        inc["status"],
+                        inc["status"],
+                        body.actor,
+                        f"перенаправлен {inc['team_code']} → {body.team_code}: {reason or ''}",
+                        sim_time,
+                    ),
+                )
+            await conn.execute(
+                "insert into notifications (run_id, recipient_type, team_code, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, 'team', %s, %s, 'internal', 'team_notice', %s, %s, 'sent', %s, now())",
+                (
+                    inc["run_id"],
+                    body.team_code,
+                    id,
+                    f"Инцидент {inc['title']} передан вашей команде",
+                    reason or "Перенаправлено оператором CX.",
+                    sim_time,
+                ),
+            )
+        elif a in ("reply_client", "request_client_data"):
+            if not inc["primary_client_id"]:
+                raise Problem(422, "У инцидента нет опознанного клиента")
+            if not (body.text or "").strip():
+                raise Problem(422, "Укажите text")
+            text = PII_RE.sub("[скрыто]", body.text or "")
+            sig = await fetch_one(
+                conn,
+                "select signal_id from incident_signals where incident_id = %s order by (link_type = 'primary') desc, linked_sim limit 1",
+                (id,),
+            )
+            await conn.execute(
+                "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, 'client', %s, %s, %s, %s, %s, %s, %s, 'sent', %s, now())",
+                (
+                    inc["run_id"],
+                    inc["primary_client_id"],
+                    (sig or {}).get("signal_id"),
+                    id,
+                    body.channel_code or "chat",
+                    "manual_reply" if a == "reply_client" else "clarify_request",
+                    "Ответ сотрудника" if a == "reply_client" else "Нужно уточнение",
+                    text,
+                    sim_time,
+                ),
+            )
+            if a == "request_client_data" and "awaiting_client" in STATUS_TRANSITIONS.get(str(inc["status"]), set()):
+                await _transition(
+                    conn, inc, "awaiting_client", body.actor, reason or "запрошены данные у клиента", sim_time
+                )
+        elif a == "close":
+            if inc["status"] not in ("resolved", "closed"):
+                await _transition(conn, inc, "resolved", body.actor, reason or "закрыт оператором", sim_time)
+            await _transition(conn, inc, "closed", body.actor, reason or "закрыт оператором", sim_time)
+            if body.text:
+                await conn.execute(
+                    "update incidents set resolution_summary = %s, updated_at = now() where id = %s", (body.text, id)
+                )
+        elif a == "reject":
+            await _transition(conn, inc, "rejected", body.actor, reason or "отклонён оператором", sim_time)
+            await conn.execute(
+                "update incidents set routing_status = 'rejected', updated_at = now() where id = %s", (id,)
+            )
+        elif a == "mark_duplicate":
+            if not body.duplicate_of_id:
+                raise Problem(422, "Укажите duplicate_of_id")
+            orig = await fetch_one(conn, "select id from incidents where id = %s", (body.duplicate_of_id,))
+            if not orig or body.duplicate_of_id == id:
+                raise Problem(404, "Исходный инцидент не найден")
+            await _transition(
+                conn, inc, "duplicate", body.actor, f"дубликат инцидента #{body.duplicate_of_id}", sim_time
+            )
+            await conn.execute(
+                "insert into incident_signals (incident_id, signal_id, link_type, linked_sim) select %s, signal_id, 'duplicate', %s from incident_signals where incident_id = %s on conflict do nothing",
+                (body.duplicate_of_id, sim_time, id),
+            )
+        elif a == "change_priority":
+            if body.priority is None:
+                raise Problem(422, "Укажите priority 1..4")
+            await conn.execute(
+                "update incidents set priority = %s, updated_at = now() where id = %s", (body.priority, id)
+            )
+            await conn.execute(
+                "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
+                (
+                    id,
+                    inc["status"],
+                    inc["status"],
+                    body.actor,
+                    f"приоритет {inc['priority']} → {body.priority}: {reason or ''}",
+                    sim_time,
+                ),
+            )
+        elif a == "escalate":
+            if not reason:
+                raise Problem(422, "Укажите reason")
+            await conn.execute(
+                "insert into escalations (run_id, incident_id, reason, severity, to_role, status, created_by, created_sim) values (%s, %s, %s, 'high', 'cx_lead', 'open', 'human', %s)",
+                (inc["run_id"], id, reason, sim_time),
+            )
+            if "escalated" in STATUS_TRANSITIONS.get(str(inc["status"]), set()):
+                await _transition(conn, inc, "escalated", body.actor, reason, sim_time)
+            await conn.execute(
+                "update incidents set routing_status = 'escalated', updated_at = now() where id = %s", (id,)
+            )
+        brief = await fetch_one(
+            conn,
+            "select id, public_id, status, team_code, priority, routing_status from incidents where id = %s",
+            (id,),
+        )
+        await conn.execute(
+            "select pg_notify('incidents', %s)",
+            (
+                dumps(
+                    {
+                        "type": "status",
+                        "run_id": inc["run_id"],
+                        "data": {**(brief or {}), "action": a, "actor": body.actor},
+                    }
+                ),
+            ),
+        )
+        if a == "escalate":
+            await conn.execute(
+                "select pg_notify('escalations', %s)",
+                (dumps({"type": "created", "run_id": inc["run_id"], "data": {"incident_id": id}}),),
+            )
+    return await get_incidents_id(request, id)
 
 
 @router.get("/api/teams/load", summary="Нагрузка команд и соблюдение SLA (вкладка «Команды»)")
-async def get_teams_load(request: Request) -> Any:
-    raise NotImplementedYet("T-089")
+async def get_teams_load(request: Request, run_id: str | None = Query(None)) -> Any:
+    """Для каждой команды: открытые / в работе, SLA под угрозой (< 2 ч) и сорванные, обязательные отчёты (должны / пропущены), среднее время взятия, доля закрытых в SLA."""
+    async with db() as conn:
+        rid = await resolve_run_id(conn, run_id)
+        rows = await fetch_all(
+            conn,
+            f"""
+            with st as (select sim_time from sim_state where id = 1),
+            inc as (
+              select i.*, (select count(*) from unnest(i.report_due_sims) d, st where d <= st.sim_time) as reports_due_n,
+                     (select count(*) from unnest(i.report_due_sims) d, st where d <= st.sim_time) - (select count(*) from incident_artifacts a where a.incident_id = i.id and a.kind = 'progress_report') as reports_missing_n
+              from incidents i {"where i.run_id = %s" if rid is not None else ""}
+            )
+            select t.code as team_code, t.name_ru, t.speed_profile, t.lead_display_name,
+                   count(*) filter (where inc.status in ('new','classified','routed','awaiting_human','escalated'))::int as open,
+                   count(*) filter (where inc.status in ('in_progress','fix_proposed','fix_deployed','verifying','awaiting_client'))::int as in_progress,
+                   count(*) filter (where inc.status not in ('resolved','closed','rejected','duplicate') and inc.sla_due_sim >= st.sim_time and inc.sla_due_sim < st.sim_time + interval '2 hours')::int as sla_warning,
+                   count(*) filter (where (inc.status not in ('resolved','closed','rejected','duplicate') and inc.sla_due_sim < st.sim_time) or inc.sla_breached)::int as sla_breached,
+                   coalesce(sum(inc.reports_due_n) filter (where inc.status not in ('closed','rejected','duplicate')), 0)::int as reports_due,
+                   coalesce(sum(greatest(inc.reports_missing_n, 0)) filter (where inc.status not in ('closed','rejected','duplicate')), 0)::int as reports_missing,
+                   coalesce(avg(extract(epoch from (inc.taken_sim - inc.created_sim)) / 3600) filter (where inc.taken_sim is not null), 0)::float as avg_take_hours,
+                   case when count(*) filter (where inc.status in ('resolved','closed')) = 0 then 100
+                        else round(100.0 * count(*) filter (where inc.status in ('resolved','closed') and not inc.sla_breached) / count(*) filter (where inc.status in ('resolved','closed')), 1) end::float as sla_compliance_pct,
+                   count(*) filter (where inc.status not in ('resolved','closed','rejected','duplicate') and inc.criticality = 'high')::int as critical_open,
+                   count(inc.id)::int as total
+            from teams t cross join st left join inc on inc.team_code = t.code
+            group by t.code, t.name_ru, t.speed_profile, t.lead_display_name, st.sim_time
+            order by open desc, in_progress desc, t.code
+            """,
+            (rid,) if rid is not None else (),
+        )
+    return rows
