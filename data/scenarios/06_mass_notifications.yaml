@@ -1,0 +1,16 @@
+id: mass_notifications
+number: 6
+title_ru: Массовый сбой уведомлений
+title_en: Mass notifications
+kind: deferred
+fault:
+  error_code: NOTIF-DELAY
+  system: notification_gw
+  affected_clients: 120
+  district: yufo
+expected:
+  complaints: 30
+  dedupe_to_one_incident: true
+  flag: mass_impact
+  preventive_notice: true
+  map_zone: red

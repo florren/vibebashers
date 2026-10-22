@@ -1,0 +1,12 @@
+id: deferred_fraud
+number: 5
+title_ru: 'Отложенное обращение: ждём данные клиента'
+title_en: Deferred fraud
+kind: deferred
+signal:
+  signal_type: fraud_suspicion
+  channel: chat
+expected:
+  clarification: screenshot
+  sleep_hours: 24
+  escalate_on_silence: true

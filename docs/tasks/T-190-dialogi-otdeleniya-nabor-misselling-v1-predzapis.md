@@ -42,4 +42,4 @@ python scripts/stt_bench.py --dataset stt_v1
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B21 (только тексты/данные). `data/misselling_patterns.yaml`: 8 паттернов двух семейств (misselling: tie_in, substitution, concealment, pressure*, guarantee*; conduct: rudeness, script_violation, misinformation) с examples/counter_examples/keywords, alert_policy (immediate 0.8 / counter / report), recommendation_ru, training_module; * — неактивны по умолчанию. `data/service_scripts.yaml`: retail_service_v1 и contact_center_v1 (этапы с маркерами, запрещённые фразы). Сид — `refs.py::seed_abs_rules`. Детектор/LLM-часть — в карточках L3. Время: ~20 мин.

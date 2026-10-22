@@ -1,0 +1,23 @@
+id: double_fee
+number: 2
+title_ru: Повторное списание комиссии
+title_en: Double fee
+kind: realtime
+client:
+  segment: mass
+  city: Новосибирск
+  psychotype: public_emotional
+  signals_30d: 3
+signal:
+  channel: social
+  sarcasm: true
+  error_code: PROC-DOUBLE-DEBIT
+expected:
+  flags:
+  - sarcasm
+  - repeat
+  - churn_intent
+  priority: 1
+  incident_team: team_processing
+  public_reply: true
+  move_to_private: true

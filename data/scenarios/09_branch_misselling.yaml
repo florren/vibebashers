@@ -1,0 +1,19 @@
+id: branch_misselling
+number: 9
+title_ru: Мисселлинг в отделении
+title_en: Branch misselling
+kind: live_brd
+branch: '0042'
+desk: 3
+employee: Петров П. П.
+client:
+  segment: social
+  deposit_rub: 400000
+deal: ИСЖ
+expected:
+  patterns:
+  - substitution
+  - concealment
+  - tie_in
+  alert_to_manager: true
+  counter_threshold: 3

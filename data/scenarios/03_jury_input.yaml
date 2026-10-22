@@ -1,0 +1,10 @@
+id: jury_input
+number: 3
+title_ru: Жюри вводит своё сообщение
+title_en: Jury input
+kind: realtime
+input:
+  channel: any
+  client: optional
+expected:
+  under_the_hood: true

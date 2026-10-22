@@ -42,4 +42,4 @@ pytest backend/tests/unit/test_corpora_dtz.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B21. `scripts/seed/gen_corpora.py` (детерминирован, seed 7) → `data/import/transcripts/` 20 файлов (10 JSON валидны по `ingest/transcript.schema.json`, 10 TXT формата «[чч:мм:сс] Сотрудник/Клиент: …»; 12 отделение + 8 КЦ; `scenario10_retail.txt` с фразой «Вы вообще читали условия…», ставкой 14 % vs 9,5 % и пропуском идентификации/потребности), эталоны `data/bench/transcripts_v1/<id>.expected.json`; `data/bench/red_phrases_v1.jsonl` (139: по 30 rudeness/script_violation/misinformation с claimed/truth/source_table + misselling-семейство + 30 чистых); также sentiment_v1 (300), hidden_negativity_v1 (120), summary_v1 (60), golden_v1 (120). `data/corpus/mock_feed.yaml` — 30 постов (feed-0001 = сценарий 11). Сид bench_datasets/bench_cases в `refs.py::seed_bench`. Отклонение: проверка схем data/import вынесена в `tests/integration/test_coverage.py::test_corpora_valid_against_contracts` (contracts_check.py не расширялся). Время: ~35 мин.

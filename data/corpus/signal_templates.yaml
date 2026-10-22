@@ -1,0 +1,146 @@
+# Шаблоны текстов сигналов (ТЗ 4.3, AGENTS §6.6). Плейсхолдеры: {amount} {card4} {city} {days} {product} {branch} {rate} {promo_rate} {op}
+# Вариативность по тону добавляет scripts/seed/textgen.py (сарказм, сленг, опечатки, капс) — ≥ 25 % сигналов.
+# gold — эталонная разметка для бенчей и матрицы покрытия.
+templates:
+  tech_fault:
+    deposit:
+      - {text: "Пытаюсь открыть вклад в приложении — висит «подождите» и вылетает. Уже {days} раза пробовал. Ставка {promo_rate} % уйдёт, а я без вклада.", gold: {sentiment: negative, negativity: 70, system: mobile_app, error_code: DEP-TIMEOUT-503}}
+      - {text: "При открытии вклада на {amount} ₽ ошибка 503, деньги со счёта ушли, вклада нет. Где мои деньги?", gold: {sentiment: negative, negativity: 85, system: sub_deposits, error_code: DEP-TIMEOUT-503}}
+      - {text: "Не могу пополнить вклад, кнопка неактивна второй день. Что происходит?", gold: {sentiment: negative, negativity: 55, system: mobile_app}}
+    debit_card:
+      - {text: "Списали дважды {amount} ₽ в магазине, одна покупка — два списания. Верните деньги.", gold: {sentiment: negative, negativity: 75, system: processing, error_code: PROC-DOUBLE-DEBIT}}
+      - {text: "Оплатил по QR {amount} ₽, а комиссию взяли {fee} ₽. По тарифу же бесплатно! Карта {card4}.", gold: {sentiment: negative, negativity: 70, system: processing, error_code: PROC-QR-FEE-CHARGED}}
+      - {text: "Карту заблокировали прямо на кассе, никаких подозрительных операций не делал. Стыдно было перед очередью.", gold: {sentiment: negative, negativity: 80, system: antifraud, error_code: AF-FALSE-BLOCK}}
+      - {text: "Приложение закрывается, когда подтверждаю платёж. Переустановил — не помогло.", gold: {sentiment: negative, negativity: 60, system: mobile_app, error_code: APP-CRASH-PAY}}
+      - {text: "Кешбэк за {month} не пришёл, хотя категория была выбрана. В прошлом месяце тоже с опозданием.", gold: {sentiment: negative, negativity: 45, system: sub_debit, error_code: DEBIT-CASHBACK-MISS}}
+    credit:
+      - {text: "Внёс платёж по кредиту {amount} ₽ {days} дня назад, задолженность не уменьшилась, уже звонят с напоминанием!", gold: {sentiment: negative, negativity: 85, system: sub_lending, error_code: LEND-PAYMENT-NOT-POSTED}}
+      - {text: "В интернет-банке не открывается график платежей по кредиту, пишет ошибку сессии.", gold: {sentiment: negative, negativity: 45, system: web_bank, error_code: WEB-SESSION-DROP}}
+    credit_card:
+      - {text: "Начислили проценты по кредитке, хотя я внутри льготного периода. У вас калькулятор сломался?", gold: {sentiment: negative, negativity: 70, system: sub_lending, error_code: CC-GRACE-MISCALC}}
+      - {text: "СМС с кодом для оплаты кредиткой не приходят уже час. Покупка сорвалась.", gold: {sentiment: negative, negativity: 65, system: notification_gw, error_code: NOTIF-DELAY}}
+  client_error:
+    deposit:
+      - {text: "Открыл вклад не на тот срок, можно переоткрыть на 6 месяцев без потери процентов?", gold: {sentiment: neutral, negativity: 25}}
+    debit_card:
+      - {text: "Перевёл {amount} ₽ не на тот номер телефона, ошибся цифрой. Как вернуть?", gold: {sentiment: negative, negativity: 50}}
+      - {text: "Ввёл три раза неверный ПИН, карта заблокировалась. Это я сам, но как разблокировать?", gold: {sentiment: neutral, negativity: 30}}
+    credit:
+      - {text: "Заплатил по кредиту меньше, чем надо, не досмотрел сумму. Будет штраф?", gold: {sentiment: neutral, negativity: 35}}
+    credit_card:
+      - {text: "Случайно снял наличные с кредитки, думал с дебетовой. Комиссия {fee} ₽ — можно отменить?", gold: {sentiment: negative, negativity: 45}}
+  tariff_terms:
+    deposit:
+      - {text: "Открывал вклад под {promo_rate} % по акции, в договоре {rate} %. Это что, обман?", gold: {sentiment: negative, negativity: 75, system: promo_engine, error_code: PROMO-RATE-MISMATCH}}
+      - {text: "В рекламе {promo_rate} %, по факту ставка {rate} %. Мелкий шрифт, да?", gold: {sentiment: negative, negativity: 65, system: promo_engine, error_code: PROMO-RATE-MISMATCH}}
+    debit_card:
+      - {text: "С каких пор за оплату по QR берут комиссию? Списали {fee} ₽ с покупки {amount} ₽. На сайте написано — бесплатно.", gold: {sentiment: negative, negativity: 65, system: processing, error_code: PROC-QR-FEE-CHARGED}}
+      - {text: "За обслуживание карты списали {fee} ₽, хотя при оформлении обещали бесплатно навсегда.", gold: {sentiment: negative, negativity: 70}}
+    credit:
+      - {text: "Менеджер сказал, что без страховки кредит не одобрят. Страховка {amount} ₽. Это законно вообще?", gold: {sentiment: negative, negativity: 70, flags: [regulator_threat]}}
+    credit_card:
+      - {text: "Льготный период оказался не 120 дней, а до конца месяца. Почему нигде нормально не написано?", gold: {sentiment: negative, negativity: 55}}
+  service_quality:
+    deposit:
+      - {text: "В отделении {branch} ждал 40 минут, чтобы просто закрыть вклад. Один оператор на весь зал.", gold: {sentiment: negative, negativity: 60}}
+    debit_card:
+      - {text: "Оператор чата отвечал по полчаса и в итоге сбросил диалог. Вопрос по карте так и не решён.", gold: {sentiment: negative, negativity: 65, system: contact_center, error_code: CC-QUEUE-OVERFLOW}}
+      - {text: "Звонил по поводу карты, 25 минут музыки и «ваш звонок важен». Потом сброс.", gold: {sentiment: negative, negativity: 70, system: contact_center, error_code: CC-QUEUE-OVERFLOW}}
+    credit:
+      - {text: "Сотрудница в {branch} разговаривала так, будто я ей должен. Пришёл за справкой по кредиту, ушёл с испорченным настроением.", gold: {sentiment: negative, negativity: 70}}
+    credit_card:
+      - {text: "Три раза объяснял одно и то же разным операторам про кредитку. У вас вообще записывают обращения?", gold: {sentiment: negative, negativity: 65, flags: [repeat]}}
+  fraud_suspicion:
+    deposit:
+      - {text: "Позвонили «из службы безопасности банка», просили перевести деньги с вклада на «безопасный счёт». Это вы или мошенники?", gold: {sentiment: negative, negativity: 70}}
+    debit_card:
+      - {text: "Списание {amount} ₽ в магазине в {city}, а я там никогда не был. Карта {card4} у меня в кошельке. Заблокируйте срочно!", gold: {sentiment: negative, negativity: 90}}
+      - {text: "Пришла СМС о входе в приложение с нового устройства. Это не я. Что делать?!", gold: {sentiment: negative, negativity: 75}}
+    credit:
+      - {text: "На меня оформили кредит, я ничего не брал. Узнал из уведомления о платеже. Требую разбирательства.", gold: {sentiment: negative, negativity: 95, flags: [regulator_threat]}}
+    credit_card:
+      - {text: "По кредитке операции в интернете, которых я не совершал, на {amount} ₽. Карту не терял.", gold: {sentiment: negative, negativity: 85}}
+  legal_regulatory:
+    deposit:
+      - {text: "Если ставка по вкладу не будет исправлена на обещанные {promo_rate} %, направлю жалобу в ЦБ и в суд. Срок — три дня.", gold: {sentiment: negative, negativity: 85, flags: [regulator_threat]}}
+    debit_card:
+      - {text: "Комиссия за QR незаконна, статья о СБП. Жалоба в Банк России уже готова, жду вашего ответа до пятницы.", gold: {sentiment: negative, negativity: 80, flags: [regulator_threat]}}
+    credit:
+      - {text: "Навязанная страховка по кредиту — обращусь в Роспотребнадзор, если не вернёте {amount} ₽.", gold: {sentiment: negative, negativity: 80, flags: [regulator_threat]}}
+    credit_card:
+      - {text: "Прошу официальный ответ на претензию по начисленным процентам в льготный период. При отказе — финансовый омбудсмен.", gold: {sentiment: negative, negativity: 65, flags: [regulator_threat]}}
+  info_request:
+    deposit:
+      - {text: "Подскажите, какая сейчас ставка по вкладу на 6 месяцев и можно ли пополнять?", gold: {sentiment: neutral, negativity: 5}}
+      - {text: "Как закрыть вклад досрочно и сколько потеряю?", gold: {sentiment: neutral, negativity: 15}}
+    debit_card:
+      - {text: "Сколько стоит перевыпуск карты и где её забрать в {city}?", gold: {sentiment: neutral, negativity: 5}}
+      - {text: "Есть ли комиссия за оплату по QR? Нигде не нашёл.", gold: {sentiment: neutral, negativity: 10}}
+    credit:
+      - {text: "Можно ли сделать частичное досрочное погашение через приложение? Какие документы нужны?", gold: {sentiment: neutral, negativity: 5}}
+    credit_card:
+      - {text: "Как узнать дату окончания льготного периода по кредитке?", gold: {sentiment: neutral, negativity: 5}}
+  gratitude:
+    deposit:
+      - {text: "Спасибо, вклад открылся за минуту, ставка как обещали. Приятно удивлён.", gold: {sentiment: positive, negativity: 0}}
+    debit_card:
+      - {text: "Вернули комиссию за QR в тот же день, даже не пришлось ругаться. Молодцы!", gold: {sentiment: positive, negativity: 0}}
+      - {text: "Оператор Мария решила вопрос с картой за 5 минут. Побольше бы таких сотрудников.", gold: {sentiment: positive, negativity: 0}}
+    credit:
+      - {text: "Досрочное погашение прошло без проблем, график пересчитали сразу. Спасибо.", gold: {sentiment: positive, negativity: 0}}
+    credit_card:
+      - {text: "Кредитку одобрили за 10 минут, курьер привёз на следующий день. Отлично.", gold: {sentiment: positive, negativity: 0}}
+  suggestion:
+    deposit:
+      - {text: "Было бы удобно видеть в приложении, сколько процентов уже накапало по вкладу за день.", gold: {sentiment: neutral, negativity: 5}}
+    debit_card:
+      - {text: "Добавьте, пожалуйста, возможность выбирать категорию кешбэка в середине месяца.", gold: {sentiment: neutral, negativity: 5}}
+    credit:
+      - {text: "Предлагаю показывать в приложении, сколько сэкономлю при досрочном погашении.", gold: {sentiment: neutral, negativity: 5}}
+    credit_card:
+      - {text: "Хотелось бы напоминание за 3 дня до конца льготного периода.", gold: {sentiment: neutral, negativity: 5}}
+  churn:
+    deposit:
+      - {text: "Закрываю вклад и ухожу в другой банк. Там хотя бы ставка не меняется после подписания.", gold: {sentiment: negative, negativity: 80, flags: [churn_intent]}}
+    debit_card:
+      - {text: "Это последняя капля. Перевожу зарплату в другой банк, карту закрою на этой неделе.", gold: {sentiment: negative, negativity: 85, flags: [churn_intent]}}
+      - {text: "Второй раз комиссия за обслуживание, которого «нет». Наверное, пора менять банк.", gold: {sentiment: negative, negativity: 75, flags: [churn_intent, sarcasm]}}
+    credit:
+      - {text: "Рефинансирую кредит у конкурентов, с вами больше дел иметь не хочу.", gold: {sentiment: negative, negativity: 80, flags: [churn_intent]}}
+    credit_card:
+      - {text: "Закрываю кредитку. Проценты в льготный период — это уже за гранью.", gold: {sentiment: negative, negativity: 80, flags: [churn_intent]}}
+# Варианты сарказма: обёртки вокруг базового текста (gold: sentiment negative, flags += sarcasm, hidden_negativity true)
+sarcasm_wrappers:
+  - "Спасибо, что {lower} Очень приятно."
+  - "Отличный сервис, ничего не скажешь: {lower}"
+  - "Ну конечно, как всегда: {lower}"
+  - "Браво! {text} Так держать))"
+  - "Прекрасно, просто прекрасно. {text}"
+  - "Люблю ваш банк: {lower} Молодцы, что сказать"
+  - "Ага, «надёжный банк»: {lower}"
+slang:
+  - ["не работает", "не пашет"]
+  - ["приложение", "прила"]
+  - ["деньги", "бабки"]
+  - ["очень", "ваще"]
+  - ["что происходит", "чё за дела"]
+  - ["Пожалуйста", "Плиз"]
+  - ["Верните", "Верните, блин,"]
+  - ["Подскажите", "Подскажите плз"]
+  - ["сотрудник", "чел"]
+  - ["оператор", "опер"]
+typos:
+  - ["приложен", "преложен"]
+  - ["комисси", "коммиси"]
+  - ["тариф", "тарифф"]
+  - ["вклад", "вклат"]
+  - ["сегодня", "седня"]
+  - ["вообще", "ваще"]
+  - ["что", "што"]
+  - ["ничего", "ничё"]
+  - ["пожалуйста", "пожалуста"]
+  - ["здравствуйте", "здраствуйте"]
+amounts: {deposit: [100000, 250000, 400000, 750000, 1200000], debit_card: [450, 1290, 3200, 5800, 12400, 27500], credit: [8900, 15400, 23700, 41200], credit_card: [2300, 7800, 15600, 32000]}
+fees: [89, 150, 199, 290, 450, 590]
+branches: ["ВСП № 0042 Самара", "ВСП № 0107 Москва", "ВСП № 0211 Санкт-Петербург", "ВСП № 0315 Казань", "ВСП № 0418 Екатеринбург", "ВСП № 0520 Новосибирск", "ВСП № 0633 Краснодар", "ВСП № 0741 Нижний Новгород", "ВСП № 0856 Ростов-на-Дону", "ВСП № 0962 Владивосток"]
+months: [сентябрь, октябрь]

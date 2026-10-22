@@ -1,0 +1,16 @@
+id: silent_churn_regression
+number: 7
+title_ru: Молчаливый уход и регрессия
+title_en: Silent churn and regression
+kind: deferred
+client:
+  segment: salary
+  city: Екатеринбург
+  psychotype: silent_churner
+fault:
+  error_code: PROC-DOUBLE-DEBIT
+  regression: true
+expected:
+  proactive_on_activity_drop: true
+  regression_incident: true
+  retained: true

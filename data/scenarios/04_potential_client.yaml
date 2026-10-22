@@ -1,0 +1,13 @@
+id: potential_client
+number: 4
+title_ru: Потенциальный клиент через лендинг или бота
+title_en: Potential client
+kind: deferred
+signal:
+  channel: telegram_bot
+  identified: false
+  text: Отказали в кредитной карте без объяснений
+expected:
+  clarification: true
+  sleeps: true
+  wake_on_reply: true

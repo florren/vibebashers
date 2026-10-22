@@ -1,0 +1,24 @@
+{
+  "id": "br_rude_card",
+  "kind": "branch_retail",
+  "product": "credit_card",
+  "findings": [
+    {
+      "code": "rudeness",
+      "alert": "immediate",
+      "turn_seq": 9,
+      "quote": "Это не моя проблема, читайте договор."
+    }
+  ],
+  "finding_codes": [
+    "rudeness"
+  ],
+  "script_steps_missed": [
+    "closing"
+  ],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "service_quality",
+    "sentiment": "negative"
+  }
+}

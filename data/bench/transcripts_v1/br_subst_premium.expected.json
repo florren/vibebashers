@@ -1,0 +1,24 @@
+{
+  "id": "br_subst_premium",
+  "kind": "branch_retail",
+  "product": "deposit",
+  "findings": [
+    {
+      "code": "substitution",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Это не инвестиции, это накопления с гарантией."
+    }
+  ],
+  "finding_codes": [
+    "substitution"
+  ],
+  "script_steps_missed": [
+    "summary"
+  ],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "cc_call_tiein",
+  "kind": "contact_center_call",
+  "product": "credit",
+  "findings": [
+    {
+      "code": "tie_in",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Без страховки кредит вам не одобрят, это условие."
+    }
+  ],
+  "finding_codes": [
+    "tie_in"
+  ],
+  "script_steps_missed": [],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

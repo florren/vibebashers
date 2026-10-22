@@ -1,0 +1,14 @@
+# ТЗ 3.4 — эмулируемые системы банка
+systems:
+  - {code: mobile_app,       name_ru: Мобильное приложение,              name_en: Mobile app,            layer: front}
+  - {code: web_bank,         name_ru: Сайт / интернет-банк,               name_en: Web bank,              layer: front}
+  - {code: contact_center,   name_ru: Платформа контакт-центра,           name_en: Contact center,        layer: front}
+  - {code: social_listening, name_ru: Мониторинг соцсетей,                name_en: Social listening,      layer: front}
+  - {code: processing,       name_ru: Процессинг карт,                    name_en: Card processing,       layer: middle}
+  - {code: notification_gw,  name_ru: Шлюз уведомлений (push/SMS/e-mail),  name_en: Notification gateway,  layer: middle}
+  - {code: promo_engine,     name_ru: Движок акций и тарифов,             name_en: Promo engine,          layer: middle}
+  - {code: antifraud,        name_ru: Антифрод,                           name_en: Antifraud,             layer: middle}
+  - {code: sub_deposits,     name_ru: Подсистема вкладов,                 name_en: Deposits subsystem,    layer: product}
+  - {code: sub_lending,      name_ru: Подсистема кредитов и кредитных карт, name_en: Lending subsystem,   layer: product}
+  - {code: sub_debit,        name_ru: Подсистема дебетовых карт,          name_en: Debit subsystem,       layer: product}
+  - {code: core_abs,         name_ru: АБС (учёт),                         name_en: Core banking (ABS),    layer: core}

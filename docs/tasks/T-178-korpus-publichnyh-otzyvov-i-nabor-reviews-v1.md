@@ -42,4 +42,4 @@ make bench DATASET=reviews_v1 PROFILE=mock
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B21. `data/tariffs.yaml` (12 строк Mock-АБС: QR/СБП 0 %, снятие с кредитки 3,9 % + 390 ₽ и т. д.), `data/rules.yaml` (RULE-QR-FEE-001 → refund_fee с лимитами 5 000 ₽/3 за 30 дн., RULE-DOUBLE-DEBIT-001, RULE-PROMO-RATE-001, RULE-NOTIF-DUP-001, RULE-REPEAT-7D-001), `data/branches.yaml` (10 ВСП × 6 столов, ВСП № 0042 Самара: стол 3 — Петров П. П., стол 5 — Сидорова А. А.), загрузка `refs.py::seed_abs_rules/seed_branches`. Движок правил (app/rules/engine.py) — отдельная карточка, здесь только данные. Время: ~20 мин.

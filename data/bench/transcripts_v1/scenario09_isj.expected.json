@@ -1,0 +1,38 @@
+{
+  "id": "scenario09_isj",
+  "kind": "branch_retail",
+  "product": "deposit",
+  "findings": [
+    {
+      "code": "substitution",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Это как вклад, только лучше — по сути тот же депозит, но доходнее."
+    },
+    {
+      "code": "concealment",
+      "alert": "counter",
+      "turn_seq": 11,
+      "quote": "Подпишите, это формальность, условия стандартные, читать не обязательно."
+    },
+    {
+      "code": "tie_in",
+      "alert": "counter",
+      "turn_seq": 13,
+      "quote": "Без страховки кредит вам не одобрят, это условие."
+    }
+  ],
+  "finding_codes": [
+    "concealment",
+    "substitution",
+    "tie_in"
+  ],
+  "script_steps_missed": [
+    "summary"
+  ],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

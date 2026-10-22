@@ -1,0 +1,43 @@
+# ТЗ 4.5 — психотипы; params по contracts/events/behavior/psychotype_params.schema.json
+psychotypes:
+  loyal_pragmatic:
+    name_ru: Лояльный прагматик
+    name_en: Loyal pragmatic
+    params: {p_complain: 0.25, complain_delay_min: [120, 1440], patience_days: [7, 10], care_sensitivity: 0.5, care_weights: {proactive: 0.15, speed: 0.2, sla: 0.3, gift_fit: 0.1, tone: 0.1, explanation: 0.15}, repeat_prob: 0.3, escalation_prob: 0.15, channel_weights: {chat: 0.45, call: 0.15, email: 0.2, social: 0.05, branch: 0.1, telegram_bot: 0.05}, gift_elasticity: 0.4, privilege_elasticity: 0.1, base_churn_hazard: 0.02, thank_you_prob: 0.4, tone_default: neutral, silent_decline_prob: 0.1}
+  anxious:
+    name_ru: Тревожный
+    name_en: Anxious
+    params: {p_complain: 0.70, complain_delay_min: [2, 30], patience_days: [5, 7], care_sensitivity: 0.8, care_weights: {proactive: 0.35, speed: 0.3, sla: 0.1, gift_fit: 0.05, tone: 0.1, explanation: 0.1}, repeat_prob: 0.7, escalation_prob: 0.5, channel_weights: {call: 0.35, chat: 0.35, social: 0.2, email: 0.05, telegram_bot: 0.05}, gift_elasticity: 0.3, privilege_elasticity: 0.05, base_churn_hazard: 0.03, thank_you_prob: 0.3, tone_default: irritated, silent_decline_prob: 0.1}
+  demanding_rational:
+    name_ru: Требовательный рационалист
+    name_en: Demanding rational
+    params: {p_complain: 0.60, complain_delay_min: [60, 360], patience_days: [3, 5], care_sensitivity: 0.7, care_weights: {proactive: 0.1, speed: 0.25, sla: 0.4, gift_fit: 0.05, tone: 0.05, explanation: 0.15}, repeat_prob: 0.6, escalation_prob: 0.4, channel_weights: {email: 0.45, chat: 0.4, call: 0.1, social: 0.05}, gift_elasticity: 0.15, privilege_elasticity: 0.2, base_churn_hazard: 0.05, thank_you_prob: 0.15, tone_default: formal, silent_decline_prob: 0.05}
+  public_emotional:
+    name_ru: Эмоциональный публичный
+    name_en: Public emotional
+    params: {p_complain: 0.55, complain_delay_min: [5, 120], patience_days: [3, 5], care_sensitivity: 0.75, care_weights: {proactive: 0.1, speed: 0.35, sla: 0.1, gift_fit: 0.15, tone: 0.25, explanation: 0.05}, repeat_prob: 0.65, escalation_prob: 0.7, channel_weights: {social: 0.6, chat: 0.25, call: 0.1, telegram_bot: 0.05}, gift_elasticity: 0.5, privilege_elasticity: 0.15, base_churn_hazard: 0.04, thank_you_prob: 0.35, tone_default: sarcastic, silent_decline_prob: 0.05}
+  silent_churner:
+    name_ru: Молчаливый уходящий
+    name_en: Silent churner
+    params: {p_complain: 0.10, complain_delay_min: [600, 2880], patience_days: [5, 10], care_sensitivity: 0.8, care_weights: {proactive: 0.6, speed: 0.1, sla: 0.1, gift_fit: 0.1, tone: 0.05, explanation: 0.05}, repeat_prob: 0.1, escalation_prob: 0.05, channel_weights: {proactive: 0.7, chat: 0.2, email: 0.1}, gift_elasticity: 0.3, privilege_elasticity: 0.1, base_churn_hazard: 0.08, thank_you_prob: 0.1, tone_default: neutral, silent_decline_prob: 0.7}
+  bonus_hunter:
+    name_ru: Охотник за бонусами
+    name_en: Bonus hunter
+    params: {p_complain: 0.65, complain_delay_min: [60, 480], patience_days: [10, 14], care_sensitivity: 0.6, care_weights: {proactive: 0.05, speed: 0.1, sla: 0.1, gift_fit: 0.6, tone: 0.05, explanation: 0.1}, repeat_prob: 0.75, escalation_prob: 0.3, channel_weights: {chat: 0.5, social: 0.35, telegram_bot: 0.1, email: 0.05}, gift_elasticity: 0.9, privilege_elasticity: 0.3, base_churn_hazard: 0.03, thank_you_prob: 0.25, tone_default: irritated, silent_decline_prob: 0.05}
+  novice:
+    name_ru: Новичок / низкая финансовая грамотность
+    name_en: Novice
+    params: {p_complain: 0.45, complain_delay_min: [60, 1440], patience_days: [5, 7], care_sensitivity: 0.7, care_weights: {proactive: 0.1, speed: 0.15, sla: 0.1, gift_fit: 0.1, tone: 0.15, explanation: 0.4}, repeat_prob: 0.5, escalation_prob: 0.2, channel_weights: {call: 0.45, branch: 0.35, chat: 0.15, social: 0.05}, gift_elasticity: 0.4, privilege_elasticity: 0.05, base_churn_hazard: 0.03, thank_you_prob: 0.45, tone_default: neutral, silent_decline_prob: 0.15}
+  status_oriented:
+    name_ru: Статусный
+    name_en: Status oriented
+    params: {p_complain: 0.50, complain_delay_min: [5, 180], patience_days: [2, 4], care_sensitivity: 0.8, care_weights: {proactive: 0.15, speed: 0.3, sla: 0.15, gift_fit: 0.1, tone: 0.2, explanation: 0.1}, repeat_prob: 0.55, escalation_prob: 0.45, channel_weights: {call: 0.5, chat: 0.4, email: 0.1}, gift_elasticity: 0.3, privilege_elasticity: 0.9, base_churn_hazard: 0.06, thank_you_prob: 0.2, tone_default: formal, silent_decline_prob: 0.1}
+# Доли психотипов по сегментам (ТЗ 4.5), сумма по сегменту = 1.0
+segment_mix:
+  mass:      {loyal_pragmatic: 0.30, anxious: 0.20, demanding_rational: 0.10, public_emotional: 0.10, silent_churner: 0.15, bonus_hunter: 0.05, novice: 0.10}
+  salary:    {loyal_pragmatic: 0.35, anxious: 0.15, demanding_rational: 0.15, public_emotional: 0.05, silent_churner: 0.20, bonus_hunter: 0.05, novice: 0.05}
+  social:    {loyal_pragmatic: 0.25, anxious: 0.30, novice: 0.25, silent_churner: 0.15, public_emotional: 0.05}
+  youth:     {public_emotional: 0.25, bonus_hunter: 0.20, novice: 0.20, anxious: 0.15, loyal_pragmatic: 0.10, silent_churner: 0.10}
+  premium:   {demanding_rational: 0.30, status_oriented: 0.25, loyal_pragmatic: 0.25, silent_churner: 0.15, public_emotional: 0.05}
+  vip:       {status_oriented: 0.45, demanding_rational: 0.30, loyal_pragmatic: 0.20, silent_churner: 0.05}
+  ultra_vip: {status_oriented: 0.70, demanding_rational: 0.30}

@@ -42,4 +42,4 @@ pytest backend/tests/unit/test_no_pii.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B21. `scripts/seed/textgen.py` — генератор текстов из `data/corpus/signal_templates.yaml` (10 типов × 4 продукта, ≥ 1 шаблон на пару) со стилями plain/sarcasm/slang/typos/caps (доля «трудных» ≈ 39 %, порог 25 %); gold-разметка (sentiment, negativity, flags, system, error_code). `clients.py::seed_history_signals` — история сигналов/инцидентов в `sim_runs` kind=baseline: все 440 комбинаций тип×продукт×канал, каждая ячейка SLA ≥ 5 инцидентов, статусы closed/resolved/in_progress/routed/awaiting_client/escalated/verifying/new, outcome_class и sla_breached. `coverage.py` → `settings.coverage`; exit code 2 при неполном покрытии. Тест `tests/integration/test_coverage.py`. Время: ~50 мин.

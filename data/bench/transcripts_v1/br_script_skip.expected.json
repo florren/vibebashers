@@ -1,0 +1,25 @@
+{
+  "id": "br_script_skip",
+  "kind": "branch_retail",
+  "product": "debit_card",
+  "findings": [
+    {
+      "code": "script_violation",
+      "alert": "report",
+      "turn_seq": 3,
+      "quote": "Давайте сразу к делу, оформляем, паспорт не нужен — я вас и так помню."
+    }
+  ],
+  "finding_codes": [
+    "script_violation"
+  ],
+  "script_steps_missed": [
+    "identification",
+    "needs"
+  ],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

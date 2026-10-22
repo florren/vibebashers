@@ -1,0 +1,32 @@
+{
+  "id": "br_conceal_cc",
+  "kind": "branch_retail",
+  "product": "credit_card",
+  "findings": [
+    {
+      "code": "misinformation",
+      "alert": "immediate",
+      "claimed": "бесплатно",
+      "truth": "3,9 % + 390 ₽",
+      "source_table": "tariffs.credit_card.cash_withdraw",
+      "turn_seq": 7,
+      "quote": "Снятие наличных с кредитки бесплатно в любом банкомате."
+    },
+    {
+      "code": "concealment",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Комиссий нет, там мелкий шрифт, ничего важного."
+    }
+  ],
+  "finding_codes": [
+    "concealment",
+    "misinformation"
+  ],
+  "script_steps_missed": [],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

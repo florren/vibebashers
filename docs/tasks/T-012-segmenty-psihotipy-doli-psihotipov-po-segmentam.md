@@ -42,4 +42,4 @@ pytest backend/tests/unit/test_refs_psychotypes.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B21. YAML-справочники в `data/`: segments (7, доли = 1.0), psychotypes (8, params по `behavior/psychotype_params.schema.json`) + segment_mix (ТЗ 4.5), products (тарифы/акция PROMO-DEP-14), systems (12), teams (12, speed_profile с p_regression 0.12), team_systems, channels (11), error_codes (16, вкл. PROC-QR-FEE-CHARGED), signal_types (10), sla_matrix (ТЗ 8.2), routing_rules (20), notification_templates (Jinja2, по сегментам и каналам), llm_profiles (7 с role, лимиты OpenRouter 18 rpm/1000 rpd), dcltv_rates (31), gift_catalog (5), economics_settings. Загрузчики `scripts/seed/refs.py` идемпотентны (ON CONFLICT DO UPDATE по коду; routing_rules/tariffs — полная замена). Тесты: `tests/unit/test_textgen.py::test_reference_yaml_consistency`, `tests/integration/test_coverage.py::test_reference_counts`. Время: ~40 мин.

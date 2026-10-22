@@ -1,0 +1,7 @@
+# ТЗ 3.7 — адаптеры источников
+ingest_sources:
+  - {code: rest_messages,        kind: rest,    channel_code: social,        enabled: true,  interval_s: 5, is_external: true,  config: {endpoint: "/api/ingest/messages", dedupe_by: external_id}}
+  - {code: rest_transcripts,     kind: rest,    channel_code: branch_audio,  enabled: true,  interval_s: 5, is_external: true,  config: {endpoint: "/api/ingest/transcripts", formats: [json, txt]}}
+  - {code: mock_social_polling,  kind: polling, channel_code: social,        enabled: true,  interval_s: 10,   is_external: false, config: {url: "http://localhost:8000/api/public/mock-social-feed", batch: 5, corpus: "data/corpus/mock_feed.yaml"}}
+  - {code: review_portal_feed,   kind: polling, channel_code: review_portal, enabled: true,  interval_s: 15,   is_external: false, config: {url: "http://localhost:8000/api/public/reviews?since_cursor=", batch: 10}}
+  - {code: file_import,          kind: file,    channel_code: branch_audio,  enabled: false, interval_s: 60,   is_external: false, config: {dir: "data/import/transcripts", pattern: "*.json|*.txt"}}

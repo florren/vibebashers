@@ -1,0 +1,20 @@
+id: qr_fee_public_review
+number: 8
+title_ru: Комиссия за QR-оплату и публичный отзыв
+title_en: QR fee and public review
+kind: live_brd
+client:
+  segment: mass
+  city: Воронеж
+  psychotype: public_emotional
+  card_last4: '4512'
+history:
+  qr_payment_rub: 3200
+  fee_rub: 450
+  error_code: PROC-QR-FEE-CHARGED
+expected:
+  rule: RULE-QR-FEE-001
+  refund: true
+  public_reply: true
+  abs_widget: true
+  fast_path_p50_s: 10

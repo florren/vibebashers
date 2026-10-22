@@ -1,0 +1,85 @@
+{
+  "external_id": "cc_chat_script",
+  "kind": "contact_center_chat",
+  "branch_code": null,
+  "employee_public_id": null,
+  "desk_no": null,
+  "client": null,
+  "deal_product": "Дебетовая карта",
+  "started_at": "2026-11-09T11:05:00+03:00",
+  "geo": null,
+  "analyses": [
+    "client_signal",
+    "employee_quality"
+  ],
+  "turns": [
+    {
+      "seq": 1,
+      "speaker": "employee",
+      "text": "Банк, меня зовут Дмитрий, здравствуйте.",
+      "t0_ms": 0,
+      "t1_ms": 3240
+    },
+    {
+      "seq": 2,
+      "speaker": "client",
+      "text": "Нужна дебетовая карта, чтобы без комиссий платить по QR.",
+      "t0_ms": 3640,
+      "t1_ms": 7900
+    },
+    {
+      "seq": 3,
+      "speaker": "employee",
+      "text": "Чем могу помочь? Что вас интересует в первую очередь?",
+      "t0_ms": 8300,
+      "t1_ms": 12380
+    },
+    {
+      "seq": 4,
+      "speaker": "client",
+      "text": "Важнее доходность.",
+      "t0_ms": 12780,
+      "t1_ms": 14760
+    },
+    {
+      "seq": 5,
+      "speaker": "employee",
+      "text": "Давайте сразу к делу, оформляем, паспорт не нужен — я вас и так помню.",
+      "t0_ms": 15160,
+      "t1_ms": 20260
+    },
+    {
+      "seq": 6,
+      "speaker": "employee",
+      "text": "Обслуживание карты бесплатное, оплата по QR и картой без комиссии, кешбэк один процент.",
+      "t0_ms": 20660,
+      "t1_ms": 26780
+    },
+    {
+      "seq": 7,
+      "speaker": "client",
+      "text": "А можно подумать и прийти завтра?",
+      "t0_ms": 27180,
+      "t1_ms": 30060
+    },
+    {
+      "seq": 8,
+      "speaker": "employee",
+      "text": "Итак, резюмирую: дебетовая карта с бесплатным обслуживанием и кешбэком. Если всё верно, оформляем.",
+      "t0_ms": 30460,
+      "t1_ms": 37240
+    },
+    {
+      "seq": 9,
+      "speaker": "employee",
+      "text": "Спасибо за обращение, до свидания.",
+      "t0_ms": 37640,
+      "t1_ms": 40580
+    }
+  ],
+  "meta": {
+    "employee_display_name": null,
+    "branch_city": null,
+    "synthetic": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "cc_call_rude",
+  "kind": "contact_center_call",
+  "product": "credit",
+  "findings": [
+    {
+      "code": "rudeness",
+      "alert": "immediate",
+      "turn_seq": 9,
+      "quote": "Я вам уже три раза сказала, что непонятного?"
+    }
+  ],
+  "finding_codes": [
+    "rudeness"
+  ],
+  "script_steps_missed": [
+    "summary"
+  ],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "service_quality",
+    "sentiment": "negative"
+  }
+}

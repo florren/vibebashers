@@ -1,0 +1,20 @@
+id: retail_transcript_red_phrases
+number: 10
+title_ru: 'Транскрипт розничного диалога: грубость и неверная ставка'
+title_en: 'Retail transcript: rudeness and wrong rate'
+kind: dtz
+branch: '0042'
+desk: 5
+employee: Сидорова А. А.
+file: scenario10_retail.txt
+expected:
+  findings:
+  - code: rudeness
+    alert: immediate
+  - code: misinformation
+    quote: 14 %
+    truth: 9,5 %
+    alert: immediate
+  script_steps_missed:
+  - needs
+  - summary

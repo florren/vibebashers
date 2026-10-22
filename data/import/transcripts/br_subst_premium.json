@@ -1,0 +1,105 @@
+{
+  "external_id": "br_subst_premium",
+  "kind": "branch_retail",
+  "branch_code": "VSP-0962",
+  "employee_public_id": null,
+  "desk_no": 2,
+  "client": null,
+  "deal_product": "Вклад «Накопительный»",
+  "started_at": "2026-11-09T11:05:00+03:00",
+  "geo": {
+    "region_code": null,
+    "city_id": null,
+    "lat": null,
+    "lon": null,
+    "source": "contact"
+  },
+  "analyses": [
+    "client_signal",
+    "employee_quality"
+  ],
+  "turns": [
+    {
+      "seq": 1,
+      "speaker": "employee",
+      "text": "Здравствуйте! Слушаю вас.",
+      "t0_ms": 0,
+      "t1_ms": 2400
+    },
+    {
+      "seq": 2,
+      "speaker": "client",
+      "text": "Хочу открыть вклад, какая сейчас ставка?",
+      "t0_ms": 2800,
+      "t1_ms": 6100
+    },
+    {
+      "seq": 3,
+      "speaker": "employee",
+      "text": "Для начала подтвердим личность — паспорт с собой?",
+      "t0_ms": 6500,
+      "t1_ms": 10340
+    },
+    {
+      "seq": 4,
+      "speaker": "client",
+      "text": "Да, пожалуйста.",
+      "t0_ms": 10740,
+      "t1_ms": 12540
+    },
+    {
+      "seq": 5,
+      "speaker": "employee",
+      "text": "Уточню: вам важнее доходность или возможность снять деньги в любой момент?",
+      "t0_ms": 12940,
+      "t1_ms": 18280
+    },
+    {
+      "seq": 6,
+      "speaker": "client",
+      "text": "Важнее доходность.",
+      "t0_ms": 18680,
+      "t1_ms": 20660
+    },
+    {
+      "seq": 7,
+      "speaker": "employee",
+      "text": "По вкладу «Накопительный» ставка девять с половиной процентов годовых на шесть месяцев, пополнение разрешено, досрочное закрытие — по ставке до востребования. Обратите внимание на этот пункт договора.",
+      "t0_ms": 21060,
+      "t1_ms": 33960
+    },
+    {
+      "seq": 8,
+      "speaker": "client",
+      "text": "Это точно без скрытых условий?",
+      "t0_ms": 34360,
+      "t1_ms": 37060
+    },
+    {
+      "seq": 9,
+      "speaker": "employee",
+      "text": "Это не инвестиции, это накопления с гарантией.",
+      "t0_ms": 37460,
+      "t1_ms": 41120
+    },
+    {
+      "seq": 10,
+      "speaker": "client",
+      "text": "Ладно.",
+      "t0_ms": 41520,
+      "t1_ms": 42780
+    },
+    {
+      "seq": 11,
+      "speaker": "employee",
+      "text": "Хорошего дня, обращайтесь.",
+      "t0_ms": 43180,
+      "t1_ms": 45640
+    }
+  ],
+  "meta": {
+    "employee_display_name": null,
+    "branch_city": "Владивосток",
+    "synthetic": true
+  }
+}

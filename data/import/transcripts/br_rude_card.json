@@ -1,0 +1,105 @@
+{
+  "external_id": "br_rude_card",
+  "kind": "branch_retail",
+  "branch_code": "VSP-0520",
+  "employee_public_id": null,
+  "desk_no": 6,
+  "client": null,
+  "deal_product": "Кредитная карта",
+  "started_at": "2026-11-09T11:05:00+03:00",
+  "geo": {
+    "region_code": null,
+    "city_id": null,
+    "lat": null,
+    "lon": null,
+    "source": "contact"
+  },
+  "analyses": [
+    "client_signal",
+    "employee_quality"
+  ],
+  "turns": [
+    {
+      "seq": 1,
+      "speaker": "employee",
+      "text": "Здравствуйте! Слушаю вас.",
+      "t0_ms": 0,
+      "t1_ms": 2400
+    },
+    {
+      "seq": 2,
+      "speaker": "client",
+      "text": "Хочу оформить кредитную карту, расскажите про льготный период.",
+      "t0_ms": 2800,
+      "t1_ms": 7420
+    },
+    {
+      "seq": 3,
+      "speaker": "employee",
+      "text": "Паспорт, пожалуйста, для идентификации.",
+      "t0_ms": 7820,
+      "t1_ms": 11060
+    },
+    {
+      "seq": 4,
+      "speaker": "client",
+      "text": "Да, пожалуйста.",
+      "t0_ms": 11460,
+      "t1_ms": 13260
+    },
+    {
+      "seq": 5,
+      "speaker": "employee",
+      "text": "Уточню: вам важнее доходность или возможность снять деньги в любой момент?",
+      "t0_ms": 13660,
+      "t1_ms": 19000
+    },
+    {
+      "seq": 6,
+      "speaker": "client",
+      "text": "Чтобы без комиссий и просто.",
+      "t0_ms": 19400,
+      "t1_ms": 21980
+    },
+    {
+      "seq": 7,
+      "speaker": "employee",
+      "text": "Льготный период сто двадцать дней на покупки, снятие наличных — комиссия три и девять десятых процента плюс триста девяносто рублей. Обслуживание бесплатное.",
+      "t0_ms": 22380,
+      "t1_ms": 32700
+    },
+    {
+      "seq": 8,
+      "speaker": "client",
+      "text": "А можно подумать и прийти завтра?",
+      "t0_ms": 33100,
+      "t1_ms": 35980
+    },
+    {
+      "seq": 9,
+      "speaker": "employee",
+      "text": "Это не моя проблема, читайте договор.",
+      "t0_ms": 36380,
+      "t1_ms": 39500
+    },
+    {
+      "seq": 10,
+      "speaker": "client",
+      "text": "Я просто спросил. Не надо грубить.",
+      "t0_ms": 39900,
+      "t1_ms": 42840
+    },
+    {
+      "seq": 11,
+      "speaker": "employee",
+      "text": "Итак, резюмирую: кредитная карта с льготным периодом сто двадцать дней. Если всё верно, оформляем.",
+      "t0_ms": 43240,
+      "t1_ms": 50020
+    }
+  ],
+  "meta": {
+    "employee_display_name": null,
+    "branch_city": "Новосибирск",
+    "synthetic": true
+  }
+}

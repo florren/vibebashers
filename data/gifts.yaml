@@ -1,0 +1,15 @@
+# ТЗ 8.5 — извинительный подарок. Все партнёры вымышленные.
+gift_catalog:
+  - {code: bonus_points,            name_ru: "Бонусные баллы программы лояльности", name_en: Loyalty bonus points,      segments: [mass, salary, social, youth, premium, vip, ultra_vip], rule: {by_criticality: {low: 300, medium: 600, high: 1000}, repeat_bonus: 200, cap: 1000}, partner_display_name: null}
+  - {code: lounge_pass,             name_ru: "Дополнительное посещение бизнес-зала аэропорта", name_en: Airport lounge pass, segments: [vip, ultra_vip], rule: {criticality_in: [medium, high]}, partner_display_name: "Небо-Лаунж (вымышл.)"}
+  - {code: restaurant_special,      name_ru: "Особое обслуживание в ресторане-партнёре", name_en: Partner restaurant special, segments: [vip, ultra_vip], rule: {criticality_in: [high], or_flags: [churn_intent]}, partner_display_name: "Ресторан «Белая Скатерть» (вымышл.)"}
+  - {code: business_class_discount, name_ru: "Скидка на бизнес-класс от партнёра", name_en: Business class discount, segments: [vip, ultra_vip], rule: {criticality_in: [high], and_flags: [churn_intent], hitl_for: [ultra_vip]}, partner_display_name: "Авиа «Северный Ветер» (вымышл.)"}
+  - {code: personal_call,           name_ru: "Персональный звонок сотрудника CX / менеджера", name_en: Personal call, segments: [social, vip, ultra_vip], rule: {addon: true}, partner_display_name: null}
+economics_settings:
+  detractor_share: 0.10
+  no_return_share: 0.50
+  retention_factors: {closed_in_sla_with_gift: 1.0, closed_in_sla: 0.9, closed_late: 0.5, closed_with_regression: 0.3, open: 0.0, rejected: 0.0, churned: 0.0}
+  calibration_mode: manual
+  fallback_rate_code: bank_average
+  misselling_case_cost_rub: 25000
+  map_zone_thresholds: {green_max: 0.33, yellow_max: 0.66, critical_count_red: 1}

@@ -1,0 +1,25 @@
+{
+  "id": "cc_call_misinfo",
+  "kind": "contact_center_call",
+  "product": "deposit",
+  "findings": [
+    {
+      "code": "misinformation",
+      "alert": "immediate",
+      "claimed": "14 %",
+      "truth": "9,5 %",
+      "source_table": "products.deposit.tariffs.base_rate_pct",
+      "turn_seq": 7,
+      "quote": "По вкладу «Накопительный» ставка четырнадцать процентов."
+    }
+  ],
+  "finding_codes": [
+    "misinformation"
+  ],
+  "script_steps_missed": [],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

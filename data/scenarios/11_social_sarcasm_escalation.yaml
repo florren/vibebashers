@@ -1,0 +1,16 @@
+id: social_sarcasm_escalation
+number: 11
+title_ru: Сарказм в соцсети → уточнение → эскалация
+title_en: Social sarcasm escalation
+kind: dtz
+feed_post: feed-0001
+expected:
+  sentiment: negative
+  hidden_negativity: true
+  flags:
+  - sarcasm
+  - churn_intent
+  - repeat
+  clarification: true
+  escalation_on_silence: true
+  escalation_role: cx_lead

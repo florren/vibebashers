@@ -1,0 +1,92 @@
+{
+  "external_id": "cc_call_misinfo",
+  "kind": "contact_center_call",
+  "branch_code": null,
+  "employee_public_id": null,
+  "desk_no": null,
+  "client": null,
+  "deal_product": "Вклад «Накопительный»",
+  "started_at": "2026-11-09T11:05:00+03:00",
+  "geo": null,
+  "analyses": [
+    "client_signal",
+    "employee_quality"
+  ],
+  "turns": [
+    {
+      "seq": 1,
+      "speaker": "employee",
+      "text": "Банк, меня зовут Дмитрий, здравствуйте.",
+      "t0_ms": 0,
+      "t1_ms": 3240
+    },
+    {
+      "seq": 2,
+      "speaker": "client",
+      "text": "Хочу открыть вклад, какая сейчас ставка?",
+      "t0_ms": 3640,
+      "t1_ms": 6940
+    },
+    {
+      "seq": 3,
+      "speaker": "employee",
+      "text": "Назовите, пожалуйста, кодовое слово и дату рождения.",
+      "t0_ms": 7340,
+      "t1_ms": 11360
+    },
+    {
+      "seq": 4,
+      "speaker": "client",
+      "text": "Кодовое слово «Ромашка», двенадцатое марта.",
+      "t0_ms": 11760,
+      "t1_ms": 15240
+    },
+    {
+      "seq": 5,
+      "speaker": "employee",
+      "text": "Расскажите, какая у вас задача — накопить, разместить свободные деньги или что-то другое?",
+      "t0_ms": 15640,
+      "t1_ms": 21880
+    },
+    {
+      "seq": 6,
+      "speaker": "client",
+      "text": "Хочу разместить свободные деньги на полгода.",
+      "t0_ms": 22280,
+      "t1_ms": 25820
+    },
+    {
+      "seq": 7,
+      "speaker": "employee",
+      "text": "По вкладу «Накопительный» ставка четырнадцать процентов.",
+      "t0_ms": 26220,
+      "t1_ms": 30480
+    },
+    {
+      "seq": 8,
+      "speaker": "client",
+      "text": "Это точно без скрытых условий?",
+      "t0_ms": 30880,
+      "t1_ms": 33580
+    },
+    {
+      "seq": 9,
+      "speaker": "employee",
+      "text": "Подведу итог: вклад на шесть месяцев, ставка девять с половиной, с пополнением. Следующий шаг — подписание договора, я распечатаю.",
+      "t0_ms": 33980,
+      "t1_ms": 42680
+    },
+    {
+      "seq": 10,
+      "speaker": "employee",
+      "text": "Спасибо за обращение, до свидания.",
+      "t0_ms": 43080,
+      "t1_ms": 46020
+    }
+  ],
+  "meta": {
+    "employee_display_name": null,
+    "branch_city": null,
+    "synthetic": true
+  }
+}

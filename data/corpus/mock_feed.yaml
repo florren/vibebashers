@@ -1,0 +1,32 @@
+# Mock-лента соцсетей и площадки отзывов (ТЗ 3.7, сценарии 8 и 11). Все авторы синтетические.
+posts:
+  - {external_id: feed-0001, platform: vk, author: "@lena_vrn", text: "Спасибо, что опять списали за обслуживание, очень приятно. Второй раз уже. Наверное, пора менять банк.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm, churn_intent, repeat]}, scenario: 11}
+  - {external_id: feed-0002, platform: review_portal, author: "Марина К.", text: "Оплатила по QR в кафе 3 200 ₽, сняли комиссию 450 ₽. По тарифу бесплатно! Карта **** 4512. Воронеж. Жду объяснений публично.", gold: {sentiment: negative, flags: [public]}, scenario: 8}
+  - {external_id: feed-0003, platform: telegram_comments, author: "@dimka_nsk", text: "Прила не пашет третий день, войти не могу. Чё за дела вообще?", gold: {sentiment: negative, flags: []}}
+  - {external_id: feed-0004, platform: ok, author: "Галина Петровна", text: "Девочки в отделении на Ленина такие внимательные, всё объяснили про вклад. Спасибо!", gold: {sentiment: positive}}
+  - {external_id: feed-0005, platform: vk, author: "@sergey_ekb", text: "Отличный банк)) списали два раза за одну покупку и молчат. Браво.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm]}}
+  - {external_id: feed-0006, platform: review_portal, author: "Антон Р.", text: "Ставка по вкладу была 14 %, в договоре 9,5. Мелкий шрифт — ваша фишка?", gold: {sentiment: negative, flags: []}}
+  - {external_id: feed-0007, platform: telegram_comments, author: "@katya_kzn", text: "Кэшбэк пришёл вовремя, приложение удобное, пока всё нравится.", gold: {sentiment: positive}}
+  - {external_id: feed-0008, platform: vk, author: "@max_spb", text: "Ну конечно, карту заблокировали на кассе, антифрод у вас гениальный. Стоял как дурак.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm]}}
+  - {external_id: feed-0009, platform: review_portal, author: "Ольга В.", text: "Подскажите, есть ли комиссия за переводы по номеру телефона свыше 100 тысяч?", gold: {sentiment: neutral}}
+  - {external_id: feed-0010, platform: ok, author: "Владимир Н.", text: "Оператор на линии 20 минут не брал трубку, потом сброс. Пенсионеру так нельзя.", gold: {sentiment: negative}}
+  - {external_id: feed-0011, platform: vk, author: "@nastya_msk", text: "СМС с кодами не приходят, покупка сорвалась. Уже писала неделю назад — та же история.", gold: {sentiment: negative, flags: [repeat]}}
+  - {external_id: feed-0012, platform: telegram_comments, author: "@ilya_rnd", text: "Прекрасно: платёж по кредиту ушёл, долг не уменьшился, а мне звонят коллекторы. Спасибо за заботу.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm]}}
+  - {external_id: feed-0013, platform: review_portal, author: "Елена Д.", text: "Вернули комиссию за QR за день, без споров. Редкость, но приятно.", gold: {sentiment: positive}}
+  - {external_id: feed-0014, platform: vk, author: "@pavel_smr", text: "В ВСП на Московском шоссе менеджер впарил страховку «иначе не одобрят». Это законно?", gold: {sentiment: negative, flags: [regulator_threat]}}
+  - {external_id: feed-0015, platform: ok, author: "Тамара И.", text: "Хочу закрыть все счета. Третье обращение, ни одного ответа по существу.", gold: {sentiment: negative, flags: [churn_intent, repeat]}}
+  - {external_id: feed-0016, platform: telegram_comments, author: "@artem_vlk", text: "Пуши приходят по три раза, телефон вибрирует как бешеный. Почините уже.", gold: {sentiment: negative}}
+  - {external_id: feed-0017, platform: review_portal, author: "Игорь С.", text: "Было бы круто видеть проценты по вкладу за день прямо на главном экране.", gold: {sentiment: neutral}}
+  - {external_id: feed-0018, platform: vk, author: "@yulia_krd", text: "Как всегда на высоте: вклад не открылся, деньги ушли, поддержка «разбирается» вторые сутки.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm]}}
+  - {external_id: feed-0019, platform: ok, author: "Николай Ф.", text: "Кредитку одобрили быстро, курьер приехал на следующий день. Доволен.", gold: {sentiment: positive}}
+  - {external_id: feed-0020, platform: telegram_comments, author: "@vera_nn", text: "Позвонили «из безопасности», просили перевести на безопасный счёт. Это ваши? Страшно.", gold: {sentiment: negative}}
+  - {external_id: feed-0021, platform: vk, author: "@oleg_tmn", text: "Перевёл не на тот номер, сам виноват, но поддержка помогла вернуть за день. Респект.", gold: {sentiment: positive}}
+  - {external_id: feed-0022, platform: review_portal, author: "Светлана Б.", text: "Оформляла вклад в ВСП 0042, менеджер назвал ставку 14 %, в договоре 9,5. Это как понимать?", gold: {sentiment: negative, flags: [public]}}
+  - {external_id: feed-0023, platform: telegram_comments, author: "@roma_chel", text: "Ну супер, антифрод заблокировал карту в отпуске за границей. Отдыхаю без денег, спасибо.", gold: {sentiment: negative, hidden_negativity: true, flags: [sarcasm]}}
+  - {external_id: feed-0024, platform: ok, author: "Пётр Алексеевич", text: "Как узнать, сколько процентов набежало по вкладу? В приложении не нашёл.", gold: {sentiment: neutral}}
+  - {external_id: feed-0025, platform: vk, author: "@marina_ufa", text: "Третий день не приходит кешбэк. Писала в чат — «ожидайте». Ожидаю.", gold: {sentiment: negative, hidden_negativity: true, flags: [repeat]}}
+  - {external_id: feed-0026, platform: review_portal, author: "Дмитрий Л.", text: "Предложение: добавьте в бота команду «мои заявки», чтобы видеть статус обращения.", gold: {sentiment: neutral}}
+  - {external_id: feed-0027, platform: telegram_comments, author: "@anya_spb", text: "Проценты в льготный период по кредитке?! Серьёзно? Закрываю карту.", gold: {sentiment: negative, flags: [churn_intent]}}
+  - {external_id: feed-0028, platform: vk, author: "@kolya_omsk", text: "Прила обновилась, стала быстрее, пуши наконец не дублируются. Молодцы.", gold: {sentiment: positive}}
+  - {external_id: feed-0029, platform: ok, author: "Зинаида В.", text: "Девушка в отделении сказала «подпишите, это формальность». Подписала, теперь страховка на 40 тысяч. Как отказаться?", gold: {sentiment: negative, flags: [regulator_threat]}}
+  - {external_id: feed-0030, platform: review_portal, author: "Алексей Н.", text: "Жалоба в ЦБ отправлена. Комиссия за QR 450 ₽ так и не возвращена, прошло 5 дней.", gold: {sentiment: negative, flags: [regulator_threat, repeat]}}

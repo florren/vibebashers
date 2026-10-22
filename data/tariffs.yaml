@@ -1,0 +1,14 @@
+# BRD / ТЗ 3.4 — тарифы Mock-АБС. QR/СБП для физлиц бесплатно (сценарий 8, RULE-QR-FEE-001).
+tariffs:
+  - {product: debit_card,  operation_kind: payment,       method: qr_sbp,   fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Оплата по QR (СБП) для физлиц — без комиссии"}
+  - {product: debit_card,  operation_kind: payment,       method: card,     fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Оплата картой — без комиссии"}
+  - {product: debit_card,  operation_kind: transfer,      method: transfer, fee_pct: 0.5, fee_fixed: 0,   free_limit_rub: 100000, note_ru: "Переводы: бесплатно до 100 000 ₽ в месяц, далее 0,5 %"}
+  - {product: debit_card,  operation_kind: atm_withdraw,  method: cash,     fee_pct: 1.0, fee_fixed: 0,   free_limit_rub: 50000,  note_ru: "Снятие наличных: бесплатно до 50 000 ₽ в месяц, далее 1 %"}
+  - {product: debit_card,  operation_kind: service,       method: any,      fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Обслуживание карты — бесплатно"}
+  - {product: credit_card, operation_kind: payment,       method: qr_sbp,   fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Оплата по QR с кредитной карты — без комиссии (в grace)"}
+  - {product: credit_card, operation_kind: payment,       method: card,     fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: ""}
+  - {product: credit_card, operation_kind: cash_withdraw, method: cash,     fee_pct: 3.9, fee_fixed: 390, free_limit_rub: null,   note_ru: "Снятие наличных с кредитной карты: 3,9 % + 390 ₽"}
+  - {product: deposit,     operation_kind: open_deposit,  method: online,   fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Открытие вклада — бесплатно; базовая ставка 9,5 %, промо 14 % в окне акции"}
+  - {product: deposit,     operation_kind: close_deposit, method: any,      fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Досрочное закрытие — ставка «до востребования» 0,01 %"}
+  - {product: credit,      operation_kind: loan_payment,  method: any,      fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Платёж по кредиту — без комиссии"}
+  - {product: credit,      operation_kind: early_repay,   method: any,      fee_pct: 0.0, fee_fixed: 0,   free_limit_rub: null,   note_ru: "Досрочное погашение — без комиссии"}

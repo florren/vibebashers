@@ -1,0 +1,30 @@
+id: deposit_promo_rate
+number: 1
+title_ru: Вклад и промо-ставка
+title_en: Deposit promo rate
+kind: realtime
+client:
+  segment: premium
+  city: Казань
+  psychotype: demanding_rational
+fault:
+  error_code: DEP-TIMEOUT-503
+  system: sub_deposits
+  duration_sim_h: 3
+steps:
+- client_opens_deposit
+- fault_started
+- agent_proactive_incident
+- push_seen_problem
+- client_complains_after_2h
+- dedupe_to_incident
+- fix_deployed
+- resolved_with_gift
+- client_thanks
+expected:
+  incident_teams:
+  - team_deposits
+  - team_cx
+  proactive_notice: true
+  gift: bonus_points
+  sla_met: true

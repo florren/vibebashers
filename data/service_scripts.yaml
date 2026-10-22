@@ -1,0 +1,26 @@
+# ТЗ 22.8 — эталонные скрипты
+service_scripts:
+  - code: retail_service_v1
+    kind: retail_service
+    name_ru: "Обслуживание в отделении (розница) v1"
+    version: 1
+    steps:
+      - {code: greeting,        name_ru: Приветствие,                        required: true, markers: ["здравствуйте", "добрый день", "добрый вечер", "меня зовут"]}
+      - {code: identification,  name_ru: Идентификация клиента,              required: true, markers: ["паспорт", "назовите фамилию", "кодовое слово", "подтвердите личность", "документ"]}
+      - {code: needs,           name_ru: Выявление потребности,              required: true, markers: ["чем могу помочь", "какая задача", "что вас интересует", "расскажите", "уточню"]}
+      - {code: offer,           name_ru: Предложение с раскрытием условий,   required: true, markers: ["ставка", "срок", "комиссия", "условия", "договор", "обратите внимание"]}
+      - {code: summary,         name_ru: Резюме и следующий шаг,             required: true, markers: ["подведу итог", "итак", "резюмирую", "следующий шаг", "дальше"]}
+      - {code: closing,         name_ru: Завершение,                         required: true, markers: ["спасибо", "всего доброго", "хорошего дня", "до свидания", "обращайтесь"]}
+    forbidden_phrases: ["подпишите, потом почитаете", "это формальность", "читать не обязательно", "только сегодня", "сами виноваты", "не моя проблема"]
+  - code: contact_center_v1
+    kind: contact_center
+    name_ru: "Контакт-центр (звонок/чат) v1"
+    version: 1
+    steps:
+      - {code: greeting,       name_ru: Приветствие и представление,  required: true, markers: ["здравствуйте", "меня зовут", "банк", "слушаю вас"]}
+      - {code: identification, name_ru: Идентификация,                required: true, markers: ["кодовое слово", "дата рождения", "последние цифры", "подтвердите"]}
+      - {code: needs,          name_ru: Уточнение проблемы,           required: true, markers: ["уточню", "правильно понимаю", "когда это произошло", "какая сумма"]}
+      - {code: solution,       name_ru: Решение / срок,               required: true, markers: ["сделаю", "передам", "срок", "вернём", "в течение"]}
+      - {code: summary,        name_ru: Резюме,                       required: true, markers: ["итак", "подведу итог", "резюмирую"]}
+      - {code: closing,        name_ru: Завершение,                   required: true, markers: ["спасибо за обращение", "всего доброго", "хорошего дня"]}
+    forbidden_phrases: ["это не ко мне", "перезвоните потом", "ничем не могу помочь", "вы сами"]

@@ -1,0 +1,22 @@
+{
+  "id": "br_tiein_credit",
+  "kind": "branch_retail",
+  "product": "credit",
+  "findings": [
+    {
+      "code": "tie_in",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Карту выдадим, только если оформите подписку."
+    }
+  ],
+  "finding_codes": [
+    "tie_in"
+  ],
+  "script_steps_missed": [],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

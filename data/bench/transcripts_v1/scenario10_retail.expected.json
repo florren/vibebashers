@@ -1,0 +1,36 @@
+{
+  "id": "scenario10_retail",
+  "kind": "branch_retail",
+  "product": "deposit",
+  "findings": [
+    {
+      "code": "misinformation",
+      "alert": "immediate",
+      "claimed": "14 %",
+      "truth": "9,5 %",
+      "source_table": "products.deposit.tariffs.base_rate_pct",
+      "turn_seq": 3,
+      "quote": "По вкладу «Накопительный» ставка четырнадцать процентов."
+    },
+    {
+      "code": "rudeness",
+      "alert": "immediate",
+      "turn_seq": 5,
+      "quote": "Вы вообще читали условия, прежде чем сюда идти?"
+    }
+  ],
+  "finding_codes": [
+    "misinformation",
+    "rudeness"
+  ],
+  "script_steps_missed": [
+    "identification",
+    "needs",
+    "summary"
+  ],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "service_quality",
+    "sentiment": "negative"
+  }
+}

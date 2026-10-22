@@ -1,0 +1,112 @@
+{
+  "external_id": "br_conceal_cc",
+  "kind": "branch_retail",
+  "branch_code": "VSP-0741",
+  "employee_public_id": null,
+  "desk_no": 3,
+  "client": null,
+  "deal_product": "Кредитная карта",
+  "started_at": "2026-11-09T11:05:00+03:00",
+  "geo": {
+    "region_code": null,
+    "city_id": null,
+    "lat": null,
+    "lon": null,
+    "source": "contact"
+  },
+  "analyses": [
+    "client_signal",
+    "employee_quality"
+  ],
+  "turns": [
+    {
+      "seq": 1,
+      "speaker": "employee",
+      "text": "Добрый день! Присаживайтесь. Меня зовут Сергей.",
+      "t0_ms": 0,
+      "t1_ms": 3720
+    },
+    {
+      "seq": 2,
+      "speaker": "client",
+      "text": "Хочу оформить кредитную карту, расскажите про льготный период.",
+      "t0_ms": 4120,
+      "t1_ms": 8740
+    },
+    {
+      "seq": 3,
+      "speaker": "employee",
+      "text": "Для начала подтвердим личность — паспорт с собой?",
+      "t0_ms": 9140,
+      "t1_ms": 12980
+    },
+    {
+      "seq": 4,
+      "speaker": "client",
+      "text": "Да, пожалуйста.",
+      "t0_ms": 13380,
+      "t1_ms": 15180
+    },
+    {
+      "seq": 5,
+      "speaker": "employee",
+      "text": "Уточню: вам важнее доходность или возможность снять деньги в любой момент?",
+      "t0_ms": 15580,
+      "t1_ms": 20920
+    },
+    {
+      "seq": 6,
+      "speaker": "client",
+      "text": "Важнее доходность.",
+      "t0_ms": 21320,
+      "t1_ms": 23300
+    },
+    {
+      "seq": 7,
+      "speaker": "employee",
+      "text": "Снятие наличных с кредитки бесплатно в любом банкомате.",
+      "t0_ms": 23700,
+      "t1_ms": 27900
+    },
+    {
+      "seq": 8,
+      "speaker": "client",
+      "text": "А можно подумать и прийти завтра?",
+      "t0_ms": 28300,
+      "t1_ms": 31180
+    },
+    {
+      "seq": 9,
+      "speaker": "employee",
+      "text": "Комиссий нет, там мелкий шрифт, ничего важного.",
+      "t0_ms": 31580,
+      "t1_ms": 35300
+    },
+    {
+      "seq": 10,
+      "speaker": "client",
+      "text": "Ладно.",
+      "t0_ms": 35700,
+      "t1_ms": 36960
+    },
+    {
+      "seq": 11,
+      "speaker": "employee",
+      "text": "Подведу итог: кредитная карта с льготным периодом сто двадцать дней. Следующий шаг — подписание договора, я распечатаю.",
+      "t0_ms": 37360,
+      "t1_ms": 45400
+    },
+    {
+      "seq": 12,
+      "speaker": "employee",
+      "text": "Спасибо, что обратились! Всего доброго.",
+      "t0_ms": 45800,
+      "t1_ms": 49040
+    }
+  ],
+  "meta": {
+    "employee_display_name": null,
+    "branch_city": "Нижний Новгород",
+    "synthetic": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "cc_chat_conceal",
+  "kind": "contact_center_chat",
+  "product": "deposit",
+  "findings": [
+    {
+      "code": "concealment",
+      "alert": "counter",
+      "turn_seq": 9,
+      "quote": "Подпишите, это формальность, условия стандартные, читать не обязательно."
+    }
+  ],
+  "finding_codes": [
+    "concealment"
+  ],
+  "script_steps_missed": [],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

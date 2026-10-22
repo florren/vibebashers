@@ -1,0 +1,13 @@
+# ТЗ 3.6 — каналы (поверхности)
+channels:
+  - {code: social,        name_ru: Соцсети,                        name_en: Social media,         subtypes: [vk, ok, telegram_comments, review_portal], identifies_client: false, is_public: true}
+  - {code: call,          name_ru: Колл-центр — звонок,            name_en: Call,                 subtypes: [ivr, operator],                            identifies_client: true,  is_public: false}
+  - {code: chat,          name_ru: Колл-центр — чат мессенджера,   name_en: Chat,                 subtypes: [telegram, max, whatsapp, app_chat],        identifies_client: true,  is_public: false}
+  - {code: email,         name_ru: Колл-центр — e-mail,            name_en: E-mail,               subtypes: [email],                                    identifies_client: true,  is_public: false}
+  - {code: branch,        name_ru: Отделение (ВСП),                name_en: Branch,               subtypes: [complaint_book, employee_report],          identifies_client: true,  is_public: false}
+  - {code: landing,       name_ru: Лендинг потенциального клиента, name_en: Landing page,         subtypes: [web_form, claim_form],                     identifies_client: false, is_public: false}
+  - {code: telegram_bot,  name_ru: Telegram-бот,                   name_en: Telegram bot,         subtypes: [bot],                                      identifies_client: true,  is_public: false}
+  - {code: proactive,     name_ru: Проактивный (внутренний),       name_en: Proactive,            subtypes: [system_logs, activity_drop],               identifies_client: true,  is_public: false}
+  - {code: review_portal, name_ru: Внешняя площадка отзывов,       name_en: Review portal,        subtypes: [feed, telegram_channel],                   identifies_client: false, is_public: true}
+  - {code: voice_input,   name_ru: Голосовой ввод жалобы,          name_en: Voice input,          subtypes: [demo_mic, landing_mic],                    identifies_client: false, is_public: false}
+  - {code: branch_audio,  name_ru: Отделение — аудиомониторинг,    name_en: Branch audio,         subtypes: [live, transcript],                         identifies_client: false, is_public: false}

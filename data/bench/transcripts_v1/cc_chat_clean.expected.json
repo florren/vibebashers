@@ -1,0 +1,13 @@
+{
+  "id": "cc_chat_clean",
+  "kind": "contact_center_chat",
+  "product": "credit_card",
+  "findings": [],
+  "finding_codes": [],
+  "script_steps_missed": [],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

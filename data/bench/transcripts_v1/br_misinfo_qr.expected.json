@@ -1,0 +1,25 @@
+{
+  "id": "br_misinfo_qr",
+  "kind": "branch_retail",
+  "product": "debit_card",
+  "findings": [
+    {
+      "code": "misinformation",
+      "alert": "immediate",
+      "claimed": "1 %",
+      "truth": "0 %",
+      "source_table": "tariffs.debit_card.payment.qr_sbp",
+      "turn_seq": 7,
+      "quote": "Комиссия за оплату по QR один процент, это стандарт."
+    }
+  ],
+  "finding_codes": [
+    "misinformation"
+  ],
+  "script_steps_missed": [],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "br_clean_credit",
+  "kind": "branch_retail",
+  "product": "credit",
+  "findings": [],
+  "finding_codes": [],
+  "script_steps_missed": [],
+  "script_code": "retail_service_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}

@@ -1,0 +1,33 @@
+# ТЗ 8.2 — матрица SLA (рабочие дни), контрольные дни отчётов; take_hours — SLA «взято в работу» по критичности (2/4/8 сим-часов)
+sla_matrix:
+  - {complexity: easy,   criticality: high,   fix_days: 1,  report_days: [],        take_hours: 2}
+  - {complexity: easy,   criticality: medium, fix_days: 2,  report_days: [],        take_hours: 4}
+  - {complexity: easy,   criticality: low,    fix_days: 3,  report_days: [],        take_hours: 8}
+  - {complexity: medium, criticality: high,   fix_days: 3,  report_days: [],        take_hours: 2}
+  - {complexity: medium, criticality: medium, fix_days: 4,  report_days: [],        take_hours: 4}
+  - {complexity: medium, criticality: low,    fix_days: 5,  report_days: [],        take_hours: 8}
+  - {complexity: hard,   criticality: high,   fix_days: 5,  report_days: [],        take_hours: 2}
+  - {complexity: hard,   criticality: medium, fix_days: 5,  report_days: [3],       take_hours: 4}
+  - {complexity: hard,   criticality: low,    fix_days: 10, report_days: [3, 6, 9], take_hours: 8}
+# ТЗ 8.1 — правила маршрутизации (приоритет: меньше = раньше); match — условия по classification
+routing_rules:
+  - {priority: 10, match: {signal_type: fraud_suspicion},                     team_codes: [team_antifraud],                 notes_ru: "подозрение на мошенничество — антифрод, HITL обязателен"}
+  - {priority: 15, match: {signal_type: legal_regulatory},                    team_codes: [team_compliance, team_cx],       notes_ru: "регуляторные/юридические сигналы — комплаенс + CX"}
+  - {priority: 20, match: {error_code: PROC-QR-FEE-CHARGED},                  team_codes: [team_processing],                notes_ru: "сценарий 8: ошибочная комиссия за QR"}
+  - {priority: 21, match: {error_code: PROC-DOUBLE-DEBIT},                    team_codes: [team_processing],                notes_ru: "двойное списание"}
+  - {priority: 22, match: {error_code: PROMO-RATE-MISMATCH},                  team_codes: [team_promo, team_deposits],      notes_ru: "промо-ставка"}
+  - {priority: 23, match: {error_code: DEP-TIMEOUT-503},                      team_codes: [team_deposits, team_cx],         notes_ru: "сценарий 1: сбой открытия вклада"}
+  - {priority: 24, match: {error_code: NOTIF-DELAY},                          team_codes: [team_notifications],             notes_ru: "уведомления"}
+  - {priority: 30, match: {signal_type: tech_fault, system: mobile_app},      team_codes: [team_front],                     notes_ru: "приложение"}
+  - {priority: 31, match: {signal_type: tech_fault, system: web_bank},        team_codes: [team_front],                     notes_ru: "сайт"}
+  - {priority: 32, match: {signal_type: tech_fault, product: deposit},        team_codes: [team_deposits],                  notes_ru: ""}
+  - {priority: 33, match: {signal_type: tech_fault, product: credit},         team_codes: [team_lending],                   notes_ru: ""}
+  - {priority: 34, match: {signal_type: tech_fault, product: credit_card},    team_codes: [team_lending],                   notes_ru: ""}
+  - {priority: 35, match: {signal_type: tech_fault, product: debit_card},     team_codes: [team_debit],                     notes_ru: ""}
+  - {priority: 40, match: {signal_type: tariff_terms, product: deposit},      team_codes: [team_deposits, team_promo],      notes_ru: ""}
+  - {priority: 41, match: {signal_type: tariff_terms},                        team_codes: [team_debit, team_promo],         notes_ru: "тарифы по умолчанию"}
+  - {priority: 50, match: {signal_type: service_quality, channel: branch},    team_codes: [team_branch_network],            notes_ru: "качество в отделении"}
+  - {priority: 51, match: {signal_type: service_quality},                     team_codes: [team_contact_center, team_cx],   notes_ru: ""}
+  - {priority: 60, match: {incident_type: misselling},                        team_codes: [team_compliance, team_branch_network], notes_ru: "мисселлинг — комплаенс + руководитель ВСП"}
+  - {priority: 70, match: {signal_type: churn},                               team_codes: [team_cx],                        notes_ru: "уход клиента — внутренний инцидент account_closure"}
+  - {priority: 99, match: {},                                                 team_codes: [team_cx],                        notes_ru: "по умолчанию — CX"}

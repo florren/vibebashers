@@ -1,0 +1,24 @@
+{
+  "id": "cc_chat_script",
+  "kind": "contact_center_chat",
+  "product": "debit_card",
+  "findings": [
+    {
+      "code": "script_violation",
+      "alert": "report",
+      "turn_seq": 5,
+      "quote": "Давайте сразу к делу, оформляем, паспорт не нужен — я вас и так помню."
+    }
+  ],
+  "finding_codes": [
+    "script_violation"
+  ],
+  "script_steps_missed": [
+    "identification"
+  ],
+  "script_code": "contact_center_v1",
+  "client_signal": {
+    "signal_type": "info_request",
+    "sentiment": "neutral"
+  }
+}
