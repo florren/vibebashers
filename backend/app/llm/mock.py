@@ -110,7 +110,20 @@ PUBLIC = ("все узнают", "расскажу всем", "отзыв", "с�
 REFUND = ("верните", "вернуть", "возврат", "компенс", "отмените комиссию", "верните деньги")
 QUESTION = ("как ", "почему", "когда", "где ", "что делать", "подскажите", "можно ли", "?")
 FRAUD = ("мошенн", "украл", "не я", "не совершал", "взлом", "подозрительн", "чужой")
-TARIFF = ("комисси", "тариф", "процент", "ставк", "условия", "мелким шрифтом", "обещали", "навязал", "страховк")
+TARIFF = (
+    "комисси",
+    "тариф",
+    "процент",
+    "ставк",
+    "условия",
+    "мелким шрифтом",
+    "обещали",
+    "навязал",
+    "страховк",
+    "льготный период",
+    "оказал",
+    "нигде не написано",
+)
 TECH = (
     "не работает",
     "ошибк",
@@ -125,7 +138,40 @@ TECH = (
     "недоступ",
     "не открывается",
     "qr",
+    "дважды",
+    "два списания",
+    "двойное",
+    "не уменьшил",
+    "не зачисл",
+    "не пришёл",
+    "не пришел",
+    "не поступил",
+    "не отобража",
+    "не обновил",
 )
+CLIENT_ERROR = (
+    "это я сам",
+    "сам виноват",
+    "сама виновата",
+    "неверный пин",
+    "неправильный пин",
+    "забыл",
+    "забыла",
+    "перепутал",
+    "ошибся",
+    "ошиблась",
+    "не туда",
+    "как разблокировать",
+    "как восстановить",
+    "сам заблокировал",
+    "не досмотрел",
+    "не заметил",
+    "не на тот",
+    "сам ошиб",
+)
+SUGGEST = ("предлага", "было бы удобно", "добавьте", "хотелось бы", "сделайте", "хочу чтобы", "было бы здорово")
+GRATITUDE = ("решила вопрос", "решил вопрос", "побольше бы таких", "всё решили", "все решили", "вернули", "выручили")
+TECH_STRONG = tuple(w for w in TECH if w not in ("смс", "push", "код", "qr", "не приходит"))
 SERVICE = ("оператор", "отделен", "очеред", "хам", "груб", "ждал", "перезвон", "менеджер", "сотрудник", "консультант")
 PRODUCT_WORDS = {
     "deposit": ("вклад", "депозит", "накопит"),
@@ -187,26 +233,44 @@ def analyze(text: str) -> dict[str, Any]:
     if negativity >= 67:
         sentiment = "negative"
     hidden = sarcasm or (sentiment != "negative" and neg > 0 and pos > 0)
+    grateful = (pos > 0 or _has(t, GRATITUDE)) and not _has(t, ("не вернули", "не решили", "так и не"))
     if _has(t, FRAUD):
         stype = "fraud_suspicion"
+    elif _has(t, CLIENT_ERROR):
+        stype = "client_error"
+    elif _has(t, SUGGEST):
+        stype = "suggestion"
+    elif (
+        _has(t, ("есть ли", "можно ли", "подскажите", "какие документы", "сколько стоит", "как оформить"))
+        and neg <= 1
+        and not _has(t, REFUND + ("оказал", "нигде не написано", "обещал"))
+        and not sarcasm
+    ):
+        stype = "info_request"
+    elif grateful and neg <= 1 and not sarcasm and not _has(t, CHURN + REGULATOR):
+        stype = "gratitude"
     elif _has(t, REGULATOR) and neg > 0:
         stype = "legal_regulatory"
-    elif _has(t, TARIFF) and (neg > 0 or sarcasm):
+    elif _has(t, TARIFF) and (neg > 0 or sarcasm or _has(t, ("оказал", "нигде не", "обещал"))):
         stype = "tariff_terms"
-    elif _has(t, TECH) and (neg > 0 or sarcasm):
+    elif _has(t, TECH_STRONG) or (_has(t, TECH) and (neg > 0 or sarcasm)):
         stype = "tech_fault"
     elif _has(t, SERVICE) and neg > 0:
         stype = "service_quality"
-    elif pos > 0 and neg == 0:
-        stype = "gratitude"
-    elif _has(t, ("предлага", "было бы удобно", "добавьте", "хотелось бы")):
-        stype = "suggestion"
     elif _has(t, QUESTION) and neg == 0:
         stype = "info_request"
     elif _has(t, CHURN):
         stype = "churn"
     else:
         stype = "service_quality" if neg > 0 else "info_request"
+    if stype == "gratitude" and neg == 0:
+        sentiment, negativity = "positive", min(negativity, 15)
+    elif (
+        stype in ("tech_fault", "tariff_terms", "service_quality", "fraud_suspicion", "legal_regulatory")
+        and pos == 0
+        and not sarcasm
+    ):
+        sentiment, negativity = "negative", max(negativity, 60)
     intents = []
     if _has(t, CHURN):
         intents.append("churn_threat")
@@ -258,7 +322,24 @@ def analyze(text: str) -> dict[str, Any]:
         if _has(t, ("прошу", "уважаем", "в соответствии", "заявлени"))
         else "neutral"
     )
+    groups = {
+        "fraud_suspicion": FRAUD,
+        "client_error": CLIENT_ERROR,
+        "gratitude": POS + GRATITUDE,
+        "legal_regulatory": REGULATOR,
+        "tariff_terms": TARIFF,
+        "tech_fault": TECH,
+        "service_quality": SERVICE,
+        "suggestion": SUGGEST,
+        "info_request": QUESTION,
+        "churn": CHURN,
+    }
+    hits = sum(1 for w in groups.get(stype, ()) if w in t)
+    confidence = 0.55 if hits == 0 else 0.78 if hits == 1 else 0.9
+    if sarcasm or hidden:
+        confidence = min(confidence, 0.8)
     return {
+        "confidence": confidence,
         "negativity": negativity,
         "sentiment": sentiment,
         "hidden_negativity": hidden,
@@ -578,12 +659,7 @@ class MockProvider:
         if typ == "number":
             lo, hi = float(schema.get("minimum", 0)), float(schema.get("maximum", 1))
             if n == "confidence":
-                return round(
-                    max(
-                        lo, min(hi, 0.62 + 0.3 * (1 if a["negativity"] >= 67 or a["sentiment"] == "positive" else 0.4))
-                    ),
-                    2,
-                )
+                return round(max(lo, min(hi, float(a.get("confidence", 0.7)))), 2)
             if n in ("negativity", "churn_intent", "threshold"):
                 return round(max(lo, min(hi, a["negativity"] / (100 if hi <= 1 else 1))), 2)
             if n == "amount_rub":

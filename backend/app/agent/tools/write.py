@@ -450,7 +450,6 @@ async def close_incident(
     return await _incident_brief(ctx, incident_id)
 
 
-@tool("set_client_state")
 async def set_client_state(
     ctx: ToolContext,
     client_id: int,
