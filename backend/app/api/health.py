@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,7 @@ log = get_logger(__name__)
 
 
 @router.get("/api/health", summary="Проверка готовности (db, llm, tgbot, sim)")
-async def get_health(session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
+async def get_health(request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, Any]:
     s = get_settings()
     db_ok, setup_completed, sim_running = False, False, False
     llm: dict[str, str] = {}
@@ -29,14 +29,15 @@ async def get_health(session: AsyncSession = Depends(get_session)) -> dict[str, 
             await session.execute(text("select value from settings where key = 'setup_completed'"))
         ).scalar_one_or_none()
         setup_completed = bool(row in (True, "true", {"value": True}))
-        st = (await session.execute(text("select is_running from sim_state limit 1"))).scalar_one_or_none()
+        st = (await session.execute(text("select running from sim_state limit 1"))).scalar_one_or_none()
         sim_running = bool(st)
-        profiles = (await session.execute(text("select name, provider, is_enabled from llm_profiles"))).all()
-        llm = {p.name: ("ok" if p.is_enabled else "disabled") for p in profiles}
+        profiles = (await session.execute(text("select code, provider, is_active from llm_profiles"))).all()
+        llm = {p.code: ("ok" if p.is_active else "disabled") for p in profiles}
     except Exception as exc:  # БД ещё не мигрирована — health всё равно отвечает
         log.warning("health_db", error=str(exc)[:200])
-    if not llm:
-        llm = {s.llm_provider: "ok"}
+    chain = getattr(request.app.state, "llm_chain", None)
+    if chain is not None:  # провайдеры цепочки из .env (профили из БД дополняют картину)
+        llm = {**{name: "ok" for name in chain.names}, **llm}
     return {
         "status": "ok" if db_ok else "degraded",
         "db": db_ok,

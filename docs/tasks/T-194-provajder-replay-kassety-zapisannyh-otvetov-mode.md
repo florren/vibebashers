@@ -44,4 +44,4 @@ pytest backend/tests/unit/test_replay_provider.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B02. `app/replay/store.py` — `CassetteStore(data/cassettes/*.jsonl)`: ключ `sha256(provider, model, normalized_messages, schema)`, `get/record` (идемпотентно, формат совместим с таблицей `llm_cassettes`); `app/replay/provider.py` — `ReplayProvider`: попадание → ответ с исходной задержкой `usage.latency_ms` (делитель `speed`), поток — чанки `at_ms`; промах → `ProviderError('miss')` → следующий провайдер цепочки (логируется info). Запись включается `LLM_RECORD=true` (ProviderChain пишет успешные live-ответы). Тесты: запись → воспроизведение в новом процессе, промах → mock, нормализация пробелов в ключе, `test_cassettes_have_no_secrets` (Bearer/Basic/sk-or-/телефоны/16 цифр). Отклонения: кассета сценария 8 и бейдж replay в UI — после B03/B21 (нужны симулятор и промпты), запись кассет в БД `llm_cassettes` — при реализации бенчмарков.

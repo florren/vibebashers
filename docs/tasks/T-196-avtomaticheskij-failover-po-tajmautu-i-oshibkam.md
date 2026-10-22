@@ -40,4 +40,4 @@ pytest backend/tests/unit/test_failover.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B02. `app/llm/failover.py` — `ProviderChain`: таймауты по контексту (`fast_path` 8 с, `detector` 2 с, `default` 30 с; `asyncio.wait_for`), любая ошибка/таймаут/исключение → следующий провайдер → mock (всегда замыкает цепочку), `ChainResult` с `attempts`, `fallback_mock`, `error` (для `agent_runs.error`), rate limiter per profile (`app/llm/ratelimit.py`: token bucket rpm + суточный rpd, при исчерпании — rate_limit → failover), запись кассет при LLM_RECORD. `stream` — failover до первого чанка. `build_chain(settings)` собирает цепочку из `LLM_CHAIN`, пропуская провайдеров без ключей; подключён в lifespan (`app.state.llm_chain`), `/api/health.llm` показывает провайдеров. Тесты: failover gigachat(429)→openai(auth)→mock, таймаут detector, stream failover, rpm/rpd лимиты.

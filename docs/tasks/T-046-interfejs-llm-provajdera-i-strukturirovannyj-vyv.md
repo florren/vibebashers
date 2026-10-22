@@ -41,4 +41,4 @@ pytest backend/tests/unit/test_llm_provider.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B02 в `main`. `backend/app/llm/base.py`: `Provider` (Protocol) с `complete_structured(messages, schema, profile, timeout_s) -> (obj, usage, raw)` и `stream(...)`, `LLMProfile` (поля llm_profiles + стоимость), `Usage` (prompt/completion/latency/cost_rub/source/key_label), `ProviderError(kind)` (auth, rate_limit, quota, timeout, network, bad_output, miss, unavailable), `extract_json` (JSON из ответа с ```json и мусором), `normalize_messages`. Схемы контрактов разыменовываются `app/contracts/registry.py` (`deref`, `validate`, `validate_schema`, реестр `referencing`). Структурированный вывод: инструкция «только JSON по схеме» → разбор → jsonschema-валидация → одна повторная попытка с перечнем ошибок. `python -m app.llm.smoke` — дымовой прогон цепочки.

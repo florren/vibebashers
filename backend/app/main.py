@@ -14,6 +14,7 @@ from app import __version__
 from app import api as api_pkg
 from app.config import get_settings
 from app.errors import install_error_handlers
+from app.llm.failover import build_chain, default_profile
 from app.logging import configure_logging, get_logger
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
@@ -25,7 +26,16 @@ log = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     s = get_settings()
     configure_logging(s.app_env)
-    log.info("startup", env=s.app_env, profile=s.profile, llm=s.llm_provider, version=__version__)
+    app.state.llm_chain = build_chain(s)
+    app.state.llm_profile = default_profile(s)
+    log.info(
+        "startup",
+        env=s.app_env,
+        profile=s.profile,
+        llm=s.llm_provider,
+        chain=app.state.llm_chain.names,
+        version=__version__,
+    )
     if not s.is_test:
         bridge.start()
     yield
