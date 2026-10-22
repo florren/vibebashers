@@ -49,7 +49,7 @@ _RESTORE_CHECKS = [
 
 
 def upgrade() -> None:
-    op.execute(SQL_FILE.read_text(encoding="utf-8"))
+    op.get_bind().exec_driver_sql(SQL_FILE.read_text(encoding="utf-8"))
 
 
 def downgrade() -> None:
@@ -61,4 +61,4 @@ def downgrade() -> None:
         op.execute(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {col}")
     for table, name, expr in _RESTORE_CHECKS:
         op.execute(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {name}")
-        op.execute(f"ALTER TABLE {table} ADD CONSTRAINT {name} CHECK ({expr})")
+        op.execute(f"ALTER TABLE {table} ADD CONSTRAINT {name} CHECK ({expr})".replace(":", "\\:"))

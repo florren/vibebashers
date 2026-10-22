@@ -44,4 +44,4 @@ pytest backend/tests/unit/test_contracts_sync.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. `scripts/gen_enums.py` → `app/contracts/enums.py` (41 StrEnum из `$defs` common.schema.json; TS-файл пишется при наличии `frontend/src`); `scripts/gen_schemas.py` → `app/contracts/events/<семейство>/<схема>.py` (36 модулей Pydantic v2, `extra=forbid`, схемы с перекрёстными `$ref` — пакетами) и реэкспорт в `app/{agent,compliance,rules,ingest}/schemas.py`; `scripts/gen_api_stubs.py`; `make sync-contracts` вызывает всё и `gen_models.py`. Тесты: `test_contracts_sync.py` (повторная генерация даёт тот же файл, иначе красный), `test_contract_examples.py` (все `examples` из 21 схемы валидируются моделями). Отклонения: имя корневого класса — из имени файла (заголовки русские); `zone.schema.json` → `ZoneEvent` (конфликт с перечислением `Zone`); датаmodel-codegen для `instant_decision` создаёт пакет с `_internal.py`.

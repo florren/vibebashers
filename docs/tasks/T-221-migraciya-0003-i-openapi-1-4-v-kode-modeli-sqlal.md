@@ -44,4 +44,4 @@ make sync-contracts && make lint
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. Миграция 0003 в коде (`backend/alembic/versions/0003_additional_tz.py`, `migrations/0003_additional_tz.sql`), downgrade до 0002 и обратно проверены интеграционным тестом; модели 74 таблиц; Pydantic для `ingest/*`, `sim/zone`, `sim/escalation`, `compliance/*`; роутеры тегов `ingest`, `tickets`, `escalations`, `rules`, `compliance`, `stt`, `demo` — 501-заглушки с карточками; дрейф OpenAPI 1.4.0 = 0.

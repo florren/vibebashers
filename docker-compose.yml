@@ -1,0 +1,42 @@
+# CX Pulse Control — docker compose (T-003). Профили: по умолчанию postgres + backend; --profile tools добавляет mailpit.
+name: cx-pulse
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cx
+      POSTGRES_PASSWORD: cx
+      POSTGRES_DB: cx_pulse
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/db/init-test-db.sh:/docker-entrypoint-initdb.d/10-test-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cx -d cx_pulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://cx:cx@postgres:5432/cx_pulse
+      CASSETTES_DIR: /data/cassettes
+    ports: ["8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["tools"]
+    ports: ["8025:8025", "1025:1025"]
+
+volumes:
+  pgdata:

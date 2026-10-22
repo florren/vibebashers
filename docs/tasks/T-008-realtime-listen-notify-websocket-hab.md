@@ -42,4 +42,4 @@ pytest backend/tests/integration/test_ws.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. `app/realtime/hub.py` (подписки/фильтры/темы, формат сообщений по `ws/message.schema.json`, текстовые JSON-кадры), `app/realtime/ws.py` (`/ws/stream`: hello → subscribe/unsubscribe/ping, heartbeat 20 с; `/ws/audio/{session_id}` закрывается 1011 до T-181), `app/realtime/notify.py` (мост LISTEN → WS с реконнектом и бэкоффом; таблица канал→топик, envelope `sim_events` маршрутизируется по семейству события). Тесты: `test_app_skeleton.py::test_ws_subscribe_and_ping`, `test_realtime_route.py`. Отклонения: мост поднимается в lifespan только при `APP_ENV≠test`; интеграционный тест NOTIFY→WS на живой БД — в B03 вместе с первым `pg_notify` симулятора.

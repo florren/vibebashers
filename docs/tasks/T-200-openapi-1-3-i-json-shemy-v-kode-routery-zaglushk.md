@@ -45,4 +45,4 @@ python scripts/check_openapi_drift.py --tags feed,abs,rules,compliance,stt,demo
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. `scripts/gen_api_stubs.py` создал 25 роутеров по тегам (156 операций, 0 операций без покрытия) — каждая заглушка поднимает `NotImplementedYet('T-xxx')` с номером карточки реализации (таблица `CARD_BY_TAG`); существующие файлы не перезаписываются. `scripts/check_openapi_drift.py` сравнивает пути+методы OpenAPI ↔ FastAPI в обе стороны (учитывает `_IncludedRouter` FastAPI ≥0.125), подключён в CI (job `tests`) и `make lint`. Отклонения: в OpenAPI нет operationId — имена функций строятся из метода и пути.

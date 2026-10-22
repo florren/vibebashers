@@ -44,4 +44,4 @@ pytest backend/tests/integration/test_schema.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. `backend/alembic/` (копия `contracts/db/alembic`, `alembic.ini`), `backend/migrations/*.sql`, `backend/schema.sql`. `app/db/models.py` генерируется `scripts/gen_models.py` (sqlacodegen declarative, `nojoined,noindexes`, без представлений; 74 класса) из временной БД со `schema.sql`. `app/db/session.py` — async engine (psycopg), `get_session`, `listen_connection`. Проверено на PostgreSQL 18: `alembic upgrade head` (0001→0003), `alembic check` без дрейфа, `downgrade 0002` (69 таблиц) и повторный `upgrade` (74), триггер `db_activity_log` на `signals`, выполнение всех представлений — `tests/integration/test_schema.py`. Отклонения/контракты: в `0001/0002/0003` `op.execute` заменён на `exec_driver_sql` (text() ломался на `:` внутри DDL); в `alembic/env.py` добавлен `include_object` (индексы и представления сравнивает только `schema.sql`).

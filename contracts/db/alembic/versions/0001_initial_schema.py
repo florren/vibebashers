@@ -47,7 +47,7 @@ _DROP_ORDER = [
 
 def upgrade() -> None:
     sql = SCHEMA_FILE.read_text(encoding="utf-8")
-    op.execute(sql)
+    op.get_bind().exec_driver_sql(sql)  # exec_driver_sql: без разбора :параметров внутри DDL и $$-тел функций
 
 
 def downgrade() -> None:

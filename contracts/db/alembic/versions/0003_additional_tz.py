@@ -44,7 +44,7 @@ _RESTORE_CHECKS = [
 
 
 def upgrade() -> None:
-    op.execute(SQL_FILE.read_text(encoding="utf-8"))
+    op.get_bind().exec_driver_sql(SQL_FILE.read_text(encoding="utf-8"))
 
 
 def downgrade() -> None:

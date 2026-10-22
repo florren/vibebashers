@@ -43,4 +43,4 @@ python scripts/check_openapi_drift.py --tags health,settings
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. `backend/app/main.py` (`create_app`, CORS, lifespan: structlog, LISTEN/NOTIFY-мост вне тестов), `app/config.py` (pydantic-settings, все переменные `.env.example`), `app/logging.py` (structlog JSON/консоль), `app/errors.py` (problem+json для HTTPException/валидации/необработанных, `NotImplementedYet(card)` → 501 с полем `card`), `app/api/health.py` — реальный `/api/health` (db, setup_completed, llm-профили, tgbot, sim_running, version), отвечает `degraded` без БД. Роутеры подключаются автоматически по модулям `app/api/*.py`. Тесты: `tests/unit/test_app_skeleton.py`.

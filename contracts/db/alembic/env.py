@@ -30,10 +30,20 @@ except Exception:  # pragma: no cover
     target_metadata = None
 
 
+def include_object(obj, name, type_, reflected, compare_to):  # type: ignore[no-untyped-def]
+    """alembic check сравнивает таблицы, колонки и ограничения; представления (v_*) и индексы — только в schema.sql."""
+    if type_ == "table" and (name or "").startswith("v_"):
+        return False
+    if type_ in ("index", "unique_constraint"):
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
@@ -53,6 +63,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            include_object=include_object,
             compare_type=True,
             compare_server_default=True,
         )

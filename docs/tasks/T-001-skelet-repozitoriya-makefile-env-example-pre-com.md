@@ -45,4 +45,4 @@ python scripts/contracts_check.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01 в `main` (без PR — защита ветки отключена владельцем). Сделано: `backend/pyproject.toml` (uv, Python 3.12, ruff/mypy strict/pytest), `uv.lock`, `Makefile` с реальными целями (dev, test, lint, fmt, migrate, sync-contracts, contracts-check, check-owners), `.env.example` (все переменные ТЗ), `.pre-commit-config.yaml` (ruff, detect-secrets, large files 60 МБ), `backend/Dockerfile`, `docker-compose.yml` (postgres:16 + backend, mailpit по профилю tools). CI: в job `tests` добавлен шаг `check_openapi_drift.py`, имена jobs не менялись. Отклонения: нет frontend — цели TS-типов пропускаются с сообщением; `scripts/i18n_check.py` не создан (T-156). Исполнитель: Perplexity Computer, 22.10.

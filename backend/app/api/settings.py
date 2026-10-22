@@ -1,0 +1,137 @@
+"""Роутер тега `settings` (OpenAPI 1.4.0). Заглушки 501 — реализация: карточка T-009."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fastapi import APIRouter, Request
+
+from app.errors import NotImplementedYet
+
+router = APIRouter(tags=["settings"])
+
+
+@router.get("/api/settings", summary="Все настройки (ключ → значение)")
+async def get_settings(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.patch("/api/settings", summary="Изменить настройки (частично)")
+async def patch_settings(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get(
+    "/api/settings/export",
+    summary="Экспорт конфигурации (JSON) — настройки, SLA, маршрутизация, шаблоны, профили LLM без ключей",
+)
+async def get_settings_export(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.post("/api/settings/import", summary="Импорт конфигурации")
+async def post_settings_import(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/sla-matrix", summary="Матрица SLA")
+async def get_settings_sla_matrix(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/sla-matrix", summary="Заменить матрицу SLA (9 ячеек)")
+async def put_settings_sla_matrix(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/routing-rules", summary="Правила маршрутизации")
+async def get_settings_routing_rules(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/routing-rules", summary="Заменить правила")
+async def put_settings_routing_rules(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/llm-profiles", summary="Профили LLM")
+async def get_settings_llm_profiles(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.post("/api/settings/llm-profiles", summary="Добавить профиль")
+async def post_settings_llm_profiles(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.patch("/api/settings/llm-profiles/{id}", summary="Изменить профиль (в т. ч. роль main/fast/twin, активность)")
+async def patch_settings_llm_profiles_id(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.delete("/api/settings/llm-profiles/{id}", summary="Удалить профиль")
+async def delete_settings_llm_profiles_id(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/llm-keys", summary="Ключи LLM (без значения ключа) с остатками токенов/лимитов")
+async def get_settings_llm_keys(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.post("/api/settings/llm-keys", summary="Добавить ключ")
+async def post_settings_llm_keys(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.delete("/api/settings/llm-keys/{id}", summary="Удалить ключ")
+async def delete_settings_llm_keys_id(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/templates", summary="Шаблоны уведомлений")
+async def get_settings_templates(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/templates", summary="Заменить набор шаблонов")
+async def put_settings_templates(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/gifts", summary="Справочник подарков")
+async def get_settings_gifts(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/gifts", summary="Заменить справочник подарков")
+async def put_settings_gifts(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/economics", summary="Параметры экономики и таблица ставок dCLTV")
+async def get_settings_economics(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/economics", summary="Изменить параметры экономики/ставки")
+async def put_settings_economics(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get("/api/settings/psychotypes", summary="Психотипы и доли по сегментам (ТЗ 4.5)")
+async def get_settings_psychotypes(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.put("/api/settings/psychotypes", summary="Изменить параметры психотипов и доли")
+async def put_settings_psychotypes(request: Request) -> Any:
+    raise NotImplementedYet("T-009")
+
+
+@router.get(
+    "/api/refs/{name}",
+    summary="Справочник по имени (regions, cities, segments, products, systems, teams, channels, error_codes, signal_types)",
+)
+async def get_refs_name(request: Request) -> Any:
+    raise NotImplementedYet("T-009")

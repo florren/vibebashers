@@ -44,4 +44,4 @@ pytest backend/tests/integration/test_schema_v13.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Коммит B01. Миграция 0002 применяется в коде через `backend/alembic` (см. отчёт T-005: upgrade/downgrade/идемпотентность проверены на PostgreSQL). Модели — регенерацией `gen_models.py`, Pydantic-схемы — `gen_schemas.py`; ветки 0002 в OpenAPI покрыты заглушками 501 (`gen_api_stubs.py`).

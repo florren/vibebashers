@@ -108,6 +108,7 @@ jobs:
         run: |
           if [ -f backend/pyproject.toml ]; then
             cd backend && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest -q
+            cd .. && backend/.venv/bin/python scripts/check_openapi_drift.py
           else echo "backend ещё нет — пропуск"; fi
       - name: Frontend lint + tests + build
         run: |

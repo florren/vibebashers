@@ -1527,12 +1527,27 @@ def render_index() -> str:
     return "\n".join(lines) + "\n"
 
 
+REPORT_HDR = "## Отчёт субагента\n"
+REPORT_EMPTY = "_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._"
+
+
 def main() -> None:
+    """Перегенерация карточек. Заполненные блоки «Отчёт субагента» сохраняются (переносятся в новую версию карточки)."""
     OUT.mkdir(parents=True, exist_ok=True)
+    reports: dict[str, str] = {}
     for old in OUT.glob("T-*.md"):
+        txt = old.read_text(encoding="utf-8")
+        if REPORT_HDR in txt:
+            body = txt.split(REPORT_HDR, 1)[1].strip()
+            if body and body != REPORT_EMPTY:
+                reports[old.name[:5]] = body
         old.unlink()
     for t in TASKS:
-        (OUT / f"{tid(t['id'])}-{slug(t['title'])}.md").write_text(render(t), encoding="utf-8")
+        text = render(t)
+        rep = reports.get(tid(t["id"]))
+        if rep:
+            text = text.replace(REPORT_EMPTY, rep)
+        (OUT / f"{tid(t['id'])}-{slug(t['title'])}.md").write_text(text, encoding="utf-8")
     (OUT / "README.md").write_text(render_index(), encoding="utf-8")
     print(f"written {len(TASKS)} cards → {OUT}")
 
