@@ -12,9 +12,20 @@
 ## Быстрый старт
 ```bash
 cp .env.example .env            # ключи GigaChat (без них — LLM_PROVIDER=mock)
-./install.sh --profile lite     # docker compose: PostgreSQL 16, backend, frontend, миграции, сид
+./install.sh --profile lite     # docker compose: PostgreSQL 16, backend (+ собранный фронт), миграции, сид
 make test                       # проверки контрактов, backend, frontend
 python scripts/cx.py next       # что делать дальше по плану спринта
 ```
+
+После `install.sh` интерфейс открывается на `http://<хост>:8000` (фронт собирается в образ backend и раздаётся FastAPI с того же порта).
+
+### Разработка без Docker
+```bash
+make install-backend && make migrate && make seed PROFILE=lite   # нужна локальная PostgreSQL и DATABASE_URL в .env
+make dev                        # backend :8000 (LLM_PROVIDER=mock — без ключей)
+make install-front && make dev-front   # vite :5173, прокси /api и /ws на :8000
+make build-front                # frontend/dist → backend раздаёт его сам на :8000
+```
+Экраны: `/` рабочее место (сигналы, инциденты, очередь HITL, отложенные, режим жюри), `/incidents/:id` карточка инцидента, `/engine` «под капотом» (прогоны агента, шаги, граф, цепочка решений, живые события).
 
 Рабочий репозиторий — GitHub; зеркало в [GitVerse](https://gitverse.ru/florren/vibebashers) обновляется автоматически (`.github/workflows/mirror.yml`).

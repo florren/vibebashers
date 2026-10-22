@@ -1,0 +1,99 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Светлая тема — по умолчанию; .dark переключается в ThemeStore. Цвета — RGB-тройки для <alpha-value>. */
+:root {
+  --bg: 246 247 248;
+  --surface: 255 255 255;
+  --raised: 250 251 251;
+  --line: 226 230 233;
+  --ink: 24 28 31;
+  --muted: 98 108 117;
+  --faint: 152 160 168;
+  --brand-soft: 230 245 233;
+}
+.dark {
+  --bg: 15 18 21;
+  --surface: 22 26 30;
+  --raised: 29 34 39;
+  --line: 44 51 58;
+  --ink: 232 236 239;
+  --muted: 151 161 170;
+  --faint: 98 108 117;
+  --brand-soft: 24 56 34;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  @apply bg-bg text-ink font-sans text-[13.5px] leading-snug antialiased;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-line;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.card {
+  @apply rounded-xl bg-surface shadow-card;
+}
+.btn {
+  @apply inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-medium text-ink transition hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-primary {
+  @apply border-transparent bg-brand text-white hover:bg-[#1c8a30];
+}
+.btn-ghost {
+  @apply border-transparent bg-transparent hover:bg-raised;
+}
+.btn-sm {
+  @apply h-7 px-2 text-xs;
+}
+.input {
+  @apply h-8 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink placeholder:text-faint focus:border-brand focus:outline-none;
+}
+.chip {
+  @apply inline-flex h-6 items-center gap-1 rounded-full border border-line bg-surface px-2 text-xs text-muted;
+}
+.chip-on {
+  @apply border-brand bg-brand-soft text-ink;
+}
+.kbd {
+  @apply rounded border border-line bg-raised px-1 font-mono text-[11px] text-muted;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-in {
+  animation: fade-in 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

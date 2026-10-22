@@ -32,14 +32,14 @@ SORTS = {
 async def get_incidents(
     request: Request,
     run_id: str = Query(default="current"),
-    status: str | None = None,
+    status: list[str] | None = Query(default=None),
     team: str | None = None,
     product: str | None = None,
     criticality: str | None = None,
     complexity: str | None = None,
     incident_type: str | None = None,
     region_code: str | None = None,
-    sla_risk: bool | None = None,
+    sla_risk: str | None = None,
     routing_status: str | None = None,
     sentiment: str | None = None,
     sort: str = Query(default="id"),
@@ -54,7 +54,7 @@ async def get_incidents(
             where.append("i.run_id = %s")
             args.append(rid)
         for expr, val in (
-            ("i.status = %s", status),
+            ("i.status = any(%s)", status or None),
             ("i.team_code = %s", team),
             ("i.product_code = %s", product),
             ("i.criticality = %s", criticality),
@@ -67,7 +67,9 @@ async def get_incidents(
             if val is not None:
                 where.append(expr)
                 args.append(val)
-        if sla_risk:
+        if sla_risk == "breached":
+            where.append("i.status not in ('closed','resolved','rejected','duplicate') and i.sla_breached")
+        elif sla_risk in ("any", "warning", "true", "1"):
             where.append(
                 "i.status not in ('closed','resolved','rejected','duplicate') and (i.sla_breached or i.sla_due_sim < st.sim_time + interval '1 day')"
             )

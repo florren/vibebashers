@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     app_secret: str = "change-me"
     app_lang: Literal["ru", "en"] = "ru"
     app_port: int = 8000
+    frontend_dist: str | None = Field(
+        default=None, description="Каталог собранного фронта; по умолчанию ../frontend/dist"
+    )
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://localhost:8080"])
 
     database_url: str = "postgresql+psycopg://cx:cx@localhost:5432/cx_pulse"

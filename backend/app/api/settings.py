@@ -6,7 +6,8 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
-from app.errors import NotImplementedYet
+from app.api.common import db, fetch_all
+from app.errors import NotImplementedYet, Problem
 
 router = APIRouter(tags=["settings"])
 
@@ -133,5 +134,36 @@ async def put_settings_psychotypes(request: Request) -> Any:
     "/api/refs/{name}",
     summary="Справочник по имени (regions, cities, segments, products, systems, teams, channels, error_codes, signal_types)",
 )
-async def get_refs_name(request: Request) -> Any:
-    raise NotImplementedYet("T-009")
+async def get_refs_name(request: Request, name: str, region_code: str | None = None) -> Any:
+    """Справочники для фронта (T-009, минимум для L4): без пагинации, только whitelisted таблицы."""
+    if name not in _REF_TABLES:
+        raise Problem(404, "Не найдено", f"справочник {name!r} не найден")
+    sql, order = _REF_TABLES[name]
+    args: list[Any] = []
+    if name == "cities" and region_code:
+        sql += " WHERE region_code = %s"
+        args.append(region_code)
+    async with db() as conn:
+        return await fetch_all(conn, f"{sql} ORDER BY {order}", args)
+
+
+_REF_TABLES: dict[str, tuple[str, str]] = {
+    "regions": ("SELECT code, name_ru, name_en, district_code, population FROM regions", "name_ru"),
+    "cities": ("SELECT id, region_code, name_ru, population, lat, lon, is_capital FROM cities", "population DESC"),
+    "segments": (
+        "SELECT code, name_ru, name_en, first_response_min, priority_multiplier, tone, hitl_required, personal_manager "
+        "FROM segments",
+        "priority_multiplier DESC",
+    ),
+    "products": ("SELECT code, name_ru, name_en FROM products", "name_ru"),
+    "systems": ("SELECT code, name_ru, name_en, layer FROM systems", "name_ru"),
+    "teams": ("SELECT code, name_ru, name_en, speed_profile, lead_display_name FROM teams", "name_ru"),
+    "channels": ("SELECT code, name_ru, name_en, subtypes, identifies_client, is_public FROM channels", "name_ru"),
+    "error_codes": (
+        "SELECT code, system_code, product_code, title_ru, default_complexity, default_criticality, client_visible "
+        "FROM error_codes",
+        "code",
+    ),
+    "signal_types": ("SELECT * FROM signal_types", "1"),
+    "federal_districts": ("SELECT * FROM federal_districts", "1"),
+}

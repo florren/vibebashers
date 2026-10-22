@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Инструменты get_client_profile, get_client_products, get_recent_operations, get_system_logs, find_related_incidents, search_similar_signals.

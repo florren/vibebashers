@@ -65,7 +65,7 @@ docker compose exec -T backend python /scripts/seed/run.py --profile "$PROFILE" 
 HEALTH=$(curl -fs http://localhost:8000/api/health)
 say "health: $HEALTH"
 URL="http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo localhost):8000"
-say "API: $URL/api/health  · документация: $URL/docs  · WebSocket: ws://…/ws/stream"
+say "Интерфейс: $URL  · API: $URL/api/health  · документация: $URL/docs  · WebSocket: ws://…/ws/stream"
 say "мастер настройки (UI) появится в E1 (T-010): $URL/setup"
 if command -v python3 >/dev/null && python3 -c 'import qrcode' 2>/dev/null; then
   python3 -c "import qrcode,sys;q=qrcode.QRCode(border=1);q.add_data('$URL');q.print_ascii(invert=True)"

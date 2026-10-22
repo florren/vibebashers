@@ -45,6 +45,8 @@ def main() -> int:
         path = getattr(r, "path", "")
         if path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect") or path.startswith("/static"):
             continue
+        if getattr(r, "include_in_schema", True) is False:  # SPA-фолбэк фронта и прочие служебные маршруты
+            continue
         methods = getattr(r, "methods", None)
         if methods:
             code |= {(m, path) for m in methods if m not in ("HEAD", "OPTIONS")}
