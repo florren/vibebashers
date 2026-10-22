@@ -36,4 +36,4 @@ pytest backend/tests/unit/test_gen_client_errors.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B03. `World.gen_client_errors`: интенсивность 30/сим-час × масштаб, виды wrong_details/fee_misread/promo_expired/missed_payment/app_misuse с привязкой к продукту; событие client_error.<kind> по `sim/client_error`; жалоба типа client_error с вероятностью p_complain × 1.5 для novice (× 0.6 для остальных) через общий механизм отложенных сигналов → signals (origin sim, sentiment из gold) + signal.received + NOTIFY signals. Время: ~15 мин.

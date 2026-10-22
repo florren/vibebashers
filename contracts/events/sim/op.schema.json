@@ -70,6 +70,29 @@
       ],
       "minimum": 0
     },
+    "method": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "qr_sbp",
+        "card",
+        "transfer",
+        "cash",
+        "online",
+        null
+      ],
+      "description": "Способ (ТЗ 3.4; operations.method): qr_sbp — оплата по QR/СБП, бесплатна для физлиц (сценарий 8)"
+    },
+    "fee_amount": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Комиссия, списанная Mock-АБС (operations.fee_amount); > 0 при method=qr_sbp — признак PROC-QR-FEE-CHARGED"
+    },
     "status": {
       "type": "string",
       "enum": [

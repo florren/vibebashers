@@ -3,7 +3,7 @@
 #   filename:  op.schema.json
 
 from __future__ import annotations
-from enum import StrEnum
+from enum import Enum, StrEnum
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
@@ -27,6 +27,19 @@ class OpType(StrEnum):
     promo_apply = "promo_apply"
     login = "login"
     statement = "statement"
+
+
+class Method(Enum):
+    """
+    Способ (ТЗ 3.4; operations.method): qr_sbp — оплата по QR/СБП, бесплатна для физлиц (сценарий 8)
+    """
+
+    qr_sbp = "qr_sbp"
+    card = "card"
+    transfer = "transfer"
+    cash = "cash"
+    online = "online"
+    NoneType_None = None
 
 
 class Status(StrEnum):
@@ -472,6 +485,15 @@ class Op(BaseModel):
     op_type: OpType
     system_path: list[System] = Field(..., min_length=1)
     amount_rub: float | None = Field(None, ge=0.0)
+    method: Method | None = Field(
+        None,
+        description="Способ (ТЗ 3.4; operations.method): qr_sbp — оплата по QR/СБП, бесплатна для физлиц (сценарий 8)",
+    )
+    fee_amount: float | None = Field(
+        None,
+        description="Комиссия, списанная Mock-АБС (operations.fee_amount); > 0 при method=qr_sbp — признак PROC-QR-FEE-CHARGED",
+        ge=0.0,
+    )
     status: Status
     error_code: ErrorCode | None = None
     fault_id: int | None = None

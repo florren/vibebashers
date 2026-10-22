@@ -51,3 +51,32 @@ def migrated_db(db_url: str) -> str:
 def conn(migrated_db: str):
     with psycopg.connect(_dsn(migrated_db), autocommit=True) as c:
         yield c
+
+
+def _seed(url: str, *args: str) -> subprocess.CompletedProcess[str]:
+    env = {**os.environ, "DATABASE_URL": url}
+    return subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "seed" / "run.py"), "--profile", "lite", "--clients", "200", *args],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.fixture(scope="session")
+def seeded(migrated_db: str) -> str:
+    """Чистая схема + alembic head + сид lite на 200 клиентов (общая для test_coverage и test_sim)."""
+    with psycopg.connect(_dsn(migrated_db), autocommit=True) as c:
+        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+    r = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=ROOT / "backend",
+        env={**os.environ, "DATABASE_URL": migrated_db},
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr[-2000:]
+    r = _seed(migrated_db)
+    assert r.returncode == 0, r.stderr[-3000:]
+    return migrated_db

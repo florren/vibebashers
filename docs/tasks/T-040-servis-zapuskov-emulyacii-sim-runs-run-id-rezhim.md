@@ -50,4 +50,4 @@ curl -s localhost:8000/api/sim/runs/current | jq .counters
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B03 (минимум). `app/sim/runs.py`: current_run_id, create_run (kind free, reset_mode counters: незавершённый текущий → stopped, parent_run_id, NOTIFY runs started), set_run_status (paused/running/interrupted/stopped c summary из v_run_counters), get_run (+ counters), list_runs. Все вставки симулятора идут с run_id текущего запуска (тест «нет строк без run_id»). Не сделано (остаётся по карточке): сценарные запуски, режим baseline/BaselineService (pg_dump/restore), archive/export/compare/delete, scripts/run.sh, общая зависимость run_id для лент. Время: ~25 мин.

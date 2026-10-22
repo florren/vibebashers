@@ -3,7 +3,7 @@ business_rules:
   - code: RULE-QR-FEE-001
     name_ru: "Комиссия за оплату по QR (СБП) при нулевом тарифе"
     name_en: "QR/SBP fee charged while tariff is zero"
-    condition: {all: [{field: operation.op_type, in: [payment, qr_payment]}, {field: operation.method, eq: qr_sbp}, {field: ledger.fee_amount, gt: 0}, {field: tariff.fee_pct, eq: 0}]}
+    condition: {all: [{field: operation.op_type, eq: card_payment}, {field: operation.method, eq: qr_sbp}, {field: operation.fee_amount, gt: 0}, {field: tariff.fee_pct, eq: 0}]}
     action: refund_fee
     limits: {max_amount_rub: 5000, per_client_30d: 3}
     owner_team_code: team_processing
@@ -21,7 +21,7 @@ business_rules:
   - code: RULE-PROMO-RATE-001
     name_ru: "Ставка вклада ниже промо в окне акции"
     name_en: "Deposit rate below promo inside promo window"
-    condition: {all: [{field: operation.op_type, eq: open_deposit}, {field: operation.started_sim, within_promo: PROMO-DEP-14}, {field: client_product.terms.rate_pct, lt: promo.rate}]}
+    condition: {all: [{field: operation.op_type, eq: deposit_open}, {field: operation.started_sim, within_promo: PROMO-DEP-14}, {field: client_product.terms.rate_pct, lt: promo.rate}]}
     action: propose_hitl
     limits: {}
     owner_team_code: team_promo

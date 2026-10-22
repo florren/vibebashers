@@ -18,6 +18,7 @@ from app.llm.failover import build_chain, default_profile
 from app.logging import configure_logging, get_logger
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
+from app.sim.engine import Simulator
 
 log = get_logger(__name__)
 
@@ -36,9 +37,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         chain=app.state.llm_chain.names,
         version=__version__,
     )
+    app.state.sim = None
     if not s.is_test:
         bridge.start()
+        sim = Simulator(seed=s.sim_seed)
+        try:
+            await sim.load_state()
+            app.state.sim = sim
+        except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
+            log.warning("sim_init_failed", error=str(exc)[:200])
     yield
+    if app.state.sim is not None:
+        await app.state.sim.shutdown()
     await bridge.stop()
 
 

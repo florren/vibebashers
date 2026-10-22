@@ -6,22 +6,22 @@ products:
     tariffs: {base_rate_pct: 9.5, promo_rate_pct: 14.0, min_amount_rub: 10000, terms_months: [3, 6, 12], early_close_rate_pct: 0.01}
     promos:
       - {code: PROMO-DEP-14, rate: 14.0, valid_from_sim: "D-10T00:00", valid_to_sim: "D-3T23:59", title_ru: "Промо-ставка 14 % на 6 месяцев"}
-    operations: [open_deposit, top_up, close_deposit, interest_payout]
+    operations: [deposit_open, deposit_topup, deposit_close, statement]
   - code: debit_card
     name_ru: Дебетовые карты
     name_en: Debit cards
     tariffs: {service_fee_rub: 0, cashback_pct: 1.0, qr_sbp_fee_pct: 0.0, transfer_free_limit_rub: 100000, transfer_fee_pct: 0.5, atm_withdraw_free_limit_rub: 50000}
     promos: []
-    operations: [payment, qr_payment, transfer, atm_withdraw, salary_in, refund]
+    operations: [card_payment, transfer, card_issue, login, statement]
   - code: credit
     name_ru: Кредиты
     name_en: Loans
     tariffs: {rate_pct: 19.9, insurance_optional: true, insurance_discount_pp: 2.0, early_repay_fee_pct: 0.0}
     promos: []
-    operations: [loan_payment, early_repay, loan_issue]
+    operations: [loan_payment, limit_request, statement]
   - code: credit_card
     name_ru: Кредитные карты
     name_en: Credit cards
     tariffs: {rate_pct: 29.9, grace_days: 120, cash_withdraw_fee_pct: 3.9, cash_withdraw_fee_min_rub: 390, service_fee_rub: 0}
     promos: []
-    operations: [payment, qr_payment, cash_withdraw, repayment]
+    operations: [card_payment, loan_payment, limit_request, card_issue]

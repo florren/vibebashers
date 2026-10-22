@@ -39,4 +39,4 @@ pytest backend/tests/unit/test_gen_operations.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка main, коммит B03. `app/sim/generators.py::World.gen_operations`: Пуассон с интенсивностью 450/сим-час (ТЗ 4.2) × суточный профиль × масштаб по числу клиентов (demo = 1.0, floor 0.2); op_type/system_path по enum `sim/op`; если в system_path активен сбой — 60 % операций failed с error_code и fault_id, учёт impact_count/affected_clients; фоновые ошибочные комиссии за QR (3 % qr_sbp → PROC-QR-FEE-CHARGED); запись в operations и событие op.succeeded|op.failed через EventBus (валидация envelope + sim/op, запись sim_events, pg_notify('sim_events')). Контракт: в `sim/op.schema.json` добавлены необязательные `method` и `fee_amount` (регенерирован `app/contracts/events/sim/op.py`). Подписчик поведения — упрощённо внутри World: op.failed → отложенная жалоба с p_complain и задержкой психотипа (полная модель 4.5 — карточки T-017…). Время: ~40 мин.

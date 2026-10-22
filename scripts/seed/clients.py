@@ -139,23 +139,25 @@ CHANNELS_FOR_SIGNALS = [
     "voice_input",
     "branch_audio",
 ]
+# op_type — enum contracts/events/sim/op.schema.json; оплата по QR = card_payment с method=qr_sbp
 OP_TYPES = {
-    "deposit": ["open_deposit", "top_up", "interest_payout"],
-    "debit_card": ["payment", "qr_payment", "transfer", "atm_withdraw", "salary_in"],
-    "credit": ["loan_payment"],
-    "credit_card": ["payment", "qr_payment", "repayment"],
+    "deposit": ["deposit_open", "deposit_topup", "deposit_topup", "statement"],
+    "debit_card": ["card_payment", "card_payment", "card_payment", "transfer", "login", "statement"],
+    "credit": ["loan_payment", "statement"],
+    "credit_card": ["card_payment", "card_payment", "loan_payment", "limit_request"],
 }
 SYSTEM_PATH = {
-    "open_deposit": ["mobile_app", "sub_deposits", "core_abs"],
-    "top_up": ["mobile_app", "sub_deposits", "core_abs"],
-    "interest_payout": ["sub_deposits", "core_abs"],
-    "payment": ["processing", "sub_debit", "core_abs"],
-    "qr_payment": ["mobile_app", "processing", "core_abs"],
-    "transfer": ["mobile_app", "processing", "core_abs"],
-    "atm_withdraw": ["processing", "core_abs"],
-    "salary_in": ["core_abs"],
+    "deposit_open": ["mobile_app", "promo_engine", "sub_deposits", "core_abs", "notification_gw"],
+    "deposit_topup": ["mobile_app", "sub_deposits", "core_abs"],
+    "deposit_close": ["mobile_app", "sub_deposits", "core_abs"],
+    "card_payment": ["processing", "sub_debit", "core_abs", "notification_gw"],
+    "transfer": ["mobile_app", "antifraud", "processing", "core_abs"],
     "loan_payment": ["mobile_app", "sub_lending", "core_abs"],
-    "repayment": ["mobile_app", "sub_lending", "core_abs"],
+    "card_issue": ["mobile_app", "sub_debit"],
+    "limit_request": ["mobile_app", "sub_lending"],
+    "promo_apply": ["mobile_app", "promo_engine"],
+    "login": ["mobile_app"],
+    "statement": ["web_bank", "core_abs"],
 }
 MERCHANTS = [
     "Пятёрочка",
@@ -397,21 +399,19 @@ def seed_operations(
                 "credit": rnd.choice([8900, 15400, 23700]),
                 "credit_card": rnd.choice([990, 2300, 7800, 15600]),
             }[product]
+            if op in ("login", "statement", "limit_request"):
+                amount = None
             method = (
-                "qr_sbp"
-                if op == "qr_payment"
-                else "card"
-                if op in ("payment",)
+                ("qr_sbp" if rnd.random() < 0.45 else "card")
+                if op == "card_payment"
                 else "transfer"
                 if op == "transfer"
-                else "cash"
-                if op == "atm_withdraw"
                 else "online"
             )
             fee = 0.0
             error = None
             status = "success"
-            if op == "qr_payment":
+            if method == "qr_sbp":
                 qr_total += 1
                 if rnd.random() < 0.04:  # 3–5 % QR-операций с ошибочной комиссией (сценарий 8)
                     fee = round(amount * rnd.choice([0.01, 0.015]) + rnd.choice([0, 90, 150]), 2) or 150.0
@@ -435,7 +435,7 @@ def seed_operations(
                     SYSTEM_PATH[op],
                     amount,
                     method,
-                    rnd.choice(MERCHANTS) if op in ("payment", "qr_payment") else None,
+                    rnd.choice(MERCHANTS) if op == "card_payment" else None,
                     fee,
                     status,
                     error,

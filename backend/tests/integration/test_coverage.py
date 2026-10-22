@@ -3,45 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
-import pytest
+from tests.integration.conftest import _seed
 
 ROOT = Path(__file__).resolve().parents[3]
-
-
-def _seed(url: str, *args: str) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "DATABASE_URL": url}
-    return subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "seed" / "run.py"), "--profile", "lite", "--clients", "200", *args],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-
-
-@pytest.fixture(scope="module")
-def seeded(migrated_db: str) -> str:
-    # test_schema может оставить схему в произвольном состоянии — пересоздаём и накатываем head заново
-    import psycopg
-
-    with psycopg.connect(migrated_db.replace("postgresql+psycopg://", "postgresql://", 1), autocommit=True) as c:
-        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    r = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        cwd=ROOT / "backend",
-        env={**os.environ, "DATABASE_URL": migrated_db},
-        capture_output=True,
-        text=True,
-    )
-    assert r.returncode == 0, r.stderr[-2000:]
-    r = _seed(migrated_db)
-    assert r.returncode == 0, r.stderr[-3000:]
-    return migrated_db
 
 
 def test_seed_is_idempotent(seeded: str, conn) -> None:
@@ -109,7 +75,7 @@ def test_client_invariants(conn) -> None:
         == 0
     )
     qr_total, qr_fee = conn.execute(
-        "select count(*), count(*) filter (where error_code = 'PROC-QR-FEE-CHARGED') from operations where op_type = 'qr_payment'"
+        "select count(*), count(*) filter (where error_code = 'PROC-QR-FEE-CHARGED') from operations where method = 'qr_sbp'"
     ).fetchone()
     assert qr_total > 0 and 0.02 <= qr_fee / qr_total <= 0.07
     assert conn.execute("select count(*) from v_tickets").fetchone()[0] > 0
