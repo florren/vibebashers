@@ -1532,21 +1532,28 @@ REPORT_EMPTY = "_Заполняется исполнителем: ветка/PR,
 
 
 def main() -> None:
-    """Перегенерация карточек. Заполненные блоки «Отчёт субагента» сохраняются (переносятся в новую версию карточки)."""
+    """Перегенерация карточек. Заполненные блоки «Отчёт субагента» и статус (не todo) сохраняются (переносятся в новую версию карточки)."""
     OUT.mkdir(parents=True, exist_ok=True)
     reports: dict[str, str] = {}
+    statuses: dict[str, str] = {}
     for old in OUT.glob("T-*.md"):
         txt = old.read_text(encoding="utf-8")
         if REPORT_HDR in txt:
             body = txt.split(REPORT_HDR, 1)[1].strip()
             if body and body != REPORT_EMPTY:
                 reports[old.name[:5]] = body
+        m = re.search(r"^\| Статус \| `([a-z_]+)` \|$", txt, re.M)
+        if m and m.group(1) != "todo":
+            statuses[old.name[:5]] = m.group(1)
         old.unlink()
     for t in TASKS:
         text = render(t)
         rep = reports.get(tid(t["id"]))
         if rep:
             text = text.replace(REPORT_EMPTY, rep)
+        st = statuses.get(tid(t["id"]))
+        if st:
+            text = text.replace("| Статус | `todo` |", f"| Статус | `{st}` |", 1)
         (OUT / f"{tid(t['id'])}-{slug(t['title'])}.md").write_text(text, encoding="utf-8")
     (OUT / "README.md").write_text(render_index(), encoding="utf-8")
     print(f"written {len(TASKS)} cards → {OUT}")
