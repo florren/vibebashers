@@ -9,8 +9,6 @@ import {
   useGenerateStatus,
   useGifts,
   useImportSettings,
-  useLlmKeyOps,
-  useLlmKeys,
   useLlmProfiles,
   useLlmProfileOps,
   usePsychotypes,
@@ -25,10 +23,13 @@ import {
   useTemplates,
   useTestLlm,
   useTestTgBot,
+  useSttProviders,
+  useSttTest,
 } from '@/shared/api/hooks'
 import type { EconomicsSettingsT, GiftCatalogItem, LlmProfileT, NotificationTemplateT, PsychotypeSettings, RoutingRule, SetupPayload, SlaCell } from '@/shared/api/client'
 import { tEnum } from '@/shared/i18n'
 import { Badge, ErrorBox, Section, SkeletonRows } from '@/shared/ui'
+import { EnvEditor } from './EnvEditor'
 
 const STEP_KEYS = ['llm', 'bank', 'sim', 'channels', 'policies', 'sla', 'economics', 'templates', 'generate'] as const
 type StepKey = (typeof STEP_KEYS)[number]
@@ -126,13 +127,10 @@ function Field({ label, children, hint }: { label: string; children: React.React
 function StepLlm({ p }: { p: SetupPayload }) {
   const { t } = useTranslation()
   const profiles = useLlmProfiles()
-  const keys = useLlmKeys()
-  const keyOps = useLlmKeyOps()
   const profOps = useLlmProfileOps()
   const test = useTestLlm()
   const save = useSaveSetup()
   const [llm, setLlm] = useState(p.llm ?? {})
-  const [newKey, setNewKey] = useState({ provider: 'openai_compatible', label: '', key: '' })
   const [newProf, setNewProf] = useState<LlmProfileT>({ code: '', provider: 'openai_compatible', model: '', role: 'bench_only', base_url: null })
   const [testId, setTestId] = useState<number | null>(null)
   const byRole = (role: string) => (profiles.data ?? []).find((x) => x.role === role && x.is_active)
@@ -222,34 +220,11 @@ function StepLlm({ p }: { p: SetupPayload }) {
         </div>
       </Section>
 
-      <Section title={t('setup.llm.keys')}>
-        <ul className="divide-y divide-line text-xs">
-          {(keys.data ?? []).map((k) => (
-            <li key={k.id} className="flex items-center gap-2 px-3 py-1.5">
-              <span className="font-mono">{k.provider}</span>
-              <span>{k.label}</span>
-              <span className="text-muted">{k.key_hint}</span>
-              {k.last_error && <Badge tone="danger">{k.last_error}</Badge>}
-              <button className="btn btn-sm ml-auto" onClick={() => keyOps.remove.mutate(k.id ?? 0)}>×</button>
-            </li>
-          ))}
-          {(keys.data ?? []).length === 0 && <li className="px-3 py-2 text-muted">{t('setup.llm.noKeys')}</li>}
-        </ul>
-        <div className="flex flex-wrap items-end gap-2 border-t border-line p-3">
-          <Field label={t('setup.llm.provider')}>
-            <select className="input h-8 text-xs" value={newKey.provider} onChange={(e) => setNewKey({ ...newKey, provider: e.target.value })}>
-              <option value="openai_compatible">openai_compatible (OpenRouter / локальный)</option>
-              <option value="gigachat">gigachat</option>
-            </select>
-          </Field>
-          <Field label={t('setup.llm.label')}><input className="input h-8 w-36 text-xs" value={newKey.label} onChange={(e) => setNewKey({ ...newKey, label: e.target.value })} /></Field>
-          <Field label={t('setup.llm.key')}><input className="input h-8 w-72 text-xs" type="password" autoComplete="off" value={newKey.key} onChange={(e) => setNewKey({ ...newKey, key: e.target.value })} /></Field>
-          <button className="btn btn-sm" disabled={!newKey.label || newKey.key.length < 4 || keyOps.add.isPending} onClick={() => { keyOps.add.mutate(newKey); setNewKey({ ...newKey, key: '' }) }}>
-            {t('setup.llm.addKey')}
-          </button>
-        </div>
-        <p className="px-3 pb-2 text-[11px] text-faint">{t('setup.llm.keysNote')}</p>
-      </Section>
+      <EnvEditor
+        keys={['LLM_PROVIDER', 'LLM_CHAIN', 'GIGACHAT_AUTH_KEY_1', 'GIGACHAT_AUTH_KEY_2', 'GIGACHAT_MODEL', 'GIGACHAT_SCOPE', 'GIGACHAT_VERIFY_SSL', 'OPENROUTER_API_KEY', 'OPENROUTER_BASE_URL', 'LOCAL_LLM_BASE_URL', 'LLM_RECORD']}
+        title={t('setup.llm.env')}
+        note={t('setup.llm.envNote')}
+      />
     </div>
   )
 }
@@ -325,6 +300,7 @@ function StepSim({ p }: { p: SetupPayload }) {
         </div>
       </Section>
       <SaveBar pending={save.isPending} error={save.error} ok={save.isSuccess} onSave={() => save.mutate({ sim })} />
+      <EnvEditor keys={['PROFILE', 'SIM_SEED']} title={t('setup.sim.env')} note={t('setup.sim.envNote')} />
     </div>
   )
 }
@@ -358,10 +334,12 @@ function StepChannels({ p }: { p: SetupPayload }) {
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <Field label={t('setup.channels.tgToken')} hint={t('setup.channels.tgHint')}><input className="input h-8 w-80 text-xs" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} /></Field>
-        <button className="btn btn-sm" disabled={token.length < 10 || tg.isPending} onClick={() => tg.mutate(token)}>{t('setup.channels.tgTest')}</button>
+        <button className="btn btn-sm" disabled={tg.isPending} onClick={() => tg.mutate(token)}>{t('setup.channels.tgTest')}</button>
         {tg.data && <span className={clsx('text-xs', tg.data.ok ? 'text-ok' : 'text-danger')}>{tg.data.ok ? `@${tg.data.username}` : tg.data.error}</span>}
       </div>
       <SaveBar pending={save.isPending} error={save.error} ok={save.isSuccess} onSave={() => save.mutate({ channels: ch })} />
+      <EnvEditor keys={['TELEGRAM_BOT_TOKEN', 'MAILPIT_ENABLED', 'STT_PROVIDER', 'STT_MODEL_PATH', 'APP_LANG']} title={t('setup.channels.env')} note={t('setup.channels.envNote')} />
+      <SttCheck />
     </div>
   )
 }
@@ -718,5 +696,55 @@ function ExportImport() {
       {imp.isSuccess && <span className="text-xs text-ok">{t('setup.imported')}</span>}
       {imp.error && <ErrorBox error={imp.error} compact />}
     </div>
+  )
+}
+
+function SttCheck() {
+  const { t } = useTranslation()
+  const prov = useSttProviders()
+  const test = useSttTest()
+  return (
+    <Section title={t('setup.stt.title')}>
+      <table className="w-full text-xs">
+        <tbody className="divide-y divide-line">
+          {(prov.data ?? []).map((p) => (
+            <tr key={p.code}>
+              <td className="px-3 py-1.5 font-mono">{p.code}</td>
+              <td className="px-3 py-1.5">{p.label_ru}</td>
+              <td className="px-3 py-1.5">
+                <Badge tone={p.available ? 'ok' : 'neutral'}>{p.available ? t('setup.stt.available') : t('setup.stt.unavailable')}</Badge> {p.is_default && <Badge tone="brand">{t('setup.stt.default')}</Badge>}{' '}
+                {p.external_service && <Badge tone="warn">{t('live.external')}</Badge>}
+              </td>
+              <td className="px-3 py-1.5 text-muted">{p.model ?? p.note_ru}</td>
+              <td className="px-3 py-1.5 text-right">
+                {p.available && p.code !== 'browser' && (
+                  <button className="btn btn-sm" disabled={test.isPending} onClick={() => test.mutate(p.code!)}>
+                    {t('setup.stt.test')}
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {test.error && (
+        <div className="px-3 pb-2">
+          <ErrorBox error={test.error} compact />
+        </div>
+      )}
+      {test.data && (
+        <div className="border-t border-line px-3 py-2 text-xs">
+          <span className={test.data.ok ? 'text-ok' : 'text-danger'}>{test.data.ok ? t('setup.stt.ok') : t('setup.stt.fail')}</span>
+          {test.data.text && (
+            <>
+              {' '}
+              · «{test.data.text}» · WER {test.data.wer} · {test.data.latency_ms} мс
+            </>
+          )}
+          {test.data.note_ru && <> · {test.data.note_ru}</>}
+        </div>
+      )}
+      <p className="px-3 pb-2 text-[11px] text-faint">{t('setup.stt.note')}</p>
+    </Section>
   )
 }

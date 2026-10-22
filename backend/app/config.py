@@ -54,6 +54,13 @@ class Settings(BaseSettings):
     mailpit_enabled: bool = False
     compliance_alert_threshold: int = 3  # N подтверждённых срабатываний за встречу → алерт руководителю (ДТЗ FR-2.4)
     stt_provider: Literal["vosk", "browser", "none"] = "none"
+    stt_model_path: str | None = Field(
+        default=None, description="Каталог модели Vosk (например, data/models/vosk-model-small-ru-0.22)"
+    )
+    env_file: str | None = Field(
+        default=None,
+        description="Файл .env, который редактирует мастер настройки; по умолчанию первый существующий из .env, ../.env",
+    )
 
     # наблюдаемость (docs/REPORTS.md)
     log_dir: str = "var/log"  # относительно backend/; JSONL-журнал app.jsonl, ротация 20 МБ ×3

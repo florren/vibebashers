@@ -32,6 +32,14 @@ import {
   type EscalationDetail,
   type IncidentAction,
   type TeamLoad,
+  type TaskItem,
+  type EnvResult,
+  type Branch,
+  type MicSession,
+  type SttProvider,
+  type EnvState,
+  type EnvUpdate,
+  type TaskList,
   type Ticket,
   type TicketDetail,
   type EconomicsSummary,
@@ -441,4 +449,46 @@ export function useLlmProfileOps() {
 export function useImportSettings() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (body: unknown) => post<void>('/api/settings/import', body), onSuccess: () => void qc.invalidateQueries({ queryKey: ['settings'] }) })
+}
+
+export const useTasks = (query: Query) =>
+  useQuery({ queryKey: ['tasks', query], queryFn: () => api<TaskList>('/api/tasks', { query }), refetchInterval: 10_000 })
+export function useTaskDecision() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, action, payload, comment }: { id: number; action: 'approve' | 'change' | 'reject' | 'done'; payload?: Record<string, unknown>; comment?: string }) =>
+      post<TaskItem>(`/api/tasks/${id}`, { action, payload, comment }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+      void qc.invalidateQueries({ queryKey: ['incidents'] })
+    },
+  })
+}
+
+export const useEnv = () => useQuery({ queryKey: ['settings', 'env'], queryFn: () => api<EnvState>('/api/settings/env') })
+export function useSaveEnv() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: EnvUpdate) => put<EnvResult>('/api/settings/env', body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['settings', 'env'] })
+      void qc.invalidateQueries({ queryKey: ['health'] })
+    },
+  })
+}
+
+export const useComplianceBranches = () => useQuery({ queryKey: ['compliance', 'branches'], queryFn: () => api<Branch[]>('/api/compliance/branches'), staleTime: 60_000 })
+export const useSttProviders = () => useQuery({ queryKey: ['stt', 'providers'], queryFn: () => api<SttProvider[]>('/api/stt/providers'), staleTime: 30_000 })
+export const useSttTest = () =>
+  useMutation({
+    mutationFn: (provider: string) => post<{ ok: boolean; provider: string; text?: string | null; expected?: string; wer?: number | null; latency_ms?: number | null; note_ru?: string }>('/api/stt/test', { provider }),
+  })
+export function useStartMicSession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { employee_id: number; client_id?: number | null; deal_product?: string | null; stt_provider?: string; diarization_mode: 'stereo' | 'manual' | 'auto' }) =>
+      post<MicSession>('/api/compliance/sessions', { ...body, source: 'mic' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['compliance'] }),
+  })
 }

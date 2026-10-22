@@ -229,7 +229,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        token: string;
+                        /** @description Пусто — берётся TELEGRAM_BOT_TOKEN из .env */
+                        token?: string | null;
                     };
                 };
             };
@@ -396,6 +397,75 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/settings/env": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Переменные .env (секреты маскируются), путь файла
+         * @description Мастер настройки редактирует .env как интерфейс к конфигурации процесса; в Docker файл смонтирован в /data/env/.env (ENV_FILE).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            path?: string;
+                            exists?: boolean;
+                            writable?: boolean;
+                            items?: components["schemas"]["EnvVar"][];
+                        };
+                    };
+                };
+            };
+        };
+        /** Записать переменные в .env и применить без перезапуска (LLM, каналы, STT) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EnvUpdate"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EnvResult"];
+                    };
+                };
+                422: components["responses"]["Problem"];
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/settings/export": {
@@ -2520,7 +2590,12 @@ export interface paths {
             parameters: {
                 query?: {
                     kind?: "gift" | "callback" | "manual_review" | "clarify_client" | "report_reminder" | "closure_review";
-                    status?: string;
+                    status?: ("open" | "approved" | "changed" | "rejected" | "done" | "cancelled")[];
+                    requires_hitl?: boolean;
+                    /** @description true — только готовые к выполнению: инцидент решён (when = after_resolved) или when = now */
+                    ready?: boolean;
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
                 };
@@ -5050,6 +5125,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stt/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Надиктовать текст (T-206): PCM16 LE 16 кГц mono или WAV → текст */
+        post: {
+            parameters: {
+                query?: {
+                    provider?: string;
+                    sample_rate?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                            provider?: string;
+                            text?: string;
+                            latency_ms?: number;
+                            audio_seconds?: number;
+                        };
+                    };
+                };
+                413: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stt/test": {
         parameters: {
             query?: never;
@@ -6453,6 +6579,40 @@ export interface components {
         OutcomeClass: "closed_in_sla_with_gift" | "closed_in_sla" | "closed_late" | "closed_with_regression" | "open" | "rejected" | "churned";
         /** @enum {string} */
         ClientState: "calm" | "affected" | "complaining" | "waiting" | "satisfied" | "asks_again" | "escalates" | "churn_intent" | "retained" | "churned";
+        EnvVar: {
+            key: string;
+            /** @description Значение; у секретов всегда null */
+            value?: string | null;
+            /** @description Хвост секрета («…1234») */
+            hint?: string | null;
+            is_secret: boolean;
+            is_set: boolean;
+            /** @enum {string} */
+            source: "file" | "process" | "default";
+            /** @description PROFILE */
+            requires_restart: boolean;
+            description: string;
+        };
+        EnvUpdate: {
+            /** @description KEY → значение; null или пустая строка очищают ключ; маска секрета («…1234») игнорируется */
+            values: {
+                [key: string]: string | null;
+            };
+            /**
+             * @description Горячо применить — переменные процесса
+             * @default true
+             */
+            apply: boolean;
+        };
+        EnvResult: {
+            path?: string;
+            written?: string[];
+            applied?: boolean;
+            restart_required?: string[];
+            llm_chain?: string[];
+            llm_profile?: string | null;
+            warnings?: string[];
+        };
         SetupPayload: {
             llm?: {
                 main_profile_id?: number;
@@ -7043,10 +7203,26 @@ export interface components {
             due_sim?: string | null;
             /** Format: date-time */
             created_sim?: string;
+            /** Format: date-time */
+            resolved_sim?: string | null;
+            run_id?: number;
+            incident_public_id?: string | null;
+            incident_title?: string | null;
+            incident_status?: string | null;
+            incident_criticality?: string | null;
+            /** @description Название подарка из gift_catalog (kind = gift) */
+            gift_name?: string | null;
+            /** @description Готова к выполнению: инцидент решён (when = after_resolved) или when = now */
+            ready?: boolean;
+            overdue?: boolean;
         };
         TaskList: {
             items?: components["schemas"]["Task"][];
             next_cursor?: string | null;
+            /** @description Счётчики по ключу kind:status */
+            counts?: {
+                [key: string]: number;
+            };
         };
         RegionHeat: {
             region_code?: string;

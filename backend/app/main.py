@@ -27,6 +27,7 @@ from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
 from app.sim.engine import Simulator
+from app.stt import audio_ws
 
 log = get_logger(__name__)
 
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)
+    app.include_router(audio_ws.router)
     mount_frontend(app, s.frontend_dist)
     return app
 

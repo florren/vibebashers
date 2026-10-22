@@ -9,5 +9,5 @@ frontend/dist
 .git
 .env
 .env.*
-data/models/stt/vosk-model-ru-0.42
+data/models/stt/*/
 data/baseline/*.dump

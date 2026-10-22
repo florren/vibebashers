@@ -16,6 +16,7 @@ from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.compliance import taxonomy
 from app.compliance.session import ComplianceService
 from app.compliance.transcripts import create_transcript, load_file
+from app.config import get_settings
 from app.errors import NotImplementedYet
 from app.sim.events import dumps
 
@@ -83,12 +84,69 @@ async def get_compliance_sessions(
     return {"items": items, "next_cursor": str(items[-1]["id"]) if len(rows) > limit else None}
 
 
+async def _start_mic_session(request: Request, body: dict[str, Any]) -> Any:
+    """source=mic (B10): создаёт живую сессию и отдаёт URL бинарного WebSocket /ws/audio/{id}; реплики приходят по мере речи."""
+    from app.stt import registry
+
+    code = body.get("stt_provider") or registry.default_code()
+    try:
+        prov = registry.get(code)
+    except LookupError:
+        info = next((x for x in registry.list_info() if x.code == code), None)
+        raise HTTPException(
+            status_code=422, detail=f"STT-провайдер {code!r} недоступен: {info.note_ru if info else ''}"
+        ) from None
+    mode = body.get("diarization_mode") or "manual"
+    if mode not in ("stereo", "manual", "auto"):
+        raise HTTPException(status_code=422, detail="diarization_mode: stereo | manual | auto")
+    if code == "browser" and mode == "stereo":
+        raise HTTPException(status_code=422, detail="browser не разделяет каналы — выберите manual или auto")
+    async with db() as conn:
+        emp = await fetch_one(
+            conn,
+            "select e.public_id, e.desk_no, b.code from employees e join branches b on b.id = e.branch_id where e.id = %s",
+            (int(body["employee_id"]),),
+        )
+        if not emp:
+            raise HTTPException(status_code=404, detail="сотрудник не найден")
+        run_id, sim_time = await run_context(request, conn)
+        s = get_settings()
+        svc = ComplianceService(
+            conn,
+            run_id=run_id,
+            sim_time=sim_time,
+            chain=request.app.state.llm_chain,
+            profile=request.app.state.llm_profile,
+            alert_threshold=int(body.get("alert_threshold") or s.compliance_alert_threshold),
+        )
+        sess = await svc.create_session(
+            branch_code=emp["code"],
+            employee_public_id=emp["public_id"],
+            desk_no=emp["desk_no"],
+            client_id=int(body["client_id"]) if body.get("client_id") else None,
+            deal_product=body.get("deal_product"),
+            source="mic",
+            pacing="realtime",
+            diarization_mode=mode,
+            stt_provider=code,
+            stt_model=prov.info().model,
+        )
+        row = await fetch_one(conn, f"select {SESSION_COLS} {SESSION_FROM} where s.id = %s", (sess.id,))  # noqa: S608
+    channels = 2 if mode == "stereo" else 1
+    return JSONResponse(
+        _json({**(row or {}), "audio_ws_url": f"/ws/audio/{sess.id}", "sample_rate": 16000, "channels": channels}),
+        status_code=201,
+    )
+
+
 @router.post("/api/compliance/sessions", summary="Начать сессию (микрофон, файл или транскрипт)", status_code=201)
 async def post_compliance_sessions(request: Request, body: dict[str, Any]) -> Any:
     """source=transcript: берёт демо-актив (demo_asset_id → demo_assets.path) или файл из data/import/transcripts по `asset`, проигрывает реплики в темпе `pacing`."""
     source = body.get("source") or "transcript"
+    if source == "mic":
+        return await _start_mic_session(request, body)
     if source != "transcript":
-        raise NotImplementedYet("T-181")
+        raise NotImplementedYet("T-183")
     from pathlib import Path
 
     from app.api.ingest import IMPORT_DIR

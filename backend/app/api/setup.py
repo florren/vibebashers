@@ -289,14 +289,17 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
 
 
 class TgBody(BaseModel):
-    token: str = Field(min_length=10)
+    token: str | None = Field(None, description="Пусто — берётся TELEGRAM_BOT_TOKEN из .env")
 
 
 @router.post("/api/setup/test-tgbot", summary="Проверить токен Telegram-бота (getMe)")
 async def post_setup_test_tgbot(body: TgBody) -> Any:
+    token = (body.token or "").strip() or (get_settings().telegram_bot_token or "")
+    if not token:
+        return {"ok": False, "error": "Токен не задан: введите его или запишите TELEGRAM_BOT_TOKEN в .env"}
     try:
         async with httpx.AsyncClient(timeout=8) as cl:
-            r = await cl.get(f"https://api.telegram.org/bot{body.token}/getMe")
+            r = await cl.get(f"https://api.telegram.org/bot{token}/getMe")
         d = r.json()
         if r.status_code == 200 and d.get("ok"):
             return {"ok": True, "username": d["result"].get("username")}
