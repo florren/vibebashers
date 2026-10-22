@@ -6,6 +6,13 @@ import {
   type AccountsView,
   type AgentGraph,
   type BusinessRule,
+  type CityHeat,
+  type DashboardMetrics,
+  type EconomicsFact,
+  type EconomicsSummary,
+  type MapZonesResponse,
+  type NotificationItem,
+  type RegionHeat,
   type ExternalPost,
   type ExternalPostDetail,
   type ExternalReply,
@@ -254,3 +261,46 @@ export function useManualReply() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['feed'] }),
   })
 }
+
+// ---- B08/B14: карта, метрики, уведомления ----
+export type MapLayer = 'signals' | 'critical' | 'incidents' | 'churn'
+export const useMapHeat = (layer: MapLayer, windowHours: number, runId: 'all' | 'current' = 'current') =>
+  useQuery({
+    queryKey: ['map', 'heat', layer, windowHours, runId],
+    queryFn: () => api<RegionHeat[]>('/api/map/heat', { query: { layer, window_hours: windowHours, run_id: runId } }),
+    refetchInterval: 10_000,
+    placeholderData: (p) => p,
+  })
+export const useMapZones = (runId: 'all' | 'current' = 'current') =>
+  useQuery({ queryKey: ['map', 'zones', runId], queryFn: () => api<MapZonesResponse>('/api/map/zones', { query: { run_id: runId } }), refetchInterval: 15_000 })
+export const useMapCities = (code: string | null, windowHours: number, runId: 'all' | 'current' = 'current') =>
+  useQuery({
+    queryKey: ['map', 'cities', code, windowHours, runId],
+    queryFn: () => api<CityHeat[]>(`/api/map/regions/${code}/cities`, { query: { window_hours: windowHours, run_id: runId } }),
+    enabled: code !== null,
+  })
+export const useDashboard = (window: 'run' | '24h' | '7d' | 'all' = 'run') =>
+  useQuery({ queryKey: ['metrics', 'dashboard', window], queryFn: () => api<DashboardMetrics>('/api/metrics/dashboard', { query: { window } }), refetchInterval: 8_000, placeholderData: (p) => p })
+export const useEconomics = (groupBy: string, runId: 'all' | 'current' = 'current') =>
+  useQuery({
+    queryKey: ['metrics', 'economics', groupBy, runId],
+    queryFn: () => api<EconomicsSummary>('/api/metrics/economics', { query: { group_by: groupBy, run_id: runId } }),
+    refetchInterval: 10_000,
+    placeholderData: (p) => p,
+  })
+export const useEconomicsFact = (enabled: boolean) =>
+  useQuery({ queryKey: ['metrics', 'fact'], queryFn: () => api<EconomicsFact>('/api/metrics/economics/fact'), enabled, refetchInterval: 15_000 })
+export function useCalibrate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (mode: 'manual' | 'simulated') => post<{ calibration_mode: string; recomputed: number }>('/api/metrics/economics/calibrate', { mode }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['metrics'] }),
+  })
+}
+export const useNotifications = (query: Query) =>
+  useQuery({
+    queryKey: ['notifications', 'list', query],
+    queryFn: () => api<List<NotificationItem>>('/api/notifications', { query }),
+    refetchInterval: 6_000,
+    placeholderData: (p) => p,
+  })

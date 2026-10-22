@@ -1,42 +1,30 @@
 import { clsx } from 'clsx'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAgentRuns, useHitlQueue, useIncidents, useSignals } from '@/shared/api/hooks'
-import { fmtMs, fmtPct } from '@/shared/lib/format'
-import { OPEN_STATUSES } from '@/shared/lib/statuses'
+import { useDashboard, useHitlQueue } from '@/shared/api/hooks'
+import { fmtMs } from '@/shared/lib/format'
 
-/**
- * Пока /api/metrics/dashboard не реализован (B14), KPI считаются на клиенте по спискам текущего прогона.
- * Используем limit=200 — для демо-объёмов достаточно; при появлении метрик заменить на один запрос.
- */
+/** Верхняя полоса KPI: один запрос `/api/metrics/dashboard` (окно = текущий запуск, ТЗ 14.1) + размер очереди HITL. */
 export function KpiStrip({ runId }: { runId: number | undefined }) {
   const { t } = useTranslation()
-  const q = { run_id: runId, limit: 200 }
-  const signals = useSignals(q)
-  const incidents = useIncidents({ ...q, status: OPEN_STATUSES })
+  const dash = useDashboard('run')
   const hitl = useHitlQueue({ run_id: runId })
-  const runs = useAgentRuns(q)
-
-  const sig = signals.data?.items ?? []
-  const inc = incidents.data?.items ?? []
-  const rs = runs.data?.items ?? []
-  const finished = rs.filter((r) => r.outcome === 'completed' || r.outcome === 'awaiting_human')
-  const autonomy = finished.length ? finished.filter((r) => !r.needed_human).length / finished.length : null
-  const critical = inc.filter((i) => i.criticality === 'high').length
-  const slaRisk = inc.filter((i) => i.sla_breached || (i.sla_remaining_pct ?? 100) < 25).length
-  const avgLatency = rs.length ? rs.reduce((a, r) => a + (r.total_latency_ms ?? 0), 0) / rs.length : null
-  const tokens = rs.reduce((a, r) => a + (r.total_tokens ?? 0), 0)
+  const d = dash.data
+  const autonomy = d?.autonomous_share
+  const critical = d?.critical_today ?? 0
+  const slaRisk = (d?.sla_risk_count ?? 0) + (d?.sla_overdue_count ?? 0)
+  const hitlN = hitl.data?.items?.length ?? 0
 
   return (
     <div className="grid grid-cols-4 gap-2 px-3 py-2 lg:grid-cols-8">
-      <Kpi label={t('kpi.signals')} value={sig.length} />
-      <Kpi label={t('kpi.incidents')} value={inc.length} />
+      <Kpi label={t('kpi.signals')} value={d?.signals_today ?? '—'} />
+      <Kpi label={t('kpi.incidents')} value={d?.incidents_open ?? '—'} />
       <Kpi label={t('kpi.critical')} value={critical} tone={critical ? 'danger' : undefined} />
-      <Kpi label={t('kpi.autonomy')} value={fmtPct(autonomy)} hint={t('kpi.hint.autonomy')} tone={autonomy !== null && autonomy >= 0.7 ? 'ok' : undefined} />
-      <Kpi label={t('kpi.hitl')} value={hitl.data?.items?.length ?? '—'} tone={(hitl.data?.items?.length ?? 0) > 0 ? 'warn' : undefined} />
-      <Kpi label={t('kpi.slaRisk')} value={slaRisk} hint={t('kpi.hint.slaRisk')} tone={slaRisk ? 'danger' : undefined} />
-      <Kpi label={t('kpi.avgLatency')} value={fmtMs(avgLatency === null ? null : Math.round(avgLatency))} />
-      <Kpi label={t('kpi.tokens')} value={new Intl.NumberFormat('ru-RU').format(tokens)} />
+      <Kpi label={t('kpi.autonomy')} value={autonomy == null ? '—' : `${Math.round(autonomy)}%`} hint={t('kpi.hint.autonomy')} tone={autonomy != null && autonomy >= 70 ? 'ok' : undefined} />
+      <Kpi label={t('kpi.hitl')} value={hitl.data ? hitlN : '—'} tone={hitlN > 0 ? 'warn' : undefined} />
+      <Kpi label={t('kpi.slaRisk')} value={d ? slaRisk : '—'} hint={t('kpi.hint.slaRisk')} tone={(d?.sla_overdue_count ?? 0) > 0 ? 'danger' : slaRisk ? 'warn' : undefined} />
+      <Kpi label={t('kpi.avgLatency')} value={fmtMs(d?.agent_latency_p50_ms ?? null)} hint={t('kpi.hint.latency')} />
+      <Kpi label={t('kpi.tokens')} value={d ? new Intl.NumberFormat('ru-RU').format(d.tokens_total ?? 0) : '—'} />
     </div>
   )
 }

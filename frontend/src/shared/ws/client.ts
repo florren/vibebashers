@@ -42,8 +42,8 @@ export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl',
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 const INVALIDATE: Record<string, string[][]> = {
-  signals: [['signals']],
-  incidents: [['incidents']],
+  signals: [['signals'], ['map']],
+  incidents: [['incidents'], ['metrics'], ['map']],
   agent: [['agent']],
   hitl: [['hitl'], ['signals']],
   notifications: [['notifications'], ['incidents']],

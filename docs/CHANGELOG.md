@@ -1,5 +1,11 @@
 # Журнал изменений пакета документации и контрактов
 
+## v1.7.0 — 22.10.2026 — B08/B14 карта, зоны, KPI-дашборд и экономика dCLTV (cross-layer)
+- `app/economics/dcltv.py`: формула ТЗ 14.4 (пострадавшие × доля детракторов × доля невозврата × (ставка + премиальная надбавка)), выбор ставки продукт → система → канал → fallback, класс исхода по статусу/SLA/подарку/регрессии/уходу, upsert `incident_economics` с `formula_ru`, ленивый пересчёт для открытых инцидентов, `calibration_mode = simulated` подставляет фактические коэффициенты удержания из `v_retention_by_outcome` (выборка ≥ 10).
+- API: `/api/map/heat` (слои signals/critical/incidents/churn, окно, запуск), `/api/map/regions/{code}/cities`, `/api/map/zones` (индекс концентрации негатива + copilot, пороги `map_zone_thresholds` c `critical_red`), `/api/metrics/dashboard` (ТЗ 14.1), `/api/metrics/economics[/live|/fact|/fact/export|/calibrate]`, `/api/notifications`, `/api/incidents/{id}/economics`; в карточке инцидента `economics` заполнено.
+- Frontend: вкладки «Карта» (TopoJSON 83 субъектов, `src/shared/geo/`, маркеры для субъектов без полигона, режимы Тепло/Зоны, drill-down до городов), «Дашборд» (12 KPI, экономика с группировкой, факт по симуляции, калибровка, CSV), «Уведомления» (центр исходящих); верхняя полоса KPI переведена на один запрос `/api/metrics/dashboard`.
+- Тесты: `tests/unit/test_economics.py` (пример ТЗ 631,52 ₽), `tests/integration/test_map_metrics.py`.
+
 ## v1.6.0 — 22.10.2026 — B06/B16 Mock-АБС и публичная лента (cross-layer)
 - Backend `app/abs/`: счёт на клиента, проводки двойной записи (`ledger_entries`: debit/credit/fee/refund), идемпотентный возврат по `correlation_id`, инвариант `balance = Σ проводок`, догоняющие проводки для операций сида/сценариев (`backfill_ledger` при старте, `post_operation` в генераторе). Политика автономии (ТЗ 9.3) теперь читает факты из АБС: «уже был возврат по операции», «возвратов за 30 дней».
 - Агент: узел `act` возвращает комиссию инструментом `refund_fee` (автономно в лимите или после решения человека), закрывает инцидент как `resolved`, сканирует затронутых (`find_affected_clients`) и при массовом ударе ставит задачу `mass_refund` (HITL); текст клиенту — факт «возвращено», не обещание.

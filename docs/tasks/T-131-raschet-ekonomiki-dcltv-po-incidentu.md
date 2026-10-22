@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Единственная реализация формулы ТЗ 14.4 с развёрткой и пересчётом при смене статуса.
@@ -40,4 +40,4 @@ pytest backend/tests/unit/test_dcltv.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b08-b14-map-metrics`. `app/economics/dcltv.py`: `pick_rate` (продукт+сегмент → продукт → система+op_type → система → канал → fallback), `compute` (пример ТЗ 12 × 10 % × 50 % × (961 + 91,53) = 631,52 ₽ — в unit-тесте), `outcome_of`, `compute_incident` (upsert `incident_economics`, обновляет `incidents.outcome_class`), `recompute` (устаревшие и открытые), для `misselling` — `misselling_case_cost_rub` без долей. `GET /api/incidents/{id}/economics` и поле `economics` в карточке инцидента. Возвраты из Mock-АБС учитываются как `refund_amount_rub`/`net_effect_rub`.

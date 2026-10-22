@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Агрегаты для дашборда: KPI ТЗ 14.1 и экономика по группам и окнам.
@@ -38,4 +38,4 @@ pytest backend/tests/integration/test_metrics_api.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/b08-b14-map-metrics`. `api/metrics.py`: `/api/metrics/dashboard` (окно run|24h|7d|all; доли автономии/HITL/изменений человеком, p50/p95 сигнал→инцидент, SLA, повторы, удержание по исходу и психотипу, закрытия, регрессии, care_score), `/api/metrics/economics` (группировки), `/api/metrics/economics/live` (payload как WS `metrics/economics_live`), `/fact` (матрица сбоев, исходы, ушедшие, допущения vs факт), `/fact/export` (CSV; XLSX отдаётся как CSV — без новых зависимостей), `/calibrate`, `/api/notifications` (фильтры, курсор). Интеграционный тест через TestClient на seeded БД.

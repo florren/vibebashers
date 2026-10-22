@@ -7,7 +7,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
-from app.errors import NotImplementedYet
+from app.economics import dcltv
+from app.errors import NotImplementedYet, Problem
 
 router = APIRouter(tags=["incidents"])
 
@@ -118,6 +119,10 @@ async def get_incidents_id(request: Request, id: int) -> Any:  # noqa: A002
             "select id, system_code, error_code, started_sim, resolved_sim from faults where caused_by_incident_id = %s",
             (id,),
         )
+        econ_row = await fetch_one(
+            conn, "select breakdown, computed_sim from incident_economics where incident_id = %s", (id,)
+        )
+    econ = {**(econ_row["breakdown"] or {}), "computed_sim": econ_row["computed_sim"]} if econ_row else None
     d = (decision or {}).get("decision") or {}
     return {
         **row,
@@ -126,7 +131,7 @@ async def get_incidents_id(request: Request, id: int) -> Any:  # noqa: A002
         "agent_rationale_ru": d.get("rationale_ru") or "",
         "fault": fault,
         "regressions": regressions,
-        "economics": None,
+        "economics": econ,
     }
 
 
@@ -182,8 +187,12 @@ async def get_incidents_id_communications(request: Request, id: int) -> Any:  # 
 
 
 @router.get("/api/incidents/{id}/economics", summary="Развёрнутый расчёт dCLTV по инциденту (все множители)")
-async def get_incidents_id_economics(request: Request) -> Any:
-    raise NotImplementedYet("T-089")
+async def get_incidents_id_economics(request: Request, id: int) -> Any:  # noqa: A002
+    async with db() as conn:
+        res = await dcltv.compute_incident(conn, id)
+    if res is None:
+        raise Problem(404, "Инцидент не найден")
+    return res
 
 
 @router.post("/api/incidents/{id}/actions", summary="Действие сотрудника CX над инцидентом")

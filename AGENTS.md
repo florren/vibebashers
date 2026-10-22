@@ -57,6 +57,7 @@ backend/                  FastAPI-приложение
   app/abs/                Mock-АБС: счета, тарифы, проводки, идемпотентные возвраты (ТЗ 3.4)
   app/rules/              Rules Engine: интерпретатор условий business_rules, оценка перед решением агента (ТЗ 9.6)
   app/feed/               эмулятор внешней площадки: посты, публичные ответы, фоновая лента (ТЗ 21)
+  app/economics/          dcltv.py — единственная реализация формулы потерь (ТЗ 14.4), incident_economics, сводки/факт (ТЗ 14.5); карта/метрики в api/map.py, api/metrics.py
   app/stt/                base.py (STTProvider), vosk_provider.py, browser.py, salutespeech.py, audio_ws.py (/ws/audio)
   app/compliance/         sessions.py, speakers.py (stereo/manual/auto), rules_detector.py, llm_detector.py, counter.py, alerts.py (ТЗ 22); v1.4: batch.py (pacing=batch, transcript_report), fact_check.py, scripts.py (service_scripts), recommendations.py
   app/replay/             провайдер replay: кассеты записанных ответов моделей, запись LLM_RECORD (ТЗ 5.4)
