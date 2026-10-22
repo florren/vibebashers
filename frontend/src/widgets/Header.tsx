@@ -38,6 +38,8 @@ export function Header() {
       <nav className="ml-2 flex shrink-0 items-center gap-0.5">
         <Nav to="/" label={t('nav.workspace')} end />
         <Nav to="/engine" label={t('nav.engine')} />
+        <Nav to="/compliance" label={t('nav.compliance')} />
+        <Nav to="/manager" label={t('nav.manager')} />
       </nav>
 
       <div className="mx-auto flex shrink-0 items-center gap-2">

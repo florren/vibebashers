@@ -10,6 +10,7 @@ import psycopg
 import pytest
 
 from app.agent.graph import process_signal
+from app.compliance.transcripts import analyze_transcript
 from app.sim import scenarios as sc
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
 
@@ -20,7 +21,21 @@ RUNNABLE = [s for s in sc.load_all() if sc.is_runnable(s)]
 async def test_scenario(seeded: str, scenario: dict) -> None:
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run_id = await new_run(conn, f"test {scenario['id']}", scenario_id=scenario["id"])
-        injected = await sc.inject(conn, scenario, run_id, sim_time=await sim_now(conn))
+        now = await sim_now(conn)
+        if sc.is_transcript(scenario):
+            tr = await sc.inject_transcript(conn, scenario, run_id, sim_time=now)
+            await conn.commit()
+            res_tr = await analyze_transcript(
+                conn, tr["transcript_id"], chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+            )
+            assert res_tr["status"] == "done", res_tr
+            if res_tr.get("signal_id"):
+                assert await process_signal(
+                    conn, signal_id=res_tr["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE
+                )
+            injected = []
+        else:
+            injected = await sc.inject(conn, scenario, run_id, sim_time=now)
         await conn.commit()
         for (
             item

@@ -455,6 +455,25 @@ def _text_for(field: str, a: dict[str, Any]) -> str:
     return "—"
 
 
+MOCK_HINT_START, MOCK_HINT_END = "<<mock_verdict>>", "<</mock_verdict>>"
+
+
+def _mock_hint(messages: list[Message]) -> dict[str, Any] | None:
+    """Детекторы комплаенса передают предварительный вердикт правил; mock возвращает его как ответ модели (mock = правила)."""
+    import json
+
+    for m in reversed(messages):
+        c = m.get("content") or ""
+        i, j = c.find(MOCK_HINT_START), c.find(MOCK_HINT_END)
+        if i >= 0 and j > i:
+            try:
+                out = json.loads(c[i + len(MOCK_HINT_START) : j])
+            except ValueError:
+                return None
+            return out if isinstance(out, dict) else None
+    return None
+
+
 class MockProvider:
     name = "mock"
 
@@ -703,7 +722,8 @@ class MockProvider:
         text = self._signal_text(messages)
         a = analyze(text)
         rnd = random.Random(int(hashlib.sha256(text.encode()).hexdigest()[:12], 16))
-        obj = self.fill(schema, a, rnd)
+        hinted = _mock_hint(messages)
+        obj = hinted if hinted is not None else self.fill(schema, a, rnd)
         errors = validate_schema(obj, schema)
         if errors:  # mock обязан соответствовать контракту — иначе это ошибка mock, а не модели
             raise AssertionError("mock не прошёл схему: " + "; ".join(errors[:3]))

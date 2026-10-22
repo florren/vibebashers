@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Порог X ≥ 3 → немедленный алерт руководителю (WebSocket, опционально Telegram) и инцидент misselling в team_compliance с HITL (ТЗ 22.5–22.6, 8.1).
@@ -43,4 +43,4 @@ pytest backend/tests/unit/test_compliance_state.py backend/tests/integration/tes
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- `backend/app/compliance/session.py::ComplianceService`: сессия (`audio_sessions`, source=transcript, pacing batch/realtime), реплики (`utterances`), триггеры (`compliance_triggers`, один на реплику — лучший по immediate/уверенности), счётчик `trigger_count`, алерт `threshold` при N≥`COMPLIANCE_ALERT_THRESHOLD` (3) и `immediate` для rudeness/misinformation ≥ immediate_threshold; инцидент `misselling` → team_compliance (+branch_network) в `awaiting_human`, уведомление руководителю, события `compliance.*` по `session_event` → WS topic `compliance`. `ack_alert` переводит инцидент (go/false_positive/open_incident). API сессий/триггеров/алертов/stats реализовано; источник mic/file — 501 (B10).

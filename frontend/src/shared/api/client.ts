@@ -20,6 +20,14 @@ export type Classification = Schemas['classification.schema']
 export type DecisionChain = Schemas['decision_chain.schema']
 export type Task = Schemas['Task']
 export type Followup = Schemas['Followup']
+export type TranscriptBrief = Schemas['TranscriptBrief']
+export type TranscriptDetail = Schemas['TranscriptDetail']
+export type TranscriptReport = Schemas['TranscriptReport']
+export type ComplianceAlert = Schemas['ComplianceAlert'] & { kind?: 'threshold' | 'immediate' | 'report'; patterns?: string[]; transcript_id?: number | null; trigger_count?: number }
+export type AudioSession = Schemas['AudioSession']
+export type AudioSessionDetail = Schemas['AudioSessionDetail']
+export type MissellingPattern = Schemas['MissellingPattern']
+export type ComplianceEmployeeStats = Schemas['ComplianceEmployeeStats']
 export type Problem = { type?: string; title?: string; status?: number; detail?: string; card?: string }
 
 export type SimControl = NonNullable<paths['/api/sim/control']['post']['requestBody']>['content']['application/json']

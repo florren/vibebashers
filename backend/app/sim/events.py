@@ -90,7 +90,7 @@ class EventBus:
                 (run_id, event_type, dumps(env["payload"]), sim_time, scenario_id, corr),
             )
         ).fetchone()
-        env["id"] = row[0] if row else None
+        env["id"] = (row["id"] if isinstance(row, dict) else row[0]) if row else None  # dict_row (API) или кортеж
         await self.conn.execute("select pg_notify('sim_events', %s)", (dumps(env),))
         self.emitted += 1
         return corr

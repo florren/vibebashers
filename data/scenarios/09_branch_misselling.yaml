@@ -18,4 +18,4 @@ expected:
   alert_to_manager: true
   counter_threshold: 3
 description_ru: 'Разговор в отделении: подмена продукта, сокрытие условий, навязывание — алерт руководителю.'
-requires: B07
+file: scenario09_isj.json

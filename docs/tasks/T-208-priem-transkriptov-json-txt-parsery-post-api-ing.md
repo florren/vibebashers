@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Готовый транскрипт диалога файлом или по REST сохраняется в transcripts и запускает анализы client_signal / employee_quality (ДТЗ FR-1.1, FR-4.1; ТЗ 3.7).
@@ -44,4 +44,4 @@ pytest backend/tests/unit/test_transcript_parser.py backend/tests/integration/te
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Реализовано в `feat/B07-compliance`: `backend/app/compliance/txt_parser.py` (TXT «[чч:мм:сс] Роль: …», метаданные `# key: value; …`, многострочные реплики, алиасы ролей), `transcripts.py::create_transcript/load_file` (валидация по `ingest/transcript`, резолв отделения/сотрудника, событие `ingest.transcript_received`). API: `GET/POST /api/ingest/transcripts` (JSON или multipart JSON/TXT), `POST …/import` (data/import/transcripts, дедуп по имени файла), `GET …/{id}` (реплики с находками), `POST …/{id}/analyze`. Тесты `tests/compliance/test_pure.py`.

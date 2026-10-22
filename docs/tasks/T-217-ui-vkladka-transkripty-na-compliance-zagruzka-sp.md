@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Демонстратор перетаскивает файл и через секунды видит отчёт с цитатами и рекомендациями; руководитель видит алерт и отчёт на своём устройстве (ДТЗ FR-4.3, ТЗ 12.2 экран 11).
@@ -40,4 +40,4 @@ npx playwright test e2e/transcripts.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Вкладки транскриптов реализованы в составе `/compliance` (см. T-187): список, статусы received/analyzing/done/failed, число находок, отчёт и реплики. Хуки `useTranscripts/useTranscript/useTranscriptReport/useUploadTranscripts/useImportTranscripts` в `shared/api/hooks.ts`; WS topics `compliance`, `ingest` инвалидируют запросы.

@@ -7,7 +7,7 @@
 - `evaluate(conn, scenario, run_id)` — проверяет `expected` по данным запуска. Ключи, для которых проверка ещё не реализована
   (нужны пакеты B06–B08: генератор сбоев, проактив, комплаенс, лента), возвращаются с `ok: null` и причиной — тест их не считает провалом.
 
-Сценарии без секции `inject` (мисселлинг, транскрипты) запускаются другими контурами (B07) и здесь дают 501.
+Сценарии с `file` (9–10, B07) запускаются через транскрипт: `inject_transcript` → `analyze_transcript` → `evaluate`.
 """
 
 from __future__ import annotations
@@ -45,7 +45,12 @@ def get(scenario_id: str) -> dict[str, Any] | None:
 
 
 def is_runnable(s: dict[str, Any]) -> bool:
-    return bool(s.get("inject"))
+    return bool(s.get("inject") or s.get("file"))
+
+
+def is_transcript(s: dict[str, Any]) -> bool:
+    """Сценарии 9–10: вместо сообщений — файл транскрипта (B07)."""
+    return bool(s.get("file")) and not s.get("inject")
 
 
 def to_api(s: dict[str, Any], row: tuple[Any, ...] | None = None) -> dict[str, Any]:
@@ -158,6 +163,43 @@ async def inject(
     return out
 
 
+async def inject_transcript(
+    conn: psycopg.AsyncConnection[Any],
+    scenario: dict[str, Any],
+    run_id: int,
+    *,
+    sim_time: dt.datetime | None = None,
+) -> dict[str, Any]:
+    """Сценарии с `file`: кладёт транскрипт из data/import/transcripts (source=scenario); анализ запускает вызывающая сторона."""
+    from app.compliance.transcripts import create_transcript, load_file
+
+    path = SCENARIOS_DIR.parent / "import" / "transcripts" / str(scenario["file"])
+    if not path.exists():
+        raise LookupError(f"сценарий {scenario['id']}: файл {path.name} не найден")
+    doc, fmt = load_file(path)
+    if scenario.get("branch"):
+        doc["branch_code"] = str(scenario["branch"])
+    if scenario.get("desk"):
+        doc["desk_no"] = int(scenario["desk"])
+    if scenario.get("deal"):
+        doc["deal_product"] = str(scenario["deal"])
+    doc.pop("employee_public_id", None)  # имя из YAML — не public_id; сотрудника выбираем по столу
+    client_id = await pick_client(conn, dict(scenario.get("client") or {}), []) if scenario.get("client") else None
+    if client_id:
+        doc["client"] = {"client_id": client_id}
+    doc["external_id"] = f"scenario-{scenario['id']}-{run_id}-{uuid.uuid4().hex[:6]}"
+    tr = await create_transcript(
+        conn,
+        doc,
+        run_id=run_id,
+        sim_time=sim_time or dt.datetime.now(dt.UTC),
+        source="scenario",
+        fmt=fmt,
+        filename=path.name,
+    )
+    return {"transcript_id": int(tr["id"]), "client_id": client_id}
+
+
 async def inject_operation(
     conn: psycopg.AsyncConnection[Any], run_id: int, client_id: int, op: dict[str, Any], sim_time: dt.datetime
 ) -> int:
@@ -204,11 +246,6 @@ NOT_YET = {
     "regression_incident": "B06 (регрессия сбоя)",
     "retained": "B06 (модель поведения)",
     "complaints": "B06 (генератор массового сбоя)",
-    "patterns": "B07 (комплаенс)",
-    "alert_to_manager": "B07",
-    "counter_threshold": "B07",
-    "findings": "B07",
-    "script_steps_missed": "B07",
     "refund": "B09 (возврат через АБС); пока проверяется правило RULE-QR-FEE-001",
 }
 
@@ -306,9 +343,14 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
     decisions = [s["decision"] for s in d["signals"] if s["decision"]]
     sig_types = {s["classification"].get("signal_type") for s in d["signals"]}
 
+    tr = await _transcript_data(conn, run_id) if any(k in TRANSCRIPT_KEYS for k in exp) else None
+
     for key, want in exp.items():
         if key in NOT_YET:
             checks.append(_check(key, None, f"не проверяется: {NOT_YET[key]}"))
+            continue
+        if key in TRANSCRIPT_KEYS:
+            checks.append(_check_transcript(key, want, tr or {}))
             continue
         if key == "flags":
             missing = [f for f in want if f not in flags]
@@ -385,7 +427,9 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
         else:
             checks.append(_check(key, None, "нет проверки для этого ключа"))
 
-    passed = all(c["ok"] is not False for c in checks) and bool(d["signals"])
+    passed = all(c["ok"] is not False for c in checks) and (
+        bool(d["signals"]) or bool(tr and tr.get("status") == "done")
+    )
     return {
         "passed": passed,
         "checks": checks,
@@ -397,6 +441,106 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
             "errors": sum(1 for r in d["agent_runs"] if r["outcome"] == "error"),
         },
     }
+
+
+TRANSCRIPT_KEYS = {"patterns", "alert_to_manager", "counter_threshold", "findings", "script_steps_missed"}
+
+
+async def _transcript_data(conn: psycopg.AsyncConnection[Any], run_id: int) -> dict[str, Any]:
+    """Последний транскрипт сценария в запуске: статус, отчёт, подтверждённые триггеры, алерты, порог."""
+    row = await (
+        await conn.execute(
+            "select t.id, t.status, t.report, t.error, s.id, s.trigger_count, s.alert_threshold from transcripts t left join audio_sessions s on s.id = t.audio_session_id "
+            "where t.run_id = %s and t.source = 'scenario' order by t.id desc limit 1",
+            (run_id,),
+        )
+    ).fetchone()
+    if not row:
+        return {}
+    trig = await (
+        await conn.execute(
+            "select pattern_code, status, confidence, quote, fact_check from compliance_triggers where session_id = %s order by id",
+            (_col(row, 4),),
+        )
+    ).fetchall()
+    alerts = await (
+        await conn.execute(
+            "select kind, decision, incident_id from compliance_alerts where session_id = %s order by id",
+            (_col(row, 4),),
+        )
+    ).fetchall()
+    return {
+        "transcript_id": _col(row, 0),
+        "status": _col(row, 1),
+        "report": _col(row, 2) or {},
+        "error": _col(row, 3),
+        "trigger_count": _col(row, 5),
+        "alert_threshold": _col(row, 6),
+        "confirmed": [_col(t, 0) for t in trig if _col(t, 1) == "confirmed"],
+        "triggers": [
+            {"code": _col(t, 0), "status": _col(t, 1), "quote": _col(t, 3), "fact_check": _col(t, 4)} for t in trig
+        ],
+        "alerts": [{"kind": _col(a, 0), "decision": _col(a, 1), "incident_id": _col(a, 2)} for a in alerts],
+    }
+
+
+def _squash(s: str) -> str:
+    return "".join(str(s).lower().split())
+
+
+def _check_transcript(key: str, want: Any, tr: dict[str, Any]) -> dict[str, Any]:
+    if not tr:
+        return _check(key, False, "транскрипт сценария не найден в запуске")
+    if tr.get("status") != "done":
+        return _check(key, False, f"анализ не завершён: {tr.get('status')} {tr.get('error') or ''}".strip())
+    findings = list((tr.get("report") or {}).get("findings") or [])
+    codes = set(tr["confirmed"]) | {f["pattern_code"] for f in findings}
+    kinds = {a["kind"] for a in tr["alerts"]}
+    if key == "patterns":
+        missing = [p for p in want if p not in codes]
+        return _check(key, not missing, f"подтверждены {sorted(codes)}" + (f"; нет {missing}" if missing else ""))
+    if key == "alert_to_manager":
+        return _check(
+            key,
+            bool(tr["alerts"]) == bool(want),
+            f"алерты {sorted(kinds)}; инцидент {[a['incident_id'] for a in tr['alerts']][:1]}",
+        )
+    if key == "counter_threshold":
+        ok = tr.get("alert_threshold") == want and "threshold" in kinds and (tr.get("trigger_count") or 0) >= want
+        return _check(
+            key,
+            ok,
+            f"порог {tr.get('alert_threshold')}, срабатываний {tr.get('trigger_count')}, алерты {sorted(kinds)}",
+        )
+    if key == "script_steps_missed":
+        steps = {
+            s["code"]: s["status"] for s in ((tr.get("report") or {}).get("script_compliance") or {}).get("steps") or []
+        }
+        bad = [c for c in want if steps.get(c) != "missed"]
+        return _check(key, not bad, f"этапы {steps}" + (f"; ожидались пропущенными {bad}" if bad else ""))
+    if key == "findings":
+        problems: list[str] = []
+        for item in want:
+            code = item.get("code")
+            fs = [f for f in findings if f["pattern_code"] == code]
+            if not fs:
+                problems.append(f"нет находки {code}")
+                continue
+            if item.get("alert") and item["alert"] not in kinds:
+                problems.append(f"{code}: нет алерта {item['alert']}")
+            blob = _squash(" ".join(f"{f.get('quote', '')} {dumps(f.get('fact_check') or {})}" for f in fs))
+            if item.get("quote") and _squash(item["quote"]) not in blob:
+                problems.append(f"{code}: нет цитаты «{item['quote']}»")
+            if (
+                item.get("truth")
+                and _squash(item["truth"]) not in blob
+                and _squash(item["truth"]).replace(",", ".") not in blob
+            ):
+                problems.append(f"{code}: нет правды «{item['truth']}»")
+        return _check(
+            key, not problems, "; ".join(problems) if problems else f"находки {sorted(codes)}, алерты {sorted(kinds)}"
+        )
+    return _check(key, None, "неизвестный ключ")
 
 
 async def save_result(conn: psycopg.AsyncConnection[Any], scenario_id: str, result: dict[str, Any]) -> None:

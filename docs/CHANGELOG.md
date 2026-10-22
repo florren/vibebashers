@@ -1,5 +1,11 @@
 # Журнал изменений пакета документации и контрактов
 
+## v1.5.0 — 22.10.2026 — B07 комплаенс-контроль по транскриптам (cross-layer, contract-change)
+- Backend `app/compliance/`: TXT/JSON-парсер транскриптов, таксономия и rule-детектор (8 паттернов, нечёткие фразы, факт-чек по `products.tariffs`, скрипт обслуживания с отрицаниями), LLM-детектор (`misselling_detect`, `transcript_report`; mock = правила; откат на правила при сбое), сессии/триггеры/счётчик/алерты/инциденты, отчёт (json|md) и отправка руководителю. API `/api/ingest/transcripts*`, `/api/compliance/*` реализованы (501 только для mic/file — B10).
+- Сценарии 9 и 10 работают по файлам корпуса; корпус `data/import/transcripts` (20) проверяется тестом `tests/compliance/test_corpus.py` против `data/bench/transcripts_v1`.
+- Frontend: `/compliance` (транскрипты, отчёт, реплики, статистика) и `/manager` (алерты с решением в один клик).
+- Контракт: enum кодов паттернов в OpenAPI расширен до 8 (`MissellingPattern.code`, `ComplianceTrigger.pattern_code`); `.env.example` — `COMPLIANCE_ALERT_THRESHOLD`.
+
 ## v1.4.3 — 22.10.2026 — рабочий цикл одной командой
 - `scripts/cx.py`: `doctor / next / start / check / pr / fix / status / done / clean / open` — worktree `../wt/<id>`, ветки `feat/T-NNN` и `pkg/Bxx`, окружение, промпт из `scripts/prompts/task.md`, запуск `codex exec` без участия человека (или Cursor/manual), проверки, PR через `gh` с отчётом агента и автоматическими метками `contract-change`/`cross-layer`, уборка после слияния. Состояние — `.cx/state.json`.
 - `docs/WORKFLOW.md` (что такое worktree, пять команд, день целиком, что делать при сбоях); TEAM-SPLIT §4 и PLAN-14D §3 переведены на `cx`; AGENTS.md §3–4, §5.1.
