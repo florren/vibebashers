@@ -1,64 +1,66 @@
 # CODEOWNERS — владение каталогами по слоям (docs/TEAM-SPLIT.md раздел 1).
-# Заменить @layer-* на реальные логины GitHub участников (владелец репозитория — @florren). При одном участнике — везде один логин.
-# Файл читает GitHub (запрос ревью владельцев) и scripts/check_owners.py (проверка границ слоя в CI, job owners).
-# Синтаксис: путь → владельцы. Более поздние строки имеют приоритет над ранними.
-# Проверка границ слоя в PR — python scripts/check_owners.py --base main (слой берётся из имени ветки feat/T-NNN-*).
+# На каждой строке два вида владельцев:
+#   @florren — логин GitHub, его GitHub просит в ревью;
+#   @layer-l1 … @layer-l5 — метка области, её читает scripts/check_owners.py.
+# При одном участнике логин везде @florren, метка слоя остаётся своей.
+# Более поздние строки имеют приоритет над ранними.
+# Общие каталоги помечены всеми слоями: их может менять карточка любого слоя.
 
 # L1 Базис
-*                                   @florren
-contracts/                          @florren
-backend/app/db/                     @florren
-backend/alembic/                    @florren
-backend/app/llm/                    @florren
-backend/app/replay/                 @florren
-backend/app/contracts/              @florren
-backend/app/i18n/                   @florren
-scripts/                            @florren
-install.sh                          @florren
-docker-compose.yml                  @florren
-Makefile                            @florren
-.github/                            @florren
-docs/                               @florren
-AGENTS.md                           @florren
-CLAUDE.md                           @florren
-.cursor/                            @florren
-CODEOWNERS                          @florren
+*                                   @florren @layer-l1
+contracts/                          @florren @layer-l1
+backend/app/db/                     @florren @layer-l1
+backend/alembic/                    @florren @layer-l1
+backend/app/llm/                    @florren @layer-l1
+backend/app/replay/                 @florren @layer-l1
+backend/app/contracts/              @florren @layer-l1
+backend/app/i18n/                   @florren @layer-l1
+scripts/                            @florren @layer-l1
+install.sh                          @florren @layer-l1
+docker-compose.yml                  @florren @layer-l1
+Makefile                            @florren @layer-l1
+.github/                            @florren @layer-l1
+docs/                               @florren @layer-l1
+AGENTS.md                           @florren @layer-l1
+CLAUDE.md                           @florren @layer-l1
+.cursor/                            @florren @layer-l1
+CODEOWNERS                          @florren @layer-l1
 
 # L2 Симулятор и данные
-backend/app/sim/                    @florren
-backend/app/abs/                    @florren
-backend/app/rules/                  @florren
-backend/app/economics/              @florren
-scripts/seed/                       @florren
-data/                               @florren
+backend/app/sim/                    @florren @layer-l2
+backend/app/abs/                    @florren @layer-l2
+backend/app/rules/                  @florren @layer-l2
+backend/app/economics/              @florren @layer-l2
+scripts/seed/                       @florren @layer-l2
+data/                               @florren @layer-l2
 
 # L3 Агент и контуры
-backend/app/agent/                  @florren
-backend/app/ingest/                 @florren
-backend/app/tickets/                @florren
-backend/app/feed/                   @florren
-backend/app/stt/                    @florren
-backend/app/compliance/             @florren
-backend/app/demo/                   @florren
-backend/app/bench/                  @florren
-backend/app/realtime/               @florren
-backend/app/api/                    @florren
-tgbot/                              @florren
-data/bench/                         @florren
-data/cassettes/                     @florren
+backend/app/agent/                  @florren @layer-l3
+backend/app/ingest/                 @florren @layer-l3
+backend/app/tickets/                @florren @layer-l3
+backend/app/feed/                   @florren @layer-l3
+backend/app/stt/                    @florren @layer-l3
+backend/app/compliance/             @florren @layer-l3
+backend/app/demo/                   @florren @layer-l3
+backend/app/bench/                  @florren @layer-l3
+backend/app/realtime/               @florren @layer-l3
+backend/app/api/                    @florren @layer-l3
+tgbot/                              @florren @layer-l3
+data/bench/                         @florren @layer-l3
+data/cassettes/                     @florren @layer-l3
 
 # L4 Фронт
-frontend/                           @florren
-frontend/src/shared/i18n/           @florren
+frontend/                           @florren @layer-l4
+frontend/src/shared/i18n/           @florren @layer-l4
 
 # L5 Качество
-backend/tests/scenarios/            @florren
-backend/tests/e2e/                  @florren
-frontend/e2e/                       @florren
-data/scenarios/                     @florren
+backend/tests/scenarios/            @florren @layer-l5
+backend/tests/e2e/                  @florren @layer-l5
+frontend/e2e/                       @florren @layer-l5
+data/scenarios/                     @florren @layer-l5
 
-# Общие (любой слой добавляет файлы; переписывать чужие нельзя — см. TEAM-SPLIT.md раздел 1)
-backend/tests/unit/                 @florren
-backend/tests/integration/          @florren
-frontend/src/shared/api/            @florren
-docs/tasks/                         @florren
+# Общие: любой слой
+backend/tests/unit/                 @florren @layer-l1 @layer-l2 @layer-l3 @layer-l4 @layer-l5
+backend/tests/integration/          @florren @layer-l1 @layer-l2 @layer-l3 @layer-l4 @layer-l5
+frontend/src/shared/api/            @florren @layer-l1 @layer-l2 @layer-l3 @layer-l4 @layer-l5
+docs/tasks/                         @florren @layer-l1 @layer-l2 @layer-l3 @layer-l4 @layer-l5

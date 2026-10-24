@@ -6,6 +6,7 @@ import datetime as dt
 import re
 from typing import Any
 
+from app.agent.matching import ClientView, match_clients, nicknames_from_handles, norm_nick, norm_phone
 from app.agent.tools.base import ToolContext, tool
 
 WINDOW_H = 72
@@ -207,3 +208,68 @@ async def search_similar_signals(
         hist["signals_7d"] = sum(1 for r in rows if r[0] >= ctx.sim_time - dt.timedelta(days=7))
         hist["last_types"] = [r[1] for r in rows[:5] if r[1]]
     return {"similar": similar, "client_history": hist, "keywords": words}
+
+
+_NICK_SQL = """
+select c.id from clients c
+where (
+    jsonb_typeof(c.social_handles) = 'object' and exists (
+        select 1 from jsonb_each_text(c.social_handles) e
+        where lower(replace(e.value, '@', '')) = %s
+    )
+) or (
+    jsonb_typeof(c.social_handles) = 'array' and exists (
+        select 1 from jsonb_array_elements(c.social_handles) el
+        where lower(replace(coalesce(el->>'handle', ''), '@', '')) = %s
+    )
+)
+"""
+
+_LOAD_SQL = """
+select c.id, c.social_handles, c.contacts->>'phone_masked', ci.name_ru,
+       coalesce(array_agg(distinct cp.product_code) filter (where cp.product_code is not null), '{}'),
+       coalesce(array_agg(distinct cp.card_last4) filter (where cp.card_last4 is not null), '{}')
+from clients c
+join cities ci on ci.id = c.city_id
+left join client_products cp on cp.client_id = c.id
+where c.id = any(%s)
+group by c.id, ci.name_ru, c.social_handles, c.contacts
+"""
+
+
+@tool("match_client_by_hints")
+async def match_client_by_hints(ctx: ToolContext, contacts_hint: dict[str, Any]) -> dict[str, Any]:
+    """Кандидаты Mock CRM по нику, last4 и маскированному телефону (ТЗ 21.3)."""
+    hint = contacts_hint or {}
+    nick = norm_nick(hint.get("nickname") if isinstance(hint.get("nickname"), str) else None)
+    last4 = str(hint.get("masked_card_last4") or "")
+    phone = norm_phone(hint.get("masked_phone") if isinstance(hint.get("masked_phone"), str) else None)
+    ids: set[int] = set()
+    if nick:
+        ids.update(int(row[0]) for row in await ctx.fetchall(_NICK_SQL, (nick, nick)))
+    if len(last4) == 4 and last4.isdigit():
+        rows = await ctx.fetchall(
+            "select distinct client_id from client_products where card_last4 = %s",
+            (last4,),
+        )
+        ids.update(int(row[0]) for row in rows)
+    if phone:
+        rows = await ctx.fetchall(
+            "select id from clients where replace(contacts->>'phone_masked', ' ', '') = %s",
+            (phone,),
+        )
+        ids.update(int(row[0]) for row in rows)
+    clients: list[ClientView] = []
+    if ids:
+        for row in await ctx.fetchall(_LOAD_SQL, (list(ids),)):
+            clients.append(
+                ClientView(
+                    client_id=int(row[0]),
+                    nicknames=nicknames_from_handles(row[1]),
+                    phone=row[2],
+                    city=row[3],
+                    products=set(row[4] or []),
+                    last4=set(row[5] or []),
+                )
+            )
+    return match_clients(clients, hint)

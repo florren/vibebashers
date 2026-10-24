@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+ALL_LAYERS = {"L1", "L2", "L3", "L4", "L5"}
 
 
 def git(*args: str) -> str:
@@ -45,8 +47,21 @@ def owners_for(path: str, rules: list[tuple[str, set[str]]]) -> set[str]:
         else:
             hit = path == pat or path.startswith(pat + "/")
         if hit:
-            result = owners  # последнее совпадение приоритетнее
+            result = owners
     return result
+
+
+def layer_tags(owners: set[str]) -> set[str]:
+    return {owner.removeprefix("layer-").upper() for owner in owners if owner.startswith("layer-l")}
+
+
+def branch_name() -> str:
+    """В CI checkout PR — detached HEAD; имя ветки лежит в GITHUB_HEAD_REF."""
+    ref = os.environ.get("GITHUB_HEAD_REF", "").strip()
+    if ref:
+        return ref
+    name = git("rev-parse", "--abbrev-ref", "HEAD").strip()
+    return "" if name == "HEAD" else name
 
 
 def layer_from_card(card: int) -> str | None:
@@ -65,24 +80,41 @@ def main() -> int:
     ap.add_argument("--allow-cross", action="store_true")
     a = ap.parse_args()
 
+    branch = branch_name()
     layer = a.layer
     card = a.card
-    branch = git("rev-parse", "--abbrev-ref", "HEAD").strip()
     if card is None:
         m = re.search(r"T-(\d{3})", branch)
         card = int(m.group(1)) if m else None
     if layer is None and card is not None:
         layer = layer_from_card(card)
-    if layer is None:
-        print(f"check_owners: не удалось определить слой (ветка {branch!r}); укажите --layer или --card", file=sys.stderr)
-        return 2
-    layer_key = f"layer-{layer.lower()}"
 
     changed = set(filter(None, git("diff", "--name-only", f"{a.base}...HEAD").splitlines()))
     changed |= set(filter(None, git("diff", "--name-only").splitlines()))
     changed |= set(filter(None, git("ls-files", "--others", "--exclude-standard").splitlines()))
 
     rules = load_codeowners()
+    if layer is None:
+        specific: set[str] = set()
+        for path in changed:
+            tags = layer_tags(owners_for(path, rules))
+            if tags and tags != ALL_LAYERS:
+                specific |= tags
+        if len(specific) == 1:
+            layer = next(iter(specific))
+        elif a.allow_cross:
+            print(
+                f"ветка {branch or 'HEAD'!r}: слои {', '.join(sorted(specific)) or 'не размечены'}; --allow-cross"
+            )
+            return 0
+        else:
+            print(
+                f"check_owners: не удалось определить один слой (ветка {branch!r}, слои файлов: {', '.join(sorted(specific)) or 'нет меток @layer-lN в CODEOWNERS'}). "
+                "Укажите --layer/--card или добавьте cross-layer в заголовок PR.",
+                file=sys.stderr,
+            )
+            return 2
+    layer_key = f"layer-{layer.lower()}"
     outside = sorted(p for p in changed if layer_key not in owners_for(p, rules))
     print(f"слой {layer} (карточка T-{card:03d})" if card else f"слой {layer}", f"— изменённых файлов: {len(changed)}")
     if outside:

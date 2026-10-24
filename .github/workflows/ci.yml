@@ -79,11 +79,23 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - name: Границы слоя карточки (CODEOWNERS)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          case "${{ github.event.pull_request.title }}" in
-            *contract-change*|*cross-layer*) echo "метка cross-layer/contract-change — сливает владелец L1"; python scripts/check_owners.py --base origin/${{ github.base_ref }} --allow-cross ;;
-            *) python scripts/check_owners.py --base origin/${{ github.base_ref }} ;;
-          esac
+          python - <<'PY'
+          import os, subprocess, sys
+          title = os.environ.get("PR_TITLE", "")
+          body = os.environ.get("PR_BODY", "")
+          allow = any(mark in title for mark in ("cross-layer", "contract-change")) or any(
+              box in body for box in ("[x] `cross-layer`", "[x] `contract-change`")
+          )
+          cmd = ["python", "scripts/check_owners.py", "--base", "origin/${{ github.base_ref }}"]
+          if allow:
+              print("метка cross-layer/contract-change — сливает владелец L1")
+              cmd.append("--allow-cross")
+          raise SystemExit(subprocess.call(cmd))
+          PY
 
   tests:
     name: tests

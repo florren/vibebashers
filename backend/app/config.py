@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -52,7 +53,7 @@ class Settings(BaseSettings):
     # интеграции
     telegram_bot_token: str | None = None
     mailpit_enabled: bool = False
-    compliance_alert_threshold: int = 3  # N подтверждённых срабатываний за встречу → алерт руководителю (ДТЗ FR-2.4)
+    compliance_alert_threshold: int = 3  # N подтверждённых срабатываний мисселинга за встречу → алерт руководителю (ДТЗ FR-2.4)
     stt_provider: Literal["vosk", "browser", "none"] = "none"
     stt_model_path: str | None = Field(
         default=None, description="Каталог модели Vosk (например, data/models/vosk-model-small-ru-0.22)"
@@ -81,4 +82,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    # Мастер и тесты указывают файл через ENV_FILE. Иначе pydantic читает .env и ../.env
+    # и показывает секреты из чужого файла как «заданные», хотя редактируемый .env их не содержит.
+    env_file = os.environ.get("ENV_FILE")
+    if env_file:
+        return Settings(_env_file=env_file)
     return Settings()
