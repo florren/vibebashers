@@ -1,1 +1,1 @@
-LOAD_FROM_FILE
+file:///tmp/nodes_only.txt
