@@ -1,1 +1,1 @@
-file:///tmp/nodes_only.txt
+@file:/tmp/nodes_only.txt
