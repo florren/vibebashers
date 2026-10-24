@@ -48,3 +48,5 @@ pytest backend/tests/unit/test_router_tools.py backend/tests/unit/test_escalatio
 
 ## Отчёт субагента
 Дополнение (ветка `feat/b13-tickets-escalations`): REST-часть эскалаций — `GET/POST /api/escalations`, `GET /api/escalations/{id}`, `POST /api/escalations/{id}/ack`; события `escalations` через pg_notify; ручная эскалация оператором (`created_by = human`) и из действий инцидента (`action = escalate`).
+
+Дополнение (фасады T-213): сделаны `route_to_department`, `notify_customer`, `escalate_to_manager`, `request_clarification` со сигнатурами схемы и одним `tool_call.wraps` на фасад. Узел `act` сверяет `router_action` с фактическими вызовами (один повтор фасада, затем HITL `policy_other`). Узел `decide`: если уточнение уже разрешено, первый проход — `request_clarification` и `escalation=null`; эскалация считается на следующем проходе. REST эскалаций был сделан раньше. Статус карточки не менялся.

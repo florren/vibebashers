@@ -9,6 +9,7 @@ import dataclasses
 import datetime as dt
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,8 +22,9 @@ from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
 from app.agent.tools import abs as abs_tools
 from app.agent.tools import read as rt
+from app.agent.tools import router_tools
 from app.agent.tools import write as wt
-from app.agent.tools.base import ToolContext, mask_name
+from app.agent.tools.base import ActFrame, ToolContext, mask_name
 from app.contracts.registry import deref, validate
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
@@ -1310,7 +1312,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         or sig.get("parent_signal_id") is not None
     )
     clarify = (
-        human_reason is None
+        human_reason in (None, "low_confidence")
         and incident_action != "none"
         and pol.needs_clarification(c, norm, already_asked=already_asked, policies=deps.policies)
     )
@@ -1371,17 +1373,24 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             policies=deps.policies,
         )
         checks.append({"rule": "refund_autonomy", "passed": ok, "note": why})
-        if not ok and human_reason is None:
-            human_reason = "policy_other"
-    router_action = (
-        "escalate"
-        if esc_reason
-        else "request_clarification"
-        if clarify
-        else "none"
-        if incident_action == "none" and not human_reason
-        else "route"
-    )
+        if not ok:
+            # Несработавший возврат закрывает человек: уточнение не подменяет HITL и не снимает причину.
+            clarify = False
+            if human_reason in (None, "low_confidence"):
+                human_reason = "policy_other"
+    if clarify and human_reason == "low_confidence":
+        # Иначе граф остаётся на wait_human и фасад уточнения не вызывается. Другие причины HITL не снимаем.
+        human_reason = None
+    if clarify:
+        # Уточнение важнее эскалации на этом проходе: второй вопрос подряд уже запрещён, эскалация — на следующем.
+        router_action = "request_clarification"
+    elif incident_action == "none":
+        # human_reason сам по себе не маршрут: HITL остаётся в needs_human / wait_human.
+        router_action = "none"
+    elif esc_reason:
+        router_action = "escalate"
+    else:
+        router_action = "route"
     # --- тексты от модели с проверками ---
     ca = dict(d.get("client_action") or {})
     public = sig.get("channel") in PUBLIC_CHANNELS
@@ -1491,7 +1500,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
                 "severity": "critical" if c["problem_summary"]["severity"] == "critical" else "high",
                 "to_role": "branch_manager" if sig.get("channel") == "branch" else "cx_lead",
             }
-            if esc_reason
+            if esc_reason and router_action == "escalate"
             else None
         ),
         "clarification_question_ru": question if clarify else None,
@@ -1611,11 +1620,110 @@ def _public_fallback(client: dict[str, Any] | None) -> str:
     return f"{name}, спасибо, что написали. Мы уже разбираемся и напишем вам в личные сообщения, чтобы уточнить детали."
 
 
+_ROUTER_FACADES = ("route_to_department", "escalate_to_manager", "request_clarification")
+
+
+def _route_summary(d: dict[str, Any], c: dict[str, Any]) -> str:
+    raw = wt.PII_RE.sub("****", (d.get("title_ru") or c.get("summary_ru") or "Обращение клиента в банк").strip())
+    if len(raw) < 10:
+        raw = f"{raw} — обращение клиента".strip()
+    return raw[:300]
+
+
+def _act_spec(
+    d: dict[str, Any],
+    c: dict[str, Any],
+    sig: dict[str, Any],
+    client: dict[str, Any] | None,
+    sla_full: dict[str, Any],
+    state: AgentState,
+) -> dict[str, Any]:
+    follow = d.get("followup") or {}
+    route = d.get("route") or {}
+    return {
+        **c,
+        "incident_action": d.get("incident_action"),
+        "incident_type": d.get("incident_type") or c.get("signal_type") or "tech_fault",
+        "title_ru": d.get("title_ru") or c.get("summary_ru") or "Обращение клиента",
+        "complexity": d.get("complexity") or "medium",
+        "criticality": d.get("criticality") or "medium",
+        "priority": int(d.get("priority") or 3),
+        "team": route.get("team") or "team_cx",
+        "co_teams": route.get("co_teams") or [],
+        "sla": {**(d.get("sla") or {}), **{k: sla_full.get(k) for k in ("take_due_sim", "report_due_sims")}},
+        "mass_impact": (d.get("economics_preview") or {}).get("affected_count") or 1,
+        "region_code": (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code"),
+        "fault_id": (state["context"].get("hints") or {}).get("fault_id"),
+        "problem_summary": c.get("problem_summary"),
+        "followup_hours": float(follow.get("wake_in_sim_hours") or 4.0),
+    }
+
+
+def _facade_names(calls: list[dict[str, Any]]) -> list[str]:
+    return [str(c["name"]) for c in calls if c.get("ok") is not False and c.get("name") in _ROUTER_FACADES]
+
+
+def _router_matches(action: str, names: list[str]) -> bool:
+    """route — маршрут без эскалации; escalate — оба фасада; уточнение — без маршрута; none — ни одного.
+
+    Для route и escalate отсутствие фасада не считается успехом.
+    """
+    has_route = "route_to_department" in names
+    has_esc = "escalate_to_manager" in names
+    has_clar = "request_clarification" in names
+    if action == "route":
+        return has_route and not has_esc
+    if action == "escalate":
+        return has_route and has_esc
+    if action == "request_clarification":
+        return has_clar and not has_route
+    if action == "none":
+        return not has_route and not has_esc and not has_clar
+    return False
+
+
+async def _act_route(deps: Deps, d: dict[str, Any], c: dict[str, Any], mark: Callable[..., None]) -> int:
+    summary = _route_summary(d, c)
+    routed = await router_tools.route_to_department(deps.ctx, str(d["route"]["team"]), int(d["priority"]), summary)
+    new_id = int(routed["incident_id"])
+    if deps.ctx.act_frame is not None:
+        deps.ctx.act_frame.incident_id = new_id
+    mark("incident", incident_id=new_id, public_id=routed.get("ticket_id"), linked=bool(routed.get("linked")))
+    return new_id
+
+
+async def _act_escalate(deps: Deps, d: dict[str, Any], mark: Callable[..., None]) -> None:
+    esc_spec = d.get("escalation") or {}
+    reason = str(esc_spec.get("reason") or "эскалация по политике банка")
+    if len(reason) < 5:
+        reason = "эскалация по политике банка"
+    esc = await router_tools.escalate_to_manager(
+        deps.ctx,
+        reason,
+        str(esc_spec.get("severity") or "high"),
+        str(esc_spec.get("to_role") or "cx_lead"),
+    )
+    mark("escalation", escalation_id=esc.get("escalation_id"), public_id=esc.get("public_id"))
+
+
+async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark: Callable[..., None]) -> int | None:
+    ca = d.get("client_action") or {}
+    question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip()
+    if len(question) < 5:
+        question = "Уточните, пожалуйста, дату и сумму операции."
+    channel = ca.get("channel") or sig.get("channel") or "chat"
+    clar = await router_tools.request_clarification(deps.ctx, question[:400], str(channel))
+    new_id = deps.ctx.act_frame.incident_id if deps.ctx.act_frame else None
+    mark("clarification", notification_id=clar.get("notification_id"))
+    return int(new_id) if new_id is not None else None
+
+
 async def act(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение решения через инструменты записи — идемпотентно (повторный вход не дублирует побочные эффекты)."""
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]
+    step_status = "ok"
     incident_id: int | None = next((a["incident_id"] for a in actions if a.get("incident_id")), None)
     human = (state.get("human") or {}).get("status")
     sla_full = state["context"].get("sla_full") or {}
@@ -1638,22 +1746,38 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             flags_now = list(dict.fromkeys([*(c.get("flags") or []), "mass_impact"]))
             c["flags"] = flags_now
             state["decision"] = d
-    if d["incident_action"] == "create" and "incident" not in done:
-        spec = {
-            **c,
-            "incident_type": d["incident_type"],
-            "title_ru": d["title_ru"],
-            "complexity": d["complexity"],
-            "criticality": d["criticality"],
-            "priority": d["priority"],
-            "team": d["route"]["team"],
-            "co_teams": d["route"].get("co_teams") or [],
-            "sla": {**d["sla"], **{k: sla_full.get(k) for k in ("take_due_sim", "report_due_sims")}},
-            "mass_impact": (d.get("economics_preview") or {}).get("affected_count") or 1,
-            "region_code": (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code"),
-            "fault_id": (state["context"].get("hints") or {}).get("fault_id"),
-            "problem_summary": c.get("problem_summary"),
-        }
+    spec = _act_spec(d, c, sig, client, sla_full, state)
+    link_id = (
+        int(d["link_incident_id"])
+        if d.get("incident_action") == "link_existing" and d.get("link_incident_id")
+        else None
+    )
+    deps.ctx.act_frame = ActFrame(
+        signal_id=int(sig["id"]),
+        client_id=(client or {}).get("client_id"),
+        incident_id=incident_id,
+        link_incident_id=link_id,
+        spec=spec,
+    )
+    router_action = str(d.get("router_action") or "none")
+    can_ticket = (
+        d.get("incident_action") in ("create", "link_existing") or incident_id is not None or link_id is not None
+    )
+
+    async def run_router() -> None:
+        nonlocal incident_id
+        if router_action in ("route", "escalate") and can_ticket:
+            incident_id = await _act_route(deps, d, c, mark)
+            if router_action == "escalate":
+                await _act_escalate(deps, d, mark)
+        elif router_action == "request_clarification":
+            clarified = await _act_clarify(deps, d, sig, mark)
+            if clarified is not None:
+                incident_id = clarified
+
+    if router_action in ("route", "escalate", "request_clarification"):
+        await run_router()
+    elif d["incident_action"] == "create" and "incident" not in done:
         inc = await wt.create_incident(deps.ctx, sig["id"], (client or {}).get("client_id"), spec)
         incident_id = int(inc["incident_id"])
         mark("incident", incident_id=incident_id, public_id=inc.get("public_id"))
@@ -1661,21 +1785,35 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         inc = await wt.link_signal_to_incident(deps.ctx, sig["id"], int(d["link_incident_id"]))
         incident_id = int(inc["incident_id"])
         mark("incident", incident_id=incident_id, linked=True)
+    names = _facade_names(deps.ctx.calls)
+    matched = _router_matches(router_action, names)
+    if not matched and router_action != "none":
+        await run_router()
+        names = _facade_names(deps.ctx.calls)
+        matched = _router_matches(router_action, names)
+    if not matched:
+        step_status = "error"
+        await wt.request_human_decision(
+            deps.ctx,
+            int(sig["id"]),
+            None,
+            "policy_other",
+            {"router_action": router_action, "tools": names},
+            pol.human_options("policy_other"),
+            pol.human_recommendation("policy_other"),
+        )
+    checks = list(d.get("policy_checks") or [])
+    checks.append({"rule": "router_action_tools", "passed": matched, "note": ",".join(names) or "—"})
+    d["policy_checks"] = checks
+    state["decision"] = d
+    await deps.ctx.conn.execute(
+        "update signals set decision = %s::jsonb, updated_at = now() where id = %s", (dumps(d), sig["id"])
+    )
     if incident_id and human in ("accept", "modify", "delegate"):
         await deps.ctx.conn.execute(
             "update human_decisions set incident_id = %s where agent_run_id = %s and incident_id is null",
             (incident_id, deps.ctx.agent_run_id),
         )
-    if d.get("escalation") and d["router_action"] == "escalate" and "escalation" not in done:
-        esc = await wt.escalate_to_manager(
-            deps.ctx,
-            sig["id"],
-            incident_id,
-            d["escalation"]["reason"],
-            d["escalation"]["severity"],
-            d["escalation"]["to_role"],
-        )
-        mark("escalation", escalation_id=esc.get("escalation_id"))
     # --- Mock-АБС: возврат ошибочной комиссии (ТЗ 9.2–9.3, 21.4): автономно в лимите или после решения человека
     fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
     refund_check = next((pc for pc in (d.get("policy_checks") or []) if pc.get("rule") == "refund_autonomy"), None)
@@ -1745,7 +1883,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     ca = d["client_action"]
     if (refund_total or refund_dup) and ca["kind"] != "none":
         ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup)}
-    if ca["kind"] != "none" and "notify_client" not in done:
+    if ca["kind"] != "none" and "notify_client" not in done and d.get("router_action") != "request_clarification":
         name = mask_name((client or {}).get("name"))
         summary = re.sub(r"[;,]?\s*тональность.*$", "", c.get("summary_ru") or "").strip().rstrip(".") or (
             c.get("problem_summary") or {}
@@ -1788,17 +1926,13 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                 )
                 mark("notify_client_dm", notification_id=dm.get("notification_id"))
         else:
-            n = await wt.notify_client(
+            message = (ca.get("text_ru") or summary or "").strip()
+            if len(message) < 10:
+                message = "Мы приняли ваше обращение и уже разбираемся."
+            n = await router_tools.notify_customer(
                 deps.ctx,
-                (client or {}).get("client_id"),
-                sig["id"],
-                incident_id,
-                ca.get("channel") or sig.get("channel") or "chat",
-                ca.get("template_code") or "ack_received",
-                variables,
-                text_override=ca.get("text_ru"),
-                segment=(client or {}).get("segment"),
-                consents=consents,
+                str(ca.get("channel") or sig.get("channel") or "chat"),
+                message[:1000],
             )
             mark("notify_client", notification_id=n.get("notification_id"))
     # --- публичная лента (ТЗ 21.2, 21.5): ответ под постом, без ПДн и обещаний, с приглашением в личный канал
@@ -1860,7 +1994,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             requires_hitl=True,
         )
         mark("delegate_task", task_id=t.get("task_id"))
-    if d.get("followup") and "followup" not in done:
+    if d.get("followup") and "followup" not in done and d.get("router_action") != "request_clarification":
         f = await wt.schedule_followup(
             deps.ctx,
             sig["id"],
@@ -1913,7 +2047,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     state["current_node"] = "close"
     await deps.record_step(
         "act",
-        "ok",
+        step_status,
         {"decision": {k: d.get(k) for k in ("incident_action", "router_action", "needs_human")}, "human": human},
         {"actions": actions, "signal_status": sig_status},
         reasoning="Выполнено: " + ", ".join(a["action"] for a in actions) + ".",

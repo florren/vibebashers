@@ -48,9 +48,11 @@ async def build_decision_chain(conn: Any, agent_run_id: int) -> dict[str, Any] |
                     "result_brief": (PII_RE.sub("[скрыто]", brief)[:300] if brief else None),
                     "why_ru": why or f"вызов {tc.get('name')}",
                     "latency_ms": int(tc["ms"]) if tc.get("ms") is not None else None,
-                    "wraps": ["side_effect"]
-                    if tc.get("side_effect")
-                    else (["failed"] if tc.get("ok") is False else None),
+                    "wraps": tc["wraps"]
+                    if tc.get("wraps")
+                    else (
+                        ["side_effect"] if tc.get("side_effect") else (["failed"] if tc.get("ok") is False else None)
+                    ),
                 }
             )
         if not st["tool_calls"] and st["node"] in (
