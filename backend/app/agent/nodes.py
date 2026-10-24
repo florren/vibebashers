@@ -34,6 +34,100 @@ from app.sim.events import dumps
 
 log = get_logger(__name__)
 
+RUN_STEP_TEXT_BUDGET = 200 * 1024
+PG_NOTIFY_PAYLOAD_LIMIT = 8000
+TOKEN_DELTA_CHUNK = 512
+
+
+def _utf8_len(value: str | None) -> int:
+    if not value:
+        return 0
+    return len(value.encode("utf-8"))
+
+
+def _truncate_utf8(value: str, max_bytes: int) -> str:
+    if max_bytes <= 0:
+        return ""
+    raw = value.encode("utf-8")
+    if len(raw) <= max_bytes:
+        return value
+    cut = raw[:max_bytes]
+    while cut:
+        try:
+            return cut.decode("utf-8")
+        except UnicodeDecodeError:
+            cut = cut[:-1]
+    return ""
+
+
+def _chunk_utf8(text: str, chunk_bytes: int) -> list[str]:
+    if not text:
+        return []
+    out: list[str] = []
+    pos = 0
+    encoded = text.encode("utf-8")
+    while pos < len(encoded):
+        piece = encoded[pos : pos + chunk_bytes]
+        while piece:
+            try:
+                out.append(piece.decode("utf-8"))
+                pos += len(piece)
+                break
+            except UnicodeDecodeError:
+                piece = piece[:-1]
+        else:
+            break
+    return out
+
+
+def _trim_text_fields(
+    remaining: int,
+    prompt: str | None,
+    response_raw: str | None,
+    reasoning: str | None,
+    *,
+    fixed_bytes: int,
+) -> tuple[str | None, str | None, str | None]:
+    """Ужимает только prompt/response_raw/reasoning; fixed_bytes — уже учтённые output+tool_calls."""
+    fields: dict[str, str | None] = {"prompt": prompt, "response_raw": response_raw, "reasoning": reasoning}
+    total = fixed_bytes + sum(_utf8_len(v) for v in fields.values())
+    if total <= remaining:
+        return prompt, response_raw, reasoning
+    keys = [k for k in fields if _utf8_len(fields[k])]
+    while total > remaining and keys:
+        key = max(keys, key=lambda k: _utf8_len(fields[k]))
+        current = fields[key] or ""
+        over = total - remaining
+        new_len = max(0, _utf8_len(current) - over)
+        trimmed = _truncate_utf8(current, new_len)
+        total -= _utf8_len(current) - _utf8_len(trimmed)
+        fields[key] = trimmed or None
+        if not fields[key]:
+            keys.remove(key)
+    return fields["prompt"], fields["response_raw"], fields["reasoning"]
+
+
+def _fit_step_texts(
+    remaining: int,
+    *,
+    prompt: str | None,
+    response_raw: str | None,
+    reasoning: str | None,
+    output_json: str,
+    tool_calls_json: str,
+) -> tuple[str | None, str | None, str | None, str, str]:
+    empty_out, empty_tools = "{}", "[]"
+    out, tools = output_json, tool_calls_json
+    p, r, reason = _trim_text_fields(
+        remaining, prompt, response_raw, reasoning, fixed_bytes=_utf8_len(out) + _utf8_len(tools)
+    )
+    if _utf8_len(p) + _utf8_len(r) + _utf8_len(reason) + _utf8_len(out) + _utf8_len(tools) <= remaining:
+        return p, r, reason, out, tools
+    out, tools = empty_out, empty_tools
+    p, r, reason = _trim_text_fields(remaining, p, r, reason, fixed_bytes=_utf8_len(out) + _utf8_len(tools))
+    return p, r, reason, out, tools
+
+
 PRODUCT_SYSTEMS = {
     "deposit": ["sub_deposits", "promo_engine", "mobile_app", "core_abs"],
     "debit_card": ["processing", "sub_debit", "mobile_app", "notification_gw"],
@@ -71,7 +165,39 @@ class Deps:
     sla_matrix: dict[tuple[str, str], dict[str, Any]] | None = None
     fewshot: list[dict[str, Any]] = field(default_factory=list)
     steps: list[dict[str, Any]] = field(default_factory=list)  # накопленные agent_steps (seq, node, …)
-    tokens: dict[str, int] = field(default_factory=lambda: {"prompt": 0, "completion": 0, "latency_ms": 0})
+    tokens: dict[str, float | int] = field(
+        default_factory=lambda: {"prompt": 0, "completion": 0, "latency_ms": 0, "cost": 0.0}
+    )
+    text_bytes_used: int = 0
+
+    async def begin_step(self, node: str) -> None:
+        seq = len(self.steps) + 1
+        await self.ctx.notify(
+            "agent",
+            "step_started",
+            {
+                "run_id": self.ctx.agent_run_id,
+                "seq": seq,
+                "node": node,
+                "status": "started",
+            },
+        )
+
+    async def _emit_token_deltas(self, node: str, seq: int, raw: str) -> None:
+        chunks = _chunk_utf8(raw, TOKEN_DELTA_CHUNK)
+        for idx, chunk in enumerate(chunks):
+            await self.ctx.notify(
+                "agent_tokens",
+                "delta",
+                {
+                    "run_id": self.ctx.agent_run_id,
+                    "step_seq": seq,
+                    "node": node,
+                    "delta": chunk,
+                    "kind": "content",
+                    "done": idx == len(chunks) - 1,
+                },
+            )
 
     async def record_step(
         self,
@@ -89,6 +215,41 @@ class Deps:
     ) -> None:
         seq = len(self.steps) + 1
         usage = usage or {}
+        prompt_tokens = int(usage.get("prompt_tokens", 0))
+        completion_tokens = int(usage.get("completion_tokens", 0))
+        step_cost = float(usage.get("cost_rub") or 0)
+        if step_cost == 0.0 and (prompt_tokens or completion_tokens):
+            step_cost = self.profile.cost(prompt_tokens, completion_tokens)
+        self.tokens["cost"] = float(self.tokens.get("cost", 0)) + step_cost
+
+        tool_calls = self.ctx.take_calls()
+        tool_calls_json = dumps(tool_calls)
+        output_json = dumps(output)
+        remaining = RUN_STEP_TEXT_BUDGET - self.text_bytes_used
+        prompt, raw, reasoning, output_json, tool_calls_json = _fit_step_texts(
+            remaining,
+            prompt=prompt,
+            response_raw=raw,
+            reasoning=reasoning,
+            output_json=output_json,
+            tool_calls_json=tool_calls_json,
+        )
+        if raw:
+            await self._emit_token_deltas(node, seq, raw)
+
+        finished: dict[str, Any] = {
+            "run_id": self.ctx.agent_run_id,
+            "seq": seq,
+            "node": node,
+            "status": status,
+            "latency_ms": latency_ms,
+            "tokens": prompt_tokens + completion_tokens,
+        }
+        finished_with_tools = {**finished, "tool_calls": tool_calls}
+        notify_body = dumps({"type": "step_finished", "run_id": self.ctx.run_id, "data": finished_with_tools})
+        finished_payload = finished_with_tools if _utf8_len(notify_body) <= PG_NOTIFY_PAYLOAD_LIMIT else finished
+        await self.ctx.notify("agent", "step_finished", finished_payload)
+
         await self.ctx.conn.execute(
             "insert into agent_steps (run_id, seq, node, status, input, output, prompt, response_raw, reasoning, tool_calls, model, prompt_tokens, completion_tokens, latency_ms, started_at, finished_at) "
             "values (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, now() - make_interval(secs => %s / 1000.0), now())",
@@ -98,33 +259,29 @@ class Deps:
                 node,
                 status,
                 dumps(state_in),
-                dumps(output),
+                output_json,
                 prompt,
                 raw,
                 reasoning,
-                dumps(self.ctx.take_calls()),
+                tool_calls_json,
                 model,
-                usage.get("prompt_tokens", 0),
-                usage.get("completion_tokens", 0),
+                prompt_tokens,
+                completion_tokens,
                 latency_ms,
                 latency_ms,
             ),
         )
-        self.tokens["prompt"] += usage.get("prompt_tokens", 0)
-        self.tokens["completion"] += usage.get("completion_tokens", 0)
+        self.text_bytes_used += (
+            _utf8_len(prompt)
+            + _utf8_len(raw)
+            + _utf8_len(reasoning)
+            + _utf8_len(output_json)
+            + _utf8_len(tool_calls_json)
+        )
+        self.tokens["prompt"] += prompt_tokens
+        self.tokens["completion"] += completion_tokens
         self.tokens["latency_ms"] += latency_ms
         self.steps.append({"seq": seq, "node": node, "status": status})
-        await self.ctx.notify(
-            "agent",
-            "step",
-            {
-                "agent_run_id": self.ctx.agent_run_id,
-                "seq": seq,
-                "node": node,
-                "status": status,
-                "reasoning": (reasoning or "")[:300],
-            },
-        )
 
 
 # ---------------------------------------------------------------------------------------------------------------------

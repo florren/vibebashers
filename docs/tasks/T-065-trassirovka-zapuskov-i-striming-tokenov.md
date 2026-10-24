@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Каждый шаг агента записан и транслируется в реальном времени — основа экрана «Под капотом».
@@ -41,4 +41,9 @@ pytest backend/tests/integration/test_tracing.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- **Ветка:** `feat/T-065-tracing-token-stream` (от `main`)
+- **Сделано:** `Deps.begin_step` → NOTIFY `agent/step_started`; `record_step` шлёт `agent_tokens/delta` по `response_raw`, `agent/step_finished`, копит `cost`, ужимает текстовые поля шага в бюджет 200 КБ; `run_graph` вызывает `begin_step` + commit до узла; `process_signal` пишет `llm_profile_id` и подставляет цены из `llm_profiles`; `_finish` — `cost_estimate`; GET `/api/agent/runs` — 422 на нечисловой `cursor`; тесты `tests/unit/test_tracing.py`, `tests/integration/test_tracing.py`.
+- **Доработка 1/2 (ревью):** дельты строятся из ужатого `response_raw` после `_fit_step_texts`; JSON `output`/`tool_calls` не режутся посередине — при нехватке бюджета `{}`/`[]`; `resume_after_human` восстанавливает `text_bytes_used` из БД; доп. unit/integration тесты.
+- **Доработка 2/2:** patch `record_step` в integration-тесте resume только после HITL-паузы; в API-тесте сценарий QR-комиссии (mass), как в `test_agent.py`, для стабильного `outcome=completed`.
+- **Отклонения:** нет
+- **Контракты:** не менялись (`contracts/` без правок)
