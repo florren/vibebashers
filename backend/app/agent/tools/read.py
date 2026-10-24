@@ -158,7 +158,7 @@ async def find_related_incidents(
             "mass_impact": r[9],
             "created_sim": r[10],
             "is_clients": r[11] == client_id,
-            "same_client": bool(r[12]),
+            "same_error": bool(r[12]),
         }
         for r in rows
     ]
