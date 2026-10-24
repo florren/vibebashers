@@ -1,14 +1,49 @@
+# Зеркало всех веток и тегов GitHub → GitVerse.
+# actions/checkout приносит только текущую ветку. git push --prune refs/heads/*
+# из такого клона удаляет на GitVerse остальные ветки, включая main, и прогон
+# падает через раз — в зависимости от того, какая ветка запушила событие.
+# Здесь полный clone --mirror. Обрыв сети GitVerse — несколько попыток.
+# Уже начатый push не отменяем: concurrency cancel-in-progress: false.
 name: mirror-to-gitverse
 on: [push, create, delete]
 concurrency:
-  group: mirror
+  group: mirror-${{ github.repository }}
   cancel-in-progress: false
+permissions:
+  contents: read
 jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - run: |
-          git remote add gitverse "https://${{ secrets.GV_USER }}:${{ secrets.GV_TOKEN }}@gitverse.ru/florren/vibebashers.git"
-          git push --prune --force gitverse 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
+      - name: Полное зеркало веток и тегов
+        env:
+          GV_USER: ${{ secrets.GV_USER }}
+          GV_TOKEN: ${{ secrets.GV_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config --global http.version HTTP/1.1
+          src=/tmp/src.git
+          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" \
+            clone --mirror "https://github.com/${{ github.repository }}.git" "$src"
+          cd "$src"
+          ask=/tmp/git-askpass.sh
+          printf '%s\n' \
+            '#!/bin/sh' \
+            'case "$1" in' \
+            '  *[Uu]sername*) printf "%s\n" "$GV_USER" ;;' \
+            '  *) printf "%s\n" "$GV_TOKEN" ;;' \
+            'esac' > "$ask"
+          chmod 700 "$ask"
+          export GIT_ASKPASS="$ask"
+          export GIT_TERMINAL_PROMPT=0
+          remote=https://gitverse.ru/florren/vibebashers.git
+          for attempt in 1 2 3 4 5; do
+            if git push --prune --force "$remote" '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'; then
+              exit 0
+            fi
+            echo "зеркало: попытка ${attempt} не удалась, повтор через $((attempt * 15)) с"
+            sleep $((attempt * 15))
+          done
+          echo "зеркало: все попытки исчерпаны" >&2
+          exit 1
