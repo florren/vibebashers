@@ -1,4 +1,4 @@
-"""Граф агента (T-056): узлы, рёбра, запуск прохода и возобновление после HITL. Лёгкий собственный раннер вместо LangGraph:
+"""Гraph агента (T-056): узлы, рёбра, запуск прохода и возобновление после HITL. Лёгкий собственный раннер вместо LangGraph:
 чекпоинт = вход шага wait_human (agent_steps.input), thread_id = agent_runs.thread_id = f"{run_id}:{signal_id}"."""
 
 from __future__ import annotations
@@ -29,6 +29,10 @@ NODES: dict[str, Node] = {
     "identify_client": nodes.identify_client,
     "gather_context": nodes.gather_context,
     "check_rules": nodes.check_rules_node,
+    "instant_decide": nodes.instant_decide,
+    "act_instant": nodes.act_instant,
+    "verify": nodes.verify,
+    "gift": nodes.gift,
     "classify": nodes.classify,
     "decide": nodes.decide,
     "wait_human": nodes.wait_human,
@@ -43,6 +47,10 @@ GRAPH_SPEC: dict[str, Any] = {
         {"id": "identify_client", "label_ru": "Идентификация клиента", "label_en": "Identify client", "kind": "tool"},
         {"id": "gather_context", "label_ru": "Сбор контекста", "label_en": "Gather context", "kind": "tool"},
         {"id": "check_rules", "label_ru": "Бизнес-правила", "label_en": "Check rules", "kind": "rules"},
+        {"id": "instant_decide", "label_ru": "Быстрое решение", "label_en": "Instant decide", "kind": "llm"},
+        {"id": "act_instant", "label_ru": "Быстрые действия", "label_en": "Act instant", "kind": "tool"},
+        {"id": "verify", "label_ru": "Проверка возврата", "label_en": "Verify", "kind": "tool"},
+        {"id": "gift", "label_ru": "Подарок", "label_en": "Gift", "kind": "tool"},
         {"id": "classify", "label_ru": "Классификация", "label_en": "Classify", "kind": "llm"},
         {"id": "decide", "label_ru": "Решение и политики", "label_en": "Decide", "kind": "llm"},
         {"id": "wait_human", "label_ru": "Ожидание человека (HITL)", "label_en": "Wait human", "kind": "human"},
@@ -61,7 +69,12 @@ GRAPH_SPEC: dict[str, Any] = {
         {"from": "normalize", "to": "identify_client"},
         {"from": "identify_client", "to": "gather_context"},
         {"from": "gather_context", "to": "check_rules"},
-        {"from": "check_rules", "to": "classify"},
+        {"from": "check_rules", "to": "instant_decide", "condition": "fast_path"},
+        {"from": "check_rules", "to": "classify", "condition": "!fast_path"},
+        {"from": "instant_decide", "to": "act_instant"},
+        {"from": "act_instant", "to": "verify"},
+        {"from": "verify", "to": "gift"},
+        {"from": "gift", "to": "close"},
         {"from": "classify", "to": "decide"},
         {"from": "decide", "to": "wait_human", "condition": "needs_human"},
         {"from": "decide", "to": "act", "condition": "!needs_human"},
