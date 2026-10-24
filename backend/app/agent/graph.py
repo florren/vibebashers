@@ -1,4 +1,4 @@
-"""Гraph агента (T-056): узлы, рёбра, запуск прохода и возобновление после HITL. Лёгкий собственный раннер вместо LangGraph:
+"""Граф агента (T-056): узлы, рёбра, запуск прохода и возобновление после HITL. Лёгкий собственный раннер вместо LangGraph:
 чекпоинт = вход шага wait_human (agent_steps.input), thread_id = agent_runs.thread_id = f"{run_id}:{signal_id}"."""
 
 from __future__ import annotations
