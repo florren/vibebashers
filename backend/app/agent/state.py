@@ -17,6 +17,7 @@ class AgentState(TypedDict, total=False):
     normalization: dict[str, Any]
     classification: dict[str, Any]
     decision: dict[str, Any]
+    instant: dict[str, Any]  # structured output instant_decision на быстром пути (T-174)
     human: dict[str, Any] | None  # решение человека (human_decisions)
     actions: list[dict[str, Any]]  # что сделал узел act (идемпотентность при повторном входе)
     errors: list[str]
@@ -37,6 +38,7 @@ def new_state(run_id: int, signal: dict[str, Any], agent_run_id: int, prompt_ver
         normalization={},
         classification={},
         decision={},
+        instant={},
         human=None,
         actions=[],
         errors=[],

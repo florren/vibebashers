@@ -162,6 +162,40 @@ def forbidden_phrases(text: str | None) -> list[str]:
     return [ph for ph in FORBIDDEN_PHRASES if ph in t]
 
 
+def fast_path_allowed(
+    *,
+    fee_rule: dict[str, Any] | None,
+    identification: dict[str, Any],
+    normalization: dict[str, Any],
+    client: dict[str, Any] | None,
+    abs_state: dict[str, Any],
+    mass_pending: int,
+    policies: dict[str, Any] | None = None,
+) -> tuple[bool, str]:
+    """Быстрый путь (ТЗ 21.4): подтверждённое правило refund_fee + политики 9.3, не массовый случай."""
+    p = merged(policies)
+    if not fee_rule or fee_rule.get("action") != "refund_fee":
+        return False, "нет подтверждённого правила возврата"
+    if not fee_rule.get("within_limit", True):
+        return False, "сумма выше лимита правила"
+    threshold = int(p.get("mass_refund_threshold") or 50)
+    if mass_pending >= threshold:
+        return False, f"массовый случай ({mass_pending} ≥ {threshold}) → HITL"
+    segment = (client or {}).get("segment")
+    class_conf = float(normalization.get("confidence") or 0.85)
+    ok, why = refund_allowed(
+        float(fee_rule.get("amount_rub") or 0),
+        segment,
+        rule_confirmed=True,
+        ident_conf=float(identification.get("confidence") or 0),
+        class_conf=class_conf,
+        already_refunded=abs_state["already_refunded"],
+        ctx=PolicyContext(refunds_30d=abs_state["refunds_30d"]),
+        policies=policies,
+    )
+    return (True, "ok") if ok else (False, why)
+
+
 def refund_allowed(
     amount_rub: float,
     segment: str | None,

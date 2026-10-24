@@ -16,6 +16,7 @@ import orjson
 
 from app.agent import policies as pol
 from app.agent import sla as slam
+from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
 from app.agent.tools import abs as abs_tools
@@ -338,43 +339,68 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
     return state
 
 
+def _contacts_hint_for_match(state: AgentState, sig: dict[str, Any]) -> dict[str, Any]:
+    """contacts_hint из нормализации + ник из external_contact и продукт из entities (ТЗ 21.3)."""
+    hint = {k: v for k, v in (state["normalization"].get("contacts_hint") or {}).items() if v}
+    ext = sig.get("external_contact") or {}
+    nick = (ext.get("nick") or hint.get("nickname") or "").strip()
+    if nick:
+        hint["nickname"] = nick
+    product = state["normalization"].get("entities", {}).get("product")
+    if product and not hint.get("product"):
+        hint["product"] = product
+    return hint
+
+
 async def identify_client(state: AgentState, deps: Deps) -> AgentState:
     sig = state["signal"]
     client = None
     how, conf = "none", 0.0
+    match_result: dict[str, Any] | None = None
+    crm_line = ""
     if sig.get("client_id"):
         client = await rt.get_client_profile(deps.ctx, int(sig["client_id"]))
         how, conf = "authenticated_channel", 1.0
     else:
-        ext = sig.get("external_contact") or {}
-        hint = state["normalization"].get("contacts_hint") or {}
-        nick = (ext.get("nick") or hint.get("nickname") or "").lstrip("@").lower()
-        if nick:
-            row = await deps.ctx.fetchone(
-                "select id from clients where lower(coalesce(social_handles->>'vk', social_handles->>'telegram', social_handles->>'ok', '')) = %s or lower(coalesce(social_handles->>'telegram','')) = %s limit 1",
-                (nick, "@" + nick),
-            )
-            if row:
-                client = await rt.get_client_profile(deps.ctx, int(row[0]))
-                how, conf = "social_handle", 0.9
-        if client is None and hint.get("masked_card_last4"):
-            region = (sig.get("geo") or {}).get("region_code") or ext.get("region_code")
-            rows = await deps.ctx.fetchall(
-                "select distinct c.id from clients c join client_products cp on cp.client_id = c.id where cp.card_last4 = %s and (%s::text is null or c.region_code = %s::text) limit 2",
-                (hint["masked_card_last4"], region, region),
-            )
-            if len(rows) == 1:
-                client = await rt.get_client_profile(deps.ctx, int(rows[0][0]))
-                how, conf = "card_last4_region", 0.8
-        if client is not None:
-            await deps.ctx.conn.execute(
-                "update signals set client_id = %s, updated_at = now() where id = %s and client_id is null",
-                (client["client_id"], sig["id"]),
-            )
-            sig["client_id"] = client["client_id"]
+        hint = _contacts_hint_for_match(state, sig)
+        match_result = await rt.match_client_by_hints(deps.ctx, hint)
+        crm_line = log_ru(match_result)
+        decision = match_result["decision"]
+        if decision == "identified":
+            winner = match_result["candidates"][0]
+            profile = await rt.get_client_profile(deps.ctx, int(winner["client_id"]))
+            if profile:
+                client = profile
+                how = "mock_crm"
+                conf = float(winner["confidence"])
+                await deps.ctx.conn.execute(
+                    "update signals set client_id = %s, updated_at = now() where id = %s and client_id is null",
+                    (client["client_id"], sig["id"]),
+                )
+                sig["client_id"] = client["client_id"]
+            else:
+                how = "not_found"
+                conf = 0.0
+        else:
+            how = decision
+            conf = 0.0
     state["client"] = client
     state["context"]["identification"] = {"method": how, "confidence": conf}
+    if match_result is not None:
+        state["context"]["client_match"] = match_result
     state["current_node"] = "gather_context"
+    if crm_line:
+        reasoning = (
+            f"{crm_line} Клиент #{client['client_id']} ({client['segment']}, {client['psychotype']}) идентифицирован."
+            if client
+            else f"{crm_line} Клиент не идентифицирован — анонимное/публичное обращение."
+        )
+    elif client:
+        reasoning = (
+            f"Клиент #{client['client_id']} ({client['segment']}, {client['psychotype']}) идентифицирован: {how}."
+        )
+    else:
+        reasoning = "Клиент не идентифицирован — анонимное/публичное обращение."
     await deps.record_step(
         "identify_client",
         "ok",
@@ -385,12 +411,9 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
             else None,
             "method": how,
             "confidence": conf,
+            "match_decision": match_result["decision"] if match_result else None,
         },
-        reasoning=(
-            f"Клиент #{client['client_id']} ({client['segment']}, {client['psychotype']}) идентифицирован: {how}."
-            if client
-            else "Клиент не идентифицирован — анонимное/публичное обращение."
-        ),
+        reasoning=reasoning,
     )
     return state
 
@@ -477,17 +500,336 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
         operations=ops,
     )
     state["context"]["rules_matched"] = matched
-    state["current_node"] = "classify"
+    fee_rule = next((r for r in matched if r.get("action") == "refund_fee"), None)
+    mass_pending = 0
+    if fee_rule and fee_rule.get("error_code"):
+        aff = await abs_tools.find_affected_clients(deps.ctx, str(fee_rule["error_code"]), 72)
+        mass_pending = int(aff.get("pending_count") or 0)
+    ident = state["context"].get("identification") or {}
+    abs_state = await _abs_refund_state(
+        deps, (state.get("client") or {}).get("client_id"), (fee_rule or {}).get("operation_ids") or []
+    )
+    fp_ok, fp_why = pol.fast_path_allowed(
+        fee_rule=fee_rule,
+        identification=ident,
+        normalization=state.get("normalization") or {},
+        client=state.get("client"),
+        abs_state=abs_state,
+        mass_pending=mass_pending,
+        policies=deps.policies,
+    )
+    state["context"]["fast_path"] = {"allowed": fp_ok, "reason": fp_why}
+    state["current_node"] = "instant_decide" if fp_ok else "classify"
     await deps.record_step(
         "check_rules",
         "ok",
         {"operations": len(ops)},
-        {"matched": matched},
+        {"matched": matched, "fast_path": state["context"]["fast_path"]},
         reasoning=(
-            f"Сработали правила: {', '.join(m['rule_code'] for m in matched)}."
+            f"Сработали правила: {', '.join(m['rule_code'] for m in matched)}. "
+            + (f"Быстрый путь: {fp_why}." if fp_ok else f"Обычный граф: {fp_why}.")
             if matched
             else "Бизнес-правила не сработали."
         ),
+    )
+    return state
+
+
+def _ensure_instant_decision(state: AgentState, obj: dict[str, Any]) -> dict[str, Any]:
+    """Дополняет instant_decision детерминированным планом по fee_rule (mock часто не заполняет actions)."""
+    fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
+    out = dict(obj)
+    if fee_rule:
+        codes = out.get("rule_codes") or [fee_rule["rule_code"]]
+        out["rule_codes"] = list(dict.fromkeys([*codes, fee_rule["rule_code"]]))
+        op_id = next((o for o in fee_rule.get("operation_ids") or [] if o is not None), None)
+        amount = float(fee_rule.get("amount_rub") or 0)
+        actions = list(out.get("actions") or [])
+        if not actions and op_id is not None:
+            actions = [
+                {
+                    "tool": "refund_fee",
+                    "args": {
+                        "operation_id": int(op_id),
+                        "amount_rub": amount,
+                        "rule_id": fee_rule["rule_code"],
+                    },
+                },
+                {"tool": "create_incident", "args": {"incident_type": "fee_refund", "status": "resolved"}},
+                {"tool": "publish_public_reply", "args": {"post_id": state["signal"].get("external_post_id")}},
+                {"tool": "notify_client", "args": {"channel": "chat"}},
+            ]
+        out["actions"] = actions
+    cls = dict(out.get("classification") or {})
+    cls.setdefault("signal_type", "tariff_terms")
+    cls.setdefault("error_code", (fee_rule or {}).get("error_code"))
+    cls.setdefault("product", "debit_card")
+    cls.setdefault("system", "processing")
+    flags = list(dict.fromkeys([*(cls.get("flags") or []), "rule_confirmed", "public"]))
+    if int(state["normalization"].get("negativity") or 0) >= 67:
+        flags.append("churn_intent")
+    cls["flags"] = flags
+    cls.setdefault("confidence", float(out.get("confidence") or 0.9))
+    out["classification"] = cls
+    name = mask_name((state.get("client") or {}).get("name"))
+    amount = float(
+        (fee_rule or {}).get("amount_rub") or state["normalization"].get("entities", {}).get("amount_rub") or 0
+    )
+    out.setdefault(
+        "public_reply_ru",
+        f"{name}, приносим извинения за ошибочную комиссию"
+        + (f" {amount:.0f} ₽" if amount else "")
+        + ". Средства уже возвращены на карту. Напишите нам в чат приложения — проверим, что всё в порядке.",
+    )
+    out.setdefault(
+        "client_notice_ru",
+        "Мы вернули комиссию"
+        + (f" {amount:.0f} ₽" if amount else "")
+        + " за оплату по QR. Приносим извинения за неудобства.",
+    )
+    out.setdefault("confidence", cls["confidence"])
+    out.setdefault(
+        "rationale_ru", "Правило подтвердило ошибочную комиссию; сумма в лимите автономии, клиент идентифицирован."
+    )
+    return out
+
+
+async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
+    """Один вызов основной модели со схемой instant_decision (ТЗ 21.4)."""
+    sig = state["signal"]
+    text = sig.get("text") or ""
+    status = "ok"
+    obj: dict[str, Any] = {}
+    meta: dict[str, Any] = {}
+    try:
+        obj, meta = await _llm(
+            deps,
+            "instant_decision",
+            "agent/instant_decision",
+            {
+                "rules_matched": state["context"].get("rules_matched") or [],
+                "identification": state["context"].get("identification") or {},
+                "context": _context_for_prompt(state),
+                "channel": sig.get("channel"),
+                "text": text,
+            },
+            text,
+            context="fast_path",
+        )
+        if meta.get("fallback_mock"):
+            status = "fallback"
+    except Exception as exc:  # noqa: BLE001
+        status = "error"
+        state["errors"].append(f"instant_decide: {exc}")
+        obj = {}
+    inst = _ensure_instant_decision(state, obj)
+    cls, notes = _postcheck_classification(inst.get("classification") or {}, state, deps)
+    if notes:
+        cls["summary_ru"] = (cls.get("summary_ru") or "") + ("; " + "; ".join(notes) if cls.get("summary_ru") else "")
+    inst["classification"] = cls
+    state["instant"] = inst
+    state["classification"] = cls
+    fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
+    team = (fee_rule or {}).get("team") or "team_debit"
+    state["decision"] = {
+        "fast_path": True,
+        "rule_codes": inst.get("rule_codes") or [],
+        "confidence": float(inst.get("confidence") or cls.get("confidence") or 0.9),
+        "route": {"team": team, "co_teams": []},
+        "incident_type": "fee_refund",
+        "complexity": "instant",
+    }
+    if meta.get("provider"):
+        state["llm_source"] = meta["provider"] if not meta.get("fallback_mock") else "mock"
+    deps.ctx.llm_source = state["llm_source"]
+    state["current_node"] = "act_instant"
+    await deps.record_step(
+        "instant_decide",
+        status,
+        {"fast_path": True},
+        {
+            "instant": {k: inst.get(k) for k in ("rule_codes", "confidence", "actions")},
+            "classification_type": cls.get("signal_type"),
+        },
+        prompt=meta.get("prompt"),
+        raw=meta.get("raw"),
+        reasoning=(inst.get("rationale_ru") or "Быстрое решение по подтверждённому правилу.")[:800],
+        model=meta.get("model"),
+        usage=meta.get("usage"),
+        latency_ms=int(meta.get("latency_ms") or 0),
+    )
+    return state
+
+
+async def act_instant(state: AgentState, deps: Deps) -> AgentState:
+    """Исполнение быстрого пути: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)."""
+    inst, sig, client = state["instant"], state["signal"], state.get("client")
+    c = state["classification"]
+    fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
+    actions = state["actions"]
+    done = {a["action"] for a in actions}
+    incident_id: int | None = next((a["incident_id"] for a in actions if a.get("incident_id")), None)
+
+    def mark(action: str, **kw: Any) -> None:
+        actions.append({"action": action, **kw})
+
+    refund_total = 0.0
+    if fee_rule and "refund" not in done:
+        for op_id in fee_rule.get("operation_ids") or []:
+            if op_id is None:
+                continue
+            try:
+                rf = await abs_tools.refund_fee(
+                    deps.ctx,
+                    int(op_id),
+                    float(fee_rule.get("amount_rub") or 0) or None,
+                    fee_rule.get("rule_code"),
+                    (inst.get("rationale_ru") or "ошибочная комиссия")[:160],
+                )
+            except Exception as exc:
+                mark("refund_failed", operation_id=op_id, error=str(exc)[:200])
+                continue
+            if not rf.get("duplicate"):
+                refund_total += float(rf.get("amount_rub") or 0)
+            mark(
+                "refund",
+                operation_id=op_id,
+                entry_id=rf.get("entry_id"),
+                amount_rub=rf.get("amount_rub"),
+                duplicate=rf.get("duplicate"),
+            )
+
+    if "incident" not in done and fee_rule:
+        crit = slam.effective_criticality(
+            c.get("criticality", "medium"),
+            c.get("flags") or [],
+            (client or {}).get("segment"),
+            c.get("signal_type", "tariff_terms"),
+            1,
+        )
+        prio = slam.priority(crit, int(c.get("churn_risk") or 0), (client or {}).get("segment"), c.get("flags") or [])
+        sla_full = slam.sla_for("instant", crit, deps.ctx.sim_time, deps.sla_matrix)
+        spec = {
+            **c,
+            "incident_type": "fee_refund",
+            "title_ru": _title(c.get("summary_ru") or "Ошибочная комиссия за QR"),
+            "complexity": "instant",
+            "criticality": crit,
+            "priority": prio,
+            "team": (fee_rule.get("team") or "team_debit"),
+            "co_teams": [],
+            "sla": sla_full,
+            "mass_impact": 1,
+            "region_code": (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code"),
+            "problem_summary": c.get("problem_summary"),
+        }
+        inc = await wt.create_incident(deps.ctx, sig["id"], (client or {}).get("client_id"), spec)
+        incident_id = int(inc["incident_id"])
+        mark("incident", incident_id=incident_id, public_id=inc.get("public_id"))
+        if refund_total:
+            await wt.update_incident(
+                deps.ctx,
+                incident_id,
+                "resolved",
+                "Комиссия возвращена (быстрый путь)",
+                {"resolution_summary": f"Комиссия {refund_total:.2f} ₽ возвращена на счёт клиента"},
+            )
+
+    post_id = sig.get("external_post_id")
+    pub_text = str(inst.get("public_reply_ru") or _public_fallback(client))
+    if post_id and "feed_reply" not in done:
+        try:
+            fr = await abs_tools.publish_public_reply(
+                deps.ctx, int(post_id), pub_text, incident_id, True, bool(inst.get("escalate_to_dm"))
+            )
+            mark("feed_reply", post_id=post_id, reply_id=fr.get("reply_id"), latency_ms=fr.get("latency_ms"))
+        except Exception as exc:
+            mark("feed_reply_failed", post_id=post_id, error=str(exc)[:160])
+
+    if client and "notify_client" not in done:
+        notice = str(inst.get("client_notice_ru") or pub_text)
+        n = await wt.notify_client(
+            deps.ctx,
+            client["client_id"],
+            sig["id"],
+            incident_id,
+            "chat",
+            "fee_refund_done",
+            {"name": mask_name(client.get("name")), "resolution": notice},
+            text_override=notice,
+            segment=client.get("segment"),
+            consents=client.get("consents"),
+        )
+        mark("notify_client", notification_id=n.get("notification_id"))
+
+    await deps.ctx.conn.execute(
+        "update signals set status = 'answered', updated_at = now() where id = %s", (sig["id"],)
+    )
+    if incident_id:
+        await deps.ctx.conn.execute(
+            "update agent_runs set incident_id = %s where id = %s", (incident_id, deps.ctx.agent_run_id)
+        )
+    state["actions"] = actions
+    state["current_node"] = "verify"
+    await deps.record_step(
+        "act_instant",
+        "ok",
+        {"rule_codes": inst.get("rule_codes")},
+        {"actions": actions, "refund_total_rub": refund_total},
+        reasoning="Быстрый путь: " + ", ".join(a["action"] for a in actions) + ".",
+    )
+    return state
+
+
+async def verify(state: AgentState, deps: Deps) -> AgentState:
+    """Проверка возврата: баланс счёта после refund (ТЗ 21.4)."""
+    client = state.get("client") or {}
+    ok, detail = False, "клиент не идентифицирован"
+    if client.get("client_id"):
+        bal = await abs_tools.get_account_balance(deps.ctx, int(client["client_id"]))
+        refunded = any(a.get("action") == "refund" and not a.get("duplicate") for a in state.get("actions") or [])
+        ok = refunded and bal.get("balance") is not None
+        detail = f"баланс {bal.get('balance')} ₽ после возврата" if ok else "нет новой проводки refund"
+    state["current_node"] = "gift"
+    await deps.record_step(
+        "verify",
+        "ok" if ok else "fallback",
+        {"client_id": client.get("client_id")},
+        {"ok": ok, "detail": detail},
+        reasoning=detail,
+    )
+    return state
+
+
+async def gift(state: AgentState, deps: Deps) -> AgentState:
+    """Подарок после быстрого пути (баллы при churn_intent)."""
+    inst = state.get("instant") or {}
+    gift_spec = inst.get("gift")
+    client = state.get("client") or {}
+    incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
+    created = None
+    if gift_spec and incident_id and client.get("client_id"):
+        payload = {
+            "gift_code": gift_spec.get("catalog_code") or "bonus_points",
+            "points": int(gift_spec.get("points") or 300),
+            "privilege_code": None,
+        }
+        t = await wt.create_task(
+            deps.ctx,
+            "gift",
+            incident_id,
+            client["client_id"],
+            {"gift": payload, "when": "after_resolved"},
+            requires_hitl=False,
+        )
+        created = t.get("task_id")
+    state["current_node"] = "close"
+    await deps.record_step(
+        "gift",
+        "ok",
+        {"gift": gift_spec},
+        {"task_id": created},
+        reasoning="Подарок начислен." if created else "Подарок не требуется.",
     )
     return state
 

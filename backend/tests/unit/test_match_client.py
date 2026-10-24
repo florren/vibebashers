@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from app.agent.matching import ClientView, log_ru, match_clients
+from app.agent.nodes import _contacts_hint_for_match
 from app.agent.policies import PolicyContext, refund_allowed
+from app.agent.state import new_state
 from app.contracts.registry import validate
 
 
@@ -24,6 +26,19 @@ def _client(
         city=city,
         products=products or {"debit_card"},
     )
+
+
+def test_contacts_hint_merges_external_nick_and_product() -> None:
+    state = new_state(1, {"id": 1, "channel": "social", "text": "x"}, agent_run_id=1, prompt_version="v1")
+    state["normalization"] = {
+        "contacts_hint": {"masked_card_last4": "4512"},
+        "entities": {"product": "debit_card"},
+    }
+    state["signal"]["external_contact"] = {"nick": "@reviewer"}
+    hint = _contacts_hint_for_match(state, state["signal"])
+    assert hint["nickname"] == "@reviewer"
+    assert hint["masked_card_last4"] == "4512"
+    assert hint["product"] == "debit_card"
 
 
 def test_nickname_and_card_reach_autonomy_threshold() -> None:

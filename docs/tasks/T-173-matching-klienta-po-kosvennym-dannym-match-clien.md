@@ -43,3 +43,5 @@ pytest backend/tests/unit/test_match_client.py -k reviews_v1
 
 ## Отчёт субагента
 Ветка `work-florren`. `app/agent/matching.py`: ник 0,9, last4 = 0,5 / число совпадений, телефон 0,6, город и продукт +0,1; вероятностная комбинация; `identified` только при одном кандидате ≥ 0,8. Инструмент `match_client_by_hints` пишет `client_match` в `agent_steps.tool_calls`, узел `identify_client` вызывает его и ставит в reasoning строку «Mock CRM: …». Ambiguous не проставляет `client_id` и оставляет уверенность 0, поэтому автономный возврат не проходит. Отклонение: отдельного файла `reviews_v1` нет (так закрыт T-178) — 100 кейсов собраны в `tests/unit/test_match_client.py`. Контракты не менялись.
+
+**Дополнение (хвост T-173):** узел `identify_client` переведён с прямых SQL (ник / last4+регион с порогом 0,8) на вызов `match_client_by_hints`; `_contacts_hint_for_match` объединяет `contacts_hint`, ник из `external_contact` и продукт из entities.
