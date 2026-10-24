@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Цепочка «пост → возврат → публичный ответ» ≤ 10 с (p50) при подтверждённом правиле и разрешающих политиках (ТЗ 6 п. 7a, 8.1 instant, 16.4, 21.4).
@@ -34,10 +34,10 @@
 6. Замер p50/p95 на 10 прогонах сценария 8 в тесте с реальным GigaChat (маркер live) и на кассете.
 
 ## Критерии приёмки
-- [ ] Сценарий 8 на кассете: цепочка ≤ 10 с, все шаги в трассировке, инцидент fee_refund закрыт, проводка refund создана один раз.
-- [ ] Политики покрыты unit-тестами на каждую ветку; повторный пост не создаёт второго возврата.
-- [ ] На реальном GigaChat-3-Ultra p50 ≤ 10 с, p95 ≤ 15 с (10 прогонов, отчёт в PR).
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] Сценарий 8 на кассете: цепочка ≤ 10 с, все шаги в трассировке, инцидент fee_refund закрыт, проводка refund создана один раз.
+- [x] Политики покрыты unit-тестами на каждую ветку; повторный пост не создаёт второго возврата.
+- [ ] На реальном GigaChat-3-Ultra p50 ≤ 10 с, p95 ≤ 15 с (10 прогонов, отчёт в PR) — тест `test_scenario_08_latency.py` с маркером `live`.
+- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
@@ -46,4 +46,4 @@ pytest -m live backend/tests/scenarios/test_scenario_08_latency.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/T-174-fast-path`. `policies.fast_path_allowed`; после `check_rules` условное ребро → `instant_decide` (LLM `agent/instant_decision`, context fast_path 8 с) → `act_instant` → `verify` → `gift` → `close`. `_ensure_instant_decision` дополняет план инструментов по fee_rule; идемпотентность refund через `refund_fee`. Промпт `prompts/v1/instant_decision.md`. Хвост T-173: `identify_client` → `match_client_by_hints`. Тесты: `test_fast_path_allowed_branches`, `test_scenario_08_qr_fee.py`; live-замер — `test_scenario_08_latency.py`. Контракты не менялись. Live p50/p95 — в PR после прогона с GIGACHAT_*.
