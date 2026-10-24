@@ -1,4 +1,4 @@
-"""Запуски эмуляции (ТЗ 4.6, T-040 — минимум): текущий запуск, создание free-запуска, stop, карточка SimRun с v_run_counters."""
+"""Запуски эмуляции (ТЗ 4.6–4.7): текущий запуск, free/live, stop, карточка SimRun с v_run_counters."""
 
 from __future__ import annotations
 
@@ -82,6 +82,30 @@ async def create_run(
         (dumps({"type": "started", "run_id": run_id, "data": {"id": run_id, "kind": kind, "label": label}}),),
     )
     return run_id
+
+
+async def ensure_live_run(conn: psycopg.AsyncConnection[Any]) -> int:
+    """Текущий запуск либо один kind=live, если указатель пуст (ТЗ 4.7).
+
+    Строка sim_state блокируется в этой транзакции. Часы не включаются: sim_state.running не меняется,
+    started_sim берётся из sim_state.sim_time. create_run вызывается только при current_run_id IS NULL,
+    поэтому уже текущие baseline/free/scenario не останавливаются.
+    """
+    cur = await conn.execute("select current_run_id, seed, sim_time from sim_state where id = 1 for update")
+    row = await cur.fetchone()
+    if row is None:
+        raise RuntimeError("нет строки sim_state id=1")
+    current_id, seed, sim_time = row
+    if current_id is not None:
+        return int(current_id)
+    return await create_run(
+        conn,
+        kind="live",
+        label="живой показ",
+        seed=int(seed),
+        sim_time=sim_time,
+        reset_mode="none",
+    )
 
 
 async def set_run_status(

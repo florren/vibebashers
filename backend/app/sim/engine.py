@@ -77,6 +77,23 @@ class Simulator:
             "sim_state_loaded", sim_time=self.clock.sim_time.isoformat(), run_id=self.run_id, status=self.run_status
         )
 
+    async def ensure_live_run(self) -> int:
+        """Живой или уже текущий запуск без старта часов и генераторов (ТЗ 4.7).
+
+        Пустой self.run_id заполняется id и статусом строки, чтобы последующий persist не затёр указатель.
+        Уже заданный run_id в памяти не меняется. clock.running, цикл и step не вызываются.
+        """
+        conn = await self.connect()
+        run_id = await run_svc.ensure_live_run(conn)
+        held = self.run_id
+        if held is None:
+            row = await run_svc.get_run(conn, run_id)
+            self.run_id = run_id
+            self.run_status = row["status"] if row else None
+            held = run_id
+        await conn.commit()
+        return held
+
     async def _ensure_world(self) -> World:
         conn = await self.connect()
         if self.run_id is None or self.run_status in ("completed", "stopped", "archived"):
