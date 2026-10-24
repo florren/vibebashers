@@ -24,8 +24,9 @@ jobs:
           set -euo pipefail
           git config --global http.version HTTP/1.1
           src=/tmp/src.git
-          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" \
-            clone --mirror "https://github.com/${{ github.repository }}.git" "$src"
+          # Клон зеркала: токен в URL (x-access-token), без Authorization extraheader —
+          # иначе GitHub Actions часто отвечает 401/403 на git clone --mirror.
+          git clone --mirror "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$src"
           cd "$src"
           ask=/tmp/git-askpass.sh
           printf '%s\n' \
