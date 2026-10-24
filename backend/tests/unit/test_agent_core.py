@@ -74,8 +74,49 @@ def test_sla_priority_gift() -> None:
     assert sla.pick_gift("low", "mass", []) is None or sla.pick_gift("low", "mass", [])["points"] == 300
 
 
+def test_fast_path_allowed_branches() -> None:
+    fee = {"action": "refund_fee", "amount_rub": 450, "within_limit": True, "rule_code": "RULE-QR-FEE-001"}
+    ident = {"confidence": 0.9}
+    norm = {"confidence": 0.9}
+    abs_ok = {"already_refunded": False, "refunds_30d": 0}
+    ok, _ = pol.fast_path_allowed(
+        fee_rule=fee,
+        identification=ident,
+        normalization=norm,
+        client={"segment": "mass"},
+        abs_state=abs_ok,
+        mass_pending=1,
+    )
+    assert ok
+    bad, why = pol.fast_path_allowed(
+        fee_rule=fee,
+        identification={"confidence": 0.5},
+        normalization=norm,
+        client={"segment": "mass"},
+        abs_state=abs_ok,
+        mass_pending=1,
+    )
+    assert not bad and "уверенность" in why
+    assert not pol.fast_path_allowed(
+        fee_rule=fee,
+        identification=ident,
+        normalization=norm,
+        client={"segment": "ultra_vip"},
+        abs_state=abs_ok,
+        mass_pending=1,
+    )[0]
+    assert not pol.fast_path_allowed(
+        fee_rule=None,
+        identification=ident,
+        normalization=norm,
+        client={"segment": "mass"},
+        abs_state=abs_ok,
+        mass_pending=0,
+    )[0]
+
+
 def test_prompts_and_graph_spec() -> None:
-    for name in ("system", "normalize", "classify", "decide"):
+    for name in ("system", "normalize", "classify", "decide", "instant_decision"):
         p = load(name)
         assert p.meta["version"] and p.body
     assert prompt_version().startswith("v1")
