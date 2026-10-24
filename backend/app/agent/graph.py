@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -162,7 +163,7 @@ async def _finish(
     conn: psycopg.AsyncConnection[Any], deps: Deps, state: AgentState, outcome: str, error: str | None = None
 ) -> None:
     await conn.execute(
-        "update agent_runs set finished_at = case when %s in ('awaiting_human','deferred') then null else now() end, outcome = %s, needed_human = needed_human or %s, total_tokens = %s, prompt_tokens = %s, completion_tokens = %s, total_latency_ms = %s, error = %s, client_id = coalesce(client_id, %s) where id = %s",
+        "update agent_runs set finished_at = case when %s in ('awaiting_human','deferred') then null else now() end, outcome = %s, needed_human = needed_human or %s, total_tokens = %s, prompt_tokens = %s, completion_tokens = %s, total_latency_ms = %s, cost_estimate = %s, error = %s, client_id = coalesce(client_id, %s) where id = %s",
         (
             outcome,
             outcome,
@@ -171,6 +172,7 @@ async def _finish(
             deps.tokens["prompt"],
             deps.tokens["completion"],
             deps.tokens["latency_ms"],
+            round(float(deps.tokens.get("cost", 0)), 6),
             error,
             (state.get("client") or {}).get("client_id"),
             deps.ctx.agent_run_id,
@@ -200,6 +202,8 @@ async def run_graph(state: AgentState, deps: Deps, conn: psycopg.AsyncConnection
         if fn is None:
             raise RuntimeError(f"узел {node} не найден")
         try:
+            await deps.begin_step(node)
+            await conn.commit()
             state = await fn(state, deps)
             await conn.commit()
         except Exception as exc:
@@ -258,10 +262,44 @@ async def process_signal(
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
     )
     pv = prompt_version()
+    profile_row = await (
+        await conn.execute(
+            "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
+            (profile.code,),
+        )
+    ).fetchone()
+    if profile_row is None:
+        profile_row = await (
+            await conn.execute(
+                "select id, price_in_per_1m, price_out_per_1m from llm_profiles where provider = %s and model = %s order by id limit 1",
+                (profile.provider, profile.model),
+            )
+        ).fetchone()
+    llm_profile_id = int(profile_row[0]) if profile_row else None
+    if (
+        profile_row
+        and profile.price_in_per_1m == 0
+        and profile.price_out_per_1m == 0
+        and (float(profile_row[1] or 0) or float(profile_row[2] or 0))
+    ):
+        profile = dataclasses.replace(
+            profile,
+            price_in_per_1m=float(profile_row[1] or 0),
+            price_out_per_1m=float(profile_row[2] or 0),
+        )
     row = await (
         await conn.execute(
-            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, prompt_version, graph_version, thread_id, started_sim) values ('agent', %s, %s, %s, %s, %s, %s, %s) returning id",
-            (sig["run_id"], signal_id, sig["client_id"], pv, GRAPH_VERSION, f"{sig['run_id']}:{signal_id}", sim_time),
+            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            (
+                sig["run_id"],
+                signal_id,
+                sig["client_id"],
+                llm_profile_id,
+                pv,
+                GRAPH_VERSION,
+                f"{sig['run_id']}:{signal_id}",
+                sim_time,
+            ),
         )
     ).fetchone()
     agent_run_id = int(row[0])  # type: ignore[index]
@@ -299,6 +337,15 @@ async def resume_after_human(
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
     )
+    budget_row = await (
+        await conn.execute(
+            "select coalesce(sum(octet_length(coalesce(prompt,'')) + octet_length(coalesce(response_raw,'')) + "
+            "octet_length(coalesce(reasoning,'')) + octet_length(coalesce(output::text,'')) + "
+            "octet_length(coalesce(tool_calls::text,''))), 0) from agent_steps where run_id = %s",
+            (agent_run_id,),
+        )
+    ).fetchone()
+    deps.text_bytes_used = int(budget_row[0]) if budget_row else 0
     deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
     state = nodes.apply_human_decision(state, str(decision), dict(modified or {}))
     await deps.record_step(

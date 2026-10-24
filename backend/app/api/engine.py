@@ -42,9 +42,13 @@ async def get_agent_runs(
             if val is not None:
                 where.append(f"{col} = %s")
                 args.append(val)
-        if cursor:
+        if cursor is not None:
+            try:
+                cursor_id = int(cursor)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail="cursor должен быть целым числом") from exc
             where.append("ar.id < %s")
-            args.append(int(cursor))
+            args.append(cursor_id)
         rows = await fetch_all(
             conn, f"{RUN_SQL} where {' and '.join(where)} order by ar.id desc limit %s", [*args, limit]
         )  # noqa: S608
