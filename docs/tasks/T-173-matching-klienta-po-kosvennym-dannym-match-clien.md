@@ -7,7 +7,7 @@
 | Оценка | M (1–2 дня) |
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
-| В дemo-минимуме | да |
+| В демо-минимуме | да |
 | Статус | `done` |
 
 ## Цель
@@ -32,9 +32,9 @@
 4. Тесты на наборе reviews_v1 (T-178): точность ≥ 90 % при наличии ника или ник+карта; на коллизиях last4 — ambiguous.
 
 ## Критерии приёмки
-- [x] Точность матчинга на reviews_v1 ≥ 90 %, ложных identified — 0.
-- [x] Инструмент логируется в agent_steps.tool_calls с результатом по схеме client_match.
-- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [ ] Точность матчинга на reviews_v1 ≥ 90 %, ложных identified — 0.
+- [ ] Инструмент логируется в agent_steps.tool_calls с результатом по схеме client_match.
+- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
