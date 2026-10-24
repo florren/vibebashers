@@ -7,6 +7,7 @@ import functools
 import inspect
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from typing import Any, ParamSpec, TypeVar
 
 import orjson
@@ -37,10 +38,28 @@ SIDE_EFFECT_TOOLS = {
     "escalate_to_manager",
     "request_clarification",
 }
+# Фасады роутера (ТЗ 9.2): после успеха их вызов сворачивает внутренние tool_call в wraps.
+FACADE_TOOLS = {
+    "route_to_department",
+    "notify_customer",
+    "escalate_to_manager",
+    "request_clarification",
+}
 
 
 class ToolError(RuntimeError):
     pass
+
+
+@dataclass
+class ActFrame:
+    """Кадр узла act: контекст фасада, которого нет в аргументах схемы router_tools."""
+
+    signal_id: int
+    client_id: int | None
+    incident_id: int | None
+    link_incident_id: int | None
+    spec: dict[str, Any] = field(default_factory=dict)
 
 
 class ToolContext:
@@ -59,6 +78,8 @@ class ToolContext:
         self.sim_time = sim_time
         self.llm_source = llm_source
         self.calls: list[dict[str, Any]] = []  # tool_calls текущего узла (сбрасывает узел)
+        self.pending_wraps: list[str] = []  # внутренние имена, которые фасад свернёт в wraps
+        self.act_frame: ActFrame | None = None
 
     def take_calls(self) -> list[dict[str, Any]]:
         calls, self.calls = self.calls, []
@@ -105,6 +126,8 @@ def tool(name: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitab
             ctx = next(v for v in bound.arguments.values() if isinstance(v, ToolContext))
             call_args = {k: v for k, v in bound.arguments.items() if not isinstance(v, ToolContext)}
             t0 = time.perf_counter()
+            calls_mark = len(ctx.calls)
+            wraps_mark = len(ctx.pending_wraps)
             rec: dict[str, Any] = {
                 "name": name,
                 "args": orjson.loads(dumps(call_args)),
@@ -115,12 +138,19 @@ def tool(name: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitab
             try:
                 result = await fn(*args, **kwargs)
             except Exception as exc:
+                del ctx.pending_wraps[wraps_mark:]
                 rec.update(
                     ok=False, error=f"{type(exc).__name__}: {str(exc)[:300]}", ms=int((time.perf_counter() - t0) * 1000)
                 )
                 ctx.calls.append(rec)
                 log.warning("tool_failed", tool=name, error=rec["error"])
                 raise
+            new_wraps = ctx.pending_wraps[wraps_mark:]
+            if name in FACADE_TOOLS and new_wraps:
+                # Внутренние записи этого вызова остаются только в wraps фасада (ТЗ 9.2, §20.6 п.20).
+                del ctx.calls[calls_mark:]
+                del ctx.pending_wraps[wraps_mark:]
+                rec["wraps"] = list(new_wraps)
             rec["ms"] = int((time.perf_counter() - t0) * 1000)
             rec["result"] = _compact(result)
             errors = validate(rec, "agent/tool_call")
