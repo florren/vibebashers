@@ -85,6 +85,23 @@ class GigaChatProvider:
     def _chat_base(self, profile: LLMProfile) -> str:
         return (profile.base_url or self.base_url).rstrip("/")
 
+    def _ordered(self, messages: list[Message], extra_system: str | None = None) -> list[dict[str, str]]:
+        """GigaChat принимает system только первым сообщением: склеиваем все system в одно."""
+        systems = [extra_system] if extra_system else []
+        rest: list[dict[str, str]] = []
+        for m in messages:
+            role = str(m["role"])
+            content = str(m["content"])
+            if role == "system":
+                systems.append(content)
+            else:
+                rest.append({"role": role, "content": content})
+        out: list[dict[str, str]] = []
+        if systems:
+            out.append({"role": "system", "content": "\n\n".join(systems)})
+        out.extend(rest)
+        return out
+
     # --- chat -------------------------------------------------------------------------------------------------------
     async def _chat(self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float) -> httpx.Response:
         token = await self._token(key, timeout_s)
@@ -142,10 +159,7 @@ class GigaChatProvider:
     ) -> tuple[dict[str, Any], Usage, str]:
         t0 = time.perf_counter()
         sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema, ensure_ascii=False))
-        msgs: list[dict[str, str]] = [
-            {"role": "system", "content": sys_msg},
-            *[{"role": str(m["role"]), "content": str(m["content"])} for m in messages],
-        ]
+        msgs = self._ordered(messages, sys_msg)
         total_usage = Usage(provider=self.name, model=profile.model)
         raw = ""
         for attempt in range(2):
@@ -191,7 +205,7 @@ class GigaChatProvider:
         token = await self._token(key, timeout_s)
         payload = {
             "model": profile.model,
-            "messages": [{"role": str(m["role"]), "content": str(m["content"])} for m in messages],
+            "messages": self._ordered(messages),
             "temperature": profile.temperature,
             "stream": True,
         }

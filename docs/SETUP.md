@@ -49,7 +49,7 @@ GIGACHAT_AUTH_KEY_2=        # второй ключ — ротация при л
 GIGACHAT_SCOPE=GIGACHAT_API_PERS   # PERS для физлица, CORP/B2B для юрлица
 GIGACHAT_BASE_URL=https://gigachat.devices.sberbank.ru/api/v1
 GIGACHAT_OAUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
-GIGACHAT_MODEL=GigaChat-2-Max      # официальные id: GigaChat-2-Max, GigaChat-2-Pro, GigaChat-2, GigaChat-3-Ultra
+GIGACHAT_MODEL=GigaChat-2-Max      # id из GET /models для этого ключа: GigaChat-2-Max, GigaChat-2-Pro, GigaChat-2
 GIGACHAT_VERIFY_SSL=false   # true только если в контейнер добавлен сертификат Минцифры
 
 OPENROUTER_API_KEY=         # альтернатива GigaChat (OpenAI-совместимый API)
@@ -76,7 +76,7 @@ STT_PROVIDER=none           # vosk | browser | none — распознавани
 | `replay` | демо без интернета после репетиции с живой моделью | ответы из кассет `data/cassettes`, записанных при `LLM_RECORD=true` |
 | `gigachat` | показ с живой моделью | OAuth по Authorization key, лимиты и ротация ключей, при сбое — автоматический откат на `replay`/`mock` |
 
-Модель **GigaChat-3-Ultra** в документации Сбера ходит на `https://api.giga.chat/v1` — задайте этот хост в `GIGACHAT_BASE_URL` или в поле `base_url` профиля LLM в БД (`llm_profiles`); для Max/Pro/2 по умолчанию используется `GIGACHAT_BASE_URL` из `.env`.
+Для ключа персонального доступа `GET /api/v1/models` на `gigachat.devices.sberbank.ru` отдаёт `GigaChat-2-Max` (основная), `GigaChat-2-Pro` и `GigaChat-2` (быстрая). Идентификатора `GigaChat-3-Ultra` в этом списке нет — вызов с ним даёт 404.
 
 Рекомендация на демо: накануне прогнать сценарии с живой моделью при `LLM_RECORD=true`, на показе оставить `LLM_CHAIN=gigachat,replay,mock` — при проблемах с сетью зрители не заметят переключения.
 
