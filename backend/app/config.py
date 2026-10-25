@@ -39,9 +39,9 @@ class Settings(BaseSettings):
     gigachat_auth_key_1: str | None = None
     gigachat_auth_key_2: str | None = None
     gigachat_scope: str = "GIGACHAT_API_PERS"
-    gigachat_base_url: str = "https://gigachat.devices.sberbank.ru/api/v1"
+    gigachat_base_url: str = "https://api.giga.chat/v1"
     gigachat_oauth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-    gigachat_model: str = "GigaChat-2-Max"
+    gigachat_model: str = "GigaChat-3-Pro"
     gigachat_verify_ssl: bool = (
         False  # сертификат Минцифры; в demo-профиле проверка отключена, в prod — включить и подложить CA
     )

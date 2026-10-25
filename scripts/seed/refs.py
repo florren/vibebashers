@@ -123,7 +123,7 @@ def seed_catalogs(cur: psycopg.Cursor[Any]) -> None:
         cur.execute(
             "insert into llm_profiles (code, provider, model, base_url, role, temperature, rpm_limit, rpd_limit, price_in_per_1m, price_out_per_1m, supports_tools, supports_stream, is_active, extra) "
             "values (%(code)s, %(provider)s, %(model)s, %(base_url)s, %(role)s, %(temperature)s, %(rpm_limit)s, %(rpd_limit)s, %(price_in_per_1m)s, %(price_out_per_1m)s, %(supports_tools)s, %(supports_stream)s, %(is_active)s, %(extra)s) "
-            "on conflict (code) do update set model = excluded.model, role = excluded.role, rpm_limit = excluded.rpm_limit, rpd_limit = excluded.rpd_limit",
+            "on conflict (code) do update set model = excluded.model, base_url = excluded.base_url, role = excluded.role, rpm_limit = excluded.rpm_limit, rpd_limit = excluded.rpd_limit",
             {**p, "base_url": p.get("base_url"), "extra": J(p.get("extra", {}))},
         )
 

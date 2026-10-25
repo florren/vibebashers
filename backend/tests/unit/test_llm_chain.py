@@ -24,7 +24,7 @@ from app.replay.provider import ReplayProvider
 from app.replay.store import CassetteStore, request_hash
 
 SCHEMA = deref("agent/normalization")
-PROFILE = LLMProfile(code="test_main", provider="gigachat", model="GigaChat-2-Max")
+PROFILE = LLMProfile(code="test_main", provider="gigachat", model="GigaChat-3-Pro")
 TEXT = "Опять списали комиссию 150 ₽ за QR, верните деньги!"
 MSGS: list[Message] = [{"role": "user", "content": TEXT}]
 VALID = MockProvider().fill(
@@ -246,12 +246,12 @@ async def test_gigachat_oauth_and_chat_urls_profile_base_url() -> None:
         scope="GIGACHAT_API_PERS",
         transport=httpx.MockTransport(handler),
     )
-    profile_default = LLMProfile(code="t", provider="gigachat", model="GigaChat-2-Max")
+    profile_default = LLMProfile(code="t", provider="gigachat", model="GigaChat-3-Pro")
     await prov.complete_structured(MSGS, SCHEMA, profile_default, timeout_s=5)
     assert oauth_checks and chat_urls[0] == f"{default_base}/chat/completions"
 
     profile_ultra = LLMProfile(
-        code="ultra", provider="gigachat", model="GigaChat-2-Max", base_url=ultra_base
+        code="ultra", provider="gigachat", model="GigaChat-3-Pro", base_url=ultra_base
     )
     await prov.complete_structured(MSGS, SCHEMA, profile_ultra, timeout_s=5)
     assert chat_urls[-1] == f"{ultra_base}/chat/completions"
@@ -261,12 +261,13 @@ async def test_gigachat_oauth_and_chat_urls_profile_base_url() -> None:
 def test_default_profile_gigachat_base_url_from_settings() -> None:
     settings = SimpleNamespace(
         llm_provider="gigachat",
-        gigachat_model="GigaChat-2-Max",
-        gigachat_base_url="https://gigachat.devices.sberbank.ru/api/v1",
+        gigachat_model="GigaChat-3-Pro",
+        gigachat_base_url="https://api.giga.chat/v1",
         openrouter_base_url="https://openrouter.ai/api/v1",
     )
     profile = default_profile(settings)
-    assert profile.base_url == settings.gigachat_base_url
+    assert profile.model == "GigaChat-3-Pro"
+    assert profile.base_url == "https://api.giga.chat/v1"
 
 
 async def test_gigachat_bad_key_is_auth_error() -> None:

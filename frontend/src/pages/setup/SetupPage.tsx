@@ -34,7 +34,7 @@ import { EnvEditor } from './EnvEditor'
 const STEP_KEYS = ['llm', 'bank', 'sim', 'channels', 'policies', 'sla', 'economics', 'templates', 'generate'] as const
 type StepKey = (typeof STEP_KEYS)[number]
 const ALL_CHANNELS = ['chat', 'call', 'email', 'telegram', 'social', 'branch', 'review_portal', 'abs']
-const GIGACHAT_DEFAULT_BASE_URL = 'https://gigachat.devices.sberbank.ru/api/v1'
+const GIGACHAT_DEFAULT_BASE_URL = 'https://api.giga.chat/v1'
 
 export function SetupPage() {
   const { t } = useTranslation()
