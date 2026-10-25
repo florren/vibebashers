@@ -1165,6 +1165,37 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
     return c, notes
 
 
+def _fewshot_for_decide(deps: Deps, classification: dict[str, Any]) -> list[dict[str, Any]] | str:
+    base = deps.fewshot[:5]
+    if not base:
+        return "нет"
+    stype = classification.get("signal_type")
+    prod = classification.get("product")
+    sys = classification.get("system")
+    filtered: list[dict[str, Any]] = []
+    for ex in base:
+        if ex.get("signal_type") != stype:
+            continue
+        if prod and ex.get("product") and ex.get("product") != prod:
+            continue
+        if sys and ex.get("system") and ex.get("system") != sys:
+            continue
+        filtered.append(ex)
+    return filtered if filtered else base
+
+
+async def _hitl_incident_id(deps: Deps, decision: dict[str, Any]) -> int | None:
+    if decision.get("incident_action") != "link_existing" or not decision.get("link_incident_id"):
+        return None
+    iid = int(decision["link_incident_id"])
+    row = await deps.ctx.fetchone("select status from incidents where id = %s", (iid,))
+    if not row:
+        return None
+    if "awaiting_human" in wt.STATUS_TRANSITIONS.get(str(row[0]), set()):
+        return iid
+    return None
+
+
 def route_team(c: dict[str, Any], state: AgentState, deps: Deps) -> tuple[str, list[str], int | None]:
     """Маршрутизация по routing_rules (первое совпадение по priority); fallback team_cx."""
     facts = {
@@ -1398,6 +1429,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
                 "routing_hint": f"{team} (+{', '.join(co_teams)})" if co_teams else team,
                 "segment": segment or "mass",
                 "first_response_min": client.get("first_response_min") or 60,
+                "fewshot": _fewshot_for_decide(deps, c),
                 "classification": c,
                 "normalization": norm,
                 "context": _context_for_prompt(state),
@@ -1709,10 +1741,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
 async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     """Создаёт запрос HITL и прерывает граф (outcome awaiting_human); чекпоинт — вход этого шага."""
     d, sig = state["decision"], state["signal"]
+    incident_id = await _hitl_incident_id(deps, d)
     res = await wt.request_human_decision(
         deps.ctx,
         sig["id"],
-        None,
+        incident_id,
         d["human_reason"] or "policy_other",
         d,
         d.get("human_options") or pol.human_options("_default"),
@@ -2040,6 +2073,17 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     ca = d["client_action"]
     if (refund_total or refund_dup) and ca["kind"] != "none":
         ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup)}
+    human_mod = (state.get("human") or {}).get("modified") or {}
+    if human == "modify" and isinstance(human_mod.get("gift"), dict) and d.get("gift"):
+        gift = d["gift"]
+        parts: list[str] = []
+        if gift.get("points"):
+            parts.append(f"{int(gift['points'])} баллов")
+        if gift.get("gift_code"):
+            parts.append(f"подарок {gift['gift_code']}")
+        if parts and ca["kind"] != "none":
+            suffix = " Также начислим " + " и ".join(parts) + " после решения проблемы."
+            ca = {**ca, "text_ru": ((ca.get("text_ru") or "").rstrip(".") + suffix)[:2000]}
     if ca["kind"] != "none" and "notify_client" not in done and d.get("router_action") != "request_clarification":
         name = mask_name((client or {}).get("name"))
         summary = re.sub(r"[;,]?\s*тональность.*$", "", c.get("summary_ru") or "").strip().rstrip(".") or (
@@ -2131,15 +2175,25 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                 deps.ctx, co, incident_id, sig["id"], f"Соисполнитель: {d.get('team_notice_ru') or d['title_ru']}"
             )
     if d.get("gift") and incident_id and "gift_task" not in done:
-        t = await wt.create_task(
-            deps.ctx,
-            "gift",
-            incident_id,
-            (client or {}).get("client_id"),
-            {"gift": d["gift"], "when": "after_resolved"},
-            requires_hitl=bool(d["gift"].get("requires_hitl")),
-        )
-        mark("gift_task", task_id=t.get("task_id"))
+        skip_gift_task = False
+        if human == "modify" and isinstance(human_mod.get("gift"), dict):
+            dup_task = await deps.ctx.fetchone(
+                "select id from tasks where run_id = %s and incident_id = %s and kind = 'gift' limit 1",
+                (deps.ctx.run_id, incident_id),
+            )
+            if dup_task:
+                mark("gift_task", task_id=int(dup_task[0]), deduplicated=True)
+                skip_gift_task = True
+        if not skip_gift_task:
+            t = await wt.create_task(
+                deps.ctx,
+                "gift",
+                incident_id,
+                (client or {}).get("client_id"),
+                {"gift": d["gift"], "when": "after_resolved"},
+                requires_hitl=bool(d["gift"].get("requires_hitl")),
+            )
+            mark("gift_task", task_id=t.get("task_id"))
     if human == "delegate" and "delegate_task" not in done:
         t = await wt.create_task(
             deps.ctx,
