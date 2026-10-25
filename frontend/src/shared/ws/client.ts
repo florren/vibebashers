@@ -38,7 +38,7 @@ export const useWs = create<WsState>((set) => ({
     }),
 }))
 
-export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo'] as const
+export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo', 'bench'] as const
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
@@ -56,6 +56,7 @@ export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   feed: [['feed'], ['signals']],
   abs: [['abs'], ['feed']],
   demo: [['demo-status']],
+  bench: [['bench']],
 }
 
 let socket: WebSocket | null = null

@@ -37,4 +37,10 @@ npx playwright test e2e/bench.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка: `feat/T-130-bench-ui` (от main `542d6f1`). PR нет.
+
+Экран `/engine`, вкладка bench, ходит в живой API `bench/*`: datasets, runs, прогон по id, sentiment, экспорт csv/json. POST раннера всё ещё mock на один прогон — UI его не переписывает.
+
+Чужие пути L4: `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/pages/engine/BenchTab.tsx`, `frontend/src/pages/engine/EnginePage.tsx`, `frontend/src/shared/ws/client.ts`, `frontend/src/shared/i18n/ru.json`, `frontend/src/shared/i18n/en.json`, `frontend/src/test/bench.test.tsx`.
+
+Лицензия echarts 5.5.1: Apache-2.0. Контракты не менялись. `docs/LICENSES.md` не создавался (файла нет, T-152).
