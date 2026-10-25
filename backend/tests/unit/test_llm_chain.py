@@ -6,6 +6,7 @@ import asyncio
 import json
 import random
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -13,7 +14,7 @@ import pytest
 
 from app.contracts.registry import deref
 from app.llm.base import LLMProfile, Message, ProviderError, Usage
-from app.llm.failover import ProviderChain
+from app.llm.failover import ProviderChain, default_profile
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.mock import MockProvider, analyze
@@ -200,6 +201,72 @@ async def test_gigachat_oauth_key_rotation_and_repair() -> None:
     await prov.complete_structured(MSGS, SCHEMA, PROFILE, timeout_s=5)
     assert len([c for c in state["calls"] if c[1].endswith("/oauth")]) == before
     await prov.aclose()
+
+
+async def test_gigachat_oauth_and_chat_urls_profile_base_url() -> None:
+    oauth_checks: list[str] = []
+    chat_urls: list[str] = []
+    default_base = "https://gigachat.devices.sberbank.ru/api/v1"
+    oauth_url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
+    ultra_base = "https://api.giga.chat/v1"
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        path = req.url.path
+        if path == "/api/v2/oauth":
+            auth = req.headers["Authorization"]
+            assert auth.startswith("Basic ") and len(auth) > 12
+            assert req.headers.get("RqUID")
+            assert req.headers.get("Content-Type") == "application/x-www-form-urlencoded"
+            assert req.content.decode() == "scope=GIGACHAT_API_PERS"
+            oauth_checks.append(auth[:12])
+            return httpx.Response(
+                200,
+                json={
+                    "access_token": "tok-test",
+                    "expires_at": int((asyncio.get_event_loop().time() + 10_000) * 1000) + 1_800_000_000_000,
+                },
+            )
+        if path.endswith("/chat/completions"):
+            chat_urls.append(str(req.url))
+            content = json.dumps({**VALID, "negativity": 50}, ensure_ascii=False)
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [{"message": {"role": "assistant", "content": content}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                },
+            )
+        return httpx.Response(404)
+
+    pool = KeyPool([ApiKey("k1", "c2VjcmV0")])
+    prov = GigaChatProvider(
+        pool,
+        oauth_url=oauth_url,
+        base_url=default_base,
+        scope="GIGACHAT_API_PERS",
+        transport=httpx.MockTransport(handler),
+    )
+    profile_default = LLMProfile(code="t", provider="gigachat", model="GigaChat-2-Max")
+    await prov.complete_structured(MSGS, SCHEMA, profile_default, timeout_s=5)
+    assert oauth_checks and chat_urls[0] == f"{default_base}/chat/completions"
+
+    profile_ultra = LLMProfile(
+        code="ultra", provider="gigachat", model="GigaChat-3-Ultra", base_url=ultra_base
+    )
+    await prov.complete_structured(MSGS, SCHEMA, profile_ultra, timeout_s=5)
+    assert chat_urls[-1] == f"{ultra_base}/chat/completions"
+    await prov.aclose()
+
+
+def test_default_profile_gigachat_base_url_from_settings() -> None:
+    settings = SimpleNamespace(
+        llm_provider="gigachat",
+        gigachat_model="GigaChat-2-Max",
+        gigachat_base_url="https://gigachat.devices.sberbank.ru/api/v1",
+        openrouter_base_url="https://openrouter.ai/api/v1",
+    )
+    profile = default_profile(settings)
+    assert profile.base_url == settings.gigachat_base_url
 
 
 async def test_gigachat_bad_key_is_auth_error() -> None:
