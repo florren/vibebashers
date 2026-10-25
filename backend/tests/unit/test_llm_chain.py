@@ -7,20 +7,31 @@ import json
 import random
 import time
 from collections.abc import AsyncIterator
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import httpx
 import pytest
+import yaml
 
+from app.config import Settings
 from app.contracts.registry import deref
 from app.llm.base import LLMProfile, Message, ProviderError, Usage
-from app.llm.failover import ProviderChain, default_profile
+from app.llm.failover import ProviderChain, build_chain, default_profile, profile_by_code
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.mock import MockProvider, analyze
-from app.llm.openai_compat import OpenAICompatProvider
+from app.llm.openai_compat import (
+    DEFAULT_MODEL_IDS,
+    PREFERRED_REPLACEMENT,
+    OpenAICompatProvider,
+    deactivation_plan,
+    openrouter_deactivation_plan,
+    parse_key_payload,
+)
 from app.llm.ratelimit import RateLimiter
+from app.llm.smoke import parse_args, resolve_profile
 from app.replay.provider import ReplayProvider
 from app.replay.store import CassetteStore, request_hash
 
@@ -251,9 +262,7 @@ async def test_gigachat_oauth_and_chat_urls_profile_base_url() -> None:
     await prov.complete_structured(MSGS, SCHEMA, profile_default, timeout_s=5)
     assert oauth_checks and chat_urls[0] == f"{default_base}/chat/completions"
 
-    profile_ultra = LLMProfile(
-        code="ultra", provider="gigachat", model="GigaChat-3-Pro", base_url=ultra_base
-    )
+    profile_ultra = LLMProfile(code="ultra", provider="gigachat", model="GigaChat-3-Pro", base_url=ultra_base)
     await prov.complete_structured(MSGS, SCHEMA, profile_ultra, timeout_s=5)
     assert chat_urls[-1] == f"{ultra_base}/chat/completions"
     await prov.aclose()
@@ -362,6 +371,364 @@ async def test_invalid_oauth_key_is_skipped_for_live_key() -> None:
     assert chats == ["Bearer tok-good"]
     assert pool.keys[1].is_active is False
     assert pool.keys[0].is_active is True
+    await prov.aclose()
+
+
+def _chain_settings(tmp_path: Path, **overrides: Any) -> SimpleNamespace:
+    base: dict[str, Any] = {
+        "llm_chain": "gigachat,openai_compat,replay,mock",
+        "gigachat_auth_key_1": "gigachat-key",
+        "gigachat_auth_key_2": None,
+        "gigachat_oauth_url": "https://oauth.test/api/v2/oauth",
+        "gigachat_base_url": "https://gc.test/api/v1",
+        "gigachat_scope": "GIGACHAT_API_PERS",
+        "gigachat_verify_ssl": False,
+        "openrouter_api_key": "test-key",
+        "openrouter_base_url": "https://openrouter.ai/api/v1",
+        "local_llm_base_url": None,
+        "openrouter_budget_usd": 10,
+        "app_port": 8000,
+        "cassettes_dir": str(tmp_path),
+        "llm_record": False,
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+async def _aclose_chain(chain: ProviderChain) -> None:
+    for prov in chain.providers:
+        close = getattr(prov, "aclose", None)
+        if close is not None:
+            await close()
+
+
+def _chat_json(extra: dict[str, Any] | None = None) -> httpx.Response:
+    content = json.dumps({**VALID, **(extra or {}), "negativity": 12}, ensure_ascii=False)
+    return httpx.Response(
+        200,
+        json={
+            "choices": [{"message": {"content": content}}],
+            "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+        },
+    )
+
+
+async def test_openrouter_headers_three_models_valid_json() -> None:
+    paths: list[str] = []
+    models: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        paths.append(req.url.path)
+        assert req.headers["X-Title"] == "CX Pulse Control"
+        assert req.headers["HTTP-Referer"] == "http://localhost:8000"
+        assert req.headers["Authorization"] == "Bearer test-key"
+        body = json.loads(req.content)
+        models.append(body["model"])
+        parsed = json.loads(json.dumps({**VALID, "negativity": 12}))
+        assert isinstance(parsed, dict)
+        return _chat_json()
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(handler),
+        budget_usd=10,
+        http_referer="http://localhost:8000",
+    )
+    asked = (*DEFAULT_MODEL_IDS, "nvidia/nemotron-3-super-120b-a12b:free")
+    for model in asked:
+        profile = LLMProfile(code="or", provider="openai_compatible", model=model)
+        obj, _usage, raw = await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+        assert obj["negativity"] == 12
+        json.loads(raw)
+    assert models == list(asked)
+    assert paths and all(path.endswith("/chat/completions") for path in paths)
+    await prov.aclose()
+
+
+async def test_openai_provider_skips_gigachat_profile_before_http() -> None:
+    calls: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        calls.append(str(req.url))
+        return httpx.Response(500)
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(handler),
+        http_referer="http://localhost:8000",
+    )
+    profile = LLMProfile(code="gigachat_ultra", provider="gigachat", model="GigaChat-3-Pro")
+    with pytest.raises(ProviderError) as err:
+        await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+    assert err.value.kind == "miss"
+    with pytest.raises(ProviderError) as stream_err:
+        async for _chunk in prov.stream(MSGS, profile, timeout_s=5):
+            pass
+    assert stream_err.value.kind == "miss"
+    assert calls == []
+    await prov.aclose()
+
+
+async def test_paid_model_over_budget_is_quota_without_chat() -> None:
+    paths: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        paths.append(req.url.path)
+        if req.url.path.endswith("/key"):
+            return httpx.Response(
+                200,
+                json={"data": {"limit": 50, "usage": 11, "limit_remaining": 39, "is_free_tier": False}},
+            )
+        return _chat_json()
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(handler),
+        budget_usd=10,
+        http_referer="http://localhost:8000",
+    )
+    profile = LLMProfile(code="paid", provider="openai_compatible", model="openai/gpt-4o")
+    with pytest.raises(ProviderError) as err:
+        await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+    assert err.value.kind == "quota"
+    assert paths == ["/api/v1/key"]
+    await prov.aclose()
+
+
+async def test_paid_model_key_error_is_quota_without_chat() -> None:
+    paths: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        paths.append(req.url.path)
+        return httpx.Response(503, json={"error": "down"})
+
+    prov = OpenAICompatProvider(
+        "test-key", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(handler), budget_usd=10
+    )
+    profile = LLMProfile(code="paid", provider="openai_compatible", model="openai/gpt-4o")
+    with pytest.raises(ProviderError) as err:
+        await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+    assert err.value.kind == "quota"
+    assert paths == ["/api/v1/key"]
+    await prov.aclose()
+
+
+async def test_gigachat_provider_misses_openrouter_profile_without_oauth() -> None:
+    calls: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        calls.append(req.url.path)
+        return httpx.Response(500)
+
+    pool = KeyPool([ApiKey("k1", "secret")])
+    prov = GigaChatProvider(
+        pool,
+        oauth_url="https://oauth.test/api/v2/oauth",
+        base_url="https://gc.test/api/v1",
+        transport=httpx.MockTransport(handler),
+    )
+    profile = LLMProfile(code="or_gpt_oss_120b", provider="openai_compatible", model="openai/gpt-oss-120b:free")
+    with pytest.raises(ProviderError) as err:
+        await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+    assert err.value.kind == "miss"
+    with pytest.raises(ProviderError) as stream_err:
+        async for _chunk in prov.stream(MSGS, profile, timeout_s=5):
+            pass
+    assert stream_err.value.kind == "miss"
+    assert calls == []
+    assert pool.keys[0].access_token is None
+    await prov.aclose()
+
+
+def test_settings_default_chain_puts_openai_between_gigachat_and_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in ("LLM_CHAIN", "OPENROUTER_BUDGET_USD", "LLM_PROVIDER"):
+        monkeypatch.delenv(key, raising=False)
+    settings = Settings(_env_file=None)
+    parts = [part.strip() for part in settings.llm_chain.split(",") if part.strip()]
+    gigachat_at = parts.index("gigachat")
+    assert parts[gigachat_at + 1] == "openai_compat"
+    assert parts[gigachat_at + 2] == "replay"
+    assert settings.openrouter_budget_usd == 10
+    assert settings.llm_provider == "mock"
+
+
+async def test_build_chain_names_with_openrouter_and_gigachat_keys(tmp_path: Path) -> None:
+    chain = build_chain(_chain_settings(tmp_path), transport=httpx.MockTransport(lambda req: httpx.Response(404)))
+    try:
+        assert chain.names == ["gigachat", "openai_compatible", "replay", "mock"]
+        compat = next(p for p in chain.providers if isinstance(p, OpenAICompatProvider))
+        assert compat.http_referer == "http://localhost:8000"
+        assert compat.budget_usd == 10
+    finally:
+        await _aclose_chain(chain)
+
+
+async def test_replay_mock_chain_skips_openai_even_with_key(tmp_path: Path) -> None:
+    chain = build_chain(
+        _chain_settings(tmp_path, llm_chain="replay,mock", openrouter_api_key="test-key"),
+        transport=httpx.MockTransport(lambda req: httpx.Response(404)),
+    )
+    try:
+        assert chain.names == ["replay", "mock"]
+        assert "openai_compatible" not in chain.names
+    finally:
+        await _aclose_chain(chain)
+
+
+async def test_local_openai_without_key_uses_local_url_and_no_authorization(tmp_path: Path) -> None:
+    seen: list[str | None] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.headers.get("Authorization"))
+        assert req.url.path.endswith("/chat/completions")
+        assert "openrouter.ai" not in str(req.url)
+        return _chat_json()
+
+    settings = _chain_settings(
+        tmp_path,
+        llm_chain="openai_compat",
+        openrouter_api_key=None,
+        local_llm_base_url="http://127.0.0.1:11434/v1",
+    )
+    profile = profile_by_code(settings, "local_openai")
+    assert profile.model == "local"
+    assert profile.base_url == "http://127.0.0.1:11434/v1"
+    assert profile.extra.get("local") is True
+    chain = build_chain(settings, transport=httpx.MockTransport(handler))
+    try:
+        assert chain.names[0] == "openai_compatible"
+        prov = chain.providers[0]
+        assert isinstance(prov, OpenAICompatProvider)
+        assert prov.api_key is None
+        obj, _usage, _raw = await prov.complete_structured(MSGS, SCHEMA, profile, timeout_s=5)
+        assert obj["negativity"] == 12
+        assert seen == [None]
+    finally:
+        await _aclose_chain(chain)
+
+
+def test_smoke_profile_flag_resolves_model_without_network() -> None:
+    args = parse_args(["--profile", "or_gpt_oss_120b"])
+    settings = SimpleNamespace(
+        llm_provider="mock",
+        openrouter_base_url="https://openrouter.ai/api/v1",
+        local_llm_base_url=None,
+    )
+    profile = resolve_profile(settings, args.profile)
+    assert profile.model == "openai/gpt-oss-120b:free"
+    assert parse_args([]).profile is None
+    assert resolve_profile(settings, None).provider == "mock"
+
+
+def test_deactivation_plan_suggests_super_or_first_free() -> None:
+    available = ["other/paid", PREFERRED_REPLACEMENT, "openai/gpt-oss-120b:free"]
+    plan = deactivation_plan(available)
+    missing = {item["model"] for item in plan}
+    assert "nvidia/nemotron-3-ultra-550b-a55b:free" in missing
+    assert "openrouter/owl-alpha" in missing
+    assert "openai/gpt-oss-120b:free" not in missing
+    assert all(item["is_active"] is False and item["suggested_model"] == PREFERRED_REPLACEMENT for item in plan)
+    fallback = deactivation_plan(["meta/llama-3:free", "vendor/paid"])
+    assert fallback and all(item["suggested_model"] == "meta/llama-3:free" for item in fallback)
+    assert deactivation_plan([]) == []
+    assert deactivation_plan(list(DEFAULT_MODEL_IDS)) == []
+
+
+async def test_models_catalog_builds_plan_on_mock_transport() -> None:
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path.endswith("/models")
+        assert req.headers["HTTP-Referer"] == "http://localhost:8000"
+        return httpx.Response(
+            200,
+            json={"data": [{"id": PREFERRED_REPLACEMENT}, {"id": "openai/gpt-oss-120b:free"}]},
+        )
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(handler),
+        http_referer="http://localhost:8000",
+    )
+    plan = await openrouter_deactivation_plan(prov)
+    assert any(
+        item["model"] == "openrouter/owl-alpha" and item["suggested_model"] == PREFERRED_REPLACEMENT for item in plan
+    )
+    await prov.aclose()
+
+    empty = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(lambda req: httpx.Response(200, json={"data": []})),
+    )
+    assert await openrouter_deactivation_plan(empty) == []
+    await empty.aclose()
+
+    failed = OpenAICompatProvider(
+        "test-key", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(lambda req: httpx.Response(503))
+    )
+    assert await openrouter_deactivation_plan(failed) == []
+    await failed.aclose()
+
+
+async def test_deactivation_plan_empty_when_base_url_is_not_openrouter() -> None:
+    """Локальный каталог без трёх id OpenRouter план деактивации не строит."""
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path.endswith("/models")
+        return httpx.Response(200, json={"data": [{"id": "local-llm"}]})
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "http://127.0.0.1:11434/v1",
+        transport=httpx.MockTransport(handler),
+    )
+    assert await openrouter_deactivation_plan(prov) == []
+    await prov.aclose()
+
+
+def test_llm_profiles_yaml_keeps_three_models_and_local_openai() -> None:
+    root = Path(__file__).resolve().parents[3]
+    data = yaml.safe_load((root / "data/llm_profiles.yaml").read_text(encoding="utf-8"))
+    by_code = {row["code"]: row for row in data["llm_profiles"]}
+    assert by_code["or_nemotron_ultra"]["model"] == "nvidia/nemotron-3-ultra-550b-a55b:free"
+    assert by_code["or_owl_alpha"]["model"] == "openrouter/owl-alpha"
+    assert by_code["or_gpt_oss_120b"]["model"] == "openai/gpt-oss-120b:free"
+    local = by_code["local_openai"]
+    assert local["provider"] == "openai_compatible"
+    assert local["model"] == "local"
+    assert local["base_url"] == ""
+    assert local["role"] == "bench_only"
+    assert local["is_active"] is True
+    assert local["extra"]["local"] is True
+
+
+def test_parse_key_payload_balance_and_rpd() -> None:
+    paid = parse_key_payload({"data": {"limit": 20, "usage": 3, "limit_remaining": 17, "is_free_tier": False}})
+    free = parse_key_payload({"data": {"limit": 0, "usage": 0, "limit_remaining": 0, "is_free_tier": True}})
+    assert paid["balance_usd"] == 17 and paid["rpd_limit"] == 1000
+    assert paid["limit"] == 20 and paid["usage"] == 3 and paid["limit_remaining"] == 17
+    assert free["balance_usd"] == 0 and free["rpd_limit"] == 50 and free["is_free_tier"] is True
+
+
+async def test_fetch_key_reads_balance_over_mock_transport() -> None:
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path.endswith("/key")
+        assert req.headers["Authorization"] == "Bearer test-key"
+        return httpx.Response(
+            200, json={"data": {"limit": 20, "usage": 3, "limit_remaining": 17, "is_free_tier": False}}
+        )
+
+    prov = OpenAICompatProvider(
+        "test-key",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(handler),
+        http_referer="http://localhost:8000",
+    )
+    info = await prov.fetch_key()
+    assert info["balance_usd"] == 17 and info["rpd_limit"] == 1000
     await prov.aclose()
 
 

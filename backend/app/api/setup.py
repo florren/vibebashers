@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import datetime as dt
 import json
 import os
@@ -16,6 +15,7 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Request, Response
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from app.api.common import db, fetch_one
@@ -31,6 +31,7 @@ from app.api.settings import (
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Message
+from app.llm.openai_compat import OpenAICompatProvider, suggest_replacement
 from app.logging import get_logger
 
 router = APIRouter(tags=["setup"])
@@ -195,6 +196,16 @@ PING_SCHEMA: dict[str, Any] = {
 }
 
 
+async def _deactivate_openrouter_model(model: str, suggested: str | None) -> None:
+    """Профиль с этим model: is_active=false и extra.suggested_model. Повторно не включаем."""
+    async with db() as conn:
+        await conn.execute(
+            "update llm_profiles set is_active = false, extra = coalesce(extra, '{}'::jsonb) || %s "
+            "where provider = 'openai_compatible' and model = %s",
+            (Jsonb({"suggested_model": suggested}), model),
+        )
+
+
 @router.post("/api/setup/test-llm", summary="Проверить подключение к LLM-профилю (кнопка «Проверить подключение»)")
 async def post_setup_test_llm(body: TestLlmBody) -> Any:
     s = get_settings()
@@ -220,6 +231,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
     ]
     t0 = time.perf_counter()
     quota: dict[str, Any] = {}
+    prov: Any = None
     try:
         if body.provider == "mock":
             from app.llm.mock import MockProvider
@@ -243,7 +255,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             from app.llm.gigachat import GigaChatProvider
             from app.llm.keys import ApiKey, KeyPool
 
-            prov: Any = GigaChatProvider(
+            prov = GigaChatProvider(
                 KeyPool([ApiKey(label="setup_test", secret=key, provider="gigachat")]),
                 oauth_url=s.gigachat_oauth_url,
                 base_url=body.base_url or s.gigachat_base_url,
@@ -251,22 +263,40 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 verify_ssl=s.gigachat_verify_ssl,
             )
         else:
-            from app.llm.openai_compat import OpenAICompatProvider
-
-            base = body.base_url or s.openrouter_base_url
-            prov = OpenAICompatProvider(key, base)
+            base = (body.base_url or s.openrouter_base_url).rstrip("/")
+            prov = OpenAICompatProvider(
+                key,
+                base,
+                budget_usd=s.openrouter_budget_usd,
+                http_referer=f"http://localhost:{s.app_port}",
+            )
             if "openrouter.ai" in base:
-                with contextlib.suppress(Exception):
-                    async with httpx.AsyncClient(timeout=8) as cl:
-                        r = await cl.get(f"{base.rstrip('/')}/key", headers={"Authorization": f"Bearer {key}"})
-                        if r.status_code == 200:
-                            d = r.json().get("data", {})
-                            quota = {
-                                "limit_usd": d.get("limit"),
-                                "usage_usd": d.get("usage"),
-                                "limit_remaining_usd": d.get("limit_remaining"),
-                                "is_free_tier": d.get("is_free_tier"),
-                            }
+                try:
+                    info = await prov.fetch_key()
+                except Exception as exc:
+                    log.warning("setup_openrouter_key_failed", error=str(exc)[:200])
+                    info = None
+                if info is not None:
+                    quota = {
+                        "limit": info.get("limit"),
+                        "usage": info.get("usage"),
+                        "limit_remaining": info.get("limit_remaining"),
+                        "is_free_tier": info.get("is_free_tier"),
+                    }
+                try:
+                    available: list[str] | None = await prov.list_models()
+                except Exception as exc:
+                    log.warning("setup_openrouter_models_failed", error=str(exc)[:200])
+                    available = None
+                if available is not None and body.model not in available:
+                    suggested = suggest_replacement(available)
+                    await _deactivate_openrouter_model(body.model, suggested)
+                    return {
+                        "ok": False,
+                        "latency_ms": int((time.perf_counter() - t0) * 1000),
+                        "error": (f"Модель {body.model} недоступна на OpenRouter. Предлагаемая замена: {suggested}."),
+                        "quota": {**quota, "model": body.model, "suggested_model": suggested},
+                    }
         obj, usage, raw = await asyncio.wait_for(
             prov.complete_structured(msgs, PING_SCHEMA, profile, timeout_s=25), timeout=30
         )
@@ -286,6 +316,9 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             "error": str(exc)[:500],
             "quota": quota,
         }
+    finally:
+        if isinstance(prov, OpenAICompatProvider):
+            await prov.aclose()
 
 
 class TgBody(BaseModel):

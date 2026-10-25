@@ -12,6 +12,7 @@ from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
 from app.llm.mock import MockProvider
+from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
 from app.llm.ratelimit import limiter as default_limiter
 from app.logging import get_logger
@@ -147,10 +148,9 @@ class ProviderChain:
 
 
 def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
-    """Собирает цепочку из Settings (.env): LLM_CHAIN='gigachat,replay,mock'; провайдеры без ключей пропускаются."""
+    """Собирает цепочку из Settings (.env): LLM_CHAIN='gigachat,openai_compat,replay,mock'; провайдеры без ключей пропускаются."""
     from app.llm.gigachat import GigaChatProvider
     from app.llm.keys import KeyPool
-    from app.llm.openai_compat import OpenAICompatProvider
     from app.replay.provider import ReplayProvider
 
     store = CassetteStore(settings.cassettes_dir)
@@ -180,6 +180,8 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
                     settings.openrouter_api_key,
                     settings.local_llm_base_url or settings.openrouter_base_url,
                     transport=transport,
+                    budget_usd=float(settings.openrouter_budget_usd),
+                    http_referer=f"http://localhost:{settings.app_port}",
                 )
             )
         elif name == "replay":
@@ -224,3 +226,28 @@ def default_profile(settings: Any) -> LLMProfile:
             rpd_limit=1000,
         )
     return LLMProfile(code="mock", provider="mock", model="mock-rules-v1")
+
+
+def profile_by_code(settings: Any, code: str) -> LLMProfile:
+    """Три кода OpenRouter из yaml и local_openai: base_url из LOCAL_LLM_BASE_URL, ключ не обязателен."""
+    if code == "local_openai":
+        return LLMProfile(
+            code="local_openai",
+            provider="openai_compatible",
+            model="local",
+            role="bench_only",
+            base_url=settings.local_llm_base_url or None,
+            extra={"local": True},
+        )
+    model = OPENROUTER_PROFILE_MODELS.get(code)
+    if model is None:
+        raise ProviderError("miss", f"неизвестный профиль {code}")
+    return LLMProfile(
+        code=code,
+        provider="openai_compatible",
+        model=model,
+        role="bench_only",
+        base_url=settings.openrouter_base_url,
+        rpm_limit=18,
+        rpd_limit=1000,
+    )

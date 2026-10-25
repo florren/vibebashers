@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from psycopg.types.json import Jsonb
 
 from app import __version__
 from app import api as api_pkg
@@ -22,7 +23,8 @@ from app.agent.runner import AgentService
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
-from app.llm.failover import build_chain, default_profile
+from app.llm.failover import ProviderChain, build_chain, default_profile
+from app.llm.openai_compat import OpenAICompatProvider, openrouter_deactivation_plan
 from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
@@ -31,6 +33,33 @@ from app.sim.engine import Simulator
 from app.stt import audio_ws
 
 log = get_logger(__name__)
+
+
+async def _sync_openrouter_models(chain: ProviderChain) -> None:
+    """Нет id в каталоге OpenRouter — профиль is_active=false. Чужой base_url, ошибка GET и пустой список не гасят."""
+    prov = next((p for p in chain.providers if isinstance(p, OpenAICompatProvider)), None)
+    if prov is None or "openrouter.ai" not in prov.base_url:
+        return
+    plan = await openrouter_deactivation_plan(prov)
+    if not plan:
+        return
+    try:
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+            for item in plan:
+                log.warning(
+                    "openrouter_model_missing",
+                    model=item["model"],
+                    suggested_model=item["suggested_model"],
+                )
+                await conn.execute(
+                    "update llm_profiles set is_active = false, "
+                    "extra = coalesce(extra, '{}'::jsonb) || %s "
+                    "where provider = 'openai_compatible' and model = %s",
+                    (Jsonb({"suggested_model": item["suggested_model"]}), item["model"]),
+                )
+            await conn.commit()
+    except Exception as exc:
+        log.warning("openrouter_profile_sync_failed", error=str(exc)[:200])
 
 
 async def _abs_backfill() -> None:
@@ -48,6 +77,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
     app.state.llm_chain = build_chain(s)
     app.state.llm_profile = default_profile(s)
+    if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
+        await _sync_openrouter_models(app.state.llm_chain)
     log.info(
         "startup",
         env=s.app_env,
