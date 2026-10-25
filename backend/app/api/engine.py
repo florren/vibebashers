@@ -100,16 +100,94 @@ async def get_engine_entity_graph(request: Request) -> Any:
     raise NotImplementedYet("T-106")
 
 
+# T-108: только чтение. Имена не подставляются в SQL вне этого множества.
+DB_ALLOW = frozenset(
+    {
+        "signals",
+        "incidents",
+        "incident_status_history",
+        "notifications",
+        "tasks",
+        "agent_runs",
+        "agent_steps",
+        "client_states",
+        "churn_events",
+        "incident_economics",
+        "faults",
+    }
+)
+_CONTACT_KEYS = frozenset({"phone", "email", "contacts", "contact", "contacts_hint"})
+
+
+def _mask_row(row: dict[str, Any]) -> dict[str, Any]:
+    out = dict(row)
+    for key in list(out):
+        if key in _CONTACT_KEYS or key.endswith("_phone") or key.endswith("_email"):
+            out[key] = None
+    return out
+
+
 @router.get("/api/engine/db/tables", summary="Счётчики строк по таблицам (реальное время)")
 async def get_engine_db_tables(request: Request) -> Any:
-    raise NotImplementedYet("T-106")
+    async with db() as conn:
+        last = await fetch_all(
+            conn,
+            "select table_name, max(ts) as last_change_at from db_activity_log where table_name = any(%s) group by table_name",
+            (list(DB_ALLOW),),
+        )
+        exact: dict[str, int] = {}
+        for name in sorted(DB_ALLOW):
+            row = await fetch_one(conn, f"select count(*)::bigint as rows from {name}")  # noqa: S608 — имя из DB_ALLOW
+            exact[name] = int(row["rows"]) if row else 0
+    last_map = {r["table_name"]: r["last_change_at"] for r in last}
+    return [
+        {
+            "table": name,
+            "rows": exact[name],
+            "last_change_at": last_map[name].isoformat() if name in last_map and last_map[name] else None,
+        }
+        for name in sorted(DB_ALLOW)
+    ]
 
 
 @router.get("/api/engine/db/tables/{name}/rows", summary="Последние записи таблицы (только чтение, allow-list таблиц)")
-async def get_engine_db_tables_name_rows(request: Request) -> Any:
-    raise NotImplementedYet("T-106")
+async def get_engine_db_tables_name_rows(request: Request, name: str, limit: int = Query(default=50, ge=1, le=500)) -> Any:
+    if name not in DB_ALLOW:
+        raise HTTPException(status_code=403, detail="таблица вне allow-list")
+    async with db() as conn:
+        rows = await fetch_all(conn, f"select * from {name} order by id desc limit %s", (limit,))  # noqa: S608
+    return [_mask_row(r) for r in rows]
 
 
 @router.get("/api/engine/db/activity", summary="Лента INSERT/UPDATE/DELETE из db_activity_log")
-async def get_engine_db_activity(request: Request) -> Any:
-    raise NotImplementedYet("T-106")
+async def get_engine_db_activity(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=500),
+    cursor: str | None = None,
+) -> Any:
+    where = "true"
+    args: list[Any] = []
+    if cursor:
+        where = "id < %s"
+        try:
+            args.append(int(cursor))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="cursor: id") from exc
+    args.append(limit)
+    async with db() as conn:
+        rows = await fetch_all(
+            conn,
+            f"select id, table_name, op, pk, summary, ts from db_activity_log where {where} order by id desc limit %s",
+            args,
+        )
+    return [
+        {
+            "id": r["id"],
+            "table_name": r["table_name"],
+            "op": r["op"],
+            "pk": r["pk"],
+            "summary": r["summary"],
+            "ts": r["ts"].isoformat() if r["ts"] else None,
+        }
+        for r in rows
+    ]
