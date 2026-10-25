@@ -10,7 +10,7 @@ from typing import Any
 import psycopg
 
 from app.agent.tools.base import ToolContext
-from app.agent.tools.write import render_template, update_incident
+from app.agent.tools.write import STATUS_TRANSITIONS, render_template, update_incident
 from app.logging import get_logger
 from app.sim.clock import MSK, add_working_days, add_working_hours, is_working_day
 from app.sim.events import EventBus, dumps
@@ -25,6 +25,7 @@ ACTIVE_STATUSES = (
     "fix_proposed",
     "fix_deployed",
     "verifying",
+    "escalated",
 )
 ARTIFACT_FOR_ACTION = {
     "rca": "rca",
@@ -354,6 +355,21 @@ class TeamEmulator:
             "origin_system": origin_system,
         }
 
+    async def _update_status(
+        self,
+        ctx: ToolContext,
+        incident_id: int,
+        current: str,
+        target: str,
+        reason: str,
+    ) -> None:
+        cur = current
+        if cur == "escalated" and target not in STATUS_TRANSITIONS.get("escalated", set()):
+            await update_incident(ctx, incident_id, "in_progress", "возврат в работу после эскалации SLA")
+            cur = "in_progress"
+        if target != cur:
+            await update_incident(ctx, incident_id, target, reason)
+
     async def _execute_step(
         self,
         ctx: ToolContext,
@@ -371,20 +387,22 @@ class TeamEmulator:
         artifact_kind: str | None = None
 
         if step.action == "take":
-            await update_incident(ctx, incident_id, "in_progress", "команда взяла в работу")
+            await self._update_status(ctx, incident_id, status, "in_progress", "команда взяла в работу")
         elif step.action == "clarify":
             payload["question"] = CLARIFY_QUESTION
-            await update_incident(ctx, incident_id, "awaiting_client", "уточнение от команды")
+            await self._update_status(ctx, incident_id, status, "awaiting_client", "уточнение от команды")
             plan.paused_after_clarify = True
         elif step.action == "fix_decision":
-            await update_incident(ctx, incident_id, "fix_proposed", "решение о фиксе")
+            await self._update_status(ctx, incident_id, status, "fix_proposed", "решение о фиксе")
         elif step.action == "release":
-            await update_incident(ctx, incident_id, "fix_deployed", "релиз фикса")
+            await self._update_status(ctx, incident_id, status, "fix_deployed", "релиз фикса")
         elif step.action == "verify":
-            await update_incident(ctx, incident_id, "verifying", "проверка услуги")
+            await self._update_status(ctx, incident_id, status, "verifying", "проверка услуги")
         elif step.action == "close":
-            await update_incident(ctx, incident_id, "resolved", "инцидент устранён")
-            await update_incident(ctx, incident_id, "closed", "закрытие командой")
+            await self._update_status(ctx, incident_id, status, "resolved", "инцидент устранён")
+            status_row = await ctx.fetchone("select status from incidents where id = %s", (incident_id,))
+            st = str(status_row[0]) if status_row else status
+            await self._update_status(ctx, incident_id, st, "closed", "закрытие командой")
 
         artifact_kind = ARTIFACT_FOR_ACTION.get(step.action)
         if artifact_kind and not step.skipped:

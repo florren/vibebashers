@@ -149,6 +149,7 @@ class Simulator:
                     self.clock.day_no += 1
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes)
                 await world.team_emulator.tick(self.clock.sim_time, world)
+                await world.sla_engine.tick(t0, self.clock.sim_time)
                 self.stats["ticks"] += 1
                 await self.persist()
                 await conn.commit()

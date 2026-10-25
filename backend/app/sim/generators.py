@@ -17,6 +17,7 @@ from app.feed import service as feed_svc
 from app.logging import get_logger
 from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
+from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
 from app.sim.textgen import TextGen
 
@@ -158,6 +159,7 @@ class World:
         self.textgen = TextGen(rng.randrange(1 << 30))
         self.scale = 1.0
         self.team_emulator = TeamEmulator(rng, conn, bus, run_id)
+        self.sla_engine = SlaEngine(conn, bus, run_id)
 
     async def load(self) -> None:
         cur = await self.conn.execute(
@@ -211,6 +213,7 @@ class World:
             for r in await af.fetchall()
         ]  # после рестарта: добиваем 90 мин
         await self.team_emulator.load()
+        await self.sla_engine.load()
         log.info(
             "world_loaded", clients=len(self.clients), active_faults=len(self.active_faults), scale=round(self.scale, 3)
         )
