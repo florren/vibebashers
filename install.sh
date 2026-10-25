@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # CX Pulse Control — установка одной командой (ТЗ 16.2, T-003).
-# ./install.sh [--profile lite|demo|stress] [--offline] [--reset] [--seed N] [--no-mailpit] [--with-tgbot] [--help]
+# ./install.sh [--profile lite|demo|stress] [--offline] [--record-cassettes] [--reset] [--seed N] [--no-mailpit] [--with-tgbot] [--help]
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PROFILE=lite; OFFLINE=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
+PROFILE=lite; OFFLINE=0; RECORD_CASSETTES=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile) PROFILE="$2"; shift 2 ;;
     --offline) OFFLINE=1; shift ;;
+    --record-cassettes) RECORD_CASSETTES=1; shift ;;
     --reset) RESET=1; shift ;;
     --seed) SEED="$2"; shift 2 ;;
     --no-mailpit) MAILPIT=0; shift ;;
@@ -42,6 +43,10 @@ sed -i.bak "s|^PROFILE=.*|PROFILE=$PROFILE|" .env && rm -f .env.bak
 if [ "$OFFLINE" = 1 ]; then
   sed -i.bak "s|^LLM_PROVIDER=.*|LLM_PROVIDER=mock|; s|^LLM_CHAIN=.*|LLM_CHAIN=replay,mock|; s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=|" .env && rm -f .env.bak
   say "режим --offline: LLM replay → mock, бот выключен"
+fi
+if [ "$RECORD_CASSETTES" = 1 ]; then
+  sed -i.bak "s|^LLM_RECORD=.*|LLM_RECORD=1|" .env && rm -f .env.bak
+  say "режим --record-cassettes: LLM_RECORD=1, ответы live-модели пишутся в data/cassettes"
 fi
 
 PROFILES=()
