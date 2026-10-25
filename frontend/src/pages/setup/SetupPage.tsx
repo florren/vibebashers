@@ -34,6 +34,7 @@ import { EnvEditor } from './EnvEditor'
 const STEP_KEYS = ['llm', 'bank', 'sim', 'channels', 'policies', 'sla', 'economics', 'templates', 'generate'] as const
 type StepKey = (typeof STEP_KEYS)[number]
 const ALL_CHANNELS = ['chat', 'call', 'email', 'telegram', 'social', 'branch', 'review_portal', 'abs']
+const GIGACHAT_DEFAULT_BASE_URL = 'https://gigachat.devices.sberbank.ru/api/v1'
 
 export function SetupPage() {
   const { t } = useTranslation()
@@ -133,10 +134,21 @@ function StepLlm({ p }: { p: SetupPayload }) {
   const [llm, setLlm] = useState(p.llm ?? {})
   const [newProf, setNewProf] = useState<LlmProfileT>({ code: '', provider: 'openai_compatible', model: '', role: 'bench_only', base_url: null })
   const [testId, setTestId] = useState<number | null>(null)
+  const [urlById, setUrlById] = useState<Record<number, string>>({})
   const byRole = (role: string) => (profiles.data ?? []).find((x) => x.role === role && x.is_active)
   useEffect(() => {
     if (profiles.data && !llm.main_profile_id) setLlm({ main_profile_id: byRole('main')?.id, fast_profile_id: byRole('fast')?.id, twin_profile_id: byRole('twin')?.id })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles.data])
+  useEffect(() => {
+    if (!profiles.data) return
+    setUrlById((prev) => {
+      const next = { ...prev }
+      for (const x of profiles.data) {
+        if (x.id != null) next[x.id] = x.base_url ?? ''
+      }
+      return next
+    })
   }, [profiles.data])
   const sel = (k: 'main_profile_id' | 'fast_profile_id' | 'twin_profile_id') => (
     <select className="input h-8 text-sm" value={llm[k] ?? ''} onChange={(e) => setLlm({ ...llm, [k]: Number(e.target.value) || undefined })}>
@@ -165,6 +177,7 @@ function StepLlm({ p }: { p: SetupPayload }) {
               <th className="px-3 py-1">{t('setup.llm.provider')}</th>
               <th className="px-3 py-1">{t('setup.llm.model')}</th>
               <th className="px-3 py-1">{t('setup.llm.role')}</th>
+              <th className="px-3 py-1">{t('setup.llm.baseUrl')}</th>
               <th className="px-3 py-1" />
             </tr>
           </thead>
@@ -175,8 +188,32 @@ function StepLlm({ p }: { p: SetupPayload }) {
                 <td className="px-3 py-1">{x.provider}</td>
                 <td className="px-3 py-1">{x.model}</td>
                 <td className="px-3 py-1">{x.role}</td>
+                <td className="px-3 py-1">
+                  <div className="flex min-w-[12rem] flex-col gap-1">
+                    <input
+                      className="input h-7 w-full text-xs"
+                      value={x.id != null ? (urlById[x.id] ?? '') : ''}
+                      onChange={(e) => x.id != null && setUrlById({ ...urlById, [x.id]: e.target.value })}
+                    />
+                    <button
+                      className="btn btn-sm self-start"
+                      disabled={profOps.save.isPending || x.id == null}
+                      onClick={() => profOps.save.mutate({ ...x, id: x.id ?? 0, base_url: (urlById[x.id!] ?? '').trim() || null })}
+                    >
+                      {t('setup.llm.saveUrl')}
+                    </button>
+                  </div>
+                </td>
                 <td className="flex justify-end gap-1 px-3 py-1">
-                  <button className="btn btn-sm" disabled={test.isPending} onClick={() => { setTestId(x.id ?? null); test.mutate({ provider: x.provider, model: x.model, base_url: x.base_url ?? undefined }) }}>
+                  <button
+                    className="btn btn-sm"
+                    disabled={test.isPending}
+                    onClick={() => {
+                      setTestId(x.id ?? null)
+                      const base_url = (x.id != null ? urlById[x.id] : x.base_url) ?? x.base_url
+                      test.mutate({ provider: x.provider, model: x.model, base_url: base_url?.trim() || undefined })
+                    }}
+                  >
                     {t('setup.llm.test')}
                   </button>
                   <button className="btn btn-sm" onClick={() => profOps.save.mutate({ ...x, id: x.id ?? 0, is_active: !x.is_active })}>
@@ -200,14 +237,27 @@ function StepLlm({ p }: { p: SetupPayload }) {
         <div className="flex flex-wrap items-end gap-2 border-t border-line p-3">
           <Field label="code"><input className="input h-8 w-32 text-xs" value={newProf.code} onChange={(e) => setNewProf({ ...newProf, code: e.target.value })} /></Field>
           <Field label={t('setup.llm.provider')}>
-            <select className="input h-8 text-xs" value={newProf.provider} onChange={(e) => setNewProf({ ...newProf, provider: e.target.value as LlmProfileT['provider'] })}>
+            <select
+              className="input h-8 text-xs"
+              value={newProf.provider}
+              onChange={(e) => {
+                const provider = e.target.value as LlmProfileT['provider']
+                setNewProf((p) => ({
+                  ...p,
+                  provider,
+                  base_url: provider === 'gigachat' && !(p.base_url?.trim()) ? GIGACHAT_DEFAULT_BASE_URL : p.base_url,
+                }))
+              }}
+            >
               <option value="openai_compatible">openai_compatible</option>
               <option value="gigachat">gigachat</option>
               <option value="mock">mock</option>
             </select>
           </Field>
           <Field label={t('setup.llm.model')}><input className="input h-8 w-56 text-xs" value={newProf.model} onChange={(e) => setNewProf({ ...newProf, model: e.target.value })} /></Field>
-          <Field label="base_url"><input className="input h-8 w-56 text-xs" value={newProf.base_url ?? ''} onChange={(e) => setNewProf({ ...newProf, base_url: e.target.value || null })} /></Field>
+          <Field label={t('setup.llm.baseUrl')} hint={t('setup.llm.baseUrlHint')}>
+            <input className="input h-8 w-56 text-xs" value={newProf.base_url ?? ''} onChange={(e) => setNewProf({ ...newProf, base_url: e.target.value || null })} />
+          </Field>
           <Field label={t('setup.llm.role')}>
             <select className="input h-8 text-xs" value={newProf.role} onChange={(e) => setNewProf({ ...newProf, role: e.target.value as LlmProfileT['role'] })}>
               {['main', 'fast', 'twin', 'bench_only'].map((r) => <option key={r} value={r}>{r}</option>)}
