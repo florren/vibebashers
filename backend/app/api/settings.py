@@ -338,13 +338,70 @@ async def _refresh_openai_balances(items: list[dict[str, Any]]) -> bool:
     return changed
 
 
+def public_openrouter_env_key(
+    items: list[dict[str, Any]],
+    info: dict[str, Any] | None,
+    *,
+    key_hint: str,
+    last_error: str | None,
+) -> list[dict[str, Any]]:
+    """Карточка OPENROUTER_API_KEY без секрета. Тот же key_hint у openai_compatible — без второго элемента."""
+    if any(item.get("provider") == "openai_compatible" and item.get("key_hint") == key_hint for item in items):
+        return list(items)
+    used = {int(item["id"]) for item in items if item.get("id") is not None}
+    # Отрицательный id не записывается в settings.llm_keys, поэтому DELETE остаётся 404.
+    synthetic = -1
+    while synthetic in used:
+        synthetic -= 1
+    public: dict[str, Any] = {
+        "id": synthetic,
+        "provider": "openai_compatible",
+        "label": "openrouter_env",
+        "tokens_used": 0,
+        "tokens_limit": None,
+        "requests_today": 0,
+        "rpd_limit": None if info is None else info.get("rpd_limit"),
+        "balance_usd": None if info is None else info.get("balance_usd"),
+        "is_active": True,
+        "last_error": last_error,
+    }
+    return [*items, public]
+
+
+async def _with_openrouter_env_key(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Дописывает ключ из .env в ответ. GET /key — тот же затвор, что у обновления сохранённых балансов."""
+    s = get_settings()
+    secret = s.openrouter_api_key
+    if not secret:
+        return items
+    hint = sec.hint(secret)
+    info: dict[str, Any] | None = None
+    last_error: str | None = None
+    already = any(item.get("provider") == "openai_compatible" and item.get("key_hint") == hint for item in items)
+    if not already and not s.is_test and _chain_has_openai(s.llm_chain):
+        prov = OpenAICompatProvider(
+            secret,
+            s.openrouter_base_url,
+            budget_usd=s.openrouter_budget_usd,
+            http_referer=f"http://localhost:{s.app_port}",
+        )
+        try:
+            info = await prov.fetch_key()
+        except Exception as exc:
+            last_error = str(exc)[:300]
+        finally:
+            await prov.aclose()
+    return public_openrouter_env_key(items, info, key_hint=hint, last_error=last_error)
+
+
 @router.get("/api/settings/llm-keys", summary="API-ключи (значения не возвращаются, только хвост)")
 async def get_llm_keys() -> Any:
     async with db() as conn:
         items = await load_keys(conn)
         if await _refresh_openai_balances(items):
             await set_setting(conn, "llm_keys", items)
-        return _mask_keys(items)
+        masked = _mask_keys(items)
+    return await _with_openrouter_env_key(masked)
 
 
 @router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (шифруется APP_SECRET)")
