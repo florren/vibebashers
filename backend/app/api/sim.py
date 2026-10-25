@@ -119,7 +119,9 @@ async def get_sim_runs(request: Request, limit: int = Query(default=50, ge=1, le
     "/api/sim/runs", summary="Создать и стартовать новый запуск (свободный или сценарный) с выбранным режимом сброса"
 )
 async def post_sim_runs(request: Request, body: dict[str, Any]) -> Any:
-    if body.get("kind", "free") != "free" or body.get("reset_mode", "counters") == "baseline":
+    if body.get("reset_mode", "counters") == "baseline":
+        raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
+    if body.get("kind", "free") != "free":
         raise NotImplementedYet("T-040")
     return await _sim(request).control("start", label=body.get("label") or "Запуск")
 
@@ -197,19 +199,33 @@ async def get_sim_runs_id_export(request: Request) -> Any:
     raise NotImplementedYet("T-031")
 
 
+def _baseline_info() -> dict[str, Any]:
+    return {
+        "available": False,
+        "path": None,
+        "profile": None,
+        "seed": None,
+        "size_bytes": None,
+        "sha256": None,
+        "created_at": None,
+        "baseline_run_id": None,
+    }
+
+
 @router.get(
     "/api/sim/baseline", summary="Состояние снимка базового состояния (путь, профиль, размер, контрольная сумма, дата)"
 )
 async def get_sim_baseline(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+    return _baseline_info()
 
 
 @router.post(
     "/api/sim/baseline",
     summary="Пересоздать снимок baseline из текущего базового состояния (только когда нет активного запуска)",
+    status_code=409,
 )
 async def post_sim_baseline(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+    raise HTTPException(status_code=409, detail="снимок baseline ещё не создан: pg_dump не подключён")
 
 
 @router.post(
@@ -217,4 +233,4 @@ async def post_sim_baseline(request: Request) -> Any:
     summary="Откат к снимку baseline без старта нового запуска (режим обслуживания, ≤ 60 с для demo)",
 )
 async def post_sim_baseline_restore(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+    raise HTTPException(status_code=409, detail="снимок baseline ещё не создан: pg_dump не подключён")
