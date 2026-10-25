@@ -15,6 +15,7 @@ from typing import Any
 
 import orjson
 
+from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
 from app.agent.matching import log_ru
@@ -961,33 +962,49 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
 
 
 async def gift(state: AgentState, deps: Deps) -> AgentState:
-    """Подарок после быстрого пути (баллы при churn_intent)."""
-    inst = state.get("instant") or {}
-    gift_spec = inst.get("gift")
+    """Подарок после быстрого пути: choose → задача → автовыдача mass после resolved."""
     client = state.get("client") or {}
+    c = state.get("classification") or {}
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
     created = None
-    if gift_spec and incident_id and client.get("client_id"):
-        payload = {
-            "gift_code": gift_spec.get("catalog_code") or "bonus_points",
-            "points": int(gift_spec.get("points") or 300),
-            "privilege_code": None,
-        }
-        t = await wt.create_task(
-            deps.ctx,
-            "gift",
-            incident_id,
-            client["client_id"],
-            {"gift": payload, "when": "after_resolved"},
-            requires_hitl=False,
+    auto_issued = 0
+    gift_spec = None
+    if incident_id and client.get("client_id"):
+        segment = client.get("segment")
+        flags = c.get("flags") or []
+        crit = slam.effective_criticality(
+            c.get("criticality", "medium"),
+            flags,
+            segment,
+            c.get("signal_type", "tech_fault"),
+            1,
         )
-        created = t.get("task_id")
+        gift_spec = giftmod.choose(segment, crit, flags, client.get("psychotype"))
+        if gift_spec:
+            gift_body = {k: gift_spec[k] for k in ("gift_code", "points", "privilege_code") if k in gift_spec}
+            t = await wt.create_task(
+                deps.ctx,
+                "gift",
+                incident_id,
+                client["client_id"],
+                {"gift": gift_body, "when": gift_spec.get("when") or "after_resolved"},
+                requires_hitl=bool(gift_spec.get("requires_hitl")),
+            )
+            created = t.get("task_id")
+            verified = False
+            bal = await abs_tools.get_account_balance(deps.ctx, int(client["client_id"]))
+            refunded = any(a.get("action") == "refund" and not a.get("duplicate") for a in state.get("actions") or [])
+            verified = refunded and bal.get("balance") is not None
+            inc_row = await deps.ctx.fetchone("select status from incidents where id = %s", (incident_id,))
+            inc_status = str(inc_row[0]) if inc_row else ""
+            if verified and inc_status in ("resolved", "closed"):
+                auto_issued = await giftmod.issue_automatic(deps.ctx, incident_id)
     state["current_node"] = "close"
     await deps.record_step(
         "gift",
         "ok",
         {"gift": gift_spec},
-        {"task_id": created},
+        {"task_id": created, "auto_issued": auto_issued},
         reasoning="Подарок начислен." if created else "Подарок не требуется.",
     )
     return state
@@ -1486,7 +1503,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         incident_action, link_id = "create", None
     # HITL / эскалация / уточнение
     gift = (
-        slam.pick_gift(crit, segment, flags) if incident_action != "none" and stype not in NO_INCIDENT_TYPES else None
+        giftmod.choose(segment, crit, flags, (client or {}).get("psychotype"))
+        if incident_action != "none" and stype not in NO_INCIDENT_TYPES
+        else None
     )
     pctx.gift_code = (gift or {}).get("privilege_code")
     pctx.rule_based_type = "tariff_terms" if fee_rule else None
@@ -1666,11 +1685,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             d.get("team_notice_ru")
             or f"Инцидент: {c.get('summary_ru')}. Код ошибки: {c.get('error_code') or '—'}, система: {c.get('system') or '—'}. Проверьте журналы и подтвердите масштаб."
         )[:1500],
-        "gift": (
-            {**gift, "when": "after_resolved", "requires_hitl": gift.get("privilege_code") in pol.PARTNER_PRIVILEGES}
-            if gift
-            else None
-        ),
+        "gift": gift,
         "followup": (
             {"wake_in_sim_hours": 24.0 if clarify_kind == "fraud_data" else 4.0, "reason": "awaiting_client"}
             if clarify
