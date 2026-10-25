@@ -1,11 +1,13 @@
-"""Роутер тега `compliance` (OpenAPI 1.4.0). Реализовано в B07: сессии из транскриптов, триггеры, алерты, таксономия, отчёты, статистика.
+"""Роутер тега `compliance` (OpenAPI 1.4.0). Сессии из транскриптов, микрофона и файла, триггеры, алерты, таксономия, отчёты, статистика.
 
-Не реализовано: источник `mic`/`file` (аудио и STT — пакет B10): POST /sessions с source≠transcript отвечает 501.
+Источник `file` (T-183): сервер читает WAV чанками в реальном темпе. Неизвестный source — 422.
 """
 
 from __future__ import annotations
 
 import asyncio
+import wave
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -17,8 +19,11 @@ from app.compliance import taxonomy
 from app.compliance.session import ComplianceService
 from app.compliance.transcripts import create_transcript, load_file
 from app.config import get_settings
-from app.errors import NotImplementedYet
 from app.sim.events import dumps
+from app.stt import registry
+from app.stt.live import play_wav, request_stop, set_file_speaker
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 router = APIRouter(tags=["compliance"])
 
@@ -139,14 +144,99 @@ async def _start_mic_session(request: Request, body: dict[str, Any]) -> Any:
     )
 
 
+def _wav_channels(path: Path) -> int:
+    if not path.is_file():
+        raise HTTPException(status_code=422, detail="файл демо-актива не найден")
+    try:
+        with wave.open(str(path), "rb") as wf:
+            channels = wf.getnchannels()
+            pcm16 = wf.getsampwidth() == 2 and wf.getframerate() == 16000 and wf.getcomptype() == "NONE"
+            if not pcm16 or channels not in (1, 2):
+                raise HTTPException(status_code=422, detail="WAV должен быть PCM16, 16 кГц, 1 или 2 канала")
+    except HTTPException:
+        raise
+    except (wave.Error, EOFError, OSError) as exc:
+        raise HTTPException(status_code=422, detail="WAV должен быть PCM16, 16 кГц, 1 или 2 канала") from exc
+    return channels
+
+
+async def _start_file_session(request: Request, body: dict[str, Any]) -> Any:
+    """source=file (T-183): WAV из demo_assets чанками 100 мс в LiveSession. audio_ws_url не отдаём."""
+    mode = body.get("diarization_mode")
+    if mode not in ("stereo", "manual", "auto"):
+        raise HTTPException(status_code=422, detail="diarization_mode: stereo | manual | auto")
+    code = body.get("stt_provider") or registry.default_code()
+    if code == "browser":
+        raise HTTPException(status_code=422, detail="stt_provider=browser не принимает файл — нужен серверный STT")
+    try:
+        prov = registry.get(code)
+    except LookupError:
+        raise HTTPException(status_code=422, detail=f"STT-провайдер {code!r} недоступен") from None
+    if not body.get("employee_id"):
+        raise HTTPException(status_code=422, detail="нужен employee_id")
+    if not body.get("demo_asset_id"):
+        raise HTTPException(status_code=422, detail="для source=file нужен demo_asset_id")
+    async with db() as conn:
+        emp = await fetch_one(
+            conn,
+            "select e.public_id, e.desk_no, b.code from employees e join branches b on b.id = e.branch_id where e.id = %s",
+            (int(body["employee_id"]),),
+        )
+        if not emp:
+            raise HTTPException(status_code=404, detail="сотрудник не найден")
+        asset = await fetch_one(conn, "select kind, path from demo_assets where id = %s", (int(body["demo_asset_id"]),))
+        if not asset:
+            raise HTTPException(status_code=404, detail="демо-актив не найден")
+        if asset["kind"] != "audio":
+            raise HTTPException(status_code=422, detail="демо-актив должен быть kind=audio")
+        raw = Path(str(asset["path"]))
+        path = raw if raw.is_absolute() else _REPO_ROOT / raw
+        channels = _wav_channels(path)
+        if mode == "stereo" and channels != 2:
+            raise HTTPException(status_code=422, detail="режим stereo требует WAV с двумя каналами")
+        run_id, sim_time = await run_context(request, conn)
+        s = get_settings()
+        svc = ComplianceService(
+            conn,
+            run_id=run_id,
+            sim_time=sim_time,
+            chain=request.app.state.llm_chain,
+            profile=request.app.state.llm_profile,
+            alert_threshold=int(body.get("alert_threshold") or s.compliance_alert_threshold),
+        )
+        sess = await svc.create_session(
+            branch_code=emp["code"],
+            employee_public_id=emp["public_id"],
+            desk_no=emp["desk_no"],
+            client_id=int(body["client_id"]) if body.get("client_id") else None,
+            deal_product=body.get("deal_product"),
+            source="file",
+            pacing="realtime",
+            diarization_mode=mode,
+            stt_provider=code,
+            stt_model=prov.info().model,
+            alert_threshold=int(body.get("alert_threshold") or s.compliance_alert_threshold),
+            demo_asset_id=int(body["demo_asset_id"]),
+            store_audio=bool(body.get("store_audio", False)),
+        )
+        row = await fetch_one(conn, f"select {SESSION_COLS} {SESSION_FROM} where s.id = %s", (sess.id,))  # noqa: S608
+    asyncio.create_task(play_wav(request.app, sess.id, str(path), provider_code=code, channels=channels))
+    return JSONResponse(
+        _json({**(row or {}), "audio_ws_url": None, "sample_rate": 16000, "channels": channels}),
+        status_code=201,
+    )
+
+
 @router.post("/api/compliance/sessions", summary="Начать сессию (микрофон, файл или транскрипт)", status_code=201)
 async def post_compliance_sessions(request: Request, body: dict[str, Any]) -> Any:
     """source=transcript: берёт демо-актив (demo_asset_id → demo_assets.path) или файл из data/import/transcripts по `asset`, проигрывает реплики в темпе `pacing`."""
     source = body.get("source") or "transcript"
     if source == "mic":
         return await _start_mic_session(request, body)
+    if source == "file":
+        return await _start_file_session(request, body)
     if source != "transcript":
-        raise NotImplementedYet("T-183")
+        raise HTTPException(status_code=422, detail="source: mic | file | transcript")
     from pathlib import Path
 
     from app.api.ingest import IMPORT_DIR
@@ -240,9 +330,12 @@ async def get_compliance_sessions_id(request: Request, id: int) -> Any:
 )
 async def post_compliance_sessions_id_role(request: Request, id: int, body: dict[str, Any]) -> None:
     async with db() as conn:
-        row = await fetch_one(conn, "select id from audio_sessions where id = %s", (id,))
+        row = await fetch_one(conn, "select source from audio_sessions where id = %s", (id,))
         if not row:
             raise HTTPException(status_code=404, detail="сессия не найдена")
+        if row["source"] == "file":
+            set_file_speaker(id, str(body.get("speaker") or "employee"))
+            return None
         # для транскриптов роли известны заранее: переключение применяем к последней реплике (ручная правка диаризации)
         await conn.execute(
             "update utterances set speaker = %s, speaker_source = 'manual' where id = (select id from utterances where session_id = %s order by seq desc limit 1)",
@@ -261,7 +354,9 @@ async def post_compliance_sessions_id_stop(request: Request, id: int) -> Any:
             "update audio_sessions set status = 'closed', finished_at = coalesce(finished_at, now()), updated_at = now() where id = %s",
             (id,),
         )
-        return await fetch_one(conn, f"select {SESSION_COLS} {SESSION_FROM} where s.id = %s", (id,))  # noqa: S608
+        updated = await fetch_one(conn, f"select {SESSION_COLS} {SESSION_FROM} where s.id = %s", (id,))  # noqa: S608
+    request_stop(id)
+    return updated
 
 
 @router.get(

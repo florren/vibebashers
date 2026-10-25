@@ -44,4 +44,4 @@ pytest backend/tests/integration/test_audio_sessions.py
 ```
 
 ## Отчёт субагента
-Ветка `feat/b17-tasks-stt-env`. `POST /api/compliance/sessions` с `source=mic` (валидация провайдера и режима, `audio_ws_url`), `app/stt/live.py` (реплики → `ComplianceService.add_utterance`/`process_utterance` → алерты → отчёт `_finish_report` и `close_session`, `stt_metrics`), `app/stt/audio_ws.py` (`/ws/audio/{id}`, тишина 90 с). Режимы: stereo (канал = роль), manual (переключатель), auto (`app/stt/speakers.py`, эвристика по маркерам речи + чередование; speaker_source = llm). Тест `tests/integration/test_stt_live.py`.
+source=file играет WAV чанками в LiveSession; mic и transcript не менялись; failover на эталон и WER не делались.
