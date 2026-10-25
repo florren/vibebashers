@@ -9,10 +9,11 @@ import { fmtDateTime, fmtMs } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, Json, SkeletonRows, Tabs } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { LogPanel } from '@/widgets/LogPanel'
+import { BenchTab } from './BenchTab'
 import { GraphView } from './GraphView'
 import { QualityTab } from './QualityTab'
 
-type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality'
+type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench'
 
 /** Экран 3 «Под капотом» (ТЗ 12.2): список прогонов, шаги с промптами, граф, цепочка решений, живые события WS. */
 export function EnginePage() {
@@ -78,6 +79,7 @@ export function EnginePage() {
             { id: 'chain', label: t('engine.chain') },
             { id: 'live', label: t('engine.live') },
             { id: 'quality', label: t('engine.quality') },
+            { id: 'bench', label: t('engine.bench') },
           ]}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -86,6 +88,7 @@ export function EnginePage() {
           {tab === 'chain' && <ChainTab runId={runId} />}
           {tab === 'live' && <LiveTab />}
           {tab === 'quality' && <QualityTab />}
+          {tab === 'bench' && <BenchTab />}
         </div>
       </div>
     </div>

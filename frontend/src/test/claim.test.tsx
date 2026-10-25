@@ -61,8 +61,11 @@ describe('claim', () => {
 
   it('ключи en совпадают с блоком claim и nav.claim', () => {
     const ruBlock = { nav: { claim: ru.nav.claim }, claim: ru.claim }
-    expect(leaves(en).sort()).toEqual(leaves(ruBlock).sort())
-    for (const value of leaves(en).map((key) => key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], en))) {
+    const enBlock = { nav: { claim: en.nav.claim }, claim: en.claim }
+    const ruKeys = leaves(ruBlock).sort()
+    expect(leaves(enBlock).sort()).toEqual(ruKeys)
+    for (const key of ruKeys) {
+      const value = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], en)
       expect(typeof value).toBe('string')
       expect(String(value).trim().length).toBeGreaterThan(0)
     }

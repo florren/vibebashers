@@ -67,6 +67,12 @@ import {
   type DemoPlayBody,
   type DemoPlayResult,
   type DemoStatus,
+  type BenchDatasets,
+  type BenchRun,
+  type BenchRunAccepted,
+  type BenchRunCreate,
+  type BenchRunDetail,
+  type SentimentBenchReport,
   type Followup,
   type HitlDecision,
   type HitlItem,
@@ -512,6 +518,57 @@ export function useDemoPlay() {
   return useMutation({
     mutationFn: ({ scenario_id, ...body }: DemoPlayBody & { scenario_id: string }) =>
       post<DemoPlayResult>(`/api/demo/play/${scenario_id}`, body),
+  })
+}
+
+export const useBenchDatasets = () =>
+  useQuery({ queryKey: ['bench', 'datasets'], queryFn: () => api<BenchDatasets>('/api/bench/datasets') })
+
+/** Пока есть queued/running или идёт мутация старта — опрос раз в секунду. */
+export function useBenchRuns(starting: boolean) {
+  return useQuery({
+    queryKey: ['bench', 'runs'],
+    queryFn: () => api<BenchRun[]>('/api/bench/runs'),
+    refetchInterval: (query) => {
+      const rows = query.state.data ?? []
+      const live = rows.some((row) => row.status === 'queued' || row.status === 'running')
+      return live || starting ? 1000 : false
+    },
+  })
+}
+
+export function useBenchRun(id: number | null) {
+  return useQuery({
+    queryKey: ['bench', 'run', id],
+    queryFn: () => api<BenchRunDetail>(`/api/bench/runs/${id}`),
+    enabled: id != null,
+  })
+}
+
+export const useBenchSentiment = () =>
+  useQuery({ queryKey: ['bench', 'sentiment'], queryFn: () => api<SentimentBenchReport>('/api/bench/sentiment') })
+
+export function useBenchDryRun() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: BenchRunCreate) => post<BenchRunAccepted>('/api/bench/runs', { ...body, dry_run: true }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['bench'] }),
+  })
+}
+
+export function useBenchStart() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: BenchRunCreate) => post<BenchRunAccepted>('/api/bench/runs', { ...body, dry_run: false }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['bench'] }),
+  })
+}
+
+export function useBenchCancel() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => del<void>(`/api/bench/runs/${id}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['bench'] }),
   })
 }
 

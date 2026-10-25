@@ -180,6 +180,13 @@ export type DemoFailoverBody = NonNullable<paths['/api/demo/failover']['post']['
 export type DemoPlayBody = NonNullable<paths['/api/demo/play/{scenario_id}']['post']['requestBody']>['content']['application/json']
 export type DemoPlayResult = paths['/api/demo/play/{scenario_id}']['post']['responses'][202]['content']['application/json']
 
+export type BenchRun = Schemas['BenchRun']
+export type BenchRunDetail = Schemas['BenchRunDetail']
+export type BenchDatasets = paths['/api/bench/datasets']['get']['responses'][200]['content']['application/json']
+export type BenchRunAccepted = paths['/api/bench/runs']['post']['responses'][202]['content']['application/json']
+export type BenchRunCreate = NonNullable<paths['/api/bench/runs']['post']['requestBody']>['content']['application/json']
+export type SentimentBenchReport = Schemas['SentimentBenchReport']
+
 export type SttMessage = {
   type: 'ready' | 'partial' | 'final' | 'error' | 'closed' | 'pong'
   session_id: number
