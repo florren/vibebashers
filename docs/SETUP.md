@@ -53,6 +53,8 @@ GIGACHAT_MODEL=GigaChat-3-Pro      # отвечает агент; id из GET ht
 GIGACHAT_VERIFY_SSL=false   # true только если в контейнер добавлен сертификат Минцифры
 
 OPENROUTER_API_KEY=         # альтернатива GigaChat (OpenAI-совместимый API)
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_BUDGET_USD=10         # бюджет платных моделей OpenRouter, USD
 LOCAL_LLM_BASE_URL=         # локальная модель (Ollama/vLLM), например http://host.docker.internal:11434/v1
 
 TELEGRAM_BOT_TOKEN=         # только если нужен бот; иначе пусто
@@ -78,7 +80,7 @@ STT_PROVIDER=none           # vosk | browser | none — распознавани
 
 Список моделей берите с `https://api.giga.chat/v1/models` (тот же хост, что у SDK `base_url`). Там есть `GigaChat-3-Ultra`, `GigaChat-3-Pro` и `GigaChat-3-Lightning`. Старый хост `gigachat.devices.sberbank.ru` этих id не отдаёт и отвечает 404.
 
-Рекомендация на демо: накануне прогнать сценарии с живой моделью при `LLM_RECORD=true`, на показе оставить `LLM_CHAIN=gigachat,replay,mock` — при проблемах с сетью зрители не заметят переключения.
+Рекомендация на демо: накануне прогнать сценарии с живой моделью при `LLM_RECORD=true`, на показе оставить `LLM_CHAIN=gigachat,openai_compat,replay,mock` — при проблемах с сетью зрители не заметят переключения. `LLM_CHAIN=replay,mock` — только `./install.sh --offline` и ручной офлайн-режим.
 
 ## 4. Проверка после установки
 
