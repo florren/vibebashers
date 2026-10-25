@@ -63,7 +63,7 @@ sync-contracts:             ## контракты → код: schema.sql, миг
 	$(PY) scripts/gen_models.py
 	cd frontend && npm run -s gen:types
 
-i18n-check:                 ## ключи словаря frontend/src/shared/i18n/ru.json без пустых значений + типы TS в синхроне с OpenAPI
+i18n-check:                 ## ключи словарей frontend/src/shared/i18n/ru.json и en.json без пустых значений + типы TS в синхроне с OpenAPI
 	$(PY) scripts/i18n_check.py
 	cd frontend && npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
 

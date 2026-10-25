@@ -41,6 +41,16 @@ for (const path of pages) {
   })
 }
 
+for (const path of pages) {
+  test(`en ${path}: клик языка, английская подпись, без сырых ключей`, async ({ page }) => {
+    await page.goto(path)
+    await expect(page.getByText('CX Pulse Control')).toBeVisible()
+    await page.getByRole('button', { name: 'Язык' }).click()
+    await expect(page.getByRole('link', { name: 'Workspace' })).toBeVisible()
+    await expectNoRawKeys(page)
+  })
+}
+
 test('лента сигналов → drawer → карточка инцидента → под капотом', async ({ page }) => {
   await page.goto('/?tab=signals')
   const first = page.locator('li button').first()
