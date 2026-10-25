@@ -1,6 +1,16 @@
 {
+  "app": {
+    "title": "CX Pulse Control",
+    "subtitle": "customer experience control center"
+  },
   "nav": {
-    "claim": "Claim"
+    "workspace": "Workspace",
+    "engine": "Under the hood",
+    "feed": "Feed",
+    "compliance": "Compliance",
+    "settings": "Settings",
+    "manager": "Manager",
+    "claim": "Request"
   },
   "claim": {
     "title": "Contact the Bank",
@@ -21,7 +31,360 @@
     "openTrack": "Open tracking",
     "error": "Could not send the request"
   },
+  "ws": {
+    "open": "online",
+    "connecting": "connecting…",
+    "closed": "no connection"
+  },
+  "sim": {
+    "clock": "Simulation",
+    "day": "day {{n}}",
+    "phase": {
+      "morning": "morning",
+      "day": "day",
+      "evening": "evening",
+      "night": "night"
+    },
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "step": "Step",
+    "speed": "Speed",
+    "speedX": "×{{n}}",
+    "preset": {
+      "demo_5min": "demo 5 min",
+      "day_12min": "a day in 12 min",
+      "realtime": "real time"
+    },
+    "status": {
+      "running": "running",
+      "paused": "paused",
+      "interrupted": "interrupted",
+      "completed": "completed",
+      "stopped": "stopped",
+      "archived": "archived",
+      "none": "no run"
+    },
+    "weekend": "weekend",
+    "workday": "workday",
+    "newRun": "New run",
+    "runs": "Runs"
+  },
+  "kpi": {
+    "signals": "Signals today",
+    "incidents": "Incidents open",
+    "critical": "Critical",
+    "autonomy": "Autonomous",
+    "hitl": "Waiting for a human",
+    "slaRisk": "SLA at risk",
+    "avgLatency": "Agent response p50",
+    "tokens": "Tokens",
+    "hint": {
+      "autonomy": "share of agent runs without a human",
+      "slaRisk": "less than 2 h until the SLA deadline, or overdue",
+      "latency": "median agent run duration (real time)"
+    }
+  },
+  "tabs": {
+    "signals": "Signals",
+    "incidents": "Incidents",
+    "hitl": "Needs a decision",
+    "deferred": "Deferred",
+    "tasks": "Tasks",
+    "map": "Map",
+    "dashboard": "Dashboard",
+    "teams": "Teams",
+    "notifications": "Notifications",
+    "tickets": "Tickets"
+  },
+  "common": {
+    "search": "Search…",
+    "all": "All",
+    "reset": "Reset",
+    "loading": "Loading…",
+    "empty": "Nothing here yet",
+    "error": "Error",
+    "notImplemented": "Coming after the first version",
+    "notImplementedCard": "The endpoint is described in the contract; implementation is card {{card}}",
+    "open": "Open",
+    "close": "Close",
+    "back": "Back",
+    "more": "More",
+    "copy": "Copy",
+    "copied": "Copied",
+    "yes": "yes",
+    "no": "no",
+    "none": "—",
+    "client": "Client",
+    "anonymous": "anonymous",
+    "team": "Team",
+    "channel": "Channel",
+    "created": "Created",
+    "updated": "Updated",
+    "status": "Status",
+    "type": "Type",
+    "priority": "Priority",
+    "sla": "SLA",
+    "confidence": "confidence",
+    "run": "Run",
+    "runId": "run #{{id}}",
+    "theme": "Theme",
+    "language": "Language",
+    "jury": "Jury mode",
+    "refresh": "Refresh",
+    "table": "Table",
+    "board": "Board",
+    "items": "{{n}} items",
+    "hide": "Hide"
+  },
+  "signal": {
+    "type": {
+      "tech_fault": "Technical fault",
+      "client_error": "Client error",
+      "tariff_terms": "Tariffs and terms",
+      "service_quality": "Service quality",
+      "fraud_suspicion": "Fraud",
+      "legal_regulatory": "Legal / regulator",
+      "info_request": "Question",
+      "gratitude": "Thanks",
+      "suggestion": "Suggestion",
+      "churn": "Client churn"
+    },
+    "status": {
+      "new": "new",
+      "processing": "processing",
+      "classified": "classified",
+      "linked": "linked",
+      "deferred": "deferred",
+      "awaiting_human": "waiting for a human",
+      "awaiting_client": "waiting for the client",
+      "answered": "answered",
+      "closed": "closed",
+      "noise": "noise",
+      "error": "error"
+    },
+    "sentiment": {
+      "negative": "negative",
+      "neutral": "neutral",
+      "positive": "positive"
+    },
+    "flags": {
+      "churn_intent": "intent to leave",
+      "repeat": "repeat",
+      "sarcasm": "sarcasm",
+      "aggression": "aggression",
+      "mass_impact": "mass impact",
+      "public": "public",
+      "rule_confirmed": "rule confirmed",
+      "regulator_threat": "regulator threat",
+      "passive_aggression": "passive aggression",
+      "repeat_contact_7d": "repeat within 7 days",
+      "hidden_negativity": "hidden negativity",
+      "churn_threat": "churn threat",
+      "vip": "VIP"
+    },
+    "origin": {
+      "sim": "simulator",
+      "jury": "jury",
+      "api": "API",
+      "landing": "landing",
+      "tgbot": "Telegram",
+      "ingest": "import",
+      "demo": "demo"
+    },
+    "classification": "Classification",
+    "decision": "Agent decision",
+    "rationale": "Rationale",
+    "policies": "Policy checks",
+    "notifications": "Notifications",
+    "runs": "Agent runs",
+    "incidents": "Incidents",
+    "followups": "Deferred checks",
+    "noClient": "client not identified",
+    "hints": "Hints for finding the client",
+    "text": "Request text"
+  },
+  "incident": {
+    "status": {
+      "new": "new",
+      "classified": "classified",
+      "routed": "routed",
+      "in_progress": "in progress",
+      "fix_proposed": "fix proposed",
+      "fix_deployed": "fix deployed",
+      "verifying": "verifying",
+      "resolved": "resolved",
+      "closed": "closed",
+      "awaiting_human": "waiting for a human",
+      "awaiting_client": "waiting for the client",
+      "escalated": "escalation",
+      "duplicate": "duplicate",
+      "rejected": "rejected"
+    },
+    "complexity": {
+      "instant": "instant",
+      "easy": "easy",
+      "medium": "medium",
+      "hard": "hard"
+    },
+    "criticality": {
+      "low": "low",
+      "medium": "medium",
+      "high": "high"
+    },
+    "severity": {
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "critical": "critical"
+    },
+    "routing": {
+      "pending": "pending",
+      "routed": "routed",
+      "escalated": "escalated",
+      "clarification": "clarification",
+      "rejected": "rejected"
+    },
+    "slaLeft": "until SLA",
+    "slaBreached": "SLA breached",
+    "slaDue": "SLA due",
+    "nextReport": "next report",
+    "team": "Team",
+    "coTeams": "co-owners",
+    "massImpact": "clients affected",
+    "summary": "Summary",
+    "history": "History",
+    "signals": "Signals and logs",
+    "communications": "Communications",
+    "economics": "Economics",
+    "decisionChain": "Decision chain",
+    "problem": "Problem",
+    "suggestedTeam": "suggested team",
+    "rootCause": "Cause",
+    "resolution": "Resolution",
+    "primaryClient": "Primary client",
+    "fault": "Related fault",
+    "actions": "Actions",
+    "ruleCodes": "Matched rules",
+    "clientReply": "Reply to the client",
+    "teamNotice": "Message to the team",
+    "gift": "Gift",
+    "followup": "Check later",
+    "notFound": "Incident not found",
+    "humanDecision": "Human decision",
+    "by": "by",
+    "agentRun": "Agent run",
+    "severityLabel": "Severity"
+  },
+  "hitl": {
+    "title": "Needs a human decision",
+    "empty": "The queue is empty — the agent is handling it",
+    "waiting": "waiting {{m}} min",
+    "reason": {
+      "low_confidence": "low confidence",
+      "ultra_vip": "Ultra VIP",
+      "legal_regulatory": "legal / regulator",
+      "fraud_amount": "large amount",
+      "repeat_3plus": "repeat 3+",
+      "partner_privilege": "partner privilege",
+      "critical_severity": "critical severity",
+      "policy_other": "policy",
+      "gift_requires_hitl": "gift requires HITL approval",
+      "escalation": "escalation",
+      "clarification": "clarification"
+    },
+    "proposal": "Agent proposal",
+    "recommendation": "Recommendation",
+    "options": "Options",
+    "context": "Context",
+    "accept": "Accept",
+    "modify": "Edit",
+    "reject": "Reject",
+    "delegate": "Delegate",
+    "comment": "Comment",
+    "delegateTo": "To",
+    "fewshot": "Use as an example for the agent",
+    "submit": "Submit decision",
+    "decided": "Decision recorded",
+    "modifyHint": "Edit the proposal JSON (decision schema) and submit",
+    "editTeam": "Team",
+    "editPriority": "Priority",
+    "editReply": "Reply text to the client"
+  },
+  "deferred": {
+    "title": "Deferred checks",
+    "wake": "wakes",
+    "reason": "reason",
+    "empty": "No deferred checks"
+  },
+  "jury": {
+    "title": "Jury mode — enter a request",
+    "text": "Client request text",
+    "channel": "Channel",
+    "client": "Client (empty — anonymous)",
+    "segment": "Segment",
+    "anySegment": "enter an ID manually",
+    "handle": "Handle / contact (for anonymous channels)",
+    "send": "Send to the agent",
+    "sending": "The agent is thinking…",
+    "result": "Done: signal #{{id}}, run #{{run}}",
+    "openRun": "Open under the hood",
+    "openSignal": "Open signal",
+    "placeholder": "For example: Paid 3 200 ₽ by QR and was charged a 138 ₽ fee. Instant payments were supposed to be free. Refund it."
+  },
   "engine": {
+    "title": "Under the hood",
+    "runs": "Agent runs",
+    "steps": "Steps",
+    "graph": "Graph",
+    "chain": "Decision chain",
+    "live": "Live events",
+    "tokens": "tokens",
+    "latency": "latency",
+    "cost": "cost estimate",
+    "prompt": "Prompt",
+    "response": "Model response",
+    "tools": "Tool calls",
+    "reasoning": "Reasoning",
+    "input": "Input",
+    "output": "Output",
+    "profile": "LLM profile",
+    "promptVersion": "prompt version",
+    "outcome": {
+      "completed": "completed",
+      "awaiting_human": "waiting for a human",
+      "failed": "error",
+      "running": "running",
+      "cancelled": "cancelled",
+      "none": "—"
+    },
+    "needHuman": "human needed",
+    "selectRun": "Select a run on the left",
+    "mdCopy": "Copy markdown",
+    "node": {
+      "ingest": "Ingest",
+      "normalize": "Normalization",
+      "identify_client": "Find client",
+      "gather_context": "Context",
+      "check_rules": "Business rules",
+      "classify": "Classification",
+      "decide": "Decision",
+      "wait_human": "Waiting for a human",
+      "apply_human_decision": "Human decision",
+      "act": "Actions",
+      "close": "Close",
+      "followup_monitor": "Deferred check",
+      "verify": "Verify the fix"
+    },
+    "stepStatus": {
+      "ok": "ok",
+      "skipped": "skipped",
+      "error": "error",
+      "waiting": "waiting",
+      "running": "running"
+    },
+    "quality": "Quality",
     "bench": "Benchmarks"
   },
   "bench": {
@@ -77,5 +440,826 @@
       "cost_estimate": "Cost estimate",
       "stability": "Stability"
     }
+  },
+  "placeholder": {},
+  "channel": {
+    "social": "Social",
+    "call": "Call",
+    "chat": "Chat",
+    "email": "Email",
+    "branch": "Branch",
+    "landing": "Landing",
+    "telegram_bot": "Telegram",
+    "proactive": "Proactive",
+    "review_portal": "Reviews",
+    "voice_input": "Voice",
+    "branch_audio": "Branch audio",
+    "api": "API",
+    "internal": "Internal",
+    "manager_ui": "Manager device"
+  },
+  "compliance": {
+    "title": "Compliance control",
+    "subtitle": "Meeting and call transcripts: misselling, rudeness, incorrect facts, service script",
+    "transcripts": "Transcripts",
+    "upload": "Upload",
+    "importCorpus": "Import corpus",
+    "imported": "Import: found {{found}}, accepted {{accepted}}, duplicates {{duplicates}}, rejected {{rejected}}",
+    "uploadHint": "JSON matching the ingest/transcript schema, or TXT: “[hh:mm:ss] Employee: …” / “Client: …”",
+    "pick": "Select a transcript on the left",
+    "turns": "Turns",
+    "report": "Report",
+    "findings": "Findings",
+    "noFindings": "No violations found",
+    "script": "Service script",
+    "actionPlan": "Action plan for the manager",
+    "overall": "Overall",
+    "sendReport": "Send to the manager",
+    "sent": "Report sent to /manager",
+    "analyzing": "Analysis in progress…",
+    "failed": "Analysis failed",
+    "confidence": "confidence",
+    "turn": "turn {{n}}",
+    "factCheck": "Fact check",
+    "claim": "said",
+    "truth": "according to tariffs",
+    "speaker": {
+      "employee": "Employee",
+      "client": "Client",
+      "unknown": "—"
+    },
+    "kind": {
+      "branch_retail": "Branch",
+      "contact_center_call": "Contact center call",
+      "contact_center_chat": "Contact center chat"
+    },
+    "status": {
+      "received": "received",
+      "analyzing": "analyzing",
+      "done": "done",
+      "failed": "error"
+    },
+    "family": {
+      "misselling": "misselling",
+      "conduct": "conduct"
+    },
+    "pattern": {
+      "tie_in": "Tying",
+      "substitution": "Product substitution",
+      "concealment": "Hidden terms",
+      "pressure": "Pressure",
+      "guarantee": "Income guarantee",
+      "rudeness": "Rudeness",
+      "script_violation": "Script violation",
+      "misinformation": "Incorrect information"
+    },
+    "step": {
+      "greeting": "Greeting",
+      "identification": "Identification",
+      "needs": "Needs",
+      "offer": "Offer and terms",
+      "summary": "Summary",
+      "closing": "Closing",
+      "hold": "Hold",
+      "resolution": "Resolution"
+    },
+    "stepStatus": {
+      "done": "done",
+      "partial": "partial",
+      "missed": "missed",
+      "not_applicable": "not applicable"
+    },
+    "alertKind": {
+      "threshold": "trigger threshold",
+      "immediate": "immediate",
+      "report": "report"
+    },
+    "stats": "Statistics by employee",
+    "sessions": "sessions",
+    "triggers": "triggers",
+    "alerts": "alerts",
+    "sessionStatus": {
+      "live": "live",
+      "alerted": "alert",
+      "closed": "closed"
+    }
+  },
+  "manager": {
+    "title": "Manager device",
+    "subtitle": "Branch compliance alerts: a decision in one click",
+    "branch": "Branch",
+    "allBranches": "All branches",
+    "onlyOpen": "Only without a decision",
+    "empty": "No alerts yet — run scenario 9 or 10, or import transcripts on /compliance",
+    "decision": {
+      "go": "Review",
+      "false_positive": "False",
+      "open_incident": "Incident"
+    },
+    "decided": "Decision: {{d}}",
+    "by": "by: {{by}}",
+    "incident": "Incident",
+    "transcript": "Transcript",
+    "counter": "{{n}} of {{m}}",
+    "quotes": "Quotes",
+    "recommendation": "Recommendation",
+    "ackHelp": "Review — you take it on; False — you dismiss the alert and learn from the error; Incident — you pass it to compliance"
+  },
+  "quality": {
+    "title": "Quality report",
+    "health": "Health index",
+    "allRuns": "All runs",
+    "currentRun": "Current run",
+    "recommendations": "What to improve",
+    "where": "Where to look",
+    "nodes": "Agent by node",
+    "hitl": "Human edits",
+    "scenarios": "Scenarios",
+    "http": "HTTP",
+    "download": "Markdown",
+    "refresh": "Refresh",
+    "k": {
+      "runs": "Agent runs",
+      "failed": "with an error",
+      "fallback": "LLM steps on fallback",
+      "hitl": "HITL edits",
+      "pending": "in the queue",
+      "sla": "SLA breaches",
+      "scenarios": "Scenarios failed",
+      "alerts": "False alerts",
+      "http5": "HTTP 5xx",
+      "http501": "HTTP 501"
+    },
+    "col": {
+      "node": "Node",
+      "total": "Steps",
+      "ok": "ok",
+      "fallback": "fallback",
+      "errors": "errors",
+      "p50": "p50 ms",
+      "p95": "p95 ms",
+      "tokens": "tokens",
+      "decision": "Decision",
+      "reason": "Reason",
+      "fields": "Changed fields",
+      "comment": "Comment",
+      "by": "Who",
+      "route": "Route",
+      "s5xx": "5xx",
+      "s501": "501",
+      "s4xx": "4xx",
+      "avg": "avg ms"
+    },
+    "severity": {
+      "high": "critical",
+      "medium": "important",
+      "low": "note"
+    },
+    "area": {
+      "agent": "agent",
+      "llm": "model",
+      "process": "process",
+      "scenario": "scenario",
+      "compliance": "compliance",
+      "api": "API",
+      "product": "product",
+      "ok": "ok"
+    },
+    "noOverrides": "No edits",
+    "empty": "No data"
+  },
+  "feed": {
+    "title": "Public feed (platform emulator)",
+    "subtitle": "Client reviews and posts → signal → the agent replies under the post within seconds (BRD FR 1.1, TZ 21.2)",
+    "platform": "Platform",
+    "allPlatforms": "All platforms",
+    "platforms": {
+      "review_portal": "Review portal",
+      "telegram_channel": "Telegram channel"
+    },
+    "empty": "No posts yet",
+    "emptyHint": "Publish a review with the button above, or run scenario 8 (make scenario ID=8)",
+    "selectPost": "Select a post — the reply thread and the CBS widget appear on the right",
+    "stats": {
+      "posts": "Posts",
+      "replied": "Replied",
+      "identified": "Identified",
+      "p50": "Reply p50",
+      "refunded": "Refunded",
+      "autonomy": "Auto / HITL"
+    },
+    "form": {
+      "open": "Publish a review",
+      "hint": "A post on the platform emulator → the agent replies under the post and writes to the client in a private channel",
+      "nick": "Author handle",
+      "last4": "Card last 4",
+      "last4Hint": "The last 4 digits match the author to a Bank client (card_last4)",
+      "text": "Review text",
+      "publish": "Publish",
+      "sample": "I paid by QR and the Bank charged a 450 ₽ fee, although zero was promised. Refund the fee!"
+    },
+    "status": {
+      "new": "new",
+      "processing": "agent working",
+      "replied": "replied",
+      "escalated_to_dm": "moved to a private chat",
+      "ignored": "no reply"
+    },
+    "author": {
+      "agent": "agent",
+      "human": "employee",
+      "client_twin": "client"
+    },
+    "identified": "Bank client",
+    "identifiedHint": "match confidence {{conf}}%",
+    "anonymous": "not identified",
+    "replies": "replies: {{n}}",
+    "latency": "reply in {{v}}",
+    "incident": "incident #{{id}}",
+    "thread": "Thread under the post",
+    "noReplies": "No replies yet — the agent is working, or the post is waiting for a human",
+    "manualReply": "Reply manually (CX employee)…",
+    "send": "Send",
+    "signalCard": "Links",
+    "post": "Post",
+    "signal": "Signal",
+    "incidentK": "Incident",
+    "matchConf": "Match confidence"
+  },
+  "abs": {
+    "title": "CBS (emulation)",
+    "badge": "Mock CBS · double-entry postings",
+    "noClient": "The author is not matched to a Bank client — accounts are unavailable. The agent will move the dialogue to a private channel.",
+    "entries": "Latest postings",
+    "accountStatus": {
+      "active": "active",
+      "blocked": "blocked",
+      "closed": "closed"
+    },
+    "kind": {
+      "debit": "debit",
+      "credit": "credit",
+      "fee": "fee",
+      "refund": "refund",
+      "reversal": "reversal"
+    }
+  },
+  "map": {
+    "title": "Map of Russia — where it hurts",
+    "mode": {
+      "heat": "Heat",
+      "zones": "Zones"
+    },
+    "layer": {
+      "signals": "Signals",
+      "critical": "Critical",
+      "incidents": "Open incidents",
+      "churn": "Churn risk"
+    },
+    "window": {
+      "24": "24 h",
+      "168": "7 days",
+      "720": "30 days"
+    },
+    "scope": {
+      "current": "current run",
+      "all": "all runs"
+    },
+    "legend": {
+      "low": "low",
+      "high": "high"
+    },
+    "zone": {
+      "green": "green",
+      "yellow": "yellow",
+      "red": "red"
+    },
+    "noGeo": "no geo: {{n}}",
+    "negativity": "negativity",
+    "cities": "Cities",
+    "noCitySignals": "No city-level signals for this region in the window.",
+    "top": "Top regions",
+    "empty": "Quiet for now",
+    "emptyHint": "Start the emulation — regions fill in as signals arrive.",
+    "how": "How it is calculated",
+    "howHeat": "A signal's region is the geo from the request text, otherwise the client's region. Color is normalized to the maximum of the selected layer for the window; labels appear on regions with intensity of 50% or more. Click to drill down to cities.",
+    "howZones": "Zone index = negativity concentration (the region's negative signals relative to the country maximum for the window) + weight × the compliance-copilot trigger index for the region's branches. Yellow from {{yellow}}%, red from {{red}}%, or at {{crit}}+ critical incidents/alerts in the window. Thresholds are in economics settings."
+  },
+  "dash": {
+    "subtitle": "Workspace KPIs (TZ 14.1) and dCLTV economics (TZ 14.4). Refreshes every few seconds.",
+    "window": {
+      "run": "Run",
+      "24h": "24 h",
+      "7d": "7 days",
+      "all": "All runs"
+    },
+    "k": {
+      "signals": "Signals",
+      "criticalSub": "critical: {{n}}",
+      "autonomy": "Autonomous",
+      "hitlSub": "via a human: {{n}}%",
+      "humanChanged": "Human changed it",
+      "humanChangedSub": "share of HITL decisions that were edited or rejected",
+      "incidentsOpen": "Open incidents",
+      "incidentsSub": "{{n}} total, {{c}} closed",
+      "sla": "SLA met",
+      "slaSub": "at risk: {{r}}, overdue: {{o}}",
+      "latency": "Signal → incident p50",
+      "latencySub": "p95 {{p95}}; agent p50 {{ms}} ms",
+      "repeat": "Repeat requests",
+      "repeatSub": "signals flagged as repeat",
+      "churnRisk": "Clients at churn risk",
+      "churnSub": "left: {{ch}}, retained: {{re}}",
+      "closures": "Account closures",
+      "regressionSub": "regressions after closure: {{n}}%",
+      "twin": "Twin satisfaction",
+      "twinSub": "average care_score of current states",
+      "tokens": "LLM tokens",
+      "tokensSub": "agent runs: {{n}}",
+      "reports": "Reports on time",
+      "reportsSub": "mandatory incident reports"
+    },
+    "econ": {
+      "title": "dCLTV economics",
+      "groupBy": "Group by:",
+      "group": {
+        "product": "Product",
+        "region": "Region",
+        "segment": "Segment",
+        "team": "Team",
+        "type": "Incident type"
+      },
+      "potential": "Potential loss",
+      "potentialHint": "Affected × detractor share × no-return share × dCLTV rate (+ premium add-on)",
+      "prevented": "Prevented",
+      "preventedHint": "Potential loss × retention factor by outcome class of closed incidents",
+      "atRisk": "At risk",
+      "atRiskHint": "Potential loss on incidents that are still open",
+      "realized": "Realized",
+      "realizedHint": "Loss from clients who left",
+      "refunds": "Refunded to clients",
+      "refundsHint": "Sum of refund postings in Mock CBS",
+      "incidents": "Inc.",
+      "noProduct": "no product"
+    },
+    "segments": {
+      "title": "First reply to the client by segment (p50)"
+    },
+    "fact": {
+      "title": "Simulation fact",
+      "mode": {
+        "manual": "manual",
+        "simulated": "from fact"
+      },
+      "show": "Show",
+      "hint": "Compares calculator assumptions (detractor share, no-return share, retention factors) with what actually happened to the digital twins. Apply fact switches the calculator to the observed factors when the sample is at least 10.",
+      "detractor_share": "Detractor share",
+      "no_return_share": "No-return share",
+      "noData": "no data",
+      "apply": "Apply fact",
+      "backToManual": "Restore manual"
+    }
+  },
+  "notif": {
+    "subtitle": "All outbound messages: to clients, to teams, public replies, and internal CX notifications.",
+    "type": {
+      "all": "All",
+      "client": "To the client",
+      "team": "To the team",
+      "public": "Public",
+      "cx": "CX"
+    },
+    "empty": "No notifications yet",
+    "emptyHint": "They appear when the agent starts replying to clients and routing incidents.",
+    "unknownClient": "unidentified author"
+  },
+  "notifStatus": {
+    "sent": "sent",
+    "delivered": "delivered",
+    "failed": "error",
+    "queued": "queued",
+    "draft": "draft"
+  },
+  "outcome": {
+    "closed_in_sla_with_gift": "closed within SLA with a gift",
+    "closed_in_sla": "closed within SLA",
+    "closed_late": "closed late",
+    "closed_with_regression": "closed with a regression",
+    "open": "open",
+    "rejected": "rejected",
+    "churned": "client left"
+  },
+  "incidentType": {
+    "tech_fault": "Technical fault",
+    "service_quality": "Service quality",
+    "tariff_terms": "Tariffs and terms",
+    "fraud_suspicion": "Fraud",
+    "misselling": "Misselling",
+    "churn": "Client churn",
+    "client_error": "Client error",
+    "legal_regulatory": "Regulator",
+    "mass_fault": "Mass fault",
+    "other": "Other",
+    "fee_refund": "Fee refund"
+  },
+  "tickets": {
+    "view": {
+      "tickets": "Tickets",
+      "escalations": "Escalations"
+    },
+    "status": {
+      "open": "open",
+      "in_progress": "in progress",
+      "resolved": "resolved",
+      "closed": "closed",
+      "rejected": "rejected"
+    },
+    "escStatus": {
+      "open": "new",
+      "acknowledged": "accepted",
+      "resolved": "closed",
+      "dismissed": "dismissed"
+    },
+    "escReason": {
+      "three_signals_7d": "3+ requests in 7 days",
+      "repeat_negative": "repeat negativity",
+      "churn_threat_high_negativity": "churn threat, high negativity",
+      "critical_severity": "critical severity",
+      "sarcasm_escalation": "sarcasm → escalation",
+      "manual": "manual escalation"
+    },
+    "role": {
+      "label": "To",
+      "cx_lead": "CX lead",
+      "branch_manager": "branch manager"
+    },
+    "by": {
+      "agent": "created by the agent",
+      "human": "created by an employee",
+      "compliance": "created by compliance"
+    },
+    "actor": {
+      "agent": "agent",
+      "human": "human",
+      "team": "team",
+      "system": "system",
+      "behavior_model": "twin"
+    },
+    "allDepartments": "All teams",
+    "onlyEscalated": "Only with an escalation",
+    "search": "Search by number / summary",
+    "escHint": "Queue for the manager (DTZ FR-3.4): accept → review → close with a resolution.",
+    "empty": "No tickets match the filter",
+    "emptyHint": "A ticket is an incident in DTZ terms: department, priority, status open/in_progress/resolved.",
+    "escEmpty": "No escalations",
+    "escEmptyHint": "They appear when the agent treats a request as too risky (repeat negativity, churn threat, criticality) or an employee escalates it manually.",
+    "col": {
+      "ticket": "Ticket",
+      "summary": "Summary",
+      "department": "Department",
+      "priority": "Priority",
+      "status": "Status",
+      "channel": "Channel",
+      "created": "Created"
+    },
+    "escalatedBadge": "escalation",
+    "openIncident": "Incident card",
+    "actions": "Employee actions",
+    "textPh": "Reply to the client / reason for the action…",
+    "chooseTeam": "Team…",
+    "noClient": "Client is not identified — a reply is impossible",
+    "act": {
+      "take": "Take",
+      "reply": "Reply to the client",
+      "requestData": "Request data",
+      "reroute": "Reroute",
+      "escalate": "Escalate",
+      "close": "Close",
+      "reject": "Reject",
+      "ack": "Accept",
+      "resolve": "Close with a resolution",
+      "dismiss": "Dismiss"
+    },
+    "resolutionPh": "Manager resolution…",
+    "done": "Done — recorded in history as a human action.",
+    "history": "Status history",
+    "chain": "Agent decision chain",
+    "sideEffect": "side effect",
+    "createdBy": "Source",
+    "resolution": "Resolution",
+    "ackBy": "accepted by: {{who}}",
+    "signal": "Original request"
+  },
+  "teams": {
+    "subtitle": "Team load for the current run: open and in progress, SLA at risk (under 2 h) and breached, mandatory reports, time to take, share closed within SLA.",
+    "col": {
+      "team": "Team",
+      "load": "Load",
+      "open": "Open",
+      "inProgress": "In progress",
+      "slaWarning": "SLA < 2 h",
+      "slaBreached": "SLA breached",
+      "reports": "Reports",
+      "take": "Take-up",
+      "sla": "Within SLA"
+    },
+    "loadOf": "{{n}} active of {{total}}",
+    "hint": "Reports: how many interim reports should already be published; in parentheses — how many were missed. Take-up is the average time from creation to taking the incident (sim-hours)."
+  },
+  "setup": {
+    "title": "Setup wizard",
+    "completed": "setup completed",
+    "notCompleted": "setup not completed",
+    "prev": "Back",
+    "next": "Next",
+    "save": "Save",
+    "saved": "Saved",
+    "finish": "Finish setup",
+    "finishHint": "Sets setup_completed = true: the wizard is no longer offered at sign-in, and every step can still be changed later.",
+    "export": "Export",
+    "import": "Import",
+    "imported": "Imported",
+    "steps": {
+      "llm": "LLM",
+      "bank": "Bank and clients",
+      "sim": "Emulation",
+      "channels": "Channels",
+      "policies": "Agent policies",
+      "sla": "SLA and routing",
+      "economics": "Economics",
+      "templates": "Templates and twins",
+      "generate": "Data and launch"
+    },
+    "hint": {
+      "llm": "Which models are used: main (classification and decisions), fast (normalization/sentiment), and twin (clients' digital twins). Keys and provider order are written to .env and applied without a restart; secrets are not returned.",
+      "bank": "Bank name in templates and on the landing page, client-base size for generation, and region coverage.",
+      "sim": "Generator seed and event rates per sim-hour. They change only while emulation is stopped; speed is changed in the header.",
+      "channels": "Which request channels are enabled in the emulation, plus the Mailpit email catcher and the Telegram bot.",
+      "policies": "Confidence thresholds and HITL rules: when the agent must ask a human, when to escalate, and limits on autonomous refunds. The agent reads them on every run.",
+      "sla": "3×3 SLA matrix (fix time, time to take, report days) and routing rules to teams.",
+      "economics": "dCLTV formula parameters (TZ 14.4), retention factors by outcome, and yield rates. After saving, incident economics are recalculated.",
+      "templates": "Notification texts by channel and segment, the gift catalog, and digital-twin psychotype shares by segment.",
+      "generate": "Generate the client base and history (idempotent), review the coverage matrix, and finish setup."
+    },
+    "llm": {
+      "main": "Main model",
+      "fast": "Fast model",
+      "twin": "Twin model",
+      "profiles": "LLM profiles",
+      "provider": "Provider",
+      "model": "Model",
+      "role": "Role",
+      "test": "Check",
+      "testResult": "Profile check #{{id}}",
+      "activate": "Enable",
+      "deactivate": "Disable",
+      "addProfile": "Add profile",
+      "baseUrl": "Base URL",
+      "baseUrlHint": "Provider API base address (GigaChat, OpenRouter, and similar). For GigaChat the default is filled in when the provider is selected.",
+      "saveUrl": "Save URL",
+      "label": "Label",
+      "key": "Key",
+      "addKey": "Save key",
+      "env": "Keys and provider chain (.env)",
+      "envNote": "The same variables as in .env: GIGACHAT_AUTH_KEY_* / OPENROUTER_API_KEY are keys, LLM_CHAIN is the failover order. After writing, the agent chain is rebuilt without a restart; check it with the Check button on the profile."
+    },
+    "bank": {
+      "name": "Bank name",
+      "profile": "Client-base profile",
+      "profileHint": "lite — quick start, demo — for a showing, stress — load",
+      "regions": "Regions",
+      "regionsAll": "All 89 regions",
+      "regionsSelected": "Selected",
+      "regionCodes": "Region codes",
+      "shares": "Segment shares (override)"
+    },
+    "sim": {
+      "seed": "Seed",
+      "seedHint": "The same seed produces the same history",
+      "hourMin": "Real minutes per sim-hour",
+      "hourMinHint": "0.5 = ×120 speedup",
+      "fault": "Fault rate",
+      "faultHint": "faults per sim-hour",
+      "intensities": "Event rates (per sim-hour)",
+      "int": {
+        "op": "Operations",
+        "client_error": "Client errors",
+        "signal_noise": "Noise requests",
+        "fault": "System faults"
+      },
+      "env": "Profile and seed (.env)",
+      "envNote": "PROFILE sets the client-base size at generation (step 9), SIM_SEED is the initial seed; both are read at process start, so a restart is required after writing."
+    },
+    "channels": {
+      "mailpit": "Mailpit (email catcher)",
+      "tgbot": "Telegram bot enabled",
+      "tgToken": "Bot token",
+      "tgHint": "getMe check: empty uses TELEGRAM_BOT_TOKEN from .env (the field below)",
+      "tgTest": "Check the bot",
+      "env": "Integrations (.env)",
+      "envNote": "The bot token, Mailpit, and speech recognition apply immediately. STT_PROVIDER = browser works in Chrome without a model; vosk needs a model in STT_MODEL_PATH."
+    },
+    "policies": {
+      "confidence": "Confidence threshold",
+      "confidenceHint": "below this, the agent asks a human",
+      "dedup": "Dedup window, sim-hours",
+      "dedupHint": "repeat signals are merged into one incident",
+      "hitl": "HITL and escalation rules (empty = default)",
+      "default": "default",
+      "rule": {
+        "clarification_threshold": "Clarification threshold",
+        "fraud_amount_rub": "Fraud amount, ₽",
+        "repeat_hitl_count": "Repeats before HITL",
+        "escalation_negativity": "Negativity for escalation",
+        "escalation_signals_7d": "Signals in 7 days",
+        "refund_autonomy_limit_rub": "Auto-refund up to, ₽",
+        "refund_autonomy_limit_premium_rub": "Premium auto-refund up to, ₽",
+        "mass_refund_threshold": "Mass refund from, clients"
+      }
+    },
+    "sla": {
+      "matrix": "SLA matrix",
+      "unit": "fix days · take hours · report days",
+      "complexity": "Complexity",
+      "fix": "Fix time, days",
+      "take": "Time to take, hours",
+      "reports": "Interim report days",
+      "legend": "In a cell: fix time (days) · time to take (hours) · mandatory report days, comma-separated.",
+      "routing": "Routing rules",
+      "teams": "teams: {{n}}",
+      "routingHint": "JSON list of rules: priority, match (conditions on product/system/incident_type/criticality…), team_codes, notes_ru. Unknown teams are rejected."
+    },
+    "econ": {
+      "detractor": "Detractor share",
+      "noReturn": "No-return share",
+      "misselling": "Misselling case cost, ₽",
+      "mode": "Calibration mode",
+      "modeManual": "manual assumptions",
+      "modeSim": "simulation fact",
+      "retention": "Retention factors by outcome",
+      "rates": "Yield rates ({{n}})",
+      "formula": "TZ 14.4 formula: potential = months × detractor share × no-return share × (product rate + segment premium); example 12 × 10% × 50% × (961 + 91.53) = 631.52 ₽."
+    },
+    "tpl": {
+      "templates": "Notification templates ({{n}})",
+      "more": "…{{n}} more — narrow the filter by code",
+      "gifts": "Gift catalog ({{n}})",
+      "giftsHint": "JSON: code, name_ru, name_en, segments[], rule{}, partner_display_name.",
+      "psychotypes": "Psychotype shares by segment",
+      "segment": "Segment",
+      "psHint": "The row must sum to 1.00."
+    },
+    "gen": {
+      "profile": "Profile",
+      "seed": "Seed",
+      "reset": "Reset history",
+      "resetHint": "Reset deletes clients, signals, and incidents (reference data stays). Without a reset, generation is idempotent: a repeat run duplicates nothing.",
+      "start": "Generate",
+      "status": {
+        "idle": "not started",
+        "running": "running",
+        "done": "done",
+        "failed": "error"
+      },
+      "coverage": "Coverage matrix (TZ 4.4)",
+      "slaCells": "SLA cells",
+      "gaps": "there are gaps",
+      "styles": "Text styles",
+      "other": "Total"
+    },
+    "env": {
+      "title": ".env variables",
+      "save": "Write to .env and apply",
+      "reset": "Reset",
+      "saved": "Keys written: {{n}}",
+      "chain": "LLM chain",
+      "restart": "restart",
+      "restartNeeded": "{{keys}} need a restart (make restart)",
+      "changed": "changed",
+      "readonly": "read-only",
+      "secretSet": "saved ({{hint}}) — enter a new value to replace it",
+      "secretEmpty": "not set",
+      "note": "The wizard edits .env in place (in Docker it is mounted into the container) and applies the values to the running app immediately; secrets are not returned — only the tail."
+    },
+    "stt": {
+      "title": "Speech recognition (STT)",
+      "available": "available",
+      "unavailable": "unavailable",
+      "default": "default",
+      "test": "Check",
+      "ok": "Recognized",
+      "fail": "Not recognized",
+      "note": "The check runs data/stt/sample_ru_16k.wav through the provider and computes WER. Vosk model: make stt-model (downloads vosk-model-small-ru-0.22 into data/models/stt)."
+    }
+  },
+  "tasks": {
+    "subtitle": "Employee tasks created by the agent: gifts to clients (issued after the incident is resolved), calls, manual checks, report reminders. A gift can be confirmed, replaced, or rejected.",
+    "filter": {
+      "all": "All",
+      "open": "Open",
+      "ready": "Ready to issue",
+      "done": "Done",
+      "rejected": "Rejected"
+    },
+    "kind": {
+      "gift": "Gift",
+      "callback": "Call",
+      "manual_review": "Manual check",
+      "clarify_client": "Clarify with the client",
+      "report_reminder": "SLA report",
+      "closure_review": "Closure check"
+    },
+    "status": {
+      "open": "open",
+      "approved": "approved",
+      "changed": "changed",
+      "rejected": "rejected",
+      "done": "done",
+      "cancelled": "cancelled"
+    },
+    "col": {
+      "task": "Task",
+      "client": "Client",
+      "incident": "Incident",
+      "when": "When",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "when": {
+      "after_resolved": "after resolution",
+      "now": "now"
+    },
+    "ready": "ready to issue",
+    "waiting": "waiting for the incident decision",
+    "hitl": "human needed",
+    "overdue": "overdue",
+    "approve": "Issue",
+    "change": "Replace",
+    "reject": "Reject",
+    "done": "Done",
+    "approveReady": "Issue all ready ({{n}})",
+    "changeTitle": "Replace gift",
+    "gift": "Gift from the catalog",
+    "points": "Points",
+    "comment": "Comment",
+    "save": "Replace and issue",
+    "issued": "Issued: {{label}}",
+    "counts": "open {{open}} · ready {{ready}} · done {{done}}",
+    "pointsN": "{{n}} points"
+  },
+  "live": {
+    "button": "Microphone",
+    "title": "Live meeting: recognition from the microphone",
+    "external": "external STT",
+    "branch": "Branch",
+    "employee": "Employee",
+    "product": "Deal product",
+    "provider": "Recognition",
+    "mode": "Speakers",
+    "modes": {
+      "manual": "manual (toggle)",
+      "auto": "automatic (from speech)",
+      "stereo": "stereo: left — employee, right — client"
+    },
+    "start": "Start meeting",
+    "stop": "End meeting",
+    "closing": "Ending…",
+    "noMic": "The browser does not allow the microphone (HTTPS or localhost is required)",
+    "noWebSpeech": "Web Speech API is only in Chrome/Edge",
+    "level": "Signal level",
+    "speaking": "Speaking:",
+    "employeeShort": "Employee",
+    "clientShort": "Client",
+    "spaceHint": "(space — toggle)",
+    "triggers": "triggers {{n}} of {{max}}",
+    "hintServer": "Audio goes to the server as PCM16 16 kHz frames and is recognized offline (Vosk); employee turns are checked immediately by the misselling detector, and at the threshold the branch manager is alerted. 90 s of silence closes the session.",
+    "hintBrowser": "The browser recognizes speech itself (Web Speech API, Chrome/Edge) — speech goes to the browser service, and only text reaches the server. Choose Vosk for offline mode.",
+    "transcript": "Transcript",
+    "uttCount": "turns: {{n}}",
+    "listening": "Listening… speak into the microphone",
+    "report": "Meeting report",
+    "reportHint": "The report is stored on the audio session and is available to the branch manager (Manager tab); alerts go to Telegram if the branch has a linked chat.",
+    "wsError": "The /ws/audio connection dropped",
+    "speechError": "Browser recognition error: {{e}}"
+  },
+  "voice": {
+    "start": "Dictate",
+    "stop": "Stop",
+    "busy": "Recognizing…",
+    "nothing": "Speech was not recognized — try again",
+    "hintServer": "The microphone recording is recognized offline on the server (Vosk) and added to the text",
+    "hintBrowser": "The browser recognizes speech (Web Speech API) — text is added as you speak"
+  },
+  "demoMenu": {
+    "title": "Demonstrator menu",
+    "close": "Close",
+    "llmLive": "LLM: live",
+    "llmReplay": "LLM: replay",
+    "llmMock": "LLM: mock",
+    "scenario8": "Scenario 8 — QR fee",
+    "scenario9": "Scenario 9 — misselling",
+    "scenario10": "Scenario 10 — red phrases",
+    "baselineRestore": "Reset to baseline",
+    "actionError": "Could not complete the action"
   }
 }

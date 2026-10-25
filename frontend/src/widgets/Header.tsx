@@ -14,7 +14,7 @@ import { JuryModal } from './JuryModal'
 const SPEEDS = [1, 10, 60, 120, 300]
 
 export function Header() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const setDemoOpen = useDemoMenu((s) => s.setOpen)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -83,6 +83,7 @@ export function Header() {
       <div className="mx-auto flex shrink-0 items-center gap-2">
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
           <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
+          <span className="text-xs text-muted">{t('sim.clock')}</span>
           <span className="num font-mono text-[13px]">{fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
           <span className="hidden text-xs text-muted md:inline">
             {sim?.day_no !== undefined && t('sim.day', { n: sim.day_no + 1 })} · {sim?.phase ? t(`sim.phase.${sim.phase}`) : '—'}
@@ -133,6 +134,14 @@ export function Header() {
         <span className={clsx('h-1.5 w-1.5 rounded-full', wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-danger')} />
         {t(`ws.${wsStatus}`)}
       </span>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        aria-label={t('common.language')}
+        onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'ru' : 'en')}
+      >
+        {i18n.language === 'en' ? 'RU' : 'EN'}
+      </button>
       <button className="btn btn-ghost btn-sm" onClick={toggle} title={t('common.theme')} aria-label={t('common.theme')}>
         {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
       </button>
