@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from app.agent import gifts as giftmod
 from app.sim.clock import add_working_days, add_working_hours
 
 CRIT_ORDER = ["low", "medium", "high"]
@@ -118,16 +119,8 @@ def complexity_for(signal_type: str, error_code_complexity: str | None, flags: l
 
 
 def pick_gift(crit: str, segment: str | None, flags: list[str]) -> dict[str, Any] | None:
-    """ТЗ 8.5: баллы 300/600/1000 (+200 при repeat, потолок 1000); vip/ultra_vip — плюс одна привилегия."""
-    points = {"low": 300, "medium": 600, "high": 1000}.get(crit, 600)
-    if "repeat" in flags:
-        points = min(1000, points + 200)
-    gift: dict[str, Any] = {"gift_code": "bonus_points", "points": points, "privilege_code": None}
-    if segment in ("vip", "ultra_vip"):
-        if crit == "high" and "churn_intent" in flags:
-            gift["privilege_code"] = "business_class_discount"
-        elif crit == "high" or "churn_intent" in flags:
-            gift["privilege_code"] = "restaurant_special"
-        elif crit == "medium":
-            gift["privilege_code"] = "lounge_pass"
-    return gift
+    """ТЗ 8.5: делегат в gifts.choose без психотипа (совместимость T-061)."""
+    chosen = giftmod.choose(segment, crit, flags, psychotype=None)
+    if not chosen:
+        return None
+    return {k: chosen[k] for k in ("gift_code", "points", "privilege_code") if k in chosen}

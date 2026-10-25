@@ -7,6 +7,7 @@ import datetime as dt
 import re
 from typing import Any
 
+from app.agent import gifts as agent_gifts
 from app.agent.tools.base import ToolContext, ToolError, mask_name, tool
 from app.sim.events import dumps
 
@@ -143,7 +144,8 @@ async def update_incident(
     if not row:
         raise ToolError(f"инцидент {incident_id} не найден")
     cur = str(row[0])
-    if status != cur:
+    transitioned = status != cur
+    if transitioned:
         if status not in STATUS_TRANSITIONS.get(cur, set()):
             raise ToolError(f"переход {cur} → {status} недопустим")
         extra = ""
@@ -176,6 +178,8 @@ async def update_incident(
             await ctx.conn.execute(f"update incidents set {k} = %s, updated_at = now() where id = %s", (v, incident_id))  # noqa: S608 — k из белого списка
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "status", {**brief, "from_status": cur, "reason": reason})
+    if transitioned and status in ("resolved", "closed"):
+        await agent_gifts.issue_automatic(ctx, incident_id)
     return brief
 
 

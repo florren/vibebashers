@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
+from app.economics import dcltv
 from app.errors import Problem
 from app.sim.events import dumps
 
@@ -149,6 +150,13 @@ async def post_tasks_id(id: int, body: TaskDecision) -> Any:  # noqa: A002
                 payload.update(body.payload)
         payload["decision"] = {"action": body.action, "actor": body.actor, "comment": body.comment}
         issued = False
+        if (
+            row["kind"] == "gift"
+            and body.action in ("approve", "change", "done")
+            and payload.get("when") == "after_resolved"
+            and row.get("incident_status") not in ("resolved", "closed")
+        ):
+            raise Problem(409, "Подарок можно выдать только после resolved/closed инцидента")
         if row["kind"] == "gift" and body.action in ("approve", "change", "done") and row.get("client_id"):
             gift = payload.get("gift") or {}
             seg = row.get("client_segment")
@@ -184,6 +192,7 @@ async def post_tasks_id(id: int, body: TaskDecision) -> Any:  # noqa: A002
                     "update incidents set flags = array_append(array_remove(coalesce(flags, '{}'), 'gift_issued'), 'gift_issued'), updated_at = now() where id = %s",
                     (row["incident_id"],),
                 )
+                await dcltv.compute_incident(conn, row["incident_id"], sim_time=row.get("sim_time"))
         final = "done" if (issued and body.action != "change") or body.action == "done" else new_status
         await conn.execute(
             "update tasks set status = %s, payload = %s, resolved_sim = case when %s in ('done','rejected') then %s else resolved_sim end, updated_at = now() where id = %s",
