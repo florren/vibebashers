@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -11,10 +12,14 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+from app.agent.graph import process_signal
+from app.api.public import _claim_hits
 from app.config import get_settings
 from app.main import create_app
+from tests.helpers import MOCK_PROFILE, mock_chain
 
 _CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+_SCENARIO4_TEXT = "Отказали в кредитной карте без объяснений. Почему?"
 
 
 def _dsn(url: str) -> str:
@@ -41,6 +46,7 @@ def _claim(
     answer: int | None = None,
     captcha_id: str | None = None,
     phone: str = "+7 900 000-11-22",
+    text: str = "Не приходит смс-код для входа в приложение уже второй день",
 ) -> httpx.Response:
     if captcha_id is None or answer is None:
         captcha_id, solved = _captcha(client)
@@ -51,11 +57,32 @@ def _claim(
         json={
             "contact": {"name": "Гость", "phone": phone, "region_code": region, "city_id": city_id},
             "product_code": product,
-            "text": "Не приходит смс-код для входа в приложение уже второй день",
+            "text": text,
             "consent": consent,
             "captcha": {"id": captcha_id, "answer": answer},
         },
     )
+
+
+def _landing_clarification(dsn: str, signal_id: int) -> None:
+    """Сценарий 4: mock-цепочка до текста уточнения клиенту на канале landing."""
+
+    async def run() -> None:
+        async with await psycopg.AsyncConnection.connect(_dsn(dsn)) as conn:
+            state = await process_signal(conn, signal_id=signal_id, chain=mock_chain(), profile=MOCK_PROFILE)
+            assert state is not None, signal_id
+
+    asyncio.run(run())
+    with psycopg.connect(_dsn(dsn)) as conn:
+        note = conn.execute(
+            "select recipient_type, channel_code, template_code, body, status "
+            "from notifications where signal_id = %s and template_code = %s",
+            (signal_id, "clarify_request"),
+        ).fetchone()
+        assert note, signal_id
+        assert note[0] == "client" and note[1] == "landing" and note[2] == "clarify_request"
+        assert isinstance(note[3], str) and note[3].strip()
+        assert note[4] == "sent"
 
 
 @pytest.mark.integration
@@ -247,6 +274,26 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
         )
         assert review.status_code == 202, review.text
         assert client.get("/api/public/mock-social-feed").status_code == 501
+
+        # Лимит 5 обращений/мин уже исчерпан проверкой выше; сценарий 4 — отдельный POST.
+        _claim_hits.clear()
+        scenario = _claim(
+            client,
+            region=region,
+            city_id=city_id,
+            product=product_code,
+            text=_SCENARIO4_TEXT,
+            phone="+7 900 004-04-04",
+        )
+        assert scenario.status_code == 201, scenario.text
+        with psycopg.connect(_dsn(dsn)) as conn:
+            row = conn.execute(
+                "select id, channel_code, text from signals where tracking_token = %s",
+                (scenario.json()["tracking_token"],),
+            ).fetchone()
+            assert row and row[1] == "landing" and row[2] == _SCENARIO4_TEXT
+            signal_id = int(row[0])
+        _landing_clarification(dsn, signal_id)
 
 
 _TEAM_CODE = re.compile(r"team_[a-z0-9_]+")
