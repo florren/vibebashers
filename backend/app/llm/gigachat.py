@@ -82,12 +82,15 @@ class GigaChatProvider:
         log.info("gigachat_token", key=key.label, expires_in_s=int(key.token_expires_at - time.time()))
         return key.access_token or ""
 
+    def _chat_base(self, profile: LLMProfile) -> str:
+        return (profile.base_url or self.base_url).rstrip("/")
+
     # --- chat -------------------------------------------------------------------------------------------------------
-    async def _chat(self, key: ApiKey, payload: dict[str, Any], timeout_s: float) -> httpx.Response:
+    async def _chat(self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float) -> httpx.Response:
         token = await self._token(key, timeout_s)
         try:
             r = await self._client.post(
-                f"{self.base_url}/chat/completions",
+                f"{self._chat_base(profile)}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {token}",
                     "Content-Type": "application/json",
@@ -117,7 +120,7 @@ class GigaChatProvider:
             raise ProviderError("unavailable", f"{r.status_code}: {r.text[:200]}", status=r.status_code)
         return r
 
-    async def _with_keys(self, payload: dict[str, Any], timeout_s: float) -> tuple[httpx.Response, ApiKey]:
+    async def _with_keys(self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float) -> tuple[httpx.Response, ApiKey]:
         tried: set[str] = set()
         last: ProviderError | None = None
         while True:
@@ -126,7 +129,7 @@ class GigaChatProvider:
             except ProviderError:
                 raise last or ProviderError("quota", "нет ключей GigaChat") from None
             try:
-                return await self._chat(key, payload, timeout_s), key
+                return await self._chat(key, payload, profile, timeout_s), key
             except ProviderError as e:
                 self.pool.mark_error(key, e)
                 last = e
@@ -153,7 +156,7 @@ class GigaChatProvider:
                 "stream": False,
                 **profile.extra.get("request", {}),
             }
-            r, key = await self._with_keys(payload, timeout_s)
+            r, key = await self._with_keys(payload, profile, timeout_s)
             body = r.json()
             u = body.get("usage", {})
             total_usage.prompt_tokens += int(u.get("prompt_tokens", 0))
@@ -195,7 +198,7 @@ class GigaChatProvider:
         try:
             async with self._client.stream(
                 "POST",
-                f"{self.base_url}/chat/completions",
+                f"{self._chat_base(profile)}/chat/completions",
                 json=payload,
                 timeout=timeout_s,
                 headers={
