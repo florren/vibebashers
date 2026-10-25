@@ -136,9 +136,24 @@ async def get_sim_runs_current(request: Request) -> Any:
     return run
 
 
+def _numeric_diff(a: dict[str, Any], b: dict[str, Any]) -> dict[str, float]:
+    diff: dict[str, float] = {}
+    keys = set(a) | set(b)
+    for key in keys:
+        va, vb = a.get(key), b.get(key)
+        if isinstance(va, (int, float)) and isinstance(vb, (int, float)) and not isinstance(va, bool):
+            diff[key] = float(vb) - float(va)
+    return diff
+
+
 @router.get("/api/sim/runs/compare", summary="Сравнение двух запусков по метрикам 14.1/14.4 и расходу токенов")
-async def get_sim_runs_compare(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+async def get_sim_runs_compare(a: int, b: int) -> Any:
+    async with await _conn() as conn:
+        left = await run_svc.get_run(conn, a)
+        right = await run_svc.get_run(conn, b)
+    if left is None or right is None:
+        raise HTTPException(status_code=404, detail="запуск не найден")
+    return {"a": left, "b": right, "diff": _numeric_diff(left.get("counters") or {}, right.get("counters") or {})}
 
 
 @router.get("/api/sim/runs/{id}", summary="Запуск: параметры, счётчики, итоговые метрики")
