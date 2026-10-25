@@ -13,8 +13,14 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_ROOT))
+for _candidate in (_ROOT / "backend", Path("/app")):
+    if (_candidate / "app" / "sim" / "baseline.py").exists() and str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
 
+from app.sim import baseline as baseline_svc  # noqa: E402
+from app.sim.baseline import BaselineToolingError  # noqa: E402
 from scripts.seed.clients import ensure_history_run, seed_clients, seed_history_signals, seed_operations  # noqa: E402
 from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting  # noqa: E402
 from scripts.seed.coverage import compute_coverage  # noqa: E402
@@ -76,6 +82,10 @@ def main() -> int:
             (sim_now, a.seed, run_id),
         )
         conn.commit()
+        try:
+            baseline_svc.dump_for_connection(conn, a.profile, database_url=a.database_url)
+        except BaselineToolingError as exc:
+            log.warning("baseline_dump_skipped", reason=str(exc))
     log.info(
         "seed_done",
         profile=a.profile,

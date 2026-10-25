@@ -3,6 +3,7 @@ resume). Остальное — 501 до карточек T-040/T-041."""
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 from typing import Any, Literal
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.db.session import psycopg_dsn
 from app.errors import NotImplementedYet
+from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
 
@@ -115,15 +117,54 @@ async def get_sim_runs(request: Request, limit: int = Query(default=50, ge=1, le
         return {"items": await run_svc.list_runs(conn, limit)}
 
 
+async def _ensure_dump_allowed(request: Request) -> Simulator:
+    sim = _sim(request)
+    if sim.clock.running or sim.run_status in ("running", "paused", "interrupted"):
+        raise HTTPException(status_code=409, detail="нельзя пересоздать снимок при активном запуске")
+    async with await _conn() as conn:
+        rid = await run_svc.current_run_id(conn)
+        if rid:
+            run = await run_svc.get_run(conn, rid)
+            if run and run["status"] in ("running", "paused", "interrupted"):
+                raise HTTPException(status_code=409, detail="нельзя пересоздать снимок при активном запуске")
+    return sim
+
+
+async def _restore_baseline(request: Request) -> str:
+    sim = _sim(request)
+    if sim.clock.running:
+        await sim.control("pause")
+    conn = await sim.connect()
+    try:
+        job_id = await baseline_svc.restore(conn, pause=sim.clock.running or sim.run_status == "paused")
+    except baseline_svc.BaselineUnavailableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except baseline_svc.BaselineToolingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    finally:
+        if sim.conn and not sim.conn.closed:
+            with contextlib.suppress(Exception):
+                await sim.conn.close()
+        sim.conn = None
+    await sim.reload_after_restore()
+    return job_id
+
+
 @router.post(
     "/api/sim/runs", summary="Создать и стартовать новый запуск (свободный или сценарный) с выбранным режимом сброса"
 )
 async def post_sim_runs(request: Request, body: dict[str, Any]) -> Any:
-    if body.get("reset_mode", "counters") == "baseline":
-        raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
     if body.get("kind", "free") != "free":
         raise NotImplementedYet("T-040")
-    return await _sim(request).control("start", label=body.get("label") or "Запуск")
+    reset_mode = body.get("reset_mode", "counters")
+    if reset_mode == "baseline":
+        if not baseline_svc.info()["available"]:
+            raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
+        await _restore_baseline(request)
+        return await _sim(request).control(
+            "start", label=body.get("label") or "Запуск", reset_mode="baseline"
+        )
+    return await _sim(request).control("start", label=body.get("label") or "Запуск", reset_mode=reset_mode)
 
 
 @router.get("/api/sim/runs/current", summary="Текущий запуск с живыми счётчиками (v_run_counters)")
@@ -199,38 +240,38 @@ async def get_sim_runs_id_export(request: Request) -> Any:
     raise NotImplementedYet("T-031")
 
 
-def _baseline_info() -> dict[str, Any]:
-    return {
-        "available": False,
-        "path": None,
-        "profile": None,
-        "seed": None,
-        "size_bytes": None,
-        "sha256": None,
-        "created_at": None,
-        "baseline_run_id": None,
-    }
-
-
 @router.get(
     "/api/sim/baseline", summary="Состояние снимка базового состояния (путь, профиль, размер, контрольная сумма, дата)"
 )
 async def get_sim_baseline(request: Request) -> Any:
-    return _baseline_info()
+    return baseline_svc.info()
 
 
 @router.post(
     "/api/sim/baseline",
     summary="Пересоздать снимок baseline из текущего базового состояния (только когда нет активного запуска)",
-    status_code=409,
+    status_code=202,
 )
 async def post_sim_baseline(request: Request) -> Any:
-    raise HTTPException(status_code=409, detail="снимок baseline ещё не создан: pg_dump не подключён")
+    await _ensure_dump_allowed(request)
+    sim = _sim(request)
+    conn = await sim.connect()
+    try:
+        result = await baseline_svc.dump(conn)
+    except baseline_svc.BaselineToolingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    finally:
+        await conn.commit()
+    return result
 
 
 @router.post(
     "/api/sim/baseline/restore",
     summary="Откат к снимку baseline без старта нового запуска (режим обслуживания, ≤ 60 с для demo)",
+    status_code=202,
 )
 async def post_sim_baseline_restore(request: Request) -> Any:
-    raise HTTPException(status_code=409, detail="снимок baseline ещё не создан: pg_dump не подключён")
+    if not baseline_svc.info()["available"]:
+        raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
+    job_id = await _restore_baseline(request)
+    return {"job_id": job_id}

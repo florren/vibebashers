@@ -48,10 +48,10 @@ def test_middleware_records_requests() -> None:
     with TestClient(create_app()) as c:
         r = c.get("/api/health")
         assert r.status_code == 200
-        c.get("/api/sim/baseline")  # 501-заглушка
+        c.delete("/api/sim/runs/1")  # 501-заглушка archive/delete
     snap = http_obs.stats.snapshot()
     assert snap["requests"] >= before + 2
-    assert any(r["route"] == "/api/sim/baseline" and r["s501"] >= 1 for r in snap["routes"])
+    assert any(r["route"] == "/api/sim/runs/{id}" and r["s501"] >= 1 for r in snap["routes"])
 
 
 def _summary(**over: object) -> dict:

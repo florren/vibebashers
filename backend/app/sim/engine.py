@@ -13,6 +13,7 @@ import psycopg
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
 from app.realtime.hub import hub
+from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
@@ -190,6 +191,7 @@ class Simulator:
                         seed=self.seed,
                         sim_time=self.clock.sim_time,
                         scenario_id=kw.get("scenario_id"),
+                        reset_mode=kw.get("reset_mode") or "counters",
                     )
                     self.run_status = "running"
                     self.world = None
@@ -263,6 +265,17 @@ class Simulator:
                 await self.conn.commit()
             await self.conn.close()
 
+    async def reload_after_restore(self) -> None:
+        """Перечитать sim_state после pg_restore (новое соединение, сброс World)."""
+        await self._stop_loop()
+        if self.conn and not self.conn.closed:
+            with contextlib.suppress(Exception):
+                await self.conn.close()
+        self.conn = None
+        self.world = None
+        self._task = None
+        await self.load_state()
+
     # --- состояние (SimState из openapi.yaml) ------------------------------------------------------------------------
     def state_dict(self) -> dict[str, Any]:
         return {
@@ -275,6 +288,6 @@ class Simulator:
             "is_working_day": is_working_day(self.clock.sim_time),
             "current_run_id": self.run_id,
             "current_run_status": self.run_status,
-            "baseline_available": False,
+            "baseline_available": baseline_svc.info()["available"],
             "stats": self.stats,
         }
