@@ -63,6 +63,10 @@ import {
   type AgentRunDetail,
   type ClientBrief,
   type DecisionChain,
+  type DemoFailoverBody,
+  type DemoPlayBody,
+  type DemoPlayResult,
+  type DemoStatus,
   type Followup,
   type HitlDecision,
   type HitlItem,
@@ -490,5 +494,34 @@ export function useStartMicSession() {
     mutationFn: (body: { employee_id: number; client_id?: number | null; deal_product?: string | null; stt_provider?: string; diarization_mode: 'stereo' | 'manual' | 'auto' }) =>
       post<MicSession>('/api/compliance/sessions', { ...body, source: 'mic' }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['compliance'] }),
+  })
+}
+
+// ---- T-195: меню демонстратора
+export const useDemoStatus = () => useQuery({ queryKey: ['demo-status'], queryFn: () => api<DemoStatus>('/api/demo/status') })
+
+export function useDemoFailover() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: DemoFailoverBody) => post<DemoStatus>('/api/demo/failover', body),
+    onSuccess: (s) => qc.setQueryData(['demo-status'], s),
+  })
+}
+
+export function useDemoPlay() {
+  return useMutation({
+    mutationFn: ({ scenario_id, ...body }: DemoPlayBody & { scenario_id: string }) =>
+      post<DemoPlayResult>(`/api/demo/play/${scenario_id}`, body),
+  })
+}
+
+export function useBaselineRestore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<{ job_id?: string }>('/api/sim/baseline/restore', { method: 'POST' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sim-state'] })
+      void qc.invalidateQueries({ queryKey: ['sim-runs'] })
+    },
   })
 }

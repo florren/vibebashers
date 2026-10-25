@@ -1,8 +1,9 @@
 import { clsx } from 'clsx'
 import { Activity, Gauge, MessageSquarePlus, Moon, Pause, Play, Square, Sun } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { LONG_PRESS_MS, useDemoMenu } from './DemoMenu'
 import { useSimControl, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
 import { useTheme } from '@/shared/theme'
@@ -14,6 +15,10 @@ const SPEEDS = [1, 10, 60, 120, 300]
 
 export function Header() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const setDemoOpen = useDemoMenu((s) => s.setOpen)
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longTriggered = useRef(false)
   const q = useSimState()
   const live = useWs((s) => s.sim)
   const wsStatus = useWs((s) => s.status)
@@ -26,14 +31,44 @@ export function Header() {
   const runStatus = sim?.current_run_status ?? null
   const canResume = !running && runStatus === 'paused'
 
+  const clearPress = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    pressTimer.current = null
+  }
+
+  const onLogoDown = () => {
+    longTriggered.current = false
+    clearPress()
+    pressTimer.current = setTimeout(() => {
+      longTriggered.current = true
+      setDemoOpen(true)
+    }, LONG_PRESS_MS)
+  }
+
+  const onLogoUp = () => {
+    clearPress()
+    if (!longTriggered.current) navigate('/')
+  }
+
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-line bg-surface px-3">
-      <NavLink to="/" className="flex items-center gap-2">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          data-testid="app-logo"
+          className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white"
+          aria-label={t('app.title')}
+          onPointerDown={onLogoDown}
+          onPointerUp={onLogoUp}
+          onPointerLeave={clearPress}
+          onPointerCancel={clearPress}
+        >
           <Activity size={16} strokeWidth={2.4} />
-        </span>
-        <span className="hidden text-sm font-semibold sm:block">{t('app.title')}</span>
-      </NavLink>
+        </button>
+        <NavLink to="/" className="hidden text-sm font-semibold sm:block">
+          {t('app.title')}
+        </NavLink>
+      </div>
 
       <nav className="ml-2 flex shrink-0 items-center gap-0.5">
         <Nav to="/" label={t('nav.workspace')} end />
