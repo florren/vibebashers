@@ -15,6 +15,7 @@ import httpx
 import pytest
 import yaml
 
+from app.api.settings import public_openrouter_env_key
 from app.config import Settings
 from app.contracts.registry import deref
 from app.llm.base import LLMProfile, Message, ProviderError, Usage
@@ -711,6 +712,47 @@ def test_parse_key_payload_balance_and_rpd() -> None:
     assert paid["balance_usd"] == 17 and paid["rpd_limit"] == 1000
     assert paid["limit"] == 20 and paid["usage"] == 3 and paid["limit_remaining"] == 17
     assert free["balance_usd"] == 0 and free["rpd_limit"] == 50 and free["is_free_tier"] is True
+
+
+def test_public_openrouter_env_key_balance_and_duplicate_hint() -> None:
+    paid = parse_key_payload({"data": {"limit": 20, "usage": 3, "limit_remaining": 17, "is_free_tier": False}})
+    free = parse_key_payload({"data": {"limit": 0, "usage": 0, "limit_remaining": 0, "is_free_tier": True}})
+    saved = [{"id": 1, "provider": "gigachat", "key_hint": "…hint", "key_enc": "enc1:stored"}]
+    allowed = {
+        "id",
+        "provider",
+        "label",
+        "tokens_used",
+        "tokens_limit",
+        "requests_today",
+        "rpd_limit",
+        "balance_usd",
+        "is_active",
+        "last_error",
+    }
+
+    paid_rows = public_openrouter_env_key(saved, paid, key_hint="…hint", last_error=None)
+    assert len(paid_rows) == 2 and len(saved) == 1 and saved[0]["key_enc"] == "enc1:stored"
+    added = paid_rows[-1]
+    assert added["provider"] == "openai_compatible"
+    assert added["balance_usd"] == 17 and added["rpd_limit"] == 1000
+    assert added["id"] not in {item["id"] for item in saved}
+    assert set(added) <= allowed
+    assert "key_enc" not in added and "key" not in added
+    assert "enc1:" not in json.dumps(added)
+
+    free_rows = public_openrouter_env_key([], free, key_hint="…free", last_error=None)
+    assert free_rows[-1]["balance_usd"] == 0 and free_rows[-1]["rpd_limit"] == 50
+    assert "key_enc" not in free_rows[-1] and set(free_rows[-1]) <= allowed
+
+    same_hint = [{"id": 4, "provider": "openai_compatible", "key_hint": "…hint", "key_enc": "enc1:stored"}]
+    duplicate = public_openrouter_env_key(same_hint, paid, key_hint="…hint", last_error=None)
+    assert len(duplicate) == 1 and duplicate[0]["id"] == 4
+
+    failed = public_openrouter_env_key([], None, key_hint="…err", last_error="key 401")
+    assert failed[0]["last_error"] == "key 401"
+    assert failed[0]["balance_usd"] is None and failed[0]["rpd_limit"] is None
+    assert "key_enc" not in failed[0]
 
 
 async def test_fetch_key_reads_balance_over_mock_transport() -> None:
