@@ -20,6 +20,16 @@ from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
 log = get_logger(__name__)
+def _bad_authorization(status: int, text: str) -> bool:
+    """400 из-за нечитаемого Authorization — ключ непригоден, это не квота и не «нет модели»."""
+    if status != 400:
+        return False
+    low = text.lower()
+    if "token" in low and "limit" in low:
+        return False
+    return "authorization" in low or "decode" in low
+
+
 JSON_INSTRUCTION = (
     "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже "
     "(все обязательные поля, значения enum — из списка, тексты на русском). "
@@ -76,7 +86,7 @@ class GigaChatProvider:
             raise ProviderError("timeout", f"oauth: {e}") from e
         except httpx.HTTPError as e:
             raise ProviderError("network", f"oauth: {e}") from e
-        if r.status_code in (401, 403):
+        if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
             raise ProviderError("auth", f"oauth {r.status_code}: {r.text[:200]}", status=r.status_code)
         if r.status_code == 429:
             raise ProviderError(
@@ -128,9 +138,11 @@ class GigaChatProvider:
             raise ProviderError("timeout", str(e)) from e
         except httpx.HTTPError as e:
             raise ProviderError("network", str(e)) from e
-        if r.status_code == 401:
-            key.access_token = None  # токен протух — обновим при следующем вызове
-            raise ProviderError("auth", r.text[:200], status=401)
+        if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
+            key.access_token = None
+            if r.status_code == 403 and "quota" in r.text.lower():
+                raise ProviderError("quota", r.text[:200], status=403)
+            raise ProviderError("auth", r.text[:200], status=r.status_code)
         if r.status_code == 429:
             raise ProviderError(
                 "rate_limit", r.text[:200], status=429, retry_after_s=float(r.headers.get("Retry-After", 20))
