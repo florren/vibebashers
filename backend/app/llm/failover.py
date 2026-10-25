@@ -207,7 +207,13 @@ def live_recording_possible(settings: Any) -> bool:
 
 def default_profile(settings: Any) -> LLMProfile:
     if settings.llm_provider == "gigachat":
-        return LLMProfile(code="gigachat_main", provider="gigachat", model=settings.gigachat_model, role="main")
+        return LLMProfile(
+            code="gigachat_main",
+            provider="gigachat",
+            model=settings.gigachat_model,
+            role="main",
+            base_url=settings.gigachat_base_url,
+        )
     if settings.llm_provider in ("openai_compat", "openai_compatible"):
         return LLMProfile(
             code="openrouter_main",
