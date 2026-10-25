@@ -324,6 +324,21 @@ def _dt(value: Any) -> dt.datetime:
     return dt.datetime.fromisoformat(str(value))
 
 
+def clamp_hidden_evidence(text: str, hidden: dict[str, Any]) -> dict[str, Any]:
+    """evidence_ru обязан быть подстрокой текста; иначе null и confidence × 0,7 (T-211)."""
+    out: dict[str, Any] = {}
+    for key in ("sarcasm", "passive_aggression", "churn_threat"):
+        block = dict(hidden.get(key) or {})
+        evidence = block.get("evidence_ru")
+        if evidence and str(evidence) not in text:
+            block["evidence_ru"] = None
+            block["confidence"] = round(float(block.get("confidence") or 0) * 0.7, 3)
+        if "present" not in block:
+            block["present"] = False
+        out[key] = block
+    return out
+
+
 async def _llm(
     deps: Deps,
     task: str,
@@ -427,7 +442,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
     # пост-проверки (T-210): согласованность sentiment/negativity, сарказм → negative, подсказки регулярок
     neg = int(obj.get("negativity") or 50)
     sentiment = obj.get("sentiment") or ("positive" if neg <= 33 else "neutral" if neg <= 66 else "negative")
-    hidden = obj.get("hidden_negativity") or {}
+    hidden = clamp_hidden_evidence(text, obj.get("hidden_negativity") or {})
     if (hidden.get("sarcasm") or {}).get("present") or (hidden.get("churn_threat") or {}).get("present"):
         sentiment = "negative"
         neg = max(neg, 67)
