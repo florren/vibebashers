@@ -28,6 +28,7 @@ log = get_logger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCH_DIR = REPO_ROOT / "data" / "bench"
+GOLDEN_DIR = REPO_ROOT / "data" / "golden"
 
 TEAMS_PLACEHOLDER = ", ".join(t.value for t in Team)
 
@@ -74,8 +75,38 @@ _RUNS: dict[int, BenchRunRecord] = {}
 _NEXT_RUN_ID = 1
 
 
+def dataset_path(code: str) -> Path:
+    for folder in (BENCH_DIR, GOLDEN_DIR):
+        path = folder / f"{code}.jsonl"
+        if path.is_file():
+            return path
+    return BENCH_DIR / f"{code}.jsonl"
+
+
+def list_datasets() -> list[dict[str, Any]]:
+    found: dict[str, Path] = {}
+    for folder in (BENCH_DIR, GOLDEN_DIR):
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.glob("*.jsonl")):
+            found.setdefault(path.stem, path)
+    rows = []
+    for i, (code, path) in enumerate(sorted(found.items()), start=1):
+        n = sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+        rows.append({"id": i, "code": code, "title_ru": code, "cases": n})
+    return rows
+
+
+def dataset_code_by_id(dataset_id: int) -> str:
+    rows = list_datasets()
+    for row in rows:
+        if row["id"] == dataset_id:
+            return str(row["code"])
+    raise FileNotFoundError(f"набор id={dataset_id} не найден")
+
+
 def load_dataset(code: str) -> list[BenchCase]:
-    path = BENCH_DIR / f"{code}.jsonl"
+    path = dataset_path(code)
     if not path.is_file():
         raise FileNotFoundError(f"набор {code!r} не найден: {path}")
     cases: list[BenchCase] = []
@@ -283,6 +314,10 @@ async def run(
 
 def get_run(run_id: int) -> BenchRunRecord | None:
     return _RUNS.get(run_id)
+
+
+def list_runs() -> list[BenchRunRecord]:
+    return list(_RUNS.values())
 
 
 def export_run(run_id: int, fmt: Literal["csv", "json"] = "csv") -> str:
