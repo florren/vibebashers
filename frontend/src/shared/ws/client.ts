@@ -38,10 +38,10 @@ export const useWs = create<WsState>((set) => ({
     }),
 }))
 
-export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs'] as const
+export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo'] as const
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
-const INVALIDATE: Record<string, string[][]> = {
+export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   signals: [['signals'], ['map']],
   incidents: [['incidents'], ['tickets'], ['teams'], ['metrics'], ['map']],
   agent: [['agent']],
@@ -55,6 +55,7 @@ const INVALIDATE: Record<string, string[][]> = {
   ingest: [['transcripts']],
   feed: [['feed'], ['signals']],
   abs: [['abs'], ['feed']],
+  demo: [['demo-status']],
 }
 
 let socket: WebSocket | null = null
@@ -72,7 +73,7 @@ export function connectWs(qc: QueryClient): () => void {
   let closedByUs = false
 
   const invalidate = (topic: string) => {
-    const keys = INVALIDATE[topic]
+    const keys = WS_TOPIC_QUERY_KEYS[topic]
     if (!keys || pending.has(topic)) return
     pending.set(
       topic,

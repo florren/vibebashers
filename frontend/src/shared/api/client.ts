@@ -175,6 +175,11 @@ export type EnvState = { path: string; exists: boolean; writable: boolean; items
 export type Branch = Schemas['Branch']
 export type SttProvider = Schemas['SttProvider']
 export type MicSession = AudioSession & { audio_ws_url: string; sample_rate: number; channels: 1 | 2 }
+export type DemoStatus = Schemas['DemoStatus']
+export type DemoFailoverBody = NonNullable<paths['/api/demo/failover']['post']['requestBody']>['content']['application/json']
+export type DemoPlayBody = NonNullable<paths['/api/demo/play/{scenario_id}']['post']['requestBody']>['content']['application/json']
+export type DemoPlayResult = paths['/api/demo/play/{scenario_id}']['post']['responses'][202]['content']['application/json']
+
 export type SttMessage = {
   type: 'ready' | 'partial' | 'final' | 'error' | 'closed' | 'pong'
   session_id: number
