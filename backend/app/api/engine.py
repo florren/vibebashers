@@ -8,7 +8,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.agent.graph import GRAPH_SPEC
 from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
-from app.errors import NotImplementedYet
+from app.contracts.registry import deref
+from app.llm.base import LLMProfile
+from app.llm.mock import MockProvider
 
 router = APIRouter(tags=["engine"])
 
@@ -88,16 +90,94 @@ async def get_agent_graph(request: Request) -> Any:
     return GRAPH_SPEC
 
 
+_COMPARE_FIELDS = ("signal_type", "sentiment", "product", "criticality", "negativity")
+
+
+def classification_diff(llm: dict[str, Any], mock: dict[str, Any]) -> list[dict[str, Any]]:
+    diff = []
+    for field in _COMPARE_FIELDS:
+        if llm.get(field) != mock.get(field):
+            diff.append({"field": field, "llm": llm.get(field), "mock": mock.get(field)})
+    return diff
+
+
 @router.post(
     "/api/agent/compare", summary="Панель «ИИ против правил» — один текст через LLM-профиль и mock параллельно"
 )
 async def post_agent_compare(request: Request) -> Any:
-    raise NotImplementedYet("T-106")
+    body = await request.json()
+    text = str(body.get("text") or "").strip()
+    if len(text) < 3:
+        raise HTTPException(status_code=422, detail="text слишком короткий")
+    schema = deref("agent/classification")
+    profile = LLMProfile(code="compare", provider="mock", model="mock-rules-v1")
+    mock_obj, _, _ = await MockProvider().complete_structured(
+        [{"role": "user", "content": text}], schema, profile, timeout_s=5
+    )
+    chain = getattr(request.app.state, "llm_chain", None)
+    llm_profile = getattr(request.app.state, "llm_profile", None) or profile
+    llm_obj = dict(mock_obj)
+    llm_run_id = None
+    if chain is not None:
+        try:
+            result = await chain.complete_structured(
+                [{"role": "user", "content": text}], schema, llm_profile, context="default"
+            )
+            llm_obj = dict(result.obj or {})
+        except Exception as exc:  # noqa: BLE001 — панель показывает mock, если живая модель недоступна
+            llm_obj = {**mock_obj, "error": str(exc)[:200]}
+    return {
+        "llm": llm_obj,
+        "mock": mock_obj,
+        "diff": classification_diff(llm_obj, mock_obj),
+        "llm_run_id": llm_run_id,
+        "mock_run_id": None,
+    }
 
 
 @router.get("/api/engine/entity-graph", summary="Граф сущностей клиент–сигнал–инцидент–система–команда (React Flow)")
-async def get_engine_entity_graph(request: Request) -> Any:
-    raise NotImplementedYet("T-106")
+async def get_engine_entity_graph(
+    request: Request,
+    incident_id: int | None = None,
+    client_id: int | None = None,
+    depth: int = Query(default=2, ge=1, le=4),
+) -> Any:
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    if incident_id is None and client_id is None:
+        return {"nodes": nodes, "edges": edges}
+    async with db() as conn:
+        if incident_id is not None:
+            inc = await fetch_one(
+                conn,
+                "select id, public_id, title, team_code, system_code, primary_client_id from incidents where id = %s",
+                (incident_id,),
+            )
+            if inc:
+                nodes.append({"id": f"incident:{inc['id']}", "type": "incident", "label": inc["public_id"], "data": {"title": inc["title"]}})
+                if inc["team_code"]:
+                    nodes.append({"id": f"team:{inc['team_code']}", "type": "team", "label": inc["team_code"], "data": {}})
+                    edges.append({"id": f"e-team-{inc['id']}", "source": f"incident:{inc['id']}", "target": f"team:{inc['team_code']}", "label": "team"})
+                if inc["system_code"]:
+                    nodes.append({"id": f"system:{inc['system_code']}", "type": "system", "label": inc["system_code"], "data": {}})
+                    edges.append({"id": f"e-sys-{inc['id']}", "source": f"incident:{inc['id']}", "target": f"system:{inc['system_code']}", "label": "system"})
+                client_id = client_id or inc["primary_client_id"]
+                if depth >= 2:
+                    sigs = await fetch_all(
+                        conn,
+                        "select s.id, s.public_id from incident_signals isg join signals s on s.id = isg.signal_id where isg.incident_id = %s limit 20",
+                        (incident_id,),
+                    )
+                    for s in sigs:
+                        nodes.append({"id": f"signal:{s['id']}", "type": "signal", "label": s["public_id"], "data": {}})
+                        edges.append({"id": f"e-sig-{s['id']}", "source": f"signal:{s['id']}", "target": f"incident:{inc['id']}", "label": "signal"})
+        if client_id is not None:
+            client = await fetch_one(conn, "select id, public_id, display_name from clients where id = %s", (client_id,))
+            if client:
+                nodes.append({"id": f"client:{client['id']}", "type": "client", "label": client["public_id"], "data": {"name": client["display_name"]}})
+                if incident_id is not None:
+                    edges.append({"id": f"e-cli-{incident_id}", "source": f"client:{client['id']}", "target": f"incident:{incident_id}", "label": "client"})
+    return {"nodes": nodes, "edges": edges}
 
 
 # T-108: только чтение. Имена не подставляются в SQL вне этого множества.
