@@ -31,7 +31,7 @@ def test_scenario_10_skipped_without_cassette() -> None:
     assert "qr_fee_public_review" in ids
     assert "branch_misselling" in ids
     if "retail_transcript_red_phrases" not in ids:
-        pytest.skip("нет живой кассеты сценария 10: таймаут детектора 2 с и 429, mock как replay не подставляем")
+        pytest.skip("нет живой кассеты сценария 10, mock как replay не подставляем")
 
 
 async def test_scenario_08_on_replay(seeded: str) -> None:
