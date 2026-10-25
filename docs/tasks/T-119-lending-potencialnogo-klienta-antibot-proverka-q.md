@@ -30,7 +30,7 @@
 
 ## Критерии приёмки
 - [ ] Сценарий 4 через лендинг проходит до ответа.
-- [x] Без captcha/согласия — 422 с понятным текстом.
+- [ ] Без captcha/согласия — 422 с понятным текстом.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -39,8 +39,7 @@ npx playwright test e2e/landing.spec.ts
 ```
 
 ## Отчёт субагента
-
-Ветка `feat/T-119-landing-public` от main `4a52284`, без коммита и PR.
+Ветка `feat/T-119-landing-public` от main `4a52284`. Коммит `4a5086f`. PR https://github.com/florren/vibebashers/pull/57. Чекбоксы приёмки не отмечаются: их заново пишет `scripts/gen_tasks.py`, и CI сравнивает карточку с генератором.
 
 Закрыты `POST /api/public/claim`, `GET /api/public/captcha`, `GET/POST /api/public/track/{token}`, `GET /api/public/bot/qr` и `POST /api/internal/tgbot/inbound`. Сигнал создаётся только через `from_landing` / `from_bot` и `create_signal`. UI — страница `/claim` (форма, капча, успех с номером, ссылкой и QR). Страница `/track` и событие `signal.appended` не делались. Контракты не менялись.
 
