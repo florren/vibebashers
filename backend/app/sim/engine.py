@@ -148,6 +148,7 @@ class Simulator:
                 if self.clock.sim_time.astimezone(MSK).date() != t0.astimezone(MSK).date():
                     self.clock.day_no += 1
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes)
+                await world.team_emulator.tick(self.clock.sim_time, world)
                 self.stats["ticks"] += 1
                 await self.persist()
                 await conn.commit()
