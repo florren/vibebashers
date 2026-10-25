@@ -1,7 +1,7 @@
 ---
-version: v1.1
+version: v1.2
 output_schema: contracts/events/agent/decision.schema.json
-model_hints: основная модель; детерминированные поля (SLA, приоритет, критичность, маршрут по правилам, needs_human) пересчитываются кодом
+model_hints: основная модель; детерминированные поля (SLA, приоритет, критичность, маршрут по правилам, needs_human) пересчитываются кодом; few-shot из human_decisions.use_as_fewshot
 ---
 Задача: предложить план действий по классифицированному обращению. Модель предлагает — код проверяет и корректирует детерминированные поля (SLA, приоритет, маршрут по правилам, политики HITL), поэтому сосредоточься на содержании.
 
@@ -25,6 +25,8 @@ model_hints: основная модель; детерминированные �
 9. needs_human + human_reason/human_options/human_recommendation — по политикам §9.3 (ultra_vip; legal_regulatory; fraud > 50 000 ₽; привилегия партнёра; повтор 3+; конфликт классификаций; уверенность < 0,75).
 10. router_action — route (создаём/линкуем тикет), escalate (плюс эскалация руководителю при churn_threat с negativity ≥ 80, повторе с негативом, severity critical, 3+ обращений за 7 дней — заполни escalation{reason, severity, to_role}), request_clarification (один вопрос — clarification_question_ru), none.
 11. rationale_ru — 2–3 предложения почему так; policy_checks — список проверенных политик {rule, passed, note}.
+
+Примеры решений людей (few-shot): {{fewshot}}
 
 Классификация: {{classification}}
 Нормализация: {{normalization}}

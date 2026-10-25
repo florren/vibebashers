@@ -645,7 +645,7 @@ async def test_second_pass_critical_escalates_after_accept(monkeypatch: pytest.M
 
 def test_decide_prompt_lists_facades() -> None:
     prompt = load("decide")
-    assert prompt.version == "v1.1"
+    assert prompt.version == "v1.2"
     for name in ("route_to_department", "notify_customer", "escalate_to_manager", "request_clarification"):
         assert name in prompt.body
 

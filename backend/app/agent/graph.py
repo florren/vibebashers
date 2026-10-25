@@ -15,6 +15,7 @@ from app.agent import nodes
 from app.agent.nodes import Deps
 from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
+from app.agent.tools import write as wt
 from app.agent.tools.base import ToolContext
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
@@ -113,10 +114,20 @@ async def load_deps(
     }
     pol_row = await (await conn.execute("select value from settings where key = 'policies'")).fetchone()
     fewshot = [
-        {"signal": r[0], "decision": r[1], "comment": r[2]}
+        {
+            "signal": r[0],
+            "decision": r[1],
+            "comment": r[2],
+            "signal_type": r[3],
+            "product": r[4],
+            "system": r[5],
+        }
         for r in await (
             await conn.execute(
-                "select left(s.text, 200), hd.decision, hd.comment from human_decisions hd join signals s on s.id = hd.signal_id where hd.use_as_fewshot and hd.decision is not null order by hd.decided_at desc limit 5"
+                "select left(s.text, 200), hd.decision, hd.comment, s.classification->>'signal_type', "
+                "s.classification->>'product', s.classification->>'system' "
+                "from human_decisions hd join signals s on s.id = hd.signal_id "
+                "where hd.use_as_fewshot and hd.decision is not null order by hd.decided_at desc limit 5"
             )
         ).fetchall()
     ]
@@ -312,6 +323,53 @@ async def process_signal(
         "agent", "run_started", {"agent_run_id": agent_run_id, "signal_id": signal_id, "client_id": sig["client_id"]}
     )
     return await run_graph(state, deps, conn)
+
+
+async def expire_hitl(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    sim_time: dt.datetime,
+    chain: ProviderChain,
+    profile: LLMProfile,
+) -> None:
+    """Просроченные HITL: эскалация cx_lead при наличии team_cx, иначе безопасный modify+resume."""
+    pol_row = await (await conn.execute("select value from settings where key = 'policies'")).fetchone()
+    policies = dict(pol_row[0] or {}) if pol_row else {}
+    wait_h = float(policies.get("hitl_wait_sim_hours") or 2)
+    cutoff = sim_time - dt.timedelta(hours=wait_h)
+    rows = await (
+        await conn.execute(
+            "select hd.id, hd.agent_run_id, hd.signal_id, hd.incident_id, ar.sim_run_id from human_decisions hd "
+            "join agent_runs ar on ar.id = hd.agent_run_id where hd.decision is null and hd.requested_sim <= %s",
+            (cutoff,),
+        )
+    ).fetchall()
+    if not rows:
+        return
+    escalate = policies.get("hitl_timeout_escalate", True)
+    cx_row = await (await conn.execute("select 1 from teams where code = 'team_cx' limit 1")).fetchone()
+    has_cx = bool(escalate and cx_row)
+    timeout_proposal = dumps({"gift": None, "client_action": {"kind": "acknowledge"}})
+    for hid, agent_run_id, signal_id, incident_id, run_id in rows:
+        if has_cx:
+            ctx = ToolContext(conn, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time)
+            await wt.escalate_to_manager(
+                ctx,
+                int(signal_id),
+                int(incident_id) if incident_id else None,
+                "Таймаут ожидания решения оператора (HITL)",
+                "high",
+                "cx_lead",
+            )
+            await conn.commit()
+            continue
+        await conn.execute(
+            "update human_decisions set decision = 'modify', modified_proposal = %s::jsonb, decided_by = 'timeout', "
+            "decided_sim = %s, decided_at = now(), use_as_fewshot = false where id = %s and decision is null",
+            (timeout_proposal, sim_time, hid),
+        )
+        await conn.commit()
+        await resume_after_human(conn, human_decision_id=int(hid), chain=chain, profile=profile, sim_time=sim_time)
 
 
 async def resume_after_human(
