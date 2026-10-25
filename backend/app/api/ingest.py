@@ -15,8 +15,8 @@ from app.api._compliance_support import analyze_in_background, run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.compliance.transcripts import create_transcript, load_file
 from app.compliance.txt_parser import TranscriptParseError, parse_txt
-from app.errors import NotImplementedYet
 from app.ingest.normalizer import IngestError, create_signal
+from app.ingest.sources import is_external_url, poll_source
 from app.logging import get_logger
 
 log = get_logger(__name__)
@@ -259,18 +259,87 @@ async def post_ingest_transcripts_id_analyze(request: Request, id: int, body: di
     return JSONResponse({"id": id, "status": "analyzing"}, status_code=202)
 
 
+def _source_out(row: dict[str, Any]) -> dict[str, Any]:
+    last = row.get("last_polled_at")
+    return {
+        "code": row["code"],
+        "kind": row["kind"],
+        "channel_code": row["channel_code"],
+        "config": row.get("config") or {},
+        "enabled": row["enabled"],
+        "interval_s": row["interval_s"],
+        "last_polled_at": last.isoformat() if last else None,
+        "cursor": row.get("cursor"),
+        "is_external": row["is_external"],
+        "stats": row.get("stats") or {},
+    }
+
+
 @router.get("/api/ingest/sources", summary="[ДТЗ FR-1.2] Адаптеры источников (REST / polling / file) и их статистика")
 async def get_ingest_sources(request: Request) -> Any:
-    raise NotImplementedYet("T-207")
+    async with db() as conn:
+        rows = await fetch_all(
+            conn,
+            "select code, kind, channel_code, config, enabled, interval_s, last_polled_at, cursor, is_external, stats "
+            "from ingest_sources order by code",
+        )
+    return {"items": [_source_out(r) for r in rows]}
 
 
 @router.put("/api/ingest/sources/{code}", summary="Создать/обновить адаптер (enabled, interval_s, config.url)")
-async def put_ingest_sources_code(request: Request) -> Any:
-    raise NotImplementedYet("T-207")
+async def put_ingest_sources_code(code: str, body: dict[str, Any]) -> Any:
+    interval = int(body.get("interval_s") or 10)
+    if interval < 5:
+        raise HTTPException(status_code=422, detail="interval_s ≥ 5")
+    kind = body.get("kind") or "polling"
+    if kind not in ("rest", "polling", "file"):
+        raise HTTPException(status_code=422, detail="kind: rest|polling|file")
+    channel = body.get("channel_code") or "social"
+    config = body.get("config") or {}
+    url = str(config.get("url") or "")
+    external = is_external_url(url)
+    from app.config import get_settings
+
+    if get_settings().profile == "demo" and external:
+        raise HTTPException(status_code=422, detail="demo-профиль: только mock-лента, внешний URL запрещён")
+    enabled = bool(body.get("enabled", True))
+    async with db() as conn:
+        channel_row = await fetch_one(conn, "select code from channels where code = %s", (channel,))
+        if channel_row is None:
+            raise HTTPException(status_code=422, detail="неизвестный channel_code")
+        await conn.execute(
+            "insert into ingest_sources (code, kind, channel_code, config, enabled, interval_s, is_external) "
+            "values (%s, %s, %s, %s::jsonb, %s, %s, %s) "
+            "on conflict (code) do update set kind = excluded.kind, channel_code = excluded.channel_code, "
+            "config = excluded.config, enabled = excluded.enabled, interval_s = excluded.interval_s, is_external = excluded.is_external",
+            (code, kind, channel, json.dumps(config), enabled, interval, external),
+        )
+        row = await fetch_one(
+            conn,
+            "select code, kind, channel_code, config, enabled, interval_s, last_polled_at, cursor, is_external, stats "
+            "from ingest_sources where code = %s",
+            (code,),
+        )
+    assert row
+    return _source_out(row)
 
 
 @router.post(
     "/api/ingest/sources/{code}/poll", summary="Внеочередной опрос polling-адаптера (кнопка «Опросить сейчас»)"
 )
-async def post_ingest_sources_code_poll(request: Request) -> Any:
-    raise NotImplementedYet("T-207")
+async def post_ingest_sources_code_poll(code: str) -> Any:
+    async with db() as conn:
+        row = await fetch_one(
+            conn,
+            "select code, kind, channel_code, config, enabled, interval_s, last_polled_at, cursor, is_external, stats "
+            "from ingest_sources where code = %s",
+            (code,),
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail="источник не найден")
+        if row["kind"] != "polling":
+            raise HTTPException(status_code=409, detail="опрос только для kind=polling")
+        try:
+            return await poll_source(conn, row)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=409, detail=str(exc)[:200]) from exc

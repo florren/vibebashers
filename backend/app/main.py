@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import pkgutil
 from collections.abc import AsyncIterator
@@ -57,7 +58,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.sim = None
     app.state.agent = None
+    poll_stop: asyncio.Event | None = None
     if not s.is_test:
+        from app.ingest.sources import polling_worker
+
+        poll_stop = asyncio.Event()
+        app.state.ingest_poll = asyncio.create_task(polling_worker(poll_stop))
         bridge.start()
         app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
         app.state.agent.start()
@@ -69,6 +75,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     yield
+    if poll_stop is not None:
+        poll_stop.set()
+        task = getattr(app.state, "ingest_poll", None)
+        if task is not None:
+            await task
     if app.state.agent is not None:
         await app.state.agent.stop()
     if app.state.sim is not None:
