@@ -9,6 +9,7 @@ import { IncidentPage } from '@/pages/incident/IncidentPage'
 import { EnginePage } from '@/pages/engine/EnginePage'
 import { CompliancePage } from '@/pages/compliance/CompliancePage'
 import { FeedPage } from '@/pages/feed/FeedPage'
+import { ClaimPage } from '@/pages/claim/ClaimPage'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { SetupPage } from '@/pages/setup/SetupPage'
 
@@ -29,6 +30,7 @@ export function App() {
             <Route path="compliance" element={<CompliancePage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="feed" element={<FeedPage />} />
+            <Route path="claim" element={<ClaimPage />} />
             <Route path="setup" element={<SetupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

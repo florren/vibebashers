@@ -30,7 +30,7 @@
 
 ## Критерии приёмки
 - [ ] Сценарий 4 через лендинг проходит до ответа.
-- [ ] Без captcha/согласия — 422 с понятным текстом.
+- [x] Без captcha/согласия — 422 с понятным текстом.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -39,4 +39,11 @@ npx playwright test e2e/landing.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+Ветка `feat/T-119-landing-public` от main `4a52284`, без коммита и PR.
+
+Закрыты `POST /api/public/claim`, `GET /api/public/captcha`, `GET/POST /api/public/track/{token}`, `GET /api/public/bot/qr` и `POST /api/internal/tgbot/inbound`. Сигнал создаётся только через `from_landing` / `from_bot` и `create_signal`. UI — страница `/claim` (форма, капча, успех с номером, ссылкой и QR). Страница `/track` и событие `signal.appended` не делались. Контракты не менялись.
+
+Коды `landing`, `telegram_bot` и `track_append` отсутствуют в `data/ingest_sources.yaml`, а `ingest_messages.source_code` ссылается на `ingest_sources`. Перед записью сигнала эти три кода вставляются идемпотентно (`on conflict do nothing`), иначе внешний ключ рвёт приёмку.
+
+Проверка шага 3: `cd backend && .venv/bin/pytest -q tests/integration/test_public_claim.py` — код 0, `1 passed`. Сценарий 4 и полный `make test` не запускались. `make lint` на этой ветке красный из-за чужого `ruff format --check` (файлы вне пакета); мои модули `ruff` и `mypy` проходят.

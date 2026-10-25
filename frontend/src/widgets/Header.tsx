@@ -76,6 +76,7 @@ export function Header() {
         <Nav to="/compliance" label={t('nav.compliance')} />
         <Nav to="/manager" label={t('nav.manager')} />
         <Nav to="/feed" label={t('nav.feed')} />
+        <Nav to="/claim" label={t('nav.claim')} />
         <Nav to="/setup" label={t('nav.settings')} />
       </nav>
 
