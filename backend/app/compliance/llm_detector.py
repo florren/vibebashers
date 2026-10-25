@@ -51,7 +51,14 @@ class Detector:
         self.tokens = 0
 
     async def _run(
-        self, node: str, prompt_name: str, prompt_vars: dict[str, Any], schema_name: str, hint: dict[str, Any]
+        self,
+        node: str,
+        prompt_name: str,
+        prompt_vars: dict[str, Any],
+        schema_name: str,
+        hint: dict[str, Any],
+        *,
+        context: str = "detector",
     ) -> tuple[dict[str, Any], int, int]:
         """Вызов модели со структурированным ответом; возвращает (obj, agent_run_id, latency_ms)."""
         prompt = load_prompt(prompt_name)
@@ -78,7 +85,7 @@ class Detector:
             {"prompt_tokens": 0, "completion_tokens": 0},
         )
         try:
-            res = await self.chain.complete_structured(messages, deref(schema_name), self.profile, context="detector")
+            res = await self.chain.complete_structured(messages, deref(schema_name), self.profile, context=context)
             got = dict(res.obj or {})
             errors = validate_schema(got, deref(schema_name))
             provider, usage = (
@@ -180,4 +187,5 @@ class Detector:
             },
             "compliance/transcript_report",
             hint,
+            context="batch",
         )
