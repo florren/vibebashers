@@ -508,6 +508,21 @@ async def test_decide_clarification_precedes_escalation() -> None:
     assert second["decision"]["escalation"]["reason"]
 
 
+async def test_decide_sarcasm_clarify_keeps_escalation_for_cx_lead() -> None:
+    state = _decide_state(already=False, signals_7d=2)
+    state["signal"]["channel"] = "social"
+    state["classification"]["flags"] = ["sarcasm", "repeat"]
+    state["classification"]["sentiment"] = "negative"
+    state["normalization"]["entities"] = {}
+    state["classification"]["entities"] = {}
+    out = await decide(state, _decide_deps())  # type: ignore[arg-type]
+    assert out["decision"]["router_action"] == "request_clarification"
+    esc = out["decision"]["escalation"]
+    assert esc is not None
+    assert esc["to_role"] == "cx_lead"
+    assert esc["reason"]
+
+
 def _blocked_refund_state(*, confidence: float) -> dict[str, Any]:
     """tariff_terms без сущностей: тип совпадает с правилом, уверенность не становится конфликтом."""
     state = _decide_state(already=False, signals_7d=0)

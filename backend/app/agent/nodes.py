@@ -1540,6 +1540,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         and pol.needs_clarification(c, norm, already_asked=already_asked, policies=deps.policies)
     )
     clarify_kind: str | None = "generic" if clarify else None
+    sarcasm_clarify_path = False
     unidentified = not state.get("client")
     if human_reason is None and not already_asked:
         if unidentified and stype not in ("gratitude", "suggestion"):
@@ -1556,6 +1557,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         ):
             # сарказм без конкретики (сценарий 11): один уточняющий вопрос
             clarify, clarify_kind = True, "generic"
+            sarcasm_clarify_path = True
     checks += [
         {
             "rule": "confidence>=threshold",
@@ -1719,7 +1721,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
                 "severity": "critical" if c["problem_summary"]["severity"] == "critical" else "high",
                 "to_role": "branch_manager" if sig.get("channel") == "branch" else "cx_lead",
             }
-            if esc_reason and router_action == "escalate"
+            if esc_reason
+            and (router_action == "escalate" or (clarify and sarcasm_clarify_path))
             else None
         ),
         "clarification_question_ru": question if clarify else None,
