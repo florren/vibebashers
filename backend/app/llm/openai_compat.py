@@ -14,7 +14,7 @@ import httpx
 
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
-from app.llm.gigachat import JSON_INSTRUCTION
+from app.llm.gigachat import JSON_INSTRUCTION, schema_for_model
 from app.logging import get_logger
 
 log = get_logger(__name__)
@@ -79,7 +79,7 @@ class OpenAICompatProvider:
         base_url = (profile.base_url or self.base_url).rstrip("/")
         use_json_schema = bool(profile.extra.get("json_schema", True))
         msgs: list[dict[str, str]] = [
-            {"role": "system", "content": JSON_INSTRUCTION.format(schema=json.dumps(schema, ensure_ascii=False))},
+            {"role": "system", "content": JSON_INSTRUCTION.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))},
             *[{"role": str(m["role"]), "content": str(m["content"])} for m in messages],
         ]
         usage = Usage(provider=self.name, model=profile.model)

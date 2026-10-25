@@ -307,6 +307,28 @@ async def test_openai_compat_falls_back_from_json_schema_to_json_object() -> Non
     await prov.aclose()
 
 
+def test_schema_for_model_drops_title() -> None:
+    from app.agent.prompts import load as load_prompt
+    from app.llm.gigachat import schema_for_model
+
+    raw = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:test",
+        "title": "не копировать",
+        "examples": [{"title": "не копировать"}],
+        "type": "object",
+        "required": ["overall_ru"],
+        "properties": {"overall_ru": {"type": "string"}},
+    }
+    sent = schema_for_model(raw)
+    assert "title" not in sent and "examples" not in sent and sent["required"] == ["overall_ru"]
+    body = load_prompt("transcript_report").body
+    for field in ("findings", "script_compliance", "overall_ru", "action_plan_ru", "confidence"):
+        assert field in body
+    for stale in ("summary_ru", "manager_actions_ru", "`script_steps`", "client_signal"):
+        assert stale not in body
+
+
 def test_cassettes_have_no_secrets() -> None:
     import re
     from pathlib import Path

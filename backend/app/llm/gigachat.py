@@ -22,8 +22,16 @@ from app.logging import get_logger
 log = get_logger(__name__)
 JSON_INSTRUCTION = (
     "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже "
-    "(все обязательные поля, значения enum — из списка, тексты на русском):\n{schema}"
+    "(все обязательные поля, значения enum — из списка, тексты на русском). "
+    "Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{schema}"
 )
+
+_SCHEMA_META = frozenset({"$schema", "$id", "title", "description", "examples"})
+
+
+def schema_for_model(schema: dict[str, Any]) -> dict[str, Any]:
+    """Схема для промпта: без title/$id/examples, чтобы модель не возвращала заголовок схемы как ответ."""
+    return {k: v for k, v in schema.items() if k not in _SCHEMA_META}
 
 
 class GigaChatProvider:
@@ -158,7 +166,7 @@ class GigaChatProvider:
         self, messages: list[Message], schema: dict[str, Any], profile: LLMProfile, *, timeout_s: float
     ) -> tuple[dict[str, Any], Usage, str]:
         t0 = time.perf_counter()
-        sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema, ensure_ascii=False))
+        sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))
         msgs = self._ordered(messages, sys_msg)
         total_usage = Usage(provider=self.name, model=profile.model)
         raw = ""
