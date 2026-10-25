@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: LlmProvider = "mock"
-    llm_chain: str = "gigachat,replay,mock"  # порядок failover; переопределяется профилем из БД
+    llm_chain: str = "gigachat,openai_compat,replay,mock"  # порядок failover; переопределяется профилем из БД
     llm_record: bool = False
     gigachat_auth_key_1: str | None = None
     gigachat_auth_key_2: str | None = None
@@ -47,13 +47,16 @@ class Settings(BaseSettings):
     )
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_budget_usd: float = 10  # OPENROUTER_BUDGET_USD: платные модели, не :free
     local_llm_base_url: str | None = None
     cassettes_dir: str = "../data/cassettes"
 
     # интеграции
     telegram_bot_token: str | None = None
     mailpit_enabled: bool = False
-    compliance_alert_threshold: int = 3  # N подтверждённых срабатываний мисселинга за встречу → алерт руководителю (ДТЗ FR-2.4)
+    compliance_alert_threshold: int = (
+        3  # N подтверждённых срабатываний мисселинга за встречу → алерт руководителю (ДТЗ FR-2.4)
+    )
     stt_provider: Literal["vosk", "browser", "none"] = "none"
     stt_model_path: str | None = Field(
         default=None, description="Каталог модели Vosk (например, data/models/vosk-model-small-ru-0.22)"
