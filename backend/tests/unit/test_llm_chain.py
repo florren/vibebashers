@@ -251,7 +251,7 @@ async def test_gigachat_oauth_and_chat_urls_profile_base_url() -> None:
     assert oauth_checks and chat_urls[0] == f"{default_base}/chat/completions"
 
     profile_ultra = LLMProfile(
-        code="ultra", provider="gigachat", model="GigaChat-3-Ultra", base_url=ultra_base
+        code="ultra", provider="gigachat", model="GigaChat-2-Max", base_url=ultra_base
     )
     await prov.complete_structured(MSGS, SCHEMA, profile_ultra, timeout_s=5)
     assert chat_urls[-1] == f"{ultra_base}/chat/completions"

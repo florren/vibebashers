@@ -32,7 +32,7 @@ async def test_scenario_08_live_latency_p50_p95(seeded: str) -> None:
     assert scenario is not None
     chain = _live_chain()
     assert chain is not None
-    profile = LLMProfile(code="main", provider="gigachat", model="GigaChat-3-Ultra", role="main")
+    profile = LLMProfile(code="main", provider="gigachat", model="GigaChat-2-Max", role="main")
     samples: list[float] = []
     for _ in range(10):
         t0 = time.perf_counter()
