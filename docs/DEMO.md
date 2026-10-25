@@ -53,5 +53,5 @@
 ## Связанные материалы
 
 - [README.md](../README.md) — установка, флаги `install.sh`, §1.6.
-- [DEMO-SCRIPT.md](DEMO-SCRIPT.md) — расширенный показ 12–15 мин (симуляция, HITL, жюри, микрофон).
+- [DEMO-SCRIPT.md](DEMO-SCRIPT.md) — расширенный показ **7–8 мин** (блоки A/B/C: `/feed`, комплаенс, симуляция, «Под капотом», бенчмарки).
 - Сценарии в данных: `data/scenarios/08_qr_fee_public_review.yaml`, `09_branch_misselling.yaml`, `10_retail_transcript_red_phrases.yaml`; прогон: `make scenario ID=8|9|10`.
