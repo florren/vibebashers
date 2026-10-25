@@ -1,0 +1,24 @@
+{
+  "nav": {
+    "claim": "Claim"
+  },
+  "claim": {
+    "title": "Contact the Bank",
+    "subtitle": "Describe what happened. We will give you a number and a link to follow the request.",
+    "fictionalHint": "Use fictional details only: phone from +7 900 000-00-00 to +7 900 009-99-99, email only @example.ru or @example.com.",
+    "name": "How should we address you",
+    "phone": "Phone",
+    "email": "Email",
+    "region": "Region",
+    "city": "City",
+    "product": "Product",
+    "text": "Message",
+    "consent": "I agree to processing of this request",
+    "captcha": "Check",
+    "submit": "Send",
+    "successTitle": "Request accepted",
+    "publicId": "Request number",
+    "openTrack": "Open tracking",
+    "error": "Could not send the request"
+  }
+}

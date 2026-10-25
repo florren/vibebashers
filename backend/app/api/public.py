@@ -1,53 +1,628 @@
-"""Роутер тега `public` (OpenAPI 1.4.0). Заглушки 501 — реализация: карточка T-119."""
+"""Роутер тега `public` (OpenAPI 1.4.0). Claim, трекинг, QR бота и приём Telegram — T-119."""
 
 from __future__ import annotations
 
+import io
+import re
+import secrets
+import time
+import uuid
 from typing import Any, Literal
 
+import qrcode
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
+from qrcode.image.svg import SvgPathImage
 
 from app.api._compliance_support import run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
-from app.errors import NotImplementedYet
+from app.config import get_settings
+from app.errors import NotImplementedYet, Problem
 from app.feed import service as feed_svc
-from app.ingest.normalizer import create_signal
+from app.ingest.normalizer import create_signal, from_bot, from_landing
 
 router = APIRouter(tags=["public"])
 
+_BOT_URL = "https://t.me/CXPulseControlBot"
+_CLAIM_WINDOW_S = 60.0
+_CLAIM_LIMIT = 5
+_PHONE = re.compile(r"^\+7 900 00[0-9]-\d{2}-\d{2}$")
+_EMAIL_DOMAINS = frozenset({"example.ru", "example.com"})
+_TEAM_CODE = re.compile(r"team_[a-z0-9_]+")
+_ERROR_CODE = re.compile(r"\b[A-Z]{2,6}(?:-[A-Z0-9]{2,12}){1,3}\b")
+_WORKING = {
+    "classified",
+    "routed",
+    "in_progress",
+    "fix_proposed",
+    "fix_deployed",
+    "verifying",
+    "escalated",
+    "awaiting_human",
+    "awaiting_client",
+}
+_RESOLVED = {"resolved", "closed"}
+_ANSWERED_TEMPLATES = {"resolved", "refund_done", "gift_offer"}
+_STATUS_RU = {
+    "new": "Получено",
+    "processing": "В работе у агента",
+    "classified": "Разобрано",
+    "linked": "Передано в работу",
+    "deferred": "Отложено",
+    "awaiting_human": "Ожидает решения сотрудника",
+    "awaiting_client": "Нужен ваш ответ",
+    "answered": "Дан ответ",
+    "closed": "Закрыто",
+    "noise": "Не требует реакции",
+    "error": "Не удалось обработать",
+}
+_TIMELINE_LABELS = {
+    "received": "Обращение получено",
+    "agent_started": "Агент взял обращение в работу",
+    "classified": "Обращение разобрано",
+    "incident_created": "Создано обращение для команды",
+    "team_working": "Команда работает над решением",
+    "progress_update": "Есть промежуточное сообщение",
+    "clarification_needed": "Нужно уточнение",
+    "answered": "Дан ответ",
+    "resolved": "Решение готово",
+    "closed": "Обращение закрыто",
+}
+_ROLE_BUTTONS = [
+    {"text": "Я клиент банка", "data": "is_client"},
+    {"text": "Я ещё не клиент", "data": "not_client"},
+]
 
-@router.post("/api/public/claim", summary="Лендинг потенциального/неидентифицированного клиента")
-async def post_public_claim(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+_captchas: dict[str, int] = {}
+_claim_hits: dict[str, list[float]] = {}
+_bot_drafts: dict[int, dict[str, str]] = {}
+
+
+class ClaimContact(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    nick: str | None = None
+    region_code: str | None = None
+    city_id: int | None = None
+    telegram_chat_id: int | None = None
+
+
+class CaptchaAnswer(BaseModel):
+    id: str
+    answer: int
+
+
+class ClaimBody(BaseModel):
+    contact: ClaimContact
+    product_code: str | None = None
+    text: str = Field(min_length=10, max_length=4000)
+    consent: bool
+    captcha: CaptchaAnswer
+    voice_meta: dict[str, Any] | None = None
+
+
+class TrackAppendBody(BaseModel):
+    text: str = Field(max_length=4000)
+
+
+class InboundBody(BaseModel):
+    chat_id: int
+    username: str | None = None
+    kind: Literal["start", "is_client", "not_client", "free_text", "contact", "region", "append"]
+    text: str
+    payload: dict[str, Any] | None = None
+
+
+def _qr_svg(payload: str) -> str:
+    buffer = io.BytesIO()
+    image = qrcode.make(payload, image_factory=SvgPathImage)
+    image.save(buffer)
+    return buffer.getvalue().decode("utf-8")
+
+
+def _host(request: Request) -> str:
+    client = request.client
+    return client.host if client else "unknown"
+
+
+def _claim_limited(host: str) -> bool:
+    now = time.monotonic()
+    recent = [stamp for stamp in _claim_hits.get(host, []) if now - stamp < _CLAIM_WINDOW_S]
+    if len(recent) >= _CLAIM_LIMIT:
+        _claim_hits[host] = recent
+        return True
+    recent.append(now)
+    _claim_hits[host] = recent
+    return False
+
+
+def _email_ok(value: str) -> bool:
+    local, sep, domain = value.partition("@")
+    return bool(sep and local and " " not in value and domain.lower() in _EMAIL_DOMAINS)
+
+
+def _contact_error(phone: str | None, email: str | None) -> str | None:
+    phone_s = (phone or "").strip() or None
+    email_s = (email or "").strip() or None
+    if phone_s is None and email_s is None:
+        return "Укажите вымышленный телефон или почту"
+    if phone_s is not None and _PHONE.match(phone_s) is None:
+        return "Телефон только в диапазоне +7 900 000-00-00 … +7 900 009-99-99"
+    if email_s is not None and not _email_ok(email_s):
+        return "Почта только на @example.ru или @example.com"
+    return None
+
+
+def _human(text: str | None) -> str | None:
+    if not text:
+        return None
+    if _TEAM_CODE.search(text) or _ERROR_CODE.search(text):
+        return None
+    return text
+
+
+def _take_captcha(captcha_id: str, answer: int) -> bool:
+    expected = _captchas.pop(captcha_id, None)
+    return expected is not None and expected == answer
+
+
+def _bot_reply(
+    text: str,
+    *,
+    buttons: list[dict[str, str]] | None = None,
+    signal_id: int | None = None,
+    tracking_token: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "reply_text": text,
+        "buttons": buttons or [],
+        "signal_id": signal_id,
+        "tracking_token": tracking_token,
+    }
+
+
+def _track_url(request: Request, token: str) -> str:
+    return f"{str(request.base_url).rstrip('/')}/track/{token}"
+
+
+async def _ensure_source(conn: Any, code: str, channel_code: str) -> None:
+    """source_code из плана должен существовать в ingest_sources: на код есть внешний ключ."""
+    await conn.execute(
+        "insert into ingest_sources (code, kind, channel_code, config, enabled, interval_s, is_external) "
+        "values (%s, 'rest', %s, '{}'::jsonb, true, 5, false) on conflict (code) do nothing",
+        (code, channel_code),
+    )
+
+
+async def _ensure_refs(conn: Any, body: ClaimBody) -> None:
+    contact = body.contact
+    region = (contact.region_code or "").strip()
+    if not region:
+        raise Problem(422, "Неизвестный регион", "Укажите регион из справочника")
+    if contact.city_id is None:
+        raise Problem(422, "Неизвестный город", "Укажите город из справочника")
+    city = await fetch_one(conn, "select id from cities where id = %s and region_code = %s", (contact.city_id, region))
+    if not city:
+        known_region = await fetch_one(conn, "select code from regions where code = %s", (region,))
+        if not known_region:
+            raise Problem(422, "Неизвестный регион", "Регион не найден в справочнике")
+        raise Problem(422, "Неизвестный город", "Город не найден в справочнике")
+    product = (body.product_code or "").strip()
+    if product:
+        known = await fetch_one(conn, "select code from products where code = %s", (product,))
+        if not known:
+            raise Problem(422, "Неизвестный продукт", "Продукт не найден в справочнике")
+
+
+def _timeline(
+    signal: dict[str, Any],
+    runs: list[dict[str, Any]],
+    incidents: list[dict[str, Any]],
+    notes: list[dict[str, Any]],
+    followups: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    received = signal["received_sim"]
+    statuses = {str(row["status"]) for row in incidents}
+    templates = [str(row["template_code"]) for row in notes if row.get("template_code")]
+    team_name = _human(next((str(row["team_name"]) for row in incidents if row.get("team_name")), None))
+    problem = _human(_problem_text(signal.get("classification")))
+    clarify = signal["status"] == "awaiting_client" or any(
+        row["status"] == "scheduled" and row["reason"] == "awaiting_client" for row in followups
+    )
+    flags = {
+        "received": True,
+        "agent_started": bool(runs),
+        "classified": signal.get("classification") is not None,
+        "incident_created": bool(incidents),
+        "team_working": bool(statuses & _WORKING),
+        "progress_update": "progress_update" in templates,
+        "clarification_needed": clarify or "clarify_request" in templates,
+        "answered": signal["status"] in {"answered", "closed"}
+        or bool(set(templates) & _ANSWERED_TEMPLATES)
+        or bool(statuses & _RESOLVED),
+        "resolved": bool(statuses & _RESOLVED),
+        "closed": signal["status"] == "closed" or "closed" in statuses,
+    }
+    texts = {
+        "classified": problem,
+        "incident_created": team_name,
+        "clarification_needed": _human(_clarify_body(notes)),
+    }
+    stamps = {
+        "received": received,
+        "agent_started": (runs[0].get("started_sim") or runs[0].get("started_at")) if runs else None,
+        "classified": received,
+        "incident_created": incidents[0].get("created_sim") if incidents else None,
+        "team_working": incidents[0].get("created_sim") if incidents else None,
+        "progress_update": _note_time(notes, "progress_update"),
+        "clarification_needed": _note_time(notes, "clarify_request") or received,
+        "answered": _note_time_any(notes, _ANSWERED_TEMPLATES) or received,
+        "resolved": next((row.get("resolved_sim") or row.get("created_sim") for row in incidents), None),
+        "closed": next(
+            (row.get("closed_sim") or row.get("resolved_sim") for row in incidents if row["status"] == "closed"), None
+        )
+        or received,
+    }
+    items: list[dict[str, Any]] = []
+    for step, label in _TIMELINE_LABELS.items():
+        done = flags[step]
+        item: dict[str, Any] = {
+            "step": step,
+            "label_ru": label,
+            "text_ru": texts.get(step) if done else None,
+            "done": done,
+        }
+        if done:
+            item["at_sim"] = stamps.get(step) or received
+        items.append(item)
+    return items
+
+
+def _problem_text(classification: Any) -> str | None:
+    if not isinstance(classification, dict):
+        return None
+    summary = classification.get("problem_summary")
+    if isinstance(summary, dict) and isinstance(summary.get("problem"), str):
+        return str(summary["problem"])
+    summary_ru = classification.get("summary_ru")
+    return str(summary_ru) if isinstance(summary_ru, str) else None
+
+
+def _clarify_body(notes: list[dict[str, Any]]) -> str | None:
+    bodies = [str(row["body"]) for row in notes if row.get("template_code") == "clarify_request" and row.get("body")]
+    return bodies[-1] if bodies else None
+
+
+def _note_time(notes: list[dict[str, Any]], template: str) -> Any:
+    stamps = [row.get("sent_sim") for row in notes if row.get("template_code") == template and row.get("sent_sim")]
+    return stamps[-1] if stamps else None
+
+
+def _note_time_any(notes: list[dict[str, Any]], templates: set[str]) -> Any:
+    stamps = [row.get("sent_sim") for row in notes if row.get("template_code") in templates and row.get("sent_sim")]
+    return stamps[-1] if stamps else None
+
+
+async def _tracking_view(conn: Any, signal: dict[str, Any]) -> dict[str, Any]:
+    signal_id = int(signal["id"])
+    runs = await fetch_all(
+        conn,
+        "select id, started_sim, started_at, outcome, incident_id from agent_runs "
+        "where signal_id = %s and kind = 'agent' order by id",
+        (signal_id,),
+    )
+    incidents = await fetch_all(
+        conn,
+        "select i.id, i.status, i.created_sim, i.resolved_sim, i.closed_sim, tm.name_ru as team_name "
+        "from incident_signals ls join incidents i on i.id = ls.incident_id "
+        "join teams tm on tm.code = i.team_code where ls.signal_id = %s order by i.id",
+        (signal_id,),
+    )
+    incident_ids = [int(row["id"]) for row in incidents]
+    if incident_ids:
+        followups = await fetch_all(
+            conn,
+            "select status, reason, wake_sim from followups where signal_id = %s or incident_id = any(%s) order by id",
+            (signal_id, incident_ids),
+        )
+        notes = await fetch_all(
+            conn,
+            "select id, recipient_type, channel_code, template_code, subject, body, status, sent_sim, client_id, incident_id "
+            "from notifications where recipient_type = 'client' and (signal_id = %s or incident_id = any(%s)) order by id",
+            (signal_id, incident_ids),
+        )
+    else:
+        followups = await fetch_all(
+            conn,
+            "select status, reason, wake_sim from followups where signal_id = %s order by id",
+            (signal_id,),
+        )
+        notes = await fetch_all(
+            conn,
+            "select id, recipient_type, channel_code, template_code, subject, body, status, sent_sim, client_id, incident_id "
+            "from notifications where recipient_type = 'client' and signal_id = %s order by id",
+            (signal_id,),
+        )
+    can_append = signal["status"] == "awaiting_client" or any(
+        row["status"] == "scheduled" and row["reason"] == "awaiting_client" for row in followups
+    )
+    return {
+        "public_id": signal["public_id"],
+        "status_label_ru": _STATUS_RU.get(str(signal["status"]), "Обращение в работе"),
+        "timeline": _timeline(signal, runs, incidents, notes, followups),
+        "can_append": can_append,
+        "question_from_agent": _clarify_body(notes),
+        "notifications": notes,
+    }
+
+
+async def _append_signal(
+    conn: Any, parent: dict[str, Any], text: str, *, run_id: int, sim_time: Any, source_code: str
+) -> dict[str, Any]:
+    ext = parent.get("external_contact") or {}
+    if not isinstance(ext, dict):
+        ext = {}
+    parent_id = int(parent["id"])
+    external_id = f"track-{parent_id}-{uuid.uuid4().hex[:12]}"
+    if parent.get("channel_code") == "telegram_bot":
+        chat_raw = ext.get("telegram_chat_id")
+        if chat_raw is None:
+            raise Problem(422, "Нет чата", "У обращения нет чата Telegram")
+        msg = from_bot(
+            chat_id=int(chat_raw),
+            text=text,
+            phone=ext.get("phone"),
+            email=ext.get("email"),
+            name=ext.get("name"),
+            region_code=ext.get("region_code"),
+            parent_signal_id=parent_id,
+            external_id=external_id,
+        )
+    else:
+        msg = from_landing(
+            contact=ext,
+            text=text,
+            parent_signal_id=parent_id,
+            external_id=external_id,
+        )
+    channel = "telegram_bot" if parent.get("channel_code") == "telegram_bot" else "landing"
+    await _ensure_source(conn, source_code, channel)
+    return await create_signal(conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=False)
 
 
 @router.get("/api/public/captcha", summary="Арифметическая антибот-проверка")
-async def get_public_captcha(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+async def get_public_captcha() -> dict[str, str]:
+    left = secrets.randbelow(9) + 1
+    right = secrets.randbelow(9) + 1
+    captcha_id = secrets.token_urlsafe()
+    _captchas[captcha_id] = left + right
+    return {"id": captcha_id, "question": f"{left} + {right} = ?"}
+
+
+@router.post("/api/public/claim", summary="Лендинг потенциального/неидентифицированного клиента")
+async def post_public_claim(request: Request, body: ClaimBody) -> JSONResponse:
+    if body.consent is not True:
+        raise Problem(422, "Нет согласия", "Нужно согласие на обработку обращения")
+    contact_error = _contact_error(body.contact.phone, body.contact.email)
+    if contact_error:
+        raise Problem(422, "Неверный контакт", contact_error)
+    async with db() as conn:
+        await _ensure_refs(conn, body)
+        if not _take_captcha(body.captcha.id, body.captcha.answer):
+            raise Problem(422, "Антибот-проверка", "Неверная или повторная антибот-проверка")
+        if _claim_limited(_host(request)):
+            raise Problem(
+                422, "Слишком много обращений", "С этого адреса можно отправить не больше 5 обращений за минуту"
+            )
+        run_id, sim_time = await run_context(request, conn)
+        token = secrets.token_urlsafe(24)
+        await _ensure_source(conn, "landing", "landing")
+        contact = body.contact.model_dump(exclude_none=True)
+        msg = from_landing(
+            contact=contact,
+            text=body.text,
+            product_code=(body.product_code or "").strip() or None,
+            voice_meta=body.voice_meta if isinstance(body.voice_meta, dict) else None,
+            tracking_token=token,
+        )
+        res = await create_signal(conn, msg, source_code="landing", run_id=run_id, sim_time=sim_time)
+    if res.get("status") != "accepted":
+        raise Problem(422, "Обращение не принято", res.get("error") or "сообщение отклонено нормализатором")
+    track = str(res.get("tracking_token") or token)
+    url = _track_url(request, track)
+    return JSONResponse(
+        {"public_id": res.get("public_id"), "tracking_token": track, "track_url": url, "qr_svg": _qr_svg(url)},
+        status_code=201,
+    )
 
 
 @router.get("/api/public/track/{token}", summary="Таймлайн обращения понятным языком")
-async def get_public_track_token(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+async def get_public_track_token(token: str) -> JSONResponse:
+    async with db() as conn:
+        signal = await fetch_one(
+            conn,
+            "select id, public_id, status, received_sim, classification from signals where tracking_token = %s",
+            (token,),
+        )
+        if not signal:
+            raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
+        view = await _tracking_view(conn, signal)
+    return JSONResponse(jsonable_encoder(view))
 
 
 @router.post("/api/public/track/{token}", summary="«Дополнить обращение» (ответ на уточняющий вопрос агента)")
-async def post_public_track_token(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+async def post_public_track_token(request: Request, token: str, body: TrackAppendBody) -> Response:
+    text = body.text.strip()
+    if not text:
+        raise Problem(422, "Пустое дополнение", "Напишите текст дополнения")
+    async with db() as conn:
+        parent = await fetch_one(
+            conn,
+            "select id, channel_code, external_contact from signals where tracking_token = %s",
+            (token,),
+        )
+        if not parent:
+            raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
+        run_id, sim_time = await run_context(request, conn)
+        res = await _append_signal(conn, parent, text, run_id=run_id, sim_time=sim_time, source_code="track_append")
+    if res.get("status") != "accepted":
+        raise Problem(422, "Дополнение не принято", res.get("error") or "сообщение отклонено нормализатором")
+    return Response(status_code=202)
 
 
 @router.get("/api/public/bot/qr", summary="QR-код на Telegram-бота для жюри-режима и README")
-async def get_public_bot_qr(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+async def get_public_bot_qr() -> Response:
+    token = (get_settings().telegram_bot_token or "").strip()
+    if not token:
+        raise Problem(404, "Бот выключен", "Telegram-бот не настроен")
+    svg = _qr_svg(_BOT_URL)
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.post(
     "/api/internal/tgbot/inbound", summary="Внутренний приём сообщений от сервиса tgbot (только из docker-сети)"
 )
-async def post_internal_tgbot_inbound(request: Request) -> Any:
-    raise NotImplementedYet("T-119")
+async def post_internal_tgbot_inbound(request: Request, body: InboundBody) -> dict[str, Any]:
+    async with db() as conn:
+        return await _bot_turn(request, conn, body)
+
+
+async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
+    chat_id = body.chat_id
+    kind = body.kind
+    if kind == "start":
+        _bot_drafts[chat_id] = {}
+        return _bot_reply(
+            "Здравствуйте! Это помощник Банка. Выберите, кто вы. Используйте только вымышленные данные.",
+            buttons=_ROLE_BUTTONS,
+        )
+    if kind in {"is_client", "not_client"}:
+        draft = _bot_drafts.setdefault(chat_id, {})
+        draft["role"] = kind
+        return _bot_reply("Запомнил. Опишите проблему своими словами, не короче 10 символов.")
+    if kind == "free_text":
+        text = body.text.strip()
+        if len(text) < 10:
+            return _bot_reply("Напишите подробнее: нужно хотя бы 10 символов.")
+        draft = _bot_drafts.setdefault(chat_id, {})
+        draft["text"] = text
+        return _bot_reply(
+            "Укажите телефон в диапазоне +7 900 000-00-00 … +7 900 009-99-99 или почту @example.ru / @example.com."
+        )
+    if kind == "contact":
+        phone, email = _inbound_contact(body)
+        error = _contact_error(phone, email)
+        if error:
+            return _bot_reply(error)
+        draft = _bot_drafts.setdefault(chat_id, {})
+        if phone:
+            draft["phone"] = phone
+            draft.pop("email", None)
+        if email:
+            draft["email"] = email
+            if not phone:
+                draft.pop("phone", None)
+        return _bot_reply("Укажите регион: код субъекта или название.")
+    if kind == "region":
+        return await _bot_region(request, conn, body)
+    return await _bot_append(request, conn, body)
+
+
+def _inbound_contact(body: InboundBody) -> tuple[str | None, str | None]:
+    payload = body.payload or {}
+    phone = payload.get("phone")
+    email = payload.get("email")
+    text = body.text.strip()
+    if not phone and _PHONE.match(text):
+        phone = text
+    if not email and _email_ok(text):
+        email = text
+    phone_s = str(phone).strip() if phone else ""
+    email_s = str(email).strip() if email else ""
+    return phone_s or None, email_s or None
+
+
+async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
+    payload = body.payload or {}
+    raw = str(payload.get("region_code") or body.text).strip()
+    row = await fetch_one(
+        conn,
+        "select code from regions where code = %s or lower(name_ru) = lower(%s) limit 1",
+        (raw, raw),
+    )
+    if not row:
+        return _bot_reply("Регион не найден. Пришлите код субъекта или название из справочника.")
+    draft = _bot_drafts.setdefault(body.chat_id, {})
+    draft["region_code"] = str(row["code"])
+    if not _draft_ready(draft):
+        return _bot_reply(_draft_missing(draft))
+    run_id, sim_time = await run_context(request, conn)
+    token = secrets.token_urlsafe(24)
+    await _ensure_source(conn, "telegram_bot", "telegram_bot")
+    msg = from_bot(
+        chat_id=body.chat_id,
+        text=draft["text"],
+        phone=draft.get("phone"),
+        email=draft.get("email"),
+        region_code=draft["region_code"],
+        tracking_token=token,
+        external_id=f"tg-{body.chat_id}-{uuid.uuid4().hex[:12]}",
+    )
+    res = await create_signal(conn, msg, source_code="telegram_bot", run_id=run_id, sim_time=sim_time)
+    if res.get("status") != "accepted":
+        return _bot_reply(res.get("error") or "Не удалось принять обращение")
+    public_id = str(res.get("public_id") or "")
+    track = str(res.get("tracking_token") or token)
+    role = draft.get("role", "")
+    _bot_drafts[body.chat_id] = {"role": role} if role else {}
+    return _bot_reply(
+        f"Обращение {public_id} принято. Следить за статусом: /track/{track}",
+        signal_id=int(res["signal_id"]) if res.get("signal_id") is not None else None,
+        tracking_token=track,
+    )
+
+
+def _draft_ready(draft: dict[str, str]) -> bool:
+    return bool(
+        draft.get("role")
+        and len(draft.get("text", "")) >= 10
+        and (draft.get("phone") or draft.get("email"))
+        and draft.get("region_code")
+    )
+
+
+def _draft_missing(draft: dict[str, str]) -> str:
+    if not draft.get("role"):
+        return "Сначала выберите: вы клиент банка или ещё нет."
+    if len(draft.get("text", "")) < 10:
+        return "Сначала опишите проблему, не короче 10 символов."
+    return "Сначала укажите вымышленный телефон или почту."
+
+
+async def _bot_append(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
+    text = body.text.strip()
+    if not text:
+        return _bot_reply("Напишите текст дополнения.")
+    parent = await fetch_one(
+        conn,
+        "select id, public_id, channel_code, external_contact from signals "
+        "where channel_code = 'telegram_bot' and external_contact->>'telegram_chat_id' = %s "
+        "and parent_signal_id is null order by id desc limit 1",
+        (str(body.chat_id),),
+    )
+    if not parent:
+        return _bot_reply("Не нашёл обращение в этом чате. Сначала опишите проблему.")
+    run_id, sim_time = await run_context(request, conn)
+    res = await _append_signal(conn, parent, text, run_id=run_id, sim_time=sim_time, source_code="telegram_bot")
+    if res.get("status") != "accepted":
+        return _bot_reply(res.get("error") or "Не удалось принять дополнение")
+    return _bot_reply(
+        f"Дополнение принято к обращению {parent['public_id']}.",
+        signal_id=int(res["signal_id"]) if res.get("signal_id") is not None else None,
+    )
 
 
 class ReviewMentions(BaseModel):

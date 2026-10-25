@@ -95,6 +95,88 @@ def from_sim_event(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def from_landing(
+    *,
+    contact: dict[str, Any],
+    text: str,
+    product_code: str | None = None,
+    voice_meta: dict[str, Any] | None = None,
+    tracking_token: str | None = None,
+    parent_signal_id: int | None = None,
+    external_id: str | None = None,
+) -> dict[str, Any]:
+    """Форма /claim → UnifiedMessage. product_code остаётся в meta (payload ingest_messages)."""
+    hints = {
+        k: v
+        for k, v in {
+            "phone": contact.get("phone"),
+            "email": contact.get("email"),
+            "nickname": contact.get("nick"),
+            "name": contact.get("name"),
+        }.items()
+        if v
+    }
+    meta: dict[str, Any] = {}
+    if product_code:
+        meta["product_code"] = product_code
+    if isinstance(voice_meta, dict):
+        meta["voice_meta"] = voice_meta
+    if tracking_token:
+        meta["tracking_token"] = tracking_token
+    if parent_signal_id is not None:
+        meta["parent_signal_id"] = int(parent_signal_id)
+    city_raw = contact.get("city_id")
+    geo: dict[str, Any] = {
+        "source": "contact",
+        "region_code": contact.get("region_code"),
+        "city_id": int(city_raw) if city_raw is not None else None,
+    }
+    return {
+        "channel": "landing",
+        "channel_subtype": "claim_form",
+        "external_id": external_id or f"landing-{uuid.uuid4().hex[:16]}",
+        "client": {"contact_hints": hints or None},
+        "text": text.strip(),
+        "timestamp": dt.datetime.now(dt.UTC).isoformat(),
+        "geo": geo,
+        "origin": "voice_input" if isinstance(meta.get("voice_meta"), dict) else "landing",
+        "meta": meta,
+    }
+
+
+def from_bot(
+    *,
+    chat_id: int,
+    text: str,
+    phone: str | None = None,
+    email: str | None = None,
+    name: str | None = None,
+    region_code: str | None = None,
+    tracking_token: str | None = None,
+    parent_signal_id: int | None = None,
+    external_id: str | None = None,
+) -> dict[str, Any]:
+    """Входящее Telegram-бота → UnifiedMessage. client_id не заполняется."""
+    hints = {k: v for k, v in {"phone": phone, "email": email, "name": name}.items() if v}
+    meta: dict[str, Any] = {"telegram_chat_id": int(chat_id)}
+    if tracking_token:
+        meta["tracking_token"] = tracking_token
+    if parent_signal_id is not None:
+        meta["parent_signal_id"] = int(parent_signal_id)
+    geo: dict[str, Any] = {"source": "contact", "region_code": region_code} if region_code else {"source": "none"}
+    return {
+        "channel": "telegram_bot",
+        "channel_subtype": "bot",
+        "external_id": external_id or f"tg-{chat_id}-{uuid.uuid4().hex[:12]}",
+        "client": {"contact_hints": hints or None},
+        "text": text.strip(),
+        "timestamp": dt.datetime.now(dt.UTC).isoformat(),
+        "geo": geo,
+        "origin": "telegram_bot",
+        "meta": meta,
+    }
+
+
 async def create_signal(
     conn: psycopg.AsyncConnection[Any],
     msg: dict[str, Any],
@@ -136,6 +218,7 @@ async def create_signal(
         return {"external_id": msg["external_id"], "status": "duplicate", "signal_id": dup[0], "error": None}
     received_sim = sim_time or dt.datetime.now(dt.UTC)
     hints = msg["client"].get("contact_hints") or {}
+    meta = msg.get("meta") or {}
     ext = {
         k: v
         for k, v in {
@@ -144,12 +227,19 @@ async def create_signal(
             "phone": hints.get("phone"),
             "email": hints.get("email"),
             "region_code": msg["geo"].get("region_code"),
+            "city_id": msg["geo"].get("city_id"),
+            "telegram_chat_id": meta.get("telegram_chat_id"),
         }.items()
-        if v
+        if v is not None and v != ""
     } or None
+    voice_meta = meta.get("voice_meta")
+    parent_signal_id = meta.get("parent_signal_id")
     row = await _one(
         conn,
-        "insert into signals (run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, status, origin, geo, source_operation_id, source_fault_id, external_post_id) values (%s, %s, %s, %s, %s::jsonb, %s, %s, 'new', %s, %s::jsonb, %s, %s, %s) returning id",
+        "insert into signals (run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, "
+        "status, origin, geo, source_operation_id, source_fault_id, external_post_id, tracking_token, voice_meta, parent_signal_id) "
+        "values (%s, %s, %s, %s, %s::jsonb, %s, %s, 'new', %s, %s::jsonb, %s, %s, %s, %s, %s::jsonb, %s) "
+        "returning id, public_id, tracking_token",
         (
             run_id,
             msg["channel"],
@@ -160,13 +250,19 @@ async def create_signal(
             received_sim,
             msg["origin"],
             dumps(msg["geo"]),
-            (msg.get("meta") or {}).get("source_operation_id"),
-            (msg.get("meta") or {}).get("source_fault_id"),
-            (msg.get("meta") or {}).get("external_post_id"),
+            meta.get("source_operation_id"),
+            meta.get("source_fault_id"),
+            meta.get("external_post_id"),
+            meta.get("tracking_token"),
+            dumps(voice_meta) if isinstance(voice_meta, dict) else None,
+            int(parent_signal_id) if parent_signal_id is not None else None,
         ),
     )
-    signal_id = int(row[0])  # type: ignore[index]
-    meta = msg.get("meta") or {}
+    if row is None:
+        raise IngestError("не удалось создать сигнал")
+    signal_id = int(row[0])
+    public_id = str(row[1])
+    tracking_out = row[2]
     if meta.get("external_post_id"):
         await feed_svc.link_signal(conn, int(meta["external_post_id"]), signal_id)
     elif msg["channel"] in feed_svc.PLATFORM_BY_CHANNEL:
@@ -245,4 +341,11 @@ async def create_signal(
             ),
         ),
     )
-    return {"external_id": msg["external_id"], "status": "accepted", "signal_id": signal_id, "error": None}
+    return {
+        "external_id": msg["external_id"],
+        "status": "accepted",
+        "signal_id": signal_id,
+        "public_id": public_id,
+        "tracking_token": tracking_out,
+        "error": None,
+    }
