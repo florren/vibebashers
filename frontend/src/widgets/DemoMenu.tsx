@@ -24,7 +24,7 @@ export function DemoMenu() {
   const failover = useDemoFailover()
   const play = useDemoPlay()
   const baseline = useBaselineRestore()
-  const [actionError, setActionError] = useState<unknown>(null)
+  const [actionError, setActionError] = useState<Error | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -46,7 +46,7 @@ export function DemoMenu() {
     try {
       await fn()
     } catch (e) {
-      setActionError(e)
+      setActionError(e instanceof Error ? e : new Error(String(e)))
     }
   }
 
@@ -68,7 +68,7 @@ export function DemoMenu() {
         </header>
         <div className="space-y-3 p-3">
           {status.isError && <ErrorBox error={status.error} compact />}
-          {actionError && <ErrorBox error={actionError} compact />}
+          {actionError != null ? <ErrorBox error={actionError} compact /> : null}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

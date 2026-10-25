@@ -78,7 +78,8 @@ describe('demo-menu', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const invalidate = vi.spyOn(qc, 'invalidateQueries')
     const stop = connectWs(qc)
-    const ws = MockWebSocket.instances[0]
+    expect(MockWebSocket.instances).toHaveLength(1)
+    const ws = MockWebSocket.instances[0]!
     ws.onmessage?.({
       data: JSON.stringify({ topic: 'demo', type: 'demo.failover', ts: new Date().toISOString(), data: {} }),
     })
