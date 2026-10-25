@@ -1,4 +1,4 @@
-"""Адаптеры ingest_sources (T-207, AGENTS §6.10): polling только воркером, interval_s ≥ 5.
+"""Адаптеры ingest_sources (T-207, AGENTS §6.10): polling только воркером, interval_s не меньше 5.
 
 Demo-профиль не ходит на внешние URL: опрашивается встроенная mock-лента.
 """
