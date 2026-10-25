@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import time
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
 from typing import Any
@@ -327,6 +328,41 @@ def test_schema_for_model_drops_title() -> None:
         assert field in body
     for stale in ("summary_ru", "manager_actions_ru", "`script_steps`", "client_signal"):
         assert stale not in body
+
+
+async def test_invalid_oauth_key_is_skipped_for_live_key() -> None:
+    """Ключ с большим остатком выбран первым, OAuth 400 — auth; следующий живой ключ делает chat."""
+    chats: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/oauth"):
+            if req.headers["Authorization"] == "Basic bad":
+                return httpx.Response(400, json={"code": 4, "message": "Can't decode 'Authorization' header"})
+            return httpx.Response(200, json={"access_token": "tok-good", "expires_at": int(time.time() + 3600) * 1000})
+        chats.append(req.headers.get("Authorization", ""))
+        content = json.dumps({**VALID, "negativity": 40}, ensure_ascii=False)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"role": "assistant", "content": content}}],
+                "usage": {"prompt_tokens": 2, "completion_tokens": 2, "total_tokens": 4},
+            },
+        )
+
+    pool = KeyPool([ApiKey("k1", "good", tokens_used=5_000), ApiKey("k2", "bad", tokens_used=0)])
+    prov = GigaChatProvider(
+        pool,
+        oauth_url="https://oauth.test/api/v2/oauth",
+        base_url="https://gc.test/api/v1",
+        transport=httpx.MockTransport(handler),
+    )
+    obj, usage, _raw = await prov.complete_structured(MSGS, SCHEMA, PROFILE, timeout_s=5)
+    assert obj["negativity"] == 40
+    assert usage.key_label == "k1"
+    assert chats == ["Bearer tok-good"]
+    assert pool.keys[1].is_active is False
+    assert pool.keys[0].is_active is True
+    await prov.aclose()
 
 
 def test_cassettes_have_no_secrets() -> None:
