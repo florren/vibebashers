@@ -78,7 +78,9 @@ class EventBus:
             env["causation_id"] = str(causation_id)
         errors = validate(env, "envelope")
         fam = event_type.split(".")[0]
-        if fam in FAMILY_SCHEMA:
+        if event_type == "fault.regression":
+            errors += validate(env["payload"], "sim/fault_regression")
+        elif fam in FAMILY_SCHEMA:
             errors += validate(env["payload"], FAMILY_SCHEMA[fam])
         if errors:
             if self.strict:
