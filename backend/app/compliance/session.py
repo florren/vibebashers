@@ -127,6 +127,8 @@ class ComplianceService:
         stt_provider: str = "none",
         stt_model: str | None = None,
         alert_threshold: int | None = None,
+        demo_asset_id: int | None = None,
+        store_audio: bool = False,
     ) -> Session:
         br = await resolve_branch(self.conn, branch_code)
         if not br:
@@ -136,8 +138,8 @@ class ComplianceService:
             raise ValueError(f"сотрудник не найден: {employee_public_id or desk_no} в {br[1]}")
         row = await (
             await self.conn.execute(
-                "insert into audio_sessions (run_id, branch_id, employee_id, client_id, deal_product, source, stt_provider, stt_model, diarization_mode, status, trigger_count, alert_threshold, started_at, started_sim, store_audio, pacing, transcript_id) "
-                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'live', 0, %s, now(), %s, false, %s, %s) returning id, public_id",
+                "insert into audio_sessions (run_id, branch_id, employee_id, client_id, deal_product, source, stt_provider, stt_model, diarization_mode, status, trigger_count, alert_threshold, started_at, started_sim, store_audio, pacing, transcript_id, demo_asset_id) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'live', 0, %s, now(), %s, %s, %s, %s, %s) returning id, public_id",
                 (
                     self.run_id,
                     br[0],
@@ -150,8 +152,10 @@ class ComplianceService:
                     diarization_mode,
                     alert_threshold or self.alert_threshold,
                     self.sim_time,
+                    store_audio,
                     pacing,
                     transcript_id,
+                    demo_asset_id,
                 ),
             )
         ).fetchone()

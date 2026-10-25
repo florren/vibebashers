@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import time
+import wave
 from typing import Any
 
 import psycopg
@@ -108,7 +109,7 @@ class LiveSession:
             **report,
             "audio_session_id": self.s.id,
             "branch_code": self.s.branch_code,
-            "source": "mic",
+            "source": self.s.source,
             "stt_provider": self.provider.code,
         }
         await self.svc.close_session(self.s, report)
@@ -284,3 +285,57 @@ class LiveSession:
             if row:
                 msg["session"] = {"trigger_count": int(row[0]), "status": str(row[1]), "alert_threshold": int(row[2])}
             return msg
+
+
+# 100 мс PCM16 LE 16 кГц: моно 3200 байт, стерео — interleaved на оба канала.
+_FILE_SAMPLE_RATE = 16000
+_FILE_CHUNK_FRAMES = 1600
+_FILE_SAMPLE_WIDTH = 2
+
+
+class _FilePlayback:
+    def __init__(self, live: LiveSession) -> None:
+        self.live = live
+        self.stop = asyncio.Event()
+
+
+_file_playbacks: dict[int, _FilePlayback] = {}
+
+
+def set_file_speaker(session_id: int, speaker: str) -> None:
+    playback = _file_playbacks.get(session_id)
+    if playback is not None:
+        playback.live.set_speaker(speaker)
+
+
+def request_stop(session_id: int) -> None:
+    playback = _file_playbacks.get(session_id)
+    if playback is not None:
+        playback.stop.set()
+
+
+async def play_wav(app: Any, session_id: int, path: str, *, provider_code: str | None, channels: int) -> None:
+    """Читает WAV чанками в реальном темпе и кормит ту же LiveSession. Частичные наружу не шлёт, байты не сохраняет."""
+    live = LiveSession(app, session_id, provider_code=provider_code, sample_rate=_FILE_SAMPLE_RATE, channels=channels)
+    playback = _FilePlayback(live)
+    _file_playbacks[session_id] = playback
+    try:
+        await live.start()
+        with wave.open(path, "rb") as wf:
+            while not playback.stop.is_set():
+                pcm = wf.readframes(_FILE_CHUNK_FRAMES)
+                if not pcm:
+                    break
+                await live.feed_audio(pcm)
+                if playback.stop.is_set():
+                    break
+                duration = len(pcm) / (_FILE_SAMPLE_RATE * channels * _FILE_SAMPLE_WIDTH)
+                await asyncio.sleep(duration)
+    except Exception:  # noqa: BLE001 — сбой файла не должен оставлять задачу без журнала
+        log.exception("file_playback_failed", session_id=session_id)
+    finally:
+        _file_playbacks.pop(session_id, None)
+        try:
+            await live.finish()
+        except Exception:  # noqa: BLE001
+            log.exception("file_playback_finish_failed", session_id=session_id)
