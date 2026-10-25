@@ -85,8 +85,12 @@ stt-model:                  ## скачать малую русскую моде
 bench:
 	@echo "цель $@ реализуется в E10/E13 — см. AGENTS.md раздел 4"
 
-cassettes-record stt-bench demo-offline:
-	@echo "цель $@ реализуется в E16/E17 (T-181, T-194, T-197, T-198) — см. AGENTS.md раздел 4"
+cassettes-record:           ## запись кассет replay для SCENARIO=… (live LLM, T-198)
+	@test -n "$(SCENARIO)" || (echo "укажите SCENARIO=id сценария" >&2; exit 1)
+	$(PY) scripts/cassettes_record.py $(SCENARIO)
+
+stt-bench demo-offline:
+	@echo "цель $@ реализуется в E16/E17 (T-181, T-194, T-197) — см. AGENTS.md раздел 4"
 
 import-transcripts:
 	@echo "цель $@ реализуется в E18 (T-208) — POST /api/ingest/transcripts/import"
