@@ -41,4 +41,8 @@ make cassettes-record SCENARIO=qr_fee_public_review
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- **Ветка:** `feat/T-198-cassettes-scenarios-8-9`
+- **Живая запись GigaChat:** не выполнялась в этом ходе
+- **Stale:** сверка с `prompt_version()` (сейчас v1.0 из `app/agent/prompts/v1/system.md`)
+- **`backend/app/api/demo.py`:** не менялся (501 на `/api/cassettes` — вне пакета)
+- **Сделано:** `CassetteStore.summaries` / `cassette_asset` / `upsert_demo_asset`; `ProviderChain.scenario_id` + `prompt_version`; `live_recording_possible`; `scripts/cassettes_record.py`; `make cassettes-record`; unit/integration тесты пакета

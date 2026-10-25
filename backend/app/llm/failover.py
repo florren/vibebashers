@@ -54,6 +54,8 @@ class ProviderChain:
         record_store: CassetteStore | None = None,
         rate_limiter: RateLimiter | None = None,
         timeouts: dict[str, float] | None = None,
+        scenario_id: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         if not providers or providers[-1].name != "mock":
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
@@ -61,6 +63,8 @@ class ProviderChain:
         self.record_store = record_store
         self.limiter = rate_limiter or default_limiter
         self.timeouts = {**TIMEOUTS_S, **(timeouts or {})}
+        self.scenario_id = scenario_id
+        self.prompt_version = prompt_version
 
     @property
     def names(self) -> list[str]:
@@ -108,7 +112,14 @@ class ProviderChain:
             attempts.append(Attempt(prov.name, True, ms))
             if self.record_store is not None and usage.source == "live":
                 self.record_store.record(
-                    prov.name, profile.model, messages, schema, response=obj, usage=usage.as_dict()
+                    prov.name,
+                    profile.model,
+                    messages,
+                    schema,
+                    response=obj,
+                    usage=usage.as_dict(),
+                    scenario_id=self.scenario_id,
+                    prompt_version=self.prompt_version,
                 )
             if attempts and any(not a.ok for a in attempts):
                 log.info("llm_failover", used=prov.name, failed=[a.provider for a in attempts if not a.ok])
@@ -178,6 +189,20 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
         else:
             log.warning("llm_chain_unknown", provider=name)
     return ProviderChain(providers, record_store=store if settings.llm_record else None)
+
+
+def live_recording_possible(settings: Any) -> bool:
+    """True, если build_chain не пропустит ни GigaChat, ни OpenAI-совместимый live-провайдер."""
+    from app.llm.keys import KeyPool
+
+    for name in [x.strip() for x in str(settings.llm_chain).split(",") if x.strip()]:
+        if name == "gigachat":
+            if len(KeyPool.from_env(settings.gigachat_auth_key_1, settings.gigachat_auth_key_2)) > 0:
+                return True
+        elif name in ("openai_compat", "openai_compatible", "openrouter"):
+            if settings.openrouter_api_key or settings.local_llm_base_url:
+                return True
+    return False
 
 
 def default_profile(settings: Any) -> LLMProfile:

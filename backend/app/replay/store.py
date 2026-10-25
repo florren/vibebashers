@@ -10,10 +10,14 @@ import json
 from pathlib import Path
 from typing import Any
 
+import psycopg
+
 from app.llm.base import Message, normalize_messages
 from app.logging import get_logger
 
 log = get_logger(__name__)
+
+_SKIP_PROVIDERS = frozenset({"mock", "replay"})
 
 
 def request_hash(provider: str, model: str, messages: list[Message], schema: dict[str, Any] | None) -> str:
@@ -44,6 +48,8 @@ class CassetteStore:
                     except json.JSONDecodeError:
                         log.warning("cassette_bad_line", file=f.name)
                         continue
+                    if rec.get("provider") in _SKIP_PROVIDERS:
+                        continue
                     self._index[f"{rec['request_hash']}:{rec['model']}"] = rec
         self._loaded = True
         log.info("cassettes_loaded", count=len(self._index), dir=str(self.dir))
@@ -61,6 +67,17 @@ class CassetteStore:
             self.load()
         return self._index.get(f"{request_hash(provider, model, messages, schema)}:{model}")
 
+    def _flush_provider(self, provider: str) -> None:
+        recs = sorted(
+            (r for r in self._index.values() if r.get("provider") == provider),
+            key=lambda r: (r.get("recorded_at") or "", r.get("request_hash") or ""),
+        )
+        self.dir.mkdir(parents=True, exist_ok=True)
+        path = self.dir / f"{provider}.jsonl"
+        with path.open("w", encoding="utf-8") as fh:
+            for rec in recs:
+                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
     def record(
         self,
         provider: str,
@@ -74,6 +91,8 @@ class CassetteStore:
         scenario_id: str | None = None,
         prompt_version: str | None = None,
     ) -> dict[str, Any]:
+        if provider in _SKIP_PROVIDERS:
+            raise ValueError(f"кассеты не пишутся для провайдера {provider}")
         if not self._loaded:
             self.load()
         rec = {
@@ -90,9 +109,82 @@ class CassetteStore:
         }
         key = f"{rec['request_hash']}:{model}"
         if key in self._index:
-            return self._index[key]
+            existing = self._index[key]
+            if (existing.get("prompt_version") or "") == (prompt_version or ""):
+                return existing
         self._index[key] = rec
-        self.dir.mkdir(parents=True, exist_ok=True)
-        with (self.dir / f"{provider}.jsonl").open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        self._flush_provider(provider)
         return rec
+
+    def summaries(self, current_version: str) -> list[dict[str, Any]]:
+        if not self._loaded:
+            self.load()
+        groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+        for rec in self._index.values():
+            gkey = (
+                rec.get("scenario_id"),
+                rec.get("provider"),
+                rec.get("model"),
+                rec.get("prompt_version"),
+            )
+            if gkey not in groups:
+                groups[gkey] = {
+                    "scenario_id": rec.get("scenario_id"),
+                    "provider": rec.get("provider"),
+                    "model": rec.get("model"),
+                    "prompt_version": rec.get("prompt_version"),
+                    "entries": 0,
+                    "recorded_at": rec.get("recorded_at") or "",
+                    "stale": (rec.get("prompt_version") or "") != current_version,
+                }
+            g = groups[gkey]
+            g["entries"] += 1
+            ra = rec.get("recorded_at") or ""
+            if ra > g["recorded_at"]:
+                g["recorded_at"] = ra
+        return sorted(groups.values(), key=lambda s: (s.get("scenario_id") or "", s["provider"], s["model"]))
+
+    def cassette_asset(self, scenario_id: str) -> dict[str, Any] | None:
+        if not self._loaded:
+            self.load()
+        recs = [r for r in self._index.values() if r.get("scenario_id") == scenario_id]
+        if not recs:
+            return None
+        from app.sim.scenarios import get as get_scenario
+
+        scenario = get_scenario(scenario_id)
+        title_ru = (scenario.get("title_ru") if scenario else None) or scenario_id
+        providers = sorted({str(r["provider"]) for r in recs})
+        path = f"data/cassettes/{providers[0]}.jsonl"
+        payload = "\n".join(
+            json.dumps(r, ensure_ascii=False, sort_keys=True)
+            for r in sorted(recs, key=lambda r: (r.get("request_hash") or "", r.get("model") or ""))
+        )
+        checksum = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        return {
+            "kind": "cassette",
+            "scenario_id": scenario_id,
+            "title_ru": title_ru,
+            "path": path,
+            "checksum": checksum,
+        }
+
+
+def upsert_demo_asset(conn: psycopg.Connection[Any], row: dict[str, Any]) -> int:
+    """Обновляет или создаёт demo_assets kind=cassette по path (без нового уникального ключа в схеме)."""
+    cur = conn.execute(
+        "select id from demo_assets where kind = 'cassette' and path = %s",
+        (row["path"],),
+    ).fetchone()
+    if cur:
+        conn.execute(
+            "update demo_assets set checksum = %s, scenario_id = %s, title_ru = %s where id = %s",
+            (row["checksum"], row.get("scenario_id"), row["title_ru"], cur[0]),
+        )
+        return int(cur[0])
+    ins = conn.execute(
+        "insert into demo_assets (kind, scenario_id, title_ru, path, checksum) values (%s, %s, %s, %s, %s) returning id",
+        ("cassette", row.get("scenario_id"), row["title_ru"], row["path"], row["checksum"]),
+    ).fetchone()
+    assert ins
+    return int(ins[0])
