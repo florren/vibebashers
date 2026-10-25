@@ -162,9 +162,9 @@ docker compose logs -f backend      # логи; структурированны
 | `LLM_RECORD` | `true` · `false` | `false` | записывать успешные ответы live-провайдера в кассеты `CASSETTES_DIR` | работает только если в цепочке есть live-провайдер **с ключом**; с `mock`/`replay` ничего не пишет. Кассеты — файлы в `data/cassettes/`, могут содержать тексты клиентов: не коммитить с ПДн |
 | `GIGACHAT_AUTH_KEY_1`, `_2` | base64 «client_id:secret» | пусто | ключи авторизации GigaChat; второй — ротация при лимитах | это **Authorization key**, не access token (токен приложение получает само и обновляет). Без `_1` провайдер пропускается даже при заполненном `_2` |
 | `GIGACHAT_SCOPE` | `GIGACHAT_API_PERS` · `GIGACHAT_API_CORP` · `GIGACHAT_API_B2B` | `PERS` | тип договора | не совпадёт с ключом — ошибка 401 при получении токена |
-| `GIGACHAT_BASE_URL` | URL | `https://gigachat.devices.sberbank.ru/api/v1` | хост chat/completions | профиль в БД может переопределить `base_url` |
+| `GIGACHAT_BASE_URL` | URL | `https://api.giga.chat/v1` | хост chat/completions | профиль в БД может переопределить `base_url` |
 | `GIGACHAT_OAUTH_URL` | URL | `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | OAuth (Authorization key → access token) | не меняйте без необходимости; chat и OAuth — разные хосты |
-| `GIGACHAT_MODEL` | `GigaChat-2-Max` · `GigaChat-2-Pro` · `GigaChat-2` | `GigaChat-2-Max` | модель по умолчанию (id из GET /models этого ключа) | `Max` — качество, `Pro` — баланс, `GigaChat-2` — скорость; профили в БД могут переопределять модель |
+| `GIGACHAT_MODEL` | `GigaChat-3-Pro` · `GigaChat-3-Ultra` · `GigaChat-3-Lightning` | `GigaChat-3-Pro` | модель ответа агента (id из GET https://api.giga.chat/v1/models) | по умолчанию отвечает Pro; Ultra и Lightning — другие профили; строка в БД может переопределить модель |
 | `GIGACHAT_VERIFY_SSL` | `true` · `false` | `false` | проверка сертификата Минцифры | `true` требует добавить CA в контейнер (см. `docs/SETUP.md`), иначе провайдер падает и уходит в fallback |
 | `OPENROUTER_API_KEY` | строка | пусто | ключ OpenAI-совместимого API | провайдер `openai_compat` включается, если задан **этот ключ или** `LOCAL_LLM_BASE_URL` |
 | `OPENROUTER_BASE_URL` | URL | `https://openrouter.ai/api/v1` | адрес OpenAI-совместимого API | меняйте для DeepSeek, Together и т.п. (`https://api.deepseek.com/v1`) — ключ тогда в `OPENROUTER_API_KEY` |
@@ -484,7 +484,7 @@ Worktree создаются в `../wt/<id>` рядом с клоном (конс
 | **Локальная LLM для приложения или для агента-разработчика** | 8+ ядер | 32 ГБ; GPU 12–24 ГБ VRAM (модели 7–14B в q4–q8) | +10–40 ГБ под веса | Ollama / vLLM / LM Studio с OpenAI-совместимым API | в `.env`: `LOCAL_LLM_BASE_URL`; латентность узлов агента вырастет до секунд, лимиты `fast_path` 8 с / `detector` 2 с в `app/llm/failover.py` |
 | **Сервер для командного стенда** | 4 vCPU | 8 ГБ | 20 ГБ SSD | Linux, Docker; обратный прокси (nginx/Caddy) с TLS, если доступ извне | один процесс backend обслуживает WS и фон эмуляции; горизонтальное масштабирование не предусмотрено (демо) |
 
-Сеть и порты: 8000 (приложение и API), 5432 (PostgreSQL, можно не публиковать), 8025/1025 (Mailpit, опционально), 5173 (Vite в режиме разработки). Исходящие: `ngw.devices.sberbank.ru:9443` и `gigachat.devices.sberbank.ru` для GigaChat, `openrouter.ai` для OpenRouter, `api.telegram.org` для бота.
+Сеть и порты: 8000 (приложение и API), 5432 (PostgreSQL, можно не публиковать), 8025/1025 (Mailpit, опционально), 5173 (Vite в режиме разработки). Исходящие: `ngw.devices.sberbank.ru:9443` (OAuth) и `api.giga.chat` (chat/completions) для GigaChat, `openrouter.ai` для OpenRouter, `api.telegram.org` для бота.
 
 ---
 

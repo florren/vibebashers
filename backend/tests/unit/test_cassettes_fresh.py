@@ -21,7 +21,7 @@ from app.replay.store import CassetteStore
 
 ROOT = Path(__file__).resolve().parents[3]
 SCHEMA = deref("agent/normalization")
-PROFILE = LLMProfile(code="test_main", provider="gigachat", model="GigaChat-2-Max")
+PROFILE = LLMProfile(code="test_main", provider="gigachat", model="GigaChat-3-Pro")
 MSGS = [{"role": "user", "content": "комиссия за QR"}]
 
 
