@@ -13,6 +13,7 @@ from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.errors import Problem
 from app.llm import secrets as sec
+from app.llm.openai_compat import OpenAICompatProvider
 
 router = APIRouter(tags=["settings"])
 
@@ -296,10 +297,54 @@ def key_plain(item: dict[str, Any]) -> str:
     return sec.decrypt(str(item["key_enc"]), get_settings().app_secret)
 
 
+def _chain_has_openai(chain: str) -> bool:
+    names = {part.strip() for part in chain.split(",") if part.strip()}
+    return bool(names & {"openai_compat", "openai_compatible", "openrouter"})
+
+
+async def _refresh_openai_balances(items: list[dict[str, Any]]) -> bool:
+    """balance_usd и rpd_limit из GET /key. Ошибка оставляет сохранённые числа и пишет last_error."""
+    s = get_settings()
+    if s.is_test or not _chain_has_openai(s.llm_chain):
+        return False
+    changed = False
+    for item in items:
+        if item.get("provider") != "openai_compatible" or not item.get("key_enc"):
+            continue
+        try:
+            secret = key_plain(item)
+        except Exception as exc:
+            item["last_error"] = str(exc)[:300]
+            changed = True
+            continue
+        prov = OpenAICompatProvider(
+            secret,
+            s.openrouter_base_url,
+            budget_usd=s.openrouter_budget_usd,
+            http_referer=f"http://localhost:{s.app_port}",
+        )
+        try:
+            info = await prov.fetch_key()
+        except Exception as exc:
+            item["last_error"] = str(exc)[:300]
+            changed = True
+        else:
+            item["balance_usd"] = info.get("balance_usd")
+            item["rpd_limit"] = info.get("rpd_limit")
+            item["last_error"] = None
+            changed = True
+        finally:
+            await prov.aclose()
+    return changed
+
+
 @router.get("/api/settings/llm-keys", summary="API-ключи (значения не возвращаются, только хвост)")
 async def get_llm_keys() -> Any:
     async with db() as conn:
-        return _mask_keys(await load_keys(conn))
+        items = await load_keys(conn)
+        if await _refresh_openai_balances(items):
+            await set_setting(conn, "llm_keys", items)
+        return _mask_keys(items)
 
 
 @router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (шифруется APP_SECRET)")

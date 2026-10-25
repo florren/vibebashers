@@ -20,6 +20,8 @@ from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
 log = get_logger(__name__)
+
+
 def _bad_authorization(status: int, text: str) -> bool:
     """400 из-за нечитаемого Authorization — ключ непригоден, это не квота и не «нет модели»."""
     if status != 400:
@@ -121,7 +123,9 @@ class GigaChatProvider:
         return out
 
     # --- chat -------------------------------------------------------------------------------------------------------
-    async def _chat(self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float) -> httpx.Response:
+    async def _chat(
+        self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
+    ) -> httpx.Response:
         token = await self._token(key, timeout_s)
         try:
             r = await self._client.post(
@@ -157,7 +161,9 @@ class GigaChatProvider:
             raise ProviderError("unavailable", f"{r.status_code}: {r.text[:200]}", status=r.status_code)
         return r
 
-    async def _with_keys(self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float) -> tuple[httpx.Response, ApiKey]:
+    async def _with_keys(
+        self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
+    ) -> tuple[httpx.Response, ApiKey]:
         tried: set[str] = set()
         last: ProviderError | None = None
         while True:
@@ -177,6 +183,8 @@ class GigaChatProvider:
     async def complete_structured(
         self, messages: list[Message], schema: dict[str, Any], profile: LLMProfile, *, timeout_s: float
     ) -> tuple[dict[str, Any], Usage, str]:
+        if profile.provider == "openai_compatible":
+            raise ProviderError("miss", "профиль openai_compatible")
         t0 = time.perf_counter()
         sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))
         msgs = self._ordered(messages, sys_msg)
@@ -221,6 +229,8 @@ class GigaChatProvider:
         raise ProviderError("bad_output", f"ответ не соответствует схеме после 2 попыток: {raw[:200]!r}")
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
+        if profile.provider == "openai_compatible":
+            raise ProviderError("miss", "профиль openai_compatible")
         key = self.pool.pick()
         token = await self._token(key, timeout_s)
         payload = {

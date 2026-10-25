@@ -41,7 +41,7 @@ SIM_SEED=42                 # одинаковый seed → одинаковые
 DATABASE_URL=postgresql+psycopg://cx:cx@postgres:5432/cx_pulse   # внутри compose; локально — localhost
 
 LLM_PROVIDER=mock           # основной провайдер: gigachat | openai_compat | replay | mock
-LLM_CHAIN=gigachat,replay,mock   # порядок отказоустойчивости: нет ключа/ошибка → следующий
+LLM_CHAIN=gigachat,openai_compat,replay,mock   # порядок отказоустойчивости: нет ключа/ошибка → следующий
 LLM_RECORD=false            # true — записывать ответы живой модели в data/cassettes (replay без сети)
 
 GIGACHAT_AUTH_KEY_1=        # Authorization key (base64 «client_id:secret»), НЕ access token
