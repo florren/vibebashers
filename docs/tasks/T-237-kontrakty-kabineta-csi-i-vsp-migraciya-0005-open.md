@@ -37,10 +37,10 @@
 5. Модели SQLAlchemy новых таблиц (L1), сид-хуки для baseline не трогать — их делают T-240 и T-245.
 
 ## Критерии приёмки
-- [x] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
-- [x] Старые клиенты API не ломаются (только добавления).
-- [x] PR помечен `contract-change`.
-- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [ ] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
+- [ ] Старые клиенты API не ломаются (только добавления).
+- [ ] PR помечен `contract-change`.
+- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
