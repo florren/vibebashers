@@ -31,6 +31,7 @@ const METRIC_KEYS = [
 ] as const
 
 type MetricKey = (typeof METRIC_KEYS)[number]
+type MetricSort = { key: MetricKey; direction: 'asc' | 'desc' }
 
 const HIGHER = new Set<MetricKey>([
   'accuracy_type',
@@ -114,16 +115,16 @@ function sameIds(left: readonly number[] | undefined, right: readonly number[]):
   return a.every((value, index) => value === b[index])
 }
 
-function orderColumns(profiles: LlmProfileT[], runs: BenchRun[], sortKey: MetricKey | null): LlmProfileT[] {
-  if (!sortKey) return profiles
-  const higher = HIGHER.has(sortKey)
+function orderColumns(profiles: LlmProfileT[], runs: BenchRun[], sort: MetricSort | null): LlmProfileT[] {
+  if (!sort) return profiles
+  const sortKey = sort.key
   return profiles.slice().sort((a, b) => {
     const av = readMetric(latestDone(runs, a.code), sortKey)
     const bv = readMetric(latestDone(runs, b.code), sortKey)
     if (av == null && bv == null) return profileRank(a.code) - profileRank(b.code)
     if (av == null) return 1
     if (bv == null) return -1
-    if (av !== bv) return higher ? bv - av : av - bv
+    if (av !== bv) return sort.direction === 'desc' ? bv - av : av - bv
     return profileRank(a.code) - profileRank(b.code)
   })
 }
@@ -186,7 +187,7 @@ export function BenchTab() {
   const [picked, setPicked] = useState<number[] | null>(null)
   const [datasetId, setDatasetId] = useState<number | null>(null)
   const [repeats, setRepeats] = useState(1)
-  const [sortKey, setSortKey] = useState<MetricKey | null>(null)
+  const [sort, setSort] = useState<MetricSort | null>(null)
   const [chosenId, setChosenId] = useState<number | null>(null)
   const { mutate: dryMutate } = dry
 
@@ -195,8 +196,11 @@ export function BenchTab() {
   const runs = useMemo(() => runsQ.data ?? [], [runsQ.data])
   const activeDataset = datasetId ?? datasets[0]?.id ?? null
   const defaultIds = useMemo(() => profiles.flatMap((profile) => (profile.id != null && DEFAULT_ON.has(profile.code) ? [profile.id] : [])), [profiles])
-  const selectedIds = picked ?? defaultIds
-  const columns = useMemo(() => orderColumns(profiles, runs, sortKey), [profiles, runs, sortKey])
+  const selectedIds = useMemo(
+    () => (picked ?? defaultIds).filter((id) => profiles.some((profile) => profile.id === id)),
+    [picked, defaultIds, profiles],
+  )
+  const columns = useMemo(() => orderColumns(profiles, runs, sort), [profiles, runs, sort])
   const forecast = currentForecast(dry.isPending, dry.variables, dry.data, activeDataset, selectedIds, repeats)
   const shortage = (forecast ?? []).filter((item) => item.fits_limits === false)
   const quiet = (forecast ?? []).filter((item) => item.fits_limits !== false && Boolean(item.warning?.trim()))
@@ -385,11 +389,16 @@ export function BenchTab() {
             </thead>
             <tbody>
               {METRIC_KEYS.map((key) => {
-                const best = sortKey === key ? bestOf(columns, runs, key) : null
+                const best = sort?.key === key ? bestOf(columns, runs, key) : null
                 return (
                   <tr key={key} className="border-t border-line">
-                    <th scope="row" className="px-2 py-1 text-left font-normal">
-                      <button type="button" onClick={() => setSortKey(key)}>
+                    <th scope="row" className="px-2 py-1 text-left font-normal" aria-sort={sort?.key === key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined}>
+                      <button type="button" onClick={() => setSort((current) => ({
+                        key,
+                        direction: current?.key === key
+                          ? (current.direction === 'asc' ? 'desc' : 'asc')
+                          : (HIGHER.has(key) ? 'desc' : 'asc'),
+                      }))}>
                         {t(`bench.metric.${key}`)}
                       </button>
                       <span className="mt-0.5 block text-[10px] text-muted">{HIGHER.has(key) ? t('bench.higherBetter') : t('bench.lowerBetter')}</span>
