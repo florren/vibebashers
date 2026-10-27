@@ -36,6 +36,13 @@ def _note(ctx: ToolContext, name: str) -> None:
     ctx.pending_wraps.append(name)
 
 
+def _spec_lang(frame: ActFrame) -> str:
+    raw = (frame.spec or {}).get("lang")
+    if raw in ("ru", "en"):
+        return str(raw)
+    return "ru"
+
+
 async def _known_team(ctx: ToolContext, department: str) -> None:
     row = await ctx.fetchone("select code from teams where code = %s", (department,))
     if row is None:
@@ -148,6 +155,7 @@ async def notify_customer(ctx: ToolContext, channel: str, message: str) -> dict[
         "ack_received",
         {},
         text_override=body,
+        lang=_spec_lang(frame),
     )
     return {"notification_id": data["notification_id"], "delivery": "emulated"}
 
@@ -254,6 +262,7 @@ async def request_clarification(ctx: ToolContext, question: str, channel: str) -
         "clarify_request",
         {},
         text_override=body,
+        lang=_spec_lang(frame),
     )
     hours = float(spec.get("followup_hours") or 4.0)
     _note(ctx, "schedule_followup")

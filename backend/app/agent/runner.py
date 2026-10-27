@@ -11,7 +11,13 @@ from typing import Any
 import orjson
 import psycopg
 
-from app.agent.graph import expire_hitl, process_signal, resume_after_human
+from app.agent.graph import (
+    expire_hitl,
+    process_signal,
+    resume_after_human,
+    wake_due_followups,
+    wake_followups_for_incident,
+)
 from app.db.session import psycopg_dsn
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
@@ -53,8 +59,11 @@ class AgentService:
             st = await (await conn.execute("select sim_time from sim_state where id = 1")).fetchone()
             sim_time = st[0] if st else dt.datetime.now(dt.UTC)
             await expire_hitl(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
+            await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
             await conn.execute(
-                "update agent_runs set outcome = 'failed', finished_at = now(), error = 'прерван рестартом' where kind = 'agent' and outcome is null"
+                "update agent_runs set outcome = 'failed', finished_at = now(), error = 'прерван рестартом' "
+                "where kind = 'agent' and outcome is null "
+                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled')"
             )
             await conn.execute("update signals set status = 'new' where status = 'processing'")
             rows = await (
@@ -85,9 +94,18 @@ class AgentService:
                     if n.channel == "sim_events" and body.get("event_type") == "sla.tick":
                         sim_raw = body.get("sim_time")
                         if sim_raw:
+                            st = dt.datetime.fromisoformat(sim_raw)
+                            asyncio.create_task(self._expire_hitl(st), name="agent-expire-hitl")
+                            asyncio.create_task(self._wake_followups(st), name="agent-wake-followups")
+                    elif n.channel == "sim_events" and body.get("event_type") == "team.release":
+                        sim_raw = body.get("sim_time")
+                        payload = body.get("payload") or {}
+                        inc_id = payload.get("incident_id")
+                        if sim_raw and inc_id:
+                            st = dt.datetime.fromisoformat(sim_raw)
                             asyncio.create_task(
-                                self._expire_hitl(dt.datetime.fromisoformat(sim_raw)),
-                                name="agent-expire-hitl",
+                                self._wake_incident_followups(int(inc_id), st),
+                                name="agent-wake-release",
                             )
                     elif n.channel == "sim_events" and body.get("event_type") == "signal.received":
                         sid = (body.get("payload") or {}).get("signal_id")
@@ -114,6 +132,24 @@ class AgentService:
             except Exception as exc:  # noqa: BLE001
                 log.warning("expire_hitl_failed", error=str(exc)[:200])
 
+    async def _wake_followups(self, sim_time: dt.datetime) -> None:
+        async with self.sem:
+            try:
+                async with await self._conn() as conn:
+                    await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("wake_followups_failed", error=str(exc)[:200])
+
+    async def _wake_incident_followups(self, incident_id: int, sim_time: dt.datetime) -> None:
+        async with self.sem:
+            try:
+                async with await self._conn() as conn:
+                    await wake_followups_for_incident(
+                        conn, incident_id=incident_id, sim_time=sim_time, chain=self.chain, profile=self.profile
+                    )
+            except Exception as exc:  # noqa: BLE001
+                log.warning("wake_release_followups_failed", incident_id=incident_id, error=str(exc)[:200])
+
     async def _process(self, signal_id: int, sim_time: dt.datetime | None) -> None:
         async with self.sem:
             try:
@@ -125,6 +161,8 @@ class AgentService:
                     self.processed += 1
                     if state.get("outcome") == "failed":
                         self.failed += 1
+                    elif state.get("outcome") == "deferred":
+                        pass
             except Exception as exc:  # noqa: BLE001
                 self.failed += 1
                 log.warning("agent_process_failed", signal_id=signal_id, error=str(exc)[:200])

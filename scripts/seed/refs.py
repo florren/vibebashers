@@ -167,10 +167,11 @@ def seed_templates(cur: psycopg.Cursor[Any]) -> None:
     t = load_yaml("templates/notifications.yaml")
     for tpl in t["templates"]:
         channels = t["channels_for_star"] if tpl["channel"] == "*" else [tpl["channel"]]
+        lang = tpl.get("lang") or "ru"
         for ch in channels:
             cur.execute(
-                "insert into notification_templates (code, channel_code, segment_code, lang, subject, body, variables) values (%s, %s, %s, 'ru', %s, %s, %s) on conflict (code, channel_code, COALESCE(segment_code,'*'), lang) do update set subject = excluded.subject, body = excluded.body, variables = excluded.variables",
-                (tpl["code"], ch, tpl.get("segment"), tpl.get("subject"), tpl["body"], tpl.get("variables", [])),
+                "insert into notification_templates (code, channel_code, segment_code, lang, subject, body, variables) values (%s, %s, %s, %s, %s, %s, %s) on conflict (code, channel_code, COALESCE(segment_code,'*'), lang) do update set subject = excluded.subject, body = excluded.body, variables = excluded.variables",
+                (tpl["code"], ch, tpl.get("segment"), lang, tpl.get("subject"), tpl["body"], tpl.get("variables", [])),
             )
 
 

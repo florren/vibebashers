@@ -36,4 +36,12 @@ pytest backend/tests/unit/test_templates.py -k en
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/T-157-en-templates` от main `b86ec7e`. Ревью APPROVE (Note про быстрый путь и явный language=en, без доработки).
+
+Сделано: `communication_lang` (кириллица → ru, латиница без кириллицы → en, иначе ru); en-близнецы клиентских шаблонов; сид пишет `lang` и при конфликте обновляет subject/body/variables; в `FORBIDDEN_PHRASES` только английские запреты; `render_template`/`notify_client` выбирают lang и откатывают en→ru; акт, подарок, трекинг и бот после текста берут язык сигнала. Поле решения остаётся `text_ru`, подписи трекинга — в `label_ru`. `team_notice` и тексты Problem русские. `refund_fee`, лимиты и контракты не менялись.
+
+Отклонения: нет.
+
+Проверки: `pytest tests/unit/test_templates.py -k en` — код 0, 14 passed; `pytest tests/unit/test_router_tools.py` — код 0, 22 passed. `pytest tests/unit` — код 1, чужой `test_cassettes_have_no_secrets` (кассета gigachat.jsonl). `make lint` — код 2, ruff format на файлах вне пакета. `check_owners.py --base main` — код 1, cross-layer из плана и неотслеживаемый `data/baseline` (пакет его не писал). `make test` целиком не запускался: интеграция и сценарии требуют `DATABASE_URL_TEST`. Страница `/track` в браузере не открывалась: маршрута нет (T-120).
+
+Контракты не затронуты. Время: сессия разработки T-157.

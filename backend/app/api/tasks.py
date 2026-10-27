@@ -109,10 +109,20 @@ class TaskDecision(BaseModel):
     actor: str = "operator"
 
 
-def _gift_label(gift: dict[str, Any], gift_name: str | None) -> str:
+def _gift_label(gift: dict[str, Any], gift_name: str | None, lang: str = "ru") -> str:
     if gift.get("gift_code") == "bonus_points" and gift.get("points"):
+        if lang == "en":
+            return f"{int(gift['points'])} bonus points"
         return f"{int(gift['points'])} бонусных баллов"
+    if lang == "en":
+        return gift_name or str(gift.get("privilege_code") or gift.get("gift_code") or "gift")
     return gift_name or str(gift.get("privilege_code") or gift.get("gift_code") or "подарок")
+
+
+def _catalog_gift_name(lang: str, name_ru: str | None, name_en: str | None) -> str | None:
+    if lang == "en" and name_en:
+        return name_en
+    return name_ru
 
 
 @router.post(
@@ -138,7 +148,9 @@ async def post_tasks_id(id: int, body: TaskDecision) -> Any:  # noqa: A002
                     **{k: v for k, v in body.payload.items() if k in ("gift_code", "points", "privilege_code")},
                 }
                 cat = await fetch_one(
-                    conn, "select code, name_ru, segments from gift_catalog where code = %s", (gift.get("gift_code"),)
+                    conn,
+                    "select code, name_ru, name_en, segments from gift_catalog where code = %s",
+                    (gift.get("gift_code"),),
                 )
                 if not cat:
                     raise Problem(422, f"Подарок {gift.get('gift_code')!r} не из каталога")
@@ -160,16 +172,48 @@ async def post_tasks_id(id: int, body: TaskDecision) -> Any:  # noqa: A002
         if row["kind"] == "gift" and body.action in ("approve", "change", "done") and row.get("client_id"):
             gift = payload.get("gift") or {}
             seg = row.get("client_segment")
+            lang = "ru"
+            if row.get("incident_id"):
+                sig_lang = await fetch_one(
+                    conn,
+                    "select s.lang as lang from incident_signals ls join signals s on s.id = ls.signal_id "
+                    "where ls.incident_id = %s and ls.link_type = 'primary' order by ls.signal_id limit 1",
+                    (row["incident_id"],),
+                )
+                if sig_lang and sig_lang.get("lang") in ("ru", "en"):
+                    lang = str(sig_lang["lang"])
+            named = await fetch_one(
+                conn,
+                "select name_ru, name_en from gift_catalog where code = %s",
+                (gift.get("gift_code"),),
+            )
+            if named:
+                gift_name = _catalog_gift_name(
+                    lang,
+                    named.get("name_ru") if isinstance(named.get("name_ru"), str) else gift_name,
+                    named.get("name_en") if isinstance(named.get("name_en"), str) else None,
+                )
             tpl = await fetch_one(
                 conn,
-                "select subject, body from notification_templates where code = 'gift_offer' and lang = 'ru' and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
-                (seg,),
+                "select subject, body from notification_templates where code = 'gift_offer' and lang = %s and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
+                (lang, seg),
             )
-            label = _gift_label(gift, gift_name)
-            text = (tpl or {}).get("body") or "{{ name }}, в знак извинения начислили {{ gift }}."
-            text = text.replace("{{ name }}", str(row.get("client_name") or "Уважаемый клиент")).replace(
-                "{{ gift }}", label
-            )
+            if not tpl and lang != "ru":
+                tpl = await fetch_one(
+                    conn,
+                    "select subject, body from notification_templates where code = 'gift_offer' and lang = %s and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
+                    ("ru", seg),
+                )
+            label = _gift_label(gift, gift_name if isinstance(gift_name, str) else None, lang)
+            if lang == "en":
+                body_tpl = (tpl or {}).get("body") or "{{ name }}, we have added {{ gift }} as an apology."
+                who = str(row.get("client_name") or "Client")
+                subject = (tpl or {}).get("subject") or "A small apology"
+            else:
+                body_tpl = (tpl or {}).get("body") or "{{ name }}, в знак извинения начислили {{ gift }}."
+                who = str(row.get("client_name") or "Уважаемый клиент")
+                subject = (tpl or {}).get("subject") or "Подарок от банка"
+            text = body_tpl.replace("{{ name }}", who).replace("{{ gift }}", label)
             text = re.sub(r"\{\{[^}]*\}\}", "", text).strip()
             await conn.execute(
                 "insert into notifications (run_id, recipient_type, client_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, 'client', %s, %s, 'chat', 'gift_offer', %s, %s, 'sent', %s, now())",
@@ -177,7 +221,7 @@ async def post_tasks_id(id: int, body: TaskDecision) -> Any:  # noqa: A002
                     row["run_id"],
                     row["client_id"],
                     row["incident_id"],
-                    (tpl or {}).get("subject") or "Подарок от банка",
+                    subject,
                     text,
                     row["sim_time"],
                 ),

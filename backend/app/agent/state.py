@@ -25,6 +25,8 @@ class AgentState(TypedDict, total=False):
     outcome: str | None
     llm_source: str  # live | replay | mock
     prompt_version: str
+    verified: bool  # verify_service_delivered или эквивалент (T-063)
+    reopen_count: int  # неудачные проверки устранения до cap (T-063)
 
 
 def new_state(run_id: int, signal: dict[str, Any], agent_run_id: int, prompt_version: str) -> AgentState:

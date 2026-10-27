@@ -103,14 +103,56 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
 
 
 @router.get("/api/signals/deferred", summary="Отложенные («спящие») обращения с причиной и временем пробуждения")
-async def get_signals_deferred(request: Request, limit: int = Query(default=50, ge=1, le=500)) -> Any:
+async def get_signals_deferred(
+    request: Request,
+    run_id: str = Query(default="current"),
+    limit: int = Query(default=50, ge=1, le=500),
+) -> Any:
     async with db() as conn:
+        rid = await resolve_run_id(conn, run_id)
+        where = "f.status = 'scheduled'"
+        args: list[Any] = []
+        if rid is not None:
+            where += " and s.run_id = %s"
+            args.append(rid)
+        args.append(limit)
         rows = await fetch_all(
             conn,
-            "select f.id as followup_id, f.signal_id, f.incident_id, f.wake_sim, f.reason, f.status, s.text, s.channel_code, s.status as signal_status from followups f join signals s on s.id = f.signal_id where f.status = 'scheduled' order by f.wake_sim limit %s",
-            (limit,),
+            f"select f.id as followup_id, f.signal_id, f.incident_id, f.wake_sim, f.reason, f.status, "
+            f"s.text, s.channel_code, s.status as signal_status, s.id, s.public_id, s.received_sim, s.run_id "
+            f"from followups f join signals s on s.id = f.signal_id where {where} order by f.wake_sim limit %s",  # noqa: S608
+            tuple(args),
         )
-    return {"items": rows, "next_cursor": None}
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        flat = {
+            "followup_id": row["followup_id"],
+            "signal_id": row["signal_id"],
+            "incident_id": row["incident_id"],
+            "wake_sim": row["wake_sim"],
+            "reason": row["reason"],
+            "status": row["status"],
+            "text": row["text"],
+            "channel_code": row["channel_code"],
+            "signal_status": row["signal_status"],
+        }
+        flat["signal"] = {
+            "id": row["id"],
+            "public_id": row.get("public_id"),
+            "channel_code": row["channel_code"],
+            "text": row["text"],
+            "status": row["signal_status"],
+            "received_sim": row.get("received_sim"),
+            "run_id": row.get("run_id"),
+        }
+        flat["followup"] = {
+            "id": row["followup_id"],
+            "wake_sim": row["wake_sim"],
+            "reason": row["reason"],
+            "status": row["status"],
+        }
+        items.append(flat)
+    return {"items": items, "next_cursor": None}
 
 
 @router.get("/api/signals/{id}", summary="Сигнал с классификацией, решением, связанными инцидентами и запусками агента")

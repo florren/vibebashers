@@ -183,18 +183,33 @@ async def update_incident(
     return brief
 
 
-async def render_template(
-    ctx: ToolContext, code: str, channel: str, segment: str | None, variables: dict[str, Any]
-) -> tuple[str | None, str]:
+async def _template_row(
+    ctx: ToolContext, code: str, channel: str, segment: str | None, lang: str
+) -> tuple[Any, ...] | None:
     row = await ctx.fetchone(
-        "select subject, body from notification_templates where code = %s and channel_code = %s and (segment_code = %s or segment_code is null) and lang = 'ru' order by segment_code nulls last limit 1",
-        (code, channel, segment),
+        "select subject, body from notification_templates where code = %s and channel_code = %s and (segment_code = %s or segment_code is null) and lang = %s order by segment_code nulls last limit 1",
+        (code, channel, segment, lang),
     )
     if not row:
         row = await ctx.fetchone(
-            "select subject, body from notification_templates where code = %s and lang = 'ru' order by (channel_code = 'chat') desc, segment_code nulls last limit 1",
-            (code,),
+            "select subject, body from notification_templates where code = %s and lang = %s order by (channel_code = 'chat') desc, segment_code nulls last limit 1",
+            (code, lang),
         )
+    return row
+
+
+async def render_template(
+    ctx: ToolContext,
+    code: str,
+    channel: str,
+    segment: str | None,
+    variables: dict[str, Any],
+    lang: str = "ru",
+) -> tuple[str | None, str]:
+    use = lang if lang in ("ru", "en") else "ru"
+    row = await _template_row(ctx, code, channel, segment, use)
+    if not row and use != "ru":
+        row = await _template_row(ctx, code, channel, segment, "ru")
     if not row:
         return None, variables.get("text") or variables.get("summary") or ""
     subject, body = row
@@ -223,6 +238,7 @@ async def notify_client(
     segment: str | None = None,
     recipient_type: str = "client",
     consents: dict[str, Any] | None = None,
+    lang: str = "ru",
 ) -> dict[str, Any]:
     """Уведомление клиенту: шаблон по сегменту/каналу (или готовый текст агента), проверка согласий, маскирование ПДн, статус sent, NOTIFY notifications."""
     key = f"{template_code}:{channel}:{recipient_type}"
@@ -232,7 +248,7 @@ async def notify_client(
     )
     if dup:
         return {"notification_id": dup[0], "status": dup[1], "deduplicated": True, "key": key}
-    subject, body = await render_template(ctx, template_code, channel, segment, variables)
+    subject, body = await render_template(ctx, template_code, channel, segment, variables, lang)
     if text_override:
         body = text_override
     body = PII_RE.sub("****", body)
@@ -407,7 +423,15 @@ async def escalate_to_manager(
 ) -> dict[str, Any]:
     dup = await ctx.fetchone("select id, public_id from escalations where agent_run_id = %s", (ctx.agent_run_id,))
     if dup:
-        return {"escalation_id": dup[0], "public_id": dup[1], "deduplicated": True}
+        await ctx.conn.execute(
+            "update escalations set reason = %s, severity = %s where id = %s",
+            (
+                reason,
+                severity if severity in ("low", "medium", "high", "critical") else "high",
+                dup[0],
+            ),
+        )
+        return {"escalation_id": dup[0], "public_id": dup[1], "deduplicated": True, "reason_updated": True}
     row = await ctx.fetchone(
         "insert into escalations (run_id, incident_id, signal_id, reason, severity, to_role, status, created_by, agent_run_id, created_sim) values (%s, %s, %s, %s, %s, %s, 'open', 'agent', %s, %s) returning id, public_id",
         (

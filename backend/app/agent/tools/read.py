@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from app.agent.matching import ClientView, match_clients, nicknames_from_handles, norm_nick, norm_phone
+from app.agent.tools import abs as abs_tools
 from app.agent.tools.base import ToolContext, tool
 
 WINDOW_H = 72
@@ -273,3 +274,67 @@ async def match_client_by_hints(ctx: ToolContext, contacts_hint: dict[str, Any])
                 )
             )
     return match_clients(clients, hint)
+
+
+@tool("verify_service_delivered")
+async def verify_service_delivered(ctx: ToolContext, incident_id: int) -> dict[str, Any]:
+    """Проверка факта устранения: только чтение, без записи в БД."""
+    evidence: list[str] = []
+    row = await ctx.fetchone(
+        "select status, incident_type, error_code, fault_id, primary_client_id from incidents where id = %s",
+        (incident_id,),
+    )
+    if not row:
+        return {"delivered": False, "evidence": ["инцидент не найден"]}
+    status, inc_type, error_code, fault_id, client_id = (
+        str(row[0]),
+        str(row[1] or ""),
+        row[2],
+        row[3],
+        row[4],
+    )
+    if status in ("fix_deployed", "verifying", "resolved", "closed"):
+        evidence.append(f"статус инцидента: {status}")
+
+    delivered = False
+    if inc_type == "fee_refund" and client_id:
+        refund = await ctx.fetchone(
+            "select l.id, l.amount from ledger_entries l join accounts a on a.id = l.account_id "
+            "where a.client_id = %s and l.kind = 'refund' order by l.posted_sim desc limit 1",
+            (int(client_id),),
+        )
+        if refund:
+            bal = await abs_tools.get_account_balance(ctx, int(client_id))
+            evidence.append(f"проводка refund #{int(refund[0])}, {float(refund[1]):.2f} ₽")
+            if bal.get("balance") is not None:
+                evidence.append(f"баланс счёта {bal.get('balance')} ₽")
+            delivered = True
+    elif fault_id:
+        frow = await ctx.fetchone("select resolved_sim from faults where id = %s", (int(fault_id),))
+        if frow and frow[0]:
+            evidence.append(f"сбой #{int(fault_id)} устранён")
+            delivered = True
+        elif status in ("resolved", "closed"):
+            delivered = True
+    else:
+        since_row = await ctx.fetchone(
+            "select changed_sim from incident_status_history where incident_id = %s and to_status = 'fix_deployed' "
+            "order by id desc limit 1",
+            (incident_id,),
+        )
+        since = since_row[0] if since_row else None
+        if client_id and error_code and since:
+            op = await ctx.fetchone(
+                "select id from operations where client_id = %s and error_code = %s and status = 'success' "
+                "and started_sim >= %s limit 1",
+                (int(client_id), str(error_code), since),
+            )
+            if op:
+                evidence.append(f"успешная операция #{int(op[0])} после релиза")
+                delivered = True
+        if status in ("resolved", "closed"):
+            delivered = True
+            if "инцидент закрыт" not in " ".join(evidence):
+                evidence.append("инцидент закрыт командой")
+
+    return {"delivered": delivered, "evidence": evidence}
