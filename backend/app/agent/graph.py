@@ -395,9 +395,7 @@ async def resume_after_followup(
                     "high",
                     "cx_lead",
                 )
-            await conn.execute(
-                "update signals set status = 'closed', updated_at = now() where id = %s", (signal_id,)
-            )
+            await conn.execute("update signals set status = 'closed', updated_at = now() where id = %s", (signal_id,))
             state["verified"] = True
             state["outcome"] = "completed"
             state["current_node"] = "close"
@@ -414,9 +412,7 @@ async def resume_after_followup(
     elif reason == "report_due" and incident_id:
         d = state.get("decision") or {}
         team = str((d.get("route") or {}).get("team") or "team_cx")
-        await wt.create_task(
-            deps.ctx, "report_reminder", int(incident_id), None, {"incident_id": int(incident_id)}
-        )
+        await wt.create_task(deps.ctx, "report_reminder", int(incident_id), None, {"incident_id": int(incident_id)})
         await wt.notify_team(
             deps.ctx,
             team,
@@ -495,9 +491,7 @@ async def wake_due_followups(
     resumed = 0
     for (fid,) in rows:
         await conn.commit()
-        st = await resume_after_followup(
-            conn, followup_id=int(fid), chain=chain, profile=profile, sim_time=sim_time
-        )
+        st = await resume_after_followup(conn, followup_id=int(fid), chain=chain, profile=profile, sim_time=sim_time)
         if st is not None:
             resumed += 1
     return resumed

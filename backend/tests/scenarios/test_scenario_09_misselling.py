@@ -43,9 +43,7 @@ async def test_scenario_09_transcript_on_replay(seeded: str) -> None:
         now = await sim_now(conn)
         tr = await sc.inject_transcript(conn, scenario, run_id, sim_time=now)
         await conn.commit()
-        report = await analyze_transcript(
-            conn, tr["transcript_id"], chain=chain, profile=PROFILE, sim_time=now
-        )
+        report = await analyze_transcript(conn, tr["transcript_id"], chain=chain, profile=PROFILE, sim_time=now)
         await conn.commit()
         res = await sc.evaluate(conn, scenario, run_id)
         steps = await (

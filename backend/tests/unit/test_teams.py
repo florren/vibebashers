@@ -209,7 +209,9 @@ class RecordingBus:
     def __init__(self, store: MemStore) -> None:
         self.store = store
 
-    async def emit(self, run_id: int, event_type: str, payload: dict[str, Any], sim_time: dt.datetime, **kw: Any) -> Any:
+    async def emit(
+        self, run_id: int, event_type: str, payload: dict[str, Any], sim_time: dt.datetime, **kw: Any
+    ) -> Any:
         payload = {**payload, "event_type": event_type}
         if event_type == "fault.regression":
             assert validate(payload, "sim/fault_regression") == []
@@ -355,10 +357,7 @@ async def test_regression_rate_on_seed_2026(monkeypatch: pytest.MonkeyPatch) -> 
     t = base
     while t <= end:
         await emu.tick(t, world)
-        if all(
-            (iid, "release", None) in emu.done or (iid, "close", None) in emu.done
-            for iid in range(1, 101)
-        ):
+        if all((iid, "release", None) in emu.done or (iid, "close", None) in emu.done for iid in range(1, 101)):
             break
         t += dt.timedelta(hours=4)
     t = end + dt.timedelta(minutes=250)
@@ -422,7 +421,9 @@ async def test_progress_report_skip_and_no_duplicate_tick(monkeypatch: pytest.Mo
     await emu.tick(t, _World())
     reports = [a for a in store.team_actions if a["action"] == "progress_report"]
     assert len(reports) == 2
-    assert len(store.team_actions) == len({(a["incident_id"], a["action"], a["payload"].get("report_day")) for a in store.team_actions})
+    assert len(store.team_actions) == len(
+        {(a["incident_id"], a["action"], a["payload"].get("report_day")) for a in store.team_actions}
+    )
 
 
 @pytest.mark.asyncio

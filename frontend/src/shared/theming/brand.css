@@ -1,0 +1,32 @@
+/* Пакет brand — визуально как до T-251; семантические алиасы для theming/contrast (ТЗ 26.1) */
+html[data-pack='brand'] {
+  --surface-1: var(--bg);
+  --surface-2: var(--surface);
+  --surface-3: var(--raised);
+  --ink-muted: var(--muted);
+  --brand-sem: 33 160 56;
+  --ok-sem: 33 160 56;
+  --warn-sem: 224 168 0;
+  --danger-sem: 214 69 69;
+  --info-sem: 0 152 248;
+  --signal-high: 214 69 69;
+  --signal-medium: 224 168 0;
+  --signal-low: 98 108 117;
+  --p1: 214 69 69;
+  --p2: 224 140 0;
+  --p3: 224 168 0;
+  --p4: 98 108 117;
+  --zone-green: 33 160 56;
+  --zone-yellow: 224 168 0;
+  --zone-red: 214 69 69;
+  --trace-before: 230 240 255;
+  --trace-subject: 255 255 255;
+  --trace-after: 240 253 244;
+  --focus-ring: 33 160 56;
+}
+
+html[data-pack='brand'].dark {
+  --trace-before: 30 41 59;
+  --trace-subject: 22 26 30;
+  --trace-after: 24 40 32;
+}

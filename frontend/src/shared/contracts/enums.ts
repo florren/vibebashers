@@ -63,8 +63,43 @@ export const Channel = {
   REVIEW_PORTAL: "review_portal",
   VOICE_INPUT: "voice_input",
   BRANCH_AUDIO: "branch_audio",
+  CSI_SURVEY: "csi_survey",
 } as const;
 export type Channel = (typeof Channel)[keyof typeof Channel];
+
+export const ProductLine = {
+  DEPOSITS: "deposits",
+  MORTGAGE: "mortgage",
+  LOANS: "loans",
+  CREDIT_CARDS: "credit_cards",
+  DEBIT_CARDS: "debit_cards",
+  TRANSFERS_PAYMENTS: "transfers_payments",
+  MOBILE_APP: "mobile_app",
+  INVESTMENTS: "investments",
+  INSURANCE: "insurance",
+  BONUSES_SUBSCRIPTION: "bonuses_subscription",
+  BRANCHES_SERVICE: "branches_service",
+  SUPPORT: "support",
+  BUSINESS_BANKING: "business_banking",
+  ATM_SELF_SERVICE: "atm_self_service",
+  FRAUD_SECURITY: "fraud_security",
+  OTHER: "other",
+} as const;
+export type ProductLine = (typeof ProductLine)[keyof typeof ProductLine];
+
+export const BranchType = {
+  FLAGSHIP: "flagship",
+  STANDARD: "standard",
+  ADDITIONAL: "additional",
+  MOBILE: "mobile",
+} as const;
+export type BranchType = (typeof BranchType)[keyof typeof BranchType];
+
+export const BranchStatus = {
+  OPEN: "open",
+  CLOSED: "closed",
+} as const;
+export type BranchStatus = (typeof BranchStatus)[keyof typeof BranchStatus];
 
 export const SignalType = {
   TECH_FAULT: "tech_fault",
@@ -91,6 +126,7 @@ export const Flag = {
   REGULATOR_THREAT: "regulator_threat",
   PASSIVE_AGGRESSION: "passive_aggression",
   REPEAT_CONTACT_7D: "repeat_contact_7d",
+  RED_WORD: "red_word",
 } as const;
 export type Flag = (typeof Flag)[keyof typeof Flag];
 
@@ -396,3 +432,84 @@ export const Zone = {
   RED: "red",
 } as const;
 export type Zone = (typeof Zone)[keyof typeof Zone];
+
+export const TracePhase = {
+  BEFORE: "before",
+  SUBJECT: "subject",
+  AFTER: "after",
+} as const;
+export type TracePhase = (typeof TracePhase)[keyof typeof TracePhase];
+
+export const TraceActor = {
+  CLIENT: "client",
+  AGENT: "agent",
+  HUMAN: "human",
+  TEAM: "team",
+  SYSTEM: "system",
+  SIM: "sim",
+} as const;
+export type TraceActor = (typeof TraceActor)[keyof typeof TraceActor];
+
+export const JourneyStage = {
+  INTAKE: "intake",
+  UNDERSTANDING: "understanding",
+  IDENTITY: "identity",
+  RULES: "rules",
+  DECISION: "decision",
+  ACTION: "action",
+  EXECUTION: "execution",
+  CLIENT_OUTCOME: "client_outcome",
+} as const;
+export type JourneyStage = (typeof JourneyStage)[keyof typeof JourneyStage];
+
+export const JourneyMessageKind = {
+  ACK: "ack",
+  PUBLIC_REPLY: "public_reply",
+  STATUS: "status",
+  FINAL: "final",
+  GIFT: "gift",
+  CLARIFICATION: "clarification",
+} as const;
+export type JourneyMessageKind = (typeof JourneyMessageKind)[keyof typeof JourneyMessageKind];
+
+export const SearchMode = {
+  ID: "id",
+  HINTS: "hints",
+  TEXT: "text",
+} as const;
+export type SearchMode = (typeof SearchMode)[keyof typeof SearchMode];
+
+export const TraceEventKind = {
+  SOURCE_MESSAGE: "source_message",
+  OPERATION: "operation",
+  FAULT: "fault",
+  FEE: "fee",
+  SIGNAL_CREATED: "signal_created",
+  SIGNAL_NORMALIZED: "signal_normalized",
+  CLIENT_IDENTIFIED: "client_identified",
+  RULE_EVALUATION: "rule_evaluation",
+  POLICY_CHECK: "policy_check",
+  CLASSIFICATION: "classification",
+  DECISION: "decision",
+  TOOL_CALL: "tool_call",
+  HUMAN_REQUEST: "human_request",
+  HUMAN_DECISION: "human_decision",
+  ESCALATION: "escalation",
+  INCIDENT_CREATED: "incident_created",
+  INCIDENT_LINKED: "incident_linked",
+  INCIDENT_STATUS: "incident_status",
+  TEAM_ACTION: "team_action",
+  TASK: "task",
+  NOTIFICATION: "notification",
+  PUBLIC_REPLY: "public_reply",
+  REFUND: "refund",
+  FOLLOWUP: "followup",
+  CLIENT_REACTION: "client_reaction",
+  GIFT: "gift",
+  ECONOMICS: "economics",
+  TERMINAL: "terminal",
+  CHURN: "churn",
+  ZONE_CHANGED: "zone_changed",
+  COMPLIANCE_ALERT: "compliance_alert",
+} as const;
+export type TraceEventKind = (typeof TraceEventKind)[keyof typeof TraceEventKind];

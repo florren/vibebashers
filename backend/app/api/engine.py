@@ -154,13 +154,43 @@ async def get_engine_entity_graph(
                 (incident_id,),
             )
             if inc:
-                nodes.append({"id": f"incident:{inc['id']}", "type": "incident", "label": inc["public_id"], "data": {"title": inc["title"]}})
+                nodes.append(
+                    {
+                        "id": f"incident:{inc['id']}",
+                        "type": "incident",
+                        "label": inc["public_id"],
+                        "data": {"title": inc["title"]},
+                    }
+                )
                 if inc["team_code"]:
-                    nodes.append({"id": f"team:{inc['team_code']}", "type": "team", "label": inc["team_code"], "data": {}})
-                    edges.append({"id": f"e-team-{inc['id']}", "source": f"incident:{inc['id']}", "target": f"team:{inc['team_code']}", "label": "team"})
+                    nodes.append(
+                        {"id": f"team:{inc['team_code']}", "type": "team", "label": inc["team_code"], "data": {}}
+                    )
+                    edges.append(
+                        {
+                            "id": f"e-team-{inc['id']}",
+                            "source": f"incident:{inc['id']}",
+                            "target": f"team:{inc['team_code']}",
+                            "label": "team",
+                        }
+                    )
                 if inc["system_code"]:
-                    nodes.append({"id": f"system:{inc['system_code']}", "type": "system", "label": inc["system_code"], "data": {}})
-                    edges.append({"id": f"e-sys-{inc['id']}", "source": f"incident:{inc['id']}", "target": f"system:{inc['system_code']}", "label": "system"})
+                    nodes.append(
+                        {
+                            "id": f"system:{inc['system_code']}",
+                            "type": "system",
+                            "label": inc["system_code"],
+                            "data": {},
+                        }
+                    )
+                    edges.append(
+                        {
+                            "id": f"e-sys-{inc['id']}",
+                            "source": f"incident:{inc['id']}",
+                            "target": f"system:{inc['system_code']}",
+                            "label": "system",
+                        }
+                    )
                 client_id = client_id or inc["primary_client_id"]
                 if depth >= 2:
                     sigs = await fetch_all(
@@ -170,13 +200,36 @@ async def get_engine_entity_graph(
                     )
                     for s in sigs:
                         nodes.append({"id": f"signal:{s['id']}", "type": "signal", "label": s["public_id"], "data": {}})
-                        edges.append({"id": f"e-sig-{s['id']}", "source": f"signal:{s['id']}", "target": f"incident:{inc['id']}", "label": "signal"})
+                        edges.append(
+                            {
+                                "id": f"e-sig-{s['id']}",
+                                "source": f"signal:{s['id']}",
+                                "target": f"incident:{inc['id']}",
+                                "label": "signal",
+                            }
+                        )
         if client_id is not None:
-            client = await fetch_one(conn, "select id, public_id, display_name from clients where id = %s", (client_id,))
+            client = await fetch_one(
+                conn, "select id, public_id, display_name from clients where id = %s", (client_id,)
+            )
             if client:
-                nodes.append({"id": f"client:{client['id']}", "type": "client", "label": client["public_id"], "data": {"name": client["display_name"]}})
+                nodes.append(
+                    {
+                        "id": f"client:{client['id']}",
+                        "type": "client",
+                        "label": client["public_id"],
+                        "data": {"name": client["display_name"]},
+                    }
+                )
                 if incident_id is not None:
-                    edges.append({"id": f"e-cli-{incident_id}", "source": f"client:{client['id']}", "target": f"incident:{incident_id}", "label": "client"})
+                    edges.append(
+                        {
+                            "id": f"e-cli-{incident_id}",
+                            "source": f"client:{client['id']}",
+                            "target": f"incident:{incident_id}",
+                            "label": "client",
+                        }
+                    )
     return {"nodes": nodes, "edges": edges}
 
 
@@ -231,7 +284,9 @@ async def get_engine_db_tables(request: Request) -> Any:
 
 
 @router.get("/api/engine/db/tables/{name}/rows", summary="Последние записи таблицы (только чтение, allow-list таблиц)")
-async def get_engine_db_tables_name_rows(request: Request, name: str, limit: int = Query(default=50, ge=1, le=500)) -> Any:
+async def get_engine_db_tables_name_rows(
+    request: Request, name: str, limit: int = Query(default=50, ge=1, le=500)
+) -> Any:
     if name not in DB_ALLOW:
         raise HTTPException(status_code=403, detail="таблица вне allow-list")
     async with db() as conn:

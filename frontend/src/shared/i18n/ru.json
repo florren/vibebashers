@@ -138,6 +138,21 @@
     "items": "{{n}} шт.",
     "hide": "Скрыть"
   },
+  "theme": {
+    "appearance": "Оформление",
+    "packLabel": "Пакет темы",
+    "modeLabel": "Режим",
+    "pack": {
+      "brand": "Основной",
+      "ops": "Операционный"
+    },
+    "mode": {
+      "light": "Светлая",
+      "dark": "Тёмная",
+      "auto": "Системная",
+      "circadian": "Циркадная"
+    }
+  },
   "signal": {
     "type": {
       "tech_fault": "Техсбой",
@@ -180,6 +195,7 @@
       "regulator_threat": "угроза регулятором",
       "passive_aggression": "пассивная агрессия",
       "repeat_contact_7d": "повтор за 7 дней",
+      "red_word": "красное слово",
       "hidden_negativity": "скрытый негатив",
       "churn_threat": "угроза ухода",
       "vip": "VIP"

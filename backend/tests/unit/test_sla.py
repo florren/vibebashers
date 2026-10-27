@@ -219,9 +219,7 @@ class SlaConn:
                     return _Cursor((f["id"],))
             return _Cursor(None)
         if "insert into followups" in s:
-            st.followups.append(
-                {"sim_run_id": args[0], "incident_id": args[3], "reason": args[5], "status": "fired"}
-            )
+            st.followups.append({"sim_run_id": args[0], "incident_id": args[3], "reason": args[5], "status": "fired"})
             return _Cursor((1,))
         if "select subject, body from notification_templates" in s:
             return _Cursor(None)
@@ -249,13 +247,13 @@ class RecordingBus:
     def __init__(self, store: SlaStore) -> None:
         self.store = store
 
-    async def emit(self, run_id: int, event_type: str, payload: dict[str, Any], sim_time: dt.datetime, **kw: Any) -> Any:
+    async def emit(
+        self, run_id: int, event_type: str, payload: dict[str, Any], sim_time: dt.datetime, **kw: Any
+    ) -> Any:
         payload = {**payload, "event_type": event_type}
         if event_type.startswith("sla."):
             assert validate(payload, "sim/sla") == []
-        self.store.events.append(
-            {"run_id": run_id, "event_type": event_type, "payload": payload, "sim_time": sim_time}
-        )
+        self.store.events.append({"run_id": run_id, "event_type": event_type, "payload": payload, "sim_time": sim_time})
         return __import__("uuid").uuid4()
 
 
@@ -421,6 +419,7 @@ async def test_report_missing_second_escalates(monkeypatch: pytest.MonkeyPatch) 
     store.add_incident(created_sim=created, report_due_sims=[d1, d2], sla_due_sim=add_working_days(created, 10))
     monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
     eng = await _engine(store)
+
     async def set_status(ctx: ToolContext, iid: int, st: str, reason: str | None = None, fields=None):
         store.incidents[iid]["status"] = st
         return {"incident_id": iid}
@@ -493,9 +492,7 @@ async def test_take_overdue(monkeypatch: pytest.MonkeyPatch) -> None:
         ("ultra_vip", 5),
     ],
 )
-async def test_first_response_overdue_by_segment(
-    monkeypatch: pytest.MonkeyPatch, segment: str, minutes: int
-) -> None:
+async def test_first_response_overdue_by_segment(monkeypatch: pytest.MonkeyPatch, segment: str, minutes: int) -> None:
     store = SlaStore()
     received = dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK)
     store.add_incident(status="in_progress")

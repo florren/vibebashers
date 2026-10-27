@@ -487,9 +487,7 @@ class SlaEngine:
                 ),
             )
 
-    async def _insert_escalation(
-        self, ctx: ToolContext, incident_id: int, agent_run_id: Any, reason: str
-    ) -> None:
+    async def _insert_escalation(self, ctx: ToolContext, incident_id: int, agent_run_id: Any, reason: str) -> None:
         dup = await ctx.fetchone(
             "select id from escalations where run_id = %s and incident_id = %s and to_role = 'cx_lead' and reason = %s",
             (self.run_id, incident_id, reason),

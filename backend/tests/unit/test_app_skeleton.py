@@ -30,6 +30,13 @@ def test_stub_is_problem_json_501() -> None:
     assert r.json()["card"].startswith("T-")
 
 
+def test_search_stub_501() -> None:
+    with TestClient(create_app()) as c:
+        r = c.get("/api/search", params={"q": "SIG-000001"})
+    assert r.status_code == 501
+    assert r.json()["card"] == "T-230"
+
+
 def test_validation_error_is_problem_json() -> None:
     with TestClient(create_app()) as c:
         r = c.get("/api/engine/db/tables/signals/rows?limit=abc")

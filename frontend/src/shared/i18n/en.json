@@ -138,6 +138,21 @@
     "items": "{{n}} items",
     "hide": "Hide"
   },
+  "theme": {
+    "appearance": "Appearance",
+    "packLabel": "Theme pack",
+    "modeLabel": "Mode",
+    "pack": {
+      "brand": "Brand",
+      "ops": "Operations"
+    },
+    "mode": {
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "System",
+      "circadian": "Circadian"
+    }
+  },
   "signal": {
     "type": {
       "tech_fault": "Technical fault",
@@ -180,6 +195,7 @@
       "regulator_threat": "regulator threat",
       "passive_aggression": "passive aggression",
       "repeat_contact_7d": "repeat within 7 days",
+      "red_word": "red word",
       "hidden_negativity": "hidden negativity",
       "churn_threat": "churn threat",
       "vip": "VIP"

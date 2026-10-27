@@ -181,6 +181,27 @@
     "sentiment": {
       "$ref": "../common.schema.json#/$defs/sentiment"
     },
+    "product_line": {
+      "$ref": "../common.schema.json#/$defs/product_line",
+      "description": "[ЕТЗ FR-2.4] продуктовое направление"
+    },
+    "product_line_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "secondary_lines": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "../common.schema.json#/$defs/product_line"
+      }
+    },
+    "signal_level": {
+      "type": "string",
+      "description": "[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета"
+    },
     "problem_summary": {
       "type": "object",
       "additionalProperties": false,

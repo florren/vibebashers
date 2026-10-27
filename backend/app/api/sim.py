@@ -161,9 +161,7 @@ async def post_sim_runs(request: Request, body: dict[str, Any]) -> Any:
         if not baseline_svc.info()["available"]:
             raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
         await _restore_baseline(request)
-        return await _sim(request).control(
-            "start", label=body.get("label") or "Запуск", reset_mode="baseline"
-        )
+        return await _sim(request).control("start", label=body.get("label") or "Запуск", reset_mode="baseline")
     return await _sim(request).control("start", label=body.get("label") or "Запуск", reset_mode=reset_mode)
 
 

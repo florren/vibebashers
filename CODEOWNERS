@@ -44,6 +44,9 @@ backend/app/compliance/             @florren @layer-l3
 backend/app/demo/                   @florren @layer-l3
 backend/app/bench/                  @florren @layer-l3
 backend/app/realtime/               @florren @layer-l3
+backend/app/trace/                  @florren @layer-l3
+backend/app/search/                 @florren @layer-l3
+backend/app/analytics/              @florren @layer-l3
 backend/app/api/                    @florren @layer-l3
 tgbot/                              @florren @layer-l3
 data/bench/                         @florren @layer-l3
@@ -52,6 +55,10 @@ data/cassettes/                     @florren @layer-l3
 # L4 Фронт
 frontend/                           @florren @layer-l4
 frontend/src/shared/i18n/           @florren @layer-l4
+frontend/src/pages/journey/         @florren @layer-l4
+frontend/src/pages/trace/           @florren @layer-l4
+frontend/src/pages/cabinet/         @florren @layer-l4
+frontend/src/pages/csi/             @florren @layer-l4
 
 # L5 Качество
 backend/tests/scenarios/            @florren @layer-l5

@@ -1029,9 +1029,7 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
     sig = state["signal"]
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
     if incident_id is None:
-        row = await deps.ctx.fetchone(
-            "select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,)
-        )
+        row = await deps.ctx.fetchone("select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,))
         incident_id = int(row[0]) if row and row[0] else None
     evidence: list[str] = []
     ok = False
@@ -1068,9 +1066,7 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
         reopen_count = int(state.get("reopen_count") or 0) + 1
         state["reopen_count"] = reopen_count
         cap = int(pol.merged(deps.policies).get("verify_reopen_cap") or 2)
-        await wt.update_incident(
-            deps.ctx, int(incident_id), "in_progress", "reopen: услуга не подтверждена"
-        )
+        await wt.update_incident(deps.ctx, int(incident_id), "in_progress", "reopen: услуга не подтверждена")
         team = (state.get("decision") or {}).get("route", {}).get("team") or "team_cx"
         await wt.notify_team(
             deps.ctx,
@@ -2598,9 +2594,7 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         ca = d.get("client_action") or {}
         channel = str(ca.get("channel") or sig.get("channel") or "chat")
         variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
-        body, _ = await wt.render_template(
-            deps.ctx, "resolved", channel, client.get("segment"), variables, lang
-        )
+        body, _ = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
         if body:

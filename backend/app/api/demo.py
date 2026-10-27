@@ -88,9 +88,7 @@ async def _status(request: Request) -> dict[str, Any]:
     if chain is not None:
         for name in chain.names:
             providers.append({"component": "llm", "name": name, "healthy": True, "latency_ms": None, "detail": None})
-    providers.append(
-        {"component": "stt", "name": stt_mode, "healthy": True, "latency_ms": None, "detail": None}
-    )
+    providers.append({"component": "stt", "name": stt_mode, "healthy": True, "latency_ms": None, "detail": None})
     try:
         current = await _current_run()
     except Exception:

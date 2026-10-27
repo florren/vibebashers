@@ -280,9 +280,7 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
         # pg_restore часто возвращает 1 при harmless warnings
         err = proc.stderr or proc.stdout or ""
         if proc.returncode > 1 or "FATAL" in err.upper():
-            raise BaselineToolingError(
-                f"pg_restore завершился с кодом {proc.returncode}: {err.strip()[-800:]}"
-            )
+            raise BaselineToolingError(f"pg_restore завершился с кодом {proc.returncode}: {err.strip()[-800:]}")
 
 
 async def _notify(conn: psycopg.AsyncConnection[Any], event_type: str, job_id: str) -> None:

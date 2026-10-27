@@ -8,7 +8,7 @@
 | Волна | 7 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Контракты продуктового разреза, CSI и сети ВСП (ТЗ 13, 24–25) до начала кода (AGENTS.md §7, `contract-change`).
@@ -37,10 +37,10 @@
 5. Модели SQLAlchemy новых таблиц (L1), сид-хуки для baseline не трогать — их делают T-240 и T-245.
 
 ## Критерии приёмки
-- [ ] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
-- [ ] Старые клиенты API не ломаются (только добавления).
-- [ ] PR помечен `contract-change`.
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
+- [x] Старые клиенты API не ломаются (только добавления).
+- [x] PR помечен `contract-change`.
+- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
@@ -49,4 +49,8 @@ python scripts/contracts_check.py && make sync-contracts && make lint
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Ветка: `feat/T-237-v15-cabinet-csi`; метка PR: `contract-change`.
+- Миграция `0005_product_csi_branches.sql` (79 таблиц, head `0005`), представления `v_signal_normalized`, `v_cabinet_kpi`; OpenAPI 1.5.0 — пути кабинета/CSI/ВСП/cx-index/normalized; `csi_response.schema.json`, `route_to_product_team`, enums `product_line`, `csi_survey`, `branch_*`, флаг `red_word`.
+- Заглушки 501: `cabinet`, `csi`, `branches`, расширения `ingest`/`metrics`/`signals`; модели через `make sync-contracts`.
+- Проверка: `DATABASE_URL_TEST=… pytest tests/integration/test_schema.py` — 9 passed; `make contracts-check`, `make lint`, unit `make test` — зелёные.
+- Зависимости T-223/T-236 в том же PR (0004, `product_lines.yaml`).

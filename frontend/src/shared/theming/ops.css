@@ -1,0 +1,77 @@
+/* Пакет ops — запасной тёмный прототип 2.4 (sRGB); не основной демо-пакет (ADR-0010) */
+html[data-pack='ops'][data-mode='dark'] {
+  --bg: 12 14 18;
+  --surface: 18 21 27;
+  --raised: 24 28 36;
+  --line: 42 48 58;
+  --ink: 232 236 239;
+  --muted: 151 161 170;
+  --faint: 98 108 117;
+  --brand-soft: 28 36 48;
+  --surface-1: var(--bg);
+  --surface-2: var(--surface);
+  --surface-3: var(--raised);
+  --ink-muted: var(--muted);
+  --brand-sem: 56 189 148;
+  --ok-sem: 56 189 148;
+  --warn-sem: 250 204 21;
+  --danger-sem: 248 113 113;
+  --info-sem: 96 165 250;
+  --signal-high: 248 113 113;
+  --signal-medium: 250 204 21;
+  --signal-low: 148 163 184;
+  --p1: 248 113 113;
+  --p2: 251 146 60;
+  --p3: 250 204 21;
+  --p4: 148 163 184;
+  --zone-green: 56 189 148;
+  --zone-yellow: 250 204 21;
+  --zone-red: 248 113 113;
+  --trace-before: 30 32 42;
+  --trace-subject: 22 26 34;
+  --trace-after: 28 32 40;
+  --focus-ring: 96 165 250;
+}
+
+html[data-pack='ops'][data-mode='light'] {
+  --bg: 244 245 247;
+  --surface: 255 255 255;
+  --raised: 250 251 252;
+  --line: 210 214 220;
+  --ink: 24 28 31;
+  --muted: 90 98 108;
+  --faint: 140 148 156;
+  --brand-soft: 236 253 245;
+  --surface-1: var(--bg);
+  --surface-2: var(--surface);
+  --surface-3: var(--raised);
+  --ink-muted: var(--muted);
+  --brand-sem: 4 120 87;
+  --ok-sem: 4 120 87;
+  --warn-sem: 180 130 0;
+  --danger-sem: 185 28 28;
+  --info-sem: 29 78 216;
+  --signal-high: 185 28 28;
+  --signal-medium: 180 130 0;
+  --signal-low: 100 116 139;
+  --p1: 185 28 28;
+  --p2: 194 65 12;
+  --p3: 180 130 0;
+  --p4: 100 116 139;
+  --zone-green: 4 120 87;
+  --zone-yellow: 180 130 0;
+  --zone-red: 185 28 28;
+  --trace-before: 241 245 249;
+  --trace-subject: 255 255 255;
+  --trace-after: 248 250 252;
+  --focus-ring: 29 78 216;
+}
+
+@media print {
+  html[data-pack='ops'] {
+    --bg: 255 255 255;
+    --surface: 255 255 255;
+    --ink: 0 0 0;
+    --line: 200 200 200;
+  }
+}

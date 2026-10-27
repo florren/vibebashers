@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/trace/search_response.schema.json",
+  "title": "SearchResponse — GET /api/search (ТЗ 28.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["query", "parsed", "hits", "counts_by_kind", "took_ms"],
+  "properties": {
+    "query": { "type": "string" },
+    "parsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "$ref": "../common.schema.json#/$defs/search_mode" },
+        "kind": { "type": ["string", "null"] },
+        "ref": { "type": ["string", "null"] },
+        "normalized": { "type": ["string", "null"] }
+      }
+    },
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref", "title_ru", "run_id"],
+        "properties": {
+          "kind": { "type": "string" },
+          "ref": { "type": "string" },
+          "title_ru": { "type": "string" },
+          "subtitle_ru": { "type": ["string", "null"] },
+          "run_id": { "type": "string" },
+          "status": { "type": ["string", "null"] },
+          "snippet_ru": { "type": ["string", "null"] },
+          "trace_href": { "type": "string" }
+        }
+      }
+    },
+    "counts_by_kind": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "took_ms": { "type": "integer", "minimum": 0 }
+  },
+  "examples": [
+    {
+      "query": "SIG-000123",
+      "parsed": { "mode": "id", "kind": "signal", "ref": "SIG-000123", "normalized": "SIG-000123" },
+      "hits": [
+        {
+          "kind": "signal",
+          "ref": "SIG-000123",
+          "title_ru": "Жалоба на комиссию",
+          "subtitle_ru": "Чат",
+          "run_id": "SR-0012",
+          "status": "processed",
+          "snippet_ru": null,
+          "trace_href": "/trace/signal/SIG-000123"
+        }
+      ],
+      "counts_by_kind": { "signal": 1 },
+      "took_ms": 4
+    }
+  ]
+}

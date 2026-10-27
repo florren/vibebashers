@@ -1,0 +1,153 @@
+# ТЗ 24.2 — 15 продуктовых направлений (синтетические названия, без брендов банков).
+# Ставки — только через rate_code → data/dcltv_rates.csv (не дублировать rate_rub здесь).
+product_lines:
+  - code: deposits
+    name_ru: Вклады и накопительные счета
+    name_en: Deposits and savings
+    rate_code: deposit
+    rate_is_fallback: false
+    owner_team_code: team_deposits
+    owner_is_proxy: false
+    product_codes: [deposit]
+    sort_order: 1
+    demo_review_share: 9
+  - code: mortgage
+    name_ru: Ипотека
+    name_en: Mortgage
+    rate_code: mortgage
+    rate_is_fallback: false
+    owner_team_code: team_lending
+    owner_is_proxy: false
+    product_codes: [credit]
+    sort_order: 2
+    demo_review_share: 3
+  - code: loans
+    name_ru: Потребительские кредиты
+    name_en: Consumer loans
+    rate_code: consumer_loan
+    rate_is_fallback: false
+    owner_team_code: team_lending
+    owner_is_proxy: false
+    product_codes: [credit]
+    sort_order: 3
+    demo_review_share: 5
+  - code: credit_cards
+    name_ru: Кредитные карты
+    name_en: Credit cards
+    rate_code: credit_card
+    rate_is_fallback: false
+    owner_team_code: team_lending
+    owner_is_proxy: false
+    product_codes: [credit_card]
+    sort_order: 4
+    demo_review_share: 1
+  - code: debit_cards
+    name_ru: Дебетовые карты
+    name_en: Debit cards
+    rate_code: debit_card
+    rate_is_fallback: false
+    owner_team_code: team_debit
+    owner_is_proxy: false
+    product_codes: [debit_card]
+    sort_order: 5
+    demo_review_share: 4
+  - code: transfers_payments
+    name_ru: Переводы и платежи
+    name_en: Transfers and payments
+    rate_code: transfers
+    rate_is_fallback: false
+    owner_team_code: team_processing
+    owner_is_proxy: false
+    product_codes: [debit_card]
+    sort_order: 6
+    demo_review_share: 2
+  - code: mobile_app
+    name_ru: Мобильное приложение
+    name_en: Mobile app
+    rate_code: mobile_app
+    rate_is_fallback: false
+    owner_team_code: team_front
+    owner_is_proxy: false
+    product_codes: []
+    sort_order: 7
+    demo_review_share: 6
+  - code: investments
+    name_ru: Инвестиции
+    name_en: Investments
+    rate_code: brokerage
+    rate_is_fallback: false
+    owner_team_code: team_cx
+    owner_is_proxy: true
+    product_codes: []
+    sort_order: 8
+    demo_review_share: 2
+  - code: insurance
+    name_ru: Страхование
+    name_en: Insurance
+    rate_code: insurance
+    rate_is_fallback: false
+    owner_team_code: team_cx
+    owner_is_proxy: true
+    product_codes: [credit]
+    sort_order: 9
+    demo_review_share: 8
+  - code: bonuses_subscription
+    name_ru: Бонусы и подписка
+    name_en: Bonuses and subscription
+    rate_code: subscription
+    rate_is_fallback: false
+    owner_team_code: team_promo
+    owner_is_proxy: false
+    product_codes: []
+    sort_order: 10
+    demo_review_share: 3
+  - code: branches_service
+    name_ru: Обслуживание в отделениях
+    name_en: Branch service
+    rate_code: branches
+    rate_is_fallback: false
+    owner_team_code: team_branch_network
+    owner_is_proxy: false
+    product_codes: []
+    sort_order: 11
+    demo_review_share: 3
+  - code: support
+    name_ru: Служба поддержки
+    name_en: Support
+    rate_code: support_chat
+    rate_is_fallback: false
+    owner_team_code: team_contact_center
+    owner_is_proxy: false
+    product_codes: []
+    sort_order: 12
+    demo_review_share: 2
+  - code: business_banking
+    name_ru: Банк для бизнеса
+    name_en: Business banking
+    rate_code: bank_average
+    rate_is_fallback: true
+    owner_team_code: team_processing
+    owner_is_proxy: true
+    product_codes: []
+    sort_order: 13
+    demo_review_share: 3
+  - code: atm_self_service
+    name_ru: Банкоматы и самообслуживание
+    name_en: ATMs and self-service
+    rate_code: atm
+    rate_is_fallback: false
+    owner_team_code: team_processing
+    owner_is_proxy: true
+    product_codes: [debit_card]
+    sort_order: 14
+    demo_review_share: 1
+  - code: fraud_security
+    name_ru: Мошенничество и безопасность
+    name_en: Fraud and security
+    rate_code: bank_average
+    rate_is_fallback: true
+    owner_team_code: team_antifraud
+    owner_is_proxy: false
+    product_codes: []
+    sort_order: 15
+    demo_review_share: 2

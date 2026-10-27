@@ -112,6 +112,38 @@ class Channel(StrEnum):
     review_portal = "review_portal"
     voice_input = "voice_input"
     branch_audio = "branch_audio"
+    csi_survey = "csi_survey"
+
+
+class ProductLine(StrEnum):
+    deposits = "deposits"
+    mortgage = "mortgage"
+    loans = "loans"
+    credit_cards = "credit_cards"
+    debit_cards = "debit_cards"
+    transfers_payments = "transfers_payments"
+    mobile_app = "mobile_app"
+    investments = "investments"
+    insurance = "insurance"
+    bonuses_subscription = "bonuses_subscription"
+    branches_service = "branches_service"
+    support = "support"
+    business_banking = "business_banking"
+    atm_self_service = "atm_self_service"
+    fraud_security = "fraud_security"
+    other = "other"
+
+
+class BranchType(StrEnum):
+    flagship = "flagship"
+    standard = "standard"
+    additional = "additional"
+    mobile = "mobile"
+
+
+class BranchStatus(StrEnum):
+    open = "open"
+    closed = "closed"
 
 
 class Flag(StrEnum):
@@ -125,6 +157,7 @@ class Flag(StrEnum):
     regulator_threat = "regulator_threat"
     passive_aggression = "passive_aggression"
     repeat_contact_7d = "repeat_contact_7d"
+    red_word = "red_word"
 
 
 class Complexity(StrEnum):
@@ -463,6 +496,81 @@ class Geo(BaseModel):
     source: GeoSource
 
 
+class TracePhase(StrEnum):
+    before = "before"
+    subject = "subject"
+    after = "after"
+
+
+class TraceActor(StrEnum):
+    client = "client"
+    agent = "agent"
+    human = "human"
+    team = "team"
+    system = "system"
+    sim = "sim"
+
+
+class JourneyStage(StrEnum):
+    intake = "intake"
+    understanding = "understanding"
+    identity = "identity"
+    rules = "rules"
+    decision = "decision"
+    action = "action"
+    execution = "execution"
+    client_outcome = "client_outcome"
+
+
+class JourneyMessageKind(StrEnum):
+    ack = "ack"
+    public_reply = "public_reply"
+    status = "status"
+    final = "final"
+    gift = "gift"
+    clarification = "clarification"
+
+
+class SearchMode(StrEnum):
+    id = "id"
+    hints = "hints"
+    text = "text"
+
+
+class TraceEventKind(StrEnum):
+    source_message = "source_message"
+    operation = "operation"
+    fault = "fault"
+    fee = "fee"
+    signal_created = "signal_created"
+    signal_normalized = "signal_normalized"
+    client_identified = "client_identified"
+    rule_evaluation = "rule_evaluation"
+    policy_check = "policy_check"
+    classification = "classification"
+    decision = "decision"
+    tool_call = "tool_call"
+    human_request = "human_request"
+    human_decision = "human_decision"
+    escalation = "escalation"
+    incident_created = "incident_created"
+    incident_linked = "incident_linked"
+    incident_status = "incident_status"
+    team_action = "team_action"
+    task = "task"
+    notification = "notification"
+    public_reply = "public_reply"
+    refund = "refund"
+    followup = "followup"
+    client_reaction = "client_reaction"
+    gift = "gift"
+    economics = "economics"
+    terminal = "terminal"
+    churn = "churn"
+    zone_changed = "zone_changed"
+    compliance_alert = "compliance_alert"
+
+
 class ProblemSummary(BaseModel):
     """
     [ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)
@@ -507,6 +615,10 @@ class Classification(BaseModel):
     )
     intents: list[Intent] | None = None
     sentiment: Sentiment
+    product_line: ProductLine | None = Field(None, description="[ЕТЗ FR-2.4] продуктовое направление")
+    product_line_confidence: float | None = Field(None, ge=0.0, le=1.0)
+    secondary_lines: list[ProductLine] | None = Field(None, max_length=2)
+    signal_level: str | None = Field(None, description="[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета")
     problem_summary: ProblemSummary = Field(
         ..., description="[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)"
     )

@@ -43,15 +43,16 @@ def norm_phone(value: str | None) -> str:
 def nicknames_from_handles(raw: Any) -> set[str]:
     found: set[str] = set()
     if isinstance(raw, dict):
-        values = raw.values()
+        for item in raw.values():
+            nick = norm_nick(item if isinstance(item, str) else None)
+            if nick:
+                found.add(nick)
     elif isinstance(raw, list):
-        values = [(item.get("handle") if isinstance(item, dict) else item) for item in raw]
-    else:
-        return found
-    for item in values:
-        nick = norm_nick(item if isinstance(item, str) else None)
-        if nick:
-            found.add(nick)
+        for item in raw:
+            handle = item.get("handle") if isinstance(item, dict) else item
+            nick = norm_nick(handle if isinstance(handle, str) else None)
+            if nick:
+                found.add(nick)
     return found
 
 
