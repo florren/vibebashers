@@ -15,6 +15,13 @@ from app.sim import baseline as baseline_svc
 from app.sim.engine import Simulator
 
 
+@pytest.fixture(autouse=True)
+def isolated_baseline_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Интеграционный seed и локальные снимки не влияют на unit-тесты API."""
+    monkeypatch.setattr(baseline_svc, "baseline_dir", lambda: tmp_path)
+    monkeypatch.setattr(baseline_svc, "runs_export_dir", lambda: tmp_path / "runs")
+
+
 def _write_snapshot(tmp_path: Path, profile: str | None = None) -> str:
     prof = profile or baseline_svc.resolve_profile()
     dump_path = tmp_path / f"{prof}.dump"
