@@ -27,7 +27,7 @@ def baseline_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 async def _count_clients(dsn: str) -> int:
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        cur = await conn.execute("select count(*) from clients")
+        cur = await conn.execute("select count(*) from clients where is_active")
         row = await cur.fetchone()
         return int(row[0]) if row else 0
 
@@ -36,19 +36,19 @@ async def _count_clients(dsn: str) -> int:
 async def test_dump_after_seed_and_restore_roundtrip(seeded: str, baseline_tmp: Path) -> None:
     dsn = seeded.replace("postgresql+psycopg://", "postgresql://", 1)
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=False) as conn:
-        info = await baseline_svc.dump(conn)
+        info = await baseline_svc.dump(conn, profile="lite")
         await conn.commit()
     assert info["available"] is True
     assert (baseline_tmp / "lite.dump").is_file()
 
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
-        await conn.execute("delete from clients where id > (select min(id) from clients)")
-        after_delete = await _count_clients(dsn)
-        assert after_delete >= 0
+        await conn.execute("update clients set is_active = false where id > (select min(id) from clients)")
+        after_mutation = await _count_clients(dsn)
+        assert after_mutation == 1
 
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=False) as conn:
         before_restore = await _count_clients(dsn)
-        job_id = await baseline_svc.restore(conn)
+        job_id = await baseline_svc.restore(conn, profile="lite")
         assert job_id
 
     restored = await _count_clients(dsn)

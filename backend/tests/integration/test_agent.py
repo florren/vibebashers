@@ -81,14 +81,16 @@ def test_full_pass_creates_incident_and_notifications(seeded: str, conn: psycopg
     steps = [
         r[0] for r in conn.execute("select node from agent_steps where run_id = %s order by seq", (run[0],)).fetchall()
     ]
-    assert steps[:3] == ["ingest", "normalize", "identify_client"] and steps[-1] == "close" and "decide" in steps
+    assert (
+        steps[:3] == ["ingest", "normalize", "identify_client"] and steps[-1] == "close" and "instant_decide" in steps
+    )
     inc = conn.execute(
         "select id, status, team_code, priority, sla_due_sim, problem_summary, agent_run_id from incidents where id = %s",
         (run[5],),
     ).fetchone()
     assert (
         inc
-        and inc[1] in ("routed", "escalated", "resolved")  # resolved — комиссия возвращена через Mock-АБС (B06)
+        and inc[1] == "closed"  # Быстрый возврат проверен и замкнут (T-174).
         and inc[2]
         and 1 <= inc[3] <= 4
         and inc[4] is not None
@@ -106,14 +108,14 @@ def test_full_pass_creates_incident_and_notifications(seeded: str, conn: psycopg
         r[0]
         for r in conn.execute("select recipient_type from notifications where signal_id = %s", (signal_id,)).fetchall()
     }
-    assert {"client", "team"} <= kinds
+    assert kinds == {"client"}  # Автономный возврат уже исполнен; ручная работа команды не запрашивается.
     sig = conn.execute(
         "select status, classification->>'signal_type', decision->>'incident_action', sentiment from signals where id = %s",
         (signal_id,),
     ).fetchone()
     assert (
         sig
-        and sig[0] == "answered"
+        and sig[0] == "closed"
         and sig[1] in ("tariff_terms", "tech_fault")
         and sig[2] == "create"
         and sig[3] == "negative"
@@ -167,14 +169,21 @@ def test_hitl_pause_and_resume(seeded: str, conn: psycopg.Connection) -> None:
     st = asyncio.run(resume())
     assert (
         st is not None
-        and st["outcome"] == "completed"
+        and st["outcome"] == "deferred"
         and st["decision"]["priority"] == 2
         and st["decision"]["gift"] is None
     )
     run = conn.execute(
         "select outcome, needed_human, incident_id from agent_runs where signal_id = %s", (signal_id,)
     ).fetchone()
-    assert run[0] == "completed" and run[1] is True and run[2] is not None
+    assert run[0] == "deferred" and run[1] is True and run[2] is not None
+    assert (
+        conn.execute(
+            "select count(*) from followups where signal_id = %s and status = 'scheduled'", (signal_id,)
+        ).fetchone()[0]
+        == 1
+    )
+    assert conn.execute("select status from incidents where id = %s", (run[2],)).fetchone()[0] != "closed"
     assert conn.execute("select incident_id from human_decisions where id = %s", (hd[0],)).fetchone()[0] == run[2]
     nodes = [
         r[0]
@@ -183,7 +192,7 @@ def test_hitl_pause_and_resume(seeded: str, conn: psycopg.Connection) -> None:
             (signal_id,),
         ).fetchall()
     ]
-    assert nodes.count("wait_human") == 2 and nodes[-2:] == ["act", "close"]
+    assert nodes.count("wait_human") == 2 and nodes[-2:] == ["act", "followup_monitor"]
     assert (
         conn.execute("select count(*) from tasks where incident_id = %s and kind = 'gift'", (run[2],)).fetchone()[0]
         == 0

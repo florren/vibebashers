@@ -142,8 +142,7 @@ def test_downgrade_0004_and_upgrade_again(migrated_db, conn) -> None:
     assert missing == 0
     r = alembic("upgrade", "head", url=migrated_db)
     assert r.returncode == 0, r.stderr[-1500:]
-    row = conn.execute("select public_id from agent_runs limit 0").fetchone()
-    assert row is None or True
+    assert conn.execute("select public_id from agent_runs limit 0").description[0].name == "public_id"
     pid = conn.execute(
         "insert into sim_runs (kind, label, seed, started_sim) values ('live','t-223',1,now()) returning public_id"
     ).fetchone()[0]
@@ -151,6 +150,13 @@ def test_downgrade_0004_and_upgrade_again(migrated_db, conn) -> None:
 
 
 def test_downgrade_0005_and_upgrade_again(migrated_db, conn) -> None:
+    run_id = conn.execute(
+        "insert into sim_runs (kind, label, seed, started_sim) values ('live','downgrade-csi',1,now()) returning id"
+    ).fetchone()[0]
+    signal_id = conn.execute(
+        "insert into signals (run_id, channel_code, text, received_sim, origin) values (%s, 'csi_survey', 'Опрос', now(), 'api') returning id",
+        (run_id,),
+    ).fetchone()[0]
     r = alembic("downgrade", "0004", url=migrated_db)
     assert r.returncode == 0, r.stderr[-1500:]
     n = conn.execute(
@@ -159,6 +165,7 @@ def test_downgrade_0005_and_upgrade_again(migrated_db, conn) -> None:
     assert n == 74
     views = {r[0] for r in conn.execute("select table_name from information_schema.views where table_schema='public'")}
     assert "v_signal_normalized" not in views
+    assert conn.execute("select channel_code from signals where id = %s", (signal_id,)).fetchone()[0] == "csi_survey"
     r = alembic("upgrade", "head", url=migrated_db)
     assert r.returncode == 0, r.stderr[-1500:]
     assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0005"

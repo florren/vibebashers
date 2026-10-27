@@ -1559,8 +1559,11 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     reports: dict[str, str] = {}
     statuses: dict[str, str] = {}
+    checked: dict[str, set[str]] = {}
     for old in OUT.glob("T-*.md"):
         txt = old.read_text(encoding="utf-8")
+        criteria = txt.split("## Критерии приёмки\n", 1)[-1].split("\n## ", 1)[0]
+        checked[old.name[:5]] = set(re.findall(r"^- \[x\] (.+)$", criteria, re.M))
         if REPORT_HDR in txt:
             body = txt.split(REPORT_HDR, 1)[1].strip()
             if body and body != REPORT_EMPTY:
@@ -1571,6 +1574,8 @@ def main() -> None:
         old.unlink()
     for t in TASKS:
         text = render(t)
+        for criterion in checked.get(tid(t["id"]), set()):
+            text = text.replace(f"- [ ] {criterion}\n", f"- [x] {criterion}\n", 1)
         rep = reports.get(tid(t["id"]))
         if rep:
             text = text.replace(REPORT_EMPTY, rep)

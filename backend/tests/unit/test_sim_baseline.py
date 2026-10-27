@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
 
 from app.main import create_app
 from app.sim import baseline as baseline_svc
@@ -318,4 +319,10 @@ async def test_restore_preserves_sim_runs_summary(tmp_path: Path, monkeypatch: p
     job_id = await baseline_svc.restore(conn)
     assert job_id
     assert inserted, "sim_runs должны быть восстановлены после pg_restore"
-    assert inserted[0][14] == summary
+    assert isinstance(inserted[0][14], Jsonb)
+    assert inserted[0][14].obj == summary
+    statements = [call.args[0].lower() for call in new_conn.execute.await_args_list]
+    assert not any("delete from sim_runs" in sql for sql in statements)
+    insert = next(sql for sql in statements if "insert into sim_runs" in sql)
+    assert "overriding system value" in insert and "on conflict (id) do update" in insert
+    assert insert.count("%s") == len(inserted[0]) == 18

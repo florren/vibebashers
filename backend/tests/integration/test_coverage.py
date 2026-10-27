@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.contracts.enums import Channel
 from tests.integration.conftest import _seed
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -38,7 +39,7 @@ def test_reference_counts(conn) -> None:
     assert conn.execute("select count(*) from segments").fetchone()[0] == 7
     assert conn.execute("select count(*) from psychotypes").fetchone()[0] == 8
     assert conn.execute("select count(*) from teams").fetchone()[0] == 12
-    assert conn.execute("select count(*) from channels").fetchone()[0] == 11
+    assert {r[0] for r in conn.execute("select code from channels")} == set(Channel)
     assert conn.execute("select count(*) from sla_matrix").fetchone()[0] == 9
     assert conn.execute("select count(*) from employees").fetchone()[0] == 60
     assert conn.execute("select count(*) from branches where code = '0042'").fetchone()[0] == 1
@@ -54,7 +55,7 @@ def test_reference_counts(conn) -> None:
 def test_coverage_matrix(conn) -> None:
     cov = conn.execute("select value from settings where key = 'coverage'").fetchone()[0]
     assert cov["signal_combos_missing"] == []
-    assert cov["signal_combos_covered"] == cov["signal_combos_total"] == 10 * 4 * 11
+    assert cov["signal_combos_covered"] == cov["signal_combos_total"] == 10 * 4 * len(Channel)
     assert cov["sla_cells_ok"] is True
     assert all(v >= 5 for v in cov["sla_cells"].values())
     assert cov["hard_text_share"] >= 0.25

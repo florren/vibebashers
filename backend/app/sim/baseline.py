@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from app.config import get_settings
 from app.db.session import psycopg_dsn
@@ -246,18 +247,22 @@ async def _fetch_sim_runs(conn: psycopg.AsyncConnection[Any]) -> list[tuple[Any,
 
 
 async def _restore_sim_runs(conn: psycopg.AsyncConnection[Any], rows: list[tuple[Any, ...]]) -> None:
-    await conn.execute("update sim_state set current_run_id = null where id = 1")
-    await conn.execute("delete from sim_runs")
+    # Baseline уже восстановлен: удаление sim_runs каскадно удалило бы его данные.
     if not rows:
         return
-    placeholders = ", ".join(["%s"] * len(RUN_COLS))
+    columns = RUN_COLS.split(", ")
+    placeholders = ", ".join(["%s"] * len(columns))
     cols_sql = ", ".join(RUN_COLS.split(", "))
     status_idx = RUN_COLS.split(", ").index("status")
     for row in rows:
-        data = list(row)
+        data = [Jsonb(value) if isinstance(value, dict | list) else value for value in row]
         if data[status_idx] in ("running", "paused", "interrupted"):
             data[status_idx] = "interrupted"
-        await conn.execute(f"insert into sim_runs ({cols_sql}) values ({placeholders})", tuple(data))
+        await conn.execute(
+            f"insert into sim_runs ({cols_sql}) overriding system value values ({placeholders}) "
+            "on conflict (id) do update set " + ", ".join(f"{col} = excluded.{col}" for col in columns if col != "id"),
+            tuple(data),
+        )
     await conn.execute(
         "select setval(pg_get_serial_sequence('sim_runs', 'id'), coalesce((select max(id) from sim_runs), 1))"
     )

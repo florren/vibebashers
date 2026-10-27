@@ -875,6 +875,8 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
     team = (fee_rule or {}).get("team") or "team_debit"
     state["decision"] = {
         "fast_path": True,
+        "incident_action": "create",
+        "router_action": "route",
         "rule_codes": inst.get("rule_codes") or [],
         "confidence": float(inst.get("confidence") or cls.get("confidence") or 0.9),
         "route": {"team": team, "co_teams": []},
@@ -882,8 +884,18 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         "complexity": "instant",
     }
     if meta.get("provider"):
-        state["llm_source"] = meta["provider"] if not meta.get("fallback_mock") else "mock"
+        state["llm_source"] = (
+            "mock"
+            if meta.get("fallback_mock") or meta["provider"] == "mock"
+            else "replay"
+            if meta["provider"] == "replay"
+            else "live"
+        )
     deps.ctx.llm_source = state["llm_source"]
+    await deps.ctx.conn.execute(
+        "update signals set classification = %s::jsonb, decision = %s::jsonb, updated_at = now() where id = %s",
+        (dumps(cls), dumps(state["decision"]), sig["id"]),
+    )
     state["current_node"] = "act_instant"
     await deps.record_step(
         "instant_decide",
@@ -2579,7 +2591,8 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
     verified = bool(state.get("verified"))
     step_status = "ok"
     if incident_id and not verified:
-        state["outcome"] = "fallback"
+        state["outcome"] = "failed"
+        state["errors"].append("close: услуга не подтверждена")
         state["current_node"] = "close"
         await deps.record_step(
             "close",

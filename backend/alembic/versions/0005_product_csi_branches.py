@@ -55,7 +55,8 @@ def downgrade() -> None:
         op.execute(f"DROP VIEW IF EXISTS {v}")
     for t in _NEW_TABLES:
         op.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
-    op.execute("DELETE FROM channels WHERE code = 'csi_survey'")
+    # Канал остаётся справочным значением: удаление нарушит FK существующих сигналов,
+    # уведомлений и шаблонов. Схема v1.4 допускает произвольные коды каналов.
     for col in _SIGNAL_COLS:
         op.execute(f"ALTER TABLE signals DROP COLUMN IF EXISTS {col}")
     op.execute("ALTER TABLE regions DROP COLUMN IF EXISTS okato")
