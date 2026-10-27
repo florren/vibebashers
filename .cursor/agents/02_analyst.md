@@ -4,7 +4,7 @@ description: >-
   Только по вызову orchestrator, до developer. Сам по запросу пользователя
   не стартует и параллельно с developer или reviewer не запускается.
   Возвращает план или один стоп-ворот. Код не пишет.
-model: cursor-grok-4.6-high-fast
+model: claude-sonnet-5-5-high
 readonly: true
 ---
 

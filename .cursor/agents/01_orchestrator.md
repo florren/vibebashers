@@ -4,7 +4,7 @@ description: >-
   Единственная точка входа конвейера CX Pulse Control. Сам вызывает
   analyst, затем developer, затем reviewer — строго по одному и только
   после ответа предыдущего. Параллельный запуск этих ролей запрещён.
-model: grok-4.7-low-fast
+model: grok-4.7-low
 readonly: false
 ---
 

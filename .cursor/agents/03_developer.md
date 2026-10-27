@@ -4,7 +4,7 @@ description: >-
   Только по вызову orchestrator после ВЕРДИКТ: ПЛАН. Сам по запросу
   пользователя не стартует и параллельно с analyst или reviewer не
   запускается. Пишет код строго по шагам плана. Коммиты не делает.
-model: composer-2.5-fast
+model: composer-2.5
 readonly: false
 ---
 
