@@ -27,6 +27,7 @@ from app.agent.tools import router_tools
 from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
 from app.contracts.registry import deref, validate
+from app.i18n import communication_lang
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -417,6 +418,69 @@ def regex_hints(text: str) -> dict[str, Any]:
     return hints
 
 
+def _client_lang(raw: str | None, text: str) -> str:
+    """ru и en сохраняются; иное значение, включая пустое, берётся из текста сигнала."""
+    if raw in ("ru", "en"):
+        return raw
+    return communication_lang(text)
+
+
+def _message_for_lang(message: str, lang: str, template_body: str | None) -> str:
+    """Если язык текста не совпал с lang сигнала, клиенту уходит тело шаблона на этом lang."""
+    text = message.strip()
+    if lang in ("ru", "en") and communication_lang(text) != lang and template_body:
+        return template_body
+    return text
+
+
+async def _render_client_text(
+    deps: Deps,
+    message: str,
+    lang: str,
+    template_code: str,
+    channel: str,
+    segment: str | None,
+    variables: dict[str, Any],
+) -> str:
+    text = message.strip()
+    if communication_lang(text) == lang:
+        return text
+    _subject, body = await wt.render_template(deps.ctx, template_code, channel, segment, variables, lang)
+    return _message_for_lang(text, lang, body)
+
+
+def _fixed_question(kind: str, lang: str) -> str:
+    if lang == "en":
+        if kind == "identify":
+            return (
+                "To help you, we need to find your profile. Please send the phone number from the application "
+                "or the last 4 digits of the card. The data is handled confidentially."
+            )
+        if kind == "fraud_data":
+            return (
+                "Please send a screenshot of the transaction (date, amount, merchant name) and confirm that the card is with you. "
+                "We will pass the details to the fraud team. You can block the card in the app if you need to."
+            )
+        return "Please share the date and the amount of the transaction so we can find it."
+    if kind == "identify":
+        return (
+            "Чтобы помочь, нам нужно вас найти: напишите, пожалуйста, номер телефона, указанный в заявке, "
+            "или последние 4 цифры карты. Данные обрабатываются конфиденциально."
+        )
+    if kind == "fraud_data":
+        return (
+            "Пришлите, пожалуйста, скриншот операции (дата, сумма, название магазина) и подтвердите, что карта у вас. "
+            "Мы сразу передадим данные в антифрод; при необходимости карту можно заблокировать в приложении."
+        )
+    return "Уточните, пожалуйста, дату операции и сумму, о которой идёт речь, — так мы быстрее найдём её в системе."
+
+
+def _short_ack(lang: str) -> str:
+    if lang == "en":
+        return "We have received your request and are already looking into it."
+    return "Мы приняли ваше обращение и уже разбираемся."
+
+
 async def normalize(state: AgentState, deps: Deps) -> AgentState:
     sig = state["signal"]
     text = sig.get("text") or ""
@@ -459,8 +523,10 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
         **{k: v for k, v in (obj.get("contacts_hint") or {}).items() if v},
     }
     intents: list[str] = list(dict.fromkeys(obj.get("intents") or []))
+    raw_lang = obj.get("language")
+    language = _client_lang(raw_lang if isinstance(raw_lang, str) else None, text)
     norm: dict[str, Any] = {
-        "language": obj.get("language") or "ru",
+        "language": language,
         "summary_ru": (obj.get("summary_ru") or text[:200]).strip()[:200],
         "negativity": neg,
         "sentiment": sentiment,
@@ -490,6 +556,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
         ]
         norm["intents"] = intents
     state["normalization"] = norm
+    sig["lang"] = language
     state["llm_source"] = (
         "mock" if meta.get("provider", "mock") == "mock" else ("replay" if meta.get("provider") == "replay" else "live")
     )
@@ -957,33 +1024,114 @@ async def act_instant(state: AgentState, deps: Deps) -> AgentState:
 
 
 async def verify(state: AgentState, deps: Deps) -> AgentState:
-    """Проверка возврата: баланс счёта после refund (ТЗ 21.4)."""
+    """Проверка устранения: verify_service_delivered; быстрый путь — refund и баланс (ТЗ 21.4)."""
     client = state.get("client") or {}
-    ok, detail = False, "клиент не идентифицирован"
+    sig = state["signal"]
+    incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
+    if incident_id is None:
+        row = await deps.ctx.fetchone(
+            "select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,)
+        )
+        incident_id = int(row[0]) if row and row[0] else None
+    evidence: list[str] = []
+    ok = False
+    reopened = False
     if client.get("client_id"):
-        bal = await abs_tools.get_account_balance(deps.ctx, int(client["client_id"]))
         refunded = any(a.get("action") == "refund" and not a.get("duplicate") for a in state.get("actions") or [])
-        ok = refunded and bal.get("balance") is not None
-        detail = f"баланс {bal.get('balance')} ₽ после возврата" if ok else "нет новой проводки refund"
-    state["current_node"] = "gift"
+        if refunded:
+            bal = await abs_tools.get_account_balance(deps.ctx, int(client["client_id"]))
+            ok = bal.get("balance") is not None
+            if ok:
+                evidence.append(f"баланс {bal.get('balance')} ₽ после возврата")
+        elif incident_id:
+            check = await rt.verify_service_delivered(deps.ctx, int(incident_id))
+            ok = bool(check.get("delivered"))
+            evidence.extend(list(check.get("evidence") or []))
+    elif incident_id:
+        check = await rt.verify_service_delivered(deps.ctx, int(incident_id))
+        ok = bool(check.get("delivered"))
+        evidence.extend(list(check.get("evidence") or []))
+    if ok and incident_id:
+        state["verified"] = True
+        inc_row = await deps.ctx.fetchone("select status from incidents where id = %s", (incident_id,))
+        inc_status = str(inc_row[0]) if inc_row else ""
+        if inc_status == "fix_deployed":
+            await wt.update_incident(deps.ctx, int(incident_id), "verifying", "проверка устранения агентом")
+        if inc_status in ("fix_deployed", "verifying", "in_progress", "routed"):
+            await wt.update_incident(deps.ctx, int(incident_id), "resolved", "услуга подтверждена")
+        state["current_node"] = "gift"
+        step_status = "ok"
+        reasoning = "; ".join(evidence) if evidence else "услуга подтверждена"
+    elif incident_id:
+        state["verified"] = False
+        reopened = True
+        reopen_count = int(state.get("reopen_count") or 0) + 1
+        state["reopen_count"] = reopen_count
+        cap = int(pol.merged(deps.policies).get("verify_reopen_cap") or 2)
+        await wt.update_incident(
+            deps.ctx, int(incident_id), "in_progress", "reopen: услуга не подтверждена"
+        )
+        team = (state.get("decision") or {}).get("route", {}).get("team") or "team_cx"
+        await wt.notify_team(
+            deps.ctx,
+            str(team),
+            int(incident_id),
+            int(sig["id"]),
+            "Услуга не подтверждена после проверки — требуется доработка команды",
+            {"incident_id": incident_id},
+        )
+        wake_h = float((state.get("decision") or {}).get("followup", {}).get("wake_in_sim_hours") or 4.0)
+        wake_at = deps.ctx.sim_time + dt.timedelta(hours=wake_h)
+        dup_f = await deps.ctx.fetchone(
+            "select id from followups where agent_run_id = %s and status = 'scheduled'",
+            (deps.ctx.agent_run_id,),
+        )
+        if dup_f:
+            await deps.ctx.conn.execute(
+                "update followups set reason = 'verify_fix', wake_sim = %s, payload = %s::jsonb where id = %s",
+                (wake_at, dumps({"incident_id": incident_id}), int(dup_f[0])),
+            )
+        else:
+            await wt.schedule_followup(
+                deps.ctx, int(sig["id"]), int(incident_id), wake_h, "verify_fix", {"incident_id": incident_id}
+            )
+        if reopen_count >= cap:
+            await wt.escalate_to_manager(
+                deps.ctx,
+                int(sig["id"]),
+                int(incident_id),
+                "Повторная неудачная проверка устранения",
+                "high",
+                "cx_lead",
+            )
+        state["current_node"] = "followup_monitor"
+        step_status = "fallback"
+        reasoning = "услуга не подтверждена: " + ("; ".join(evidence) if evidence else "нет доказательств")
+    else:
+        state["verified"] = ok
+        state["current_node"] = "gift"
+        step_status = "ok" if ok else "fallback"
+        reasoning = "; ".join(evidence) if evidence else "инцидент не найден"
     await deps.record_step(
         "verify",
-        "ok" if ok else "fallback",
-        {"client_id": client.get("client_id")},
-        {"ok": ok, "detail": detail},
-        reasoning=detail,
+        step_status,
+        {"client_id": client.get("client_id"), "incident_id": incident_id},
+        {"ok": ok, "evidence": evidence, "reopened": reopened},
+        reasoning=reasoning,
     )
     return state
 
 
 async def gift(state: AgentState, deps: Deps) -> AgentState:
-    """Подарок после быстрого пути: choose → задача → автовыдача mass после resolved."""
+    """Подарок: задача (идемпотентно), автовыдача только при verified и resolved|closed."""
     client = state.get("client") or {}
     c = state.get("classification") or {}
+    d = state.get("decision") or {}
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
     created = None
     auto_issued = 0
-    gift_spec = None
+    gift_spec = d.get("gift") if d.get("gift") else None
+    verified = bool(state.get("verified"))
     if incident_id and client.get("client_id"):
         segment = client.get("segment")
         flags = c.get("flags") or []
@@ -994,7 +1142,8 @@ async def gift(state: AgentState, deps: Deps) -> AgentState:
             c.get("signal_type", "tech_fault"),
             1,
         )
-        gift_spec = giftmod.choose(segment, crit, flags, client.get("psychotype"))
+        if not gift_spec:
+            gift_spec = giftmod.choose(segment, crit, flags, client.get("psychotype"))
         if gift_spec:
             gift_body = {k: gift_spec[k] for k in ("gift_code", "points", "privilege_code") if k in gift_spec}
             t = await wt.create_task(
@@ -1006,21 +1155,61 @@ async def gift(state: AgentState, deps: Deps) -> AgentState:
                 requires_hitl=bool(gift_spec.get("requires_hitl")),
             )
             created = t.get("task_id")
-            verified = False
-            bal = await abs_tools.get_account_balance(deps.ctx, int(client["client_id"]))
-            refunded = any(a.get("action") == "refund" and not a.get("duplicate") for a in state.get("actions") or [])
-            verified = refunded and bal.get("balance") is not None
             inc_row = await deps.ctx.fetchone("select status from incidents where id = %s", (incident_id,))
             inc_status = str(inc_row[0]) if inc_row else ""
-            if verified and inc_status in ("resolved", "closed"):
+            if verified and inc_status in ("resolved", "closed") and not gift_spec.get("requires_hitl"):
                 auto_issued = await giftmod.issue_automatic(deps.ctx, incident_id)
     state["current_node"] = "close"
     await deps.record_step(
         "gift",
         "ok",
-        {"gift": gift_spec},
+        {"gift": gift_spec, "verified": verified},
         {"task_id": created, "auto_issued": auto_issued},
         reasoning="Подарок начислен." if created else "Подарок не требуется.",
+    )
+    return state
+
+
+async def followup_monitor(state: AgentState, deps: Deps) -> AgentState:
+    """Парковка отложенного обращения по scheduled followup (чекпоинт = вход шага)."""
+    sig = state["signal"]
+    row = await deps.ctx.fetchone(
+        "select id, reason, wake_sim from followups where agent_run_id = %s and status = 'scheduled' "
+        "order by id desc limit 1",
+        (deps.ctx.agent_run_id,),
+    )
+    if not row:
+        state["current_node"] = "close"
+        await deps.record_step(
+            "followup_monitor",
+            "ok",
+            dict(state),
+            {"parked": False},
+            reasoning="Нет запланированного follow-up — переход к закрытию.",
+        )
+        return state
+    fid, reason, wake_sim = int(row[0]), str(row[1]), row[2]
+    if reason in ("awaiting_team", "promo_end", "verify_fix", "report_due"):
+        await deps.ctx.conn.execute(
+            "update signals set status = 'deferred', updated_at = now() where id = %s", (sig["id"],)
+        )
+        await deps.ctx.notify(
+            "signals",
+            "status",
+            {"signal_id": sig["id"], "status": "deferred", "reason": reason, "wake_sim": wake_sim},
+        )
+    state["outcome"] = "deferred"
+    state["current_node"] = "followup_monitor"
+    await deps.record_step(
+        "followup_monitor",
+        "ok",
+        dict(state),
+        {
+            "reason": reason,
+            "wake_sim": wake_sim.isoformat() if wake_sim else None,
+            "followup_id": fid,
+        },
+        reasoning=f"Отложено до {wake_sim}: {reason}.",
     )
     return state
 
@@ -1646,6 +1835,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         )
         else sig.get("channel") or "chat"
     )
+    signal_lang = _client_lang(norm.get("language") if isinstance(norm.get("language"), str) else None, text)
     text_ru = (ca.get("text_ru") or "").strip() or None
     bad = pol.forbidden_phrases(text_ru)
     if bad:
@@ -1657,19 +1847,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         text_ru = wt.PII_RE.sub("****", text_ru)[:2000]
     question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip() or None
     if clarify and clarify_kind == "identify":
-        question = (
-            "Чтобы помочь, нам нужно вас найти: напишите, пожалуйста, номер телефона, указанный в заявке, "
-            "или последние 4 цифры карты. Данные обрабатываются конфиденциально."
-        )
+        question = _fixed_question("identify", signal_lang)
     elif clarify and clarify_kind == "fraud_data":
-        question = (
-            "Пришлите, пожалуйста, скриншот операции (дата, сумма, название магазина) и подтвердите, что карта у вас. "
-            "Мы сразу передадим данные в антифрод; при необходимости карту можно заблокировать в приложении."
-        )
+        question = _fixed_question("fraud_data", signal_lang)
     if clarify and not question:
-        question = (
-            "Уточните, пожалуйста, дату операции и сумму, о которой идёт речь, — так мы быстрее найдём её в системе."
-        )
+        question = _fixed_question("generic", signal_lang)
     template = (
         "clarify_request"
         if kind == "request_data"
@@ -1721,8 +1903,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
                 "severity": "critical" if c["problem_summary"]["severity"] == "critical" else "high",
                 "to_role": "branch_manager" if sig.get("channel") == "branch" else "cx_lead",
             }
-            if esc_reason
-            and (router_action == "escalate" or (clarify and sarcasm_clarify_path))
+            if esc_reason and (router_action == "escalate" or (clarify and sarcasm_clarify_path))
             else None
         ),
         "clarification_question_ru": question if clarify else None,
@@ -1824,8 +2005,24 @@ def apply_human_decision(state: AgentState, decision: str, modified: dict[str, A
     return state
 
 
-def _refund_text(base: str, amount: float, already: float = 0.0) -> str:
+def _refund_text(base: str, amount: float, already: float = 0.0, lang: str = "ru") -> str:
     """Текст клиенту после фактического возврата: не обещание «вернём», а факт «возвращено» (или «была возвращена ранее»)."""
+    if lang == "en":
+        low = base.lower()
+        if "returned" in low or "refunded" in low:
+            return base
+        if amount:
+            fact = f"The fee of {amount:.0f} RUB was charged by mistake and has already been returned to your account."
+        else:
+            fact = (
+                f"The fee of {already:.0f} RUB was charged by mistake and had already been returned to your account. "
+                "Please check your statement."
+            )
+        apology = "We are sorry for the inconvenience."
+        if communication_lang(base) == "en":
+            first = base.split(". ")[0].strip().rstrip(".")
+            return f"{first}. {fact} {apology}" if first else f"{fact} {apology}"
+        return f"{fact} {apology}"
     if "возвращ" in base.lower():
         return base
     if amount:
@@ -1838,8 +2035,13 @@ def _refund_text(base: str, amount: float, already: float = 0.0) -> str:
     )
 
 
-def _public_fallback(client: dict[str, Any] | None) -> str:
+def _public_fallback(client: dict[str, Any] | None, lang: str = "ru") -> str:
     name = mask_name((client or {}).get("name"))
+    if lang == "en":
+        return (
+            f"{name}, thank you for writing. We are already looking into this and will message you privately "
+            "to clarify the details."
+        )
     return f"{name}, спасибо, что написали. Мы уже разбираемся и напишем вам в личные сообщения, чтобы уточнить детали."
 
 
@@ -1863,6 +2065,8 @@ def _act_spec(
 ) -> dict[str, Any]:
     follow = d.get("followup") or {}
     route = d.get("route") or {}
+    raw_lang = (state.get("normalization") or {}).get("language") or sig.get("lang")
+    lang = _client_lang(raw_lang if isinstance(raw_lang, str) else None, str(sig.get("text") or ""))
     return {
         **c,
         "incident_action": d.get("incident_action"),
@@ -1879,6 +2083,7 @@ def _act_spec(
         "fault_id": (state["context"].get("hints") or {}).get("fault_id"),
         "problem_summary": c.get("problem_summary"),
         "followup_hours": float(follow.get("wake_in_sim_hours") or 4.0),
+        "lang": lang,
     }
 
 
@@ -1931,11 +2136,31 @@ async def _act_escalate(deps: Deps, d: dict[str, Any], mark: Callable[..., None]
 
 async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark: Callable[..., None]) -> int | None:
     ca = d.get("client_action") or {}
+    lang = "ru"
+    if deps.ctx.act_frame is not None:
+        raw = (deps.ctx.act_frame.spec or {}).get("lang")
+        lang = raw if raw in ("ru", "en") else "ru"
     question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip()
     if len(question) < 5:
-        question = "Уточните, пожалуйста, дату и сумму операции."
-    channel = ca.get("channel") or sig.get("channel") or "chat"
-    clar = await router_tools.request_clarification(deps.ctx, question[:400], str(channel))
+        question = (
+            "Please share the date and amount of the transaction."
+            if lang == "en"
+            else "Уточните, пожалуйста, дату и сумму операции."
+        )
+    channel = str(ca.get("channel") or sig.get("channel") or "chat")
+    if communication_lang(question) != lang:
+        question = await _render_client_text(
+            deps,
+            question,
+            lang,
+            "clarify_request",
+            channel,
+            None,
+            {"name": mask_name(None), "question": _fixed_question("generic", lang)},
+        )
+        if len(question) < 5:
+            question = _fixed_question("generic", lang)
+    clar = await router_tools.request_clarification(deps.ctx, question[:400], channel)
     new_id = deps.ctx.act_frame.incident_id if deps.ctx.act_frame else None
     mark("clarification", notification_id=clar.get("notification_id"))
     return int(new_id) if new_id is not None else None
@@ -2104,18 +2329,28 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                 mark("mass_refund_task", task=task, pending_count=aff["pending_count"])
 
     ca = d["client_action"]
+    lang = str(spec.get("lang") or "ru")
+    if lang not in ("ru", "en"):
+        lang = "ru"
     if (refund_total or refund_dup) and ca["kind"] != "none":
-        ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup)}
+        ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup, lang)}
     human_mod = (state.get("human") or {}).get("modified") or {}
     if human == "modify" and isinstance(human_mod.get("gift"), dict) and d.get("gift"):
         gift = d["gift"]
         parts: list[str] = []
-        if gift.get("points"):
-            parts.append(f"{int(gift['points'])} баллов")
-        if gift.get("gift_code"):
-            parts.append(f"подарок {gift['gift_code']}")
-        if parts and ca["kind"] != "none":
+        if lang == "en":
+            if gift.get("points"):
+                parts.append(f"{int(gift['points'])} bonus points")
+            if gift.get("gift_code"):
+                parts.append(f"gift {gift['gift_code']}")
+            suffix = " We will also add " + " and ".join(parts) + " after the issue is resolved."
+        else:
+            if gift.get("points"):
+                parts.append(f"{int(gift['points'])} баллов")
+            if gift.get("gift_code"):
+                parts.append(f"подарок {gift['gift_code']}")
             suffix = " Также начислим " + " и ".join(parts) + " после решения проблемы."
+        if parts and ca["kind"] != "none":
             ca = {**ca, "text_ru": ((ca.get("text_ru") or "").rstrip(".") + suffix)[:2000]}
     if ca["kind"] != "none" and "notify_client" not in done and d.get("router_action") != "request_clarification":
         name = mask_name((client or {}).get("name"))
@@ -2126,24 +2361,35 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             "name": name,
             "summary": summary,
             "sla_minutes": (client or {}).get("first_response_min") or 60,
-            "manager": "вашим персональным менеджером",
+            "manager": "your personal manager" if lang == "en" else "вашим персональным менеджером",
             "question": ca.get("question_ru") or "",
             "resolution": summary,
         }
         consents = (client or {}).get("consents")
+        segment = (client or {}).get("segment")
         if ca["kind"] == "public_reply_and_dm":
+            public_channel = str(sig.get("channel") or "social")
+            public_text = await _render_client_text(
+                deps,
+                (ca.get("text_ru") or "").strip() or _public_fallback(client, lang),
+                lang,
+                "public_reply",
+                public_channel,
+                segment,
+                variables,
+            )
             pub = await wt.notify_client(
                 deps.ctx,
                 (client or {}).get("client_id"),
                 sig["id"],
                 incident_id,
-                sig.get("channel") or "social",
+                public_channel,
                 "public_reply",
                 variables,
-                text_override=ca.get("text_ru")
-                or f"{name}, спасибо, что написали. Мы уже разбираемся и напишем вам в личные сообщения, чтобы уточнить детали.",
-                segment=(client or {}).get("segment"),
+                text_override=public_text,
+                segment=segment,
                 recipient_type="public",
+                lang=lang,
             )
             mark("notify_client", notification_id=pub.get("notification_id"), public=True)
             if client:
@@ -2157,12 +2403,24 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                     variables,
                     segment=client.get("segment"),
                     consents=consents,
+                    lang=lang,
                 )
                 mark("notify_client_dm", notification_id=dm.get("notification_id"))
         else:
             message = (ca.get("text_ru") or summary or "").strip()
             if len(message) < 10:
-                message = "Мы приняли ваше обращение и уже разбираемся."
+                message = _short_ack(lang)
+            message = await _render_client_text(
+                deps,
+                message,
+                lang,
+                str(ca.get("template_code") or "ack_received"),
+                str(ca.get("channel") or sig.get("channel") or "chat"),
+                segment,
+                variables,
+            )
+            if len(message) < 10:
+                message = _short_ack(lang)
             n = await router_tools.notify_customer(
                 deps.ctx,
                 str(ca.get("channel") or sig.get("channel") or "chat"),
@@ -2173,10 +2431,22 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     post_id = sig.get("external_post_id")
     if post_id and "feed_reply" not in done and ca["kind"] != "none":
         escalate = client is None and ca["kind"] != "public_reply_and_dm"
-        try:
-            fr = await abs_tools.publish_public_reply(
-                deps.ctx, int(post_id), str(ca.get("text_ru") or _public_fallback(client)), incident_id, True, escalate
+        feed_text = str(ca.get("text_ru") or _public_fallback(client, lang))
+        if communication_lang(feed_text) != lang:
+            feed_text = await _render_client_text(
+                deps,
+                feed_text,
+                lang,
+                "public_reply",
+                str(sig.get("channel") or "social"),
+                (client or {}).get("segment"),
+                {
+                    "name": mask_name((client or {}).get("name")),
+                    "manager": "your personal manager" if lang == "en" else "вашим персональным менеджером",
+                },
             )
+        try:
+            fr = await abs_tools.publish_public_reply(deps.ctx, int(post_id), feed_text, incident_id, True, escalate)
             mark(
                 "feed_reply",
                 post_id=post_id,
@@ -2288,7 +2558,11 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             "update agent_runs set incident_id = %s where id = %s", (incident_id, deps.ctx.agent_run_id)
         )
     state["actions"] = actions
-    state["current_node"] = "close"
+    fup = await deps.ctx.fetchone(
+        "select id from followups where agent_run_id = %s and status = 'scheduled' limit 1",
+        (deps.ctx.agent_run_id,),
+    )
+    state["current_node"] = "followup_monitor" if fup else "close"
     await deps.record_step(
         "act",
         step_status,
@@ -2300,16 +2574,72 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
 
 
 async def close(state: AgentState, deps: Deps) -> AgentState:
+    sig, client = state["signal"], state.get("client") or {}
+    d = state.get("decision") or {}
+    incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
+    if incident_id is None:
+        row = await deps.ctx.fetchone("select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,))
+        incident_id = int(row[0]) if row and row[0] else None
+    verified = bool(state.get("verified"))
+    step_status = "ok"
+    if incident_id and not verified:
+        state["outcome"] = "fallback"
+        state["current_node"] = "close"
+        await deps.record_step(
+            "close",
+            "fallback",
+            {},
+            {"outcome": state["outcome"], "errors": state["errors"], "verified": False},
+            reasoning="Закрытие без подтверждённой услуги запрещено.",
+        )
+        return state
+    lang = communication_lang(sig.get("text") or "")
+    if incident_id and client.get("client_id"):
+        ca = d.get("client_action") or {}
+        channel = str(ca.get("channel") or sig.get("channel") or "chat")
+        variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
+        body, _ = await wt.render_template(
+            deps.ctx, "resolved", channel, client.get("segment"), variables, lang
+        )
+        if body and pol.forbidden_phrases(body):
+            body = _short_ack(lang)
+        if body:
+            await wt.notify_client(
+                deps.ctx,
+                client["client_id"],
+                int(sig["id"]),
+                incident_id,
+                channel,
+                "resolved",
+                variables,
+                text_override=body,
+                segment=client.get("segment"),
+                consents=client.get("consents"),
+                lang=lang,
+            )
+        await wt.close_incident(
+            deps.ctx,
+            int(incident_id),
+            str(d.get("title_ru") or "обращение закрыто")[:500],
+            "closed_in_sla",
+        )
+        await deps.ctx.conn.execute(
+            "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
+        )
+    elif not incident_id:
+        await deps.ctx.conn.execute(
+            "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
+        )
     state["outcome"] = (
         "fallback_mock" if (state.get("llm_source") == "mock" and deps.profile.provider != "mock") else "completed"
     )
     state["current_node"] = "close"
     await deps.record_step(
         "close",
-        "ok",
+        step_status,
         {},
-        {"outcome": state["outcome"], "errors": state["errors"]},
-        reasoning="Проход завершён; follow-up/проверка фикса — по расписанию followups.",
+        {"outcome": state["outcome"], "errors": state["errors"], "verified": verified},
+        reasoning="Проход завершён.",
     )
     return state
 

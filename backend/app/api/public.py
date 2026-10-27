@@ -21,6 +21,7 @@ from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.config import get_settings
 from app.errors import NotImplementedYet, Problem
 from app.feed import service as feed_svc
+from app.i18n import communication_lang
 from app.ingest.normalizer import create_signal, from_bot, from_landing
 
 router = APIRouter(tags=["public"])
@@ -69,6 +70,31 @@ _TIMELINE_LABELS = {
     "answered": "Дан ответ",
     "resolved": "Решение готово",
     "closed": "Обращение закрыто",
+}
+_STATUS_EN = {
+    "new": "Received",
+    "processing": "The agent is working on it",
+    "classified": "Reviewed",
+    "linked": "Passed to the team",
+    "deferred": "Deferred",
+    "awaiting_human": "Waiting for an employee",
+    "awaiting_client": "Your reply is needed",
+    "answered": "Answered",
+    "closed": "Closed",
+    "noise": "No action needed",
+    "error": "Could not process",
+}
+_TIMELINE_EN = {
+    "received": "Request received",
+    "agent_started": "The agent started working on the request",
+    "classified": "Request reviewed",
+    "incident_created": "A case was opened for the team",
+    "team_working": "The team is working on a solution",
+    "progress_update": "There is an interim update",
+    "clarification_needed": "A clarification is needed",
+    "answered": "Answered",
+    "resolved": "A solution is ready",
+    "closed": "Request closed",
 }
 _ROLE_BUTTONS = [
     {"text": "Я клиент банка", "data": "is_client"},
@@ -144,16 +170,36 @@ def _email_ok(value: str) -> bool:
     return bool(sep and local and " " not in value and domain.lower() in _EMAIL_DOMAINS)
 
 
-def _contact_error(phone: str | None, email: str | None) -> str | None:
+def _contact_error(phone: str | None, email: str | None, lang: str = "ru") -> str | None:
     phone_s = (phone or "").strip() or None
     email_s = (email or "").strip() or None
+    en = lang == "en"
     if phone_s is None and email_s is None:
-        return "Укажите вымышленный телефон или почту"
+        return "Share a fictional phone or email" if en else "Укажите вымышленный телефон или почту"
     if phone_s is not None and _PHONE.match(phone_s) is None:
-        return "Телефон только в диапазоне +7 900 000-00-00 … +7 900 009-99-99"
+        return (
+            "The phone must be in the range +7 900 000-00-00 … +7 900 009-99-99"
+            if en
+            else "Телефон только в диапазоне +7 900 000-00-00 … +7 900 009-99-99"
+        )
     if email_s is not None and not _email_ok(email_s):
-        return "Почта только на @example.ru или @example.com"
+        return (
+            "The email must be at @example.ru or @example.com" if en else "Почта только на @example.ru или @example.com"
+        )
     return None
+
+
+def _draft_lang(draft: dict[str, str]) -> str:
+    raw = draft.get("lang")
+    if raw in ("ru", "en"):
+        return raw
+    return "ru"
+
+
+def _accepted_reply(public_id: str, token: str, lang: str) -> str:
+    if lang == "en":
+        return f"Request {public_id} has been received. Track the status: /track/{token}"
+    return f"Обращение {public_id} принято. Следить за статусом: /track/{token}"
 
 
 def _human(text: str | None) -> str | None:
@@ -217,12 +263,28 @@ async def _ensure_refs(conn: Any, body: ClaimBody) -> None:
             raise Problem(422, "Неизвестный продукт", "Продукт не найден в справочнике")
 
 
+def _view_lang(raw: str | None) -> str:
+    return raw if raw in ("ru", "en") else "ru"
+
+
+def _status_label(status: str, lang: str) -> str:
+    if lang == "en":
+        return _STATUS_EN.get(status, "Request in progress")
+    return _STATUS_RU.get(status, "Обращение в работе")
+
+
+def _timeline_label(step: str, lang: str) -> str:
+    table = _TIMELINE_EN if lang == "en" else _TIMELINE_LABELS
+    return table[step]
+
+
 def _timeline(
     signal: dict[str, Any],
     runs: list[dict[str, Any]],
     incidents: list[dict[str, Any]],
     notes: list[dict[str, Any]],
     followups: list[dict[str, Any]],
+    lang: str = "ru",
 ) -> list[dict[str, Any]]:
     received = signal["received_sim"]
     statuses = {str(row["status"]) for row in incidents}
@@ -267,7 +329,8 @@ def _timeline(
         or received,
     }
     items: list[dict[str, Any]] = []
-    for step, label in _TIMELINE_LABELS.items():
+    labels = _TIMELINE_EN if lang == "en" else _TIMELINE_LABELS
+    for step, label in labels.items():
         done = flags[step]
         item: dict[str, Any] = {
             "step": step,
@@ -349,10 +412,11 @@ async def _tracking_view(conn: Any, signal: dict[str, Any]) -> dict[str, Any]:
     can_append = signal["status"] == "awaiting_client" or any(
         row["status"] == "scheduled" and row["reason"] == "awaiting_client" for row in followups
     )
+    lang = _view_lang(signal.get("lang") if isinstance(signal.get("lang"), str) else None)
     return {
         "public_id": signal["public_id"],
-        "status_label_ru": _STATUS_RU.get(str(signal["status"]), "Обращение в работе"),
-        "timeline": _timeline(signal, runs, incidents, notes, followups),
+        "status_label_ru": _status_label(str(signal["status"]), lang),
+        "timeline": _timeline(signal, runs, incidents, notes, followups, lang),
         "can_append": can_append,
         "question_from_agent": _clarify_body(notes),
         "notifications": notes,
@@ -444,7 +508,7 @@ async def get_public_track_token(token: str) -> JSONResponse:
     async with db() as conn:
         signal = await fetch_one(
             conn,
-            "select id, public_id, status, received_sim, classification from signals where tracking_token = %s",
+            "select id, public_id, status, received_sim, classification, lang from signals where tracking_token = %s",
             (token,),
         )
         if not signal:
@@ -494,30 +558,41 @@ async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str,
     chat_id = body.chat_id
     kind = body.kind
     if kind == "start":
-        _bot_drafts[chat_id] = {}
+        _bot_drafts[chat_id] = {"lang": "ru"}
         return _bot_reply(
             "Здравствуйте! Это помощник Банка. Выберите, кто вы. Используйте только вымышленные данные.",
             buttons=_ROLE_BUTTONS,
         )
     if kind in {"is_client", "not_client"}:
         draft = _bot_drafts.setdefault(chat_id, {})
+        draft.setdefault("lang", "ru")
         draft["role"] = kind
         return _bot_reply("Запомнил. Опишите проблему своими словами, не короче 10 символов.")
     if kind == "free_text":
         text = body.text.strip()
-        if len(text) < 10:
-            return _bot_reply("Напишите подробнее: нужно хотя бы 10 символов.")
         draft = _bot_drafts.setdefault(chat_id, {})
+        lang = communication_lang(text)
+        draft["lang"] = lang
+        if len(text) < 10:
+            if lang == "en":
+                return _bot_reply("Please write more: at least 10 characters.")
+            return _bot_reply("Напишите подробнее: нужно хотя бы 10 символов.")
         draft["text"] = text
+        if lang == "en":
+            return _bot_reply(
+                "Please share a phone in the range +7 900 000-00-00 … +7 900 009-99-99 "
+                "or an email at @example.ru / @example.com."
+            )
         return _bot_reply(
             "Укажите телефон в диапазоне +7 900 000-00-00 … +7 900 009-99-99 или почту @example.ru / @example.com."
         )
     if kind == "contact":
+        draft = _bot_drafts.setdefault(chat_id, {})
+        lang = _draft_lang(draft)
         phone, email = _inbound_contact(body)
-        error = _contact_error(phone, email)
+        error = _contact_error(phone, email, lang)
         if error:
             return _bot_reply(error)
-        draft = _bot_drafts.setdefault(chat_id, {})
         if phone:
             draft["phone"] = phone
             draft.pop("email", None)
@@ -525,6 +600,8 @@ async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str,
             draft["email"] = email
             if not phone:
                 draft.pop("phone", None)
+        if lang == "en":
+            return _bot_reply("Please share a region: the region code or its name.")
         return _bot_reply("Укажите регион: код субъекта или название.")
     if kind == "region":
         return await _bot_region(request, conn, body)
@@ -553,9 +630,12 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[st
         "select code from regions where code = %s or lower(name_ru) = lower(%s) limit 1",
         (raw, raw),
     )
-    if not row:
-        return _bot_reply("Регион не найден. Пришлите код субъекта или название из справочника.")
     draft = _bot_drafts.setdefault(body.chat_id, {})
+    lang = _draft_lang(draft)
+    if not row:
+        if lang == "en":
+            return _bot_reply("Region not found. Send the region code or a name from the directory.")
+        return _bot_reply("Регион не найден. Пришлите код субъекта или название из справочника.")
     draft["region_code"] = str(row["code"])
     if not _draft_ready(draft):
         return _bot_reply(_draft_missing(draft))
@@ -573,13 +653,18 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[st
     )
     res = await create_signal(conn, msg, source_code="telegram_bot", run_id=run_id, sim_time=sim_time)
     if res.get("status") != "accepted":
+        if lang == "en":
+            return _bot_reply(res.get("error") or "Could not accept the request")
         return _bot_reply(res.get("error") or "Не удалось принять обращение")
     public_id = str(res.get("public_id") or "")
     track = str(res.get("tracking_token") or token)
     role = draft.get("role", "")
-    _bot_drafts[body.chat_id] = {"role": role} if role else {}
+    kept = {"lang": lang}
+    if role:
+        kept["role"] = role
+    _bot_drafts[body.chat_id] = kept
     return _bot_reply(
-        f"Обращение {public_id} принято. Следить за статусом: /track/{track}",
+        _accepted_reply(public_id, track, lang),
         signal_id=int(res["signal_id"]) if res.get("signal_id") is not None else None,
         tracking_token=track,
     )
@@ -595,6 +680,12 @@ def _draft_ready(draft: dict[str, str]) -> bool:
 
 
 def _draft_missing(draft: dict[str, str]) -> str:
+    if _draft_lang(draft) == "en":
+        if not draft.get("role"):
+            return "First choose whether you are a client or not yet a client."
+        if len(draft.get("text", "")) < 10:
+            return "First describe the problem, at least 10 characters."
+        return "First share a fictional phone or email."
     if not draft.get("role"):
         return "Сначала выберите: вы клиент банка или ещё нет."
     if len(draft.get("text", "")) < 10:
@@ -604,6 +695,7 @@ def _draft_missing(draft: dict[str, str]) -> str:
 
 async def _bot_append(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
     text = body.text.strip()
+    lang = communication_lang(text)
     if not text:
         return _bot_reply("Напишите текст дополнения.")
     parent = await fetch_one(
@@ -614,13 +706,21 @@ async def _bot_append(request: Request, conn: Any, body: InboundBody) -> dict[st
         (str(body.chat_id),),
     )
     if not parent:
+        if lang == "en":
+            return _bot_reply("No request was found in this chat. Please describe the problem first.")
         return _bot_reply("Не нашёл обращение в этом чате. Сначала опишите проблему.")
     run_id, sim_time = await run_context(request, conn)
     res = await _append_signal(conn, parent, text, run_id=run_id, sim_time=sim_time, source_code="telegram_bot")
     if res.get("status") != "accepted":
+        if lang == "en":
+            return _bot_reply(res.get("error") or "Could not accept the update")
         return _bot_reply(res.get("error") or "Не удалось принять дополнение")
+    if lang == "en":
+        reply = f"The update was added to request {parent['public_id']}."
+    else:
+        reply = f"Дополнение принято к обращению {parent['public_id']}."
     return _bot_reply(
-        f"Дополнение принято к обращению {parent['public_id']}.",
+        reply,
         signal_id=int(res["signal_id"]) if res.get("signal_id") is not None else None,
     )
 

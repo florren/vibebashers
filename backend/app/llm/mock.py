@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from app.contracts.registry import validate_schema
+from app.i18n import communication_lang
 from app.llm.base import LLMProfile, Message, Usage
 
 NEG = (
@@ -450,6 +451,8 @@ def _text_for(field: str, a: dict[str, Any]) -> str:
         return "Подтвердить возврат и позвонить клиенту"
     if f == "code":
         return "confirm_refund_and_call"
+    if f == "language":
+        return communication_lang(str(a.get("text") or ""))
     if f == "text_ru" or f.endswith("_ru"):
         return "Спасибо, жду решения." if a["sentiment"] != "positive" else "Отлично, спасибо!"
     return "—"

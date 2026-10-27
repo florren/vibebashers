@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Замыкание петли: ожидание команды/клиента, проверка факта, закрытие, подарок, информирование.
@@ -41,4 +41,4 @@ make scenario ID=deferred_fraud
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка: `feat/T-063-followup-close-gift` (локально). Реализованы `verify_service_delivered`, узлы `verify`/`followup_monitor`/`gift`/`close`, рёбра и `wake_due_followups`/`resume_after_followup` в `graph.py`, пробуждение в `runner.py`, расширен `GET /api/signals/deferred`, тесты `test_followup_nodes.py` и `test_followups.py`. Контракты не менялись. Отклонений от карточки нет. `pytest tests/unit/test_followup_nodes.py` — 5 passed; интеграция пропущена (нет `DATABASE_URL_TEST` в окружении).

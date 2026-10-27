@@ -731,3 +731,26 @@ async def test_decision_chain_keeps_facade_wraps() -> None:
     assert facade["tool"] == "route_to_department"
     assert facade["wraps"] == ["create_incident"]
     assert plain["wraps"] == ["side_effect"]
+
+
+async def test_en_spec_keeps_ack_received_and_passes_lang(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+
+    async def notify_client(ctx: ToolContext, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        seen["template"] = args[4]
+        seen["lang"] = kwargs.get("lang", "ru")
+        return {"notification_id": 4, "status": "sent"}
+
+    monkeypatch.setattr(router_tools, "write_notify_client", notify_client)
+    ctx, _conn = _ctx()
+    ctx.act_frame = _frame()
+    await router_tools.notify_customer(ctx, "chat", "Мы уже разбираемся с вашим обращением.")
+    assert seen["template"] == "ack_received"
+    assert seen["lang"] == "ru"
+
+    spec = dict(_frame().spec)
+    spec["lang"] = "en"
+    ctx.act_frame = _frame(spec=spec)
+    await router_tools.notify_customer(ctx, "chat", "We are already looking into the card fee.")
+    assert seen["template"] == "ack_received"
+    assert seen["lang"] == "en"

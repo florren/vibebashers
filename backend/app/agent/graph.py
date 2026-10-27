@@ -39,8 +39,10 @@ NODES: dict[str, Node] = {
     "decide": nodes.decide,
     "wait_human": nodes.wait_human,
     "act": nodes.act,
+    "followup_monitor": nodes.followup_monitor,
     "close": nodes.close,
 }
+_VERIFY_READY = frozenset({"fix_deployed", "verifying", "resolved", "closed"})
 GRAPH_SPEC: dict[str, Any] = {
     "version": GRAPH_VERSION,
     "nodes": [
@@ -51,7 +53,6 @@ GRAPH_SPEC: dict[str, Any] = {
         {"id": "check_rules", "label_ru": "Бизнес-правила", "label_en": "Check rules", "kind": "rules"},
         {"id": "instant_decide", "label_ru": "Быстрое решение", "label_en": "Instant decide", "kind": "llm"},
         {"id": "act_instant", "label_ru": "Быстрые действия", "label_en": "Act instant", "kind": "tool"},
-        {"id": "verify", "label_ru": "Проверка возврата", "label_en": "Verify", "kind": "tool"},
         {"id": "gift", "label_ru": "Подарок", "label_en": "Gift", "kind": "tool"},
         {"id": "classify", "label_ru": "Классификация", "label_en": "Classify", "kind": "llm"},
         {"id": "decide", "label_ru": "Решение и политики", "label_en": "Decide", "kind": "llm"},
@@ -76,15 +77,16 @@ GRAPH_SPEC: dict[str, Any] = {
         {"from": "instant_decide", "to": "act_instant"},
         {"from": "act_instant", "to": "verify"},
         {"from": "verify", "to": "gift"},
+        {"from": "verify", "to": "followup_monitor", "condition": "verify reopen"},
         {"from": "gift", "to": "close"},
         {"from": "classify", "to": "decide"},
         {"from": "decide", "to": "wait_human", "condition": "needs_human"},
         {"from": "decide", "to": "act", "condition": "!needs_human"},
         {"from": "wait_human", "to": "act", "condition": "human decided"},
-        {"from": "act", "to": "close"},
         {"from": "act", "to": "followup_monitor", "condition": "followup scheduled"},
-        {"from": "followup_monitor", "to": "verify", "condition": "fix deployed"},
-        {"from": "verify", "to": "close"},
+        {"from": "act", "to": "close", "condition": "!followup scheduled"},
+        {"from": "followup_monitor", "to": "verify", "condition": "wake"},
+        {"from": "followup_monitor", "to": "close", "condition": "!followup"},
     ],
 }
 
@@ -242,6 +244,10 @@ async def run_graph(state: AgentState, deps: Deps, conn: psycopg.AsyncConnection
             await _finish(conn, deps, state, "awaiting_human")
             await conn.commit()
             return state
+        if node == "followup_monitor" and state.get("outcome") == "deferred":
+            await _finish(conn, deps, state, "deferred")
+            await conn.commit()
+            return state
         if node == "close":
             await _finish(conn, deps, state, state.get("outcome") or "completed")
             await conn.commit()
@@ -323,6 +329,195 @@ async def process_signal(
         "agent", "run_started", {"agent_run_id": agent_run_id, "signal_id": signal_id, "client_id": sig["client_id"]}
     )
     return await run_graph(state, deps, conn)
+
+
+async def resume_after_followup(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    followup_id: int,
+    chain: ProviderChain,
+    profile: LLMProfile,
+    sim_time: dt.datetime | None = None,
+) -> AgentState | None:
+    """Возобновление после срабатывания followup: чекпоинт — input шага followup_monitor."""
+    row = await (
+        await conn.execute(
+            "select f.agent_run_id, f.signal_id, f.incident_id, f.reason, f.payload, f.status, ar.sim_run_id, "
+            "(select input from agent_steps st where st.run_id = f.agent_run_id and st.node = 'followup_monitor' "
+            "order by st.seq desc limit 1), "
+            "(select count(*) from agent_steps st where st.run_id = f.agent_run_id) "
+            "from followups f join agent_runs ar on ar.id = f.agent_run_id where f.id = %s",
+            (followup_id,),
+        )
+    ).fetchone()
+    if not row or row[7] is None:
+        return None
+    agent_run_id, signal_id, incident_id, reason, payload, _fstatus, run_id, checkpoint, nsteps = row
+    reason = str(reason)
+    if reason == "escalation_check":
+        return None
+    state: AgentState = orjson.loads(dumps(checkpoint))
+    sim_time = sim_time or dt.datetime.now(dt.UTC)
+    deps = await load_deps(
+        conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
+    )
+    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
+    sig = await _load_signal(conn, int(signal_id))
+    if sig:
+        state["signal"] = sig
+    await conn.execute(
+        "update agent_runs set outcome = null, finished_at = null, error = null where id = %s", (agent_run_id,)
+    )
+    payload = dict(payload or {})
+
+    if reason == "awaiting_client":
+        child = await (
+            await conn.execute("select id from signals where parent_signal_id = %s limit 1", (signal_id,))
+        ).fetchone()
+        if child:
+            await conn.execute(
+                "update signals set status = 'answered', updated_at = now() where id = %s and status in ('deferred','awaiting_client')",
+                (signal_id,),
+            )
+            state["outcome"] = None
+            state["current_node"] = "verify"
+        else:
+            c = state.get("classification") or {}
+            escalate = (state.get("decision") or {}).get("escalate_on_silence")
+            if escalate is None:
+                escalate = c.get("signal_type") == "fraud_suspicion"
+            if escalate and incident_id:
+                await wt.escalate_to_manager(
+                    deps.ctx,
+                    int(signal_id),
+                    int(incident_id),
+                    "Клиент не предоставил данные в срок",
+                    "high",
+                    "cx_lead",
+                )
+            await conn.execute(
+                "update signals set status = 'closed', updated_at = now() where id = %s", (signal_id,)
+            )
+            state["verified"] = True
+            state["outcome"] = "completed"
+            state["current_node"] = "close"
+            await deps.record_step(
+                "followup_monitor",
+                "ok",
+                dict(state),
+                {"reason": reason, "escalated": bool(escalate)},
+                reasoning="Тишина клиента: эскалация и закрытие сигнала.",
+            )
+            await _finish(conn, deps, state, "completed")
+            await conn.commit()
+            return state
+    elif reason == "report_due" and incident_id:
+        d = state.get("decision") or {}
+        team = str((d.get("route") or {}).get("team") or "team_cx")
+        await wt.create_task(
+            deps.ctx, "report_reminder", int(incident_id), None, {"incident_id": int(incident_id)}
+        )
+        await wt.notify_team(
+            deps.ctx,
+            team,
+            int(incident_id),
+            int(signal_id),
+            "Требуется промежуточный отчёт по SLA",
+            {"incident_id": incident_id},
+        )
+        wake_h = float(payload.get("wake_in_sim_hours") or 4.0)
+        await conn.execute(
+            "insert into followups (sim_run_id, agent_run_id, signal_id, incident_id, wake_sim, reason, payload, status) "
+            "values (%s, %s, %s, %s, %s, %s, %s::jsonb, 'scheduled')",
+            (
+                int(run_id),
+                int(agent_run_id),
+                int(signal_id),
+                int(incident_id),
+                sim_time + dt.timedelta(hours=wake_h),
+                reason,
+                dumps({**payload, "wake_in_sim_hours": wake_h}),
+            ),
+        )
+        state["outcome"] = "deferred"
+        state["current_node"] = "followup_monitor"
+        await conn.commit()
+        return await run_graph(state, deps, conn)
+    elif reason in ("awaiting_team", "verify_fix"):
+        inc_st = None
+        if incident_id:
+            st_row = await deps.ctx.fetchone("select status from incidents where id = %s", (int(incident_id),))
+            inc_st = str(st_row[0]) if st_row else None
+        if inc_st in _VERIFY_READY:
+            state["outcome"] = None
+            state["current_node"] = "verify"
+        else:
+            wake_h = float(payload.get("wake_in_sim_hours") or 4.0)
+            await conn.execute(
+                "insert into followups (sim_run_id, agent_run_id, signal_id, incident_id, wake_sim, reason, payload, status) "
+                "values (%s, %s, %s, %s, %s, %s, %s::jsonb, 'scheduled')",
+                (
+                    int(run_id),
+                    int(agent_run_id),
+                    int(signal_id),
+                    int(incident_id) if incident_id else None,
+                    sim_time + dt.timedelta(hours=wake_h),
+                    reason,
+                    dumps({**payload, "wake_in_sim_hours": wake_h}),
+                ),
+            )
+            state["outcome"] = "deferred"
+            state["current_node"] = "followup_monitor"
+    else:
+        state["outcome"] = None
+        state["current_node"] = "verify"
+
+    await conn.commit()
+    return await run_graph(state, deps, conn)
+
+
+async def wake_due_followups(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    sim_time: dt.datetime,
+    chain: ProviderChain,
+    profile: LLMProfile,
+) -> int:
+    """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
+    rows = await (
+        await conn.execute(
+            "with due as (select id from followups where status = 'scheduled' and wake_sim <= %s "
+            "and agent_run_id is not null and signal_id is not null for update skip locked) "
+            "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
+            (sim_time,),
+        )
+    ).fetchall()
+    resumed = 0
+    for (fid,) in rows:
+        await conn.commit()
+        st = await resume_after_followup(
+            conn, followup_id=int(fid), chain=chain, profile=profile, sim_time=sim_time
+        )
+        if st is not None:
+            resumed += 1
+    return resumed
+
+
+async def wake_followups_for_incident(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    incident_id: int,
+    sim_time: dt.datetime,
+    chain: ProviderChain,
+    profile: LLMProfile,
+) -> int:
+    await conn.execute(
+        "update followups set wake_sim = %s where incident_id = %s and status = 'scheduled' "
+        "and reason is distinct from 'awaiting_client'",
+        (sim_time, incident_id),
+    )
+    await conn.commit()
+    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile)
 
 
 async def expire_hitl(

@@ -28,6 +28,15 @@ FORBIDDEN_PHRASES = (
     "немедленно вернём",
     "компенсируем все",
     "100%",
+    "your fault",
+    "your mistake",
+    "you incorrectly",
+    "guarantee",
+    "within the hour",
+    "this very day",
+    "refund immediately",
+    "immediate refund",
+    "compensate everything",
 )
 HUMAN_OPTIONS: dict[str, list[dict[str, str]]] = {
     "_default": [

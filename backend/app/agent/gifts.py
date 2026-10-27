@@ -59,10 +59,18 @@ def should_auto_issue(
     return incident_status in ("resolved", "closed")
 
 
-def _gift_label(gift: dict[str, Any], gift_name: str | None) -> str:
+def _gift_label(gift: dict[str, Any], gift_name: str | None, lang: str = "ru") -> str:
     if gift.get("gift_code") == "bonus_points" and gift.get("points"):
+        if lang == "en":
+            return f"{int(gift['points'])} bonus points"
         return f"{int(gift['points'])} бонусных баллов"
+    if lang == "en":
+        return gift_name or str(gift.get("privilege_code") or gift.get("gift_code") or "gift")
     return gift_name or str(gift.get("privilege_code") or gift.get("gift_code") or "подарок")
+
+
+def _offer_lang(raw: str | None) -> str:
+    return raw if raw in ("ru", "en") else "ru"
 
 
 async def _issue_gift_task_row(conn: Any, row: dict[str, Any]) -> bool:
@@ -74,17 +82,29 @@ async def _issue_gift_task_row(conn: Any, row: dict[str, Any]) -> bool:
     if not row.get("client_id"):
         return False
     seg = row.get("client_segment")
+    lang = _offer_lang(row.get("signal_lang") if isinstance(row.get("signal_lang"), str) else None)
+    gift_name = row.get("gift_name_en") if lang == "en" and row.get("gift_name_en") else row.get("gift_name")
     tpl = await conn.execute(
-        "select subject, body from notification_templates where code = 'gift_offer' and lang = 'ru' and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
-        (seg,),
+        "select subject, body from notification_templates where code = 'gift_offer' and lang = %s and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
+        (lang, seg),
     )
     tpl_row = await tpl.fetchone()
-    subject = tpl_row[0] if tpl_row else "Подарок от банка"
-    body_tpl = tpl_row[1] if tpl_row else "{{ name }}, в знак извинения начислили {{ gift }}."
-    label = _gift_label(gift, row.get("gift_name"))
-    text = body_tpl.replace("{{ name }}", str(row.get("client_name") or "Уважаемый клиент")).replace(
-        "{{ gift }}", label
-    )
+    if not tpl_row and lang != "ru":
+        tpl = await conn.execute(
+            "select subject, body from notification_templates where code = 'gift_offer' and lang = %s and (segment_code = %s or segment_code is null) order by segment_code nulls last, (channel_code = 'chat') desc limit 1",
+            ("ru", seg),
+        )
+        tpl_row = await tpl.fetchone()
+    if lang == "en":
+        subject = tpl_row[0] if tpl_row else "A small apology"
+        body_tpl = tpl_row[1] if tpl_row else "{{ name }}, we have added {{ gift }} as an apology."
+        who = str(row.get("client_name") or "Client")
+    else:
+        subject = tpl_row[0] if tpl_row else "Подарок от банка"
+        body_tpl = tpl_row[1] if tpl_row else "{{ name }}, в знак извинения начислили {{ gift }}."
+        who = str(row.get("client_name") or "Уважаемый клиент")
+    label = _gift_label(gift, gift_name if isinstance(gift_name, str) else None, lang)
+    text = body_tpl.replace("{{ name }}", who).replace("{{ gift }}", label)
     text = re.sub(r"\{\{[^}]*\}\}", "", text).strip()
     sim_time = row.get("sim_time")
     await conn.execute(
@@ -122,6 +142,11 @@ async def issue_automatic(ctx: ToolContext, incident_id: int) -> int:
                c.segment_code as client_segment, c.display_name as client_name,
                i.status as incident_status,
                g.name_ru as gift_name,
+               g.name_en as gift_name_en,
+               (select s.lang from incident_signals ls
+                 join signals s on s.id = ls.signal_id
+                 where ls.incident_id = t.incident_id and ls.link_type = 'primary'
+                 order by ls.signal_id limit 1) as signal_lang,
                (select sim_time from sim_state where id = 1) as sim_time
         from tasks t
         join incidents i on i.id = t.incident_id
