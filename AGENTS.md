@@ -16,7 +16,7 @@ CX Pulse Control — демонстрационный MVP ИИ-агента кр
 | Агент | LangGraph (StateGraph, checkpointer в PostgreSQL), langchain-gigachat, openai SDK для OpenAI-совместимых API | провайдеры за единым интерфейсом `app/llm/provider.py` |
 | БД | PostgreSQL 16 | схема — `contracts/db/schema.sql` (v1.4), применяется миграцией `0001`; идемпотентные `0002` (v1.3) и `0003` (v1.4) доводят старые базы |
 | STT | Vosk (vosk-api, Apache-2.0) внутри backend-воркера; модель `vosk-model-small-ru-0.22` в репозитории, `vosk-model-ru-0.42` — опциональная загрузка `install.sh --stt-model large` | единственный голосовой вход; провайдеры за интерфейсом `app/stt/base.py`; облачные (`browser`, `salutespeech`, `openai_compatible_audio`) выключены по умолчанию. TTS нет |
-| Frontend | React 18, Vite, TypeScript strict, Tailwind, ECharts, React Flow, d3-geo, react-i18next, TanStack Query | без внешних CDN, шрифты Inter и JetBrains Mono локально |
+| Frontend | React 18, Vite, TypeScript strict, Tailwind, ECharts, d3-geo, react-i18next, TanStack Query, Zustand; React Flow (`@xyflow/react`, MIT) — разрешён, но пока не подключён: графы рисуются собственным SVG (`pages/engine/GraphView.tsx`), подключение — по решению исполнителя T-234 с записью в `docs/LICENSES.md` | без внешних CDN, шрифты Inter и JetBrains Mono локально |
 | Бот | aiogram 3, long polling | отдельный сервис `tgbot/`, общается с backend по `/api/internal/tgbot/inbound` |
 | Python-окружение | `uv` (`uv sync --frozen`, `uv run …`), `pyproject.toml` + `uv.lock` в `backend/` | pip/poetry не использовать; CI ставит uv через `astral-sh/setup-uv` |
 | CI | GitHub Actions `.github/workflows/ci.yml`: job'ы `contracts`, `db` (PostgreSQL 16 service, schema.sql + идемпотентные миграции), `owners` (границы слоя в PR), `tests` | имена job'ов `contracts`/`db`/`tests` зафиксированы в ruleset ветки `main` — не переименовывать; `mirror.yml` зеркалит в GitVerse |
@@ -54,6 +54,9 @@ backend/                  FastAPI-приложение
   app/agent/              graph.py, nodes/ (+ check_rules, act_instant), tools/ (+ router_tools.py — фасады ДТЗ), prompts/ (versioned, + hidden_negativity.md), policies.py (+ политика эскалации), schemas.py (Pydantic из contracts/events/agent)
   app/ingest/             v1.4: schemas.py (UnifiedMessage, Transcript), normalizer.py (все входы → единая схема → signals), transcripts.py (парсеры JSON/TXT, анализы), sources.py (адаптеры rest/polling/file), mock_feed.py
   app/tickets/            v1.4: v_tickets, эскалации (escalations), decision_chain.py (цепочка решений JSON/Markdown)
+  app/trace/            v1.5 (план, T-224/T-225): сборщик следа (каузальный обход, фазы before/subject/after, итог, pending, свёртка веера), модель «Путь обращения»; только чтение, без вызовов LLM
+  app/search/           v1.5 (план, T-230): универсальный поиск по идентификаторам (SIG/INC/CL/POST/TR/ESC/AS/EMP/CSI/VSP/RULE, UUID, токен, @ник, маска карты, FTS)
+  app/analytics/        v1.5 (план, T-241/T-248/T-256): кабинет менеджера продукта, CSI/ВСП, CX Index; только чтение через представления v_*
   app/abs/                Mock-АБС: счета, тарифы, проводки, идемпотентные возвраты (ТЗ 3.4)
   app/rules/              Rules Engine: интерпретатор условий business_rules, оценка перед решением агента (ТЗ 9.6)
   app/feed/               эмулятор внешней площадки: посты, публичные ответы, фоновая лента (ТЗ 21)
@@ -71,13 +74,19 @@ backend/                  FastAPI-приложение
   alembic/, schema.sql, migrations/  копия contracts/db (обновляется make sync-contracts)
   tests/                  pytest: unit/, integration/, scenarios/
 frontend/                 Vite + React
-  src/app/                роутинг, layout, темы
-  src/features/           по экранам: setup, workspace, incidents, hitl, engine, bench, settings, landing, tracking, economics, feed, compliance (+ transcripts), manager, demo-menu, tickets (переключатель терминов, цепочка решений)
-  src/shared/audio/       useMicrophone, AudioWorklet-процессор, клиент /ws/audio, компонент <VoiceInput>
-  src/shared/components/LogPanel  панель «Log/Debug» для демо-экранов (ТЗ 12.6)
-  src/shared/api/         клиент из OpenAPI (openapi-typescript), ws.ts
+  src/app/App.tsx         роутинг и применение темы
+  src/pages/              по экранам: setup, workspace (вкладки: лента сигналов, инциденты, HITL, задачи, команды, карта, дашборд, тикеты, уведомления, drawer сигнала), incident, engine (граф, бенчмарки, качество), feed, compliance (+ транскрипты), manager, claim (лендинг/трекинг)
+                          v1.5 (план): journey, trace, cabinet, csi, overview — карточки T-226, T-232, T-242, T-249, T-255
+  src/widgets/            Shell, Header, KpiStrip, JuryModal («Новый сигнал»), DemoMenu (меню демонстратора), LogPanel («Log/Debug», ТЗ 12.6)
+  src/shared/api/         клиент из OpenAPI (openapi-typescript: types.ts), ws/ — WebSocket
+  src/shared/audio/       mic.ts (микрофон, AudioWorklet, клиент /ws/audio), <VoiceInput>
+  src/shared/contracts/   enums.ts (генерируется make sync-contracts)
+  src/shared/geo/         TopoJSON субъектов РФ и проекция (лицензия в data/README.md)
   src/shared/i18n/        ru.json, en.json
-  public/map/russia.svg   контуры субъектов РФ (лицензия в data/README.md)
+  src/shared/theme.ts     текущая тема light/dark (Zustand); v1.5: src/shared/theming/ — семантические токены, пакеты brand/ops, циркадный движок (T-251/T-252)
+  src/shared/ui/, lib/    базовые компоненты, форматирование, статусы
+  src/index.css, tailwind.config.ts  токены дизайна (ТЗ 12.1): цвета, радиусы, шрифты
+  e2e/                    Playwright-смоук
 tgbot/                    aiogram-бот
 data/                     справочники: regions.csv, cities.csv, segments.yaml, psychotypes.yaml, error_codes.yaml, dcltv_rates.csv, gifts.yaml, templates/, golden/
   rules.yaml, tariffs.yaml, misselling_patterns.yaml, branches.yaml   v1.3: правила, тарифы Mock-АБС, таксономия нарушений (v1.4: + семейство conduct), отделения
@@ -131,10 +140,10 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 4. **Нет реальных ПДн.** Имена — из синтетических списков, телефоны только в диапазоне `+7 900 000-00-00 … +7 900 009-99-99`, e-mail только `@example.ru`/`@example.com`, карты только `**** NNNN`. Тест `tests/unit/test_no_pii.py` проверяет сид и шаблоны.
 5. **Секреты только в `.env`** и `llm_api_keys.encrypted_key`. Никаких ключей в коде, тестах, логах, фикстурах, скриншотах. Логи LLM-вызовов маскируют заголовки `Authorization`.
 6. **Детерминизм симуляции.** Любая случайность — через `app/sim/rng.py` (seeded `numpy.random.Generator`), сид хранится в `sim_state.seed`, состояние генератора — в `sim_state.rng_state` (для возобновления). Два запуска с одним сидом от baseline и mock-LLM дают одинаковые `sim_events` и `summary`.
-7. **Симуляционное время отдельно от реального.** Поля `*_sim` — из `SimClock`, поля `*_at` — `now()`. SLA, терпение клиентов, отчёты команд считаются в рабочих днях симулятора (пн–пт, 09:00–18:00 по `sim_state`).
+7. **Симуляционное время отдельно от реального.** Поля `*_sim` — из `SimClock`, поля `*_at` — `now()`. SLA, терпение клиентов, отчёты команд считаются в рабочих днях симулятора (пн–пт, 09:00–18:00 по `sim_state`; ТЗ 4.1, решение 20.7 № 71).
 8. **Без внешних сетевых вызовов**, кроме: API LLM-провайдеров, Telegram Bot API (если включён), OpenRouter `GET /api/v1/key` и `/api/v1/models`. Шрифты, карты, иконки — в репозитории. Тест `tests/integration/test_no_cdn.py` проверяет собранный фронтенд.
 9. **Локализация.** Весь текст интерфейса — через `t('key')`, словари `ru.json`/`en.json` полные (проверка `make i18n-check`). Тексты клиенту генерируются на языке сигнала (по умолчанию ru). В коде/комментариях/коммитах — русский; идентификаторы — английский.
-10. **Дизайн.** Токены из `frontend/src/app/theme/tokens.css` (ТЗ 12.1): основной `#21A038`, градиент `#21A038 → #0098F8`, акцент `#F1E813`. Никаких логотипов и названий реальных банков в UI, данных и тестах — везде «Банк».
+10. **Дизайн.** Токены из `frontend/src/index.css` и `frontend/tailwind.config.ts` (с v1.5 — семантические токены пакета `brand` в `frontend/src/shared/theming/`, ТЗ 26.1) (ТЗ 12.1): основной `#21A038`, градиент `#21A038 → #0098F8`, акцент `#F1E813`. Никаких логотипов и названий реальных банков в UI, данных и тестах — везде «Банк».
 11. **Производительность демо.** Профиль `demo` (5 000 клиентов, 14 дней) генерируется ≤ 90 с на 4 ядрах; p95 ответа API ≤ 300 мс при работающей симуляции; WebSocket-обновления ≤ 1 с. Тяжёлые агрегаты — через представления `v_*` и индексы из `schema.sql`, не через ORM-циклы.
 12. **Одна задача — одна ветка — один PR.** Ветки `feat/T-012-slug`, `fix/…`, `chore/…`. Коммиты по Conventional Commits на русском после префикса: `feat(agent): узел classify со structured output`. PR содержит: ссылку на карточку задачи, что сделано, как проверить, скриншот/лог, список затронутых контрактов.
 
@@ -149,6 +158,9 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 
 18. **Имена наружу — из ТЗ заказчика (ТЗ 1.4, 9.2).** Роутер-инструменты `route_to_department`, `notify_customer`, `escalate_to_manager`, `request_clarification` — фасады с точными сигнатурами из `router_tools.schema.json`; они идут первыми в списке функций модели и логируются одним шагом с `wraps=[…]`. Поля `sentiment`, `problem_summary {problem, severity, suggested_team}`, `router_action` обязательны в выходах агента; `router_action` обязан совпадать с фактическими вызовами (`policy_checks`). Тикет = инцидент (`v_tickets`), второго хранилища нет.
 
+
+19. **«След» и «Путь» — только чтение (ТЗ 27–28).** Пакеты `app/trace`, `app/search`, `app/analytics` не вызывают LLM, не пишут в БД и не создают побочных эффектов; они собирают картину из уже записанных `agent_steps`, `tool_calls`, `sim_events`, `notifications`, `ledger_entries` и представлений `v_*`. Любой объект, который может оказаться в следе, имеет человекочитаемый `public_id` (миграции 0001–0004); поиск и след соблюдают изоляцию запусков (правило 13) и маскирование ПДн (правило 4). Если для показа чего-то не хватает — добавляется запись в источнике (шаг агента, событие), а не «дорисовка» в сборщике.
+20. **Роли — пресеты, а не доступ (ТЗ 24.1).** Заголовки `X-Cx-Role` / `X-Cx-Product-Line` и режим `soft|strict` только фильтруют представление и подставляют настройки экрана; аутентификации, авторизации и скрытия данных «для безопасности» в MVP нет (раздел 10). Направления, «красные слова» и ставки — данные (`data/product_lines.yaml`, `data/red_words.yaml`, `data/dcltv_rates.csv`), проверка красных слов детерминирована и выполняется до LLM, её результат — признак сигнала; CSI-обращения входят через `normalizer.py` каналом `csi_survey` (правило 17) и считаются против знаменателя `csi_visits_agg`, а не сами по себе.
 
 ### 5.1 Работа в слоях и режим без ревьюера (docs/TEAM-SPLIT.md)
 
@@ -195,7 +207,7 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 ### 6.5 Frontend
 - API-клиент и типы генерируются из `contracts/api/openapi.yaml` (`openapi-typescript` + лёгкий fetch-обёртка); ручные интерфейсы для ответов API запрещены.
 - Состояние сервера — TanStack Query + инвалидация по WebSocket-сообщениям; локальное UI-состояние — Zustand.
-- Каждый экран из ТЗ 12.2 — отдельная папка в `features/` с `index.tsx`, `api.ts`, `components/`, `__tests__/`. Сторибук не используем; визуальная проверка — Playwright-смоук со скриншотами в `frontend/e2e/`.
+- Каждый экран из ТЗ 12.2 — отдельная папка в `src/pages/<screen>/` (компоненты экрана и его вкладок рядом, тесты в `__tests__/`), общие блоки оболочки — в `src/widgets/`, переиспользуемое — в `src/shared/`. Сторибук не используем; визуальная проверка — Playwright-смоук со скриншотами в `frontend/e2e/`.
 - Доступность: контраст ≥ 4.5:1 в обеих темах, фокус-стили, `aria-label` на иконках-кнопках, таблицы с заголовками.
 - Исключение из «сайт не должен кричать» (ТЗ 12.1) — только экраны `/compliance` и `/manager`: красная заливка и звук при алерте. На рабочем месте CX тот же инцидент — обычная «тихая» карточка.
 - Захват микрофона — только через `shared/audio/useMicrophone` и `<VoiceInput>`; без HTTPS/localhost кнопка скрыта с подсказкой, текстовый ввод остаётся.
@@ -219,7 +231,7 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 - Все вызовы LLM детектора трассируются в `agent_runs(kind='compliance_detector')` — это тоже «Под капотом».
 - v1.4: таксономия `misselling_patterns` имеет семейства `misselling` и `conduct` (`rudeness`, `script_violation`, `misinformation`) и политики алерта `counter` / `immediate` / `report`; `misinformation` всегда с `fact_check` из БД (`products`, `tariffs`), без подтверждённого факта — только «требует проверки». Пакетный режим `pacing = batch` (готовый транскрипт): один проход правил + один вызов LLM на транскрипт → `transcript_report` (≤ 10 с на 60 реплик), затем алерты по политикам и `recommendation_ru` в каждой находке. Batch — обязательная страховка живого режима.
 
-### 6.9 Подстраховка и меню демонстратора (`app/replay`, `app/demo`, `features/demo-menu`) [BRD]
+### 6.9 Подстраховка и меню демонстратора (`app/replay`, `app/demo`, `widgets/DemoMenu.tsx`) [BRD]
 - Меню открывается только `Ctrl+Shift+R` или долгим нажатием на логотип; не рендерится в обычном режиме и не попадает в скриншоты README. Любое переключение → событие `demo.failover` (`demo/failover.schema.json`) и бейдж в футере.
 - Предзаписанные входы (`demo_assets`): пост сценария 8, WAV/транскрипт сценария 9 — проигрываются через те же конвейеры (аудио — через тот же Vosk), а не «подставляются» в результат.
 - Кассеты сценариев 8–9 перезаписываются при смене `prompt_version` (`stale` в `GET /api/cassettes`); автотесты сценариев всегда идут на кассетах.
@@ -230,6 +242,15 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 - Адаптеры `ingest_sources`: polling только через фоновый воркер с `interval_s ≥ 5`, курсор и статистика в БД; внешние URL помечаются `is_external`. В demo-профиле — только встроенная mock-лента.
 - Тикетница: никаких таблиц `tickets`; `v_tickets` и `routing_status` на инциденте. Цепочка решений строится из `agent_steps` + `tool_calls` (`decision_chain.schema.json`), `why_ru` — из `rationale_ru`, ПДн маскируются.
 - Зоны карты: только `v_map_zones` и пороги из `economics_settings.map_zone_thresholds`; пересчёт по событиям с дебаунсом, событие `zone.changed`; легенда с подписями (не только цвет).
+
+### 6.11 Кабинет менеджера продукта, CSI, дизайн v2, «Путь» и «След» (`app/trace`, `app/search`, `app/analytics`) [ЕТЗ/ПРОТО/АРХ] — план v1.5
+Реализация ещё не начата; требования — `docs/TZ.md` разделы 24–28, решения — 20.7 (№ 33–73; № 67–73 — решения техлида 27.10.2026), ADR-0008…0011 в `docs/adr/`, реестр конфликтов — `docs/TZ-merge-v1.5-analysis.md`. Карточки T-223…T-262; миграции 0004/0005 и OpenAPI 1.5.0 — только по разделу 7 (карточки T-223, T-237, метка `contract-change`).
+- Роли («менеджер продукта», «руководитель направления» и др.) — пресеты `X-Cx-Role` / `X-Cx-Product-Line` и режим видимости `soft|strict`; это фильтр представления, **не аутентификация** (раздел 10 остаётся в силе).
+- «Красные слова» — детерминированный список `data/red_words.yaml`, проверяется до LLM; результат — признак сигнала, а не отдельная копия сигнала.
+- CSI — канал `csi_survey`, сигнал создаётся только через `normalizer.py` (правило 17); знаменатель — `csi_visits_agg`. Справочник ВСП — `BranchDirectoryProvider` (`synthetic` | `snapshot_file`), без обращений к внешним сервисам.
+- «След» и «Путь» — только чтение: сборщик не вызывает LLM и не пишет в БД; трассируемые объекты имеют `public_id` (миграция 0004). Поиск не обходит изоляцию запусков (`run_id`, правило 13) и маскирует ПДн (правило 4).
+- Дизайн v2: токены тем и режимов — в `frontend/src/shared/theming/` (семантические токены, пакеты `brand`/`ops`); исключение «кричащих» экранов из 6.5 не расширяется. Циркадная тема считает положение солнца локально, без внешних сервисов (правило 8). Флаг оболочки `ui.layout=v2` включает новую навигацию с редиректами со старых адресов.
+- Селектор темы в шапке: пакет `brand` (основной) × режим; `ops` — запасной пакет (решение 20.7 № 68). Циркадный режим на защите идёт по симуляционному времени (№ 67).
 
 ## 7. Как менять контракты
 
@@ -256,18 +277,24 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 | E4 LLM-слой | `SA-LLM` | 6 шт.: T-046…T-051 | app/llm |
 | E5 Агент LangGraph | `SA-Agent`, `SA-Prompts` | 12 шт.: T-056…T-067 | app/agent |
 | E6 HITL и подарки | `SA-Agent`, `SA-UI-Workspace` | 5 шт.: T-076…T-080 | app/api/hitl.py, tasks.py |
-| E7 Рабочее место CX | `SA-Map`, `SA-UI-Workspace` | 9 шт.: T-086…T-094 | frontend/src/features/workspace, incidents, hitl |
-| E8 «Под капотом» | `SA-UI-Engine` | 5 шт.: T-106…T-110 | frontend/src/features/engine, app/realtime |
-| E9 Лендинг, трекинг, Telegram-бот | `SA-Landing`, `SA-TgBot` | 4 шт.: T-119…T-122 | frontend/src/features/landing, tracking; tgbot/ |
-| E10 Бенчмарки и экономика | `SA-Bench`, `SA-Economics` | 5 шт.: T-129…T-133 | app/bench, app/economics, features/bench, economics |
+| E7 Рабочее место CX | `SA-Map`, `SA-UI-Workspace` | 9 шт.: T-086…T-094 | frontend/src/pages/workspace (вкладки), pages/incident |
+| E8 «Под капотом» | `SA-UI-Engine` | 5 шт.: T-106…T-110 | frontend/src/pages/engine, app/realtime |
+| E9 Лендинг, трекинг, Telegram-бот | `SA-Landing`, `SA-TgBot` | 4 шт.: T-119…T-122 | frontend/src/pages/claim; tgbot/ |
+| E10 Бенчмарки и экономика | `SA-Bench`, `SA-Economics` | 5 шт.: T-129…T-133 | app/bench, app/economics, pages/engine (бенчмарки), pages/workspace (дашборд) |
 | E11 Сценарии и тесты | `SA-QA` | 6 шт.: T-141…T-146 | backend/tests/scenarios, frontend/e2e |
 | E12 Документация и защита | `SA-Docs` | 4 шт.: T-151…T-154 | README.md, docs/ |
 | E13 Локализация | `SA-i18n` | 2 шт.: T-156…T-157 | frontend/src/shared/i18n, app/i18n |
-| E14 Поведение клиентов и калькулятор «Факт» | `SA-Behavior`, `SA-Economics`, `SA-QA` | 7 шт.: T-161…T-167 | app/sim/behavior, app/economics/calibration.py, features/economics |
-| E15 Внешние площадки и автономный возврат [BRD] | `SA-ABS`, `SA-Agent`, `SA-UI-Feed`, `SA-Signals`, `SA-QA`, `SA-Teams` | 10 шт.: T-171…T-180 | app/abs, app/rules, app/feed, app/agent/nodes/{check_rules,act_instant}, features/feed |
-| E16 Аудиомониторинг отделения и мисселлинг [BRD] | `SA-STT`, `SA-Compliance`, `SA-UI-Compliance`, `SA-TgBot`, `SA-Signals`, `SA-Bench`, `SA-QA` | 13 шт.: T-181…T-193 | app/stt, app/compliance, features/compliance, features/manager, data/corpus/dialogs |
-| E17 Режим подстраховки демо [BRD] | `SA-LLM`, `SA-UI-Workspace`, `SA-Agent`, `SA-Infra` | 5 шт.: T-194…T-198 | app/replay, app/demo, app/llm/failover.py, features/demo-menu, install.sh |
-| E18 Приём транскриптов, роутер-инструменты, «красные фразы», зоны карты [ДТЗ] | `SA-Agent`, `SA-Prompts`, `SA-Teams`, `SA-Compliance`, `SA-UI-Compliance`, `SA-UI-Workspace`, `SA-Map`, `SA-Signals`, `SA-QA`, `SA-DB` | 15 шт.: T-207…T-221 | app/ingest, app/tickets, app/agent/tools/router_tools.py, app/compliance/batch.py, features/compliance/transcripts, features/tickets, карта «Зоны», migrations/0003 |
+| E14 Поведение клиентов и калькулятор «Факт» | `SA-Behavior`, `SA-Economics`, `SA-QA` | 7 шт.: T-161…T-167 | app/sim/behavior, app/economics/calibration.py, pages/workspace (калькулятор) |
+| E15 Внешние площадки и автономный возврат [BRD] | `SA-ABS`, `SA-Agent`, `SA-UI-Feed`, `SA-Signals`, `SA-QA`, `SA-Teams` | 10 шт.: T-171…T-180 | app/abs, app/rules, app/feed, app/agent/nodes/{check_rules,act_instant}, pages/feed |
+| E16 Аудиомониторинг отделения и мисселлинг [BRD] | `SA-STT`, `SA-Compliance`, `SA-UI-Compliance`, `SA-TgBot`, `SA-Signals`, `SA-Bench`, `SA-QA` | 13 шт.: T-181…T-193 | app/stt, app/compliance, pages/compliance, pages/manager, data/corpus/dialogs |
+| E17 Режим подстраховки демо [BRD] | `SA-LLM`, `SA-UI-Workspace`, `SA-Agent`, `SA-Infra` | 5 шт.: T-194…T-198 | app/replay, app/demo, app/llm/failover.py, widgets/DemoMenu.tsx, install.sh |
+| E18 Приём транскриптов, роутер-инструменты, «красные фразы», зоны карты [ДТЗ] | `SA-Agent`, `SA-Prompts`, `SA-Teams`, `SA-Compliance`, `SA-UI-Compliance`, `SA-UI-Workspace`, `SA-Map`, `SA-Signals`, `SA-QA`, `SA-DB` | 15 шт.: T-207…T-221 | app/ingest, app/tickets, app/agent/tools/router_tools.py, app/compliance/batch.py, pages/compliance (транскрипты), pages/workspace/TicketsTab.tsx, карта «Зоны», migrations/0003 |
+| E19 Кабинет менеджера продукта [ЕТЗ] | `SA-Refs`, `SA-DB`, `SA-Prompts`, `SA-Agent`, `SA-Signals`, `SA-Analytics`, `SA-UI-Analytics`, `SA-QA` | 10 шт.: T-236…T-244, T-262 | data/product_lines.yaml, migrations/0005, app/analytics, red_words.yaml, pages/cabinet |
+| E20 CSI и ВСП [ЕТЗ] | `SA-Clients`, `SA-Signals`, `SA-Analytics`, `SA-UI-Analytics`, `SA-Map` | 6 шт.: T-245…T-250 | BranchDirectoryProvider, канал `csi_survey`, app/analytics/csi, pages/csi, слой ВСП на карте |
+| E21 Дизайн-система v2 [ПРОТО] | `SA-UI-Design`, `SA-Analytics`, `SA-UI-Analytics`, `SA-QA` | 8 шт.: T-251…T-258 | shared/theming, циркадный движок, режимы «Тихий»/«Ситуационный центр», widgets/Shell v2, CX Index |
+| E22 Путь обращения [АРХ] | `SA-DB`, `SA-Trace`, `SA-UI-Trace`, `SA-QA` | 7 шт.: T-223…T-229 | migrations/0004, app/trace, pages/journey, сценарий 12 |
+| E23 Поиск и след объекта [АРХ] | `SA-Trace`, `SA-UI-Trace`, `SA-QA` | 6 шт.: T-230…T-235 | app/search, pages/trace, глобальный поиск, `IdLink`, сценарий 13 |
+| Сквозные v1.5 | `SA-i18n`, `SA-Docs`, `SA-UI-Workspace` | 3 шт.: T-259…T-260, T-263 (+ T-261 сверка дрейфа, закрыта) | i18n, ADR-0008…0011, LICENSES, локальные шрифты |
 | Сквозные v1.3 | `SA-DB`, `SA-UI-Engine`, `SA-Economics`, `SA-i18n`, `SA-Docs`, `SA-UI-Compliance` | 8 шт.: T-199…T-206 | migrations/0002, openapi 1.3, LogPanel, экономика, i18n, демо-скрипт, AGENTS/ADR, «Надиктовать» |
 
 Порядок и волны — в `docs/tasks/README.md` (150 карточек, 6 волн, граф зависимостей, разбивка по слоям и признак «в демо-минимуме»); распределение слоёв по людям — `docs/TEAM-SPLIT.md`. Срез `docs/PLAN-14D.md` закрыт: агент берёт следующую незакрытую карточку критического пути, урезания пакетов больше не запрещают остальной функционал. Критический путь v1.4 (ДТЗ): T-199 → T-221 → T-207 → T-208 → T-210 → T-212 → T-213 → T-214; транскрипты T-219 → T-215 → T-216 → T-217; карта T-207 → T-218; замыкает T-220. Критический путь ядра: T-001 → T-005 → T-006 → T-046 → T-056 → T-057 → T-058 → T-061 → T-062 → T-063 → T-090 → T-142 → T-151. Критические пути контуров BRD: T-005 → T-199 → T-171 → T-172 → T-174 → T-176 → T-177 → T-179 и T-181 → T-183 → T-185 → T-186 → T-187 → T-192; подстраховка T-194 → T-195 → T-198 должна быть готова к первой репетиции. Субагент перед началом читает `AGENTS.md`, `docs/TZ.md` (разделы из карточки), свои контракты и карточку задачи; после завершения заполняет блок «Отчёт» в карточке.

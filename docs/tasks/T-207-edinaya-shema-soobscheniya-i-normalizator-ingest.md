@@ -24,7 +24,7 @@
 
 ## Зависимости
 - Зависит от: [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md), [T-056](T-056-agentstate-graf-langgraph-checkpointer-zapusk-po.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md)
-- Блокирует: [T-208](T-208-priem-transkriptov-json-txt-parsery-post-api-ing.md), [T-209](T-209-adaptery-istochnikov-ingest-sources-rest-polling.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md)
+- Блокирует: [T-208](T-208-priem-transkriptov-json-txt-parsery-post-api-ing.md), [T-209](T-209-adaptery-istochnikov-ingest-sources-rest-polling.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md), [T-246](T-246-priem-csi-post-api-ingest-csi-json-xlsx-csi-resp.md)
 
 ## Что сделать
 1. app/ingest/schemas.py (Pydantic из JSON-схемы), app/ingest/normalizer.py: функции from_sim_event/from_api_signal/from_landing/from_bot/from_external_post/from_voice/from_transcript/from_adapter → UnifiedMessage; единая точка create_signal_from_message().

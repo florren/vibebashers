@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-172](T-172-rules-engine-business-rules-dsl-uslovij-uzel-che.md), [T-173](T-173-matching-klienta-po-kosvennym-dannym-match-clien.md), [T-060](T-060-uzel-classify-i-prompty-v1.md), [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-062](T-062-uzel-act-kommunikacii-klientu-i-komandam.md), [T-076](T-076-politiki-hitl-policies-py-i-testy.md)
-- Блокирует: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-196](T-196-avtomaticheskij-failover-po-tajmautu-i-oshibkam.md), [T-198](T-198-kassety-scenariev-8-9-i-avtotesty-na-nih-procedu.md)
+- Блокирует: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-196](T-196-avtomaticheskij-failover-po-tajmautu-i-oshibkam.md), [T-198](T-198-kassety-scenariev-8-9-i-avtotesty-na-nih-procedu.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md)
 
 ## Что сделать
 1. policies.py: fast_path_allowed(violations, match, classification_hint, client) по 9.3 — лимит refund_autonomy_limit_rub (5 000 / 15 000 premium+ / ultra_vip → HITL), уверенность ≥ 0,8/0,75, идемпотентность, refunds_30d < 3, не массовый.

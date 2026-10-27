@@ -26,7 +26,7 @@
 
 ## Зависимости
 - Зависит от: [T-006](T-006-sync-contracts-generaciya-enums-pydantic-shem-ts.md), [T-004](T-004-karkas-fastapi-konfig-logirovanie-oshibki-health.md)
-- Блокирует: [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md)
+- Блокирует: [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md), [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md)
 
 ## Что сделать
 1. Роутеры-заглушки по новым тегам с ответами 501 problem+json и корректными моделями ответов; check_openapi_drift проходит для новых тегов.

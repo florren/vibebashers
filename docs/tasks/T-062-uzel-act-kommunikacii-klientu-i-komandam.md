@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md)
-- Блокирует: [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md), [T-063](T-063-uzly-followup-monitor-verify-close-gift-i-otlozh.md), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md)
+- Блокирует: [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md), [T-063](T-063-uzly-followup-monitor-verify-close-gift-i-otlozh.md), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md), [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md)
 
 ## Что сделать
 1. Последовательность: инцидент/связка → уведомление клиенту (первый ответ в SLA сегмента) → уведомление команде → задачи → followup; идемпотентность при повторном входе из чекпоинта.

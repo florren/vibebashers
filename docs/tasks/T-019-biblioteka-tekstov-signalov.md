@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-012](T-012-segmenty-psihotipy-doli-psihotipov-po-segmentam.md), [T-013](T-013-produkty-sistemy-komandy-kanaly.md), [T-014](T-014-kody-oshibok-tipy-signalov-pravila-marshrutizaci.md)
-- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-021](T-021-zolotoj-nabor-benchmarka-golden-v1-i-lite-v1.md), [T-022](T-022-testy-dannyh-no-pii-pokrytie-idempotentnost-proi.md), [T-178](T-178-korpus-publichnyh-otzyvov-i-nabor-reviews-v1.md)
+- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-021](T-021-zolotoj-nabor-benchmarka-golden-v1-i-lite-v1.md), [T-022](T-022-testy-dannyh-no-pii-pokrytie-idempotentnost-proi.md), [T-178](T-178-korpus-publichnyh-otzyvov-i-nabor-reviews-v1.md), [T-240](T-240-korpus-product-lines-v1-i-istoriya-teksty-po-15.md)
 
 ## Что сделать
 1. data/signal_templates/*.yaml: ≥ 400 шаблонов с плейсхолдерами (сумма, продукт, дата, промо, город), раскладка по 10 типам × 4 продуктам × 8 каналам; ≥ 25 % с сарказмом/иронией/сленгом/опечатками; транскрипты звонков с ремарками оператора; письма с темой; соцсети с хэштегами/эмодзи.

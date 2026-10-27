@@ -24,7 +24,7 @@
 
 ## Зависимости
 - Зависит от: [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-006](T-006-sync-contracts-generaciya-enums-pydantic-shem-ts.md)
-- Блокирует: [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md)
+- Блокирует: [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md), [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md)
 
 ## Что сделать
 1. make sync-contracts копирует migrations/ в backend/; alembic upgrade head на чистой БД (0001 v1.3 + 0002 no-op) и на дампе v1.2 (0002 применяет изменения) — оба пути в тесте.

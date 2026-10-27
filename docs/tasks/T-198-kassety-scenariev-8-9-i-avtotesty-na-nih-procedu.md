@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Детерминированные кассеты для ключевых демо-сценариев и CI; регламент обновления (ТЗ 5.4, 15 SA-Cassettes).
@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-194](T-194-provajder-replay-kassety-zapisannyh-otvetov-mode.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-185](T-185-llm-detektor-missellinga-lightning-podtverzhdeni.md), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md)
-- Блокирует: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Блокирует: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-229](T-229-scenarij-12-put-obrascheniya-tri-traektorii-yaml.md)
 
 ## Что сделать
 1. Запись кассет на репетиции с реальными GigaChat-3-Ultra/Lightning для сценариев 8, 8b, 9, 9b и «Надиктовать»; экспорт в data/cassettes/*.jsonl (≤ 50 МБ суммарно); demo_assets kind=cassette с checksum.
@@ -46,3 +46,5 @@ make cassettes-record SCENARIO=qr_fee_public_review
 - **Stale:** сверка с `prompt_version()` (сейчас v1.0 из `app/agent/prompts/v1/system.md`)
 - **`backend/app/api/demo.py`:** не менялся (501 на `/api/cassettes` — вне пакета)
 - **Сделано:** `CassetteStore.summaries` / `cassette_asset` / `upsert_demo_asset`; `ProviderChain.scenario_id` + `prompt_version`; `live_recording_possible`; `scripts/cassettes_record.py`; `make cassettes-record`; unit/integration тесты пакета
+
+Сверка 27.10.2026 (T-261): статус `todo` → `done` — PR #31 «кассеты сценариев 8–9 и stale (T-198)» слит; живая запись кассет на репетиции выполняется по процедуре `make cassettes-record` перед показом (не блокирует карточку).

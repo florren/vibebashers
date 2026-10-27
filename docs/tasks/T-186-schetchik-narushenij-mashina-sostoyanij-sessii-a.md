@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-185](T-185-llm-detektor-missellinga-lightning-podtverzhdeni.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-077](T-077-uzel-wait-human-ochered-hitl-i-vozvrat-resheniya.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md)
-- Блокирует: [T-187](T-187-ekran-compliance-split-screen-transkribacii-sche.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md), [T-189](T-189-alert-o-missellinge-v-telegram-rukovoditelyu.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md), [T-216](T-216-paketnyj-analiz-transkripta-pacing-batch-transcr.md)
+- Блокирует: [T-187](T-187-ekran-compliance-split-screen-transkribacii-sche.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md), [T-189](T-189-alert-o-missellinge-v-telegram-rukovoditelyu.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md), [T-216](T-216-paketnyj-analiz-transkripta-pacing-batch-transcr.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md)
 
 ## Что сделать
 1. Состояния live → alerted → closed; trigger_count по confirmed; dismissed уменьшает счётчик; алерт однократный за сессию; порог alert_threshold из сессии/настроек.

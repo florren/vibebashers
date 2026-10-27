@@ -24,7 +24,7 @@
 
 ## Зависимости
 - Зависит от: [T-199](T-199-migraciya-0002-primenenie-modeli-sqlalchemy-i-pe.md), [T-200](T-200-openapi-1-3-i-json-shemy-v-kode-routery-zaglushk.md)
-- Блокирует: [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md)
+- Блокирует: [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md), [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md), [T-237](T-237-kontrakty-kabineta-csi-i-vsp-migraciya-0005-open.md)
 
 ## Что сделать
 1. alembic upgrade head на чистой БД и на дампе v1.3 — оба проходят; downgrade 0003 возвращает v1.3; тест идемпотентности (повторный прогон SQL — no-op).

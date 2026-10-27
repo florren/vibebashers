@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-065](T-065-trassirovka-zapuskov-i-striming-tokenov.md), [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md)
-- Блокирует: [T-107](T-107-graf-langgraph-s-podsvetkoj-uzla-i-graf-suschnos.md), [T-109](T-109-panel-ii-protiv-pravil.md), [T-110](T-110-dialog-agent-dvojnik-i-sostoyanie-klienta.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md)
+- Блокирует: [T-107](T-107-graf-langgraph-s-podsvetkoj-uzla-i-graf-suschnos.md), [T-109](T-109-panel-ii-protiv-pravil.md), [T-110](T-110-dialog-agent-dvojnik-i-sostoyanie-klienta.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-226](T-226-ekran-put-obrascheniya-journey-ref-stepper-iz-8.md)
 
 ## Что сделать
 1. Список запусков с фильтрами и бейджами (профиль, outcome, токены, латентность); дерево шагов с таймингами; панели «Промпт», «Ответ модели», «Рассуждения» (стрим), «Инструменты» (аргументы/результат/мс), «Политики»; JetBrains Mono; копирование.

@@ -24,7 +24,7 @@
 
 ## Зависимости
 - Зависит от: [T-208](T-208-priem-transkriptov-json-txt-parsery-post-api-ing.md), [T-215](T-215-taksonomiya-krasnyh-fraz-semejstvo-conduct-ruden.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md)
-- Блокирует: [T-217](T-217-ui-vkladka-transkripty-na-compliance-zagruzka-sp.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Блокирует: [T-217](T-217-ui-vkladka-transkripty-na-compliance-zagruzka-sp.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md)
 
 ## Что сделать
 1. Режим batch в машине состояний сессии: utterances из transcript.turns, один проход rule-детектора по всем репликам сотрудника, затем один вызов LLM на транскрипт (контекст: реплики клиента, продукт сделки, скрипт, факты) → transcript_report; при ошибке LLM — отчёт только по правилам с пометкой.

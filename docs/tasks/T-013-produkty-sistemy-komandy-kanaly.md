@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: —
-- Блокирует: [T-014](T-014-kody-oshibok-tipy-signalov-pravila-marshrutizaci.md), [T-015](T-015-shablony-uvedomlenij-spravochnik-podarkov-stavki.md), [T-017](T-017-produkty-klientov-i-14-dnej-operacij.md), [T-019](T-019-biblioteka-tekstov-signalov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-184](T-184-taksonomiya-missellinga-i-rule-detektor-predvari.md)
+- Блокирует: [T-014](T-014-kody-oshibok-tipy-signalov-pravila-marshrutizaci.md), [T-015](T-015-shablony-uvedomlenij-spravochnik-podarkov-stavki.md), [T-017](T-017-produkty-klientov-i-14-dnej-operacij.md), [T-019](T-019-biblioteka-tekstov-signalov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-184](T-184-taksonomiya-missellinga-i-rule-detektor-predvari.md), [T-236](T-236-spravochnik-product-lines-15-napravlenij-data-pr.md)
 
 ## Что сделать
 1. data/products.yaml: 4 продукта с тарифами и акциями (в т. ч. промо-ставка вклада для ключевого сценария, срок действия).

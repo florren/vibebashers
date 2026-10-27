@@ -24,7 +24,7 @@
 
 ## Зависимости
 - Зависит от: [T-088](T-088-teplovaya-karta-rf-s-drill-down-do-gorodov.md), [T-093](T-093-dashbord-kpi-i-blok-ekonomiki.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md), [T-215](T-215-taksonomiya-krasnyh-fraz-semejstvo-conduct-ruden.md)
-- Блокирует: [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Блокирует: [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-250](T-250-karta-sloj-vsp-markery-po-tipam-klasterizaciya-k.md)
 
 ## Что сделать
 1. Backend: GET /api/map/zones (v_map_zones + thresholds + no_geo_count); пересчёт по событиям signal/incident/compliance_alert с дебаунсом 500 мс; событие zone.changed при смене зоны; GET /api/metrics/economics/live и WS metrics/economics_live при каждом пересчёте экономики.

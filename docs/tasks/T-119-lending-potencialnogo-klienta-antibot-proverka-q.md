@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Экран 6: форма обращения для неидентифицированного клиента с выдачей ссылки трекинга и QR.
@@ -46,3 +46,5 @@ npx playwright test e2e/landing.spec.ts
 Коды `landing`, `telegram_bot` и `track_append` отсутствуют в `data/ingest_sources.yaml`, а `ingest_messages.source_code` ссылается на `ingest_sources`. Перед записью сигнала эти три кода вставляются идемпотентно (`on conflict do nothing`), иначе внешний ключ рвёт приёмку.
 
 Проверка шага 3: `cd backend && .venv/bin/pytest -q tests/integration/test_public_claim.py` — код 0, `1 passed`. Сценарий 4 и полный `make test` не запускались. `make lint` на этой ветке красный из-за чужого `ruff format --check` (файлы вне пакета); мои модули `ruff` и `mypy` проходят.
+
+Сверка 27.10.2026 (T-261): статус `todo` → `in_progress` — основная часть слита в PR #57 и #59; остаток по отчёту выше: страница `/track` и событие `signal.appended`.
