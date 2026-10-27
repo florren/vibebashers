@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-011](T-011-spravochnik-subektov-i-gorodov-rf-svg-karta.md)
-- Блокирует: [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md)
+- Блокирует: [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-242](T-242-ekran-kabinet-menedzhera-produkta-cabinet-kpi-ka.md)
 
 ## Что сделать
 1. d3-geo + SVG из public/map/russia.svg; слои и окно времени; легенда; тултипы с цифрами; анимация «вспышки» при массовом сбое (WS incidents/created с mass_impact).

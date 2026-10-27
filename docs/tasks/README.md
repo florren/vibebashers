@@ -1,4 +1,4 @@
-# Карточки задач субагентам (ТЗ v1.4)
+# Карточки задач субагентам (ТЗ v1.5)
 
 Одна карточка — одна ветка — один PR (AGENTS.md §5 п. 12). Перед стартом субагент читает AGENTS.md, разделы ТЗ из карточки и указанные контракты. Нумерация по эпикам; номера внутри эпика не обязаны идти подряд. Волна — порядок запуска: задачи одной волны ведутся параллельно разными субагентами с соблюдением указанных зависимостей внутри волны; следующая волна начинается, когда закрыты зависимости её карточек.
 
@@ -185,15 +185,71 @@
 |---|---|---|---|---|---|---|
 | [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md) Материалы защиты: тезисы, слайды-опоры, ответы на вопросы жюри | E12 | L1 | `SA-Docs` | M | — | T-151, T-093, T-130 |
 
+### Волна 7 — v1.5 — фундамент: контракты следа (0004) и кабинета/CSI (0005), справочник направлений, токены тем, сверка дрейфа документации
+
+| Карточка | Эпик | Слой | Субагент | Оценка | Демо-мин. | Зависит от |
+|---|---|---|---|---|---|---|
+| [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md) Контракты следа и поиска: миграция 0004, OpenAPI 1.5.0, схемы trace/*, public_id объектов, индексы | E22 | L1 | `SA-DB` | M | да | T-199, T-200, T-221 |
+| [T-236](T-236-spravochnik-product-lines-15-napravlenij-data-pr.md) Справочник product_lines (15 направлений): data/product_lines.yaml, маппинг на ставки dCLTV, команды, продукты | E19 | L1 | `SA-Refs` | S | — | T-013, T-015 |
+| [T-237](T-237-kontrakty-kabineta-csi-i-vsp-migraciya-0005-open.md) Контракты кабинета, CSI и ВСП: миграция 0005, OpenAPI, схемы, перечисления, представления | E19 | L1 | `SA-DB` | M | — | T-221, T-223, T-236 |
+| [T-251](T-251-tokeny-i-pakety-tem-semanticheskie-tokeny-pakety.md) Токены и пакеты тем: семантические токены, пакеты brand и ops, переключатель темы, тест контраста | E21 | L4 | `SA-UI-Design` | M | — | T-007 |
+| [T-261](T-261-sverka-drejfa-statusy-kartochek-agents-md-3-prot.md) Сверка дрейфа: статусы карточек, AGENTS.md §3 против фактических каталогов, docs/adr, рабочее время 09–21 против 09–18 | E12 | L1 | `SA-Docs` | S | да | — |
+| [T-263](T-263-lokalnye-shrifty-inter-i-jetbrains-mono-ofl-fajl.md) Локальные шрифты Inter и JetBrains Mono (OFL): файлы в public/fonts, @font-face, проверка test_no_cdn | E1 | L4 | `SA-UI-Workspace` | S | да | T-007 |
+
+### Волна 8 — v1.5 — ядро: сборщик следа, модель пути, поиск, экраны «Путь» и «След», классификация направлений, красные слова, API кабинета, ВСП и CSI, циркадный движок, режимы интерфейса
+
+| Карточка | Эпик | Слой | Субагент | Оценка | Демо-мин. | Зависит от |
+|---|---|---|---|---|---|---|
+| [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md) Сборщик следа app/trace: каузальный обход, фазы до/объект/после, итог, ожидаемые шаги, свёртка веера; GET /api/trace | E22 | L3 | `SA-Trace` | L | да | T-223, T-213, T-214, T-186, T-216, T-176 |
+| [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md) Модель «Путь обращения»: стадии, дорожка клиента, итог; GET /api/journey/{ref} и /api/journey/latest, заметки ведущего | E22 | L3 | `SA-Trace` | M | да | T-224, T-062, T-174 |
+| [T-226](T-226-ekran-put-obrascheniya-journey-ref-stepper-iz-8.md) Экран «Путь обращения» /journey/:ref: степпер из 8 стадий, дорожки «внутри банка» и «глазами клиента» | E22 | L4 | `SA-UI-Trace` | L | да | T-225, T-086, T-106 |
+| [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md) Универсальный поиск app/search: распознавание идентификаторов, подсказки клиента, полнотекстовый поиск; GET /api/search | E23 | L3 | `SA-Trace` | M | да | T-223, T-005 |
+| [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md) Глобальный поиск в интерфейсе: строка в шапке, Ctrl+K, чипы типов, результаты по группам, <IdLink> для всех идентификаторов | E23 | L4 | `SA-UI-Trace` | M | да | T-230, T-086 |
+| [T-232](T-232-ekran-sled-trace-kind-ref-do-obekt-posle-itog-oz.md) Экран «След» /trace/:kind/:ref: «ДО / ОБЪЕКТ / ПОСЛЕ», итог, ожидаемые шаги, фильтры, режимы «Колонки» и «Дорожки» | E23 | L4 | `SA-UI-Trace` | L | да | T-224, T-231 |
+| [T-238](T-238-klassifikaciya-po-napravleniyu-i-urovnyu-signala.md) Классификация по направлению и уровню сигнала: product_line, signal_level, промпт vN, набор product_lines_v1 | E19 | L3 | `SA-Prompts` | M | — | T-060, T-237, T-236 |
+| [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md) Красные слова и route_to_product_team: data/red_words.yaml, предобработка нормализатора, фасад-инструмент, красная полоса (данные) | E19 | L3 | `SA-Agent` | M | — | T-213, T-207, T-237 |
+| [T-240](T-240-korpus-product-lines-v1-i-istoriya-teksty-po-15.md) Корпус product_lines_v1 и история: тексты по 15 направлениям, импорт отзывов с source_url, product_signal_history (12 мес.), справочник площадок | E19 | L2 | `SA-Signals` | M | — | T-236, T-237, T-019 |
+| [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md) API кабинета менеджера: /api/cabinet/overview|signals, пресеты ролей X-Cx-Role, режимы soft/strict, /api/roles | E19 | L3 | `SA-Analytics` | L | — | T-237, T-132, T-238 |
+| [T-245](T-245-spravochnik-vsp-v2-rasshirenie-branches-generato.md) Справочник ВСП v2: расширение branches, генератор сети ≈ 240 ВСП, BranchDirectoryProvider (synthetic | snapshot_file), история сети | E20 | L2 | `SA-Clients` | M | — | T-237 |
+| [T-246](T-246-priem-csi-post-api-ingest-csi-json-xlsx-csi-resp.md) Приём CSI: POST /api/ingest/csi (JSON/XLSX), csi_responses, канал csi_survey, make import-csi | E20 | L3 | `SA-Analytics` | M | — | T-237, T-207 |
+| [T-247](T-247-korpus-csi-csi-v1-300-zhalob-csi-visits-agg-znam.md) Корпус CSI csi_v1: ≈ 300 жалоб, csi_visits_agg (знаменатели), XLSX и JSON образцы, заданные корреляции | E20 | L2 | `SA-Signals` | M | — | T-245, T-246 |
+| [T-252](T-252-cirkadnyj-dvizhok-6-faz-istochniki-sim-real-fixe.md) Циркадный движок: 6 фаз, источники sim/real/fixed, локальный расчёт солнца, 8-секундные переходы, без «вспышки» | E21 | L4 | `SA-UI-Design` | M | — | T-251 |
+| [T-253](T-253-rezhimy-tihij-kikubari-i-situacionnyj-centr-prav.md) Режимы «Тихий» (кикубари) и «Ситуационный центр»: правила анимаций, полоса приоритетов, undo/confirm, тест ≤ 9 блоков | E21 | L4 | `SA-UI-Design` | M | — | T-251, T-089 |
+| [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md) Индекс CX и ряды потока: GET /api/metrics/cx-index, микс каналов, поток за 24 часа, веса в settings | E21 | L3 | `SA-Analytics` | S | — | T-132 |
+
+### Волна 9 — v1.5 — достройка и приёмка: режимы пути, дорожка клиента, карточки объектов, граф, кабинет, CSI, слой ВСП, каркас v2, «Обзор», сценарии 12–15, i18n, документация
+
+| Карточка | Эпик | Слой | Субагент | Оценка | Демо-мин. | Зависит от |
+|---|---|---|---|---|---|---|
+| [T-227](T-227-put-obrascheniya-rezhimy-sledit-povtor-veduschij.md) «Путь обращения»: режимы «Следить», «Повтор», «Ведущий», входы «Показать путь» | E22 | L4 | `SA-UI-Trace` | L | да | T-226, T-065 |
+| [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md) «Путь обращения»: дорожка «Глазами клиента» — эмуляция канала, что клиент увидел и когда | E22 | L4 | `SA-UI-Trace` | M | да | T-226, T-177, T-062 |
+| [T-229](T-229-scenarij-12-put-obrascheniya-tri-traektorii-yaml.md) Сценарий 12 «Путь обращения: три траектории»: YAML, кассеты, автотесты, блок E демо-скрипта | E22 | L5 | `SA-QA` | M | да | T-227, T-228, T-198 |
+| [T-233](T-233-sled-adaptery-kartochki-obekta-i-rendery-sobytij.md) «След»: адаптеры карточки объекта и рендеры событий по типам (12 видов), маски ПДн | E23 | L4 | `SA-UI-Trace` | M | да | T-232 |
+| [T-234](T-234-sled-rezhim-graf-uzly-po-tipam-podsvetka-puti-do.md) «След»: режим «Граф» — узлы по типам, подсветка пути до итога, правая панель-аккордеон | E23 | L4 | `SA-UI-Trace` | M | — | T-232, T-107 |
+| [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md) Сценарий 13 «Поиск и след»: YAML, e2e по всем типам идентификаторов, автотесты «только чтение» | E23 | L5 | `SA-QA` | M | да | T-230, T-232, T-233 |
+| [T-242](T-242-ekran-kabinet-menedzhera-produkta-cabinet-kpi-ka.md) Экран «Кабинет менеджера продукта» /cabinet: KPI, карта направления, лента, динамика и источники, красная полоса, SLA-метка | E19 | L4 | `SA-UI-Analytics` | L | — | T-241, T-088, T-093, T-253 |
+| [T-243](T-243-kalkulyator-poter-30-stavok-format-mln-mlrd-pred.md) Калькулятор потерь: 30 ставок, формат млн/млрд ₽, предзаполнение ставки направления, интеграция с картой региона | E19 | L4 | `SA-UI-Analytics` | S | — | T-133, T-242 |
+| [T-244](T-244-otchet-po-napravleniyu-dlya-cheloveka-get-api-ca.md) Отчёт по направлению «для человека»: GET /api/cabinet/report (json|xlsx), выводы на русском без LLM, печатная форма A4 для PDF | E19 | L3 | `SA-Analytics` | M | — | T-241 |
+| [T-248](T-248-api-analitiki-csi-i-vsp-korrelyacii-scatter-dolz.md) API аналитики CSI и ВСП: корреляции, scatter, должности, box plot стажа, топ-10 ВСП, тепловая карта, «ВСП vs Сигналы» | E20 | L3 | `SA-Analytics` | L | — | T-245, T-246, T-247 |
+| [T-249](T-249-ekran-csi-csi-tablica-zhalob-scatter-bar-po-dolz.md) Экран CSI /csi: таблица жалоб, scatter, bar по должностям, box plot, корреляции, тепловая карта, топ-10 ВСП | E20 | L4 | `SA-UI-Analytics` | L | — | T-248, T-251 |
+| [T-250](T-250-karta-sloj-vsp-markery-po-tipam-klasterizaciya-k.md) Карта: слой ВСП (маркеры по типам, кластеризация, карточка), тихая метка закрытых, блок «ВСП vs Сигналы» | E20 | L4 | `SA-Map` | L | — | T-248, T-218, T-245 |
+| [T-254](T-254-karkas-v2-bokovaya-navigaciya-sostoyanie-sistemy.md) Каркас v2: боковая навигация, состояние системы, полоса приоритетов, горячие клавиши, флаг ui.layout, перенаправления маршрутов | E21 | L4 | `SA-UI-Workspace` | L | — | T-251, T-253 |
+| [T-255](T-255-ekran-obzor-overview-kpi-polosa-indeks-cx-miks-k.md) Экран «Обзор» /overview: KPI-полоса, индекс CX, микс каналов, поток, решение агента, лента, очередь решений, экономика, сводка смены | E21 | L4 | `SA-UI-Workspace` | L | — | T-254, T-256, T-107 |
+| [T-257](T-257-modal-novyj-signal-vyravnivanie-s-prototipom-2-4.md) Модал «Новый сигнал»: выравнивание с прототипом 2.4 и кнопка «Показать путь» | E21 | L4 | `SA-UI-Workspace` | S | да | T-226 |
+| [T-258](T-258-vizualnaya-regressiya-i-a11y-pakety-tem-rezhimy.md) Визуальная регрессия и a11y: пакеты тем × режимы × фазы на ключевых экранах, axe, проверка ≤ 9 блоков | E21 | L5 | `SA-QA` | M | — | T-252, T-253, T-254 |
+| [T-259](T-259-lokalizaciya-v1-5-ru-en-dlya-ekranov-puti-sleda.md) Локализация v1.5: ru/en для экранов пути, следа, кабинета, CSI, обзора; подписи enum; проверка полноты | E13 | L1 | `SA-i18n` | S | — | T-226, T-232, T-242, T-249, T-254 |
+| [T-260](T-260-dokumentaciya-v1-5-demo-skript-bloki-e-f-rukovod.md) Документация v1.5: демо-скрипт (блоки E–F), руководство, ADR-0008…0011, лицензии, обновление README и CHANGELOG | E12 | L1 | `SA-Docs` | S | — | T-229, T-235, T-153 |
+| [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md) Сценарии 14 «Кабинет менеджера: красные слова и отчёт» и 15 «CSI и ВСП»: YAML, кассеты, автотесты, блок F демо-скрипта | E19 | L5 | `SA-QA` | M | — | T-242, T-249, T-250, T-239 |
+
 ## По слоям (кто ведёт — docs/TEAM-SPLIT.md)
 
 | Слой | Карточек | Из них в демо-минимуме | Объём (чел.-дни по оценкам) | Объём демо-минимума | Пик по волнам |
 |---|---|---|---|---|---|
-| `L1` Базис | 36 | 29 | 46 | 39 | в1: 14, в2: 12, в3: 2, в4: 1, в5: 6, в6: 1 |
-| `L2` Симулятор и данные | 32 | 24 | 62 | 47 | в2: 17, в3: 10, в4: 5 |
-| `L3` Агент и контуры | 42 | 30 | 74 | 58 | в2: 8, в3: 22, в4: 10, в5: 2 |
-| `L4` Фронт | 30 | 24 | 54 | 47 | в1: 1, в2: 2, в3: 5, в4: 20, в5: 2 |
-| `L5` Качество | 11 | 5 | 14 | 8 | в1: 1, в4: 4, в5: 6 |
+| `L1` Базис | 42 | 31 | 52 | 41 | в1: 14, в2: 12, в3: 2, в4: 1, в5: 6, в6: 1, в7: 4, в9: 2 |
+| `L2` Симулятор и данные | 35 | 24 | 66 | 47 | в2: 17, в3: 10, в4: 5, в8: 3 |
+| `L3` Агент и контуры | 52 | 33 | 94 | 64 | в2: 8, в3: 22, в4: 10, в5: 2, в8: 8, в9: 2 |
+| `L4` Фронт | 48 | 32 | 95 | 64 | в1: 1, в2: 2, в3: 5, в4: 20, в5: 2, в7: 2, в8: 5, в9: 11 |
+| `L5` Качество | 15 | 7 | 20 | 10 | в1: 1, в4: 4, в5: 6, в9: 4 |
 
 ### `L1` Базис
 
@@ -203,12 +259,15 @@
 - Волна 4: [T-198](T-198-kassety-scenariev-8-9-i-avtotesty-na-nih-procedu.md)
 - Волна 5: [T-151](T-151-readme-i-demo-skript.md), [T-152](T-152-licenses-md-i-istochniki-dannyh.md) (откл.), [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md) (откл.), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md) (откл.), [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md) (откл.), [T-204](T-204-demo-skript-7-8-i-3-5-minut-readme-razdelov-zhiv.md) (откл.)
 - Волна 6: [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md) (откл.)
+- Волна 7: [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md), [T-236](T-236-spravochnik-product-lines-15-napravlenij-data-pr.md) (откл.), [T-237](T-237-kontrakty-kabineta-csi-i-vsp-migraciya-0005-open.md) (откл.), [T-261](T-261-sverka-drejfa-statusy-kartochek-agents-md-3-prot.md)
+- Волна 9: [T-259](T-259-lokalizaciya-v1-5-ru-en-dlya-ekranov-puti-sleda.md) (откл.), [T-260](T-260-dokumentaciya-v1-5-demo-skript-bloki-e-f-rukovod.md) (откл.)
 
 ### `L2` Симулятор и данные
 
 - Волна 2: [T-016](T-016-generator-klientov-profili-lite-demo-stress.md), [T-017](T-017-produkty-klientov-i-14-dnej-operacij.md), [T-018](T-018-predystoriya-sboev-i-logi-sistem.md), [T-019](T-019-biblioteka-tekstov-signalov.md), [T-031](T-031-simclock-sim-state-i-upravlenie-simulyaciej.md), [T-032](T-032-shina-sobytij-simulyatora.md), [T-033](T-033-generator-operacij-v-realnom-vremeni.md), [T-034](T-034-generator-sboev-i-vosstanovlenij.md), [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-161](T-161-parametricheskaya-model-sostoyanij-klienta.md), [T-171](T-171-mock-abs-scheta-tarify-provodki-sid-i-invariant.md), [T-172](T-172-rules-engine-business-rules-dsl-uslovij-uzel-che.md), [T-178](T-178-korpus-publichnyh-otzyvov-i-nabor-reviews-v1.md) (откл.), [T-180](T-180-rasshirenie-zapuskov-avtosozdanie-run-kind-live.md), [T-190](T-190-dialogi-otdeleniya-nabor-misselling-v1-predzapis.md) (откл.), [T-219](T-219-korpusa-dtz-transcripts-v1-20-transkriptov-json.md)
 - Волна 3: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-035](T-035-generator-oshibok-klientov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-037](T-037-sla-dvizhok.md), [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-162](T-162-detekciya-snizheniya-aktivnosti-molchalivyj-uhod.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-209](T-209-adaptery-istochnikov-ingest-sources-rest-polling.md) (откл.)
 - Волна 4: [T-038](T-038-dvizhok-scenariev-yaml-i-7-demo-scenariev.md) (откл.), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md) (откл.), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md) (откл.), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md) (откл.), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md) (откл.)
+- Волна 8: [T-240](T-240-korpus-product-lines-v1-i-istoriya-teksty-po-15.md) (откл.), [T-245](T-245-spravochnik-vsp-v2-rasshirenie-branches-generato.md) (откл.), [T-247](T-247-korpus-csi-csi-v1-300-zhalob-csi-visits-agg-znam.md) (откл.)
 
 ### `L3` Агент и контуры
 
@@ -216,6 +275,8 @@
 - Волна 3: [T-041](T-041-preryvanie-i-vozobnovlenie-emulyacii-vosstanovle.md), [T-059](T-059-uzly-ingest-normalize-identify-client-gather-con.md), [T-060](T-060-uzel-classify-i-prompty-v1.md), [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-062](T-062-uzel-act-kommunikacii-klientu-i-komandam.md), [T-065](T-065-trassirovka-zapuskov-i-striming-tokenov.md), [T-077](T-077-uzel-wait-human-ochered-hitl-i-vozvrat-resheniya.md), [T-129](T-129-benchmark-ranner-i-metriki.md), [T-173](T-173-matching-klienta-po-kosvennym-dannym-match-clien.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-175](T-175-instrumenty-refund-fee-find-affected-clients-get.md), [T-176](T-176-priemnik-otzyvov-external-posts-replies-instrume.md), [T-183](T-183-audiosessii-repliki-i-tri-rezhima-razdeleniya-sp.md), [T-185](T-185-llm-detektor-missellinga-lightning-podtverzhdeni.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md), [T-196](T-196-avtomaticheskij-failover-po-tajmautu-i-oshibkam.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-211](T-211-detektor-skrytogo-negativa-few-shot-prompt-hidde.md) (откл.), [T-212](T-212-problem-summary-problem-severity-suggested-team.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-215](T-215-taksonomiya-krasnyh-fraz-semejstvo-conduct-ruden.md), [T-216](T-216-paketnyj-analiz-transkripta-pacing-batch-transcr.md)
 - Волна 4: [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md) (откл.), [T-063](T-063-uzly-followup-monitor-verify-close-gift-i-otlozh.md) (откл.), [T-064](T-064-deduplikaciya-i-massovye-incidenty.md) (откл.), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md) (откл.), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md) (откл.), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md) (откл.), [T-130](T-130-ui-benchmarkov.md) (откл.), [T-189](T-189-alert-o-missellinge-v-telegram-rukovoditelyu.md) (откл.), [T-191](T-191-benchmark-detektora-missellinga-i-stt-ranner-met.md) (откл.)
 - Волна 5: [T-122](T-122-qr-kod-bota-zhyuri-rezhim-i-instrukcii-dlya-fina.md) (откл.), [T-193](T-193-opcionalnye-stt-provajdery-browser-web-speech-sa.md) (откл.)
+- Волна 8: [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md), [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md), [T-238](T-238-klassifikaciya-po-napravleniyu-i-urovnyu-signala.md) (откл.), [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md) (откл.), [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md) (откл.), [T-246](T-246-priem-csi-post-api-ingest-csi-json-xlsx-csi-resp.md) (откл.), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md) (откл.)
+- Волна 9: [T-244](T-244-otchet-po-napravleniyu-dlya-cheloveka-get-api-ca.md) (откл.), [T-248](T-248-api-analitiki-csi-i-vsp-korrelyacii-scatter-dolz.md) (откл.)
 
 ### `L4` Фронт
 
@@ -224,16 +285,20 @@
 - Волна 3: [T-087](T-087-lenta-signalov.md), [T-088](T-088-teplovaya-karta-rf-s-drill-down-do-gorodov.md), [T-089](T-089-doska-i-tablica-incidentov-s-indikatorami-sla.md), [T-091](T-091-klient-360.md), [T-182](T-182-zahvat-audio-v-brauzere-getusermedia-audioworkle.md)
 - Волна 4: [T-079](T-079-ui-ocheredi-hitl-i-kartochki-resheniya.md) (откл.), [T-080](T-080-ui-zadach-i-podarkov.md) (откл.), [T-090](T-090-kartochka-incidenta.md), [T-092](T-092-vkladki-otlozhennye-komandy-uvedomleniya.md) (откл.), [T-093](T-093-dashbord-kpi-i-blok-ekonomiki.md) (откл.), [T-094](T-094-vkladka-zapuski-istoriya-sravnenie-sbros-k-basel.md), [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-107](T-107-graf-langgraph-s-podsvetkoj-uzla-i-graf-suschnos.md), [T-108](T-108-lenta-izmenenij-bd-schetchiki-tablic-prosmotr-st.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-187](T-187-ekran-compliance-split-screen-transkribacii-sche.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md), [T-195](T-195-menyu-demonstratora-skrytaya-knopka-statusy-prov.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-217](T-217-ui-vkladka-transkripty-na-compliance-zagruzka-sp.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md)
 - Волна 5: [T-109](T-109-panel-ii-protiv-pravil.md) (откл.), [T-110](T-110-dialog-agent-dvojnik-i-sostoyanie-klienta.md) (откл.)
+- Волна 7: [T-251](T-251-tokeny-i-pakety-tem-semanticheskie-tokeny-pakety.md) (откл.), [T-263](T-263-lokalnye-shrifty-inter-i-jetbrains-mono-ofl-fajl.md)
+- Волна 8: [T-226](T-226-ekran-put-obrascheniya-journey-ref-stepper-iz-8.md), [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md), [T-232](T-232-ekran-sled-trace-kind-ref-do-obekt-posle-itog-oz.md), [T-252](T-252-cirkadnyj-dvizhok-6-faz-istochniki-sim-real-fixe.md) (откл.), [T-253](T-253-rezhimy-tihij-kikubari-i-situacionnyj-centr-prav.md) (откл.)
+- Волна 9: [T-227](T-227-put-obrascheniya-rezhimy-sledit-povtor-veduschij.md), [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md), [T-233](T-233-sled-adaptery-kartochki-obekta-i-rendery-sobytij.md), [T-234](T-234-sled-rezhim-graf-uzly-po-tipam-podsvetka-puti-do.md) (откл.), [T-242](T-242-ekran-kabinet-menedzhera-produkta-cabinet-kpi-ka.md) (откл.), [T-243](T-243-kalkulyator-poter-30-stavok-format-mln-mlrd-pred.md) (откл.), [T-249](T-249-ekran-csi-csi-tablica-zhalob-scatter-bar-po-dolz.md) (откл.), [T-250](T-250-karta-sloj-vsp-markery-po-tipam-klasterizaciya-k.md) (откл.), [T-254](T-254-karkas-v2-bokovaya-navigaciya-sostoyanie-sistemy.md) (откл.), [T-255](T-255-ekran-obzor-overview-kpi-polosa-indeks-cx-miks-k.md) (откл.), [T-257](T-257-modal-novyj-signal-vyravnivanie-s-prototipom-2-4.md)
 
 ### `L5` Качество
 
 - Волна 1: [T-141](T-141-testovaya-infrastruktura-backend.md)
 - Волна 4: [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md) (откл.)
 - Волна 5: [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md) (откл.), [T-144](T-144-proverka-proizvoditelnosti-profilya-demo.md) (откл.), [T-145](T-145-ci-konvejer-polnogo-cikla.md) (откл.), [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md) (откл.), [T-167](T-167-statisticheskie-testy-modeli-povedeniya.md) (откл.)
+- Волна 9: [T-229](T-229-scenarij-12-put-obrascheniya-tri-traektorii-yaml.md), [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md), [T-258](T-258-vizualnaya-regressiya-i-a11y-pakety-tem-rezhimy.md) (откл.), [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md) (откл.)
 
 ## По эпикам
 
-- **E1 Каркас, БД, установка** — 12 карточек: [T-001](T-001-skelet-repozitoriya-makefile-env-example-pre-com.md), [T-002](T-002-docker-compose-i-dockerfile-y-postgres-backend-f.md), [T-003](T-003-install-sh-ustanovka-odnoj-komandoj.md), [T-004](T-004-karkas-fastapi-konfig-logirovanie-oshibki-health.md), [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-006](T-006-sync-contracts-generaciya-enums-pydantic-shem-ts.md), [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md), [T-009](T-009-api-mastera-nastrojki-i-proverok-podklyucheniya.md), [T-010](T-010-ui-mastera-nastrojki-9-shagov-i-ekran-nastrojki.md), [T-199](T-199-migraciya-0002-primenenie-modeli-sqlalchemy-i-pe.md), [T-200](T-200-openapi-1-3-i-json-shemy-v-kode-routery-zaglushk.md). Субагенты: `SA-DB`, `SA-Infra`, `SA-UI-Workspace`.
+- **E1 Каркас, БД, установка** — 13 карточек: [T-001](T-001-skelet-repozitoriya-makefile-env-example-pre-com.md), [T-002](T-002-docker-compose-i-dockerfile-y-postgres-backend-f.md), [T-003](T-003-install-sh-ustanovka-odnoj-komandoj.md), [T-004](T-004-karkas-fastapi-konfig-logirovanie-oshibki-health.md), [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-006](T-006-sync-contracts-generaciya-enums-pydantic-shem-ts.md), [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md), [T-009](T-009-api-mastera-nastrojki-i-proverok-podklyucheniya.md), [T-010](T-010-ui-mastera-nastrojki-9-shagov-i-ekran-nastrojki.md), [T-199](T-199-migraciya-0002-primenenie-modeli-sqlalchemy-i-pe.md), [T-200](T-200-openapi-1-3-i-json-shemy-v-kode-routery-zaglushk.md), [T-263](T-263-lokalnye-shrifty-inter-i-jetbrains-mono-ofl-fajl.md). Субагенты: `SA-DB`, `SA-Infra`, `SA-UI-Workspace`.
 - **E2 Справочники и генераторы данных** — 12 карточек: [T-011](T-011-spravochnik-subektov-i-gorodov-rf-svg-karta.md), [T-012](T-012-segmenty-psihotipy-doli-psihotipov-po-segmentam.md), [T-013](T-013-produkty-sistemy-komandy-kanaly.md), [T-014](T-014-kody-oshibok-tipy-signalov-pravila-marshrutizaci.md), [T-015](T-015-shablony-uvedomlenij-spravochnik-podarkov-stavki.md), [T-016](T-016-generator-klientov-profili-lite-demo-stress.md), [T-017](T-017-produkty-klientov-i-14-dnej-operacij.md), [T-018](T-018-predystoriya-sboev-i-logi-sistem.md), [T-019](T-019-biblioteka-tekstov-signalov.md), [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-021](T-021-zolotoj-nabor-benchmarka-golden-v1-i-lite-v1.md), [T-022](T-022-testy-dannyh-no-pii-pokrytie-idempotentnost-proi.md). Субагенты: `SA-Clients`, `SA-DB`, `SA-Logs`, `SA-Refs`, `SA-Signals`.
 - **E3 Симулятор банка, команды, SLA** — 12 карточек: [T-031](T-031-simclock-sim-state-i-upravlenie-simulyaciej.md), [T-032](T-032-shina-sobytij-simulyatora.md), [T-033](T-033-generator-operacij-v-realnom-vremeni.md), [T-034](T-034-generator-sboev-i-vosstanovlenij.md), [T-035](T-035-generator-oshibok-klientov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-037](T-037-sla-dvizhok.md), [T-038](T-038-dvizhok-scenariev-yaml-i-7-demo-scenariev.md), [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md), [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md), [T-041](T-041-preryvanie-i-vozobnovlenie-emulyacii-vosstanovle.md), [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md). Субагенты: `SA-Agent`, `SA-Economics`, `SA-Logs`, `SA-Scenarios`, `SA-Teams`.
 - **E4 LLM-слой** — 6 карточек: [T-046](T-046-interfejs-llm-provajdera-i-strukturirovannyj-vyv.md), [T-047](T-047-gigachat-provajder-s-pulom-klyuchej-i-uchetom-to.md), [T-048](T-048-openai-sovmestimyj-provajder-openrouter-i-lokaln.md), [T-049](T-049-mock-provajder-pravila-shablony-determinizm.md), [T-050](T-050-rate-limiter-byudzhety-fallback-i-maskirovanie-s.md), [T-051](T-051-api-i-ui-profilej-llm-i-klyuchej.md). Субагенты: `SA-LLM`.
@@ -244,13 +309,18 @@
 - **E9 Лендинг, трекинг, Telegram-бот** — 5 карточек: [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md), [T-122](T-122-qr-kod-bota-zhyuri-rezhim-i-instrukcii-dlya-fina.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md). Субагенты: `SA-Landing`, `SA-TgBot`, `SA-UI-Compliance`.
 - **E10 Бенчмарки и экономика** — 6 карточек: [T-129](T-129-benchmark-ranner-i-metriki.md), [T-130](T-130-ui-benchmarkov.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md). Субагенты: `SA-Bench`, `SA-Economics`.
 - **E11 Сценарии и тесты** — 7 карточек: [T-141](T-141-testovaya-infrastruktura-backend.md), [T-142](T-142-avtotesty-7-demo-scenariev.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-144](T-144-proverka-proizvoditelnosti-profilya-demo.md), [T-145](T-145-ci-konvejer-polnogo-cikla.md), [T-146](T-146-testy-izolyacii-zapuskov-i-vozobnovleniya.md), [T-222](T-222-logirovanie-i-reporting-kachestva-jsonl-zhurnal.md). Субагенты: `SA-QA`.
-- **E12 Документация и защита** — 6 карточек: [T-151](T-151-readme-i-demo-skript.md), [T-152](T-152-licenses-md-i-istochniki-dannyh.md), [T-153](T-153-nachalnyj-nabor-adr.md), [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md), [T-204](T-204-demo-skript-7-8-i-3-5-minut-readme-razdelov-zhiv.md), [T-205](T-205-agents-md-v1-3-pravila-14-15-podsistemy-6-7-6-9.md). Субагенты: `SA-Docs`.
-- **E13 Локализация** — 3 карточек: [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md). Субагенты: `SA-i18n`.
+- **E12 Документация и защита** — 8 карточек: [T-151](T-151-readme-i-demo-skript.md), [T-152](T-152-licenses-md-i-istochniki-dannyh.md), [T-153](T-153-nachalnyj-nabor-adr.md), [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md), [T-204](T-204-demo-skript-7-8-i-3-5-minut-readme-razdelov-zhiv.md), [T-205](T-205-agents-md-v1-3-pravila-14-15-podsistemy-6-7-6-9.md), [T-260](T-260-dokumentaciya-v1-5-demo-skript-bloki-e-f-rukovod.md), [T-261](T-261-sverka-drejfa-statusy-kartochek-agents-md-3-prot.md). Субагенты: `SA-Docs`.
+- **E13 Локализация** — 4 карточек: [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md), [T-259](T-259-lokalizaciya-v1-5-ru-en-dlya-ekranov-puti-sleda.md). Субагенты: `SA-i18n`.
 - **E14 Поведение клиентов и калькулятор «Факт»** — 7 карточек: [T-161](T-161-parametricheskaya-model-sostoyanij-klienta.md), [T-162](T-162-detekciya-snizheniya-aktivnosti-molchalivyj-uhod.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md), [T-167](T-167-statisticheskie-testy-modeli-povedeniya.md). Субагенты: `SA-Behavior`, `SA-Economics`, `SA-QA`.
 - **E15 Внешние площадки и автономный возврат [BRD]** — 10 карточек: [T-171](T-171-mock-abs-scheta-tarify-provodki-sid-i-invariant.md), [T-172](T-172-rules-engine-business-rules-dsl-uslovij-uzel-che.md), [T-173](T-173-matching-klienta-po-kosvennym-dannym-match-clien.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-175](T-175-instrumenty-refund-fee-find-affected-clients-get.md), [T-176](T-176-priemnik-otzyvov-external-posts-replies-instrume.md), [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-178](T-178-korpus-publichnyh-otzyvov-i-nabor-reviews-v1.md), [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-180](T-180-rasshirenie-zapuskov-avtosozdanie-run-kind-live.md). Субагенты: `SA-ABS`, `SA-Agent`, `SA-QA`, `SA-Signals`, `SA-Teams`, `SA-UI-Feed`.
 - **E16 Аудиомониторинг отделения и мисселлинг [BRD]** — 13 карточек: [T-181](T-181-sttprovider-i-vosk-vorker-s-modelyu-v-repozitori.md), [T-182](T-182-zahvat-audio-v-brauzere-getusermedia-audioworkle.md), [T-183](T-183-audiosessii-repliki-i-tri-rezhima-razdeleniya-sp.md), [T-184](T-184-taksonomiya-missellinga-i-rule-detektor-predvari.md), [T-185](T-185-llm-detektor-missellinga-lightning-podtverzhdeni.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md), [T-187](T-187-ekran-compliance-split-screen-transkribacii-sche.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md), [T-189](T-189-alert-o-missellinge-v-telegram-rukovoditelyu.md), [T-190](T-190-dialogi-otdeleniya-nabor-misselling-v1-predzapis.md), [T-191](T-191-benchmark-detektora-missellinga-i-stt-ranner-met.md), [T-192](T-192-scenarij-9-misselling-v-otdelenii-yaml-avtotest.md), [T-193](T-193-opcionalnye-stt-provajdery-browser-web-speech-sa.md). Субагенты: `SA-Bench`, `SA-Compliance`, `SA-QA`, `SA-STT`, `SA-Signals`, `SA-TgBot`, `SA-UI-Compliance`.
 - **E17 Режим подстраховки демо [BRD]** — 5 карточек: [T-194](T-194-provajder-replay-kassety-zapisannyh-otvetov-mode.md), [T-195](T-195-menyu-demonstratora-skrytaya-knopka-statusy-prov.md), [T-196](T-196-avtomaticheskij-failover-po-tajmautu-i-oshibkam.md), [T-197](T-197-install-sh-i-compose-flagi-no-stt-stt-model-reco.md), [T-198](T-198-kassety-scenariev-8-9-i-avtotesty-na-nih-procedu.md). Субагенты: `SA-Agent`, `SA-Infra`, `SA-LLM`, `SA-UI-Workspace`.
 - **E18 Приём транскриптов, роутер-инструменты, «красные фразы», зоны карты [ДТЗ]** — 15 карточек: [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md), [T-208](T-208-priem-transkriptov-json-txt-parsery-post-api-ing.md), [T-209](T-209-adaptery-istochnikov-ingest-sources-rest-polling.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-211](T-211-detektor-skrytogo-negativa-few-shot-prompt-hidde.md), [T-212](T-212-problem-summary-problem-severity-suggested-team.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-215](T-215-taksonomiya-krasnyh-fraz-semejstvo-conduct-ruden.md), [T-216](T-216-paketnyj-analiz-transkripta-pacing-batch-transcr.md), [T-217](T-217-ui-vkladka-transkripty-na-compliance-zagruzka-sp.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-219](T-219-korpusa-dtz-transcripts-v1-20-transkriptov-json.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-221](T-221-migraciya-0003-i-openapi-1-4-v-kode-modeli-sqlal.md). Субагенты: `SA-Agent`, `SA-Compliance`, `SA-DB`, `SA-Map`, `SA-Prompts`, `SA-QA`, `SA-Signals`, `SA-Teams`, `SA-UI-Compliance`, `SA-UI-Workspace`.
+- **E19 Кабинет менеджера продукта и продуктовый разрез [ЕТЗ]** — 10 карточек: [T-236](T-236-spravochnik-product-lines-15-napravlenij-data-pr.md), [T-237](T-237-kontrakty-kabineta-csi-i-vsp-migraciya-0005-open.md), [T-238](T-238-klassifikaciya-po-napravleniyu-i-urovnyu-signala.md), [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md), [T-240](T-240-korpus-product-lines-v1-i-istoriya-teksty-po-15.md), [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md), [T-242](T-242-ekran-kabinet-menedzhera-produkta-cabinet-kpi-ka.md), [T-243](T-243-kalkulyator-poter-30-stavok-format-mln-mlrd-pred.md), [T-244](T-244-otchet-po-napravleniyu-dlya-cheloveka-get-api-ca.md), [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md). Субагенты: `SA-Agent`, `SA-Analytics`, `SA-DB`, `SA-Prompts`, `SA-QA`, `SA-Refs`, `SA-Signals`, `SA-UI-Analytics`.
+- **E20 CSI-аналитика и сеть ВСП [ЕТЗ]** — 6 карточек: [T-245](T-245-spravochnik-vsp-v2-rasshirenie-branches-generato.md), [T-246](T-246-priem-csi-post-api-ingest-csi-json-xlsx-csi-resp.md), [T-247](T-247-korpus-csi-csi-v1-300-zhalob-csi-visits-agg-znam.md), [T-248](T-248-api-analitiki-csi-i-vsp-korrelyacii-scatter-dolz.md), [T-249](T-249-ekran-csi-csi-tablica-zhalob-scatter-bar-po-dolz.md), [T-250](T-250-karta-sloj-vsp-markery-po-tipam-klasterizaciya-k.md). Субагенты: `SA-Analytics`, `SA-Clients`, `SA-Map`, `SA-Signals`, `SA-UI-Analytics`.
+- **E21 Дизайн-система v2: темы, циркадный режим, «кикубари», каркас и «Обзор» [ПРОТО]** — 8 карточек: [T-251](T-251-tokeny-i-pakety-tem-semanticheskie-tokeny-pakety.md), [T-252](T-252-cirkadnyj-dvizhok-6-faz-istochniki-sim-real-fixe.md), [T-253](T-253-rezhimy-tihij-kikubari-i-situacionnyj-centr-prav.md), [T-254](T-254-karkas-v2-bokovaya-navigaciya-sostoyanie-sistemy.md), [T-255](T-255-ekran-obzor-overview-kpi-polosa-indeks-cx-miks-k.md), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md), [T-257](T-257-modal-novyj-signal-vyravnivanie-s-prototipom-2-4.md), [T-258](T-258-vizualnaya-regressiya-i-a11y-pakety-tem-rezhimy.md). Субагенты: `SA-Analytics`, `SA-QA`, `SA-UI-Design`, `SA-UI-Workspace`.
+- **E22 Сквозная демонстрация «Путь обращения» [АРХ]** — 7 карточек: [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md), [T-226](T-226-ekran-put-obrascheniya-journey-ref-stepper-iz-8.md), [T-227](T-227-put-obrascheniya-rezhimy-sledit-povtor-veduschij.md), [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md), [T-229](T-229-scenarij-12-put-obrascheniya-tri-traektorii-yaml.md). Субагенты: `SA-DB`, `SA-QA`, `SA-Trace`, `SA-UI-Trace`.
+- **E23 Поиск и след объекта [АРХ]** — 6 карточек: [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md), [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md), [T-232](T-232-ekran-sled-trace-kind-ref-do-obekt-posle-itog-oz.md), [T-233](T-233-sled-adaptery-kartochki-obekta-i-rendery-sobytij.md), [T-234](T-234-sled-rezhim-graf-uzly-po-tipam-podsvetka-puti-do.md), [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md). Субагенты: `SA-QA`, `SA-Trace`, `SA-UI-Trace`.
 
 ## Граф зависимостей (критический путь выделен порядком волн)
 
@@ -269,6 +339,7 @@ graph LR
     T010[T-010]
     T199[T-199]
     T200[T-200]
+    T263[T-263]
   end
   subgraph E2[E2 Справочники и генераторы данных]
     T011[T-011]
@@ -377,11 +448,14 @@ graph LR
     T154[T-154]
     T204[T-204]
     T205[T-205]
+    T260[T-260]
+    T261[T-261]
   end
   subgraph E13[E13 Локализация]
     T156[T-156]
     T157[T-157]
     T203[T-203]
+    T259[T-259]
   end
   subgraph E14[E14 Поведение клиентов и калькулятор «Факт»]
     T161[T-161]
@@ -442,6 +516,53 @@ graph LR
     T219[T-219]
     T220[T-220]
     T221[T-221]
+  end
+  subgraph E19[E19 Кабинет менеджера продукта и продуктовый разрез [ЕТЗ]]
+    T236[T-236]
+    T237[T-237]
+    T238[T-238]
+    T239[T-239]
+    T240[T-240]
+    T241[T-241]
+    T242[T-242]
+    T243[T-243]
+    T244[T-244]
+    T262[T-262]
+  end
+  subgraph E20[E20 CSI-аналитика и сеть ВСП [ЕТЗ]]
+    T245[T-245]
+    T246[T-246]
+    T247[T-247]
+    T248[T-248]
+    T249[T-249]
+    T250[T-250]
+  end
+  subgraph E21[E21 Дизайн-система v2: темы, циркадный режим, «кикубари», каркас и «Обзор» [ПРОТО]]
+    T251[T-251]
+    T252[T-252]
+    T253[T-253]
+    T254[T-254]
+    T255[T-255]
+    T256[T-256]
+    T257[T-257]
+    T258[T-258]
+  end
+  subgraph E22[E22 Сквозная демонстрация «Путь обращения» [АРХ]]
+    T223[T-223]
+    T224[T-224]
+    T225[T-225]
+    T226[T-226]
+    T227[T-227]
+    T228[T-228]
+    T229[T-229]
+  end
+  subgraph E23[E23 Поиск и след объекта [АРХ]]
+    T230[T-230]
+    T231[T-231]
+    T232[T-232]
+    T233[T-233]
+    T234[T-234]
+    T235[T-235]
   end
   T001 --> T002
   T002 --> T003
@@ -852,11 +973,110 @@ graph LR
   T200 --> T221
   T141 --> T222
   T142 --> T222
+  T199 --> T223
+  T200 --> T223
+  T221 --> T223
+  T223 --> T224
+  T213 --> T224
+  T214 --> T224
+  T186 --> T224
+  T216 --> T224
+  T176 --> T224
+  T224 --> T225
+  T062 --> T225
+  T174 --> T225
+  T225 --> T226
+  T086 --> T226
+  T106 --> T226
+  T226 --> T227
+  T065 --> T227
+  T226 --> T228
+  T177 --> T228
+  T062 --> T228
+  T227 --> T229
+  T228 --> T229
+  T198 --> T229
+  T223 --> T230
+  T005 --> T230
+  T230 --> T231
+  T086 --> T231
+  T224 --> T232
+  T231 --> T232
+  T232 --> T233
+  T232 --> T234
+  T107 --> T234
+  T230 --> T235
+  T232 --> T235
+  T233 --> T235
+  T013 --> T236
+  T015 --> T236
+  T221 --> T237
+  T223 --> T237
+  T236 --> T237
+  T060 --> T238
+  T237 --> T238
+  T236 --> T238
+  T213 --> T239
+  T207 --> T239
+  T237 --> T239
+  T236 --> T240
+  T237 --> T240
+  T019 --> T240
+  T237 --> T241
+  T132 --> T241
+  T238 --> T241
+  T241 --> T242
+  T088 --> T242
+  T093 --> T242
+  T253 --> T242
+  T133 --> T243
+  T242 --> T243
+  T241 --> T244
+  T237 --> T245
+  T237 --> T246
+  T207 --> T246
+  T245 --> T247
+  T246 --> T247
+  T245 --> T248
+  T246 --> T248
+  T247 --> T248
+  T248 --> T249
+  T251 --> T249
+  T248 --> T250
+  T218 --> T250
+  T245 --> T250
+  T007 --> T251
+  T251 --> T252
+  T251 --> T253
+  T089 --> T253
+  T251 --> T254
+  T253 --> T254
+  T254 --> T255
+  T256 --> T255
+  T107 --> T255
+  T132 --> T256
+  T226 --> T257
+  T252 --> T258
+  T253 --> T258
+  T254 --> T258
+  T226 --> T259
+  T232 --> T259
+  T242 --> T259
+  T249 --> T259
+  T254 --> T259
+  T229 --> T260
+  T235 --> T260
+  T153 --> T260
+  T242 --> T262
+  T249 --> T262
+  T250 --> T262
+  T239 --> T262
+  T007 --> T263
 ```
 
 ## Сводка
 
-- Всего карточек: 151; по оценкам: S — 36, M — 90, L — 25.
+- Всего карточек: 192; по оценкам: S — 44, M — 112, L — 36.
 - Критический путь (ядро): T-001 → T-005 → T-006 → T-046 → T-056 → T-057 → T-058 → T-061 → T-062 → T-063 → T-090 → T-142 → T-151.
 - Критический путь v1.3 (BRD-1): T-005 → T-199 → T-171 → T-172 → T-174 → T-176 → T-177 → T-179; (BRD-2): T-181 → T-183 → T-185 → T-186 → T-187 → T-192; подстраховка T-194 → T-195 → T-198 нужна до первой репетиции.
 - Демо-минимум (если времени не хватает): все карточки волн 1–3 (включая T-040 запуски и T-041 возобновление) плюс T-077, T-078, T-090, T-094, T-106, T-107, T-108, T-119, T-120, T-131, T-142, T-151. Бот (T-121/122), бенчмарк-UI (T-130), калькулятор «Факт» (T-166) и перф-тесты можно отложить без потери ключевого сценария.
@@ -865,3 +1085,6 @@ graph LR
 - Критический путь v1.4 (ДТЗ): T-199 → T-221 → T-207 → T-208 → T-210 → T-212 → T-213 → T-214; транскрипты: T-219 → T-215 → T-216 → T-217; карта: T-207 → T-218; замыкает T-220 (сценарии 10–11).
 - Демо-минимум v1.4 (ДТЗ): T-207, T-208, T-210, T-212, T-213, T-214, T-215, T-216, T-217, T-218, T-219, T-220, T-221. Отложить без потери показа можно: T-209 (polling — сценарий 11 тогда вводится через REST) и T-211 (скрытый негатив — тогда сарказм ловится только порогом negativity).
 - Карточки с пометкой [ДТЗ] (E18, T-207–T-221) добавлены в v1.4 по дополнительному ТЗ; обоснование — docs/TZ.md 0.6 и 20.6, docs/BRD-merge-analysis.md раздел «Дополнительное ТЗ».
+- Критические пути v1.5: «Путь обращения» T-223 → T-224 → T-225 → T-226 → T-227 → T-228 → T-229; поиск и след T-223 → T-230 → T-231 → T-232 → T-233 → T-235; кабинет T-236 → T-237 → T-238 → T-241 → T-242; CSI и ВСП T-237 → T-245 → T-246 → T-247 → T-248 → T-249 → T-250; дизайн T-251 → T-253 → T-254 → T-255; замыкает T-260.
+- Демо-минимум v1.5 (E22, E23 без режима «Граф», плюс модал, сверка дрейфа и локальные шрифты): T-223–T-233, T-235, T-257, T-261, T-263. Отложить без потери показа цикла «сигнал → решение → сообщение клиенту» и поиска можно: T-234, всё E19 (кроме T-257 в E21), E20, T-251–T-256, T-258–T-260, T-262.
+- Карточки с пометкой [ЕТЗ], [ПРОТО], [АРХ] (E19–E23, T-223–T-263) добавлены в v1.5 по материалам 27.10.2026; решения техлида по открытым вопросам 16–22 — docs/TZ.md 20.7 № 67–73, ADR — docs/adr/; обоснование — docs/TZ.md 0.7 и 20.7, docs/TZ-merge-v1.5-analysis.md, конспект входа — docs/TZ-additional-2.md.

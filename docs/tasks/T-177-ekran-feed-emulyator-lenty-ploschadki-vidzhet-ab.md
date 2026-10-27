@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-176](T-176-priemnik-otzyvov-external-posts-replies-instrume.md), [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md)
-- Блокирует: [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md)
+- Блокирует: [T-203](T-203-lokalizaciya-ekranov-v1-3-feed-compliance-manage.md), [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md)
 
 ## Что сделать
 1. features/feed: лента постов (аватар-инициалы, ник, время, текст, реакции), форма «Написать отзыв» (ник, текст, чекбокс «упомянуть карту **** NNNN»), ветка ответов с бейджем «Ответ банка · ИИ-агент CX» и временем реакции; статусы постов.

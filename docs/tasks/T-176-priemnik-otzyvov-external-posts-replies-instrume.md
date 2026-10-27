@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-171](T-171-mock-abs-scheta-tarify-provodki-sid-i-invariant.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-032](T-032-shina-sobytij-simulyatora.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md)
-- Блокирует: [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md)
+- Блокирует: [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-179](T-179-scenarij-8-komissiya-za-qr-oplatu-i-publichnyj-o.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md)
 
 ## Что сделать
 1. POST /api/public/reviews: пост → external_posts, событие review.posted, сигнал канала review_portal (origin review_portal, external_post_id), запуск агента немедленно независимо от состояния симулятора (ТЗ 4.7, автосоздание run live — T-040 расширение).

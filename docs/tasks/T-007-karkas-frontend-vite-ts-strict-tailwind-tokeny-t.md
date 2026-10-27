@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Единая визуальная база в стиле ТЗ 12.1 для всех экранов.
@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-001](T-001-skelet-repozitoriya-makefile-env-example-pre-com.md)
-- Блокирует: [T-010](T-010-ui-mastera-nastrojki-9-shagov-i-ekran-nastrojki.md), [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-108](T-108-lenta-izmenenij-bd-schetchiki-tablic-prosmotr-st.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-130](T-130-ui-benchmarkov.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-182](T-182-zahvat-audio-v-brauzere-getusermedia-audioworkle.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md)
+- Блокирует: [T-010](T-010-ui-mastera-nastrojki-9-shagov-i-ekran-nastrojki.md), [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-108](T-108-lenta-izmenenij-bd-schetchiki-tablic-prosmotr-st.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-130](T-130-ui-benchmarkov.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-177](T-177-ekran-feed-emulyator-lenty-ploschadki-vidzhet-ab.md), [T-182](T-182-zahvat-audio-v-brauzere-getusermedia-audioworkle.md), [T-188](T-188-ekran-manager-emulyator-plansheta-i-smart-chasov.md), [T-251](T-251-tokeny-i-pakety-tem-semanticheskie-tokeny-pakety.md), [T-263](T-263-lokalnye-shrifty-inter-i-jetbrains-mono-ofl-fajl.md)
 
 ## Что сделать
 1. Vite + React 18 + TS strict + Tailwind; tokens.css: палитра (#21A038, градиент → #0098F8, #F1E813, статусные цвета), радиусы, тени, типографика; темы dark/light/circadian (по фазе симуляции).
@@ -43,4 +43,4 @@ pytest backend/tests/integration/test_no_cdn.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Сверка 27.10.2026 (T-261): каркас есть — Vite + React 18 + TS strict + Tailwind, роутинг, react-i18next (ru/en), темы light/dark (`shared/theme.ts`), базовые компоненты `shared/ui`. Токены лежат в `index.css`/`tailwind.config.ts` (а не `tokens.css`). Остаток: локальные шрифты Inter/JetBrains Mono (сейчас системные подстановки) — вынесен в T-263; циркадная тема — E21 (T-252). Статус `in_progress` до закрытия T-263.

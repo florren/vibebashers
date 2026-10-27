@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-037](T-037-sla-dvizhok.md)
-- Блокирует: [T-090](T-090-kartochka-incidenta.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md)
+- Блокирует: [T-090](T-090-kartochka-incidenta.md), [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-253](T-253-rezhimy-tihij-kikubari-i-situacionnyj-centr-prav.md)
 
 ## Что сделать
 1. Канбан по группам статусов; карточка-плитка: public_id, заголовок, продукт/система, команда, критичность/сложность, SLA-бар с остатком, флаги, mass_impact, следующий отчёт.

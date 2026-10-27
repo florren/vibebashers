@@ -8,11 +8,11 @@
 
 | Код | Слой | Каталоги (владение) | Субагенты карточек | Карточек / в демо-минимуме | Пик |
 |---|---|---|---|---|---|
-| `L1` | Базис | `contracts/`, `backend/app/db/`, `backend/alembic/`, `backend/app/llm/`, `backend/app/replay/`, `backend/app/contracts/`, `backend/app/i18n/`, `frontend/src/shared/i18n/`, `scripts/` (кроме `seed/`), `install.sh`, `docker-compose.yml`, `Makefile`, `.github/`, `docs/`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.cursor/` | SA-Infra, SA-DB, SA-LLM, SA-Refs, SA-i18n, SA-Docs | 36 / 29 | волны 1–2 |
-| `L2` | Симулятор и данные | `backend/app/sim/`, `backend/app/abs/`, `backend/app/rules/`, `backend/app/economics/`, `scripts/seed/`, `data/` (кроме `data/bench/`, `data/cassettes/`) | SA-Clients, SA-Logs, SA-Signals, SA-Teams, SA-Scenarios, SA-Behavior, SA-Economics, SA-ABS | 32 / 24 | волны 2–3 |
-| `L3` | Агент и контуры | `backend/app/agent/`, `backend/app/ingest/`, `backend/app/tickets/`, `backend/app/feed/`, `backend/app/stt/`, `backend/app/compliance/`, `backend/app/demo/`, `backend/app/bench/`, `backend/app/realtime/`, `backend/app/api/`, `tgbot/`, `data/bench/`, `data/cassettes/` | SA-Agent, SA-Prompts, SA-STT, SA-Compliance, SA-TgBot, SA-Bench | 42 / 30 | волны 3–4 |
-| `L4` | Фронт | `frontend/` (кроме `src/shared/i18n/`), `frontend/e2e/` | SA-UI-Workspace, SA-Map, SA-UI-Engine, SA-UI-Feed, SA-UI-Compliance, SA-Landing | 30 / 24 | волна 4 |
-| `L5` | Качество | `backend/tests/scenarios/`, `backend/tests/e2e/`, `frontend/e2e/`, `data/scenarios/` | SA-QA | 10 / 5 | волны 4–5 |
+| `L1` | Базис | `contracts/`, `backend/app/db/`, `backend/alembic/`, `backend/app/llm/`, `backend/app/replay/`, `backend/app/contracts/`, `backend/app/i18n/`, `frontend/src/shared/i18n/`, `scripts/` (кроме `seed/`), `install.sh`, `docker-compose.yml`, `Makefile`, `.github/`, `docs/`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.cursor/` | SA-Infra, SA-DB, SA-LLM, SA-Refs, SA-i18n, SA-Docs | 36 + 6 (v1.5) / 29 + 2 | волны 1–2, 7 |
+| `L2` | Симулятор и данные | `backend/app/sim/`, `backend/app/abs/`, `backend/app/rules/`, `backend/app/economics/`, `scripts/seed/`, `data/` (кроме `data/bench/`, `data/cassettes/`) | SA-Clients, SA-Logs, SA-Signals, SA-Teams, SA-Scenarios, SA-Behavior, SA-Economics, SA-ABS | 32 + 3 (v1.5) / 24 | волны 2–3, 7–8 |
+| `L3` | Агент и контуры | `backend/app/agent/`, `backend/app/ingest/`, `backend/app/tickets/`, `backend/app/feed/`, `backend/app/stt/`, `backend/app/compliance/`, `backend/app/demo/`, `backend/app/bench/`, `backend/app/realtime/`, `backend/app/api/`, `backend/app/trace/`, `backend/app/search/`, `backend/app/analytics/` (с v1.5, после правки CODEOWNERS в T-223), `tgbot/`, `data/bench/`, `data/cassettes/` | SA-Agent, SA-Prompts, SA-STT, SA-Compliance, SA-TgBot, SA-Bench, SA-Trace, SA-Analytics | 42 + 10 (v1.5) / 30 + 3 | волны 3–4, 8–9 |
+| `L4` | Фронт | `frontend/` (кроме `src/shared/i18n/`), `frontend/e2e/` | SA-UI-Workspace, SA-Map, SA-UI-Engine, SA-UI-Feed, SA-UI-Compliance, SA-Landing, SA-UI-Trace, SA-UI-Analytics, SA-UI-Design | 30 + 18 (v1.5) / 24 + 8 | волна 4, 8–9 |
+| `L5` | Качество | `backend/tests/scenarios/`, `backend/tests/e2e/`, `frontend/e2e/`, `data/scenarios/` | SA-QA | 10 + 4 (v1.5) / 5 + 2 | волны 4–5, 9 |
 
 Общие каталоги с совместным доступом (любой слой может добавлять, но не переписывать чужое): `backend/tests/unit/`, `backend/tests/integration/`, `frontend/src/shared/api/` (только сгенерированные файлы через `make sync-contracts`).
 
@@ -71,6 +71,8 @@ python scripts/cx.py done B04          # убрать worktree после сли
 ## 5. Сколько времени займёт разработка агентами
 
 ### Объём
+После v1.5 добавлена 41 карточка (T-223…T-263, волны 7–9) — оценка пересчитывается индексом `docs/tasks/README.md`; ниже цифры по состоянию v1.4. Демо-минимум v1.5 — 15 карточек (E22, E23 без «Графа», T-257, T-261, T-263): примерно 3–4 человеко-недели агентной работы; остальные 26 карточек (кабинет, CSI/ВСП, дизайн v2) откладываются без потери показа цикла «сигнал → решение → сообщение клиенту» и поиска.
+
 По оценкам карточек: все 150 карточек ≈ 248 человеко-дней; демо-минимум (112 карточек) ≈ 198; ядро без контуров BRD/ДТЗ (72 карточки волн 1–3 плюс замыкание) ≈ 132. Это оценки «как если бы писал человек»; агент тратит меньше календарного времени, но ограничен квотами.
 
 ### Пропускная способность одного рабочего места (ориентиры, не гарантии)

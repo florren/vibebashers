@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md)
-- Блокирует: [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md)
+- Блокирует: [T-154](T-154-materialy-zaschity-tezisy-slajdy-opory-otvety-na.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-242](T-242-ekran-kabinet-menedzhera-produkta-cabinet-kpi-ka.md)
 
 ## Что сделать
 1. Карточки KPI; графики: сигналы по часам и каналам, автономность/HITL, SLA-соблюдение по командам, первый ответ по сегментам, удержание по исходам и психотипам, регрессии; экономика: потенциальные/предотвращённые/под риском/реализованные по продуктам/регионам/сегментам с переключателем group_by и пометкой режима калибровки.

@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Тексты коммуникаций по сегментам и каналам, подарки, ставки калькулятора.
@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-012](T-012-segmenty-psihotipy-doli-psihotipov-po-segmentam.md), [T-013](T-013-produkty-sistemy-komandy-kanaly.md)
-- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md)
+- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-157](T-157-yazyk-kommunikacij-s-klientom-i-en-shablony.md), [T-236](T-236-spravochnik-product-lines-15-napravlenij-data-pr.md)
 
 ## Что сделать
 1. data/templates/*.j2: коды ack_received, proactive_fault, clarify_request, progress_update, resolved, gift_offer, public_reply, dm_invite, closure_ack — для каналов push/sms/email/chat/social_reply/telegram_bot/tracking_page, ru и en, вариации тона по сегментам (mass/premium/vip/ultra_vip минимум).
@@ -41,4 +41,4 @@ pytest backend/tests/unit/test_templates.py backend/tests/unit/test_rates.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Сверка 27.10.2026 (T-261): `data/templates/notifications.yaml` (вместо `*.j2`), `data/gifts.yaml`, `data/dcltv_rates.csv` (30 ставок, `bank_average` 4 050) и `economics_settings` существуют и используются. Остаток: список запрещённых формулировок живёт в коде `app/agent/policies.py` (`forbidden_phrases`), а не в `data/forbidden_phrases.yaml` — при следующем касании вынести в данные (правило: бизнес-правила — данные).

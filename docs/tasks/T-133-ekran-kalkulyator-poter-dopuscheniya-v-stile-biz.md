@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md)
-- Блокирует: [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md)
+- Блокирует: [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md), [T-243](T-243-kalkulyator-poter-30-stavok-format-mln-mlrd-pred.md)
 
 ## Что сделать
 1. Страница /economics, вкладка «Допущения»: ввод пострадавших, выбор системы/продукта, доли детракторов/невозврата, таблица ставок (редактируемая, сохраняется в настройки), результат с формулой; пресеты из сценариев.

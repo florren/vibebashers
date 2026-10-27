@@ -26,7 +26,7 @@
 
 ## Зависимости
 - Зависит от: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-062](T-062-uzel-act-kommunikacii-klientu-i-komandam.md), [T-076](T-076-politiki-hitl-policies-py-i-testy.md), [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md), [T-212](T-212-problem-summary-problem-severity-suggested-team.md)
-- Блокирует: [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Блокирует: [T-214](T-214-tiketnica-v-tickets-get-api-tickets-vkladka-tike.md), [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md), [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md)
 
 ## Что сделать
 1. app/agent/tools/router_tools.py: четыре фасада; route_to_department → create_incident(+дедупликация → linked=true) + routing_status=routed; notify_customer → notify_client без шаблона с проверками формулировок; escalate_to_manager → INSERT escalations + HITL-элемент типа escalation + notify_team + routing_status=escalated; request_clarification → request_data + schedule_followup + routing_status=clarification. Каждый фасад логирует tool_call с wraps=[…].

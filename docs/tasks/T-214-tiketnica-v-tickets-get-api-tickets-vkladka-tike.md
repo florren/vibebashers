@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-089](T-089-doska-i-tablica-incidentov-s-indikatorami-sla.md), [T-106](T-106-zhivaya-trassirovka-agenta.md)
-- Блокирует: [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md)
+- Блокирует: [T-220](T-220-scenarii-10-transkript-roznichnogo-dialoga-i-11.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md)
 
 ## Что сделать
 1. Backend: GET /api/tickets (v_tickets + фильтры), GET /api/tickets/{ticket_id} (инцидент + эскалации + цепочка); GET /api/agent/runs/{id}/decision-chain в JSON и Markdown (why_ru из rationale_ru узлов и human_recommendation; маскировка ПДн в args).

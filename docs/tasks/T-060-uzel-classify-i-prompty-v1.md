@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-059](T-059-uzly-ingest-normalize-identify-client-gather-con.md), [T-046](T-046-interfejs-llm-provajdera-i-strukturirovannyj-vyv.md), [T-021](T-021-zolotoj-nabor-benchmarka-golden-v1-i-lite-v1.md)
-- Блокирует: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md), [T-087](T-087-lenta-signalov.md), [T-129](T-129-benchmark-ranner-i-metriki.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-212](T-212-problem-summary-problem-severity-suggested-team.md)
+- Блокирует: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md), [T-087](T-087-lenta-signalov.md), [T-129](T-129-benchmark-ranner-i-metriki.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-210](T-210-trehklassnaya-tonalnost-sentiment-prompt-soglaso.md), [T-212](T-212-problem-summary-problem-severity-suggested-team.md), [T-238](T-238-klassifikaciya-po-napravleniyu-i-urovnyu-signala.md)
 
 ## Что сделать
 1. prompts/v1/classify.md: роль, таксономия ТЗ 7 с определениями и граничными случаями, правила тона/флагов, требования к rationale_ru, формат вывода; переменные контекста.

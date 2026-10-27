@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-056](T-056-agentstate-graf-langgraph-checkpointer-zapusk-po.md)
-- Блокирует: —
+- Блокирует: [T-234](T-234-sled-rezhim-graf-uzly-po-tipam-podsvetka-puti-do.md), [T-255](T-255-ekran-obzor-overview-kpi-polosa-indeks-cx-miks-k.md)
 
 ## Что сделать
 1. React Flow: узлы по kind (llm/tool/router/wait/end) с иконками, подсветка активного узла по agent/step_started, счётчики прохождений, клик → шаг в трассировке.

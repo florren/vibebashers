@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-056](T-056-agentstate-graf-langgraph-checkpointer-zapusk-po.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md)
-- Блокирует: [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md), [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md)
+- Блокирует: [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md), [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md), [T-227](T-227-put-obrascheniya-rezhimy-sledit-povtor-veduschij.md)
 
 ## Что сделать
 1. Обёртка узлов: запись agent_steps (вход/выход/промпт/сырой ответ/reasoning/tool_calls/токены/латентность), публикация agent/step_started|step_finished, agent_tokens/delta при стриминге.
