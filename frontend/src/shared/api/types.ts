@@ -6561,6 +6561,555 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [АРХ] Универсальный поиск: идентификаторы, подсказки, полнотекст (ТЗ 28.2) */
+        get: {
+            parameters: {
+                query: {
+                    q: string;
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    limit?: components["parameters"]["Limit"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["search_response.schema"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trace/{kind}/{ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [АРХ] След объекта: каузальный обход до/после (ТЗ 28.3) */
+        get: {
+            parameters: {
+                query?: {
+                    before_depth?: number;
+                    after_limit?: number;
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    include?: string;
+                };
+                header?: never;
+                path: {
+                    kind: string;
+                    ref: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["trace_response.schema"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/journey/{ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [АРХ] Путь обращения по любому ref (сигнал, инцидент, пост, …) (ТЗ 27.5) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: never;
+                path: {
+                    ref: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["journey.schema"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/journey/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [АРХ] Последний путь для режима «Следить» (ТЗ 27.4) */
+        get: {
+            parameters: {
+                query?: {
+                    origin?: "jury" | "feed" | "sim" | "any";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["journey.schema"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cabinet/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] KPI кабинета менеджера продукта (ТЗ 24.5) */
+        get: {
+            parameters: {
+                query?: {
+                    product_line?: components["schemas"]["product_line"];
+                    period?: "day" | "week" | "month" | "quarter";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cabinet/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Отчёт по направлению JSON/XLSX (ТЗ 24.5) */
+        get: {
+            parameters: {
+                query: {
+                    product_line: components["schemas"]["product_line"];
+                    period?: "day" | "week" | "month" | "quarter";
+                    format?: "json" | "xlsx";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Пресеты ролей кабинета (ТЗ 24.1) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ingest/csi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** [ЕТЗ] Приём ответа CSI (JSON, ТЗ 25) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["csi_response.schema"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/csi/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Аналитика CSI (ТЗ 25.2) */
+        get: {
+            parameters: {
+                query?: {
+                    branch_id?: number;
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Справочник ВСП (ТЗ 25.3) */
+        get: {
+            parameters: {
+                query?: {
+                    region_code?: string;
+                    status?: components["schemas"]["branch_status"];
+                    limit?: components["parameters"]["Limit"];
+                    cursor?: components["parameters"]["Cursor"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/branches/network": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Динамика сети ВСП (ТЗ 25.3) */
+        get: {
+            parameters: {
+                query?: {
+                    region_code?: string;
+                    months?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/metrics/cx-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ПРОТО] Демонстрационный индекс CX (ТЗ 26.4) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/signals/{id}/normalized": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Нормализованная форма сигнала (ТЗ 24.3) */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
+                header?: never;
+                path: {
+                    id: components["parameters"]["IdPath"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                404: components["responses"]["Problem"];
+                501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8238,7 +8787,7 @@ export interface components {
         /** @enum {string} */
         criticality: "low" | "medium" | "high";
         /** @enum {string} */
-        flag: "churn_intent" | "repeat" | "sarcasm" | "aggression" | "mass_impact" | "public" | "rule_confirmed" | "regulator_threat" | "passive_aggression" | "repeat_contact_7d";
+        flag: "churn_intent" | "repeat" | "sarcasm" | "aggression" | "mass_impact" | "public" | "rule_confirmed" | "regulator_threat" | "passive_aggression" | "repeat_contact_7d" | "red_word";
         percent: number;
         /**
          * @description Намерения автора текста (ТЗ 7, BRD FR 1.2)
@@ -8250,6 +8799,8 @@ export interface components {
          * @enum {string}
          */
         sentiment: "positive" | "neutral" | "negative";
+        /** @enum {string} */
+        product_line: "deposits" | "mortgage" | "loans" | "credit_cards" | "debit_cards" | "transfers_payments" | "mobile_app" | "investments" | "insurance" | "bonuses_subscription" | "branches_service" | "support" | "business_banking" | "atm_self_service" | "fraud_security" | "other";
         /**
          * @description problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL
          * @enum {string}
@@ -8292,6 +8843,12 @@ export interface components {
             negativity?: components["schemas"]["percent"];
             intents?: components["schemas"]["intent"][];
             sentiment: components["schemas"]["sentiment"];
+            /** @description [ЕТЗ FR-2.4] продуктовое направление */
+            product_line?: components["schemas"]["product_line"];
+            product_line_confidence?: number;
+            secondary_lines?: components["schemas"]["product_line"][];
+            /** @description [ЕТЗ FR-2.5] подпись уровня сигнала для кабинета */
+            signal_level?: string;
             /** @description [ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде) */
             problem_summary: {
                 problem: string;
@@ -8310,7 +8867,7 @@ export interface components {
          */
         sim_time: string;
         /** @enum {string} */
-        channel: "social" | "call" | "chat" | "email" | "branch" | "landing" | "telegram_bot" | "proactive" | "review_portal" | "voice_input" | "branch_audio";
+        channel: "social" | "call" | "chat" | "email" | "branch" | "landing" | "telegram_bot" | "proactive" | "review_portal" | "voice_input" | "branch_audio" | "csi_survey";
         /**
          * @description Решение агента-маршрутизатора в терминах ДТЗ FR-3.1
          * @enum {string}
@@ -8950,6 +9507,359 @@ export interface components {
             /** Format: date-time */
             computed_at: string;
         };
+        /** @enum {string} */
+        search_mode: "id" | "hints" | "text";
+        /**
+         * SearchResponse — GET /api/search (ТЗ 28.2)
+         * @example {
+         *       "query": "SIG-000123",
+         *       "parsed": {
+         *         "mode": "id",
+         *         "kind": "signal",
+         *         "ref": "SIG-000123",
+         *         "normalized": "SIG-000123"
+         *       },
+         *       "hits": [
+         *         {
+         *           "kind": "signal",
+         *           "ref": "SIG-000123",
+         *           "title_ru": "Жалоба на комиссию",
+         *           "subtitle_ru": "Чат",
+         *           "run_id": "SR-0012",
+         *           "status": "processed",
+         *           "snippet_ru": null,
+         *           "trace_href": "/trace/signal/SIG-000123"
+         *         }
+         *       ],
+         *       "counts_by_kind": {
+         *         "signal": 1
+         *       },
+         *       "took_ms": 4
+         *     }
+         */
+        "search_response.schema": {
+            query: string;
+            parsed: {
+                mode: components["schemas"]["search_mode"];
+                kind?: string | null;
+                ref?: string | null;
+                normalized?: string | null;
+            };
+            hits: {
+                kind: string;
+                ref: string;
+                title_ru: string;
+                subtitle_ru?: string | null;
+                run_id: string;
+                status?: string | null;
+                snippet_ru?: string | null;
+                trace_href?: string;
+            }[];
+            counts_by_kind: {
+                [key: string]: number;
+            };
+            took_ms: number;
+        };
+        /** @enum {string} */
+        trace_event_kind: "source_message" | "operation" | "fault" | "fee" | "signal_created" | "signal_normalized" | "client_identified" | "rule_evaluation" | "policy_check" | "classification" | "decision" | "tool_call" | "human_request" | "human_decision" | "escalation" | "incident_created" | "incident_linked" | "incident_status" | "team_action" | "task" | "notification" | "public_reply" | "refund" | "followup" | "client_reaction" | "gift" | "economics" | "terminal" | "churn" | "zone_changed" | "compliance_alert";
+        /** @enum {string} */
+        trace_phase: "before" | "subject" | "after";
+        /** @enum {string} */
+        trace_actor: "client" | "agent" | "human" | "team" | "system" | "sim";
+        /**
+         * TraceEvent — событие следа объекта (ТЗ 28.3)
+         * @description Потолки ответа следа: before_depth ≤ 3, before ≤ 40 событий; after ≤ 200; веер по умолчанию 8.
+         * @example {
+         *       "id": "EVT-sig-created-1",
+         *       "kind": "signal_created",
+         *       "phase": "subject",
+         *       "ts_sim": "2026-10-01T10:00:00Z",
+         *       "ts_real": "2026-10-27T08:00:00Z",
+         *       "actor": {
+         *         "kind": "system",
+         *         "label_ru": "Приёмный слой"
+         *       },
+         *       "object_ref": {
+         *         "kind": "signal",
+         *         "ref": "SIG-000123"
+         *       },
+         *       "title_ru": "Сигнал принят",
+         *       "brief_ru": "Жалоба из чата поступила в обработку.",
+         *       "key_facts": [
+         *         {
+         *           "label_ru": "Канал",
+         *           "value_ru": "Чат",
+         *           "masked": false
+         *         }
+         *       ],
+         *       "badges": {},
+         *       "links": {
+         *         "engine_step": null,
+         *         "journey": "/journey/SIG-000123",
+         *         "trace": "/trace/signal/SIG-000123"
+         *       },
+         *       "importance": "key",
+         *       "run_id": "SR-0012"
+         *     }
+         */
+        "trace_event.schema": {
+            /** @description Стабильный идентификатор события в ответе (EVT-…) */
+            id: string;
+            kind: components["schemas"]["trace_event_kind"];
+            phase: components["schemas"]["trace_phase"];
+            /** Format: date-time */
+            ts_sim: string | null;
+            /** Format: date-time */
+            ts_real: string;
+            actor: {
+                kind: components["schemas"]["trace_actor"];
+                label_ru: string;
+            };
+            object_ref?: {
+                kind: string;
+                ref: string;
+            } | null;
+            title_ru: string;
+            brief_ru: string;
+            key_facts: {
+                label_ru: string;
+                value_ru: string;
+                /** @default false */
+                masked: boolean;
+            }[];
+            badges: {
+                llm_source?: components["schemas"]["llm_source"];
+                amount_rub?: number | null;
+                policy?: string | null;
+            };
+            links: {
+                /** @description Ссылка на шаг в «Под капотом» */
+                engine_step?: string | null;
+                journey?: string | null;
+                trace?: string | null;
+            };
+            /** @enum {string} */
+            importance: "key" | "detail";
+            /** @description SR-… или live */
+            run_id: string;
+            /** @description true, если порядок событий расходится с временем */
+            order_warning?: boolean;
+        };
+        /**
+         * TraceResponse — GET /api/trace/{kind}/{ref} (ТЗ 28.3)
+         * @example {
+         *       "subject": {
+         *         "kind": "incident",
+         *         "ref": "INC-000412",
+         *         "title_ru": "Комиссия за QR",
+         *         "status": "closed",
+         *         "run": {
+         *           "id": "SR-0012",
+         *           "kind": "scenario"
+         *         }
+         *       },
+         *       "before": [],
+         *       "after": [],
+         *       "edges": [],
+         *       "groups": [],
+         *       "pending": [],
+         *       "terminal": {
+         *         "reached": true,
+         *         "event_ref": "EVT-close-1",
+         *         "outcome_ru": "Закрыт в срок"
+         *       },
+         *       "stats": {
+         *         "before_count": 0,
+         *         "after_count": 0,
+         *         "span_sim": "PT2H",
+         *         "build_ms": 12
+         *       }
+         *     }
+         */
+        "trace_response.schema": {
+            subject: {
+                kind: string;
+                ref: string;
+                title_ru: string;
+                status?: string | null;
+                run?: {
+                    id: string;
+                    kind: string;
+                } | null;
+            };
+            before: components["schemas"]["trace_event.schema"][];
+            after: components["schemas"]["trace_event.schema"][];
+            edges: {
+                from: string;
+                to: string;
+                relation_ru: string;
+            }[];
+            groups: {
+                kind: components["schemas"]["trace_event_kind"];
+                count: number;
+                sample_refs: string[];
+                expand_hint_ru?: string | null;
+            }[];
+            pending: {
+                kind_ru: string;
+                /** Format: date-time */
+                due_sim: string | null;
+                object_ref?: {
+                    kind: string;
+                    ref: string;
+                } | null;
+            }[];
+            terminal: {
+                reached: boolean;
+                event_ref?: string | null;
+                outcome_ru?: string | null;
+            };
+            stats: {
+                before_count: number;
+                after_count: number;
+                span_sim?: string | null;
+                truncated_before?: boolean;
+                truncated_after?: boolean;
+                build_ms: number;
+            };
+        };
+        /** @enum {string} */
+        journey_message_kind: "ack" | "public_reply" | "status" | "final" | "gift" | "clarification";
+        /** @enum {string} */
+        journey_stage: "intake" | "understanding" | "identity" | "rules" | "decision" | "action" | "execution" | "client_outcome";
+        ClientMessage: {
+            channel_code: string;
+            kind: components["schemas"]["journey_message_kind"];
+            text_ru: string;
+            /** Format: date-time */
+            delivered_at: string;
+            /** Format: date-time */
+            delivered_sim?: string | null;
+        };
+        /**
+         * JourneyResponse — GET /api/journey/{ref} и latest (ТЗ 27.5)
+         * @example {
+         *       "subject": {
+         *         "kind": "signal",
+         *         "ref": "SIG-000123",
+         *         "title_ru": "Комиссия QR"
+         *       },
+         *       "stages": [
+         *         {
+         *           "stage": "intake",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "understanding",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "identity",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "rules",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "decision",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "action",
+         *           "status": "done",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "execution",
+         *           "status": "pending",
+         *           "events": []
+         *         },
+         *         {
+         *           "stage": "client_outcome",
+         *           "status": "pending",
+         *           "events": []
+         *         }
+         *       ],
+         *       "client_lane": [
+         *         {
+         *           "channel_code": "social",
+         *           "kind": "public_reply",
+         *           "text_ru": "Комиссия возвращена на счёт.",
+         *           "delivered_at": "2026-10-27T08:05:00Z",
+         *           "delivered_sim": "2026-10-01T10:05:00Z"
+         *         }
+         *       ],
+         *       "summary": {
+         *         "outcome_ru": "Возврат выполнен",
+         *         "duration_sim": "PT5M",
+         *         "amount_rub": 99,
+         *         "llm_source": "replay"
+         *       }
+         *     }
+         */
+        "journey.schema": {
+            subject: {
+                kind: string;
+                ref: string;
+                title_ru: string;
+            };
+            stages: {
+                stage: components["schemas"]["journey_stage"];
+                /** @enum {string} */
+                status: "done" | "active" | "pending" | "skipped" | "waiting_human";
+                events: components["schemas"]["trace_event.schema"][];
+            }[];
+            client_lane: components["schemas"]["ClientMessage"][];
+            summary: {
+                outcome_ru: string;
+                duration_sim?: string | null;
+                amount_rub?: number | null;
+                llm_source: components["schemas"]["llm_source"];
+            };
+            /** @description Только для GET /api/journey/latest */
+            latest_href?: string | null;
+            $defs: {
+                ClientMessage: {
+                    channel_code: string;
+                    kind: components["schemas"]["journey_message_kind"];
+                    text_ru: string;
+                    /** Format: date-time */
+                    delivered_at: string;
+                    /** Format: date-time */
+                    delivered_sim?: string | null;
+                };
+            };
+        };
+        /** Ответ опроса CSI (канал csi_survey, ТЗ 25) */
+        "csi_response.schema": {
+            csi_no: string;
+            complaint_ru: string;
+            ticket_code?: string | null;
+            waiting_count?: number | null;
+            serving_count?: number | null;
+            out_of_order_count?: number | null;
+            wait_min?: number | null;
+            service_min?: number | null;
+            /** @default 0 */
+            redirects: number;
+            products?: components["schemas"]["product"][];
+            branch_code: string;
+            employee_public_id?: string | null;
+            position?: string | null;
+            education?: string | null;
+            tenure_position_days?: number | null;
+            tenure_org_days?: number | null;
+            /** Format: date-time */
+            received_at?: string;
+        };
+        /** @enum {string} */
+        branch_status: "open" | "closed";
     };
     responses: {
         /** @description Ошибка (RFC 9457) */
@@ -8979,6 +9889,10 @@ export interface components {
         Cursor: string;
         /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
         RunId: string;
+        /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+        CxRole: string;
+        /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+        CxProductLine: components["schemas"]["product_line"];
     };
     requestBodies: never;
     headers: never;

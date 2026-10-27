@@ -45,7 +45,9 @@ async def get_bench_runs(request: Request) -> Any:
     return [_public(r) for r in runner.list_runs()]
 
 
-@router.post("/api/bench/runs", summary="Запустить прогон (с прогнозом расхода токенов и проверкой лимитов)", status_code=202)
+@router.post(
+    "/api/bench/runs", summary="Запустить прогон (с прогнозом расхода токенов и проверкой лимитов)", status_code=202
+)
 async def post_bench_runs(request: Request, body: BenchStart) -> Any:
     try:
         code = runner.dataset_code_by_id(body.dataset_id)
@@ -122,4 +124,3 @@ async def get_bench_sentiment(request: Request) -> Any:
             }
         ],
     }
-

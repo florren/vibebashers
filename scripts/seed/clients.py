@@ -8,6 +8,7 @@ import random
 from typing import Any
 
 import psycopg
+from app.contracts.enums import Channel
 from scripts.seed.common import J, log
 from scripts.seed.textgen import TextGen
 
@@ -126,19 +127,9 @@ CITY_SUFFIX = {
     "Ростов-на-Дону": "rnd",
     "Нижний Новгород": "nn",
 }
-CHANNELS_FOR_SIGNALS = [
-    "social",
-    "call",
-    "chat",
-    "email",
-    "branch",
-    "landing",
-    "telegram_bot",
-    "proactive",
-    "review_portal",
-    "voice_input",
-    "branch_audio",
-]
+# Каналы берём из контракта: новый канал должен попадать в матрицу baseline.
+CHANNELS_FOR_SIGNALS = list(Channel)
+
 # op_type — enum contracts/events/sim/op.schema.json; оплата по QR = card_payment с method=qr_sbp
 OP_TYPES = {
     "deposit": ["deposit_open", "deposit_topup", "deposit_topup", "statement"],

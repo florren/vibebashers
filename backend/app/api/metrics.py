@@ -450,3 +450,10 @@ async def get_metrics_economics_live(run_id: str | None = Query(None)) -> Any:
             }
         )
     )
+
+
+@router.get("/api/metrics/cx-index", summary="[ПРОТО] Демонстрационный индекс CX")
+async def get_metrics_cx_index(run_id: str | None = Query(None)) -> Any:
+    from app.errors import NotImplementedYet
+
+    raise NotImplementedYet("T-256")

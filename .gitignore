@@ -23,3 +23,24 @@ data/reports/*
 .idea/
 .vscode/
 .DS_Store
+# контекст сборки backend/Dockerfile: не тащим локальные окружения, кэши и фронт
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+frontend/dist
+.git
+.env
+.env.*
+data/models/stt/*/
+data/baseline/*.dump
+
+# Локальные артефакты передачи кода между агентами
+.cursor/*push*.json
+.cursor/nodes*.txt
+.cursor/plain_nodes_*
+# Сопутствующие файлы локальных baseline-снимков (T-040)
+data/baseline/*.dump.sha256
+data/baseline/*.meta.json

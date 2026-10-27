@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from typing import Any
 
@@ -276,14 +275,14 @@ def test_hitl_modify_gift_via_api(seeded: str, conn: psycopg.Connection) -> None
     os.environ["DATABASE_URL"] = seeded
     os.environ["APP_ENV"] = "test"
     get_settings.cache_clear()
-    cid = _client(conn, "vip")
+    cid = _client(conn, "ultra_vip")
     signal_id, _state = asyncio.run(
         _ingest_and_run(
             _dsn(seeded),
             {
                 "channel_code": "email",
                 "client_id": cid,
-                "text": "Уже третий раз ошибка при оплате картой, очень недоволен сервисом банка.",
+                "text": "Добрый день. Третий день не могу открыть вклад в приложении, ошибка при подтверждении. Прошу разобраться.",
             },
         )
     )
@@ -293,6 +292,7 @@ def test_hitl_modify_gift_via_api(seeded: str, conn: psycopg.Connection) -> None
     points = 1000
     try:
         with TestClient(create_app()) as client:
+            client.app.state.agent = AgentService(_chain(), PROFILE, dsn=_dsn(seeded))
             r = client.post(
                 f"/api/hitl/{hd[0]}",
                 json={
@@ -313,15 +313,20 @@ def test_hitl_modify_gift_via_api(seeded: str, conn: psycopg.Connection) -> None
         assert notif and notif[0]
         body = notif[0] if isinstance(notif[0], str) else str(notif[0])
         assert str(points) in body and gift_code in body
+        stored = conn.execute("select modified_proposal from human_decisions where id = %s", (hd[0],)).fetchone()[0]
+        assert stored["gift"] == {"gift_code": gift_code, "points": points}
         task = conn.execute(
-            "select payload from tasks where incident_id = (select incident_id from agent_runs where signal_id = %s) "
-            "and kind = 'gift' limit 1",
+            "select payload, status from tasks where incident_id = (select incident_id from agent_runs where signal_id = %s) and kind = 'gift'",
             (signal_id,),
         ).fetchone()
-        assert task and task[0]
-        payload = task[0] if isinstance(task[0], dict) else json.loads(task[0])
-        assert payload.get("gift", {}).get("gift_code") == gift_code
-        assert payload.get("gift", {}).get("points") == points
+        assert task and task[0]["gift"]["gift_code"] == gift_code
+        assert task[0]["gift"]["points"] == points
+        # ТЗ 8.5: задача открыта для выдачи после устранения, подарок ещё не выдан.
+        assert task[1] == "open" and task[0]["when"] == "after_resolved"
+        assert (
+            conn.execute("select outcome from agent_runs where signal_id = %s", (signal_id,)).fetchone()[0]
+            == "deferred"
+        )
     finally:
         get_settings.cache_clear()
 
@@ -368,8 +373,8 @@ def test_expire_hitl_timeout_without_team_cx(seeded: str, conn: psycopg.Connecti
         (sim_time, hd[0]),
     )
     conn.execute(
-        "update settings set value = jsonb_set(coalesce(value, '{}'::jsonb), '{hitl_timeout_escalate}', 'false'::jsonb) "
-        "where key = 'policies'"
+        "insert into settings (key, value) values ('policies', '{\"hitl_timeout_escalate\":false}'::jsonb) "
+        "on conflict (key) do update set value = jsonb_set(settings.value, '{hitl_timeout_escalate}', 'false'::jsonb)"
     )
     try:
 
@@ -381,7 +386,13 @@ def test_expire_hitl_timeout_without_team_cx(seeded: str, conn: psycopg.Connecti
         row = conn.execute("select decision, decided_by from human_decisions where id = %s", (hd[0],)).fetchone()
         assert row[0] == "modify" and row[1] == "timeout"
         run = conn.execute("select outcome, incident_id from agent_runs where id = %s", (hd[1],)).fetchone()
-        assert run[0] == "completed" and run[1] is not None
+        assert run[0] == "deferred" and run[1] is not None
+        assert (
+            conn.execute(
+                "select count(*) from followups where signal_id = %s and status = 'scheduled'", (signal_id,)
+            ).fetchone()[0]
+            == 1
+        )
         notif = conn.execute(
             "select template_code from notifications where signal_id = %s and recipient_type = 'client' order by id desc limit 1",
             (signal_id,),

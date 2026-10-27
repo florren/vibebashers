@@ -188,3 +188,10 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
         "notifications": notifications,
         "followups": followups,
     }
+
+
+@router.get("/api/signals/{id}/normalized", summary="[ЕТЗ] Нормализованная форма сигнала (v_signal_normalized)")
+async def get_signal_normalized(id: int, run_id: str = Query(default="current")) -> Any:
+    from app.errors import NotImplementedYet
+
+    raise NotImplementedYet("T-241")

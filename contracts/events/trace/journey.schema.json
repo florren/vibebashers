@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/trace/journey.schema.json",
+  "title": "JourneyResponse — GET /api/journey/{ref} и latest (ТЗ 27.5)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["subject", "stages", "client_lane", "summary"],
+  "properties": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "title_ru"],
+      "properties": {
+        "kind": { "type": "string" },
+        "ref": { "type": "string" },
+        "title_ru": { "type": "string" }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "status", "events"],
+        "properties": {
+          "stage": { "$ref": "../common.schema.json#/$defs/journey_stage" },
+          "status": {
+            "type": "string",
+            "enum": ["done", "active", "pending", "skipped", "waiting_human"]
+          },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "trace_event.schema.json" }
+          }
+        }
+      }
+    },
+    "client_lane": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ClientMessage" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome_ru", "llm_source"],
+      "properties": {
+        "outcome_ru": { "type": "string" },
+        "duration_sim": { "type": ["string", "null"] },
+        "amount_rub": { "type": ["number", "null"] },
+        "llm_source": { "$ref": "../common.schema.json#/$defs/llm_source" }
+      }
+    },
+    "latest_href": { "type": ["string", "null"], "description": "Только для GET /api/journey/latest" }
+  },
+  "$defs": {
+    "ClientMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel_code", "kind", "text_ru", "delivered_at"],
+      "properties": {
+        "channel_code": { "type": "string" },
+        "kind": { "$ref": "../common.schema.json#/$defs/journey_message_kind" },
+        "text_ru": { "type": "string", "maxLength": 2000 },
+        "delivered_at": { "type": "string", "format": "date-time" },
+        "delivered_sim": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "subject": { "kind": "signal", "ref": "SIG-000123", "title_ru": "Комиссия QR" },
+      "stages": [
+        { "stage": "intake", "status": "done", "events": [] },
+        { "stage": "understanding", "status": "done", "events": [] },
+        { "stage": "identity", "status": "done", "events": [] },
+        { "stage": "rules", "status": "done", "events": [] },
+        { "stage": "decision", "status": "done", "events": [] },
+        { "stage": "action", "status": "done", "events": [] },
+        { "stage": "execution", "status": "pending", "events": [] },
+        { "stage": "client_outcome", "status": "pending", "events": [] }
+      ],
+      "client_lane": [
+        {
+          "channel_code": "social",
+          "kind": "public_reply",
+          "text_ru": "Комиссия возвращена на счёт.",
+          "delivered_at": "2026-10-27T08:05:00Z",
+          "delivered_sim": "2026-10-01T10:05:00Z"
+        }
+      ],
+      "summary": { "outcome_ru": "Возврат выполнен", "duration_sim": "PT5M", "amount_rub": 99.0, "llm_source": "replay" }
+    }
+  ]
+}

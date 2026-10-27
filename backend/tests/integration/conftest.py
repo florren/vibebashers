@@ -64,9 +64,9 @@ def _seed(url: str, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def seeded(migrated_db: str) -> str:
-    """Чистая схема + alembic head + сид lite на 200 клиентов (общая для test_coverage и test_sim)."""
+    """Изолированный baseline на 200 клиентов: изменения одного теста не переходят в другой."""
     with psycopg.connect(_dsn(migrated_db), autocommit=True) as c:
         c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
     r = subprocess.run(

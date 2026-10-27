@@ -11,3 +11,4 @@ channels:
   - {code: review_portal, name_ru: Внешняя площадка отзывов,       name_en: Review portal,        subtypes: [feed, telegram_channel],                   identifies_client: false, is_public: true}
   - {code: voice_input,   name_ru: Голосовой ввод жалобы,          name_en: Voice input,          subtypes: [demo_mic, landing_mic],                    identifies_client: false, is_public: false}
   - {code: branch_audio,  name_ru: Отделение — аудиомониторинг,    name_en: Branch audio,         subtypes: [live, transcript],                         identifies_client: false, is_public: false}
+  - {code: csi_survey,    name_ru: Опрос CSI,                       name_en: CSI survey,           subtypes: [],                                         identifies_client: true,  is_public: false}

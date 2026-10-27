@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/ingest/csi_response.schema.json",
+  "title": "Ответ опроса CSI (канал csi_survey, ТЗ 25)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["csi_no", "complaint_ru", "branch_code"],
+  "properties": {
+    "csi_no": {
+      "type": "string",
+      "pattern": "^CSI-\\d{3,6}$"
+    },
+    "complaint_ru": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 2000
+    },
+    "ticket_code": { "type": ["string", "null"], "maxLength": 64 },
+    "waiting_count": { "type": ["integer", "null"], "minimum": 0 },
+    "serving_count": { "type": ["integer", "null"], "minimum": 0 },
+    "out_of_order_count": { "type": ["integer", "null"], "minimum": 0 },
+    "wait_min": { "type": ["number", "null"], "minimum": 0 },
+    "service_min": { "type": ["number", "null"], "minimum": 0 },
+    "redirects": { "type": "integer", "minimum": 0, "default": 0 },
+    "products": {
+      "type": "array",
+      "items": { "$ref": "../common.schema.json#/$defs/product" },
+      "maxItems": 8
+    },
+    "branch_code": { "type": "string", "minLength": 3, "maxLength": 32 },
+    "employee_public_id": { "type": ["string", "null"], "pattern": "^EMP-\\d{5}$" },
+    "position": { "type": ["string", "null"], "maxLength": 120 },
+    "education": { "type": ["string", "null"], "maxLength": 120 },
+    "tenure_position_days": { "type": ["integer", "null"], "minimum": 0 },
+    "tenure_org_days": { "type": ["integer", "null"], "minimum": 0 },
+    "received_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/trace/trace_response.schema.json",
+  "title": "TraceResponse — GET /api/trace/{kind}/{ref} (ТЗ 28.3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["subject", "before", "after", "edges", "groups", "pending", "terminal", "stats"],
+  "properties": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "title_ru"],
+      "properties": {
+        "kind": { "type": "string" },
+        "ref": { "type": "string" },
+        "title_ru": { "type": "string" },
+        "status": { "type": ["string", "null"] },
+        "run": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["id", "kind"],
+          "properties": {
+            "id": { "type": "string" },
+            "kind": { "type": "string" }
+          }
+        }
+      }
+    },
+    "before": {
+      "type": "array",
+      "maxItems": 40,
+      "items": { "$ref": "trace_event.schema.json" }
+    },
+    "after": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "trace_event.schema.json" }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "relation_ru"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "relation_ru": { "type": "string", "maxLength": 120 }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "count", "sample_refs"],
+        "properties": {
+          "kind": { "$ref": "../common.schema.json#/$defs/trace_event_kind" },
+          "count": { "type": "integer", "minimum": 1 },
+          "sample_refs": { "type": "array", "maxItems": 3, "items": { "type": "string" } },
+          "expand_hint_ru": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "pending": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind_ru", "due_sim"],
+        "properties": {
+          "kind_ru": { "type": "string" },
+          "due_sim": { "type": ["string", "null"], "format": "date-time" },
+          "object_ref": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "required": ["kind", "ref"],
+            "properties": {
+              "kind": { "type": "string" },
+              "ref": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reached"],
+      "properties": {
+        "reached": { "type": "boolean" },
+        "event_ref": { "type": ["string", "null"] },
+        "outcome_ru": { "type": ["string", "null"] }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before_count", "after_count", "build_ms"],
+      "properties": {
+        "before_count": { "type": "integer", "minimum": 0 },
+        "after_count": { "type": "integer", "minimum": 0 },
+        "span_sim": { "type": ["string", "null"] },
+        "truncated_before": { "type": "boolean" },
+        "truncated_after": { "type": "boolean" },
+        "build_ms": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "examples": [
+    {
+      "subject": {
+        "kind": "incident",
+        "ref": "INC-000412",
+        "title_ru": "Комиссия за QR",
+        "status": "closed",
+        "run": { "id": "SR-0012", "kind": "scenario" }
+      },
+      "before": [],
+      "after": [],
+      "edges": [],
+      "groups": [],
+      "pending": [],
+      "terminal": { "reached": true, "event_ref": "EVT-close-1", "outcome_ru": "Закрыт в срок" },
+      "stats": { "before_count": 0, "after_count": 0, "span_sim": "PT2H", "build_ms": 12 }
+    }
+  ]
+}

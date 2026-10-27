@@ -8,7 +8,7 @@
 | Волна | 7 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Контракты продуктового разреза, CSI и сети ВСП (ТЗ 13, 24–25) до начала кода (AGENTS.md §7, `contract-change`).
@@ -37,10 +37,10 @@
 5. Модели SQLAlchemy новых таблиц (L1), сид-хуки для baseline не трогать — их делают T-240 и T-245.
 
 ## Критерии приёмки
-- [ ] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
-- [ ] Старые клиенты API не ломаются (только добавления).
-- [ ] PR помечен `contract-change`.
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] `alembic upgrade head` проходит на пустой БД и на дампе v1.4; `contracts_check` зелёный.
+- [x] Старые клиенты API не ломаются (только добавления).
+- [x] PR помечен `contract-change`.
+- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
@@ -49,4 +49,12 @@ python scripts/contracts_check.py && make sync-contracts && make lint
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+- Ветка `feat/T-237-v15-cabinet-csi`, PR #66 `[contract-change] [cross-layer]`.
+- T-237: миграция 0005, 79 таблиц, `v_signal_normalized`/`v_cabinet_kpi`, OpenAPI 1.5.0 (149 путей), схемы CSI/product_line/red_word и заглушки 501.
+- Также включено: T-223 (0004, след/поиск), T-236 (15 product_lines), частично T-251/T-263 (темы и локальные шрифты); полная реализация кабинета/CSI/ВСП и следующих карточек не выполнялась.
+- PostgreSQL 16: чистая схема, идемпотентность 0002–0005, upgrade head → downgrade 0003 → upgrade head → alembic check; восстановленный тестовый дамп v1.4 из схемы ada623f с сохранением исходного сигнала. API 501 проверены для cabinet/csi/branches. OpenAPI только расширен: удаления полей, путей и enum-значений не обнаружены.
+- Исправления, выявленные локальным CI: генератор сохраняет подтверждённые критерии; baseline охватывает 12 каналов; downgrade сохраняет используемый csi_survey; restore не удаляет sim_runs каскадно и корректно вставляет identity/JSONB; SLA берёт сегмент из clients; быстрый путь сохраняет classification/decision и контрактный source; неподтверждённое закрытие даёт failed.
+- Тесты seeded изолированы; сценарии HITL/restore используют явные условия. Кассеты qr_fee_public_review перезаписаны реальным GigaChat-3-Pro на v1.1 с проверкой TLS (2 новые записи, 5 прежних сохранены; hash и JSON schema проверены).
+- Проверено: backend ruff/mypy; contracts 41 схема/149 путей; OpenAPI drift 175 операций, missing=0/extra=0; frontend Node 22 lint/typecheck/vitest (29 passed)/build/генерация типов; i18n 1032 ключа; целевые regression-тесты 37 passed. Полный повторный pytest на финальном коде: **439 passed, 20 skipped** (PostgreSQL 16, mock/replay, 229 с). Внешние обращения в тестах не выполнялись. Итоговый GitHub CI и merge отслеживаются в PR #66.
+
+- Дополнение по GitHub CI: три unit-теста baseline API зависели от файла lite.dump, создаваемого интеграционным seed. Сбой воспроизведён локально с PROFILE=lite; unit-каталоги baseline/runs изолированы через tmp_path, исходные assertions false/409 сохранены.

@@ -36,7 +36,7 @@ class NotImplementedYet(Problem):
 
     def __init__(self, card: str) -> None:
         super().__init__(
-            501, "Не реализовано", f"Эндпоинт описан в OpenAPI 1.4.0, реализация — карточка {card}", card=card
+            501, "Не реализовано", f"Эндпоинт описан в OpenAPI 1.5.0, реализация — карточка {card}", card=card
         )
 
 

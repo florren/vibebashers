@@ -59,6 +59,9 @@ def test_step_generates_contract_valid_events_and_new_run(sim: Simulator, conn: 
             "client_error": "sim/client_error",
             "signal": "sim/signal",
             "abs": "sim/abs",
+            "sla": "sim/sla",
+            "team": "sim/team_action",
+            "escalation": "sim/escalation",
             "review": "sim/review",
         }[fam]
         assert validate(payload, schema) == [], (event_type, payload)

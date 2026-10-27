@@ -63,6 +63,38 @@ class Channel(StrEnum):
     REVIEW_PORTAL = "review_portal"
     VOICE_INPUT = "voice_input"
     BRANCH_AUDIO = "branch_audio"
+    CSI_SURVEY = "csi_survey"
+
+
+class ProductLine(StrEnum):
+    DEPOSITS = "deposits"
+    MORTGAGE = "mortgage"
+    LOANS = "loans"
+    CREDIT_CARDS = "credit_cards"
+    DEBIT_CARDS = "debit_cards"
+    TRANSFERS_PAYMENTS = "transfers_payments"
+    MOBILE_APP = "mobile_app"
+    INVESTMENTS = "investments"
+    INSURANCE = "insurance"
+    BONUSES_SUBSCRIPTION = "bonuses_subscription"
+    BRANCHES_SERVICE = "branches_service"
+    SUPPORT = "support"
+    BUSINESS_BANKING = "business_banking"
+    ATM_SELF_SERVICE = "atm_self_service"
+    FRAUD_SECURITY = "fraud_security"
+    OTHER = "other"
+
+
+class BranchType(StrEnum):
+    FLAGSHIP = "flagship"
+    STANDARD = "standard"
+    ADDITIONAL = "additional"
+    MOBILE = "mobile"
+
+
+class BranchStatus(StrEnum):
+    OPEN = "open"
+    CLOSED = "closed"
 
 
 class SignalType(StrEnum):
@@ -89,6 +121,7 @@ class Flag(StrEnum):
     REGULATOR_THREAT = "regulator_threat"
     PASSIVE_AGGRESSION = "passive_aggression"
     REPEAT_CONTACT_7D = "repeat_contact_7d"
+    RED_WORD = "red_word"
 
 
 class Complexity(StrEnum):
@@ -366,4 +399,79 @@ class Zone(StrEnum):
     RED = "red"
 
 
-ALL_ENUMS = {"segment": Segment, "product": Product, "system": System, "team": Team, "channel": Channel, "signal_type": SignalType, "flag": Flag, "complexity": Complexity, "criticality": Criticality, "psychotype": Psychotype, "client_state": ClientState, "incident_status": IncidentStatus, "tone": Tone, "incident_type": IncidentType, "signal_origin": SignalOrigin, "sim_run_kind": SimRunKind, "intent": Intent, "payment_method": PaymentMethod, "ledger_kind": LedgerKind, "rule_action": RuleAction, "misselling_pattern": MissellingPattern, "speaker": Speaker, "diarization_mode": DiarizationMode, "stt_provider": SttProvider, "audio_source": AudioSource, "trigger_status": TriggerStatus, "llm_source": LlmSource, "platform": Platform, "sentiment": Sentiment, "severity": Severity, "router_action": RouterAction, "routing_status": RoutingStatus, "escalation_role": EscalationRole, "escalation_status": EscalationStatus, "violation_family": ViolationFamily, "alert_policy": AlertPolicy, "pacing": Pacing, "transcript_kind": TranscriptKind, "ingest_source_kind": IngestSourceKind, "geo_source": GeoSource, "zone": Zone}
+class TracePhase(StrEnum):
+    BEFORE = "before"
+    SUBJECT = "subject"
+    AFTER = "after"
+
+
+class TraceActor(StrEnum):
+    CLIENT = "client"
+    AGENT = "agent"
+    HUMAN = "human"
+    TEAM = "team"
+    SYSTEM = "system"
+    SIM = "sim"
+
+
+class JourneyStage(StrEnum):
+    INTAKE = "intake"
+    UNDERSTANDING = "understanding"
+    IDENTITY = "identity"
+    RULES = "rules"
+    DECISION = "decision"
+    ACTION = "action"
+    EXECUTION = "execution"
+    CLIENT_OUTCOME = "client_outcome"
+
+
+class JourneyMessageKind(StrEnum):
+    ACK = "ack"
+    PUBLIC_REPLY = "public_reply"
+    STATUS = "status"
+    FINAL = "final"
+    GIFT = "gift"
+    CLARIFICATION = "clarification"
+
+
+class SearchMode(StrEnum):
+    ID = "id"
+    HINTS = "hints"
+    TEXT = "text"
+
+
+class TraceEventKind(StrEnum):
+    SOURCE_MESSAGE = "source_message"
+    OPERATION = "operation"
+    FAULT = "fault"
+    FEE = "fee"
+    SIGNAL_CREATED = "signal_created"
+    SIGNAL_NORMALIZED = "signal_normalized"
+    CLIENT_IDENTIFIED = "client_identified"
+    RULE_EVALUATION = "rule_evaluation"
+    POLICY_CHECK = "policy_check"
+    CLASSIFICATION = "classification"
+    DECISION = "decision"
+    TOOL_CALL = "tool_call"
+    HUMAN_REQUEST = "human_request"
+    HUMAN_DECISION = "human_decision"
+    ESCALATION = "escalation"
+    INCIDENT_CREATED = "incident_created"
+    INCIDENT_LINKED = "incident_linked"
+    INCIDENT_STATUS = "incident_status"
+    TEAM_ACTION = "team_action"
+    TASK = "task"
+    NOTIFICATION = "notification"
+    PUBLIC_REPLY = "public_reply"
+    REFUND = "refund"
+    FOLLOWUP = "followup"
+    CLIENT_REACTION = "client_reaction"
+    GIFT = "gift"
+    ECONOMICS = "economics"
+    TERMINAL = "terminal"
+    CHURN = "churn"
+    ZONE_CHANGED = "zone_changed"
+    COMPLIANCE_ALERT = "compliance_alert"
+
+
+ALL_ENUMS = {"segment": Segment, "product": Product, "system": System, "team": Team, "channel": Channel, "product_line": ProductLine, "branch_type": BranchType, "branch_status": BranchStatus, "signal_type": SignalType, "flag": Flag, "complexity": Complexity, "criticality": Criticality, "psychotype": Psychotype, "client_state": ClientState, "incident_status": IncidentStatus, "tone": Tone, "incident_type": IncidentType, "signal_origin": SignalOrigin, "sim_run_kind": SimRunKind, "intent": Intent, "payment_method": PaymentMethod, "ledger_kind": LedgerKind, "rule_action": RuleAction, "misselling_pattern": MissellingPattern, "speaker": Speaker, "diarization_mode": DiarizationMode, "stt_provider": SttProvider, "audio_source": AudioSource, "trigger_status": TriggerStatus, "llm_source": LlmSource, "platform": Platform, "sentiment": Sentiment, "severity": Severity, "router_action": RouterAction, "routing_status": RoutingStatus, "escalation_role": EscalationRole, "escalation_status": EscalationStatus, "violation_family": ViolationFamily, "alert_policy": AlertPolicy, "pacing": Pacing, "transcript_kind": TranscriptKind, "ingest_source_kind": IngestSourceKind, "geo_source": GeoSource, "zone": Zone, "trace_phase": TracePhase, "trace_actor": TraceActor, "journey_stage": JourneyStage, "journey_message_kind": JourneyMessageKind, "search_mode": SearchMode, "trace_event_kind": TraceEventKind}

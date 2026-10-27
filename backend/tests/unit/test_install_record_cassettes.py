@@ -26,4 +26,4 @@ def test_install_sh_parses_record_cassettes_and_sets_llm_record() -> None:
     assert "--record-cassettes" in text
     assert "RECORD_CASSETTES" in text
     assert "LLM_RECORD=1" in text
-    assert 's|^LLM_RECORD=.*|LLM_RECORD=1|' in text
+    assert "s|^LLM_RECORD=.*|LLM_RECORD=1|" in text

@@ -7,7 +7,9 @@ from app.main import create_app
 
 
 def test_classification_diff_lists_changed_fields() -> None:
-    diff = classification_diff({"signal_type": "churn", "sentiment": "negative"}, {"signal_type": "info_request", "sentiment": "negative"})
+    diff = classification_diff(
+        {"signal_type": "churn", "sentiment": "negative"}, {"signal_type": "info_request", "sentiment": "negative"}
+    )
     assert diff == [{"field": "signal_type", "llm": "churn", "mock": "info_request"}]
 
 

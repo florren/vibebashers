@@ -359,8 +359,8 @@ class SlaEngine:
 
     async def _process_first_response(self, ctx: ToolContext, sim_time: dt.datetime) -> None:
         cur = await self.conn.execute(
-            "select s.id, s.received_sim, s.segment_code, isg.incident_id "
-            "from signals s "
+            "select s.id, s.received_sim, c.segment_code, isg.incident_id "
+            "from signals s left join clients c on c.id = s.client_id "
             "join incident_signals isg on isg.signal_id = s.id and isg.link_type = 'primary' "
             "join incidents i on i.id = isg.incident_id "
             "where s.run_id = %s and i.status <> all(%s) "
@@ -487,9 +487,7 @@ class SlaEngine:
                 ),
             )
 
-    async def _insert_escalation(
-        self, ctx: ToolContext, incident_id: int, agent_run_id: Any, reason: str
-    ) -> None:
+    async def _insert_escalation(self, ctx: ToolContext, incident_id: int, agent_run_id: Any, reason: str) -> None:
         dup = await ctx.fetchone(
             "select id from escalations where run_id = %s and incident_id = %s and to_role = 'cx_lead' and reason = %s",
             (self.run_id, incident_id, reason),

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBaselineRestore, useDemoFailover, useDemoPlay, useDemoStatus } from '@/shared/api/hooks'
+import { ThemeSelector } from '@/shared/theme'
 import { ErrorBox } from '@/shared/ui'
 
 export const LONG_PRESS_MS = 600
@@ -128,6 +129,10 @@ export function DemoMenu() {
             >
               {t('demoMenu.scenario10')}
             </button>
+          </div>
+          <div>
+            <p className="mb-1 text-xs text-muted">{t('theme.appearance')}</p>
+            <ThemeSelector className="flex flex-wrap gap-2" />
           </div>
           <button
             type="button"

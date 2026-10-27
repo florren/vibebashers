@@ -780,7 +780,8 @@ def test_cassettes_have_no_secrets() -> None:
 
     root = Path(__file__).resolve().parents[3]
     bad = re.compile(
-        r"(Bearer\s+[A-Za-z0-9\-_\.]{20,}|Basic\s+[A-Za-z0-9+/=]{20,}|sk-or-[A-Za-z0-9]{10,}|\+7\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}|\b\d{16}\b)"
+        r"(Bearer\s+[A-Za-z0-9\-_\.]{20,}|Basic\s+[A-Za-z0-9+/=]{20,}|sk-or-[A-Za-z0-9]{10,}|"
+        r"\+7\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}|(?<![.\d])\d{16}(?!\d))"
     )
     for f in (root / "data/cassettes").glob("*.jsonl"):
         for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):

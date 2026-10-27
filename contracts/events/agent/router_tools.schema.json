@@ -168,6 +168,27 @@
           "$ref": "../common.schema.json#/$defs/sim_time"
         }
       }
+    },
+    "route_to_product_team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_line", "signal_id"],
+      "properties": {
+        "product_line": { "$ref": "../common.schema.json#/$defs/product_line" },
+        "signal_id": { "$ref": "../common.schema.json#/$defs/id" }
+      }
+    },
+    "route_to_product_team_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticket_id", "incident_id", "linked", "department"],
+      "properties": {
+        "ticket_id": { "type": "string", "pattern": "^INC-\\d{6}$" },
+        "incident_id": { "$ref": "../common.schema.json#/$defs/id" },
+        "linked": { "type": "boolean" },
+        "department": { "$ref": "../common.schema.json#/$defs/team" },
+        "product_line": { "$ref": "../common.schema.json#/$defs/product_line" }
+      }
     }
   },
   "type": "object",
@@ -181,6 +202,7 @@
       "type": "string",
       "enum": [
         "route_to_department",
+        "route_to_product_team",
         "notify_customer",
         "escalate_to_manager",
         "request_clarification"

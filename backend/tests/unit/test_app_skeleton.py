@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -30,6 +31,13 @@ def test_stub_is_problem_json_501() -> None:
     assert r.json()["card"].startswith("T-")
 
 
+def test_search_stub_501() -> None:
+    with TestClient(create_app()) as c:
+        r = c.get("/api/search", params={"q": "SIG-000001"})
+    assert r.status_code == 501
+    assert r.json()["card"] == "T-230"
+
+
 def test_validation_error_is_problem_json() -> None:
     with TestClient(create_app()) as c:
         r = c.get("/api/engine/db/tables/signals/rows?limit=abc")
@@ -46,3 +54,17 @@ def test_ws_subscribe_and_ping() -> None:
         assert sub["data"]["topics"] == ["signals"]
         ws.send_json({"type": "ping"})
         assert ws.receive_json()["type"] == "pong"
+
+
+@pytest.mark.parametrize(
+    ("path", "card"),
+    [("/api/cabinet/overview", "T-241"), ("/api/csi/analytics", "T-247"), ("/api/branches", "T-245")],
+)
+def test_v15_stubs_are_problem_json(path: str, card: str) -> None:
+    with TestClient(create_app()) as client:
+        response = client.get(path)
+    assert response.status_code == 501
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert response.json()["status"] == 501
+    assert response.json()["card"] == card
+    assert response.json()["instance"] == path

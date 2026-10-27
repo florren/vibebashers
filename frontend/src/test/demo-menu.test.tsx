@@ -4,7 +4,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/shared/theme', () => ({
+vi.mock('@/shared/theme', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/shared/theme')>(),
   useTheme: (sel?: (s: { theme: 'light'; toggle: () => void }) => unknown) => {
     const st = { theme: 'light' as const, toggle: vi.fn() }
     return sel ? sel(st) : st

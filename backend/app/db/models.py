@@ -49,6 +49,7 @@ class AgentRuns(Base):
     started_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     outcome: Mapped[Optional[str]] = mapped_column(Text)
     error: Mapped[Optional[str]] = mapped_column(Text)
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('AR-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     client: Mapped[Optional['Clients']] = relationship('Clients', back_populates='agent_runs')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', foreign_keys=[incident_id], back_populates='agent_runs_incident')
@@ -192,6 +193,7 @@ class DcltvRates(Base):
     maps_to: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     economics_settings: Mapped[list['EconomicsSettings']] = relationship('EconomicsSettings', back_populates='dcltv_rates')
+    product_lines: Mapped[list['ProductLines']] = relationship('ProductLines', back_populates='dcltv_rates')
     incident_economics: Mapped[list['IncidentEconomics']] = relationship('IncidentEconomics', back_populates='dcltv_rates')
 
 
@@ -694,6 +696,7 @@ class Signals(Base):
         ForeignKeyConstraint(['client_id'], ['clients.id'], name='signals_client_id_fkey'),
         ForeignKeyConstraint(['external_post_id'], ['external_posts.id'], name='signals_external_post_fk'),
         ForeignKeyConstraint(['parent_signal_id'], ['signals.id'], name='signals_parent_signal_id_fkey'),
+        ForeignKeyConstraint(['product_line_code'], ['product_lines.code'], name='signals_product_line_code_fkey'),
         ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='signals_run_id_fkey'),
         ForeignKeyConstraint(['source_fault_id'], ['faults.id'], name='signals_source_fault_id_fkey'),
         ForeignKeyConstraint(['source_operation_id'], ['operations.id'], name='signals_source_operation_id_fkey'),
@@ -713,6 +716,9 @@ class Signals(Base):
     origin: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'sim'::text"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    red_words: Mapped[list[str]] = mapped_column(ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]"))
+    flags: Mapped[list[str]] = mapped_column(ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]"))
+    meta: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('SIG-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
     channel_subtype: Mapped[Optional[str]] = mapped_column(Text)
     client_id: Mapped[Optional[int]] = mapped_column(BigInteger)
@@ -728,6 +734,7 @@ class Signals(Base):
     classification: Mapped[Optional[dict]] = mapped_column(JSONB)
     decision: Mapped[Optional[dict]] = mapped_column(JSONB)
     tracking_token: Mapped[Optional[str]] = mapped_column(Text)
+    product_line_code: Mapped[Optional[str]] = mapped_column(Text)
 
     agent_runs: Mapped[list['AgentRuns']] = relationship('AgentRuns', back_populates='signal')
     external_posts_signal: Mapped[list['ExternalPosts']] = relationship('ExternalPosts', foreign_keys='[ExternalPosts.signal_id]', back_populates='signal')
@@ -736,6 +743,7 @@ class Signals(Base):
     external_post: Mapped[Optional['ExternalPosts']] = relationship('ExternalPosts', foreign_keys=[external_post_id], back_populates='signals_external_post')
     parent_signal: Mapped[Optional['Signals']] = relationship('Signals', remote_side=[id], back_populates='parent_signal_reverse')
     parent_signal_reverse: Mapped[list['Signals']] = relationship('Signals', remote_side=[parent_signal_id], back_populates='parent_signal')
+    product_lines: Mapped[Optional['ProductLines']] = relationship('ProductLines', back_populates='signals')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='signals')
     source_fault: Mapped[Optional['Faults']] = relationship('Faults', back_populates='signals')
     source_operation: Mapped[Optional['Operations']] = relationship('Operations', back_populates='signals')
@@ -748,6 +756,7 @@ class Signals(Base):
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='signal')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='signal')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='signal')
+    csi_responses: Mapped['CsiResponses'] = relationship('CsiResponses', uselist=False, back_populates='signal')
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='signal')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='signal')
 
@@ -802,6 +811,7 @@ class Teams(Base):
 
     incidents: Mapped[list['Incidents']] = relationship('Incidents', back_populates='teams')
     systems: Mapped[list['Systems']] = relationship('Systems', secondary='team_systems', back_populates='teams')
+    product_lines: Mapped[list['ProductLines']] = relationship('ProductLines', back_populates='teams')
     business_rules: Mapped[list['BusinessRules']] = relationship('BusinessRules', back_populates='teams')
     incident_artifacts: Mapped[list['IncidentArtifacts']] = relationship('IncidentArtifacts', back_populates='teams')
     team_actions: Mapped[list['TeamActions']] = relationship('TeamActions', back_populates='teams')
@@ -1080,6 +1090,31 @@ class NotificationTemplates(Base):
     segments: Mapped[Optional['Segments']] = relationship('Segments', back_populates='notification_templates')
 
 
+class ProductLines(Base):
+    __tablename__ = 'product_lines'
+    __table_args__ = (
+        ForeignKeyConstraint(['owner_team_code'], ['teams.code'], name='product_lines_owner_team_code_fkey'),
+        ForeignKeyConstraint(['rate_code'], ['dcltv_rates.code'], name='product_lines_rate_code_fkey'),
+        PrimaryKeyConstraint('code', name='product_lines_pkey'),
+        {'comment': '15 продуктовых направлений ЕТЗ; сид из data/product_lines.yaml '
+                '(T-240)'}
+    )
+
+    code: Mapped[str] = mapped_column(Text, primary_key=True)
+    name_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    name_en: Mapped[str] = mapped_column(Text, nullable=False)
+    rate_code: Mapped[str] = mapped_column(Text, nullable=False)
+    owner_team_code: Mapped[str] = mapped_column(Text, nullable=False)
+    owner_is_proxy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    product_codes: Mapped[list[str]] = mapped_column(ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]"))
+    sort_order: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('0'))
+
+    signals: Mapped[list['Signals']] = relationship('Signals', back_populates='product_lines')
+    teams: Mapped['Teams'] = relationship('Teams', back_populates='product_lines')
+    dcltv_rates: Mapped['DcltvRates'] = relationship('DcltvRates', back_populates='product_lines')
+    product_signal_history: Mapped[list['ProductSignalHistory']] = relationship('ProductSignalHistory', back_populates='product_lines')
+
+
 class Regions(Base):
     __tablename__ = 'regions'
     __table_args__ = (
@@ -1097,9 +1132,11 @@ class Regions(Base):
     centroid_lat: Mapped[decimal.Decimal] = mapped_column(Numeric(8, 5), nullable=False)
     centroid_lon: Mapped[decimal.Decimal] = mapped_column(Numeric(8, 5), nullable=False)
     svg_path_id: Mapped[Optional[str]] = mapped_column(Text)
+    okato: Mapped[Optional[str]] = mapped_column(Text)
 
     incidents: Mapped[list['Incidents']] = relationship('Incidents', back_populates='regions')
     federal_districts: Mapped['FederalDistricts'] = relationship('FederalDistricts', back_populates='regions')
+    branch_network_history: Mapped[list['BranchNetworkHistory']] = relationship('BranchNetworkHistory', back_populates='regions')
     cities: Mapped[list['Cities']] = relationship('Cities', back_populates='regions')
     branches: Mapped[list['Branches']] = relationship('Branches', back_populates='regions')
     clients: Mapped[list['Clients']] = relationship('Clients', back_populates='regions')
@@ -1154,6 +1191,7 @@ class SimRuns(Base):
     summary: Mapped[Optional[dict]] = mapped_column(JSONB)
     export_path: Mapped[Optional[str]] = mapped_column(Text)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('SR-'::text || lpad((id)::text, 4, '0'::text))", persisted=True))
 
     agent_runs: Mapped[list['AgentRuns']] = relationship('AgentRuns', back_populates='sim_run')
     audio_sessions: Mapped[list['AudioSessions']] = relationship('AudioSessions', back_populates='run')
@@ -1296,6 +1334,25 @@ class BenchResults(Base):
     run: Mapped['BenchRuns'] = relationship('BenchRuns', back_populates='bench_results')
 
 
+class BranchNetworkHistory(Base):
+    __tablename__ = 'branch_network_history'
+    __table_args__ = (
+        ForeignKeyConstraint(['region_code'], ['regions.code'], name='branch_network_history_region_code_fkey'),
+        PrimaryKeyConstraint('id', name='branch_network_history_pkey'),
+        UniqueConstraint('month', 'region_code', name='branch_network_history_month_region_code_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    month: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    region_code: Mapped[str] = mapped_column(Text, nullable=False)
+    open_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    closed_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    opened_in_month: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    closed_in_month: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+
+    regions: Mapped['Regions'] = relationship('Regions', back_populates='branch_network_history')
+
+
 class BusinessRules(Base):
     __tablename__ = 'business_rules'
     __table_args__ = (
@@ -1431,6 +1488,7 @@ class Followups(Base):
     agent_run_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     signal_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     incident_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('FUP-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='followups')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='followups')
@@ -1526,6 +1584,27 @@ class IngestMessages(Base):
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='ingest_messages')
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='ingest_messages')
     ingest_sources: Mapped['IngestSources'] = relationship('IngestSources', back_populates='ingest_messages')
+
+
+class ProductSignalHistory(Base):
+    __tablename__ = 'product_signal_history'
+    __table_args__ = (
+        ForeignKeyConstraint(['product_line_code'], ['product_lines.code'], name='product_signal_history_product_line_code_fkey'),
+        PrimaryKeyConstraint('id', name='product_signal_history_pkey'),
+        UniqueConstraint('product_line_code', 'month', name='product_signal_history_product_line_code_month_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    product_line_code: Mapped[str] = mapped_column(Text, nullable=False)
+    month: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    signal_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    negative_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    critical_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    by_source: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    loss_rub: Mapped[decimal.Decimal] = mapped_column(Numeric(14, 2), nullable=False, server_default=text('0'))
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+
+    product_lines: Mapped['ProductLines'] = relationship('ProductLines', back_populates='product_signal_history')
 
 
 class SimEvents(Base):
@@ -1629,6 +1708,8 @@ class TeamActions(Base):
 class Branches(Base):
     __tablename__ = 'branches'
     __table_args__ = (
+        CheckConstraint("branch_status IS NULL OR (branch_status = ANY (ARRAY['open'::text, 'closed'::text]))", name='branches_branch_status_check'),
+        CheckConstraint("branch_type IS NULL OR (branch_type = ANY (ARRAY['flagship'::text, 'standard'::text, 'additional'::text, 'mobile'::text]))", name='branches_branch_type_check'),
         ForeignKeyConstraint(['city_id'], ['cities.id'], name='branches_city_id_fkey'),
         ForeignKeyConstraint(['region_code'], ['regions.code'], name='branches_region_code_fkey'),
         PrimaryKeyConstraint('id', name='branches_pkey'),
@@ -1642,13 +1723,24 @@ class Branches(Base):
     region_code: Mapped[str] = mapped_column(Text, nullable=False)
     desks: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('6'))
     manager_display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    product_line_codes: Mapped[list[str]] = mapped_column(ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]"))
     manager_chat_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    branch_type: Mapped[Optional[str]] = mapped_column(Text)
+    branch_status: Mapped[Optional[str]] = mapped_column(Text)
+    lat: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(9, 6))
+    address_ru: Mapped[Optional[str]] = mapped_column(Text)
+    hours_ru: Mapped[Optional[str]] = mapped_column(Text)
+    opened_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    closed_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 
     audio_sessions: Mapped[list['AudioSessions']] = relationship('AudioSessions', back_populates='branch')
     transcripts: Mapped[list['Transcripts']] = relationship('Transcripts', back_populates='branch')
     city: Mapped['Cities'] = relationship('Cities', back_populates='branches')
     regions: Mapped['Regions'] = relationship('Regions', back_populates='branches')
+    csi_visits_agg: Mapped[list['CsiVisitsAgg']] = relationship('CsiVisitsAgg', back_populates='branch')
     employees: Mapped[list['Employees']] = relationship('Employees', back_populates='branch')
+    csi_responses: Mapped[list['CsiResponses']] = relationship('CsiResponses', back_populates='branch')
 
 
 class Clients(Base):
@@ -1811,6 +1903,22 @@ class ClientStates(Base):
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='client_states')
 
 
+class CsiVisitsAgg(Base):
+    __tablename__ = 'csi_visits_agg'
+    __table_args__ = (
+        ForeignKeyConstraint(['branch_id'], ['branches.id'], name='csi_visits_agg_branch_id_fkey'),
+        PrimaryKeyConstraint('branch_id', 'day', 'wait_bucket', 'redirects_bucket', name='csi_visits_agg_pkey')
+    )
+
+    branch_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    day: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    wait_bucket: Mapped[str] = mapped_column(Text, primary_key=True)
+    redirects_bucket: Mapped[str] = mapped_column(Text, primary_key=True)
+    visits: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+
+    branch: Mapped['Branches'] = relationship('Branches', back_populates='csi_visits_agg')
+
+
 class Employees(Base):
     __tablename__ = 'employees'
     __table_args__ = (
@@ -1827,10 +1935,13 @@ class Employees(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
     public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('EMP-'::text || lpad((id)::text, 5, '0'::text))", persisted=True))
     hired_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    education: Mapped[Optional[str]] = mapped_column(Text)
+    position_since_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 
     audio_sessions: Mapped[list['AudioSessions']] = relationship('AudioSessions', back_populates='employee')
     transcripts: Mapped[list['Transcripts']] = relationship('Transcripts', back_populates='employee')
     branch: Mapped['Branches'] = relationship('Branches', back_populates='employees')
+    csi_responses: Mapped[list['CsiResponses']] = relationship('CsiResponses', back_populates='employee')
 
 
 class Notifications(Base):
@@ -1862,6 +1973,7 @@ class Notifications(Base):
     sent_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     sent_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     external_ref: Mapped[Optional[str]] = mapped_column(Text)
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('NTF-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     client: Mapped[Optional['Clients']] = relationship('Clients', back_populates='notifications')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='notifications')
@@ -1896,6 +2008,7 @@ class Tasks(Base):
     client_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     due_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     resolved_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('TSK-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     client: Mapped[Optional['Clients']] = relationship('Clients', back_populates='tasks')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='tasks')
@@ -1968,6 +2081,40 @@ class ClientReactions(Base):
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='client_reactions')
 
 
+class CsiResponses(Base):
+    __tablename__ = 'csi_responses'
+    __table_args__ = (
+        ForeignKeyConstraint(['branch_id'], ['branches.id'], name='csi_responses_branch_id_fkey'),
+        ForeignKeyConstraint(['employee_id'], ['employees.id'], name='csi_responses_employee_id_fkey'),
+        ForeignKeyConstraint(['signal_id'], ['signals.id'], ondelete='CASCADE', name='csi_responses_signal_id_fkey'),
+        PrimaryKeyConstraint('signal_id', name='csi_responses_pkey'),
+        UniqueConstraint('csi_no', name='csi_responses_csi_no_key')
+    )
+
+    signal_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    csi_no: Mapped[str] = mapped_column(Text, nullable=False)
+    complaint_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    redirects: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text('0'))
+    products: Mapped[list[str]] = mapped_column(ARRAY(Text()), nullable=False, server_default=text("'{}'::text[]"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    ticket_code: Mapped[Optional[str]] = mapped_column(Text)
+    waiting_count: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    serving_count: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    out_of_order_count: Mapped[Optional[int]] = mapped_column(SmallInteger)
+    wait_min: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(8, 2))
+    service_min: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(8, 2))
+    branch_id: Mapped[Optional[int]] = mapped_column(Integer)
+    employee_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    position: Mapped[Optional[str]] = mapped_column(Text)
+    education: Mapped[Optional[str]] = mapped_column(Text)
+    tenure_position_days: Mapped[Optional[int]] = mapped_column(Integer)
+    tenure_org_days: Mapped[Optional[int]] = mapped_column(Integer)
+
+    branch: Mapped[Optional['Branches']] = relationship('Branches', back_populates='csi_responses')
+    employee: Mapped[Optional['Employees']] = relationship('Employees', back_populates='csi_responses')
+    signal: Mapped['Signals'] = relationship('Signals', back_populates='csi_responses')
+
+
 class HumanDecisions(Base):
     __tablename__ = 'human_decisions'
     __table_args__ = (
@@ -1999,6 +2146,7 @@ class HumanDecisions(Base):
     comment: Mapped[Optional[str]] = mapped_column(Text)
     decided_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     decided_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('HD-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='human_decisions')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='human_decisions')
@@ -2115,6 +2263,7 @@ class LedgerEntries(Base):
     refund_of_entry_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     rule_id: Mapped[Optional[str]] = mapped_column(Text)
     agent_run_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('LED-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
 
     account: Mapped['Accounts'] = relationship('Accounts', back_populates='ledger_entries')
     agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='ledger_entries')

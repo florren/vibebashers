@@ -1,12 +1,12 @@
 import { clsx } from 'clsx'
-import { Activity, Gauge, MessageSquarePlus, Moon, Pause, Play, Square, Sun } from 'lucide-react'
+import { Activity, Gauge, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LONG_PRESS_MS, useDemoMenu } from './DemoMenu'
 import { useSimControl, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
-import { useTheme } from '@/shared/theme'
+import { ThemeSelector } from '@/shared/theme'
 import { useWs } from '@/shared/ws/client'
 import { Badge } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
@@ -24,7 +24,6 @@ export function Header() {
   const wsStatus = useWs((s) => s.status)
   const sim = live ?? q.data ?? null
   const ctl = useSimControl()
-  const { theme, toggle } = useTheme()
   const [jury, setJury] = useState(false)
 
   const running = !!sim?.running
@@ -142,9 +141,7 @@ export function Header() {
       >
         {i18n.language === 'en' ? 'RU' : 'EN'}
       </button>
-      <button className="btn btn-ghost btn-sm" onClick={toggle} title={t('common.theme')} aria-label={t('common.theme')}>
-        {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-      </button>
+      <ThemeSelector />
       <JuryModal open={jury} onClose={() => setJury(false)} />
     </header>
   )

@@ -1,0 +1,46 @@
+node_modules/
+venv/
+.venv/
+dist/
+build/
+.next/
+*.log
+.git/
+# секреты и локальное
+.env
+.env.*.local
+.cx/
+# окружения и сборки
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+frontend/dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# большие артефакты (T-001): модели Vosk не в репозитории — make stt-model скачивает малую (≈45 МБ) в data/models/stt
+data/models/stt/*/
+data/baseline/*.dump
+backend/schema.sql.bak
+# наблюдаемость (docs/REPORTS.md): журнал и сгенерированные отчёты только локально
+backend/var/
+data/reports/*
+!data/reports/README.md
+# IDE
+.idea/
+.vscode/
+.DS_Store
+# контекст сборки backend/Dockerfile: не тащим локальные окружения, кэши и фронт
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+frontend/dist
+.git
+.env
+.env.*
+data/models/stt/*/
+data/baseline/*.dump

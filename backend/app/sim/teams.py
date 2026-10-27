@@ -147,9 +147,7 @@ class TeamEmulator:
 
     async def load(self) -> None:
         cur = await self.conn.execute("select code, system_code, product_code from error_codes")
-        self.error_codes = {
-            r[0]: {"system": r[1], "product": r[2]} for r in await cur.fetchall()
-        }
+        self.error_codes = {r[0]: {"system": r[1], "product": r[2]} for r in await cur.fetchall()}
         cur = await self.conn.execute("select code, speed_profile from teams")
         self._team_profiles = {r[0]: dict(r[1]) for r in await cur.fetchall()}
         release_by_incident: dict[int, tuple[int, dt.datetime]] = {}
@@ -438,7 +436,14 @@ class TeamEmulator:
         cur = await self.conn.execute(
             "insert into team_actions (run_id, incident_id, team_code, action, payload, action_sim) "
             "values (%s, %s, %s, %s, %s::jsonb, %s) returning id",
-            (self.run_id, incident_id, team_code, step.action, dumps({**payload, "report_day": step.report_day}), ctx.sim_time),
+            (
+                self.run_id,
+                incident_id,
+                team_code,
+                step.action,
+                dumps({**payload, "report_day": step.report_day}),
+                ctx.sim_time,
+            ),
         )
         action_row = await cur.fetchone()
         action_id = int(action_row[0])  # type: ignore[index]
@@ -463,9 +468,7 @@ class TeamEmulator:
                     pr.release_action_id = action_id
                     break
 
-    async def _artifact_body(
-        self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]
-    ) -> str:
+    async def _artifact_body(self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]) -> str:
         variables = {
             **incident_ctx,
             "summary": incident_ctx.get("title"),
@@ -491,9 +494,7 @@ class TeamEmulator:
             key = (incident_id, "release", release_step.report_day)
             if key not in self.done:
                 continue
-            release_action_id, release_sim = release_by_incident.get(
-                incident_id, (0, release_step.at)
-            )
+            release_action_id, release_sim = release_by_incident.get(incident_id, (0, release_step.at))
             reg = release_step.regression
             if not reg.get("error_code"):
                 continue

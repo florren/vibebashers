@@ -343,3 +343,10 @@ async def post_ingest_sources_code_poll(code: str) -> Any:
             return await poll_source(conn, row)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=409, detail=str(exc)[:200]) from exc
+
+
+@router.post("/api/ingest/csi", summary="[ЕТЗ] Приём ответа CSI (JSON)")
+async def post_ingest_csi(body: dict[str, Any]) -> Any:
+    from app.errors import NotImplementedYet
+
+    raise NotImplementedYet("T-246")

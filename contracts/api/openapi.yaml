@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.4.0
+  version: 1.5.0
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -12,6 +12,7 @@ info:
     - Локализация: тексты интерфейса — на фронте; API отдаёт коды и `label_ru`/`label_en` только для справочников.
     - Realtime: `GET /ws/stream` (WebSocket), сообщения по схеме `contracts/events/ws/message.schema.json`; бинарный аудиопоток — `GET /ws/audio/{session_id}`.
     - v1.4 (ДТЗ): теги `ingest` (единая схема сообщения, транскрипты, адаптеры), `tickets` (тикетница над инцидентами), `escalations`; `sentiment`/`problem_summary`/`router_action` в сигналах, инцидентах и решениях; `GET /api/agent/runs/{id}/decision-chain`; слой зон карты `GET /api/map/zones`; живой тикер `GET /api/metrics/economics/live`; пакетный анализ транскриптов `/api/compliance/transcripts/*`.
+    - v1.5 (АРХ): теги `search`, `trace`, `journey` — универсальный поиск и след объекта, путь обращения (ТЗ 27–28). Для точного id `run_id` по умолчанию `all`; для текстового поиска — `current` + baseline. Новых WebSocket-топиков нет.
     - v1.3 (BRD): теги `feed`, `abs`, `rules`, `compliance`, `stt`, `demo`; роли `X-Role` дополнены `branch_manager` (руководитель отделения) и `compliance`. Живые контуры работают независимо от состояния симулятора (ТЗ 4.7): если текущего запуска нет, backend создаёт запуск `live`.
   contact:
     name: vibebashers
@@ -69,6 +70,18 @@ tags:
     description: "[ДТЗ] Тикетница — представление v_tickets над инцидентами (ТЗ 9.7)"
   - name: escalations
     description: "[ДТЗ] Эскалации руководителю (ТЗ 9.7)"
+  - name: search
+    description: "[АРХ] Универсальный поиск по идентификаторам и тексту (ТЗ 28.2)"
+  - name: trace
+    description: "[АРХ] След объекта: до / объект / после (ТЗ 28.3)"
+  - name: journey
+    description: "[АРХ] Путь обращения, 8 стадий (ТЗ 27)"
+  - name: cabinet
+    description: "[ЕТЗ] Кабинет менеджера продукта (ТЗ 24)"
+  - name: csi
+    description: "[ЕТЗ] Аналитика CSI (ТЗ 25)"
+  - name: branches
+    description: "[ЕТЗ] Справочник и динамика сети ВСП (ТЗ 25.3)"
 
 paths:
   /api/health:
@@ -2037,12 +2050,215 @@ paths:
         "200":
           description: OK
           content: { application/json: { schema: { $ref: "#/components/schemas/SentimentBenchReport" } } }
+  /api/search:
+    get:
+      tags: [search]
+      summary: "[АРХ] Универсальный поиск: идентификаторы, подсказки, полнотекст (ТЗ 28.2)"
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - { $ref: "#/components/parameters/RunId" }
+        - { $ref: "#/components/parameters/Limit" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/trace/search_response.schema.json" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/trace/{kind}/{ref}:
+    get:
+      tags: [trace]
+      summary: "[АРХ] След объекта: каузальный обход до/после (ТЗ 28.3)"
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string }
+        - name: ref
+          in: path
+          required: true
+          schema: { type: string }
+        - name: before_depth
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 3, default: 3 }
+        - name: after_limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 200 }
+        - { $ref: "#/components/parameters/RunId" }
+        - name: include
+          in: query
+          schema: { type: string, description: "detail|key (фильтр значимости)" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/trace/trace_response.schema.json" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/journey/{ref}:
+    get:
+      tags: [journey]
+      summary: "[АРХ] Путь обращения по любому ref (сигнал, инцидент, пост, …) (ТЗ 27.5)"
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/trace/journey.schema.json" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/journey/latest:
+    get:
+      tags: [journey]
+      summary: "[АРХ] Последний путь для режима «Следить» (ТЗ 27.4)"
+      parameters:
+        - name: origin
+          in: query
+          schema: { type: string, enum: [jury, feed, sim, any], default: any }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { $ref: "../events/trace/journey.schema.json" } } }
+        "404": { $ref: "#/components/responses/Problem" }
+  /api/cabinet/overview:
+    get:
+      tags: [cabinet]
+      summary: "[ЕТЗ] KPI кабинета менеджера продукта (ТЗ 24.5)"
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
+        - { $ref: "#/components/parameters/CxProductLine" }
+        - name: product_line
+          in: query
+          schema: { $ref: "../events/common.schema.json#/$defs/product_line" }
+        - name: period
+          in: query
+          schema: { type: string, enum: [day, week, month, quarter], default: week }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/cabinet/report:
+    get:
+      tags: [cabinet]
+      summary: "[ЕТЗ] Отчёт по направлению JSON/XLSX (ТЗ 24.5)"
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
+        - { $ref: "#/components/parameters/CxProductLine" }
+        - name: product_line
+          in: query
+          required: true
+          schema: { $ref: "../events/common.schema.json#/$defs/product_line" }
+        - name: period
+          in: query
+          schema: { type: string, enum: [day, week, month, quarter], default: month }
+        - name: format
+          in: query
+          schema: { type: string, enum: [json, xlsx], default: json }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200": { description: OK }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/roles:
+    get:
+      tags: [cabinet]
+      summary: "[ЕТЗ] Пресеты ролей кабинета (ТЗ 24.1)"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/ingest/csi:
+    post:
+      tags: [ingest]
+      summary: "[ЕТЗ] Приём ответа CSI (JSON, ТЗ 25)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../events/ingest/csi_response.schema.json" }
+      responses:
+        "202": { description: Accepted }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/csi/analytics:
+    get:
+      tags: [csi]
+      summary: "[ЕТЗ] Аналитика CSI (ТЗ 25.2)"
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
+        - name: branch_id
+          in: query
+          schema: { type: integer }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/branches:
+    get:
+      tags: [branches]
+      summary: "[ЕТЗ] Справочник ВСП (ТЗ 25.3)"
+      parameters:
+        - name: region_code
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "../events/common.schema.json#/$defs/branch_status" }
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/branches/network:
+    get:
+      tags: [branches]
+      summary: "[ЕТЗ] Динамика сети ВСП (ТЗ 25.3)"
+      parameters:
+        - name: region_code
+          in: query
+          schema: { type: string }
+        - name: months
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 24, default: 12 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/metrics/cx-index:
+    get:
+      tags: [metrics]
+      summary: "[ПРОТО] Демонстрационный индекс CX (ТЗ 26.4)"
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "501": { $ref: "#/components/responses/Problem" }
+  /api/signals/{id}/normalized:
+    get:
+      tags: [signals]
+      summary: "[ЕТЗ] Нормализованная форма сигнала (ТЗ 24.3)"
+      parameters:
+        - { $ref: "#/components/parameters/IdPath" }
+        - { $ref: "#/components/parameters/RunId" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "501": { $ref: "#/components/responses/Problem" }
 components:
   parameters:
     IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
     Limit: { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 50 } }
     Cursor: { name: cursor, in: query, schema: { type: string } }
     RunId: { name: run_id, in: query, schema: { type: string }, description: "Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current." }
+    CxRole:
+      name: X-Cx-Role
+      in: header
+      schema: { type: string }
+      description: "[ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация)"
+    CxProductLine:
+      name: X-Cx-Product-Line
+      in: header
+      schema: { $ref: "../events/common.schema.json#/$defs/product_line" }
+      description: "[ЕТЗ] Выбранное продуктовое направление для пресета"
   responses:
     Problem:
       description: Ошибка (RFC 9457)

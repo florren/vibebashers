@@ -6,6 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>CX Pulse Control</title>
+    <script>
+      (function () {
+        try {
+          var pack = localStorage.getItem('cx.ui.theme_pack') || 'brand';
+          var mode = localStorage.getItem('cx.ui.mode') || localStorage.getItem('cx.theme') || 'light';
+          if (mode === 'auto' || mode === 'circadian') {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.dataset.pack = pack;
+          document.documentElement.dataset.mode = mode;
+          if (mode === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

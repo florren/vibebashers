@@ -9,6 +9,7 @@
 | `cities.csv` | 1 121 город: регион, население, координаты, признак адм. центра | [hflabs/city](https://github.com/hflabs/city) (CC BY-SA 4.0), поля сокращены; добавлены центры новых субъектов |
 | `segments.yaml`, `psychotypes.yaml` | сегменты (ТЗ 3.1) и психотипы с параметрами по `behavior/psychotype_params.schema.json` (ТЗ 4.5) | ТЗ |
 | `products.yaml`, `systems.yaml`, `teams.yaml`, `channels.yaml` | продукты/тарифы/акции, 12 систем, 12 команд с профилями скорости, 11 каналов | ТЗ 3.3–3.6 |
+| `product_lines.yaml` | 15 продуктовых направлений кабинета менеджера: `rate_code` → `dcltv_rates.csv`, команда-владелец, доли демо-отзывов (54 всего) | ТЗ 24.2 / ЕТЗ; данные синтетические, без брендов реальных банков |
 | `error_codes.yaml` | коды ошибок (`PROC-QR-FEE-CHARGED` и др.) и типы сигналов | ТЗ 4.2, BRD |
 | `sla.yaml` | матрица SLA 3×3 и правила маршрутизации | ТЗ 8.1–8.2 |
 | `gifts.yaml`, `dcltv_rates.csv` | каталог извинительных подарков, экономические настройки, ставки dCLTV | ТЗ 8.5, 14 |
@@ -22,6 +23,11 @@
 | `import/transcripts/` | 20 транскриптов (10 JSON по `ingest/transcript.schema.json` + 10 TXT), `scenario10_retail.txt` | `scripts/seed/gen_corpora.py` |
 | `bench/*.jsonl`, `bench/transcripts_v1/` | sentiment_v1 (300), hidden_negativity_v1 (120), summary_v1 (60), red_phrases_v1 (139), golden_v1 (120), эталоны транскриптов | `scripts/seed/gen_corpora.py` |
 | `cassettes/` | записи LLM для офлайн-replay | — |
+
+## Шрифты UI (T-263)
+
+Бинарники Inter (400–700, latin + cyrillic) и JetBrains Mono (400, 500) лежат в `frontend/public/fonts/` (формат woff2).
+Источник: официальные релизы [Inter](https://github.com/rsms/inter) и [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), лицензия OFL 1.1 (`docs/LICENSES.md`). В рантайме внешние CDN не используются.
 
 ## Сид
 

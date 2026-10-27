@@ -261,7 +261,8 @@ async def test_close_blocks_without_verified(monkeypatch: pytest.MonkeyPatch) ->
     deps.record_step = AsyncMock()
     state = _state(actions=[{"action": "incident", "incident_id": 3}], verified=False)
     out = await nodes.close(state, deps)
-    assert out["outcome"] == "fallback"
+    assert out["outcome"] == "failed"
+    assert "close: услуга не подтверждена" in out["errors"]
     deps.record_step.assert_awaited()
     assert deps.record_step.await_args.args[1] == "fallback"
 

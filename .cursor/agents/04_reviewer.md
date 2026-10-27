@@ -5,7 +5,7 @@ description: >-
   пользователя не стартует и параллельно с analyst или developer не
   запускается. Проверяет diff. Файлы не меняет. APPROVE только без
   Blocker и Major.
-model: cursor-grok-4.6-high-fast
+model: claude-sonnet-5-5-high
 readonly: true
 ---
 
