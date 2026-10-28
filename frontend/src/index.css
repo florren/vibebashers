@@ -111,6 +111,14 @@
 
 /* Светлая тема — по умолчанию; .dark переключается в ThemeStore. Цвета — RGB-тройки для <alpha-value>. */
 :root {
+  --brand: 33 160 56;
+  --brand-strong: 24 127 45;
+  --on-brand: 255 255 255;
+  --ok: 24 127 45;
+  --warn: 143 102 0;
+  --danger: 185 28 28;
+  --info: 29 78 216;
+  --control-line: 119 127 135;
   --bg: 246 247 248;
   --surface: 255 255 255;
   --raised: 250 251 251;
@@ -121,6 +129,13 @@
   --brand-soft: 230 245 233;
 }
 .dark {
+  --brand-strong: 33 160 56;
+  --on-brand: 15 18 21;
+  --ok: 74 222 128;
+  --warn: 250 204 21;
+  --danger: 248 113 113;
+  --info: 96 165 250;
+  --control-line: 128 140 152;
   --bg: 15 18 21;
   --surface: 22 26 30;
   --raised: 29 34 39;
@@ -159,7 +174,9 @@ body {
   @apply inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-medium text-ink transition hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50;
 }
 .btn-primary {
-  @apply border-transparent bg-brand text-white hover:bg-[#1c8a30];
+  @apply border-transparent;
+  background: rgb(var(--brand-strong));
+  color: rgb(var(--on-brand));
 }
 .btn-ghost {
   @apply border-transparent bg-transparent hover:bg-raised;
@@ -171,7 +188,8 @@ body {
   @apply h-7 px-2 text-xs;
 }
 .input {
-  @apply h-8 rounded-lg border border-line bg-surface px-2.5 text-[13px] text-ink placeholder:text-faint focus:border-brand focus:outline-none;
+  @apply h-8 rounded-lg border bg-surface px-2.5 text-[13px] text-ink placeholder:text-muted focus:border-brand focus:outline-none;
+  border-color: rgb(var(--control-line));
 }
 .chip {
   @apply inline-flex h-6 items-center gap-1 rounded-full border border-line bg-surface px-2 text-xs text-muted;
@@ -201,3 +219,12 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* T-251: shared semantic controls; data colours keep their independent zone/signal tokens. */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgb(var(--focus-ring));
+  outline-offset: 2px;
+}
+html[data-density='compact'] .input,
+html[data-density='compact'] .btn { min-height: 28px; height: 28px; }
+html[data-pack='ops'] :where(label, th, .num) { font-family: 'JetBrains Mono', monospace; }

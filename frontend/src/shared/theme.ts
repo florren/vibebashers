@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { applyUiTheme, resolveMode } from './theming/apply'
+import { applyUiTheme, phaseAt, resolveMode } from './theming/apply'
 import { useUiTheme } from './theming/store'
 import type { ResolvedThemeMode, ThemeMode } from './theming/types'
 
@@ -17,7 +17,7 @@ export const useTheme = create<{ theme: Theme; toggle: () => void }>((set) => ({
 }))
 
 useUiTheme.subscribe((state) => {
-  useTheme.setState({ theme: resolveMode(state.mode) })
+  useTheme.setState({ theme: resolveMode(state.mode, phaseAt(state.simTime)) })
 })
 
 export function applyTheme(theme: Theme) {

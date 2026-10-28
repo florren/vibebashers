@@ -11,9 +11,13 @@
         try {
           var pack = localStorage.getItem('cx.ui.theme_pack') || 'brand';
           var mode = localStorage.getItem('cx.ui.mode') || localStorage.getItem('cx.theme') || 'light';
-          if (mode === 'auto' || mode === 'circadian') {
+          var phase = localStorage.getItem('cx.ui.phase') || 'morning';
+          if (mode === 'circadian') mode = phase === 'night' || phase === 'twilight' ? 'dark' : 'light';
+          if (mode === 'auto') {
             mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
           }
+          document.documentElement.dataset.phase = phase;
+          document.documentElement.dataset.density = localStorage.getItem('cx.ui.density') || 'comfortable';
           document.documentElement.dataset.pack = pack;
           document.documentElement.dataset.mode = mode;
           if (mode === 'dark') document.documentElement.classList.add('dark');

@@ -50,7 +50,7 @@ export function Header() {
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-line bg-surface px-3">
+    <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-line bg-surface px-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -69,7 +69,7 @@ export function Header() {
         </NavLink>
       </div>
 
-      <nav className="ml-2 flex shrink-0 items-center gap-0.5">
+      <nav className="ml-2 flex flex-wrap items-center gap-0.5">
         <Nav to="/" label={t('nav.workspace')} end />
         <Nav to="/engine" label={t('nav.engine')} />
         <Nav to="/compliance" label={t('nav.compliance')} />
@@ -79,7 +79,7 @@ export function Header() {
         <Nav to="/setup" label={t('nav.settings')} />
       </nav>
 
-      <div className="mx-auto flex shrink-0 items-center gap-2">
+      <div className="mx-auto flex flex-wrap items-center gap-2">
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
           <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
           <span className="text-xs text-muted">{t('sim.clock')}</span>
