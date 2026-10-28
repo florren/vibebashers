@@ -45,7 +45,9 @@ function NotificationCard({ trace }: Props) {
   )
 }
 function LedgerCard({ trace }: Props) {
-  const event = allEvents(trace).find((e) => e.badges.amount_rub != null)
+  const event = allEvents(trace).find(
+    (e) => e.object_ref?.kind === trace.subject.kind && e.object_ref.ref === trace.subject.ref && e.badges.amount_rub != null,
+  )
   return event ? (
     <strong>{new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(event.badges.amount_rub!)}</strong>
   ) : null

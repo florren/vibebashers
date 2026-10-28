@@ -77,6 +77,12 @@ def terminal_for(subject: dict[str, Any], after: list[dict[str, Any]]) -> dict[s
             reached = d["status"] in ("closed", "answered", "noise")
         elif k == "reply" and kind in ("signal", "post"):
             reached = d.get("author") in ("agent", "human")
+        elif kind == "ledger" and k == "ledger":
+            reached = d.get("kind") in ("refund", "reversal")
+        elif kind == "notification" and k == "reaction":
+            reached = True
+        elif kind == "post" and k == "escalation":
+            reached = True
         elif node is subject:
             reached = (
                 (kind == "agent_run" and d.get("outcome") in ("completed", "failed", "fallback_mock", "cancelled"))
@@ -92,12 +98,16 @@ def terminal_for(subject: dict[str, Any], after: list[dict[str, Any]]) -> dict[s
     last = max(candidates, key=lambda n: time_value(n["data"]) or time_value(n["data"], True) or "")
     d = last["data"]
     outcome = d.get("outcome_class") or d.get("outcome") or d.get("status")
+    fallback = {
+        "ledger": "Возврат выполнен",
+        "reaction": "Реакция клиента получена",
+        "escalation": "Передано руководителю",
+        "reply": "Ответ клиенту опубликован",
+    }.get(last["kind"], "Решение исполнено")
     return {
         "reached": True,
         "event_ref": "EVT-" + node_key(last),
-        "outcome_ru": OUTCOMES.get(
-            str(outcome), "Ответ клиенту опубликован" if last["kind"] == "reply" else "Решение исполнено"
-        ),
+        "outcome_ru": OUTCOMES.get(str(outcome), fallback),
     }
 
 
@@ -160,6 +170,9 @@ def render(
             )
             phases[phase].append(event)
     subj = project(subject, "subject")
+    subject_title = subj["brief_ru"][:200]
+    if subject["kind"] == "ledger":
+        subject_title = f"{subject_title[:170]} · {subj['badges']['amount_rub']:.2f} ₽"
     # TraceResponse has no subject-event field; its facts remain available in journey projections.
     visible_before, visible_after = phases["before"][:40], phases["after"][:after_limit]
     visible = {subj["id"], *(e["id"] for e in visible_before), *(e["id"] for e in visible_after)}
@@ -176,7 +189,7 @@ def render(
         "subject": {
             "kind": subject["kind"],
             "ref": reference(subject),
-            "title_ru": subj["brief_ru"][:200],
+            "title_ru": subject_title,
             "status": subject["data"].get("status") or subject["data"].get("outcome"),
         },
         "before": visible_before,

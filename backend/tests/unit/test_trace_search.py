@@ -158,3 +158,21 @@ def test_early_notification_does_not_skip_unfinished_work():
     journey = build_journey(render(subject, [], nodes[1:], []), nodes)
     assert journey["stages"][1]["status"] == "active"
     assert journey["stages"][4]["status"] == "pending"
+
+
+def test_original_fee_reaches_terminal_on_recorded_refund():
+    fee = node("ledger", amount=450)
+    refund = node("ledger", 2, amount=450, refund_of_entry_id=1)
+    fee["data"]["kind"] = "fee"
+    refund["data"]["kind"] = "refund"
+    terminal = terminal_for(fee, [refund])
+    assert terminal["reached"]
+    assert terminal["event_ref"] == "EVT-ledger:2"
+    assert "450.00 ₽" in render(fee, [], [refund], [])["subject"]["title_ru"]
+
+
+def test_notification_terminal_requires_recorded_reaction():
+    notice = node("notification", status="sent")
+    assert not terminal_for(notice, [])["reached"]
+    reaction = node("reaction", reaction="thanks")
+    assert terminal_for(notice, [reaction])["event_ref"] == "EVT-reaction:1"
