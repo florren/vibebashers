@@ -44,3 +44,10 @@ npx playwright test e2e/bench.spec.ts
 Чужие пути L4: `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/pages/engine/BenchTab.tsx`, `frontend/src/pages/engine/EnginePage.tsx`, `frontend/src/shared/ws/client.ts`, `frontend/src/shared/i18n/ru.json`, `frontend/src/shared/i18n/en.json`, `frontend/src/test/bench.test.tsx`.
 
 Лицензия echarts 5.5.1: Apache-2.0. Контракты не менялись. `docs/LICENSES.md` не создавался (файла нет, T-152).
+
+
+Дополнение: `feat/T-130-bench-ui-followup`, от main `c238051` после PR #66; источник альтернативы — `wip/T-130-benchtab-alt` (`228f222`).
+- `BenchTab.tsx`: выборочно перенесены фильтрация выбранных ID по активным профилям и переключение направления сортировки; начальное направление остаётся «лучшее первым», отсутствующие метрики остаются в конце, подсветка лучшего результата не зависит от направления. `aria-sort` отражает направление. Компонент целиком не заменялся.
+- `bench.test.tsx`: адаптированы проверки разрешённого старта и перехода из EnginePage; добавлены regression-тесты деактивации профилей и сортировки в обе стороны. До исправления два новых теста падали.
+- `client.ts`/`hooks.ts`: поведенческих дополнений не найдено, перенос не нужен. Словари WIP не использовались; новых строк UI нет. Package/lockfile сохранены из main (в WIP остались прежние @fontsource, удалённые в #66); EnginePage уже содержал вкладку.
+- Раннер, контракты, миграции и следующие карточки не менялись. Локально (Node 22): npm lint, tsc --noEmit, vitest **33 passed**, build и генерация типов без diff; i18n **1032 ключа**; contracts, OpenAPI drift и owners --allow-cross зелёные. Итоговый CI и merge — в PR follow-up.

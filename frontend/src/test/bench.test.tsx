@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('echarts', () => ({
@@ -8,6 +9,8 @@ vi.mock('echarts', () => ({
 }))
 
 import i18n from '@/shared/i18n'
+import type { BenchRunCreate } from '@/shared/api/client'
+import { EnginePage } from '@/pages/engine/EnginePage'
 import { BenchTab } from '@/pages/engine/BenchTab'
 
 const SEVEN = ['gigachat_ultra', 'gigachat_lightning', 'gigachat_pro', 'or_nemotron_ultra', 'or_owl_alpha', 'or_gpt_oss_120b', 'mock'] as const
@@ -82,8 +85,7 @@ function forecastBody() {
   return { run_ids: [], forecast: [{ llm_profile_id: 1, est_tokens: 10, est_requests: 1, fits_limits: true, warning: '' }] }
 }
 
-function wrap(ui: ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+function wrap(ui: ReactNode, qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })) {
   return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
 }
 
@@ -157,4 +159,56 @@ describe('BenchTab', () => {
     expect(screen.queryByText(i18n.t('bench.limitWarning'))).toBeNull()
     expect(screen.getByRole('button', { name: i18n.t('bench.start') })).toBeEnabled()
   })
+
+  it('повторный клик меняет направление сортировки, сохраняя подсветку лучшего результата', async () => {
+    render(wrap(<BenchTab />))
+    await screen.findByRole('columnheader', { name: 'gigachat_ultra' })
+    const button = screen.getByRole('button', { name: i18n.t('bench.metric.accuracy_type') })
+    fireEvent.click(button)
+    expect(headers()[1]).toBe('gigachat_lightning')
+    fireEvent.click(button)
+    expect(headers()[1]).toBe('gigachat_ultra')
+    expect(button.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    const row = button.closest('tr')
+    if (!row) throw new Error('нет строки метрики')
+    expect(within(row).getByText('0.950')).toHaveClass('bg-brand-soft')
+  })
+
+  it('после обновления профилей исключает деактивированный выбранный ID из прогноза', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+    const lastRequest = (): BenchRunCreate => {
+      const calls = vi.mocked(fetch).mock.calls.filter(([input, init]) => String(input).includes('/api/bench/runs') && init?.method === 'POST')
+      return JSON.parse(String(calls.at(-1)?.[1]?.body)) as BenchRunCreate
+    }
+    render(wrap(<BenchTab />, qc))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'local_openai' }))
+    await waitFor(() => expect(lastRequest().llm_profile_ids).toContain(8))
+    act(() => {
+      qc.setQueryData(['settings', 'llm-profiles'], profiles.map((item) => item.id === 8 ? { ...item, is_active: false } : item))
+    })
+    await waitFor(() => expect(lastRequest().llm_profile_ids).not.toContain(8))
+    expect(screen.queryByRole('checkbox', { name: 'local_openai' })).toBeNull()
+    expect(lastRequest().llm_profile_ids).toContain(7)
+    act(() => {
+      qc.setQueryData(['settings', 'llm-profiles'], profiles.map((item) => ({ ...item, is_active: false })))
+    })
+    await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('bench.start') })).toBeDisabled())
+  })
+
+  it('при fits_limits true без предупреждений разрешает старт', async () => {
+    render(wrap(<BenchTab />))
+    await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('bench.start') })).toBeEnabled())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('EnginePage открывает вкладку бенчмарков', async () => {
+    render(wrap(
+      <MemoryRouter initialEntries={['/engine']}>
+        <Routes><Route path="/engine/:runId?" element={<EnginePage />} /></Routes>
+      </MemoryRouter>,
+    ))
+    fireEvent.click(await screen.findByRole('tab', { name: i18n.t('engine.bench') }))
+    expect(await screen.findByRole('checkbox', { name: 'mock' })).toBeChecked()
+  })
+
 })
