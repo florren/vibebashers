@@ -23,8 +23,8 @@ def alembic(*args: str, url: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_head_is_0006_and_79_tables(conn, migrated_db) -> None:
-    assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0006"
+def test_head_is_0007_and_79_tables(conn, migrated_db) -> None:
+    assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0007"
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
@@ -48,6 +48,7 @@ def test_migrations_sql_are_idempotent(conn) -> None:
         "0004_trace_search.sql",
         "0005_product_csi_branches.sql",
         "0006_product_routing.sql",
+        "0007_csi_audit.sql",
     ):
         sql = (ROOT / "contracts/db/migrations" / name).read_text(encoding="utf-8")
         conn.execute(sql)
@@ -169,4 +170,4 @@ def test_downgrade_0005_and_upgrade_again(migrated_db, conn) -> None:
     assert conn.execute("select channel_code from signals where id = %s", (signal_id,)).fetchone()[0] == "csi_survey"
     r = alembic("upgrade", "head", url=migrated_db)
     assert r.returncode == 0, r.stderr[-1500:]
-    assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0006"
+    assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0007"

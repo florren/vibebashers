@@ -559,3 +559,6 @@ class CsiResponse(BaseModel):
     tenure_position_days: int | None = Field(None, ge=0)
     tenure_org_days: int | None = Field(None, ge=0)
     received_at: AwareDatetime | None = None
+    feedback_type: str | None = Field(None, description="Тип обратной связи", max_length=200)
+    topic: str | None = Field(None, description="Тематика", max_length=200)
+    subtopic: str | None = Field(None, description="Уточнённая тематика", max_length=200)

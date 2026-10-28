@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from starlette.datastructures import UploadFile as FormUploadFile
+from starlette.exceptions import HTTPException as FormHTTPException
 
 from app.api._compliance_support import analyze_in_background, run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
@@ -345,8 +347,68 @@ async def post_ingest_sources_code_poll(code: str) -> Any:
             raise HTTPException(status_code=409, detail=str(exc)[:200]) from exc
 
 
-@router.post("/api/ingest/csi", summary="[ЕТЗ] Приём ответа CSI (JSON)")
-async def post_ingest_csi(body: dict[str, Any]) -> Any:
-    from app.errors import NotImplementedYet
+@router.post("/api/ingest/csi", summary="[ЕТЗ] Приём CSI JSON/XLSX", status_code=202)
+async def post_ingest_csi(request: Request) -> Any:
+    from app.ingest.csi import MAX_BYTES, CsiError, import_rows, parse_json, parse_xlsx
 
-    raise NotImplementedYet("T-246")
+    try:
+        multipart = request.headers.get("content-type", "").startswith("multipart/form-data")
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > MAX_BYTES + (65536 if multipart else 0):
+                raise CsiError("<file>", "запрос превышает допустимый размер")
+        if multipart:
+            consumed = False
+
+            async def receive() -> Any:
+                nonlocal consumed
+                if consumed:
+                    return {"type": "http.request", "body": b"", "more_body": False}
+                consumed = True
+                return {"type": "http.request", "body": bytes(raw), "more_body": False}
+
+            bounded = Request(request.scope, receive=receive)
+            async with bounded.form(max_files=1, max_fields=0, max_part_size=MAX_BYTES) as form:
+                file = form.get("file")
+                if not isinstance(file, FormUploadFile) or not (file.filename or "").lower().endswith(".xlsx"):
+                    raise CsiError("file", "нужен XLSX в поле file")
+                rows = parse_xlsx(await file.read(MAX_BYTES + 1))
+        else:
+            rows = parse_json(bytes(raw))
+    except (CsiError, FormHTTPException) as exc:
+        error_row = exc.row if isinstance(exc, CsiError) else 1
+        error_column = exc.column if isinstance(exc, CsiError) else "file"
+        report = {
+            "accepted": 0,
+            "duplicates": 0,
+            "rejected": 1,
+            "items": [
+                {
+                    "row": error_row,
+                    "status": "rejected",
+                    "column": error_column,
+                    "field": error_column,
+                    "error": str(exc),
+                }
+            ],
+        }
+    else:
+        async with db() as conn:
+            try:
+                report = await import_rows(conn, rows)
+            except IngestError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if report["rejected"]:
+        return JSONResponse(
+            {
+                "type": "about:blank",
+                "title": "Ошибка импорта CSI",
+                "status": 422,
+                "detail": "Ошибки в строках; корректные строки обработаны",
+                "report": jsonable_encoder(report),
+            },
+            status_code=422,
+            media_type="application/problem+json",
+        )
+    return JSONResponse(jsonable_encoder(report), status_code=202)

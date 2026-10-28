@@ -178,7 +178,40 @@ def from_bot(
     }
 
 
+def from_csi(body: dict[str, Any]) -> dict[str, Any]:
+    """CSI → неизменённая UnifiedMessage; разрешённое ВСП добавляет сервер."""
+    return {
+        "channel": "csi_survey",
+        "external_id": body["csi_no"],
+        "client": {},
+        "text": body["complaint_ru"],
+        "timestamp": body.get("received_at") or dt.datetime.now(dt.UTC).isoformat(),
+        "geo": {"source": "none"},
+        "origin": "api",
+        "meta": {"csi_meta": body},
+    }
+
+
 async def create_signal(
+    conn: psycopg.AsyncConnection[Any],
+    msg: dict[str, Any],
+    *,
+    source_code: str,
+    run_id: int | None = None,
+    sim_time: dt.datetime | None = None,
+    emit_event: bool = True,
+) -> dict[str, Any]:
+    if msg.get("channel") == "csi_survey":
+        async with conn.transaction():
+            return await _create_signal(
+                conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=emit_event
+            )
+    return await _create_signal(
+        conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=emit_event
+    )
+
+
+async def _create_signal(
     conn: psycopg.AsyncConnection[Any],
     msg: dict[str, Any],
     *,
@@ -198,6 +231,12 @@ async def create_signal(
         sim_time = sim_time or (row[1] if row else None)
     if run_id is None:
         raise IngestError("нет текущего запуска симуляции (sim_state.current_run_id)")
+    csi_detail = None
+    signal_geo = msg.get("geo") or {"source": "none"}
+    if msg.get("channel") == "csi_survey":
+        from app.ingest.csi import prepare
+
+        csi_detail, signal_geo = await prepare(conn, msg, source_code)
     errors = validate(msg, "ingest/unified_message")
     if errors:
         await conn.execute(
@@ -217,7 +256,8 @@ async def create_signal(
     )
     if dup:
         return {"external_id": msg["external_id"], "status": "duplicate", "signal_id": dup[0], "error": None}
-    received_sim = sim_time or dt.datetime.now(dt.UTC)
+    csi_stamp = ((msg.get("meta") or {}).get("csi_meta") or {}).get("received_at") if csi_detail is not None else None
+    received_sim = dt.datetime.fromisoformat(csi_stamp) if csi_stamp else (sim_time or dt.datetime.now(dt.UTC))
     hints = msg["client"].get("contact_hints") or {}
     red = detect(msg["text"])
     meta = {**(msg.get("meta") or {}), "red_words": red}
@@ -252,7 +292,7 @@ async def create_signal(
             msg["text"],
             received_sim,
             msg["origin"],
-            dumps(msg["geo"]),
+            dumps(signal_geo),
             meta.get("source_operation_id"),
             meta.get("source_fault_id"),
             meta.get("external_post_id"),
@@ -269,6 +309,10 @@ async def create_signal(
         "classification = case when %s then jsonb_build_object('criticality', 'high') else classification end where id = %s",
         (red["words"], ["red_word"] if red["words"] else [], dumps(meta), bool(red["words"]), signal_id),
     )
+    if csi_detail is not None:
+        from app.ingest.csi import persist
+
+        await persist(conn, signal_id, csi_detail)
     public_id = str(row[1])
     tracking_out = row[2]
     if meta.get("external_post_id"):
@@ -301,7 +345,12 @@ async def create_signal(
         )
         await conn.execute("update signals set external_post_id = %s where id = %s", (post["post_id"], signal_id))
     await conn.execute(
-        "insert into ingest_messages (run_id, source_code, external_id, payload, status, signal_id) values (%s, %s, %s, %s::jsonb, 'accepted', %s)",
+        "insert into ingest_messages (run_id, source_code, external_id, payload, status, signal_id) values (%s, %s, %s, %s::jsonb, 'accepted', %s)"
+        + (
+            " on conflict (source_code,external_id) do update set run_id=excluded.run_id,payload=excluded.payload,status='accepted',signal_id=excluded.signal_id,error=null where ingest_messages.status<>'accepted'"
+            if csi_detail is not None
+            else ""
+        ),
         (run_id, source_code, msg["external_id"], dumps(msg), signal_id),
     )
     if emit_event:
