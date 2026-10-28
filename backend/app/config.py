@@ -42,9 +42,8 @@ class Settings(BaseSettings):
     gigachat_base_url: str = "https://api.giga.chat/v1"
     gigachat_oauth_url: str = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
     gigachat_model: str = "GigaChat-3-Ultra"
-    gigachat_verify_ssl: bool = (
-        False  # сертификат Минцифры; в demo-профиле проверка отключена, в prod — включить и подложить CA
-    )
+    gigachat_verify_ssl: bool = True
+    gigachat_ca_bundle_file: str | None = None
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_budget_usd: float = 10  # OPENROUTER_BUDGET_USD: платные модели, не :free

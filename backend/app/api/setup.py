@@ -118,8 +118,8 @@ async def _payload(conn: Any) -> dict[str, Any]:
 
 
 @router.put("/api/setup", summary="Сохранить разделы мастера (частично); отмечает соответствующие шаги выполненными")
-async def put_setup(body: dict[str, Any]) -> Any:
-    async with db() as conn:
+async def put_setup(body: dict[str, Any], request: Request) -> Any:
+    async with db() as conn, conn.transaction():
         saved = await get_setting(conn, "setup_payload", {}) or {}
         for section, val in body.items():
             if section not in SECTION_STEP or not isinstance(val, dict):
@@ -151,6 +151,15 @@ async def put_setup(body: dict[str, Any]) -> Any:
                     if "seed" in val:
                         await conn.execute("update sim_state set seed = %s where id = 1", (int(val["seed"]),))
                 if section == "llm":
+                    chosen = [val.get(f"{role}_profile_id") for role in ("main", "fast", "twin")]
+                    chosen = [pid for pid in chosen if pid is not None]
+                    if any(type(pid) is not int or pid <= 0 for pid in chosen):
+                        raise Problem(422, "ID профиля должен быть положительным целым числом")
+                    if len(chosen) != len(set(chosen)):
+                        raise Problem(422, "Для ролей нужны отдельные профили")
+                    for pid in chosen:
+                        if not await fetch_one(conn, "select id from llm_profiles where id=%s and is_active", (pid,)):
+                            raise Problem(422, "Выбран неизвестный или неактивный профиль")
                     for role, key in (
                         ("main", "main_profile_id"),
                         ("fast", "fast_profile_id"),
@@ -163,7 +172,12 @@ async def put_setup(body: dict[str, Any]) -> Any:
                             )
             await _mark(conn, SECTION_STEP[section])
         await set_setting(conn, "setup_payload", saved)
-        return await _payload(conn)
+        payload = await _payload(conn)
+    if "llm" in body:
+        from app.llm.roles import refresh
+
+        await refresh(request.app, required=True)
+    return payload
 
 
 @router.get("/api/setup", include_in_schema=False)
@@ -261,6 +275,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 base_url=body.base_url or s.gigachat_base_url,
                 scope=s.gigachat_scope,
                 verify_ssl=s.gigachat_verify_ssl,
+                ca_bundle_file=s.gigachat_ca_bundle_file,
             )
         else:
             base = (body.base_url or s.openrouter_base_url).rstrip("/")

@@ -12,3 +12,7 @@
 - openpyxl 3.1.5 — MIT, [PyPI / upstream](https://pypi.org/project/openpyxl/); чтение XLSX read-only.
 - et-xmlfile 2.0.0 — MIT, [upstream](https://pypi.org/project/et-xmlfile/); зависимость openpyxl.
 - defusedxml 0.7.1 — PSF License, [upstream](https://pypi.org/project/defusedxml/); защита XML при чтении пользовательских XLSX (рекомендация upstream openpyxl).
+
+### Публичные сертификаты GigaChat
+
+`backend/app/llm/certs/` содержит общедоступные X.509 сертификаты НУЦ Минцифры с gu-st.ru и их объединение `gigachat-ca.pem`. Это публичные сертификаты, не закрытые ключи и не новые программные зависимости. Источники, SHA-256 fingerprints и даты действия — в README каталога. Системное хранилище доверия и certifi не модифицируются; цепочка добавляется только в SSLContext клиента GigaChat.

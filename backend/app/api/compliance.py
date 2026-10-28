@@ -121,7 +121,7 @@ async def _start_mic_session(request: Request, body: dict[str, Any]) -> Any:
             run_id=run_id,
             sim_time=sim_time,
             chain=request.app.state.llm_chain,
-            profile=request.app.state.llm_profile,
+            profile=request.app.state.llm_chain.profile_for("fast", request.app.state.llm_profile),
             alert_threshold=int(body.get("alert_threshold") or s.compliance_alert_threshold),
         )
         sess = await svc.create_session(
@@ -201,7 +201,7 @@ async def _start_file_session(request: Request, body: dict[str, Any]) -> Any:
             run_id=run_id,
             sim_time=sim_time,
             chain=request.app.state.llm_chain,
-            profile=request.app.state.llm_profile,
+            profile=request.app.state.llm_chain.profile_for("fast", request.app.state.llm_profile),
             alert_threshold=int(body.get("alert_threshold") or s.compliance_alert_threshold),
         )
         sess = await svc.create_session(
@@ -438,7 +438,7 @@ async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[st
             run_id=run_id,
             sim_time=sim_time,
             chain=request.app.state.llm_chain,
-            profile=request.app.state.llm_profile,
+            profile=request.app.state.llm_chain.profile_for("fast", request.app.state.llm_profile),
         )
         res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"))
         if not res:

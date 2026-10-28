@@ -7,3 +7,4 @@ ingest_sources:
   - {code: api,                  kind: rest,    channel_code: chat,          enabled: true,  interval_s: 5, is_external: true,  config: {endpoint: "/api/signals", note: "жюри-режим и вызовы /api/ingest/messages без заголовка X-Source-Code"}}
   - {code: file_import,          kind: file,    channel_code: branch_audio,  enabled: false, interval_s: 60,   is_external: false, config: {dir: "data/import/transcripts", pattern: "*.json|*.txt"}}
   - {code: csi, kind: file, channel_code: csi_survey, enabled: false, interval_s: 60, is_external: false, config: {dir: 'data/import/csi', formats: [json, xlsx]}}
+  - {code: client_twin, kind: rest, channel_code: chat, enabled: true, interval_s: 5, is_external: false, config: {note: "Внутренние ответы цифрового двойника через normalizer"}}

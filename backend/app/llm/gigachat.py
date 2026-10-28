@@ -56,14 +56,19 @@ class GigaChatProvider:
         oauth_url: str,
         base_url: str,
         scope: str = "GIGACHAT_API_PERS",
-        verify_ssl: bool = False,
+        verify_ssl: bool = True,
+        ca_bundle_file: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.pool = pool
         self.oauth_url = oauth_url
         self.base_url = base_url.rstrip("/")
         self.scope = scope
-        self._client = httpx.AsyncClient(verify=verify_ssl, transport=transport, timeout=30.0)
+        from app.llm.tls import context
+
+        if not verify_ssl:
+            raise ValueError("GigaChat требует проверку TLS; настройте GIGACHAT_CA_BUNDLE_FILE")
+        self._client = httpx.AsyncClient(verify=context(ca_bundle_file), transport=transport, timeout=30.0)
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -190,7 +195,7 @@ class GigaChatProvider:
         msgs = self._ordered(messages, sys_msg)
         total_usage = Usage(provider=self.name, model=profile.model)
         raw = ""
-        for attempt in range(2):
+        for attempt in range(max(1, min(2, int(profile.extra.get("structured_attempts", 2))))):
             payload = {
                 "model": profile.model,
                 "messages": msgs,
@@ -200,6 +205,7 @@ class GigaChatProvider:
             }
             r, key = await self._with_keys(payload, profile, timeout_s)
             body = r.json()
+            total_usage.model = str(body.get("model") or profile.model)
             u = body.get("usage", {})
             total_usage.prompt_tokens += int(u.get("prompt_tokens", 0))
             total_usage.completion_tokens += int(u.get("completion_tokens", 0))

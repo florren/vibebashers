@@ -137,6 +137,7 @@ async def load_deps(
         ctx=ctx,
         chain=chain,
         profile=profile,
+        fast_profile=chain.profile_for("fast", profile),
         policies=dict(pol_row[0] or {}) if pol_row else {},
         teams=teams,
         routing_rules=rules,

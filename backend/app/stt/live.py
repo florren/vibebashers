@@ -70,7 +70,7 @@ class LiveSession:
             run_id=int(sess_row[0]),
             sim_time=sim_time,
             chain=self.app.state.llm_chain,
-            profile=self.app.state.llm_profile,
+            profile=self.app.state.llm_chain.profile_for("fast", self.app.state.llm_profile),
             alert_threshold=int(sess_row[1] or s.compliance_alert_threshold),
         )
         sess = await self.svc.get_session(self.session_id)

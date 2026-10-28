@@ -271,7 +271,7 @@ function StepLlm({ p }: { p: SetupPayload }) {
       </Section>
 
       <EnvEditor
-        keys={['LLM_PROVIDER', 'LLM_CHAIN', 'GIGACHAT_AUTH_KEY_1', 'GIGACHAT_AUTH_KEY_2', 'GIGACHAT_MODEL', 'GIGACHAT_SCOPE', 'GIGACHAT_VERIFY_SSL', 'OPENROUTER_API_KEY', 'OPENROUTER_BASE_URL', 'LOCAL_LLM_BASE_URL', 'LLM_RECORD']}
+        keys={['LLM_PROVIDER', 'LLM_CHAIN', 'GIGACHAT_AUTH_KEY_1', 'GIGACHAT_AUTH_KEY_2', 'GIGACHAT_MODEL', 'GIGACHAT_SCOPE', 'GIGACHAT_VERIFY_SSL', 'GIGACHAT_CA_BUNDLE_FILE', 'OPENROUTER_API_KEY', 'OPENROUTER_BASE_URL', 'LOCAL_LLM_BASE_URL', 'LLM_RECORD']}
         title={t('setup.llm.env')}
         note={t('setup.llm.envNote')}
       />
