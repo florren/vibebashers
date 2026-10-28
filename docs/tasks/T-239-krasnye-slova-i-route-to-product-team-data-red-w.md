@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Детерминированная подсветка юридических и регуляторных угроз до LLM (ЕТЗ FR-2.6) и маршрутизация по направлению (FR-3.6), ТЗ 24.3.
@@ -45,4 +45,12 @@ make scenario ID=cabinet_red_words_report
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `feat/T-239-red-words`, база main `9decae0`.
+
+Реализованы data/red_words.yaml (rules-change, 40 положительных + 24 отрицательных фразы), предобработка до LLM и сохранение аудита в ingest_messages.payload.meta.red_words (отдельного столбца meta у журнала нет), signals.red_words/flags/meta и classification.red_words. v_signal_normalized уже отдаёт признаки UI. Старые baseline-сигналы проходят ту же предобработку в ingest графа. Юридические категории требуют HITL независимо от LLM; misselling отдельно от детектора речи сотрудника и сам по себе не юридический HITL. Быстрый автономный путь для красных слов выключен.
+
+Фасад route_to_product_team первым в промпте decide v1.3, разрешает owner_team_code по справочнику, оставляет один tool_call с wraps=['route_to_department']; router_action=route/escalate проверяется по фактическим фасадам. Integration-тест подтверждает запись в agent_steps. Добавлена необходимая загрузка существующего справочника product_lines без корпуса/истории T-240. Найден и исправлен audit trigger для естественного ключа code: новая идемпотентная миграция 0006, регрессия INSERT/UPDATE/DELETE, CI расширен до 0006. Down сохраняет совместимое исправление audit.
+
+Проверено локально на отдельном PostgreSQL 16 и Node 22: 514 passed, 20 skipped в полном pytest; Ruff/format/mypy, frontend lint/tsc/33 vitest/build, contracts (41 схема, 149 путей), OpenAPI drift (175 операций, 0 расхождений), i18n 1032, owners --allow-cross, SQL parse и двукратное применение 0002–0006; downgrade 0003 → upgrade head → alembic check без новых операций.
+
+Остаток перед merge: новая schema classification меняет replay-ключ instant_decision. Старый тест сценария 8 проверял лишь один replay-шаг и скрывал miss; добавлена строгая проверка completed без errors, которая выявляет устаревшую кассету. Требуется отдельное разрешение на новую live-запись GigaChat; автоматическая проверка отклонила внешний запрос как не покрытый прежним разрешением normalize v1.1. Mock как replay и подмена хеша не используются. Сценарий cabinet_red_words_report относится к T-262 и пока не реализован. Карточка не закрыта.

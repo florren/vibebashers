@@ -45,7 +45,10 @@ async def test_scenario_08_on_replay(seeded: str) -> None:
         injected = await sc.inject(conn, scenario, run_id, sim_time=now)
         await conn.commit()
         for item in injected:
-            await process_signal(conn, signal_id=item["signal_id"], chain=chain, profile=PROFILE, sim_time=now)
+            state = await process_signal(conn, signal_id=item["signal_id"], chain=chain, profile=PROFILE, sim_time=now)
+            assert state is not None
+            assert state["outcome"] == "completed", state["errors"]
+            assert state["errors"] == []
         steps = await (
             await conn.execute(
                 "select model from agent_steps s join agent_runs ar on ar.id = s.run_id where ar.sim_run_id = %s",

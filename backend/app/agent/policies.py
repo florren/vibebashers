@@ -83,6 +83,13 @@ def merged(policies: dict[str, Any] | None) -> dict[str, Any]:
     return {**DEFAULT_POLICIES, **(policies or {})}
 
 
+def red_words_require_hitl(classification: dict[str, Any]) -> bool:
+    """Юридическая категория правил требует HITL независимо от мнения LLM."""
+    from app.ingest.red_words import detect
+
+    return any(detect(word)["legal"] for word in classification.get("red_words") or [])
+
+
 def needs_human(
     classification: dict[str, Any], ctx: PolicyContext, policies: dict[str, Any] | None = None
 ) -> str | None:
@@ -90,7 +97,7 @@ def needs_human(
     p = merged(policies)
     stype = classification.get("signal_type")
     amount = ctx.amount_rub or (classification.get("entities") or {}).get("amount_rub") or 0
-    if stype == "legal_regulatory":
+    if stype == "legal_regulatory" or red_words_require_hitl(classification):
         return "legal_regulatory"
     if stype == "fraud_suspicion" and float(amount) > p["fraud_amount_rub"]:
         return "fraud_amount"

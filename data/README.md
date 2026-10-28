@@ -40,3 +40,7 @@ python scripts/seed/run.py --profile lite|demo|stress [--seed 42] [--reset-histo
 После сида считается матрица покрытия (`settings.coverage`): каждая комбинация тип × продукт × канал ≥ 1 сигнал, каждая ячейка SLA ≥ 5 инцидентов
 в разных статусах, доля «трудных» текстов (сарказм/сленг/опечатки/капс) ≥ 25 %, 3–5 % операций card_payment/qr_sbp с `PROC-QR-FEE-CHARGED`, у 60 % клиентов `social_handles`.
 История пишется в `sim_runs` kind=`baseline` («История 14 дней (сид)»); `sim_state.current_run_id` указывает на неё, пока симулятор не создаст новый запуск.
+
+### Красные слова (T-239)
+
+`red_words.yaml` — версионированные правила (`rules-change`) для клиентского текста, отдельно от детектора речи сотрудника. Журнал совпадений с диапазонами и версией хранится в `ingest_messages.payload.meta.red_words`; колонки `meta` у `ingest_messages` нет. Сигнал содержит `red_words`, флаг `red_word`, копию аудита в `signals.meta`; `v_signal_normalized` отдаёт признаки для UI. Юридические категории требуют HITL, категория misselling сама по себе не является юридической угрозой.

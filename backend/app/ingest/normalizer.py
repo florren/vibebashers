@@ -12,6 +12,7 @@ from psycopg.rows import tuple_row
 
 from app.contracts.registry import validate
 from app.feed import service as feed_svc
+from app.ingest.red_words import detect
 from app.sim.events import dumps
 
 CHANNELS = {
@@ -218,7 +219,9 @@ async def create_signal(
         return {"external_id": msg["external_id"], "status": "duplicate", "signal_id": dup[0], "error": None}
     received_sim = sim_time or dt.datetime.now(dt.UTC)
     hints = msg["client"].get("contact_hints") or {}
-    meta = msg.get("meta") or {}
+    red = detect(msg["text"])
+    meta = {**(msg.get("meta") or {}), "red_words": red}
+    msg["meta"] = meta
     ext = {
         k: v
         for k, v in {
@@ -261,6 +264,11 @@ async def create_signal(
     if row is None:
         raise IngestError("не удалось создать сигнал")
     signal_id = int(row[0])
+    await conn.execute(
+        "update signals set red_words = %s, flags = %s, meta = meta || %s::jsonb, "
+        "classification = case when %s then jsonb_build_object('criticality', 'high') else classification end where id = %s",
+        (red["words"], ["red_word"] if red["words"] else [], dumps(meta), bool(red["words"]), signal_id),
+    )
     public_id = str(row[1])
     tracking_out = row[2]
     if meta.get("external_post_id"):
