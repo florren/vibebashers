@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -87,7 +88,11 @@ def test_aggregate_deterministic_and_stability_rules() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mock_run_reproducible_and_fast() -> None:
+async def test_mock_run_reproducible_and_fast(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Compare every metric with a deterministic clock; measure the wall-time budget separately.
+    clock = SimpleNamespace(perf_counter=lambda: 0.0)
+    for module in ("app.bench.runner", "app.llm.mock", "app.llm.failover"):
+        monkeypatch.setattr(f"{module}.time", clock)
     profile = LLMProfile(code="mock", provider="mock", model="mock-rules-v1", temperature=0.0)
     t0 = time.perf_counter()
     r1 = await run("lite_v1", profile, repeats=1)

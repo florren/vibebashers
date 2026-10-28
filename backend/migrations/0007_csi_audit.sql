@@ -11,7 +11,7 @@ BEGIN
     v_pk := jsonb_build_array(v_row->>'branch_id', v_row->>'day', v_row->>'wait_bucket', v_row->>'redirects_bucket')::text;
   END IF;
   IF v_pk IS NULL THEN
-    RAISE EXCEPTION 'Unsupported audit primary key on %', TG_TABLE_NAME;
+    RAISE EXCEPTION USING MESSAGE = 'Unsupported audit primary key on ' || TG_TABLE_NAME;
   END IF;
   IF TG_OP = 'DELETE' THEN
     v_summary := jsonb_build_object('deleted', true);

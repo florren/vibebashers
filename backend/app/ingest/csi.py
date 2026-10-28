@@ -6,6 +6,7 @@ import datetime as dt
 import hashlib
 import io
 import json
+import re
 import zipfile
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -100,8 +101,10 @@ def parse_json(raw: bytes) -> list[Row]:
         raise CsiError("<file>", "файл превышает 10 MB")
     try:
         body = json.loads(raw)
-    except (ValueError, UnicodeError) as exc:
-        raise CsiError("<file>", "некорректный JSON") from exc
+    except json.JSONDecodeError as exc:
+        raise CsiError(f"JSON column {exc.colno}", "некорректный JSON", row=exc.lineno) from exc
+    except UnicodeError as exc:
+        raise CsiError("<file>", "некорректная кодировка JSON") from exc
     rows = body if isinstance(body, list) else [body]
     if not rows or len(rows) > MAX_ROWS:
         raise CsiError("<file>", "ожидается от 1 до 10000 строк")
@@ -146,6 +149,21 @@ def parse_xlsx(raw: bytes) -> list[Row]:
         if not rows:
             raise CsiError("<file>", "нет строк данных")
         return rows
+    except CsiError:
+        raise
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        IndexError,
+        zipfile.BadZipFile,
+        DefusedXmlException,
+        ParseError,
+        InvalidFileException,
+        EOFError,
+        OverflowError,
+    ) as exc:
+        raise CsiError("<file>", "некорректный XLSX") from exc
     finally:
         workbook.close()
 
@@ -244,6 +262,8 @@ async def prepare(
     if source_code != "csi":
         raise CsiError("source_code", "CSI принимается источником csi")
     payload = validate_row((msg.get("meta") or {}).get("csi_meta"))
+    if payload.get("received_at"):
+        msg["timestamp"] = payload["received_at"]
     if payload["csi_no"] != msg.get("external_id") or payload["complaint_ru"] != str(msg.get("text") or "").strip():
         raise CsiError("csi_no", "CSI metadata не совпадает с сообщением")
     await conn.execute("select pg_advisory_xact_lock(hashtext('csi_import'))")
@@ -325,6 +345,7 @@ async def import_rows(conn: psycopg.AsyncConnection[Any], rows: list[Row]) -> di
         raise IngestError("нет текущего запуска: нужен сид")
     report: dict[str, Any] = {"accepted": 0, "duplicates": 0, "rejected": 0, "items": []}
     async with conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(hashtext('csi_import'))")
         for row in rows:
             try:
                 payload = validate_row(row.value)
@@ -349,11 +370,95 @@ async def import_rows(conn: psycopg.AsyncConnection[Any], rows: list[Row]) -> di
                     }
                 )
                 raw = row.value if isinstance(row.value, dict) else {"value": row.value}
-                ext = str(raw.get("csi_no") or ("invalid-" + hashlib.sha256(dumps(raw).encode()).hexdigest()[:24]))[
-                    :128
-                ]
+                candidate = raw.get("csi_no")
+                known_id = isinstance(candidate, str) and re.fullmatch(r"CSI-\d{3,6}", candidate) is not None
+                ext = candidate if known_id else "invalid-" + hashlib.sha256(dumps(raw).encode()).hexdigest()[:24]
+                # Не сохраняем значения неизвестных полей (например ФИО/контакты) даже при отказе.
+                audit_payload = {
+                    "csi_no": candidate if known_id else None,
+                    "meta": {
+                        "row": row.number,
+                        "column": column if column in CsiResponse.model_fields else "<unknown>",
+                        "rejected": True,
+                    },
+                }
                 await conn.execute(
                     "insert into ingest_messages (run_id,source_code,external_id,payload,status,error) values (%s,'csi',%s,%s::jsonb,'rejected',%s) on conflict (source_code,external_id) do update set payload=excluded.payload,error=excluded.error,status='rejected' where ingest_messages.status<>'accepted'",
-                    (current[0], ext, dumps(raw), str(exc)[:500]),
+                    (current[0], ext, dumps(audit_payload), str(exc)[:500]),
                 )
     return report
+
+
+async def reconcile_seed_rows(conn: psycopg.AsyncConnection[Any], *, run_id: int) -> int:
+    """Обновление только старой синтетической истории при повторном seed, без новых signals."""
+    from app.contracts.registry import validate
+    from app.ingest.normalizer import from_csi
+    from app.ingest.red_words import detect
+
+    async with conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(hashtext('csi_import'))")
+        async with conn.cursor(row_factory=tuple_row) as cursor:
+            await cursor.execute(
+                "select s.id,s.run_id,s.client_id,s.text,s.received_sim,s.classification,s.geo,s.flags "
+                "from signals s where s.run_id=%s and s.channel_code='csi_survey' and s.origin='sim' "
+                "and s.classification->>'llm_source'='seed' and not exists "
+                "(select 1 from csi_responses cr where cr.signal_id=s.id) order by s.id",
+                (run_id,),
+            )
+            rows = await cursor.fetchall()
+        for signal_id, run_id, client_id, text, received, classification, geo, flags in rows:
+            region = (geo or {}).get("region_code")
+            branch = await _one(
+                conn, "select code from branches order by (region_code=%s) desc nulls last,code limit 1", (region,)
+            )
+            if branch is None:
+                raise CsiError("branch_code", "нет ВСП для старой синтетической истории")
+            number = 900000 + int(signal_id) % 100000
+            for _ in range(100000):
+                csi_no = f"CSI-{number:06d}"
+                if await _one(conn, "select signal_id from csi_responses where csi_no=%s", (csi_no,)) is None:
+                    break
+                number = 900000 + (number - 900000 + 1) % 100000
+            else:
+                raise CsiError("csi_no", "исчерпан диапазон синтетического backfill CSI")
+            payload = {
+                "csi_no": csi_no,
+                "complaint_ru": text,
+                "branch_code": branch[0],
+                "received_at": received.isoformat(),
+                "products": [classification["product"]] if classification.get("product") else [],
+                "feedback_type": "синтетическая история (backfill)",
+                "topic": "вежливость/доброжелательность",
+            }
+            msg = from_csi(payload)
+            msg["origin"] = "sim"
+            msg["client"] = {"client_id": client_id}
+            detail, signal_geo = await prepare(conn, msg, "csi")
+            errors = validate(msg, "ingest/unified_message")
+            if errors:
+                raise CsiError("<row>", "; ".join(errors[:2]))
+            red = detect(text)
+            all_flags = list(
+                dict.fromkeys(
+                    [*(flags or []), *(classification.get("flags") or []), *(["red_word"] if red["words"] else [])]
+                )
+            )
+            if red["words"]:
+                classification = {
+                    **classification,
+                    "red_words": red["words"],
+                    "flags": all_flags,
+                    "criticality": "high",
+                }
+            meta = {**msg["meta"], "csi_seed_backfill": True, "red_words": red}
+            msg["meta"] = meta
+            await persist(conn, int(signal_id), detail)
+            await conn.execute(
+                "update signals set geo=%s::jsonb,meta=meta||%s::jsonb,red_words=%s,flags=%s,classification=%s::jsonb where id=%s",
+                (dumps(signal_geo), dumps(meta), red["words"], all_flags, dumps(classification), signal_id),
+            )
+            await conn.execute(
+                "insert into ingest_messages(run_id,source_code,external_id,payload,status,signal_id) values (%s,'csi',%s,%s::jsonb,'accepted',%s) on conflict (source_code,external_id) do update set status='accepted',signal_id=excluded.signal_id,payload=excluded.payload,error=null where ingest_messages.status<>'accepted'",
+                (run_id, csi_no, dumps(msg), signal_id),
+            )
+    return len(rows)

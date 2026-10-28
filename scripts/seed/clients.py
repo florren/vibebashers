@@ -455,6 +455,9 @@ def seed_history_signals(
 ) -> None:
     """История сигналов и инцидентов: гарантирует матрицу покрытия (тип × продукт × канал ≥ 1, ячейка SLA ≥ 5 инцидентов в разных статусах)."""
     if cur.execute("select count(*) from signals where run_id = %s", (run_id,)).fetchone()[0]:
+        from app.ingest.sync_bridge import reconcile_seed_sync
+
+        reconcile_seed_sync(cur.connection, run_id=run_id)
         return
     tg = TextGen(seed)
     clients = cur.execute(

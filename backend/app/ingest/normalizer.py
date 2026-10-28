@@ -27,6 +27,7 @@ CHANNELS = {
     "review_portal",
     "voice_input",
     "branch_audio",
+    "csi_survey",
 }
 
 
@@ -236,6 +237,12 @@ async def _create_signal(
     if msg.get("channel") == "csi_survey":
         from app.ingest.csi import prepare
 
+        csi_meta = (msg.get("meta") or {}).get("csi_meta")
+        if isinstance(csi_meta, dict) and csi_meta.get("received_at") in (None, ""):
+            msg["meta"] = {
+                **(msg.get("meta") or {}),
+                "csi_meta": {**csi_meta, "received_at": (sim_time or dt.datetime.now(dt.UTC)).isoformat()},
+            }
         csi_detail, signal_geo = await prepare(conn, msg, source_code)
     errors = validate(msg, "ingest/unified_message")
     if errors:

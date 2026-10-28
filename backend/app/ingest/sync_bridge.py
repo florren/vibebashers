@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Any, cast
 
 import psycopg
+from psycopg.pq import TransactionStatus
 
 from app.ingest.normalizer import create_signal
 
@@ -52,8 +53,22 @@ class _Connection:
 def create_signal_sync(
     conn: psycopg.Connection[Any], msg: dict[str, Any], *, run_id: int, sim_time: dt.datetime
 ) -> dict[str, Any]:
+    if conn.autocommit:
+        raise ValueError("seed normalizer требует соединение без autocommit")
+    if conn.info.transaction_status == TransactionStatus.IDLE:
+        conn.execute("select 1")  # Открываем внешнюю транзакцию; normalizer использует только SAVEPOINT.
     return asyncio.run(
         create_signal(
             cast(Any, _Connection(conn)), msg, source_code="csi", run_id=run_id, sim_time=sim_time, emit_event=False
         )
     )
+
+
+def reconcile_seed_sync(conn: psycopg.Connection[Any], *, run_id: int) -> int:
+    from app.ingest.csi import reconcile_seed_rows
+
+    if conn.autocommit:
+        raise ValueError("seed normalizer требует соединение без autocommit")
+    if conn.info.transaction_status == TransactionStatus.IDLE:
+        conn.execute("select 1")
+    return asyncio.run(reconcile_seed_rows(cast(Any, _Connection(conn)), run_id=run_id))
