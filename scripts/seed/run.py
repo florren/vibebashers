@@ -19,34 +19,41 @@ for _candidate in (_ROOT / "backend", Path("/app")):
     if (_candidate / "app" / "sim" / "baseline.py").exists() and str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
 
-from app.sim import baseline as baseline_svc  # noqa: E402
-from app.sim.baseline import BaselineToolingError  # noqa: E402
 from scripts.seed.clients import ensure_history_run, seed_clients, seed_history_signals, seed_operations  # noqa: E402
 from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting  # noqa: E402
 from scripts.seed.coverage import compute_coverage  # noqa: E402
 from scripts.seed.refs import seed_all_refs  # noqa: E402
 
+from app.sim import baseline as baseline_svc  # noqa: E402
+from app.sim.baseline import BaselineToolingError  # noqa: E402
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", default="lite", choices=sorted(PROFILES))
-    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--database-url", default=None)
     ap.add_argument("--refs-only", action="store_true")
     ap.add_argument(
         "--reset-history", action="store_true", help="удалить клиентов и историю перед сидом (справочники остаются)"
     )
     ap.add_argument("--clients", type=int, default=None, help="переопределить число клиентов профиля")
+    ap.add_argument("--branch-provider", choices=["synthetic", "snapshot_file"], default="synthetic")
+    ap.add_argument("--branch-file", type=Path, default=None)
     a = ap.parse_args()
     prof = PROFILES[a.profile]
     n_clients = a.clients or prof["clients"]
     t0 = time.perf_counter()
-    rnd = random.Random(a.seed)
     sim_now = dt.datetime(
         2026, 11, 9, 9, 0, tzinfo=dt.timezone(dt.timedelta(hours=3))
     )  # «сегодня» симуляции = день демо
     with connect(a.database_url) as conn, conn.cursor() as cur:
-        seed_all_refs(cur, rnd)
+        previous = cur.execute("select seed from sim_state where id = 1").fetchone()
+        seed = a.seed if a.seed is not None else (int(previous[0]) if previous and previous[0] is not None else 42)
+        rnd = random.Random(seed)
+        seed_all_refs(
+            cur, rnd, seed=seed, sim_time=sim_now, branch_mode=a.branch_provider, branch_snapshot=a.branch_file
+        )
         conn.commit()
         if a.refs_only:
             return 0
@@ -58,10 +65,10 @@ def main() -> int:
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)
         conn.commit()
-        run_id = ensure_history_run(cur, a.seed, sim_now, a.profile)
+        run_id = ensure_history_run(cur, seed, sim_now, a.profile)
         seed_operations(cur, rnd, run_id, sim_now)
         conn.commit()
-        seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], a.seed)
+        seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()
         cov = compute_coverage(cur, run_id)
         set_setting(
@@ -69,7 +76,7 @@ def main() -> int:
             "seed_done",
             {
                 "profile": a.profile,
-                "seed": a.seed,
+                "seed": seed,
                 "clients": n_clients,
                 "run_id": run_id,
                 "at": dt.datetime.now(dt.UTC).isoformat(),
