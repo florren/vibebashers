@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-from scripts.seed.common import DATA, J, load_csv, load_yaml, log
+from scripts.seed.common import DATA, J, load_csv, load_yaml, log, set_setting
 
-from app.sim.branch_directory import network_history, provider
+from app.sim.branch_directory import Branch, network_history, provider
 
 
 def seed_geo(cur: psycopg.Cursor[Any]) -> None:
@@ -297,7 +297,25 @@ def seed_branches(
             "update employees set education=coalesce(education,%s), hired_sim=coalesce(hired_sim,%s), position_since_sim=coalesce(position_since_sim,%s) where branch_id = %s",
             ("высшее", sim_time - dt.timedelta(days=730), sim_time - dt.timedelta(days=365), bid),
         )
-    for row in network_history(branches, sim_time):
+    # Исчезнувшие из snapshot ВСП сохраняются для исторических FK, но закрываются.
+    cur.execute(
+        "update branches set branch_status = 'closed', closed_sim = coalesce(closed_sim, %s) "
+        "where code <> all(%s) and branch_status is distinct from 'closed'",
+        (sim_time, [branch.code for branch in branches]),
+    )
+    all_rows = cur.execute("select " + ", ".join(columns) + " from branches order by code").fetchall()
+    complete_network = [Branch.model_validate(dict(zip(columns, values, strict=True))) for values in all_rows]
+    set_setting(
+        cur,
+        "branch_directory",
+        {
+            "mode": mode,
+            "is_synthetic": mode == "synthetic",
+            "as_of_sim": sim_time.isoformat(),
+            "snapshot": snapshot.name if snapshot else None,
+        },
+    )
+    for row in network_history(complete_network, sim_time):
         cur.execute(
             "insert into branch_network_history (month,region_code,open_count,closed_count,opened_in_month,closed_in_month) values (%(month)s,%(region_code)s,%(open_count)s,%(closed_count)s,%(opened_in_month)s,%(closed_in_month)s) on conflict (month,region_code) do update set open_count=excluded.open_count,closed_count=excluded.closed_count,opened_in_month=excluded.opened_in_month,closed_in_month=excluded.closed_in_month",
             row,

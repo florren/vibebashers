@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Query, Response
 
-from app.api.common import db, fetch_all
+from app.api.common import db, fetch_all, fetch_one
 
 router = APIRouter(tags=["branches"])
 
@@ -63,5 +63,6 @@ async def branch_network(
             "- make_interval(months => %s) " + where + " group by month order by month",
             args,
         )
+        directory = await fetch_one(conn, "select value from settings where key = 'branch_directory'")
     response.headers["Cache-Control"] = "private, max-age=86400"
-    return {"items": rows, "synthetic": True}
+    return {"items": rows, "synthetic": (directory["value"].get("is_synthetic", True) if directory else True)}

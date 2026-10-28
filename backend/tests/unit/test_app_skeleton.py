@@ -58,7 +58,7 @@ def test_ws_subscribe_and_ping() -> None:
 
 @pytest.mark.parametrize(
     ("path", "card"),
-    [("/api/cabinet/overview", "T-241"), ("/api/csi/analytics", "T-247"), ("/api/branches", "T-245")],
+    [("/api/cabinet/overview", "T-241"), ("/api/csi/analytics", "T-247")],
 )
 def test_v15_stubs_are_problem_json(path: str, card: str) -> None:
     with TestClient(create_app()) as client:

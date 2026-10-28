@@ -108,19 +108,24 @@ class SnapshotBranchDirectory:
             raise ValueError("snapshot должен лежать в data/import/branches")
 
     def load(self, seed: int, sim_time: dt.datetime) -> list[Branch]:
+        if self.path.stat().st_size > 10_000_000:
+            raise ValueError("snapshot превышает 10 MB")
         if self.path.suffix.lower() == ".json":
             doc = json.loads(self.path.read_text())
             rows = doc["branches"] if isinstance(doc, dict) else doc
         elif self.path.suffix.lower() == ".csv":
             with self.path.open(newline="") as stream:
                 rows = list(csv.DictReader(stream))
-            for row in rows:
-                row["product_line_codes"] = json.loads(row["product_line_codes"])
+            for number, row in enumerate(rows, start=2):
+                try:
+                    row["product_line_codes"] = json.loads(row["product_line_codes"])
+                except (KeyError, ValueError) as exc:
+                    raise ValueError(f"snapshot строка {number}: product_line_codes: ожидается JSON-массив") from exc
                 if not row.get("closed_sim"):
                     row["closed_sim"] = None
         else:
             raise ValueError("snapshot: ожидается CSV или JSON")
-        if not isinstance(rows, list):
+        if not isinstance(rows, list) or len(rows) > 10000:
             raise ValueError("snapshot: ожидается массив branches")
         regions, cities, lines = _catalogs()
         city_regions = {int(c["id"]): c["region_code"] for c in cities}
@@ -130,6 +135,8 @@ class SnapshotBranchDirectory:
         seen = set()
         for i, row in enumerate(rows, start=1):
             try:
+                # Реестр ВСП не является источником персональных данных руководителей.
+                row = {**row, "manager_display_name": f"Учебный руководитель {row.get('code', '')}"}
                 branch = Branch.model_validate(row)
                 if branch.code in seen:
                     raise ValueError("повтор кода ВСП")

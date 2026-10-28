@@ -86,7 +86,7 @@ def main() -> int:
             set_setting(cur, "setup_completed", False)
         cur.execute(
             "insert into sim_state (id, sim_time, day_no, speed, running, seed, phase, current_run_id) values (1, %s, 0, 60, false, %s, 'morning', %s) on conflict (id) do update set current_run_id = coalesce(sim_state.current_run_id, excluded.current_run_id)",
-            (sim_now, a.seed, run_id),
+            (sim_now, seed, run_id),
         )
         conn.commit()
         try:
