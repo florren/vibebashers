@@ -49,7 +49,7 @@ GIGACHAT_AUTH_KEY_2=        # второй ключ — ротация при л
 GIGACHAT_SCOPE=GIGACHAT_API_PERS   # PERS для физлица, CORP/B2B для юрлица
 GIGACHAT_BASE_URL=https://api.giga.chat/v1
 GIGACHAT_OAUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
-GIGACHAT_MODEL=GigaChat-3-Pro      # отвечает агент; id из GET https://api.giga.chat/v1/models: GigaChat-3-Pro, GigaChat-3-Ultra, GigaChat-3-Lightning
+GIGACHAT_MODEL=GigaChat-3-Ultra      # отвечает агент; id из GET https://api.giga.chat/v1/models: GigaChat-3-Pro, GigaChat-3-Ultra, GigaChat-3-Lightning
 GIGACHAT_VERIFY_SSL=false   # true только если в контейнер добавлен сертификат Минцифры
 
 OPENROUTER_API_KEY=         # альтернатива GigaChat (OpenAI-совместимый API)
@@ -78,7 +78,15 @@ STT_PROVIDER=none           # vosk | browser | none — распознавани
 | `replay` | демо без интернета после репетиции с живой моделью | ответы из кассет `data/cassettes`, записанных при `LLM_RECORD=true` |
 | `gigachat` | показ с живой моделью | OAuth по Authorization key, лимиты и ротация ключей, при сбое — автоматический откат на `replay`/`mock` |
 
-Список моделей берите с `https://api.giga.chat/v1/models` (тот же хост, что у SDK `base_url`). Там есть `GigaChat-3-Ultra`, `GigaChat-3-Pro` и `GigaChat-3-Lightning`. Старый хост `gigachat.devices.sberbank.ru` этих id не отдаёт и отвечает 404.
+Список моделей берите с `https://api.giga.chat/v1/models` (тот же хост, что у SDK `base_url`). Проверьте наличие `GigaChat-3-Ultra`, `GigaChat-3-Pro` и `GigaChat-3-Lightning` именно для вашего ключа; наличие id в справочнике приложения не гарантирует доступ у провайдера. Старый хост `gigachat.devices.sberbank.ru` этих id не отдаёт и отвечает 404.
+
+Распределение ролей: `gigachat_ultra` → `main` → `GigaChat-3-Ultra`; `gigachat_pro` → `twin` → `GigaChat-3-Pro`; `gigachat_lightning` → `fast` → `GigaChat-3-Lightning`. Это разные профили, даже если раньше Ultra ошибочно ссылался на Pro.
+
+Для уже установленного стенда изменение YAML не обновляет БД автоматически. В мастере отредактируйте модель профиля `gigachat_ultra` на `GigaChat-3-Ultra`, оставьте Pro двойнику и Lightning быстрой модели. Существующий `.env` также не заменяется примером: проверьте `LLM_PROVIDER=gigachat` и `GIGACHAT_MODEL=GigaChat-3-Ultra`. Сейчас рабочий профиль агента создаётся из `.env`; выбор роли в мастере сохраняется в БД, но сам по себе не переключает профиль агента. Блок редактирования `.env` применяет новый основной профиль в работающем процессе. Отдельный LLM-контур цифрового двойника пока не подключён: роль `twin` в справочнике не является доказательством живого вызова Pro.
+
+Для живой проверки нужны действующий Authorization key, доступные этому ключу модели из `GET /models`, неизрасходованная квота и сетевой доступ к OAuth/API. Перед запуском проверьте доступность каждого точного id; недоступность Ultra не исправляется подменой на Pro. Проверка TLS должна быть включена с доверенным CA НУЦ Минцифры (`GIGACHAT_VERIFY_SSL=true` и доверенный bundle для httpx; тот же CA нужен сервису бенчмарков, где TLS включён всегда).
+
+Кнопка «Проверить» у каждого профиля делает отдельный запрос через `POST /api/setup/test-llm`; успешный ответ этой проверки не использует цепочку fallback. Для бенчмарка используйте API/вкладку `/engine`: сначала `dry_run=true`, затем выбранные три профиля на `lite_v1`. CLI `make bench PROFILE=...` для немоковых профилей считает только прогноз и не проверяет доступ к модели. Успешная живая проверка — ответ именно выбранной модели, валидный structured output, ненулевой usage, отсутствие mock/replay и отсутствие ошибок. Отдельно проверяются сценарий агента на Ultra и детектор на Lightning; простой ping не подтверждает их качество или задержки.
 
 Рекомендация на демо: накануне прогнать сценарии с живой моделью при `LLM_RECORD=true`, на показе оставить `LLM_CHAIN=gigachat,openai_compat,replay,mock` — при проблемах с сетью зрители не заметят переключения. `LLM_CHAIN=replay,mock` — только `./install.sh --offline` и ручной офлайн-режим.
 
