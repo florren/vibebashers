@@ -9,6 +9,7 @@ import io
 import json
 import sys
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -160,8 +161,9 @@ def forecast(
     *,
     repeats: int = 1,
     key_tokens_remaining: int | None = None,
+    cases: list[BenchCase] | None = None,
 ) -> Forecast:
-    cases = load_dataset(dataset_code)
+    cases = load_dataset(dataset_code) if cases is None else cases
     if not cases:
         return Forecast(est_tokens=0, est_requests=0, fits_limits=True)
     prompts = [build_classify_prompt(c) for c in cases]
@@ -234,6 +236,7 @@ async def _invoke_classify(
         "completion_tokens": res.usage.completion_tokens,
         "fallback_mock": res.fallback_mock,
         "cost_rub": cost_rub,
+        "key_label": res.usage.key_label,
         "tool_ok": tool_ok,
     }
 
@@ -246,32 +249,41 @@ async def run(
     seed: int | None = 42,
     chain: ProviderChain | None = None,
     key_tokens_remaining: int | None = None,
+    cases: list[BenchCase] | None = None,
+    record: BenchRunRecord | None = None,
+    on_update: Callable[[BenchRunRecord], Awaitable[None]] | None = None,
 ) -> BenchRunRecord:
     """Запускает прогон; при fits_limits=false не вызывает LLM."""
     global _NEXT_RUN_ID
     repeats = max(1, min(3, repeats))
-    fc = forecast(dataset_code, profile, repeats=repeats, key_tokens_remaining=key_tokens_remaining)
-    run_id = _NEXT_RUN_ID
-    _NEXT_RUN_ID += 1
-    prompt_version = load_prompt("classify").version
-    record = BenchRunRecord(
-        id=run_id,
-        dataset_code=dataset_code,
-        llm_profile_code=profile.code,
-        prompt_version=prompt_version,
-        seed=seed,
-        repeats=repeats,
-        status="queued",
-    )
-    _RUNS[run_id] = record
+    cases = load_dataset(dataset_code) if cases is None else cases
+    fc = forecast(dataset_code, profile, repeats=repeats, key_tokens_remaining=key_tokens_remaining, cases=cases)
+    if record is None:
+        record = BenchRunRecord(
+            id=_NEXT_RUN_ID,
+            dataset_code=dataset_code,
+            llm_profile_code=profile.code,
+            prompt_version=load_prompt("classify").version,
+            seed=seed,
+            repeats=repeats,
+            status="queued",
+        )
+        _NEXT_RUN_ID += 1
+        _RUNS[record.id] = record
+    run_id = record.id
+
+    async def notify() -> None:
+        if on_update is not None:
+            await on_update(record)
+
     if not fc.fits_limits:
         record.status = "failed"
         record.error = fc.warning or "лимиты не позволяют прогон"
         record.finished_at = datetime.now(UTC)
         log.warning("bench_forecast_blocked", dataset=dataset_code, warning=fc.warning)
+        await notify()
         return record
 
-    cases = load_dataset(dataset_code)
     schema = deref("agent/classification")
     if chain is None:
         limiter = RateLimiter()
@@ -281,6 +293,7 @@ async def run(
     sem = asyncio.Semaphore(sem_size)
     record.status = "running"
     record.started_at = datetime.now(UTC)
+    await notify()
     total = len(cases) * repeats
     done = 0
 
@@ -300,15 +313,23 @@ async def run(
                 if record._cancel:
                     record.status = "cancelled"
                     record.finished_at = datetime.now(UTC)
+                    await notify()
                     return record
                 record.results.append(await one(case, repeat_no))
+                await notify()
         record.metrics = aggregate(record.results, repeats=repeats)
         record.status = "done"
+    except asyncio.CancelledError:
+        record.status = "cancelled"
+        record.finished_at = datetime.now(UTC)
+        await notify()
+        raise
     except Exception as e:
         record.status = "failed"
-        record.error = str(e)
-        log.exception("bench_run_failed", run_id=run_id)
+        record.error = "benchmark failed: provider or persistence unavailable"
+        log.error("bench_run_failed", run_id=run_id, error_type=type(e).__name__)
     record.finished_at = datetime.now(UTC)
+    await notify()
     return record
 
 

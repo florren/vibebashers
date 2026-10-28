@@ -68,7 +68,9 @@ def aggregate(results: list[dict[str, Any]], *, repeats: int = 1) -> dict[str, A
 
     latencies = [int(r["latency_ms"]) for r in results]
     json_valid = [bool(r.get("json_valid_first_try")) for r in results]
-    tool_ok = [bool(r.get("predicted")) and isinstance(r.get("predicted"), dict) for r in results]
+    tool_ok = [
+        bool(r.get("tool_ok", bool(r.get("predicted")) and isinstance(r.get("predicted"), dict))) for r in results
+    ]
     retries = [int(r.get("retries") or 0) for r in results]
     fallbacks = [bool(r.get("fallback_mock")) for r in results]
     tokens = sum(int(r.get("prompt_tokens") or 0) + int(r.get("completion_tokens") or 0) for r in results)

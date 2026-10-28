@@ -20,6 +20,7 @@ from app import __version__
 from app import api as api_pkg
 from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
+from app.bench.service import BenchService
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
@@ -87,6 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         chain=app.state.llm_chain.names,
         version=__version__,
     )
+    app.state.bench = BenchService()
     app.state.sim = None
     app.state.agent = None
     poll_stop: asyncio.Event | None = None
@@ -106,6 +108,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     yield
+    await app.state.bench.stop()
     if poll_stop is not None:
         poll_stop.set()
         task = getattr(app.state, "ingest_poll", None)

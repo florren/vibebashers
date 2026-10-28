@@ -96,7 +96,10 @@ make migrate            # alembic upgrade head
 make seed PROFILE=lite  # данные
 make dev                # backend :8000 с автоперезагрузкой
 make dev-front          # в другом терминале: vite :5173 → proxy на :8000
+make bench DATASET=lite_v1 PROFILE=mock  # локальный бенчмарк без сети и записи в БД
 ```
+
+Фоновые бенчмарки запускаются из вкладки на `/engine` через `POST /api/bench/runs`: API возвращает `202` и отдельный `run_id` для каждого профиля. Наборы и профили берутся из БД, результаты сохраняются, прогресс поступает по WS-теме `bench`; доступны отмена и экспорт CSV/JSON. `dry_run=true` считает прогноз без вызова LLM и создания прогона. Ошибка выбранного провайдера завершает его прогон со статусом `failed`; автоматической подмены на mock в бенчмарке нет. CLI-команда `make bench` для профиля, отличного от mock, выводит только прогноз.
 
 `make help` показывает все цели: `lint`, `test`, `test-scenarios`, `sync-contracts`, `scenario`, `report`, `e2e`, `import-transcripts`.
 

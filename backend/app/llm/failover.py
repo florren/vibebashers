@@ -57,8 +57,9 @@ class ProviderChain:
         timeouts: dict[str, float] | None = None,
         scenario_id: str | None = None,
         prompt_version: str | None = None,
+        append_mock: bool = True,
     ) -> None:
-        if not providers or providers[-1].name != "mock":
+        if append_mock and (not providers or providers[-1].name != "mock"):
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
         self.providers = providers
         self.record_store = record_store
@@ -125,7 +126,9 @@ class ProviderChain:
             if attempts and any(not a.ok for a in attempts):
                 log.info("llm_failover", used=prov.name, failed=[a.provider for a in attempts if not a.ok])
             return ChainResult(obj, usage, raw, prov.name, attempts)
-        raise RuntimeError("цепочка провайдеров пуста — недостижимо, mock замыкает цепочку")
+        raise ProviderError(
+            "unavailable", "; ".join(a.error or a.provider for a in attempts) or "нет доступного провайдера"
+        )
 
     async def stream(
         self, messages: list[Message], profile: LLMProfile, *, context: Context | str = "default"
