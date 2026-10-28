@@ -128,5 +128,7 @@ jobs:
             cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm test -- --run && npm run build
             npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
           else echo "frontend ещё нет — пропуск"; fi
+      - name: Local font assets after frontend build
+        run: cd backend && uv run pytest -q tests/integration/test_no_cdn.py
       - name: i18n
         run: python3 scripts/i18n_check.py

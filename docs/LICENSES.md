@@ -2,8 +2,8 @@
 
 | Компонент | Лицензия | Источник / путь в репозитории |
 |---|---|---|
-| Inter | SIL Open Font License 1.1 | https://github.com/rsms/inter — бинарники `frontend/public/fonts/inter-*.woff2` |
-| JetBrains Mono | SIL Open Font License 1.1 | https://github.com/JetBrains/JetBrainsMono — `frontend/public/fonts/jetbrains-mono-*.woff2` |
+| Inter | SIL Open Font License 1.1 | https://github.com/rsms/inter — бинарники `frontend/public/fonts/inter-*.woff2`, notice `frontend/public/fonts/Inter-OFL.txt` |
+| JetBrains Mono | SIL Open Font License 1.1 | https://github.com/JetBrains/JetBrainsMono — `frontend/public/fonts/jetbrains-mono-*.woff2`, notice `frontend/public/fonts/JetBrainsMono-OFL.txt` |
 
 Шрифты поставляются локально (без CDN и без npm `@fontsource/*`), см. `data/README.md` и карточку T-263.
 

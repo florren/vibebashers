@@ -27,7 +27,7 @@
 ## Шрифты UI (T-263)
 
 Бинарники Inter (400–700, latin + cyrillic) и JetBrains Mono (400, 500) лежат в `frontend/public/fonts/` (формат woff2).
-Источник: официальные релизы [Inter](https://github.com/rsms/inter) и [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), лицензия OFL 1.1 (`docs/LICENSES.md`). В рантайме внешние CDN не используются.
+Источник: официальные релизы [Inter](https://github.com/rsms/inter) и [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), лицензия OFL 1.1 (`docs/LICENSES.md`). В рантайме внешние CDN не используются. Полные copyright/OFL notices поставляются рядом с бинарниками: `Inter-OFL.txt`, `JetBrainsMono-OFL.txt`. Проверка после build проверяет все 12 файлов и каждый `@font-face`; Playwright `e2e/fonts.spec.ts` блокирует внешнюю сеть и через Chromium CDP проверяет фактические custom-font glyphs латиницы/кириллицы во всех весах.
 
 ## Сид
 
