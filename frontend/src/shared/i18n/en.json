@@ -151,7 +151,13 @@
       "dark": "Dark",
       "auto": "System",
       "circadian": "Circadian"
-    }
+    },
+    "densityLabel": "Density",
+    "density": {
+      "comfortable": "Comfortable",
+      "compact": "Compact"
+    },
+    "syncError": "Theme saved locally; settings sync unavailable"
   },
   "signal": {
     "type": {

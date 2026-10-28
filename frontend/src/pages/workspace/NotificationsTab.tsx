@@ -22,7 +22,7 @@ export function NotificationsTab({ runId }: { runId: number | undefined }) {
         <div className="text-sm text-muted">{t('notif.subtitle')}</div>
         <div className="flex overflow-hidden rounded border border-line text-xs">
           {TYPES.map((x) => (
-            <button key={x} type="button" className={clsx('px-2 py-0.5', type === x ? 'bg-brand text-white' : 'text-muted hover:text-ink')} onClick={() => setType(x)}>
+            <button key={x} type="button" className={clsx('px-2 py-0.5', type === x ? 'bg-brand-strong text-on-brand' : 'text-muted hover:text-ink')} onClick={() => setType(x)}>
               {t(`notif.type.${x}`)}
             </button>
           ))}

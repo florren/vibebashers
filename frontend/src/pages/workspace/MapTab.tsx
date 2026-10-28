@@ -221,7 +221,7 @@ function Seg<T extends string>({ value, onChange, items }: { value: T; onChange:
   return (
     <div className="flex overflow-hidden rounded border border-line">
       {items.map((it) => (
-        <button key={it.id} type="button" className={clsx('px-2 py-0.5', value === it.id ? 'bg-brand text-white' : 'bg-surface text-muted hover:text-ink')} onClick={() => onChange(it.id)}>
+        <button key={it.id} type="button" className={clsx('px-2 py-0.5', value === it.id ? 'bg-brand-strong text-on-brand' : 'bg-surface text-muted hover:text-ink')} onClick={() => onChange(it.id)}>
           {it.label}
         </button>
       ))}

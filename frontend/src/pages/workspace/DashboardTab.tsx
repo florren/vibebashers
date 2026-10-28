@@ -28,7 +28,7 @@ export function DashboardTab() {
         <div className="text-sm text-muted">{t('dash.subtitle')}</div>
         <div className="flex overflow-hidden rounded border border-line text-xs">
           {(['run', '24h', '7d', 'all'] as Win[]).map((w) => (
-            <button key={w} type="button" className={clsx('px-2 py-0.5', win === w ? 'bg-brand text-white' : 'text-muted hover:text-ink')} onClick={() => setWin(w)}>
+            <button key={w} type="button" className={clsx('px-2 py-0.5', win === w ? 'bg-brand-strong text-on-brand' : 'text-muted hover:text-ink')} onClick={() => setWin(w)}>
               {t(`dash.window.${w}`)}
             </button>
           ))}

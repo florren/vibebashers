@@ -63,7 +63,7 @@ export function SetupPage() {
         {STEP_KEYS.map((k, i) => (
           <li key={k}>
             <button
-              className={clsx('flex items-center gap-1 rounded-full border px-2.5 py-1', i === step ? 'border-brand bg-brand text-white' : done.has(i + 1) ? 'border-ok/40 bg-ok/10 text-ink' : 'border-line text-muted hover:text-ink')}
+              className={clsx('flex items-center gap-1 rounded-full border px-2.5 py-1', i === step ? 'border-brand bg-brand-strong text-on-brand' : done.has(i + 1) ? 'border-ok/40 bg-ok/10 text-ink' : 'border-line text-muted hover:text-ink')}
               onClick={() => go(i)}
             >
               {done.has(i + 1) && i !== step ? <Check size={11} /> : <span className="num">{i + 1}</span>}

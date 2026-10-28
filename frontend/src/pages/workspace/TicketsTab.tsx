@@ -36,7 +36,7 @@ export function TicketsTab({ runId }: { runId: number | undefined }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <div className="flex overflow-hidden rounded border border-line text-xs">
           {(['tickets', 'escalations'] as View[]).map((v) => (
-            <button key={v} type="button" className={clsx('px-2 py-0.5', view === v ? 'bg-brand text-white' : 'text-muted hover:text-ink')} onClick={() => setView(v)}>
+            <button key={v} type="button" className={clsx('px-2 py-0.5', view === v ? 'bg-brand-strong text-on-brand' : 'text-muted hover:text-ink')} onClick={() => setView(v)}>
               {t(`tickets.view.${v}`)}
               {v === 'escalations' && (escs.data?.counts?.open ?? 0) > 0 && <span className="ml-1 rounded-full bg-danger px-1.5 text-[10px] text-white">{escs.data?.counts?.open}</span>}
             </button>
