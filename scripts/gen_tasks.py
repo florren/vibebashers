@@ -837,7 +837,7 @@ dict(id=163, title="LLM-двойники «подсвеченных» клиен
  goal="Живые тексты жалоб и реакций на лёгкой модели для сценариев, HITL, VIP и выборки; остальные — параметрически.",
  tz=["4.5", "12.5", "5.2"], contracts=["events/agent/client_twin_reaction.schema.json", "db/schema.sql: client_reactions, agent_runs (kind=client_twin)"], deps=[161, 46, 49, 65],
  steps=["prompts/v1/twin.md: роль клиента с психотипом/сегментом/продуктом, что он видел (уведомления, ответы), фактическое состояние проблемы с его точки зрения; запрет на знание внутренних данных; структурированный ответ по схеме.",
-        "Выбор подсвеченных: сценарии, HITL, vip/ultra_vip, случайная выборка ≤ settings.twins.daily_limit; профиль роли twin (Lightning по умолчанию, mock в офлайне).",
+        "Выбор подсвеченных: сценарии, HITL, vip/ultra_vip, случайная выборка ≤ settings.twins.daily_limit; профиль роли twin (GigaChat-3-Pro по умолчанию, mock в офлайне).",
         "Реакция → client_reactions, при asks_again/escalates → новый сигнал (signal.repeat) с текстом двойника; satisfaction влияет на care_score; запуски kind=client_twin в трассировке с отдельным учётом токенов."],
  accept=["В сценарии 1 двойник VIP отвечает текстом на уведомления; тексты валидны по схеме и правдоподобны (ревью 10).", "Расход токенов двойников ≤ 15 % от общего на демо."],
  check=["pytest backend/tests/unit/test_twins.py"]),
