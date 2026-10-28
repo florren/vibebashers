@@ -31,3 +31,36 @@ test('theme changes persist to settings, reload without a light flash, and follo
     if (previous !== null) await request.patch('/api/settings', { data: { ui: previous } })
   }
 })
+
+// Проверяем сгенерированные text-brand стили на экране из PR #73.
+test('theme packs retain readable trace links and global search', async ({ page, request }) => {
+  const previous = (await (await request.get('/api/settings')).json()).ui ?? null
+  try {
+    for (const pack of ['brand', 'ops']) for (const mode of ['light', 'dark']) {
+      await request.patch('/api/settings', { data: { ui: { theme_pack: pack, mode, density: 'comfortable' } } })
+      await page.goto('/trace/signal/SIG-000001')
+      await expect(page.locator('html')).toHaveAttribute('data-pack', pack)
+      await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
+      const link = page.getByRole('link', { name: 'Открыть след SIG-000001' }).last()
+      await expect(link).toBeVisible()
+      const contrast = await link.evaluate((element) => {
+        const rgb = (color: string) => (color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+        const luminance = (channels: number[]) => channels.map((v) => {
+          const c = v / 255
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+        }).reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i]!, 0)
+        let parent: Element | null = element
+        while (parent && getComputedStyle(parent).backgroundColor === 'rgba(0, 0, 0, 0)') parent = parent.parentElement
+        const foreground = luminance(rgb(getComputedStyle(element).color))
+        const background = luminance(rgb(getComputedStyle(parent ?? document.body).backgroundColor))
+        return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
+      })
+      expect(contrast, `${pack}/${mode} trace link`).toBeGreaterThanOrEqual(4.5)
+      await expect(page.getByRole('button', { name: 'Поиск Ctrl+K' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Путь обращения', exact: true }).first()).toBeVisible()
+    }
+  } finally {
+    await request.patch('/api/settings', { data: { ui: null } })
+    if (previous !== null) await request.patch('/api/settings', { data: { ui: previous } })
+  }
+})

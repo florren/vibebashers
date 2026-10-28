@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Columns3, Table2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -109,21 +110,21 @@ function Board({ items, teamName }: { items: IncidentBrief[]; teamName: (c?: str
 
 export function IncidentCard({ i, teamName }: { i: IncidentBrief; teamName: (c?: string | null) => string }) {
   return (
-    <Link to={`/incidents/${i.id}`} className="card block p-2.5 transition hover:ring-1 hover:ring-brand/40">
+    <article className="card block p-2.5 transition hover:ring-1 hover:ring-brand/40">
       <div className="mb-1 flex items-center gap-1.5">
-        <span className="num font-mono text-[11px] text-muted">{i.public_id}</span>
+        <IdLink kind="incident" value={i.public_id} />
         <Badge tone={criticalityTone(i.criticality)}>P{i.priority}</Badge>
         {(i.mass_impact ?? 0) > 1 && <Badge tone="warn">{i.mass_impact} кл.</Badge>}
         {i.routing_status === 'escalated' && <Badge tone="danger">эскалация</Badge>}
         <span className="ml-auto text-[11px] text-muted">{tEnum('incident.complexity', i.complexity)}</span>
       </div>
-      <div className="line-clamp-2 text-[13px] leading-snug">{i.title}</div>
+      <Link to={`/incidents/${i.id}`} className="line-clamp-2 text-[13px] leading-snug hover:underline">{i.title}</Link>
       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted">
         <span className="truncate">{teamName(i.team_code)}</span>
         <span className="ml-auto num font-mono">{fmtSim(i.sla_due_sim)}</span>
       </div>
       <SlaBar className="mt-1.5" pct={i.sla_remaining_pct} breached={i.sla_breached} />
-    </Link>
+    </article>
   )
 }
 
@@ -146,9 +147,7 @@ function Table({ items, teamName }: { items: IncidentBrief[]; teamName: (c?: str
           {items.map((i) => (
             <tr key={i.id} className="hover:bg-raised">
               <td className="px-3 py-1.5 font-mono text-xs text-muted">
-                <Link to={`/incidents/${i.id}`} className="hover:text-brand">
-                  {i.public_id}
-                </Link>
+                <IdLink kind="incident" value={i.public_id} />
               </td>
               <td className="max-w-[420px] truncate px-2 py-1.5">
                 <Link to={`/incidents/${i.id}`}>{i.title}</Link>

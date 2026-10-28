@@ -78,3 +78,19 @@ it('maps all Moscow simulation phase boundaries independently of OS theme', () =
   expect(document.documentElement.dataset.mode).toBe('dark')
   expect(document.documentElement.dataset.phase).toBe('night')
 })
+
+
+it('preserves an acknowledged user choice when the initial GET arrives later', async () => {
+  let finishGet!: (data: unknown) => void
+  vi.mocked(api).mockReturnValue(new Promise((resolve) => { finishGet = resolve }))
+  vi.mocked(patch).mockResolvedValue(undefined)
+  disconnect = connectThemeSettings()
+  useUiTheme.getState().setMode('dark')
+  await flush()
+  expect(JSON.parse(localStorage.getItem('cx.ui.pending')!)).toEqual({})
+  finishGet({ ui: { theme_pack: 'ops', mode: 'light', density: 'compact' } })
+  await flush()
+  expect(useUiTheme.getState()).toMatchObject({ theme_pack: 'ops', mode: 'dark', density: 'compact' })
+  expect(localStorage.getItem('cx.ui.mode')).toBe('dark')
+  expect(document.documentElement.dataset.mode).toBe('dark')
+})

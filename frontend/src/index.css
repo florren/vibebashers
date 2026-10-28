@@ -113,6 +113,7 @@
 :root {
   --brand: 33 160 56;
   --brand-strong: 24 127 45;
+  --brand-foreground: var(--brand-strong);
   --on-brand: 255 255 255;
   --ok: 24 127 45;
   --warn: 143 102 0;

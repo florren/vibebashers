@@ -24,6 +24,7 @@ export default {
         danger: 'rgb(var(--danger) / <alpha-value>)',
         info: 'rgb(var(--info) / <alpha-value>)',
       },
+      textColor: { brand: 'rgb(var(--brand-foreground) / <alpha-value>)' },
       boxShadow: { card: '0 1px 2px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(var(--line) / 1)' },
       borderRadius: { xl: '14px' },
     },

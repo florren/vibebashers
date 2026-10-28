@@ -1,8 +1,8 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
-import { BellRing, Check, FileText, ShieldAlert, X } from 'lucide-react'
+import { BellRing, Check, ShieldAlert, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import type { ComplianceAlert } from '@/shared/api/client'
 import { useAckAlert, useComplianceAlerts } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
@@ -93,14 +93,10 @@ function AlertCard({ a, onAck, busy }: { a: ComplianceAlert; onAck: (d: 'go' | '
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
         {a.incident_id && (
-          <Link to={`/incidents/${a.incident_id}`} className="text-brand hover:underline">
-            {t('manager.incident')} INC-{String(a.incident_id).padStart(6, '0')}
-          </Link>
+          <IdLink kind="incident" value={`INC-${String(a.incident_id).padStart(6, '0')}`} />
         )}
         {a.transcript_id && (
-          <Link to={`/compliance?id=${a.transcript_id}`} className="inline-flex items-center gap-1 text-brand hover:underline">
-            <FileText size={12} /> {t('manager.transcript')} TR-{String(a.transcript_id).padStart(6, '0')}
-          </Link>
+          <IdLink kind="transcript" value={`TR-${String(a.transcript_id).padStart(6, '0')}`} />
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">

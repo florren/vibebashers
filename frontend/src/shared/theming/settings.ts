@@ -22,6 +22,8 @@ function validated(value: unknown): Partial<Preferences> {
 export function connectThemeSettings(): () => void {
   let pending: Partial<Preferences>
   try { pending = validated(JSON.parse(localStorage.getItem(PENDING) ?? '{}')) } catch { pending = {} }
+  // Подтверждение PATCH не делает запоздалый начальный GET актуальным.
+  const localEdits: Partial<Preferences> = { ...pending }
   let active = true
   let hydrating = false
   const save = () => {
@@ -43,13 +45,14 @@ export function connectThemeSettings(): () => void {
     if (hydrating) return
     const changed = Object.fromEntries(KEYS.filter((key) => state[key] !== previous[key]).map((key) => [key, state[key]]))
     if (!Object.keys(changed).length) return
+    Object.assign(localEdits, changed)
     pending = { ...pending, ...changed }
     localStorage.setItem(PENDING, JSON.stringify(pending))
     save()
   })
   void api<{ ui?: unknown }>('/api/settings').then((settings) => {
     if (!active) return
-    const preferences = { ...validated(settings.ui), ...pending }
+    const preferences = { ...validated(settings.ui), ...localEdits, ...pending }
     hydrating = true
     useUiTheme.setState(preferences)
     const state = useUiTheme.getState()

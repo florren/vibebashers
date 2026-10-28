@@ -1,8 +1,8 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Check, Pencil, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import type { Decision, HitlItem } from '@/shared/api/client'
 import { useHitlDecide, useHitlQueue, useRefName, useRefs } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
@@ -100,9 +100,7 @@ function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal: (id: n
             </button>
           )}
           {item.incident?.id !== undefined && (
-            <Link className="btn btn-sm" to={`/incidents/${item.incident.id}`}>
-              {item.incident.public_id}
-            </Link>
+            <IdLink kind="incident" value={item.incident.public_id} />
           )}
         </div>
         <blockquote className="rounded-xl border-l-4 border-warn bg-raised p-3 text-[13.5px] leading-relaxed">{item.signal?.text}</blockquote>

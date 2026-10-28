@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { ArrowLeft, Cpu } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,7 +47,7 @@ export function IncidentPage() {
             <Link to="/?tab=incidents" className="btn btn-ghost btn-sm">
               <ArrowLeft size={14} /> {t('common.back')}
             </Link>
-            <span className="font-mono text-xs text-muted">{inc.public_id}</span>
+            <IdLink kind="incident" value={inc.public_id} />
             <Badge tone={incidentStatusTone(inc.status)}>{tEnum('incident.status', inc.status)}</Badge>
             <Badge tone={criticalityTone(inc.criticality)}>
               P{inc.priority} · {tEnum('incident.criticality', inc.criticality)}
@@ -136,7 +137,7 @@ export function IncidentPage() {
                             <Badge tone={inc.primary_client.segment_code?.includes('vip') ? 'brand' : 'neutral'}>{seg(inc.primary_client.segment_code)}</Badge>
                           }
                         />
-                        <KV k={inc.primary_client.city_name ?? '—'} v={<span className="font-mono text-xs">{inc.primary_client.public_id}</span>} />
+                        <KV k={inc.primary_client.city_name ?? '—'} v={<IdLink kind="client" value={inc.primary_client.public_id} />} />
                         <KV k="churn risk" v={<span className="num">{inc.primary_client.churn_risk ?? 0}</span>} />
                       </>
                     ) : (

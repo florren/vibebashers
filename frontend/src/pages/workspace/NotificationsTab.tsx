@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
@@ -50,7 +51,7 @@ function Row({ n, open, onToggle }: { n: NotificationItem; open: boolean; onTogg
         <span className="w-40 shrink-0 truncate font-medium">{who}</span>
         <span className="shrink-0 text-xs text-muted">{tEnum('channel', n.channel_code)}</span>
         <span className={clsx('min-w-0 flex-1 text-muted', !open && 'truncate')}>{n.subject ? `${n.subject} — ` : ''}{open ? '' : n.body}</span>
-        {n.incident_public_id && <span className="num shrink-0 text-xs text-muted">{n.incident_public_id}</span>}
+        {n.incident_public_id && <IdLink kind="incident" value={n.incident_public_id} />}
         <Badge tone={n.status === 'sent' || n.status === 'delivered' ? 'ok' : n.status === 'failed' ? 'danger' : 'neutral'}>{tEnum('notifStatus', n.status)}</Badge>
       </div>
       {open && <pre className="mt-2 whitespace-pre-wrap rounded bg-raised p-2 font-sans text-sm leading-relaxed">{n.body}</pre>}

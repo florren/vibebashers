@@ -1,3 +1,4 @@
+import { GlobalSearch } from '@/shared/components/GlobalSearch'
 import { clsx } from 'clsx'
 import { Activity, Gauge, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -75,10 +76,13 @@ export function Header() {
         <Nav to="/compliance" label={t('nav.compliance')} />
         <Nav to="/manager" label={t('nav.manager')} />
         <Nav to="/feed" label={t('nav.feed')} />
+        <Nav to="/journey" label={t("journeyUi.title")} />
+        <Nav to="/trace" label={t("traceUi.title")} />
         <Nav to="/claim" label={t('nav.claim')} />
         <Nav to="/setup" label={t('nav.settings')} />
       </nav>
 
+      <GlobalSearch />
       <div className="mx-auto flex flex-wrap items-center gap-2">
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
           <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
