@@ -30,6 +30,7 @@ ENV_SPEC: dict[str, tuple[str, bool, bool]] = {
     "GIGACHAT_AUTH_KEY_2": ("Authorization key GigaChat (резервный, ротация)", True, False),
     "GIGACHAT_SCOPE": ("GIGACHAT_API_PERS | GIGACHAT_API_B2B | GIGACHAT_API_CORP", False, False),
     "GIGACHAT_MODEL": ("Модель GigaChat по умолчанию", False, False),
+    "GIGACHAT_CA_BUNDLE_FILE": ("Путь к PEM bundle (пусто — встроенная цепочка НУЦ)", False, False),
     "GIGACHAT_VERIFY_SSL": ("Проверять сертификат (true — нужен CA Минцифры)", False, False),
     "OPENROUTER_API_KEY": ("Ключ OpenRouter / OpenAI-совместимого API", True, False),
     "OPENROUTER_BASE_URL": ("Базовый URL OpenAI-совместимого API", False, False),
@@ -188,7 +189,7 @@ async def get_env() -> dict[str, Any]:
     }
 
 
-def apply_runtime(app: Any, updates: dict[str, str | None]) -> tuple[Settings, list[str], str | None, list[str]]:
+async def apply_runtime(app: Any, updates: dict[str, str | None]) -> tuple[Settings, list[str], str | None, list[str]]:
     """Переменные процесса → сброс кэша Settings → новая цепочка LLM и профиль → подмена в приложении и агенте."""
     from app.llm.failover import build_chain, default_profile
 
@@ -215,6 +216,10 @@ def apply_runtime(app: Any, updates: dict[str, str | None]) -> tuple[Settings, l
         agent = getattr(app.state, "agent", None)
         if agent is not None:
             agent.chain, agent.profile = chain, profile
+    from app.llm.roles import refresh
+
+    await refresh(app, s)
+    profile = app.state.llm_profile
     names = list(getattr(chain, "names", []) or [])
     if names == ["mock"] and any(k in updates for k in ("GIGACHAT_AUTH_KEY_1", "OPENROUTER_API_KEY", "LLM_CHAIN")):
         warnings.append("в цепочке остался только mock: проверьте ключи и LLM_CHAIN")
@@ -249,6 +254,8 @@ async def put_env(body: EnvUpdate, request: Request) -> EnvResult:
             raise Problem(422, "LLM_PROVIDER: допустимы gigachat | openai_compat | replay | mock")
         if k == "STT_PROVIDER" and v and v not in ("vosk", "browser", "none"):
             raise Problem(422, "STT_PROVIDER: допустимы vosk | browser | none")
+        if k == "GIGACHAT_VERIFY_SSL" and v and v.lower() != "true":
+            raise Problem(422, "Проверка TLS GigaChat обязательна; настройте CA bundle")
         if (
             k in ("MAILPIT_ENABLED", "LLM_RECORD", "GIGACHAT_VERIFY_SSL", "LOG_JSONL")
             and v
@@ -257,6 +264,13 @@ async def put_env(body: EnvUpdate, request: Request) -> EnvResult:
             raise Problem(422, f"{k}: true | false")
         if k in ("SIM_SEED", "COMPLIANCE_ALERT_THRESHOLD") and v and not v.isdigit():
             raise Problem(422, f"{k}: целое число")
+        if k == "GIGACHAT_CA_BUNDLE_FILE":
+            from app.llm.tls import context
+
+            try:
+                context(v)
+            except (OSError, ValueError) as exc:
+                raise Problem(422, "Не удалось загрузить CA bundle", detail=type(exc).__name__) from exc
         if current.get(k, "") == (v or "") and k in current:
             continue
         updates[k] = v
@@ -270,7 +284,7 @@ async def put_env(body: EnvUpdate, request: Request) -> EnvResult:
     profile: str | None = None
     warnings: list[str] = []
     if body.apply and updates:
-        _, names, profile, warnings = apply_runtime(request.app, updates)
+        _, names, profile, warnings = await apply_runtime(request.app, updates)
         applied = True
     restart = [k for k in updates if ENV_SPEC[k][2]]
     log.info("env_updated", path=str(path), keys=sorted(updates), applied=applied, chain=names)

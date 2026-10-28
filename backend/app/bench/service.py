@@ -205,6 +205,7 @@ class BenchService:
                     base_url=profile.base_url or settings.gigachat_base_url,
                     scope=settings.gigachat_scope,
                     verify_ssl=True,
+                    ca_bundle_file=settings.gigachat_ca_bundle_file,
                 )
             )
         elif profile.provider == "openai_compatible":

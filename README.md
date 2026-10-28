@@ -142,7 +142,7 @@ docker compose logs -f backend      # логи; структурированны
 | В логах `llm_chain_skip … нет GIGACHAT_AUTH_KEY_*` | Штатно: ключа нет, работает mock. Проверьте `.env`, если ключ должен быть |
 | Ответы агента шаблонные, без «живого» текста | Работает mock; вкладка «Качество» покажет «% LLM-шагов на fallback». Добавьте ключ или `LOCAL_LLM_BASE_URL` |
 | Лента пустая после «Старт» | Эмуляция на паузе или ночь по сим-времени (видно в шапке); увеличьте скорость или нажмите «Старт» ещё раз |
-| GigaChat: ошибка SSL | `GIGACHAT_VERIFY_SSL=false` (по умолчанию) или добавьте сертификат Минцифры в контейнер |
+| GigaChat: ошибка SSL | оставьте `GIGACHAT_VERIFY_SSL=true`; используется встроенный CA bundle. Для своей цепочки задайте `GIGACHAT_CA_BUNDLE_FILE` |
 
 ### 1.9. Справочник параметров (.env, install.sh, make, скрипты)
 
@@ -160,15 +160,16 @@ docker compose logs -f backend      # логи; структурированны
 | `SIM_SEED` | целое | `42` | зерно эмуляции и сида | меняйте вместе с `--reset`, иначе новые данные лягут поверх старых |
 | `DATABASE_URL` | `postgresql+psycopg://user:pass@host:5432/db` | `…@localhost:5432/cx_pulse` | основная БД | внутри compose хост **`postgres`**, нативно — `localhost`; `install.sh` не переписывает — compose передаёт свой через `environment` |
 | `DATABASE_URL_TEST` | то же | — | БД для pytest (пересоздаётся) | **не** указывайте ту же базу, что в `DATABASE_URL`: тесты применяют миграции с нуля и чистят данные |
-| `LLM_PROVIDER` | `mock` · `gigachat` · `openai_compat` · `replay` | `mock` | **какой профиль считается основным**: модель и лимиты, под которыми подписываются шаги агента (`agent_steps.model`) и считается `fallback` | не управляет порядком вызова — это `LLM_CHAIN`. Если здесь `gigachat`, а ключа нет, все шаги будут помечены `fallback` (видно в отчёте о качестве). `replay` как основной — только для воспроизведения записанного демо |
+| `LLM_PROVIDER` | `mock` · `gigachat` · `openai_compat` · `replay` | `mock` | **какой профиль считается основным**: модель и лимиты, под которыми подписываются шаги агента (`agent_steps.model`) и считается `fallback` | порядок fallback задаёт `LLM_CHAIN`; явные mock/replay исключают живые вызовы даже при заданных ключах. Если здесь `gigachat`, а ключа нет, все шаги будут помечены `fallback` (видно в отчёте о качестве). `replay` как основной — только для воспроизведения записанного демо |
 | `LLM_CHAIN` | список через запятую из `gigachat`, `openai_compat` (синонимы `openrouter`, `openai_compatible`), `replay`, `mock` | `gigachat,openai_compat,replay,mock` | порядок отказоустойчивости: провайдер без ключа пропускается с `llm_chain_skip`, ошибка/таймаут → следующий | ставьте `mock` последним, иначе при сбое агент получит ошибку. `replay` раньше live-провайдера = сначала кассеты (детерминированное демо), после — запись новых. `--offline` переписывает в `replay,mock` |
 | `LLM_RECORD` | `true` · `false` | `false` | записывать успешные ответы live-провайдера в кассеты `CASSETTES_DIR` | работает только если в цепочке есть live-провайдер **с ключом**; с `mock`/`replay` ничего не пишет. Кассеты — файлы в `data/cassettes/`, могут содержать тексты клиентов: не коммитить с ПДн |
 | `GIGACHAT_AUTH_KEY_1`, `_2` | base64 «client_id:secret» | пусто | ключи авторизации GigaChat; второй — ротация при лимитах | это **Authorization key**, не access token (токен приложение получает само и обновляет). Без `_1` провайдер пропускается даже при заполненном `_2` |
 | `GIGACHAT_SCOPE` | `GIGACHAT_API_PERS` · `GIGACHAT_API_CORP` · `GIGACHAT_API_B2B` | `PERS` | тип договора | не совпадёт с ключом — ошибка 401 при получении токена |
 | `GIGACHAT_BASE_URL` | URL | `https://api.giga.chat/v1` | хост chat/completions | профиль в БД может переопределить `base_url` |
 | `GIGACHAT_OAUTH_URL` | URL | `https://ngw.devices.sberbank.ru:9443/api/v2/oauth` | OAuth (Authorization key → access token) | не меняйте без необходимости; chat и OAuth — разные хосты |
-| `GIGACHAT_MODEL` | `GigaChat-3-Pro` · `GigaChat-3-Ultra` · `GigaChat-3-Lightning` | `GigaChat-3-Pro` | модель ответа агента (id из GET https://api.giga.chat/v1/models) | по умолчанию отвечает Pro; Ultra и Lightning — другие профили; строка в БД может переопределить модель |
-| `GIGACHAT_VERIFY_SSL` | `true` · `false` | `false` | проверка сертификата Минцифры | `true` требует добавить CA в контейнер (см. `docs/SETUP.md`), иначе провайдер падает и уходит в fallback |
+| `GIGACHAT_MODEL` | id модели | `GigaChat-3-Ultra` | резерв main без профиля БД | сохранённые main/fast/twin применяются из мастера: Ultra/Lightning/Pro; см. `docs/SETUP.md` |
+| `GIGACHAT_VERIFY_SSL` | `true` | `true` | обязательная проверка TLS | встроены публичные root/sub CA НУЦ; `false` отклоняется |
+| `GIGACHAT_CA_BUNDLE_FILE` | путь | пусто | собственная цепочка PEM | абсолютный путь в окружении backend; добавляется к стандартным CA, пусто — встроенная цепочка |
 | `OPENROUTER_API_KEY` | строка | пусто | ключ OpenAI-совместимого API | провайдер `openai_compat` включается, если задан **этот ключ или** `LOCAL_LLM_BASE_URL` |
 | `OPENROUTER_BASE_URL` | URL | `https://openrouter.ai/api/v1` | адрес OpenAI-совместимого API | меняйте для DeepSeek, Together и т.п. (`https://api.deepseek.com/v1`) — ключ тогда в `OPENROUTER_API_KEY` |
 | `LOCAL_LLM_BASE_URL` | URL | пусто | локальная модель (Ollama/vLLM/LM Studio) | из контейнера хост — `http://host.docker.internal:11434/v1`, нативно — `http://localhost:11434/v1`. Если заданы и `OPENROUTER_API_KEY`, и `LOCAL_LLM_BASE_URL`, используется **локальный** URL |

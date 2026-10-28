@@ -61,12 +61,16 @@ class ProviderChain:
     ) -> None:
         if append_mock and (not providers or providers[-1].name != "mock"):
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
+        self.role_profiles: dict[str, LLMProfile] = {}
         self.providers = providers
         self.record_store = record_store
         self.limiter = rate_limiter or default_limiter
         self.timeouts = {**TIMEOUTS_S, **(timeouts or {})}
         self.scenario_id = scenario_id
         self.prompt_version = prompt_version
+
+    def profile_for(self, role: str, default: LLMProfile) -> LLMProfile:
+        return self.role_profiles.get(role, default)
 
     @property
     def names(self) -> list[str]:
@@ -86,6 +90,8 @@ class ProviderChain:
         timeout_s = self.timeout_for(context)
         attempts: list[Attempt] = []
         for prov in self.providers:
+            if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
+                continue
             t0 = time.perf_counter()
             try:
                 if prov.name not in ("mock", "replay"):
@@ -136,6 +142,8 @@ class ProviderChain:
         """Поток токенов: первый провайдер, отдавший хотя бы один чанк, становится источником; ошибка до первого чанка → следующий."""
         timeout_s = self.timeout_for(context)
         for prov in self.providers:
+            if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
+                continue
             started = False
             try:
                 async for chunk in prov.stream(messages, profile, timeout_s=timeout_s):
@@ -171,6 +179,7 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
                     base_url=settings.gigachat_base_url,
                     scope=settings.gigachat_scope,
                     verify_ssl=settings.gigachat_verify_ssl,
+                    ca_bundle_file=getattr(settings, "gigachat_ca_bundle_file", None),
                     transport=transport,
                 )
             )

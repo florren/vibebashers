@@ -241,10 +241,13 @@ async def post_llm_profiles(body: LlmProfile) -> Response:
 
 
 @router.patch("/api/settings/llm-profiles/{id}", summary="Изменить LLM-профиль")
-async def patch_llm_profiles_id(id: int, body: LlmProfile) -> Response:  # noqa: A002
+async def patch_llm_profiles_id(id: int, body: LlmProfile, request: Request) -> Response:  # noqa: A002
     async with db() as conn:
         if not await fetch_one(conn, "select 1 from llm_profiles where id = %s", (id,)):
             raise Problem(404, "Профиль не найден")
+        saved = await get_setting(conn, "setup_payload", {}) or {}
+        if id in ((saved.get("llm") or {}).values()) and not body.is_active:
+            raise Problem(422, "Сначала выберите другой профиль для активной роли")
         await conn.execute(
             "update llm_profiles set code = %s, provider = %s, model = %s, base_url = %s, role = %s, temperature = %s, rpm_limit = %s, rpd_limit = %s, price_in_per_1m = %s, price_out_per_1m = %s, supports_tools = %s, supports_stream = %s, is_active = %s, extra = %s where id = %s",
             (
@@ -265,18 +268,27 @@ async def patch_llm_profiles_id(id: int, body: LlmProfile) -> Response:  # noqa:
                 id,
             ),
         )
+    from app.llm.roles import refresh
+
+    await refresh(request.app, required=True)
     return Response(status_code=200)
 
 
 @router.delete(
     "/api/settings/llm-profiles/{id}", status_code=204, summary="Удалить LLM-профиль (если на него нет запусков)"
 )
-async def delete_llm_profiles_id(id: int) -> Response:  # noqa: A002
+async def delete_llm_profiles_id(id: int, request: Request) -> Response:  # noqa: A002
     async with db() as conn:
+        saved = await get_setting(conn, "setup_payload", {}) or {}
+        if id in ((saved.get("llm") or {}).values()):
+            raise Problem(422, "Сначала выберите другой профиль для активной роли")
         used = await fetch_one(conn, "select count(*) as n from agent_runs where llm_profile_id = %s", (id,))
         if int((used or {}).get("n") or 0):
             raise Problem(409, "На профиль ссылаются запуски агента — деактивируйте его вместо удаления")
         await conn.execute("delete from llm_profiles where id = %s", (id,))
+    from app.llm.roles import refresh
+
+    await refresh(request.app, required=True)
     return Response(status_code=204)
 
 

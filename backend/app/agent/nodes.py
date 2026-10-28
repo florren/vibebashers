@@ -364,7 +364,7 @@ async def _llm(
     meta = {
         "prompt": prompt,
         "raw": res.raw[:8000],
-        "model": f"{res.provider}:{(profile or deps.profile).model}",
+        "model": f"{res.provider}:{res.usage.model or (profile or deps.profile).model}",
         "usage": res.usage.as_dict(),
         "latency_ms": int((time.perf_counter() - t0) * 1000),
         "provider": res.provider,

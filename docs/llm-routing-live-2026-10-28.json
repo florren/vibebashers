@@ -1,0 +1,47 @@
+{
+  "checked_at_utc": "2026-10-28T20:22:40.658079+00:00",
+  "tls_verified": true,
+  "ca_bundle": "app/llm/certs/gigachat-ca.pem",
+  "scope": "GIGACHAT_API_PERS",
+  "data": "synthetic",
+  "results": [
+    {
+      "role": "main",
+      "requested_model": "GigaChat-3-Ultra",
+      "reported_model": "GigaChat-3-Ultra:32.9.16.9",
+      "source": "live",
+      "schema_valid": true,
+      "fallback_mock": false,
+      "prompt_tokens": 1796,
+      "completion_tokens": 398,
+      "latency_ms": 3083
+    },
+    {
+      "role": "fast",
+      "requested_model": "GigaChat-3-Lightning",
+      "reported_model": "GigaChat-3-Lightning:32.4.16.3",
+      "source": "live",
+      "schema_valid": true,
+      "fallback_mock": false,
+      "prompt_tokens": 2386,
+      "completion_tokens": 238,
+      "latency_ms": 1397
+    },
+    {
+      "role": "twin",
+      "requested_model": "GigaChat-3-Pro",
+      "reported_model": "GigaChat-3-Pro:32.4.30.3",
+      "source": "live",
+      "schema_valid": true,
+      "fallback_mock": false,
+      "prompt_tokens": 724,
+      "completion_tokens": 36,
+      "latency_ms": 684
+    }
+  ],
+  "notes": [
+    "Один синтетический случай на роль, не p50/p95 и не полный benchmark lite_v1.",
+    "Lightning прошёл после автоматического исправления первого structured output.",
+    "Транспорт использовал TLS verification и встроенный CA bundle; mock/replay в цепочке отсутствовали."
+  ]
+}

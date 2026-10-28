@@ -383,7 +383,7 @@ def _chain_settings(tmp_path: Path, **overrides: Any) -> SimpleNamespace:
         "gigachat_oauth_url": "https://oauth.test/api/v2/oauth",
         "gigachat_base_url": "https://gc.test/api/v1",
         "gigachat_scope": "GIGACHAT_API_PERS",
-        "gigachat_verify_ssl": False,
+        "gigachat_verify_ssl": True,
         "openrouter_api_key": "test-key",
         "openrouter_base_url": "https://openrouter.ai/api/v1",
         "local_llm_base_url": None,

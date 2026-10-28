@@ -26,11 +26,13 @@ from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
 from app.llm.openai_compat import OpenAICompatProvider, openrouter_deactivation_plan
+from app.llm.roles import refresh as refresh_roles
 from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
 from app.sim.engine import Simulator
+from app.sim.twins import TwinService
 from app.stt import audio_ws
 
 log = get_logger(__name__)
@@ -78,6 +80,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
     app.state.llm_chain = build_chain(s)
     app.state.llm_profile = default_profile(s)
+    if not s.is_test:
+        await refresh_roles(app, s)
     if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
         await _sync_openrouter_models(app.state.llm_chain)
     log.info(
@@ -91,6 +95,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.bench = BenchService()
     app.state.sim = None
     app.state.agent = None
+    app.state.twins = None
     poll_stop: asyncio.Event | None = None
     if not s.is_test:
         from app.ingest.sources import polling_worker
@@ -100,6 +105,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         bridge.start()
         app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
         app.state.agent.start()
+        app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
+        app.state.twins.start()
         sim = Simulator(seed=s.sim_seed)
         try:
             await sim.load_state()
@@ -109,6 +116,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             log.warning("sim_init_failed", error=str(exc)[:200])
     yield
     await app.state.bench.stop()
+    if app.state.twins is not None:
+        await app.state.twins.stop()
     if poll_stop is not None:
         poll_stop.set()
         task = getattr(app.state, "ingest_poll", None)
