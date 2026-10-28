@@ -125,3 +125,46 @@ def test_snapshot_keeps_historical_rows_and_marks_closed(
         assert data["synthetic"] is False
         assert data["items"][-1]["open_count"] == 12
         assert data["items"][-1]["closed_count"] == 228
+
+
+async def test_baseline_roundtrip_preserves_v2_network(
+    seeded: str, conn: psycopg.Connection, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.sim import baseline
+
+    monkeypatch.setattr(baseline, "baseline_dir", lambda: tmp_path)
+    monkeypatch.setattr(baseline, "runs_export_dir", lambda: tmp_path / "runs")
+    dsn = seeded.replace("postgresql+psycopg://", "postgresql://")
+    before = conn.execute(
+        "select code,branch_status,lat,lon,opened_sim,closed_sim,product_line_codes from branches order by code"
+    ).fetchall()
+    employee = conn.execute("select id,education,hired_sim,position_since_sim from employees order by id").fetchall()
+    history = conn.execute(
+        "select month,region_code,open_count,closed_count,opened_in_month,closed_in_month from branch_network_history order by month,region_code"
+    ).fetchall()
+    async with await psycopg.AsyncConnection.connect(dsn) as db:
+        info = await baseline.dump(db, profile="lite")
+        await db.commit()
+    assert info["available"] is True
+    conn.execute("update branches set lat=0,lon=0")
+    conn.execute("update employees set education=null")
+    conn.execute("update branch_network_history set open_count=0")
+    async with await psycopg.AsyncConnection.connect(dsn) as db:
+        job = await baseline.restore(db, profile="lite")
+        assert job
+    assert (
+        conn.execute(
+            "select code,branch_status,lat,lon,opened_sim,closed_sim,product_line_codes from branches order by code"
+        ).fetchall()
+        == before
+    )
+    assert (
+        conn.execute("select id,education,hired_sim,position_since_sim from employees order by id").fetchall()
+        == employee
+    )
+    assert (
+        conn.execute(
+            "select month,region_code,open_count,closed_count,opened_in_month,closed_in_month from branch_network_history order by month,region_code"
+        ).fetchall()
+        == history
+    )
