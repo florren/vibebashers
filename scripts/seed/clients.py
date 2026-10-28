@@ -8,9 +8,10 @@ import random
 from typing import Any
 
 import psycopg
-from app.contracts.enums import Channel
 from scripts.seed.common import J, log
 from scripts.seed.textgen import TextGen
+
+from app.contracts.enums import Channel
 
 FIRST_F = [
     "Анна",
@@ -454,6 +455,9 @@ def seed_history_signals(
 ) -> None:
     """История сигналов и инцидентов: гарантирует матрицу покрытия (тип × продукт × канал ≥ 1, ячейка SLA ≥ 5 инцидентов в разных статусах)."""
     if cur.execute("select count(*) from signals where run_id = %s", (run_id,)).fetchone()[0]:
+        from app.ingest.sync_bridge import reconcile_seed_sync
+
+        reconcile_seed_sync(cur.connection, run_id=run_id)
         return
     tg = TextGen(seed)
     clients = cur.execute(
@@ -531,27 +535,68 @@ def seed_history_signals(
             "llm_source": "seed",
             "style": g.style,
         }
-        cur.execute(
-            "insert into signals (run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, status, origin, sentiment, classification, geo) values (%s, %s, %s, %s, %s, %s, %s, %s, 'sim', %s, %s, %s) returning id",
-            (
-                run_id,
-                ch,
-                None,
-                client_id if identified else None,
-                None if identified else J({"platform": "vk", "handle": f"@user_{n}"}),
-                g.text,
-                received,
-                "closed"
-                if creates_incident
-                else rnd.choice(
-                    ["answered", "closed", "noise" if st == "suggestion" and rnd.random() < 0.1 else "answered"]
-                ),
-                classification["sentiment"],
-                J(classification),
-                J({"region_code": region, "city": city}),
-            ),
+        signal_status = (
+            "closed"
+            if creates_incident
+            else rnd.choice(
+                ["answered", "closed", "noise" if st == "suggestion" and rnd.random() < 0.1 else "answered"]
+            )
         )
-        signal_id = cur.fetchone()[0]
+        if ch == "csi_survey":
+            from app.ingest.normalizer import from_csi
+            from app.ingest.sync_bridge import create_signal_sync
+
+            branch = cur.execute(
+                "select code from branches where region_code=%s order by code limit 1", (region,)
+            ).fetchone()
+            if branch is None:
+                raise ValueError(f"нет ВСП региона {region}")
+            payload = {
+                "csi_no": f"CSI-{100000 + n:06d}",
+                "complaint_ru": g.text,
+                "branch_code": branch[0],
+                "received_at": received.isoformat(),
+                "products": [product],
+                "feedback_type": "синтетическая история",
+                "topic": "вежливость/доброжелательность",
+            }
+            msg = from_csi(payload)
+            msg["origin"] = "sim"
+            msg["client"] = {"client_id": client_id if identified else None}
+            result = create_signal_sync(cur.connection, msg, run_id=run_id, sim_time=received)
+            if result["status"] != "accepted":
+                raise ValueError(f"seed CSI не принят: {result['status']}")
+            signal_id = result["signal_id"]
+            red = cur.execute("select red_words from signals where id=%s", (signal_id,)).fetchone()[0]
+            if red:
+                classification = {
+                    **classification,
+                    "criticality": "high",
+                    "red_words": red,
+                    "flags": list(dict.fromkeys([*classification["flags"], "red_word"])),
+                }
+            cur.execute(
+                "update signals set status=%s,sentiment=%s,classification=%s where id=%s",
+                (signal_status, classification["sentiment"], J(classification), signal_id),
+            )
+        else:
+            cur.execute(
+                "insert into signals (run_id, channel_code, channel_subtype, client_id, external_contact, text, received_sim, status, origin, sentiment, classification, geo) values (%s, %s, %s, %s, %s, %s, %s, %s, 'sim', %s, %s, %s) returning id",
+                (
+                    run_id,
+                    ch,
+                    None,
+                    client_id if identified else None,
+                    None if identified else J({"platform": "vk", "handle": f"@user_{n}"}),
+                    g.text,
+                    received,
+                    signal_status,
+                    classification["sentiment"],
+                    J(classification),
+                    J({"region_code": region, "city": city}),
+                ),
+            )
+            signal_id = cur.fetchone()[0]
         if not creates_incident:
             continue
         complexity, criticality = incident_plan[inc_i]

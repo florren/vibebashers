@@ -1,6 +1,6 @@
 # CX Pulse Control — цели зафиксированы в AGENTS.md §4. Python-окружение: uv (backend/.venv).
 .PHONY: dev dev-front install-front build-front lint-front test test-scenarios e2e test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
-        scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts migrate seed install-backend
+        scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts import-csi migrate seed install-backend
 
 UV ?= uv
 PY := backend/.venv/bin/python
@@ -94,3 +94,6 @@ stt-bench demo-offline:
 
 import-transcripts:
 	@echo "цель $@ реализуется в E18 (T-208) — POST /api/ingest/transcripts/import"
+
+import-csi:                 ## ручной CSI JSON/XLSX через API (FILE=…, CX_BASE_URL=…)
+	$(PY) scripts/import_csi.py $(or $(FILE),data/import/csi) --base $(or $(CX_BASE_URL),http://localhost:8000)

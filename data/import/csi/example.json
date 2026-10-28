@@ -1,0 +1,42 @@
+[
+  {
+    "csi_no": "CSI-010001",
+    "complaint_ru": "Учебная жалоба: долго ждал обслуживания, сотрудник отвечал невежливо.",
+    "branch_code": "0042",
+    "employee_public_id": "EMP-00003",
+    "received_at": "2026-11-09T10:20:00+03:00",
+    "ticket_code": "DEMO-A001",
+    "waiting_count": 12,
+    "serving_count": 4,
+    "out_of_order_count": 1,
+    "wait_min": 24.5,
+    "service_min": 8,
+    "redirects": 2,
+    "products": [
+      "debit_card"
+    ],
+    "feedback_type": "жалоба",
+    "topic": "вежливость/доброжелательность",
+    "subtopic": "общение сотрудника"
+  },
+  {
+    "csi_no": "CSI-010002",
+    "complaint_ru": "Учебная жалоба: несколько раз направляли к разным специалистам.",
+    "branch_code": "0042",
+    "employee_public_id": "EMP-00005",
+    "received_at": "2026-11-09T11:10:00+03:00",
+    "ticket_code": "DEMO-A002",
+    "waiting_count": 7,
+    "serving_count": 3,
+    "out_of_order_count": 0,
+    "wait_min": 15,
+    "service_min": 12,
+    "redirects": 3,
+    "products": [
+      "deposit"
+    ],
+    "feedback_type": "жалоба",
+    "topic": "вежливость/доброжелательность",
+    "subtopic": "перенаправления"
+  }
+]

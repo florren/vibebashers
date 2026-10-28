@@ -6871,7 +6871,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** [ЕТЗ] Приём ответа CSI (JSON, ТЗ 25) */
+        /** [ЕТЗ] Приём CSI (JSON/XLSX, ТЗ 25) */
         post: {
             parameters: {
                 query?: never;
@@ -6881,17 +6881,25 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["csi_response.schema"];
+                    "application/json": components["schemas"]["csi_response.schema"] | components["schemas"]["csi_response.schema"][];
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file: string;
+                    };
                 };
             };
             responses: {
-                /** @description Accepted */
+                /** @description Accepted (включая повторную загрузку) */
                 202: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["CsiImportReport"];
+                    };
                 };
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
                 501: components["responses"]["Problem"];
             };
         };
@@ -8256,6 +8264,22 @@ export interface components {
             latency_ms?: number;
             /** Format: date-time */
             created_at?: string;
+        };
+        /** @description При ошибках строки обработаны независимо; HTTP 422 содержит этот отчёт в поле report (problem+json). */
+        CsiImportReport: {
+            accepted: number;
+            duplicates: number;
+            rejected: number;
+            items: {
+                row: number;
+                /** @enum {string} */
+                status: "accepted" | "duplicate" | "rejected";
+                external_id?: string | null;
+                signal_id?: number | null;
+                column?: string;
+                field?: string;
+                error?: string | null;
+            }[];
         };
         Branch: {
             id?: number;
@@ -9837,7 +9861,7 @@ export interface components {
                 };
             };
         };
-        /** Ответ опроса CSI (канал csi_survey, ТЗ 25) */
+        /** Ответ опроса CSI (канал csi_survey, ТЗ 25); T-246 JSON/XLSX */
         "csi_response.schema": {
             csi_no: string;
             complaint_ru: string;
@@ -9858,6 +9882,12 @@ export interface components {
             tenure_org_days?: number | null;
             /** Format: date-time */
             received_at?: string;
+            /** @description Тип обратной связи */
+            feedback_type?: string | null;
+            /** @description Тематика */
+            topic?: string | null;
+            /** @description Уточнённая тематика */
+            subtopic?: string | null;
         };
         /** @enum {string} */
         branch_status: "open" | "closed";

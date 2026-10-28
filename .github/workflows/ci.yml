@@ -51,9 +51,9 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
       - name: schema.sql на чистой БД
         run: psql -v ON_ERROR_STOP=1 -q -f contracts/db/schema.sql
-      - name: Миграции 0002–0006 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
+      - name: Миграции 0002–0007 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
         run: |
-          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql contracts/db/migrations/0004_trace_search.sql contracts/db/migrations/0005_product_csi_branches.sql contracts/db/migrations/0006_product_routing.sql; do
+          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql contracts/db/migrations/0004_trace_search.sql contracts/db/migrations/0005_product_csi_branches.sql contracts/db/migrations/0006_product_routing.sql contracts/db/migrations/0007_csi_audit.sql; do
             psql -v ON_ERROR_STOP=1 -q -f "$f"; psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
       - name: Инварианты схемы
