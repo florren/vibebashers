@@ -63,7 +63,13 @@ class RateLimiter:
 
     def stats(self) -> dict[str, dict[str, float | int | None]]:
         return {
-            c: {"rpm": b.rpm, "rpd": b.rpd, "today": b.today, "tokens": round(b.tokens, 2)} for c, b in self._b.items()
+            c: {
+                "rpm": b.rpm,
+                "rpd": b.rpd,
+                "today": b.today if b.day == dt.datetime.now(dt.UTC).date() else 0,
+                "tokens": round(b.tokens, 2),
+            }
+            for c, b in self._b.items()
         }
 
 

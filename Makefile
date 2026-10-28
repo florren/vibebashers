@@ -82,8 +82,8 @@ e2e:                        ## дымовые Playwright-тесты фронта
 stt-model:                  ## скачать малую русскую модель Vosk (≈45 МБ) в data/models/stt — для живого распознавания с микрофона
 	python3 scripts/stt_model.py
 
-bench:
-	@echo "цель $@ реализуется в E10/E13 — см. AGENTS.md раздел 4"
+bench:                     ## локальный mock-бенчмарк или прогноз профиля: DATASET=lite_v1 PROFILE=mock
+	cd backend && .venv/bin/python -m app.bench.runner --dataset $(or $(DATASET),lite_v1) --profile $(or $(PROFILE),mock) --repeats $(or $(REPEATS),1)
 
 cassettes-record:           ## запись кассет replay для SCENARIO=… (live LLM, T-198)
 	@test -n "$(SCENARIO)" || (echo "укажите SCENARIO=id сценария" >&2; exit 1)
