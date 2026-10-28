@@ -56,7 +56,7 @@ export function Header() {
         <button
           type="button"
           data-testid="app-logo"
-          className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-white"
+          className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-on-brand"
           aria-label={t('app.title')}
           onPointerDown={onLogoDown}
           onPointerUp={onLogoUp}

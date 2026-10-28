@@ -43,7 +43,23 @@ test('theme packs retain readable trace links and global search', async ({ page,
       await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
       const link = page.getByRole('link', { name: 'Открыть след SIG-000001' }).last()
       await expect(link).toBeVisible()
-      const contrast = await link.evaluate((element) => {
+      const contrast = await link.evaluate(renderedContrast)
+      expect(contrast, `${pack}/${mode} trace link`).toBeGreaterThanOrEqual(4.5)
+      expect(await page.getByTestId('app-logo').evaluate(renderedContrast), `${pack}/${mode} logo`).toBeGreaterThanOrEqual(3)
+      await expect(page.getByRole('button', { name: 'Поиск Ctrl+K' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Путь обращения', exact: true }).first()).toBeVisible()
+      await page.goto('/setup')
+      await expect(page.locator('html')).toHaveAttribute('data-pack', pack)
+      await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
+      expect(await page.locator('ol button').first().evaluate(renderedContrast), `${pack}/${mode} selected control`).toBeGreaterThanOrEqual(4.5)
+    }
+  } finally {
+    await request.patch('/api/settings', { data: { ui: null } })
+    if (previous !== null) await request.patch('/api/settings', { data: { ui: previous } })
+  }
+})
+
+function renderedContrast(element: Element) {
         const rgb = (color: string) => (color.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
         const luminance = (channels: number[]) => channels.map((v) => {
           const c = v / 255
@@ -54,13 +70,4 @@ test('theme packs retain readable trace links and global search', async ({ page,
         const foreground = luminance(rgb(getComputedStyle(element).color))
         const background = luminance(rgb(getComputedStyle(parent ?? document.body).backgroundColor))
         return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05)
-      })
-      expect(contrast, `${pack}/${mode} trace link`).toBeGreaterThanOrEqual(4.5)
-      await expect(page.getByRole('button', { name: 'Поиск Ctrl+K' })).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Путь обращения', exact: true }).first()).toBeVisible()
-    }
-  } finally {
-    await request.patch('/api/settings', { data: { ui: null } })
-    if (previous !== null) await request.patch('/api/settings', { data: { ui: previous } })
-  }
-})
+      }
