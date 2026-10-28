@@ -45,4 +45,10 @@ cd frontend && npx playwright test e2e/trace-columns.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Реализован согласованный демо-срез: /trace и /trace/:kind/:ref, Колонки ДО/ОБЪЕКТ/ПОСЛЕ, токены тем, мобильные вкладки, итог, pending, веера с образцами, ключевые события, панель и пере-центрирование с browser history. Режимы Дорожки/Граф, экспорт и расширенные фильтры вне запрошенного среза.
+
+Ветка: `codex/journey-trace`; пакет T-224/T-231/T-232/T-225/T-230/T-226/T-233. `cross-layer` согласован пользователем. Контракты T-223 и механизм денег/HITL не изменялись.
+
+Проверки: `make lint`, `make test` (461 unit / 86 integration / 22 scenario passed; 20 skipped), contracts, OpenAPI drift, owners --allow-cross и i18n — успешно. Новые backend-пакеты: coverage 94% (43 targeted tests). Frontend: typecheck, lint, build, 39 vitest и 4 Playwright — успешно. Скриншоты ru/en × light/dark: `docs/screenshots/trace-journey/`. Локальная тестовая PostgreSQL 18.6 с UTC; PostgreSQL 16 проверяется CI. Node 26 требует `NODE_OPTIONS=--no-experimental-webstorage` для существующих jsdom-тестов; CI использует Node 22.
+
+Сценарии 12/13 добавлены как YAML-манифесты модели чтения; проверки сценариев 1/8/11 на записанных mock-данных и отдельный replay сценария 8 проходят. Эти YAML не создают новый запуск агента из UI. Новый live-прогон GigaChat не выполнялся. Полная приёмка дополнительных требований карточек за пределами указанного пользователем среза не заявляется.

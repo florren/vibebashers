@@ -42,12 +42,12 @@ export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl',
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
-  signals: [['signals'], ['map']],
-  incidents: [['incidents'], ['tickets'], ['teams'], ['metrics'], ['map']],
-  agent: [['agent']],
-  hitl: [['hitl'], ['signals']],
-  notifications: [['notifications'], ['incidents']],
-  tasks: [['tasks']],
+  signals: [['trace'], ['journey'], ['search'], ['signals'], ['map']],
+  incidents: [['trace'], ['journey'], ['search'], ['incidents'], ['tickets'], ['teams'], ['metrics'], ['map']],
+  agent: [['trace'], ['journey'], ['agent']],
+  hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
+  notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
+  tasks: [['trace'], ['journey'], ['tasks']],
   runs: [['sim-runs']],
   escalations: [['escalations'], ['tickets'], ['incidents']],
   tickets: [['tickets'], ['incidents']],

@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
@@ -103,7 +104,7 @@ export function TasksTab({ runId }: { runId: number | undefined }) {
                   <td className="px-3 py-1.5">
                     {x.incident_public_id ? (
                       <>
-                        <div className="font-mono text-xs">{x.incident_public_id}</div>
+                        <IdLink kind="incident" value={x.incident_public_id} />
                         <div className="flex items-center gap-1 text-[11px] text-muted">
                           <Badge tone={incidentStatusTone(x.incident_status)}>{tEnum('incident.status', x.incident_status)}</Badge>
                           <span className="truncate">{x.incident_title}</span>

@@ -1,0 +1,17 @@
+id: search_and_trace
+number: 13
+title_ru: Поиск и след — идентификаторы и причинность
+title_en: Search and trace — identifiers and causality
+kind: read_model
+requires: T-230/T-232 (read-model regression in test_trace_journey_search.py)
+description_ru: Найти сохранённый объект по идентификатору и перейти в его след; проверить зоны ДО / ОБЪЕКТ / ПОСЛЕ и ожидаемые шаги.
+duration_sim_hours: 0
+queries:
+  prefixes: [SIG, INC, CL, POST, TR, ESC, AS, EMP, AR, SR, TSK, NTF, LED, HD, FUP, CSI, VSP]
+  formats: [UUID, tracking_token, nickname, masked_card, masked_phone, number, text, rule, error_code]
+expected:
+  read_only: true
+  before_limit: 40
+  after_limit: 200
+  before_depth: 3
+  no_raw_pii: true
