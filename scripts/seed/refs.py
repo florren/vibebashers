@@ -163,6 +163,19 @@ def seed_economics(cur: psycopg.Cursor[Any]) -> None:
     )
 
 
+def seed_product_lines(cur: psycopg.Cursor[Any]) -> None:
+    """Существующий справочник необходим route_to_product_team, без сида истории T-240."""
+    for line in load_yaml("product_lines.yaml")["product_lines"]:
+        cur.execute(
+            "insert into product_lines (code, name_ru, name_en, rate_code, owner_team_code, owner_is_proxy, product_codes, sort_order) "
+            "values (%(code)s, %(name_ru)s, %(name_en)s, %(rate_code)s, %(owner_team_code)s, %(owner_is_proxy)s, %(product_codes)s, %(sort_order)s) "
+            "on conflict (code) do update set name_ru = excluded.name_ru, name_en = excluded.name_en, "
+            "rate_code = excluded.rate_code, owner_team_code = excluded.owner_team_code, owner_is_proxy = excluded.owner_is_proxy, "
+            "product_codes = excluded.product_codes, sort_order = excluded.sort_order",
+            line,
+        )
+
+
 def seed_templates(cur: psycopg.Cursor[Any]) -> None:
     t = load_yaml("templates/notifications.yaml")
     for tpl in t["templates"]:
@@ -296,6 +309,7 @@ def seed_all_refs(cur: psycopg.Cursor[Any], rnd: Any) -> None:
     seed_segments(cur)
     seed_catalogs(cur)
     seed_economics(cur)
+    seed_product_lines(cur)
     seed_templates(cur)
     seed_abs_rules(cur)
     seed_branches(cur, rnd)

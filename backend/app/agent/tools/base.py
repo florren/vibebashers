@@ -33,6 +33,7 @@ SIDE_EFFECT_TOOLS = {
     "close_incident",
     "refund_fee",
     "publish_public_reply",
+    "route_to_product_team",
     "route_to_department",
     "notify_customer",
     "escalate_to_manager",
@@ -40,6 +41,7 @@ SIDE_EFFECT_TOOLS = {
 }
 # Фасады роутера (ТЗ 9.2): после успеха их вызов сворачивает внутренние tool_call в wraps.
 FACADE_TOOLS = {
+    "route_to_product_team",
     "route_to_department",
     "notify_customer",
     "escalate_to_manager",

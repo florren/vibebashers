@@ -379,6 +379,18 @@ async def _llm(
 # ---------------------------------------------------------------------------------------------------------------------
 async def ingest(state: AgentState, deps: Deps) -> AgentState:
     sig = state["signal"]
+    # Старые baseline/симуляторные записи могли появиться до T-239: предобработка до первого LLM.
+    if "red_words" not in (sig.get("meta") or {}):
+        from app.ingest.red_words import detect
+
+        red = detect(sig.get("text") or "")
+        sig["red_words"] = red["words"]
+        sig["flags"] = list(dict.fromkeys([*(sig.get("flags") or []), *(["red_word"] if red["words"] else [])]))
+        sig["meta"] = {**(sig.get("meta") or {}), "red_words": red}
+        await deps.ctx.conn.execute(
+            "update signals set red_words = %s, flags = %s, meta = meta || %s::jsonb where id = %s",
+            (red["words"], sig["flags"], dumps({"red_words": red}), sig["id"]),
+        )
     await deps.ctx.conn.execute(
         "update signals set status = 'processing', updated_at = now() where id = %s and status in ('new','deferred')",
         (sig["id"],),
@@ -760,6 +772,8 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
         mass_pending=mass_pending,
         policies=deps.policies,
     )
+    if state["signal"].get("red_words"):
+        fp_ok, fp_why = False, "красные слова требуют полного прохода политик"
     state["context"]["fast_path"] = {"allowed": fp_ok, "reason": fp_why}
     state["current_node"] = "instant_decide" if fp_ok else "classify"
     await deps.record_step(
@@ -1295,7 +1309,10 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         system = "contact_center" if state["signal"].get("channel") in ("call", "chat") else None
     c["product"], c["system"] = product, system
     # флаги
-    flags = [f for f in (c.get("flags") or []) if isinstance(f, str)]
+    flags = list(
+        dict.fromkeys(f for f in [*(c.get("flags") or []), *(state["signal"].get("flags") or [])] if isinstance(f, str))
+    )
+    c["red_words"] = list(state["signal"].get("red_words") or [])
     hist = ctx.get("client_history") or {}
     if stype in (hist.get("last_types") or []) and "repeat" not in flags:
         flags.append("repeat")
@@ -1338,7 +1355,7 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         if c.get("criticality") in ("low", "medium", "high")
         else TYPE_BASE_CRIT.get(stype, "medium")
     )
-    if stype in ("legal_regulatory", "fraud_suspicion") and c["criticality"] != "high":
+    if (c.get("red_words") or stype in ("legal_regulatory", "fraud_suspicion")) and c["criticality"] != "high":
         c["criticality"] = "high"
     c["cause_hypothesis"] = (
         c.get("cause_hypothesis") if c.get("cause_hypothesis") else (stype if stype in TYPE_BASE_CRIT else "unknown")
@@ -1762,7 +1779,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             "note": f"{c['confidence']:.2f} vs {p['confidence_threshold']}",
         },
         {"rule": "ultra_vip_hitl", "passed": segment != "ultra_vip", "note": segment or "—"},
-        {"rule": "legal_regulatory_hitl", "passed": stype != "legal_regulatory"},
+        {"rule": "legal_regulatory_hitl", "passed": stype != "legal_regulatory" and not pol.red_words_require_hitl(c)},
         {
             "rule": "fraud_amount",
             "passed": not (stype == "fraud_suspicion" and (pctx.amount_rub or 0) > p["fraud_amount_rub"]),
@@ -2053,7 +2070,7 @@ def _public_fallback(client: dict[str, Any] | None, lang: str = "ru") -> str:
     return f"{name}, спасибо, что написали. Мы уже разбираемся и напишем вам в личные сообщения, чтобы уточнить детали."
 
 
-_ROUTER_FACADES = ("route_to_department", "escalate_to_manager", "request_clarification")
+_ROUTER_FACADES = ("route_to_product_team", "route_to_department", "escalate_to_manager", "request_clarification")
 
 
 def _route_summary(d: dict[str, Any], c: dict[str, Any]) -> str:
@@ -2104,7 +2121,7 @@ def _router_matches(action: str, names: list[str]) -> bool:
 
     Для route и escalate отсутствие фасада не считается успехом.
     """
-    has_route = "route_to_department" in names
+    has_route = bool({"route_to_department", "route_to_product_team"}.intersection(names))
     has_esc = "escalate_to_manager" in names
     has_clar = "request_clarification" in names
     if action == "route":
@@ -2120,7 +2137,12 @@ def _router_matches(action: str, names: list[str]) -> bool:
 
 async def _act_route(deps: Deps, d: dict[str, Any], c: dict[str, Any], mark: Callable[..., None]) -> int:
     summary = _route_summary(d, c)
-    routed = await router_tools.route_to_department(deps.ctx, str(d["route"]["team"]), int(d["priority"]), summary)
+    product_line = c.get("product_line")
+    if product_line and product_line != "other":
+        routed = await router_tools.route_to_product_team(deps.ctx, str(product_line), deps.ctx.act_frame.signal_id)  # type: ignore[union-attr]
+    else:
+        routed = await router_tools.route_to_department(deps.ctx, str(d["route"]["team"]), int(d["priority"]), summary)
+    d["route"]["team"] = routed["department"]
     new_id = int(routed["incident_id"])
     if deps.ctx.act_frame is not None:
         deps.ctx.act_frame.incident_id = new_id

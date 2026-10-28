@@ -47,10 +47,10 @@ DECLARE
   v_summary jsonb;
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    v_pk := OLD.id::text;
+    v_pk := coalesce(to_jsonb(OLD)->>'id', to_jsonb(OLD)->>'code');
     v_summary := jsonb_build_object('deleted', true);
   ELSE
-    v_pk := NEW.id::text;
+    v_pk := coalesce(to_jsonb(NEW)->>'id', to_jsonb(NEW)->>'code');
     v_summary := CASE WHEN TG_OP = 'UPDATE'
       THEN (SELECT jsonb_object_agg(key, value) FROM jsonb_each(to_jsonb(NEW))
             WHERE to_jsonb(OLD) -> key IS DISTINCT FROM value)

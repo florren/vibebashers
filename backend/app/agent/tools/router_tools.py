@@ -110,6 +110,21 @@ async def _bind_ticket(
     return brief, linked
 
 
+@tool("route_to_product_team")
+async def route_to_product_team(ctx: ToolContext, product_line: str, signal_id: int) -> dict[str, Any]:
+    """Один фасад; таблица product_lines — единственный источник команды."""
+    frame = _frame(ctx)
+    if signal_id != frame.signal_id:
+        raise ToolError("signal_id не совпадает с кадром act")
+    row = await ctx.fetchone("select owner_team_code from product_lines where code = %s", (product_line,))
+    if row is None:
+        raise ToolError(f"неизвестное направление: {product_line}")
+    summary = _check_summary(str(frame.spec.get("title_ru") or "Маршрутизация обращения по направлению"))
+    result = await route_to_department(ctx, str(row[0]), int(frame.spec.get("priority") or 3), summary)
+    ctx.pending_wraps.append("route_to_department")
+    return {**result, "product_line": product_line}
+
+
 @tool("route_to_department")
 async def route_to_department(ctx: ToolContext, department: str, priority: int, summary: str) -> dict[str, Any]:
     """Маршрут в команду: новый тикет или связь с уже открытым. ticket_id = public_id, routing_status=routed."""

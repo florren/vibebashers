@@ -670,3 +670,4 @@ class Schema(BaseModel):
     problem_summary: ProblemSummary = Field(
         ..., description="[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)"
     )
+    red_words: list[str] | None = None

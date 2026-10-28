@@ -1,0 +1,22 @@
+# rules-change: ТЗ 24.3. Только текст клиента; не детектор речи сотрудника.
+version: 1
+exceptions: [риск, риска, риски, рисков, риском, рискованный, искать, ищу, ищет, исключить, исключение, таксист, таксиста, сосуд, сосуды, посуда, рассудок, обсуждение]
+rules:
+  - code: court
+    pattern: 'суд(?:а|у|ом|е|ы|ов|ебн[а-я]*)?'
+    legal: true
+  - code: tax
+    pattern: 'налогов[а-я]*|фнс'
+    legal: true
+  - code: claim
+    pattern: 'иск(?:а|у|ом|е|и|ов|ами|ах|ов[а-я]*)?'
+    legal: true
+  - code: enforcement
+    pattern: 'исполнительн[а-я]+\s+лист[а-я]*|судебн[а-я]+\s+приказ[а-я]*'
+    legal: true
+  - code: regulator
+    pattern: 'цб|центральн[а-я]+\s+банк[а-я]*'
+    legal: true
+  - code: misselling
+    pattern: 'мисселл?инг[а-я]*'
+    legal: false

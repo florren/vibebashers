@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/agent/tool_call.schema.json",
-  "title": "Запись вызова инструмента в agent_steps.tool_calls[] (ТЗ 9.2)",
+  "title": "Запись вызова инструмента в agent_steps.tool_calls[] (ТЗ 9.2); T-239: route_to_product_team",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,6 +14,7 @@
     "name": {
       "type": "string",
       "enum": [
+        "route_to_product_team",
         "get_client_profile",
         "get_client_products",
         "get_recent_operations",

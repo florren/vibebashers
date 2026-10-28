@@ -8808,7 +8808,7 @@ export interface components {
         severity: "low" | "medium" | "high" | "critical";
         /** @enum {string} */
         team: "team_cx" | "team_deposits" | "team_lending" | "team_debit" | "team_front" | "team_processing" | "team_notifications" | "team_contact_center" | "team_promo" | "team_antifraud" | "team_compliance" | "team_branch_network";
-        /** Выход узла classify (structured output основной модели; хранится в signals.classification) */
+        /** Выход узла classify (structured output основной модели; хранится в signals.classification); T-239: детерминированные red_words */
         "classification.schema": {
             signal_type: components["schemas"]["signal_type"];
             /** @description Например tech_fault + tariff_terms в ключевом сценарии */
@@ -8855,6 +8855,7 @@ export interface components {
                 severity: components["schemas"]["severity"];
                 suggested_team: components["schemas"]["team"];
             };
+            red_words?: string[];
         };
         /** @enum {string} */
         incident_type: "tech_fault" | "client_error" | "tariff_terms" | "service_quality" | "fraud_suspicion" | "legal_regulatory" | "info_request" | "suggestion" | "account_closure" | "proactive" | "fee_refund" | "misselling";

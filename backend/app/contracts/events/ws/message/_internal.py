@@ -989,6 +989,7 @@ class SttEvent(RootModel[Schema_5]):
 
 
 class Name(StrEnum):
+    route_to_product_team = "route_to_product_team"
     get_client_profile = "get_client_profile"
     get_client_products = "get_client_products"
     get_recent_operations = "get_recent_operations"
