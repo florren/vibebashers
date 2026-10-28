@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
@@ -167,7 +168,7 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-2">
             {prov?.external_service && <Badge tone="warn">{t('live.external')}</Badge>}
             {model && <Badge tone="neutral">{model}</Badge>}
-            {session && <span className="font-mono text-xs text-muted">{session.public_id}</span>}
+            {session && <IdLink kind="audio_session" value={session.public_id} />}
             <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={live}>
               {t('common.close')}
             </button>

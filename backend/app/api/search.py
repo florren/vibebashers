@@ -1,18 +1,20 @@
-"""Роутер тега `search` (OpenAPI 1.5.0). Реализация — T-230."""
+"""Universal read-only search (ТЗ 28.2)."""
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Query
 
-from app.errors import NotImplementedYet
+from app.search.service import search_objects
+from app.trace.store import read_db
 
 router = APIRouter(tags=["search"])
 
 
 @router.get("/api/search", summary="[АРХ] Универсальный поиск")
-def search(
-    q: str = Query(..., min_length=1),
-    run_id: str = "current",
-    limit: int = 50,
-) -> None:
-    raise NotImplementedYet("T-230")
+async def search(
+    q: str = Query(..., min_length=1, max_length=500), run_id: str = "current", limit: int = Query(50, ge=1, le=50)
+) -> Any:
+    async with read_db() as conn:
+        return await search_objects(conn, q, run_id, limit)

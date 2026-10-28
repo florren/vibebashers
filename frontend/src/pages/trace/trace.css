@@ -1,0 +1,46 @@
+.trace-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.9fr) minmax(0, 1fr);
+  gap: 0;
+}
+.trace-columns > section {
+  padding: 16px;
+  min-width: 0;
+}
+.trace-columns > section + section {
+  border-left: 1px solid rgb(var(--line));
+}
+.trace-columns h2 {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.trace-before {
+  background: rgb(var(--trace-before));
+}
+.trace-subject {
+  background: rgb(var(--trace-subject));
+}
+.trace-after {
+  background: rgb(var(--trace-after));
+}
+.trace-tabs {
+  display: none;
+}
+@media (max-width: 1279px) {
+  .trace-tabs {
+    display: flex;
+    gap: 8px;
+  }
+  .trace-columns {
+    display: block;
+  }
+  .trace-columns > section {
+    display: none;
+    border: 0 !important;
+  }
+  .trace-columns[data-tab='before'] > .trace-before,
+  .trace-columns[data-tab='subject'] > .trace-subject,
+  .trace-columns[data-tab='after'] > .trace-after {
+    display: block;
+  }
+}

@@ -1,0 +1,22 @@
+id: customer_journey
+number: 12
+title_ru: Путь обращения — три траектории
+title_en: Customer journey — three paths
+kind: read_model
+requires: T-224/T-225 (read-model regression in test_trace_journey_search.py)
+description_ru: Показать записанные пути автономного возврата, ожидания человека и эскалации; сборка пути не запускает агента.
+duration_sim_hours: 0
+paths:
+  - source: qr_fee_public_review
+    trajectory: autonomous
+    expected: [rules, action, client_outcome]
+  - source: deposit_promo_rate
+    trajectory: human
+    expected: [decision, execution]
+  - source: social_sarcasm_escalation
+    trajectory: escalation
+    expected: [understanding, decision]
+expected:
+  read_only: true
+  stages_count: 8
+  no_llm_calls: true

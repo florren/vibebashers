@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -126,7 +127,7 @@ function TicketRow({ tk, teamName, onOpen }: { tk: Ticket; teamName: (c: string 
   return (
     <tr className="cursor-pointer hover:bg-raised" onClick={onOpen}>
       <td className="num whitespace-nowrap px-3 py-1.5 font-mono text-xs">
-        {tk.ticket_id}
+        <IdLink kind="incident" value={tk.ticket_id} />
         {tk.escalated && <Badge tone="danger" className="ml-1">{t('tickets.escalatedBadge')}</Badge>}
       </td>
       <td className="max-w-[420px] truncate px-3 py-1.5" title={tk.summary}>
@@ -154,9 +155,7 @@ function EscCard({ e, onOpen }: { e: Escalation; onOpen: () => void }) {
   return (
     <li className={clsx('card p-3', e.severity === 'critical' && open && 'ring-1 ring-danger/50')}>
       <div className="flex items-center gap-2">
-        <button className="num font-mono text-xs text-muted hover:text-brand" onClick={onOpen}>
-          {e.public_id}
-        </button>
+        <IdLink kind="escalation" value={e.public_id} /><button className="btn btn-sm" onClick={onOpen}>{t('traceUi.event')}</button>
         <Badge tone={severityTone(e.severity)}>{tEnum('incident.severity', e.severity)}</Badge>
         <Badge tone={e.status === 'open' ? 'danger' : e.status === 'acknowledged' ? 'warn' : 'neutral'}>{t(`tickets.escStatus.${e.status ?? 'open'}`)}</Badge>
         <span className="text-xs text-muted">→ {t(`tickets.role.${e.to_role ?? 'cx_lead'}`)}</span>
@@ -168,9 +167,7 @@ function EscCard({ e, onOpen }: { e: Escalation; onOpen: () => void }) {
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
         {e.ticket_id && (
-          <Link to={`/incidents/${e.incident_id}`} className="font-mono hover:text-brand">
-            {e.ticket_id}
-          </Link>
+          <IdLink kind="incident" value={e.ticket_id} />
         )}
         {e.client_name && <span>{e.client_name}</span>}
         {e.channel && <span>{tEnum('channel', e.channel)}</span>}
@@ -269,7 +266,7 @@ function TicketDrawer({ id, onClose, onOpenEsc }: { id: number | null; onClose: 
               <ul className="divide-y divide-line">
                 {(d.escalations ?? []).map((e) => (
                   <li key={e.id} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-raised" onClick={() => onOpenEsc(e.id ?? 0)}>
-                    <span className="num font-mono text-xs text-muted">{e.public_id}</span>
+                    <IdLink kind="escalation" value={e.public_id} />
                     <Badge tone={severityTone(e.severity)}>{tEnum('incident.severity', e.severity)}</Badge>
                     <span className="truncate">{tEnum('tickets.escReason', e.reason)}</span>
                     <Badge tone={e.status === 'open' ? 'danger' : e.status === 'acknowledged' ? 'warn' : 'neutral'} className="ml-auto">
@@ -340,7 +337,7 @@ function EscDrawer({ id, onClose }: { id: number | null; onClose: () => void }) 
             <KV k={t('incident.severityLabel')} v={tEnum('incident.severity', d.severity)} />
             <KV k={t('tickets.role.label')} v={t(`tickets.role.${d.to_role ?? 'cx_lead'}`)} />
             <KV k={t('tickets.createdBy')} v={t(`tickets.by.${d.created_by ?? 'agent'}`)} />
-            {d.ticket_id && <KV k={t('tickets.col.ticket')} v={<Link to={`/incidents/${d.incident_id}`} className="font-mono hover:text-brand">{d.ticket_id}</Link>} />}
+            {d.ticket_id && <KV k={t('tickets.col.ticket')} v={<IdLink kind="incident" value={d.ticket_id} />} />}
             {d.acknowledged_by && <KV k={t('tickets.ackBy', { who: '' })} v={`${d.acknowledged_by} · ${fmtSim(d.acknowledged_at)}`} />}
             {d.resolution_ru && <KV k={t('tickets.resolution')} v={d.resolution_ru} />}
           </div>
@@ -348,7 +345,7 @@ function EscDrawer({ id, onClose }: { id: number | null; onClose: () => void }) 
             <Section title={t('tickets.signal')}>
               <div className="p-3 text-sm">
                 <div className="mb-1 flex items-center gap-2 text-xs text-muted">
-                  <span className="font-mono">{d.signal.public_id}</span>
+                  <IdLink kind="signal" value={d.signal.public_id} />
                   <span>{tEnum('channel', d.signal.channel_code)}</span>
                   <span>{fmtSim(d.signal.received_sim)}</span>
                 </div>

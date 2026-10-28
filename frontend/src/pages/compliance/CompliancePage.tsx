@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { FileUp, FolderInput, Mic, Send } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -77,7 +78,7 @@ export function CompliancePage() {
               <li key={tr.id}>
                 <button onClick={() => select(tr.id!)} className={clsx('block w-full px-3 py-2 text-left hover:bg-raised', tr.id === selected && 'bg-brand-soft/50')}>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs">{tr.public_id}</span>
+                    <IdLink kind="transcript" value={tr.public_id} />
                     <Badge tone={tr.status === 'done' ? 'ok' : tr.status === 'failed' ? 'danger' : 'info'}>{tEnum('compliance.status', tr.status)}</Badge>
                     <Badge tone="neutral">{tEnum('compliance.kind', tr.kind)}</Badge>
                     {(tr.findings_count ?? 0) > 0 && <Badge tone="warn">{tr.findings_count}</Badge>}
@@ -98,7 +99,7 @@ export function CompliancePage() {
           <Tabs<Tab> value={tab} onChange={setTab} items={[{ id: 'report', label: t('compliance.report') }, { id: 'turns', label: t('compliance.turns') }, { id: 'stats', label: t('compliance.stats') }]} />
           {detail.data && (
             <span className="ml-auto text-xs text-muted">
-              {detail.data.public_id} · {tEnum('compliance.kind', detail.data.kind)} · {detail.data.branch_code ? `ВСП ${detail.data.branch_code}` : '—'} · {fmtDateTime(detail.data.received_at)}
+              <IdLink kind="transcript" value={detail.data.public_id} /> · {tEnum('compliance.kind', detail.data.kind)} · {detail.data.branch_code ? `ВСП ${detail.data.branch_code}` : '—'} · {fmtDateTime(detail.data.received_at)}
             </span>
           )}
         </div>

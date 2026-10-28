@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Landmark, MessageSquareText, Send, Wallet } from 'lucide-react'
 import { useState } from 'react'
@@ -178,7 +179,7 @@ function PostCard({ p, active, onSelect }: { p: ExternalPost; active: boolean; o
             {t('feed.incident', { id: p.incident_id })}
           </Link>
         )}
-        <span className="ml-auto">{p.public_id}</span>
+        <IdLink kind="post" value={p.public_id} />
       </div>
     </article>
   )
@@ -228,9 +229,9 @@ function PostDetail({ id }: { id: number }) {
             {reply.isError && <ErrorBox error={reply.error} compact />}
           </Section>
           <Section title={t('feed.signalCard')}>
-            <KV k={t('feed.post')} v={d.public_id} mono />
+            <KV k={t('feed.post')} v={<IdLink kind="post" value={d.public_id} />} mono />
             <KV k={t('feed.signal')} v={d.signal_id ? `#${d.signal_id}` : '—'} mono />
-            <KV k={t('feed.incidentK')} v={d.incident_public_id ? `${d.incident_public_id} · ${tEnum('incident.status', d.incident_status ?? '')}` : '—'} />
+            <KV k={t('feed.incidentK')} v={d.incident_public_id ? <><IdLink kind="incident" value={d.incident_public_id} /> · {tEnum('incident.status', d.incident_status ?? '')}</> : '—'} />
             <KV k={t('feed.matchConf')} v={d.match_confidence != null ? `${Math.round(d.match_confidence * 100)}%` : '—'} />
           </Section>
           <AbsWidget clientId={clientId} detail={d} />

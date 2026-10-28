@@ -1,3 +1,4 @@
+import { IdLink } from '@/shared/components/IdLink'
 import { ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -18,7 +19,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
   const d = s?.decision ?? null
 
   return (
-    <Drawer open={id !== null} onClose={onClose} title={<span className="font-mono">{shortId(id ?? undefined, 'SIG')}</span>}>
+    <Drawer open={id !== null} onClose={onClose} title={<IdLink kind="signal" value={shortId(id ?? undefined, 'SIG')} />}>
       {q.isPending && (
         <div className="space-y-3 p-4">
           <Skeleton className="h-16" />
@@ -49,7 +50,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
                       </Badge>
                     }
                   />
-                  <KV k={s.client.city_name ?? '—'} v={<span className="font-mono text-xs">{s.client.public_id}</span>} />
+                  <KV k={s.client.city_name ?? '—'} v={<IdLink kind="client" value={s.client.public_id} />} />
                   {s.client.churn_risk !== undefined && <KV k="churn risk" v={<span className="num">{s.client.churn_risk ?? 0}</span>} />}
                 </>
               ) : (

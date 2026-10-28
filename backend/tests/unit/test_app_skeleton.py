@@ -31,11 +31,11 @@ def test_stub_is_problem_json_501() -> None:
     assert r.json()["card"].startswith("T-")
 
 
-def test_search_stub_501() -> None:
+def test_search_requires_query() -> None:
     with TestClient(create_app()) as c:
-        r = c.get("/api/search", params={"q": "SIG-000001"})
-    assert r.status_code == 501
-    assert r.json()["card"] == "T-230"
+        r = c.get("/api/search")
+    assert r.status_code == 422
+    assert r.headers["content-type"].startswith("application/problem+json")
 
 
 def test_validation_error_is_problem_json() -> None:
