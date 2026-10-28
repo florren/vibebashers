@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `in_progress` |
+| Статус | `done` |
 
 ## Цель
 CSI-обращения превращаются в сигналы только через нормализатор (правило 17), ТЗ 25.1–25.2.
@@ -32,10 +32,10 @@ CSI-обращения превращаются в сигналы только �
 4. Тесты: повторная загрузка не дублирует, битая строка не роняет весь файл (частичный отчёт), прямые INSERT мимо нормализатора запрещены (тест AGENTS rule 17).
 
 ## Критерии приёмки
-- [ ] Повторная загрузка файла не создаёт сигналов; ошибки указывают строку.
-- [ ] Каждый сигнал `csi_survey` имеет 1:1 `csi_responses`.
-- [ ] Нет ПДн сотрудников и клиентов.
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] Повторная загрузка файла не создаёт сигналов; ошибки указывают строку.
+- [x] Каждый сигнал `csi_survey` имеет 1:1 `csi_responses`.
+- [x] Нет ПДн сотрудников и клиентов.
+- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
@@ -52,4 +52,4 @@ make import-csi
 
 Проверки: parser/API **31 passed**; 1000 строк **2.139 s** (порог 10 s), повтор без дублей. Реальный `make import-csi` на изолированной БД: JSON accepted=2, XLSX duplicates=2, повтор обоих duplicates=2. SQL schema + миграции 2–7 дважды, downgrade 3 / upgrade head / alembic check зелёные. Frontend Node 22: lint/tsc/**33 tests**/build/gen:types; contracts **41/149**, drift **175/175**, i18n **1032**.
 
-Общий lint зелёный, unit **426 passed / 16 skipped**. Нестабильный тест mock benchmark сравнивал wall-clock latency двух запусков; часы подменены только внутри unit-теста, все assertions и независимая проверка реального времени ≤30 s сохранены. Финальные integration/scenarios и CI проверяются перед merge.
+Общий lint зелёный, unit **426 passed / 16 skipped**. Нестабильный тест mock benchmark сравнивал wall-clock latency двух запусков; часы подменены только внутри unit-теста, все assertions и независимая проверка реального времени ≤30 s сохранены. Финальный `make lint test`: **426 unit / 79 integration / 22 scenarios passed**, skips **16/2/2**; все обязательные проверки локально зелёные. PR #70: https://github.com/florren/vibebashers/pull/70; merge только после зелёного CI текущего head.
