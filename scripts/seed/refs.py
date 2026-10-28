@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import random
+from pathlib import Path
 from typing import Any
 
 import psycopg
-from scripts.seed.common import DATA, J, load_csv, load_yaml, log
+from scripts.seed.common import DATA, J, load_csv, load_yaml, log, set_setting
+
+from app.sim.branch_directory import Branch, network_history, provider
 
 
 def seed_geo(cur: psycopg.Cursor[Any]) -> None:
@@ -16,9 +21,9 @@ def seed_geo(cur: psycopg.Cursor[Any]) -> None:
         )
     for r in load_csv("regions.csv"):
         cur.execute(
-            "insert into regions (code, name_ru, name_en, district_code, population, centroid_lat, centroid_lon, svg_path_id) values (%(code)s, %(name_ru)s, %(name_en)s, %(district_code)s, %(population)s, %(centroid_lat)s, %(centroid_lon)s, %(svg_path_id)s) "
-            "on conflict (code) do update set name_ru = excluded.name_ru, population = excluded.population, centroid_lat = excluded.centroid_lat, centroid_lon = excluded.centroid_lon",
-            r,
+            "insert into regions (code, name_ru, name_en, district_code, population, centroid_lat, centroid_lon, svg_path_id, okato) values (%(code)s, %(name_ru)s, %(name_en)s, %(district_code)s, %(population)s, %(centroid_lat)s, %(centroid_lon)s, %(svg_path_id)s, %(okato)s) "
+            "on conflict (code) do update set name_ru = excluded.name_ru, population = excluded.population, centroid_lat = excluded.centroid_lat, centroid_lon = excluded.centroid_lon, okato = excluded.okato",
+            {**r, "okato": r.get("okato") or None},
         )
     existing = {row[0] for row in cur.execute("select id from cities").fetchall()}
     rows = [c for c in load_csv("cities.csv") if int(c["id"]) not in existing]
@@ -235,32 +240,86 @@ def seed_abs_rules(cur: psycopg.Cursor[Any]) -> None:
         )
 
 
-def seed_branches(cur: psycopg.Cursor[Any], rnd: Any) -> None:
+def seed_branches(
+    cur: psycopg.Cursor[Any],
+    rnd: Any,
+    *,
+    seed: int = 42,
+    sim_time: dt.datetime | None = None,
+    mode: str = "synthetic",
+    snapshot: Path | None = None,
+) -> None:
+    sim_time = sim_time or dt.datetime(2026, 11, 9, 9, tzinfo=dt.timezone(dt.timedelta(hours=3)))
+    branches = provider(mode, snapshot).load(seed, sim_time)
     b = load_yaml("branches.yaml")
-    fixed = {("0042", 3): "Петров П. П.", ("0042", 5): "Сидорова А. А."}  # сценарии 9 и 10
-    for br in b["branches"]:
-        city = cur.execute(
-            "select id, region_code from cities where name_ru = %s order by population desc limit 1", (br["city"],)
-        ).fetchone()
-        assert city, br["city"]
-        cur.execute(
-            "insert into branches (code, name_ru, city_id, region_code, desks, manager_display_name) values (%s, %s, %s, %s, %s, %s) on conflict (code) do update set name_ru = excluded.name_ru, manager_display_name = excluded.manager_display_name returning id",
-            (br["code"], br["name_ru"], city[0], city[1], br["desks"], br["manager_display_name"]),
-        )
+    legacy_codes = {br["code"] for br in b["branches"]}
+    fixed = {("0042", 3): "Петров П. П.", ("0042", 5): "Сидорова А. А."}
+    columns = list(branches[0].model_dump())
+    query = (
+        "insert into branches ("
+        + ", ".join(columns)
+        + ") values ("
+        + ", ".join("%(" + c + ")s" for c in columns)
+        + ") on conflict (code) do update set "
+        + ", ".join(c + " = excluded." + c for c in columns if c != "code")
+        + " returning id"
+    )
+    for branch in branches:
+        cur.execute(query, branch.model_dump())
         bid = cur.fetchone()[0]
-        for desk in range(1, br["desks"] + 1):
-            if cur.execute("select 1 from employees where branch_id = %s and desk_no = %s", (bid, desk)).fetchone():
+        employee_rng = rnd if branch.code in legacy_codes else random.Random(f"{seed}:{branch.code}:employees")
+        for desk in range(1, branch.desks + 1):
+            employee = cur.execute(
+                "select id from employees where branch_id = %s and desk_no = %s", (bid, desk)
+            ).fetchone()
+            if employee:
                 continue
-            name = fixed.get((br["code"], desk))
+            name = fixed.get((branch.code, desk))
             if not name:
-                female = rnd.random() < 0.6
-                fn = rnd.choice(b["first_names_f"] if female else b["first_names_m"])
-                ln = rnd.choice(b["last_names"]) + ("а" if female else "")
-                name = f"{ln} {fn[0]}. {rnd.choice('АВДЕИКМНОПРС')}."
+                female = employee_rng.random() < 0.6
+                fn = employee_rng.choice(b["first_names_f"] if female else b["first_names_m"])
+                ln = employee_rng.choice(b["last_names"]) + ("а" if female else "")
+                name = f"{ln} {fn[0]}. {employee_rng.choice('АВДЕИКМНОПРС')}."
+            hired = sim_time - dt.timedelta(days=365 + desk * 73)
             cur.execute(
-                "insert into employees (display_name, branch_id, desk_no, position) values (%s, %s, %s, %s)",
-                (name, bid, desk, b["positions"][desk - 1]),
+                "insert into employees (display_name, branch_id, desk_no, position, education, hired_sim, position_since_sim) values (%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    name,
+                    bid,
+                    desk,
+                    b["positions"][desk - 1],
+                    "высшее" if desk % 2 else "среднее профессиональное",
+                    hired,
+                    hired + dt.timedelta(days=90),
+                ),
             )
+        cur.execute(
+            "update employees set education=coalesce(education,%s), hired_sim=coalesce(hired_sim,%s), position_since_sim=coalesce(position_since_sim,%s) where branch_id = %s",
+            ("высшее", sim_time - dt.timedelta(days=730), sim_time - dt.timedelta(days=365), bid),
+        )
+    # Исчезнувшие из snapshot ВСП сохраняются для исторических FK, но закрываются.
+    cur.execute(
+        "update branches set branch_status = 'closed', closed_sim = coalesce(closed_sim, %s) "
+        "where code <> all(%s) and branch_status is distinct from 'closed'",
+        (sim_time, [branch.code for branch in branches]),
+    )
+    all_rows = cur.execute("select " + ", ".join(columns) + " from branches order by code").fetchall()
+    complete_network = [Branch.model_validate(dict(zip(columns, values, strict=True))) for values in all_rows]
+    set_setting(
+        cur,
+        "branch_directory",
+        {
+            "mode": mode,
+            "is_synthetic": mode == "synthetic",
+            "as_of_sim": sim_time.isoformat(),
+            "snapshot": snapshot.name if snapshot else None,
+        },
+    )
+    for row in network_history(complete_network, sim_time):
+        cur.execute(
+            "insert into branch_network_history (month,region_code,open_count,closed_count,opened_in_month,closed_in_month) values (%(month)s,%(region_code)s,%(open_count)s,%(closed_count)s,%(opened_in_month)s,%(closed_in_month)s) on conflict (month,region_code) do update set open_count=excluded.open_count,closed_count=excluded.closed_count,opened_in_month=excluded.opened_in_month,closed_in_month=excluded.closed_in_month",
+            row,
+        )
 
 
 def seed_scenarios(cur: psycopg.Cursor[Any]) -> None:
@@ -304,7 +363,15 @@ def seed_bench(cur: psycopg.Cursor[Any]) -> None:
             )
 
 
-def seed_all_refs(cur: psycopg.Cursor[Any], rnd: Any) -> None:
+def seed_all_refs(
+    cur: psycopg.Cursor[Any],
+    rnd: Any,
+    *,
+    seed: int = 42,
+    sim_time: dt.datetime | None = None,
+    branch_mode: str = "synthetic",
+    branch_snapshot: Path | None = None,
+) -> None:
     seed_geo(cur)
     seed_segments(cur)
     seed_catalogs(cur)
@@ -312,7 +379,7 @@ def seed_all_refs(cur: psycopg.Cursor[Any], rnd: Any) -> None:
     seed_product_lines(cur)
     seed_templates(cur)
     seed_abs_rules(cur)
-    seed_branches(cur, rnd)
+    seed_branches(cur, rnd, seed=seed, sim_time=sim_time, mode=branch_mode, snapshot=branch_snapshot)
     seed_scenarios(cur)
     seed_bench(cur)
     log.info("refs_done")

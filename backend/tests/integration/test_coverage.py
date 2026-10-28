@@ -41,7 +41,15 @@ def test_reference_counts(conn) -> None:
     assert conn.execute("select count(*) from teams").fetchone()[0] == 12
     assert {r[0] for r in conn.execute("select code from channels")} == set(Channel)
     assert conn.execute("select count(*) from sla_matrix").fetchone()[0] == 9
-    assert conn.execute("select count(*) from employees").fetchone()[0] == 60
+    assert conn.execute("select count(*) from branches").fetchone()[0] == 240
+    assert conn.execute("select count(*) from employees").fetchone()[0] == 1440
+    assert (
+        conn.execute(
+            "select count(*) from employees e join branches b on b.id=e.branch_id where b.code = any(%s)",
+            (["0042", "0107", "0211", "0315", "0418", "0520", "0633", "0741", "0856", "0962"],),
+        ).fetchone()[0]
+        == 60
+    )
     assert conn.execute("select count(*) from branches where code = '0042'").fetchone()[0] == 1
     assert conn.execute("select count(*) from business_rules where code = 'RULE-QR-FEE-001'").fetchone()[0] == 1
     assert conn.execute("select count(*) from error_codes where code = 'PROC-QR-FEE-CHARGED'").fetchone()[0] == 1

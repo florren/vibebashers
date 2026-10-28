@@ -1,0 +1,44 @@
+{
+  "branches": [
+    {
+      "code": "S0010",
+      "name_ru": "Учебное ВСП 0010",
+      "city_id": 1,
+      "region_code": "01",
+      "desks": 6,
+      "manager_display_name": "Учебный руководитель 0010",
+      "branch_type": "additional",
+      "branch_status": "open",
+      "lat": 44.882459,
+      "lon": 39.191997,
+      "address_ru": "Учебная улица, дом 11 (синтетический адрес)",
+      "hours_ru": "Пн–Пт 09:00–18:00",
+      "opened_sim": "2025-12-13T09:00:00Z",
+      "closed_sim": null,
+      "product_line_codes": [
+        "investments",
+        "loans"
+      ]
+    },
+    {
+      "code": "S0011",
+      "name_ru": "Учебное ВСП 0011",
+      "city_id": 57,
+      "region_code": "02",
+      "desks": 6,
+      "manager_display_name": "Учебный руководитель 0011",
+      "branch_type": "mobile",
+      "branch_status": "open",
+      "lat": 56.103066,
+      "lon": 54.25531,
+      "address_ru": "Учебная улица, дом 12 (синтетический адрес)",
+      "hours_ru": "Пн–Пт 09:00–18:00",
+      "opened_sim": "2026-06-04T09:00:00Z",
+      "closed_sim": null,
+      "product_line_codes": [
+        "branches_service",
+        "transfers_payments"
+      ]
+    }
+  ]
+}

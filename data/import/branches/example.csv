@@ -1,0 +1,3 @@
+code,name_ru,city_id,region_code,desks,manager_display_name,branch_type,branch_status,lat,lon,address_ru,hours_ru,opened_sim,closed_sim,product_line_codes
+S0010,Учебное ВСП 0010,1,01,6,Учебный руководитель 0010,additional,open,44.882459,39.191997,"Учебная улица, дом 11 (синтетический адрес)",Пн–Пт 09:00–18:00,2025-12-13T09:00:00Z,,"[""investments"", ""loans""]"
+S0011,Учебное ВСП 0011,57,02,6,Учебный руководитель 0011,mobile,open,56.103066,54.25531,"Учебная улица, дом 12 (синтетический адрес)",Пн–Пт 09:00–18:00,2026-06-04T09:00:00Z,,"[""branches_service"", ""transfers_payments""]"
