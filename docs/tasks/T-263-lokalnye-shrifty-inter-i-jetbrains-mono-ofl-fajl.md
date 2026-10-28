@@ -8,7 +8,7 @@
 | Волна | 7 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `done` |
 
 ## Цель
 Закрыть остаток T-007 и правило 8 AGENTS.md: шрифты из репозитория, а не системные подстановки и не CDN (ТЗ 12.1, 26.1).
@@ -32,9 +32,9 @@
 3. Тест `tests/integration/test_no_cdn.py` (или vitest) проверяет, что в собранном фронте нет ссылок на внешние шрифты и что файлы шрифтов присутствуют.
 
 ## Критерии приёмки
-- [ ] В собранном фронте нет запросов к внешним доменам за шрифтами; кириллица отображается Inter/JetBrains Mono в офлайне.
-- [ ] Лицензии указаны.
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] В собранном фронте нет запросов к внешним доменам за шрифтами; кириллица отображается Inter/JetBrains Mono в офлайне.
+- [x] Лицензии указаны.
+- [x] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
@@ -44,3 +44,5 @@ pytest backend/tests/integration/test_no_cdn.py
 
 ## Отчёт субагента
 Включено в PR #66: локальные woff2 Inter и JetBrains Mono (latin/cyrillic), @font-face, preload и docs/LICENSES.md; npm-зависимости @fontsource удалены. Build проверен без внешней загрузки шрифтов, автоматический test_no_cdn входит в pytest. Ручная офлайн-проверка начертания и скриншоты не выполнены; карточка не объявляется полностью принятой.
+
+Приёмка следующей волны (`feat/T-263-local-fonts`): проверяются ровно 12 локальных WOFF2, каждый `@font-face`/swap/URL и magic bytes; notices Inter/JetBrains Mono приложены к бинарникам и попадают в dist. CI повторно выполняет test_no_cdn после build (до build тест закономерно мог skip). Chromium Playwright с заблокированными внешними доменами проверил custom-font glyphs и точные PostScript names всех весов для латиницы и кириллицы: **1 passed**, внешних запросов **0**. Это проверка изолированного localhost-стенда без внешнего доступа, не режим браузера offline, блокирующий сам localhost. Скриншоты всех начертаний в обеих темах: `docs/screenshots/T-263/{light,dark}.png`; просмотрены. Frontend Node22 lint/tsc/**33 passed**/build; build сохраняет прежнее предупреждение размера chunk (>900 kB), без новых предупреждений шрифтов. test_no_cdn **2 passed**. Общий make lint/test и CI — перед merge.
