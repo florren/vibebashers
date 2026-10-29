@@ -61,6 +61,7 @@ class ProviderChain:
     ) -> None:
         if append_mock and (not providers or providers[-1].name != "mock"):
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
+        self.strict = not append_mock
         self.role_profiles: dict[str, LLMProfile] = {}
         self.providers = providers
         self.record_store = record_store
@@ -89,6 +90,7 @@ class ProviderChain:
     ) -> ChainResult:
         timeout_s = self.timeout_for(context)
         attempts: list[Attempt] = []
+        last_error: ProviderError | None = None
         for prov in self.providers:
             if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
                 continue
@@ -100,11 +102,13 @@ class ProviderChain:
                     prov.complete_structured(messages, schema, profile, timeout_s=timeout_s), timeout=timeout_s
                 )
             except TimeoutError:
+                last_error = ProviderError("timeout", "провайдер не ответил вовремя")
                 ms = int((time.perf_counter() - t0) * 1000)
                 attempts.append(Attempt(prov.name, False, ms, f"timeout {timeout_s:.0f}s ({context})"))
                 log.warning("llm_timeout", provider=prov.name, context=context, ms=ms)
                 continue
             except ProviderError as e:
+                last_error = e
                 ms = int((time.perf_counter() - t0) * 1000)
                 attempts.append(Attempt(prov.name, False, ms, f"{e.kind}: {e.detail[:160]}"))
                 (log.info if e.kind == "miss" else log.warning)(
@@ -112,6 +116,7 @@ class ProviderChain:
                 )
                 continue
             except Exception as e:  # любая иная ошибка — тоже failover, но с полным логом
+                last_error = ProviderError("unavailable", type(e).__name__)
                 ms = int((time.perf_counter() - t0) * 1000)
                 attempts.append(Attempt(prov.name, False, ms, f"{type(e).__name__}: {str(e)[:160]}"))
                 log.exception("llm_provider_crash", provider=prov.name)
@@ -132,6 +137,8 @@ class ProviderChain:
             if attempts and any(not a.ok for a in attempts):
                 log.info("llm_failover", used=prov.name, failed=[a.provider for a in attempts if not a.ok])
             return ChainResult(obj, usage, raw, prov.name, attempts)
+        if self.strict and last_error is not None:
+            raise last_error
         raise ProviderError(
             "unavailable", "; ".join(a.error or a.provider for a in attempts) or "нет доступного провайдера"
         )

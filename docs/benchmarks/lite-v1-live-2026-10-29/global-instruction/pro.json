@@ -1,0 +1,2405 @@
+{
+  "id": 7,
+  "dataset_id": 3,
+  "llm_profile_id": 2,
+  "prompt_version": "v1.1",
+  "seed": 42,
+  "repeats": 1,
+  "status": "done",
+  "metrics": {
+    "p50_ms": 3278.0,
+    "p95_ms": 3821.749999999993,
+    "sources": [
+      "live"
+    ],
+    "complete": true,
+    "stability": null,
+    "retries_avg": 0.05,
+    "temperature": 0.0,
+    "failed_cases": 1,
+    "tokens_total": 21482,
+    "accuracy_type": 0.75,
+    "cost_estimate": 0.0,
+    "fallback_rate": 0.0,
+    "expected_cases": 40,
+    "model_versions": [
+      "GigaChat-3-Pro:32.4.30.3"
+    ],
+    "requests_total": 42,
+    "accuracy_system": 0.375,
+    "evaluated_cases": 40,
+    "json_valid_rate": 0.95,
+    "accuracy_product": 0.575,
+    "tool_success_rate": 0.975
+  },
+  "started_at": "2026-10-29 04:00:32.342337+00:00",
+  "finished_at": "2026-10-29 04:02:45.381094+00:00",
+  "error": null,
+  "dataset_code": "lite_v1",
+  "llm_profile_code": "gigachat_pro",
+  "progress": 1.0,
+  "results": [
+    {
+      "id": 202,
+      "run_id": 7,
+      "case_id": 241,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "churn_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 90,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 85,
+        "summary_ru": "Клиент закрывает вклад из-за изменения ставки после подписания договора.",
+        "criticality": "high",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явное недовольство изменением условий по вкладу и намерение уйти в другой банк — это претензия к тарифам/условиям (tariff_terms). Высокая критичность обусловлена угрозой ухода клиента и негативным тоном.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Изменение ставки по вкладу после подписания договора вызвало угрозу закрытия вклада клиентом.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3479,
+      "prompt_tokens": 2597,
+      "completion_tokens": 307,
+      "fallback_mock": false,
+      "text": "Прекрасно, просто прекрасно. Закрываю вклад и ухожу в другой банк. Там хотя бы ставка не меняется после подписания.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "churn"
+      }
+    },
+    {
+      "id": 203,
+      "run_id": 7,
+      "case_id": 242,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "churn_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 75,
+        "summary_ru": "Клиент закрывает вклад из-за изменения ставки после подписания договора.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явное недовольство изменением условий по вкладу и намерение уйти в другой банк — это указывает на претензию к тарифам/условиям (tariff_terms). Признаков технического сбоя или ошибки клиента нет; качество обслуживания не обсуждается. Высокая уверенность обусловлена прямым упоминанием причины ухода.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Изменение процентной ставки по вкладу после заключения договора вызывает массовый отток клиентов.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3531,
+      "prompt_tokens": 2583,
+      "completion_tokens": 325,
+      "fallback_mock": false,
+      "text": "Закрываю вклад и ухожу в другой банк. Там хотя бы ставка не меняется после подписания.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "churn"
+      }
+    },
+    {
+      "id": 204,
+      "run_id": 7,
+      "case_id": 243,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "churn_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 75,
+        "summary_ru": "Клиент закрывает вклад из-за изменения ставки после подписания договора.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явное недовольство изменением условий вклада и намерение уйти в другой банк — это указывает на претензию к тарифам (tariff_terms). Нет признаков технического сбоя или ошибки клиента; продукт — депозит, система — sub_deposits. Высокая уверенность обусловлена прямым упоминанием причины ухода.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Изменение процентной ставки по вкладу после заключения договора вызвало массовое недовольство клиентов.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3400,
+      "prompt_tokens": 74,
+      "completion_tokens": 323,
+      "fallback_mock": false,
+      "text": "Закрываю вклад и ухожу в другой банк. Там хотя бы ставка не меняется после подписания...",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "churn"
+      }
+    },
+    {
+      "id": 205,
+      "run_id": 7,
+      "case_id": 244,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": null,
+        "intents": [
+          "complaint",
+          "churn_threat"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 75,
+        "confidence": 0.92,
+        "negativity": 88,
+        "summary_ru": "Клиент недоволен повторным списанием комиссии за обслуживание и выражает намерение сменить банк.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение содержит претензию к взиманию комиссии без предоставления услуги (\"комиссия за обслуживание, которого нет\") и явное выражение недовольства с намёком на уход от банка — это tariff_terms по таксономии; высокий churn_risk обусловлен прямым упоминанием смены банка.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Повторно списана комиссия за обслуживание при отсутствии услуги.",
+          "severity": "medium",
+          "suggested_team": "team_debit"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": false,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3369,
+      "prompt_tokens": 78,
+      "completion_tokens": 316,
+      "fallback_mock": false,
+      "text": "Спасибо, что второй раз комиссия за обслуживание, которого «нет». Наверное, пора менять банк. Очень приятно.",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "churn"
+      }
+    },
+    {
+      "id": 206,
+      "run_id": 7,
+      "case_id": 245,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "sarcasm"
+        ],
+        "system": "sub_deposits",
+        "intents": [],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "neutral",
+        "churn_risk": 10,
+        "confidence": 0.95,
+        "error_code": null,
+        "negativity": 40,
+        "summary_ru": "Клиент открыл вклад не на тот срок и просит переоткрыть без потери процентов.",
+        "criticality": "low",
+        "signal_type": "client_error",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит сарказм по поводу ошибки клиента при открытии вклада (неверный срок). Клиент сам инициирует решение вопроса — просит переоткрыть вклад с сохранением условий. Нет признаков технического сбоя или претензии к банку; причина обращения — ошибка/непонимание со стороны клиента.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Ошибка клиента при выборе срока вклада: требуется переоткрытие без потерь.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "client_error",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.85
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3399,
+      "prompt_tokens": 90,
+      "completion_tokens": 316,
+      "fallback_mock": false,
+      "text": "Ага, «надёжный банк»: открыл вклад не на тот срок, можно переоткрыть на 6 месяцев без потери процентов.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "client_error"
+      }
+    },
+    {
+      "id": 207,
+      "run_id": 7,
+      "case_id": 246,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "neutral",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 5,
+        "summary_ru": "Клиент открыл вклад не на тот срок и интересуется возможностью переоткрытия без потери процентов.",
+        "criticality": "low",
+        "signal_type": "client_error",
+        "product_line": "deposits",
+        "rationale_ru": "Вопрос клиента касается условий вклада и возможности изменения срока открытия — это типичный случай ошибки или непонимания клиентом условий продукта (client_error). Нет признаков технического сбоя, жалобы на обслуживание или претензии к тарифам.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Клиент ошибочно выбрал срок вклада и уточняет условия переоткрытия.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "client_error",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3197,
+      "prompt_tokens": 72,
+      "completion_tokens": 293,
+      "fallback_mock": false,
+      "text": "открыл вклад не на тот срок можно переоткрыть на 6 месяцев без потери процентов?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "client_error"
+      }
+    },
+    {
+      "id": 208,
+      "run_id": 7,
+      "case_id": 247,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": "sub_deposits",
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент открыл вклад не на тот срок и просит переоткрыть без потери процентов.",
+        "criticality": "low",
+        "signal_type": "client_error",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение клиента касается его личной ошибки при выборе срока вклада и просьбы о пересчёте условий. Нет признаков технического сбоя или претензии к банку — только вопрос по условиям продукта.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Клиент ошибочно выбрал срок вклада и интересуется возможностью изменения условий без потерь.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "client_error",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3057,
+      "prompt_tokens": 74,
+      "completion_tokens": 286,
+      "fallback_mock": false,
+      "text": "Открыл вклад не на тот срок, можно переоткрыть на 6 месяцев без потери процентов?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "client_error"
+      }
+    },
+    {
+      "id": 209,
+      "run_id": 7,
+      "case_id": 248,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [
+          "repeat"
+        ],
+        "system": "processing",
+        "intents": [
+          "question"
+        ],
+        "product": "debit_card",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "neutral",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 25,
+        "summary_ru": "Клиент трижды неверно ввел ПИН-код и заблокировал карту; просит помощи с разблокировкой.",
+        "criticality": "low",
+        "signal_type": "client_error",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение содержит явное указание на ошибку клиента (трижды неверный ввод ПИН-кода) и просьбу о разблокировке карты. Нет признаков технического сбоя или претензии к условиям банка. Тип client_error выбран из-за описанной причины блокировки.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Блокировка дебетовой карты после трехкратного неверного ввода ПИН-кода клиентом.",
+          "severity": "low",
+          "suggested_team": "team_processing"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "client_error",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3297,
+      "prompt_tokens": 82,
+      "completion_tokens": 312,
+      "fallback_mock": false,
+      "text": "Ввёл три раза неверный ПИН, карта заблокировалась. Это я сам, но как разблокировать?",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "client_error"
+      }
+    },
+    {
+      "id": 210,
+      "run_id": 7,
+      "case_id": 249,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint",
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "fraud"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.97,
+        "error_code": null,
+        "negativity": 100,
+        "summary_ru": "Клиент сообщил о звонке от мошенников под видом службы безопасности с просьбой перевести деньги на безопасный счёт.",
+        "criticality": "high",
+        "signal_type": "fraud_suspicion",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явные признаки мошенничества: звонок якобы из службы безопасности и просьба перевести средства на сторонний счёт. Это типичная схема социальной инженерии, направленная на хищение средств клиента. Высокая критичность обусловлена риском потери денег клиентом и потенциальным ущербом для репутации банка.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Мошенники представляются службой безопасности банка и просят клиента перевести деньги на безопасный счёт.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "fraud_suspicion",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3520,
+      "prompt_tokens": 92,
+      "completion_tokens": 343,
+      "fallback_mock": false,
+      "text": "Позвонили «из службы безопасности банка», просили перевести деньги с вклада на «безопасный счёт». Это вы или мошенники?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "fraud_suspicion"
+      }
+    },
+    {
+      "id": 211,
+      "run_id": 7,
+      "case_id": 250,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint",
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "fraud"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.97,
+        "error_code": null,
+        "negativity": 100,
+        "summary_ru": "Клиент сообщил о звонке от мошенников с просьбой перевести деньги на безопасный счёт.",
+        "criticality": "high",
+        "signal_type": "fraud_suspicion",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явные признаки мошенничества: звонок якобы из службы безопасности и просьба перевести средства. Клиент сомневается в легитимности операции, что указывает на высокий риск фрода и возможный уход клиента (флаг churn_intent). Высокая уверенность обусловлена типичным сценарием социальной инженерии.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Мошеннический звонок клиенту с попыткой перевода средств со вклада.",
+          "severity": "high",
+          "suggested_team": "team_antifraud"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "fraud_suspicion",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.96
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3539,
+      "prompt_tokens": 92,
+      "completion_tokens": 337,
+      "fallback_mock": false,
+      "text": "Позвонили «из службы безопасности банка», просили перевести деньги с вклада на «безопасный счёт». Это вы или мошенники?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "fraud_suspicion"
+      }
+    },
+    {
+      "id": 212,
+      "run_id": 7,
+      "case_id": 251,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint",
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "fraud"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.97,
+        "error_code": null,
+        "negativity": 100,
+        "summary_ru": "Клиент получил звонок якобы от службы безопасности с просьбой перевести деньги на безопасный счёт.",
+        "criticality": "high",
+        "signal_type": "fraud_suspicion",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явные признаки мошенничества: просьба перевести средства под предлогом защиты, упоминание службы безопасности банка и эмоциональная реакция клиента. Это типичная схема социальной инженерии, направленная на хищение средств со вклада.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Мошенники звонят клиентам под видом службы безопасности для кражи денег со вкладов.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "fraud_suspicion",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.96
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3467,
+      "prompt_tokens": 97,
+      "completion_tokens": 328,
+      "fallback_mock": false,
+      "text": "Позвонили «из службы безопасности банка», просили перевести бабки с вклада на «безопасный счёт». Это вы или мошенники жесть",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "fraud_suspicion"
+      }
+    },
+    {
+      "id": 213,
+      "run_id": 7,
+      "case_id": 252,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "processing",
+        "intents": [
+          "refund_request",
+          "complaint"
+        ],
+        "product": "debit_card",
+        "entities": {
+          "mentions": [],
+          "amount_rub": 12400,
+          "promo_code": null,
+          "masked_card": "**** 4512",
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.97,
+        "error_code": null,
+        "negativity": 100,
+        "summary_ru": "Клиент сообщил о подозрительном списании с карты в Москве и просит срочно заблокировать карту.",
+        "criticality": "high",
+        "signal_type": "fraud_suspicion",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение содержит явные признаки мошенничества: клиент не совершал операцию, карта при нём, сумма значительна, срочная просьба о блокировке указывает на высокий риск для клиента. Тип fraud_suspicion выбран из-за подозрения на несанкционированное использование карты.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Подозрительное списание по дебетовой карте без участия владельца; требуется срочная блокировка.",
+          "severity": "high",
+          "suggested_team": "team_processing"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "fraud_suspicion",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3558,
+      "prompt_tokens": 118,
+      "completion_tokens": 338,
+      "fallback_mock": false,
+      "text": "Списание 12 400 ₽ в магазине в Москва, а я там никогда не был. Карта **** 4512 у меня в кошельке. Заблокируйте срочно!",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "fraud_suspicion"
+      }
+    },
+    {
+      "id": 214,
+      "run_id": 7,
+      "case_id": 253,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "positive",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "gratitude"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "negativity": 0,
+        "summary_ru": "Благодарность за быстрое открытие вклада и выполнение условий по ставке.",
+        "criticality": "low",
+        "signal_type": "gratitude",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит благодарность без претензий или вопросов; клиент доволен скоростью открытия вклада и выполнением обещанной ставки — это gratitude. Нет признаков других типов сигналов.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Клиент благодарит за быстрое открытие вклада и соблюдение условий по ставке.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "gratitude",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2950,
+      "prompt_tokens": 68,
+      "completion_tokens": 268,
+      "fallback_mock": false,
+      "text": "Спасибо, вклад открылся за минуту, ставка как обещали. Приятно удивлён.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "gratitude"
+      }
+    },
+    {
+      "id": 215,
+      "run_id": 7,
+      "case_id": 254,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "positive",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "gratitude"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "negativity": 0,
+        "summary_ru": "Клиент благодарит за быстрое открытие вклада и выполнение обещанной ставки.",
+        "criticality": "low",
+        "signal_type": "gratitude",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит благодарность без претензий или вопросов, что соответствует типу gratitude. Нет признаков технических проблем, ошибок клиента или недовольства условиями.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Благодарность за успешное открытие вклада по заявленной ставке.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "gratitude",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.8
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2913,
+      "prompt_tokens": 66,
+      "completion_tokens": 269,
+      "fallback_mock": false,
+      "text": "спасибо вклад открылся за минуту ставка как обещали. приятно удивлён.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "gratitude"
+      }
+    },
+    {
+      "id": 216,
+      "run_id": 7,
+      "case_id": 255,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "positive",
+        "flags": [],
+        "system": null,
+        "product": null,
+        "entities": {},
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "summary_ru": "Клиент благодарит за быстрое открытие вклада по заявленной ставке.",
+        "criticality": "low",
+        "signal_type": "gratitude",
+        "rationale_ru": "Обращение содержит благодарность за быстрое открытие вклада и соответствие обещанной ставке. Нет признаков проблемы или претензии, только позитивный отзыв.",
+        "problem_summary": {
+          "problem": "Благодарность клиента за успешное открытие вклада без проблем.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_types": [],
+        "cause_hypothesis": "gratitude"
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2013,
+      "prompt_tokens": 68,
+      "completion_tokens": 169,
+      "fallback_mock": false,
+      "text": "Спасибо, вклад открылся за минуту, ставка как обещали. Приятно удивлён.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "gratitude"
+      }
+    },
+    {
+      "id": 217,
+      "run_id": 7,
+      "case_id": 256,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "positive",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "gratitude"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "negativity": 0,
+        "summary_ru": "Клиент благодарит оператора за быстрое решение вопроса с картой.",
+        "criticality": "low",
+        "signal_type": "gratitude",
+        "product_line": "support",
+        "rationale_ru": "Обращение содержит благодарность оператору и не выражает претензий или проблем. Тип сигнала — gratitude, так как клиент доволен обслуживанием и отмечает скорость решения вопроса.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Благодарность за оперативное решение проблемы с картой.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "gratitude",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2857,
+      "prompt_tokens": 70,
+      "completion_tokens": 260,
+      "fallback_mock": false,
+      "text": "Оператор Мария решила вопрос с картой за 5 минут. Побольше бы таких сотрудников.",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "gratitude"
+      }
+    },
+    {
+      "id": 218,
+      "run_id": 7,
+      "case_id": 257,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент интересуется условиями вклада на 6 месяцев и возможностью пополнения.",
+        "criticality": "low",
+        "signal_type": "info_request",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит только вопрос о ставке по вкладу и условиях пополнения без претензий или признаков проблемы. Это информационный запрос клиента, не связанный с ошибкой банка или недовольством.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Запрос информации об условиях вклада на 6 месяцев и возможности пополнения.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "info_request",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3006,
+      "prompt_tokens": 72,
+      "completion_tokens": 278,
+      "fallback_mock": false,
+      "text": "Подскажите, какая сейчас ставка по вкладу на 6 месяцев и можно ли пополнять?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "info_request"
+      }
+    },
+    {
+      "id": 219,
+      "run_id": 7,
+      "case_id": 258,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "intents": [
+          "question"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент интересуется условиями вклада на 6 месяцев и возможностью пополнения.",
+        "criticality": "low",
+        "signal_type": "info_request",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит только вопрос о ставке по вкладу и условиях пополнения без признаков претензии или проблемы с сервисом. Это информационный запрос клиента, не связанный со сбоем, ошибкой банка или недовольством.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Запрос информации об условиях вклада на 6 месяцев и возможности пополнения.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "info_request",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2988,
+      "prompt_tokens": 70,
+      "completion_tokens": 282,
+      "fallback_mock": false,
+      "text": "подскажите какая сейчас ставка по вклату на 6 месяцев и можно ли пополнять?",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "info_request"
+      }
+    },
+    {
+      "id": 220,
+      "run_id": 7,
+      "case_id": 259,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент интересуется условиями вклада на 6 месяцев и возможностью пополнения.",
+        "criticality": "low",
+        "signal_type": "info_request",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит только вопрос о ставке по вкладу и условиях пополнения без претензии или жалобы. Нет признаков технической ошибки, клиентской ошибки, недовольства тарифами или качеством обслуживания. Это информационный запрос.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Запрос информации об условиях вклада на 6 месяцев и возможности пополнения.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "info_request",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2890,
+      "prompt_tokens": 75,
+      "completion_tokens": 283,
+      "fallback_mock": false,
+      "text": "Подскажите, какая сейчас ставка по вкладу на 6 месяцев и можно ли пополнять жесть",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "info_request"
+      }
+    },
+    {
+      "id": 221,
+      "run_id": 7,
+      "case_id": 260,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "product": null,
+        "entities": {},
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "summary_ru": "Запрос информации о стоимости и месте получения перевыпуска карты в Москве.",
+        "criticality": "low",
+        "signal_type": "info_request",
+        "rationale_ru": "Клиент задает информационный вопрос о стоимости и месте получения перевыпущенной карты в Москве без признаков претензии или негатива. Нет упоминаний о сбоях, комиссиях, качестве обслуживания или мошенничестве.",
+        "problem_summary": {
+          "problem": "Клиент интересуется стоимостью и местом получения перевыпуска карты в Москве.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_types": [],
+        "cause_hypothesis": "info_request"
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2129,
+      "prompt_tokens": 60,
+      "completion_tokens": 188,
+      "fallback_mock": false,
+      "text": "Сколько стоит перевыпуск карты и где её забрать в Москва?",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "info_request"
+      }
+    },
+    {
+      "id": 222,
+      "run_id": 7,
+      "case_id": 261,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "regulator_threat"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint",
+          "regulator_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "regulator"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 100,
+        "summary_ru": "Клиент угрожает жалобой в ЦБ и судом из-за обещанной ставки по вкладу.",
+        "criticality": "high",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит угрозу обращения к регулятору и в суд из-за несогласия с условиями вклада — это претензия к тарифам/условиям (tariff_terms). Угроза регулятору повышает критичность до high. Продукт deposit, система sub_deposits согласованы. Уровень уверенности высокий, так как причина чётко указана клиентом.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Несогласие клиента с процентной ставкой по вкладу и угроза жалобы регулятору.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.97
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3500,
+      "prompt_tokens": 94,
+      "completion_tokens": 350,
+      "fallback_mock": false,
+      "text": "Если ставка по вкладу не будет исправлена на обещанные 14 %, направлю жалобу в ЦБ и в суд. Срок — три дня.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "legal_regulatory"
+      }
+    },
+    {
+      "id": 223,
+      "run_id": 7,
+      "case_id": 262,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "regulator_threat"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "regulator"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 93,
+        "summary_ru": "Клиент угрожает жалобой в ЦБ и судом из-за ставки по вкладу.",
+        "criticality": "high",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит угрозу обращения к регулятору и в суд из-за несогласия с условиями вклада — это претензия к тарифам (tariff_terms). Высокий уровень негатива, угроза регулятору и риск ухода клиента определяют высокую критичность.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Несогласие клиента со ставкой по вкладу и угрозы жалобы в ЦБ/суды.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3369,
+      "prompt_tokens": 97,
+      "completion_tokens": 316,
+      "fallback_mock": false,
+      "text": "Если ставка по вкладу не будет исправлена на обещанные 14 %, направлю жалобу в ЦБ и в суд. Срок — три дня жесть",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "legal_regulatory"
+      }
+    },
+    {
+      "id": 224,
+      "run_id": 7,
+      "case_id": 263,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "regulator_threat"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint",
+          "regulator_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "regulator"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 93,
+        "summary_ru": "Клиент угрожает жалобой в ЦБ и судом из-за обещанной ставки по вкладу.",
+        "criticality": "high",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит угрозу обращения к регулятору и в суд из-за несогласия с условиями вклада — это претензия к тарифам/условиям (tariff_terms). Высокий уровень негатива и угроза регулятору определяют высокую критичность.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Несогласие клиента со ставкой по вкладу и угроза жалобы в ЦБ.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": true,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3259,
+      "prompt_tokens": 94,
+      "completion_tokens": 318,
+      "fallback_mock": false,
+      "text": "Если ставка по вкладу не будет исправлена на обещанные 14 %, направлю жалобу в ЦБ и в суд. Срок — три дня.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "legal_regulatory"
+      }
+    },
+    {
+      "id": 225,
+      "run_id": 7,
+      "case_id": 264,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "regulator_threat"
+        ],
+        "system": "processing",
+        "intents": [
+          "complaint",
+          "regulator_threat"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [
+            "regulator"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": "PROC-QR-FEE-CHARGED",
+        "negativity": 95,
+        "summary_ru": "Клиент жалуется на незаконную комиссию за оплату по QR и угрожает жалобой в Банк России.",
+        "criticality": "high",
+        "signal_type": "tariff_terms",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение содержит претензию к комиссии (тип tariff_terms), упоминание СБП указывает на продукт debit_card и систему processing. Угроза регулятору повышает критичность до high; намерение ухода выражено явно через угрозу жалобы.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Незаконная комиссия за оплату по QR, угроза обращения в Банк России.",
+          "severity": "high",
+          "suggested_team": "team_processing"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": false,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3314,
+      "prompt_tokens": 92,
+      "completion_tokens": 321,
+      "fallback_mock": false,
+      "text": "Комиссия за QR незаконна, статья о СБП. Жалоба в Банк России уже готова, жду вашего ответа до пятницы.",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "legal_regulatory"
+      }
+    },
+    {
+      "id": 226,
+      "run_id": 7,
+      "case_id": 265,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "sentiment": "negative",
+        "churn_risk": 25,
+        "confidence": 0.93,
+        "error_code": null,
+        "summary_ru": "Долгое ожидание в отделении при закрытии вклада.",
+        "criticality": "medium",
+        "signal_type": "service_quality",
+        "rationale_ru": "Обращение клиента связано с длительным временем ожидания и недостатком персонала в отделении банка. Это указывает на проблему качества обслуживания (service_quality), а не технический сбой или ошибку клиента. Критичность средняя из-за негативного опыта и риска оттока клиентов.",
+        "problem_summary": {
+          "problem": "Длительное время ожидания закрытия вклада в отделении ВСП № 0315 Казань.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_types": [],
+        "cause_hypothesis": "service_quality",
+        "related_incident_ids": []
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2735,
+      "prompt_tokens": 90,
+      "completion_tokens": 250,
+      "fallback_mock": false,
+      "text": "В отделении ВСП № 0315 Казань ждал 40 минут, чтобы просто закрыть вклад. Один оператор на весь зал...",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "service_quality"
+      }
+    },
+    {
+      "id": 227,
+      "run_id": 7,
+      "case_id": 266,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "complaint"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 25,
+        "confidence": 0.98,
+        "error_code": null,
+        "negativity": 75,
+        "summary_ru": "Клиент ждал 40 минут в отделении для закрытия вклада из-за нехватки персонала.",
+        "criticality": "medium",
+        "signal_type": "service_quality",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит жалобу на длительное ожидание и нехватку операторов при закрытии вклада — это явный сигнал о низком качестве обслуживания (service_quality). Клиент раздражён, но не угрожает уходом или судебным иском, поэтому критичность средняя.",
+        "signal_level": "",
+        "problem_summary": {
+          "problem": "Длительное ожидание клиента при закрытии вклада из-за недостаточного количества сотрудников в отделении.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "service_quality",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3245,
+      "prompt_tokens": 92,
+      "completion_tokens": 306,
+      "fallback_mock": false,
+      "text": "В отделении ВСП № 0741 Нижний Новгород ждал 40 минут, чтобы просто закрыть вклад. Один оператор на весь зал...",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "service_quality"
+      }
+    },
+    {
+      "id": 228,
+      "run_id": 7,
+      "case_id": 267,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "aggression"
+        ],
+        "system": null,
+        "intents": [
+          "complaint"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 20,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 75,
+        "summary_ru": "Клиент жалуется на долгое ожидание и нехватку персонала при закрытии вклада в отделении.",
+        "criticality": "medium",
+        "signal_type": "service_quality",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит жалобу на длительное время ожидания и недостаточное количество сотрудников — это относится к качеству обслуживания (service_quality). Тональность раздражённая, критичность средняя из-за негативного опыта клиента.",
+        "signal_level": "low",
+        "problem_summary": {
+          "problem": "Длительное ожидание закрытия вклада из-за нехватки операторов в отделении.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "service_quality",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3118,
+      "prompt_tokens": 93,
+      "completion_tokens": 294,
+      "fallback_mock": false,
+      "text": "В отделении ВСП № 0633 Краснодар ждал 40 минут, чтобы просто закрыть вклад. Один оператор на весь зал жесть",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "service_quality"
+      }
+    },
+    {
+      "id": 229,
+      "run_id": 7,
+      "case_id": 268,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": "contact_center",
+        "intents": [
+          "complaint"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 30,
+        "confidence": 0.95,
+        "error_code": null,
+        "negativity": 80,
+        "summary_ru": "Оператор чата долго отвечал и сбросил диалог без решения вопроса клиента.",
+        "criticality": "medium",
+        "signal_type": "service_quality",
+        "product_line": "support",
+        "rationale_ru": "Обращение содержит жалобу на длительное ожидание ответа оператора и завершение диалога без решения проблемы с картой. Это указывает на низкое качество обслуживания в контакт-центре.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Длительное время ожидания ответа оператора и сброс диалога без решения вопроса по карте.",
+          "severity": "medium",
+          "suggested_team": "team_contact_center"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "service_quality",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "system": true,
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2944,
+      "prompt_tokens": 81,
+      "completion_tokens": 283,
+      "fallback_mock": false,
+      "text": "Оператор чата отвечал по полчаса и в итоге сбросил диалог. Вопрос по карте так и не решён ((",
+      "gold": {
+        "system": "contact_center",
+        "product": "debit_card",
+        "signal_type": "service_quality"
+      }
+    },
+    {
+      "id": 230,
+      "run_id": 7,
+      "case_id": 269,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": "mobile_app",
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент предложил добавить отображение накопленных процентов по вкладу в приложении.",
+        "criticality": "low",
+        "signal_type": "suggestion",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит предложение по улучшению функционала без претензии или негатива. Нет признаков технической ошибки, клиентской ошибки, проблемы с тарифами или качеством обслуживания. Тип suggestion выбран на основании нейтрального тона и конструктивного характера сообщения.",
+        "signal_level": "info",
+        "problem_summary": {
+          "problem": "Отсутствует функция отображения накопленных процентов по вкладу за день в мобильном приложении.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "suggestion",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": false,
+      "retries": 1,
+      "latency_ms": 6236,
+      "prompt_tokens": 449,
+      "completion_tokens": 591,
+      "fallback_mock": false,
+      "text": "Было бы удобно видеть в приложении, сколько процентов уже накапало по вкладу за день.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "suggestion"
+      }
+    },
+    {
+      "id": 231,
+      "run_id": 7,
+      "case_id": 270,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "product": null,
+        "entities": {},
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "summary_ru": "Предложение добавить в приложение информацию о накопленных процентах по вкладу за день.",
+        "criticality": "low",
+        "signal_type": "suggestion",
+        "rationale_ru": "Клиент предлагает улучшение функционала приложения — отображение накопленных процентов по вкладу за день. Нет признаков сбоя, ошибки или претензии к условиям/качеству обслуживания.",
+        "problem_summary": {
+          "problem": "Отсутствует информация о накопленных процентах по вкладу за день в приложении.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_types": [],
+        "cause_hypothesis": "suggestion"
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2177,
+      "prompt_tokens": 72,
+      "completion_tokens": 184,
+      "fallback_mock": false,
+      "text": "Было бы удобно видеть в приложении, сколько процентов уже накапало по вкладу за день.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "suggestion"
+      }
+    },
+    {
+      "id": 232,
+      "run_id": 7,
+      "case_id": 271,
+      "repeat_no": 1,
+      "predicted": {
+        "_benchmark_error": {
+          "kind": "bad_output"
+        }
+      },
+      "correct": {
+        "product": false,
+        "signal_type": false
+      },
+      "json_valid_first_try": false,
+      "retries": 1,
+      "latency_ms": 6154,
+      "prompt_tokens": 432,
+      "completion_tokens": 558,
+      "fallback_mock": false,
+      "text": "Было бы удобно видеть в приложении, сколько процентов уже накапало по вкладу за день.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "suggestion"
+      }
+    },
+    {
+      "id": 233,
+      "run_id": 7,
+      "case_id": 272,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "neutral",
+        "flags": [],
+        "system": null,
+        "intents": [
+          "question"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "positive",
+        "churn_risk": 0,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 0,
+        "summary_ru": "Клиент просит добавить возможность смены категории кешбэка в середине месяца.",
+        "criticality": "low",
+        "signal_type": "suggestion",
+        "product_line": "other",
+        "rationale_ru": "Обращение сформулировано вежливо и содержит предложение по улучшению сервиса без претензии или негатива. Нет признаков технической ошибки, тарифной проблемы или угрозы ухода клиента.",
+        "signal_level": "info",
+        "problem_summary": {
+          "problem": "Отсутствие возможности менять категорию кешбэка в середине месяца.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "suggestion",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.5
+      },
+      "correct": {
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 2907,
+      "prompt_tokens": 66,
+      "completion_tokens": 271,
+      "fallback_mock": false,
+      "text": "Добавьте, пожалуйста, возможность выбирать категорию кешбэка в середине месяца.",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "suggestion"
+      }
+    },
+    {
+      "id": 234,
+      "run_id": 7,
+      "case_id": 273,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 65,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 78,
+        "summary_ru": "Клиент обнаружил несоответствие ставки по вкладу условиям акции и договора.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит претензию к ставке по вкладу: клиент ожидал ставку 14% по акции, но в договоре указано 9,5%. Это указывает на несогласие с условиями (tariff_terms). Тональность раздражённая, есть риск ухода клиента (флаг churn_intent), критичность средняя — ошибка не системная, а связана с информированием или акцией.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Несоответствие процентной ставки по вкладу условиям акции и договора.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1
+      },
+      "correct": {
+        "system": false,
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3699,
+      "prompt_tokens": 82,
+      "completion_tokens": 335,
+      "fallback_mock": false,
+      "text": "Открывал вклад под 14 % по акции, в договоре 9,5 %. Это что, обман?",
+      "gold": {
+        "system": "promo_engine",
+        "product": "deposit",
+        "signal_type": "tariff_terms"
+      }
+    },
+    {
+      "id": 235,
+      "run_id": 7,
+      "case_id": 274,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "public"
+        ],
+        "system": null,
+        "intents": [],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 30,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 70,
+        "summary_ru": "Клиент недоволен ставкой по вкладу: в рекламе указано 14%, фактически начислено 9,5%.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит претензию к условиям продукта — несоответствие рекламируемой и фактической ставки. Это типичный случай tariff_terms, так как клиент указывает на нарушение обещанных условий без упоминания технического сбоя или ошибки клиента.",
+        "signal_level": "low",
+        "problem_summary": {
+          "problem": "Несоответствие рекламируемой и фактической процентной ставки по вкладу.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "system": false,
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3143,
+      "prompt_tokens": 77,
+      "completion_tokens": 309,
+      "fallback_mock": false,
+      "text": "В рекламе 14 %, по факту ставка 9,5 %. Мелкий шрифт, да",
+      "gold": {
+        "system": "promo_engine",
+        "product": "deposit",
+        "signal_type": "tariff_terms"
+      }
+    },
+    {
+      "id": 236,
+      "run_id": 7,
+      "case_id": 275,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "passive_aggression"
+        ],
+        "system": null,
+        "intents": [],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 20,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 60,
+        "summary_ru": "Клиент недоволен разницей между рекламной и фактической ставкой по вкладу.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит претензию к условиям тарифа: клиент указывает на несоответствие обещанной ставки в рекламе (14%) и реальной (9,5%). Это типичный случай tariff_terms — недовольство условиями продукта. Тональность раздражённая, но без агрессии или угрозы ухода.",
+        "signal_level": "low",
+        "problem_summary": {
+          "problem": "Несоответствие рекламной и фактической процентной ставки по депозиту.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.8
+      },
+      "correct": {
+        "system": false,
+        "product": false,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3236,
+      "prompt_tokens": 99,
+      "completion_tokens": 309,
+      "fallback_mock": false,
+      "text": "Люблю ваш банк: в рекламе 14 %, по факту ставка 9,5 %. Мелкий шрифт, да. Молодцы, что сказать",
+      "gold": {
+        "system": "promo_engine",
+        "product": "deposit",
+        "signal_type": "tariff_terms"
+      }
+    },
+    {
+      "id": 237,
+      "run_id": 7,
+      "case_id": 276,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": "processing",
+        "intents": [
+          "complaint"
+        ],
+        "product": "debit_card",
+        "entities": {
+          "mentions": [],
+          "amount_rub": 450.0,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 30,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 85,
+        "summary_ru": "Клиент возмущён списанием комиссии за обслуживание карты вопреки обещанию бесплатности.",
+        "criticality": "medium",
+        "signal_type": "tariff_terms",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение содержит претензию к условиям обслуживания (обещание бесплатной карты и последующее списание). Это указывает на несоответствие тарифных условий ожиданиям клиента — тип tariff_terms. Высокая уверенность обусловлена чётким указанием на нарушение обещания по тарифу.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Списание комиссии за обслуживание дебетовой карты при обещании бесплатного обслуживания.",
+          "severity": "medium",
+          "suggested_team": "team_debit"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3387,
+      "prompt_tokens": 74,
+      "completion_tokens": 319,
+      "fallback_mock": false,
+      "text": "За обслуживание карты списали 450 ₽, хотя при оформлении обещали бесплатно навсегда.",
+      "gold": {
+        "product": "debit_card",
+        "signal_type": "tariff_terms"
+      }
+    },
+    {
+      "id": 238,
+      "run_id": 7,
+      "case_id": 277,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "churn_intent"
+        ],
+        "system": "mobile_app",
+        "intents": [
+          "churn_threat"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 0.92,
+        "error_code": null,
+        "negativity": 75,
+        "summary_ru": "Клиент не может открыть вклад в приложении из-за технического сбоя и рискует потерять выгодную ставку.",
+        "criticality": "high",
+        "signal_type": "tech_fault",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит признаки tech_fault: клиент сообщает о зависании и вылете приложения при попытке открыть вклад. Контекст указывает на критичность ситуации — потеря высокой ставки по вкладу и явное намерение уйти (флаг churn_intent). Продукт deposit, система mobile_app согласованы с гипотезой.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Не работает открытие вклада в мобильном приложении, есть риск потери клиента из-за упущенной выгоды.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tech_fault",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "system": true,
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3591,
+      "prompt_tokens": 116,
+      "completion_tokens": 337,
+      "fallback_mock": false,
+      "text": "Пытаюсь открыть вклад в приложении — висит «подождите» и вылетает. Уже 2 раза пробовал. Ставка 14 % уйдёт, а я без вклада.",
+      "gold": {
+        "system": "mobile_app",
+        "product": "deposit",
+        "signal_type": "tech_fault"
+      }
+    },
+    {
+      "id": 239,
+      "run_id": 7,
+      "case_id": 278,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "angry",
+        "flags": [
+          "mass_impact"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "complaint"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": 750000.0,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 85,
+        "confidence": 1.0,
+        "error_code": null,
+        "negativity": 92,
+        "summary_ru": "Ошибка при открытии вклада: деньги списаны, вклад не создан.",
+        "criticality": "high",
+        "signal_type": "tech_fault",
+        "product_line": "deposits",
+        "rationale_ru": "Обращение содержит явный технический сбой — ошибка 503 и отсутствие вклада после списания средств. Это указывает на tech_fault в системе sub_deposits. Высокая критичность обусловлена потерей крупной суммы клиентом и риском массового воздействия.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Клиент столкнулся с ошибкой открытия вклада (код 503), средства списаны, вклад не открыт.",
+          "severity": "high",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tech_fault",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "system": true,
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3525,
+      "prompt_tokens": 104,
+      "completion_tokens": 331,
+      "fallback_mock": false,
+      "text": "При открытии вклада на 750 000 ₽ ошибка 503, деньги со счёта ушли, вклада нет. Где мои деньги?",
+      "gold": {
+        "system": "sub_deposits",
+        "product": "deposit",
+        "signal_type": "tech_fault"
+      }
+    },
+    {
+      "id": 240,
+      "run_id": 7,
+      "case_id": 279,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "question"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "sentiment": "negative",
+        "churn_risk": 30,
+        "confidence": 0.95,
+        "error_code": null,
+        "negativity": 70,
+        "summary_ru": "Неактивна кнопка пополнения вклада в течение двух дней.",
+        "criticality": "medium",
+        "signal_type": "tech_fault",
+        "product_line": "deposits",
+        "rationale_ru": "Клиент сообщает о технической проблеме с пополнением вклада: кнопка неактивна второй день. Это указывает на технический сбой (tech_fault) в системе вкладов. Высокая уверенность обусловлена повторяемостью проблемы и отсутствием действий со стороны клиента, которые могли бы вызвать ошибку.",
+        "signal_level": "high",
+        "problem_summary": {
+          "problem": "Кнопка пополнения вклада не работает два дня, блокируя операции клиентов.",
+          "severity": "medium",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tech_fault",
+        "related_incident_ids": [],
+        "product_line_confidence": 1.0
+      },
+      "correct": {
+        "system": false,
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3163,
+      "prompt_tokens": 62,
+      "completion_tokens": 308,
+      "fallback_mock": false,
+      "text": "Не могу пополнить вклад, кнопка неактивна второй день. Что происходит?",
+      "gold": {
+        "system": "mobile_app",
+        "product": "deposit",
+        "signal_type": "tech_fault"
+      }
+    },
+    {
+      "id": 241,
+      "run_id": 7,
+      "case_id": 280,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "irritated",
+        "flags": [
+          "repeat"
+        ],
+        "system": null,
+        "intents": [
+          "complaint"
+        ],
+        "product": null,
+        "entities": {
+          "mentions": [],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [],
+        "sentiment": "negative",
+        "churn_risk": 10,
+        "confidence": 0.95,
+        "error_code": null,
+        "negativity": 45,
+        "summary_ru": "Клиент не получил кешбэк за октябрь и прошлый месяц из-за выбранной категории.",
+        "criticality": "low",
+        "signal_type": "tariff_terms",
+        "product_line": "debit_cards",
+        "rationale_ru": "Обращение связано с ожиданием получения кешбэка по условиям программы лояльности. Клиент указывает на повторяющуюся проблему в течение двух месяцев, что свидетельствует о претензии к тарифным условиям или механизму начисления бонусов. Нет признаков технического сбоя или ошибки клиента — только недовольство условиями/результатом сервиса.",
+        "signal_level": "normal",
+        "problem_summary": {
+          "problem": "Не начислен кешбэк за октябрь и сентябрь при выполнении условий по категориям трат.",
+          "severity": "low",
+          "suggested_team": "team_cx"
+        },
+        "secondary_lines": [],
+        "secondary_types": [],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.85
+      },
+      "correct": {
+        "system": false,
+        "product": false,
+        "signal_type": false
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 3334,
+      "prompt_tokens": 82,
+      "completion_tokens": 325,
+      "fallback_mock": false,
+      "text": "Кешбэк за октябрь не пришёл, хотя категория была выбрана. В прошлом месяце тоже с опозданием.",
+      "gold": {
+        "system": "sub_debit",
+        "product": "debit_card",
+        "signal_type": "tech_fault"
+      }
+    }
+  ]
+}

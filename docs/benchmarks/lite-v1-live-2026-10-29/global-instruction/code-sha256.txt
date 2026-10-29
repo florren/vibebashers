@@ -1,0 +1,6 @@
+330993125b803dc754254109cdbe11b05947a7ab93072b85d3a961f2749f3a4b  backend/app/bench/runner.py
+7eea02dd1c6165d594cd4bdcf7a5e91d493950335180f49f8e55cac9a9477077  backend/app/bench/metrics.py
+e0a8fe8e0d2ad39b443d5840492ba249590a7ddd274c823dad397d29ad9a499b  backend/app/bench/service.py
+c457edb31548fd84834c5bcdd6aaff032fcfde5d1d609cf1b47c23c66f38b8d4  backend/app/llm/base.py
+b5db54fe07e7b2dc1daf1ac760faa1b0f95ad74042997d00b6d6f064d83e80bb  backend/app/llm/failover.py
+af8a5f67995a15b9c0e3d2843bdd4097a60653251d3b1f0f6e8e0bc0405fc808  backend/app/llm/gigachat.py

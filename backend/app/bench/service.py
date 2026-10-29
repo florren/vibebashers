@@ -57,6 +57,7 @@ class BenchService:
         self.keys: dict[str, ApiKey] = {}
         self.ready = False
         self.start_lock = asyncio.Lock()
+        self.gigachat_run_lock = asyncio.Lock()
 
     async def recover(self) -> None:
         async with self.start_lock:
@@ -103,6 +104,7 @@ class BenchService:
         for key in ("temperature", "price_in_per_1m", "price_out_per_1m"):
             if key in values:
                 values[key] = float(values[key])
+        values["temperature"] = 0.0  # единые параметры сравнения; профиль twin в БД не меняется
         return LLMProfile(**values)
 
     def available_keys(self, provider: str, saved: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -353,7 +355,10 @@ class BenchService:
             )
 
         try:
-            async with self.locks.setdefault(row["id"], asyncio.Lock()):
+            lock = self.locks.setdefault(row["id"], asyncio.Lock())
+            if row["provider"] == "gigachat" and get_settings().gigachat_scope == "GIGACHAT_API_PERS":
+                lock = self.gigachat_run_lock
+            async with lock:
                 if rec._cancel:
                     rec.status = "cancelled"
                     rec.finished_at = datetime.now(UTC)

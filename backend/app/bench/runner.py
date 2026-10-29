@@ -219,8 +219,8 @@ async def _invoke_classify(
     latency_ms = res.usage.latency_ms or int((time.perf_counter() - t0) * 1000)
     predicted = res.obj
     tool_ok = not validate_schema(predicted, schema)
-    retries = sum(1 for a in res.attempts if not a.ok)
-    json_valid_first_try = bool(res.attempts and res.attempts[0].ok and tool_ok)
+    retries = sum(1 for a in res.attempts if not a.ok) + max(res.usage.structured_retries, res.usage.request_count - 1)
+    json_valid_first_try = bool(res.attempts and res.attempts[0].ok and tool_ok and res.usage.json_valid_first_try)
     cost_rub = profile.cost(res.usage.prompt_tokens, res.usage.completion_tokens)
     return {
         "case_id": case.case_id,
@@ -228,7 +228,7 @@ async def _invoke_classify(
         "text": case.text,
         "gold": case.gold,
         "predicted": predicted,
-        "correct": compute_correct(case.gold, predicted),
+        "correct": {k: v if tool_ok else False for k, v in compute_correct(case.gold, predicted).items()},
         "latency_ms": latency_ms,
         "json_valid_first_try": json_valid_first_try,
         "retries": retries,
@@ -238,6 +238,9 @@ async def _invoke_classify(
         "cost_rub": cost_rub,
         "key_label": res.usage.key_label,
         "tool_ok": tool_ok,
+        "model": res.usage.model,
+        "llm_source": res.usage.source,
+        "request_count": res.usage.request_count,
     }
 
 
@@ -300,7 +303,32 @@ async def run(
     async def one(case: BenchCase, repeat_no: int) -> dict[str, Any]:
         nonlocal done
         async with sem:
-            row = await _invoke_classify(chain, case, profile, schema)
+            started = time.perf_counter()
+            try:
+                row = await _invoke_classify(chain, case, profile, schema)
+            except ProviderError as exc:
+                if exc.kind in ("quota", "auth", "rate_limit"):
+                    raise  # не расходуем оставшиеся квоты после явного запрета провайдера
+                usage = exc.usage
+                row = {
+                    "case_id": case.case_id,
+                    "text": case.text,
+                    "gold": case.gold,
+                    "predicted": {"_benchmark_error": {"kind": exc.kind}},
+                    "correct": {k: False for k in compute_correct(case.gold, {}).keys()},
+                    "latency_ms": int((time.perf_counter() - started) * 1000),
+                    "json_valid_first_try": False,
+                    "retries": max(0, usage.request_count - 1) if usage else 0,
+                    "prompt_tokens": usage.prompt_tokens if usage else 0,
+                    "completion_tokens": usage.completion_tokens if usage else 0,
+                    "fallback_mock": False,
+                    "cost_rub": profile.cost(usage.prompt_tokens, usage.completion_tokens) if usage else 0,
+                    "key_label": usage.key_label if usage else None,
+                    "tool_ok": False,
+                    "model": usage.model if usage else profile.model,
+                    "llm_source": usage.source if usage else "live",
+                    "request_count": usage.request_count if usage else 1,
+                }
         row["run_id"] = run_id
         row["repeat_no"] = repeat_no
         done += 1
@@ -308,6 +336,7 @@ async def run(
         return row
 
     try:
+        consecutive_transport_errors = 0
         for repeat_no in range(1, repeats + 1):
             for case in cases:
                 if record._cancel:
@@ -315,8 +344,15 @@ async def run(
                     record.finished_at = datetime.now(UTC)
                     await notify()
                     return record
-                record.results.append(await one(case, repeat_no))
+                row = await one(case, repeat_no)
+                record.results.append(row)
                 await notify()
+                error_kind = row["predicted"].get("_benchmark_error", {}).get("kind")
+                consecutive_transport_errors = (
+                    consecutive_transport_errors + 1 if error_kind in ("timeout", "network", "unavailable") else 0
+                )
+                if consecutive_transport_errors >= 3:
+                    raise ProviderError("unavailable", "три последовательных транспортных сбоя")
         record.metrics = aggregate(record.results, repeats=repeats)
         record.status = "done"
     except asyncio.CancelledError:
@@ -326,8 +362,17 @@ async def run(
         raise
     except Exception as e:
         record.status = "failed"
-        record.error = "benchmark failed: provider or persistence unavailable"
+        reason = e.kind if isinstance(e, ProviderError) else "provider or persistence unavailable"
+        record.error = f"benchmark failed: {reason}"
         log.error("bench_run_failed", run_id=run_id, error_type=type(e).__name__)
+    if record.results:
+        record.metrics = {
+            **aggregate(record.results, repeats=repeats),
+            "temperature": profile.temperature,
+            "evaluated_cases": len(record.results),
+            "expected_cases": total,
+            "complete": record.status == "done",
+        }
     record.finished_at = datetime.now(UTC)
     await notify()
     return record

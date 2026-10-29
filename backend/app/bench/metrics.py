@@ -86,6 +86,10 @@ def aggregate(results: list[dict[str, Any]], *, repeats: int = 1) -> dict[str, A
         "tokens_total": tokens,
         "cost_estimate": round(cost, 6),
         "stability": _stability(results, repeats),
+        "requests_total": sum(int(r.get("request_count", 1 + int(r.get("retries") or 0))) for r in results),
+        "failed_cases": sum(not ok for ok in tool_ok),
+        "model_versions": sorted({str(r["model"]) for r in results if r.get("model")}),
+        "sources": sorted({str(r["llm_source"]) for r in results if r.get("llm_source")}),
     }
 
     for field, gold_key in (
