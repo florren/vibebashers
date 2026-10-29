@@ -25,4 +25,6 @@
 
 ## Итог автоматических проверок
 
-`make lint` — Ruff/format/mypy и OpenAPI drift прошли. `make test` — 568 unit + 105 integration + 22 scenario = 695 passed, 20 skipped. Финальный targeted regression calibration/evidence — 19 passed. Frontend lint (0 errors, существующее предупреждение DemoMenu), typecheck, 122 Vitest и production build прошли. Contracts: 41 схема, 153 пути; drift: spec=179/code=179; i18n: 1 358 ключей; owners --allow-cross и git diff --check прошли. Миграции проверены на идемпотентность, downgrade/upgrade и alembic check. CI выполняет те же основные проверки на PostgreSQL 16 и Node 22; слияние разрешено только после зелёных проверок текущего head.
+`make lint` — Ruff/format/mypy и OpenAPI drift прошли. `make test` — 568 unit + 105 integration + 22 scenario = 695 passed, 20 skipped. Финальный targeted regression calibration/evidence — 20 passed. Frontend lint (0 errors, существующее предупреждение DemoMenu), typecheck, 122 Vitest и production build прошли. Contracts: 41 схема, 153 пути; drift: spec=179/code=179; i18n: 1 358 ключей; owners --allow-cross и git diff --check прошли. Миграции проверены на идемпотентность, downgrade/upgrade и alembic check. CI выполняет те же основные проверки на PostgreSQL 16 и Node 22; слияние разрешено только после зелёных проверок текущего head.
+
+Финальный review добавил regression допуска Brier: порог 0.005 применяется к средней ошибке, не к сумме по выборке; небольшое допустимое ухудшение принимается, превышение отклоняется. Дополнительный unit-тест прошёл.

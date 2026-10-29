@@ -58,3 +58,5 @@ python scripts/gen_churn_demo.py && git diff --exit-code -- data/economics
 Проверки: make lint/test, targeted calibration/evidence regression, contracts/drift/i18n/owners --allow-cross, генераторы воспроизводимы; frontend lint/typecheck, 122 Vitest, production build. Покрытие новых economics-модулей 93 % суммарно. PostgreSQL локально 18.6 UTF8/UTC; CI проверяет PostgreSQL 16. Replay-сценарий сохранён. Живой QR через GigaChat: normalize/instant_decide ok, модель GigaChat-3-Ultra:32.9.16.9, TLS включён, только синтетические данные, без записи кассет.
 
 Отчёт, показатели, трасса и ru/en × light/dark/mobile скриншоты: [finance-calibration-2026-10-29](../benchmarks/finance-calibration-2026-10-29/README.md). Новых зависимостей/переменных окружения нет. До запуска обновлённого стенда требуется `make migrate`; рабочая БД в ходе разработки не изменялась. Откат приложения сохраняет историю таблицы.
+
+Финальный review добавил regression допуска Brier: порог 0.005 применяется к средней ошибке, не к сумме по выборке; небольшое допустимое ухудшение принимается, превышение отклоняется. Дополнительный unit-тест прошёл.

@@ -96,7 +96,7 @@ def fit(rows: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
     n = len(validation)
     ece = sum(abs(probabilities[b] - k / count) * count / n for b, (count, k) in enumerate(val_bins))
     metrics = {"raw_brier": raw_brier / n, "calibrated_brier": calibrated_brier / n, "ece": ece, "validation_n": n}
-    if ece > 0.12 or calibrated_brier > raw_brier + 0.005:
+    if ece > 0.12 or metrics["calibrated_brier"] > metrics["raw_brier"] + 0.005:
         raise ValueError("Калибровка не прошла пороги validation")
     result = {
         **metadata,

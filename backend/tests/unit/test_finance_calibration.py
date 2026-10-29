@@ -190,3 +190,29 @@ def test_calendar_filter_uses_utc_even_when_database_returns_moscow() -> None:
     start, end = bounds("day", dt.datetime(2026, 11, 9, 1, tzinfo=dt.timezone(dt.timedelta(hours=3))), None, None)
     assert start == dt.datetime(2026, 11, 8, tzinfo=dt.UTC)
     assert end == dt.datetime(2026, 11, 9, tzinfo=dt.UTC)
+
+
+def test_brier_tolerance_is_mean_loss_not_dataset_sum() -> None:
+    source, metadata = dataset()
+    for offset, admitted in ((5, True), (10, False)):
+        rows = []
+        for b in range(5):
+            score = b * 20 + 10
+            for split in ("train", "validation"):
+                churned = score - offset if split == "train" else score
+                for index in range(100):
+                    rows.append(
+                        {
+                            **source[0],
+                            "client_ref": f"{b}-{split}-{index}",
+                            "score": score,
+                            "split": split,
+                            "churned_sim": "2026-10-02T00:00:00Z" if index < churned else None,
+                        }
+                    )
+        if admitted:
+            metrics = cal.fit(rows, metadata)["metrics"]
+            assert 0 < metrics["calibrated_brier"] - metrics["raw_brier"] < 0.005
+        else:
+            with pytest.raises(ValueError, match="validation"):
+                cal.fit(rows, metadata)
