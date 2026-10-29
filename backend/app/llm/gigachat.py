@@ -6,11 +6,14 @@ POST {base_url}/chat/completions (stream SSE). Структурированны�
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
+from weakref import WeakKeyDictionary
 
 import httpx
 
@@ -20,6 +23,18 @@ from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
 log = get_logger(__name__)
+_PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+
+
+@asynccontextmanager
+async def generation_slot(scope: str) -> AsyncIterator[None]:
+    """Freemium/PERS: один поток на процесс, включая разные профили и ключи."""
+    if scope == "GIGACHAT_API_PERS":
+        lock = _PERS_LOCKS.setdefault(asyncio.get_running_loop(), asyncio.Lock())
+        async with lock:
+            yield
+    else:
+        yield
 
 
 def _bad_authorization(status: int, text: str) -> bool:
@@ -133,16 +148,17 @@ class GigaChatProvider:
     ) -> httpx.Response:
         token = await self._token(key, timeout_s)
         try:
-            r = await self._client.post(
-                f"{self._chat_base(profile)}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                json=payload,
-                timeout=timeout_s,
-            )
+            async with generation_slot(self.scope):
+                r = await self._client.post(
+                    f"{self._chat_base(profile)}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json=payload,
+                    timeout=timeout_s,
+                )
         except httpx.TimeoutException as e:
             raise ProviderError("timeout", str(e)) from e
         except httpx.HTTPError as e:
@@ -167,7 +183,7 @@ class GigaChatProvider:
         return r
 
     async def _with_keys(
-        self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
+        self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float, usage: Usage | None = None
     ) -> tuple[httpx.Response, ApiKey]:
         tried: set[str] = set()
         last: ProviderError | None = None
@@ -177,6 +193,8 @@ class GigaChatProvider:
             except ProviderError:
                 raise last or ProviderError("quota", "нет ключей GigaChat") from None
             try:
+                if usage is not None:
+                    usage.request_count += 1
                 return await self._chat(key, payload, profile, timeout_s), key
             except ProviderError as e:
                 self.pool.mark_error(key, e)
@@ -193,24 +211,31 @@ class GigaChatProvider:
         t0 = time.perf_counter()
         sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))
         msgs = self._ordered(messages, sys_msg)
-        total_usage = Usage(provider=self.name, model=profile.model)
+        total_usage = Usage(provider=self.name, model=profile.model, request_count=0)
         raw = ""
         for attempt in range(max(1, min(2, int(profile.extra.get("structured_attempts", 2))))):
             payload = {
+                **profile.extra.get("request", {}),
                 "model": profile.model,
                 "messages": msgs,
                 "temperature": profile.temperature,
                 "stream": False,
-                **profile.extra.get("request", {}),
             }
-            r, key = await self._with_keys(payload, profile, timeout_s)
+            try:
+                r, key = await self._with_keys(payload, profile, timeout_s, total_usage)
+            except ProviderError as exc:
+                exc.usage = total_usage
+                raise
             body = r.json()
             total_usage.model = str(body.get("model") or profile.model)
             u = body.get("usage", {})
             total_usage.prompt_tokens += int(u.get("prompt_tokens", 0))
             total_usage.completion_tokens += int(u.get("completion_tokens", 0))
             total_usage.key_label = key.label
-            self.pool.add_usage(key, int(u.get("total_tokens", 0)) or total_usage.total_tokens)
+            self.pool.add_usage(
+                key,
+                int(u.get("total_tokens", 0)) or int(u.get("prompt_tokens", 0)) + int(u.get("completion_tokens", 0)),
+            )
             raw = body["choices"][0]["message"]["content"]
             try:
                 obj = extract_json(raw)
@@ -219,9 +244,12 @@ class GigaChatProvider:
                 errors = [e.detail]
                 obj = {}
             if not errors:
+                total_usage.json_valid_first_try = total_usage.request_count == 1
                 total_usage.latency_ms = int((time.perf_counter() - t0) * 1000)
                 total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
                 return obj, total_usage, raw
+            total_usage.json_valid_first_try = False
+            total_usage.structured_retries = attempt + 1
             log.warning("gigachat_bad_output", attempt=attempt, errors=errors[:3])
             msgs += [
                 {"role": "assistant", "content": raw},
@@ -232,7 +260,9 @@ class GigaChatProvider:
                     + ". Верни исправленный JSON целиком.",
                 },
             ]
-        raise ProviderError("bad_output", f"ответ не соответствует схеме после 2 попыток: {raw[:200]!r}")
+        total_usage.latency_ms = int((time.perf_counter() - t0) * 1000)
+        total_usage.structured_retries = max(0, total_usage.request_count - 1)
+        raise ProviderError("bad_output", "ответ не соответствует схеме после попыток исправления", usage=total_usage)
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         if profile.provider == "openai_compatible":
@@ -240,23 +270,27 @@ class GigaChatProvider:
         key = self.pool.pick()
         token = await self._token(key, timeout_s)
         payload = {
+            **profile.extra.get("request", {}),
             "model": profile.model,
             "messages": self._ordered(messages),
             "temperature": profile.temperature,
             "stream": True,
         }
         try:
-            async with self._client.stream(
-                "POST",
-                f"{self._chat_base(profile)}/chat/completions",
-                json=payload,
-                timeout=timeout_s,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                    "Accept": "text/event-stream",
-                },
-            ) as r:
+            async with (
+                generation_slot(self.scope),
+                self._client.stream(
+                    "POST",
+                    f"{self._chat_base(profile)}/chat/completions",
+                    json=payload,
+                    timeout=timeout_s,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                        "Accept": "text/event-stream",
+                    },
+                ) as r,
+            ):
                 if r.status_code >= 400:
                     body = await r.aread()
                     raise ProviderError(

@@ -27,6 +27,10 @@ class Usage:
     model: str = ""
     source: Literal["live", "replay", "mock"] = "live"
     key_label: str | None = None
+    # Внутренний учёт benchmark; публичная схема usage.as_dict не меняется.
+    request_count: int = 1
+    structured_retries: int = 0
+    json_valid_first_try: bool = True
 
     @property
     def total_tokens(self) -> int:
@@ -70,13 +74,20 @@ class LLMProfile:
 
 class ProviderError(Exception):
     def __init__(
-        self, kind: ErrorKind, detail: str = "", *, retry_after_s: float | None = None, status: int | None = None
+        self,
+        kind: ErrorKind,
+        detail: str = "",
+        *,
+        retry_after_s: float | None = None,
+        status: int | None = None,
+        usage: Usage | None = None,
     ):
         super().__init__(f"{kind}: {detail}" if detail else kind)
         self.kind: ErrorKind = kind
         self.detail = detail
         self.retry_after_s = retry_after_s
         self.status = status
+        self.usage = usage
 
 
 class Provider(Protocol):
