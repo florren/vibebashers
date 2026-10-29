@@ -176,6 +176,10 @@ async def update_incident(
             "outcome_class",
         ):
             await ctx.conn.execute(f"update incidents set {k} = %s, updated_at = now() where id = %s", (v, incident_id))  # noqa: S608 — k из белого списка
+    # Экономика обновляется до WS-события, в том числе без выдачи подарка.
+    from app.economics import dcltv
+
+    await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "status", {**brief, "from_status": cur, "reason": reason})
     if transitioned and status in ("resolved", "closed"):

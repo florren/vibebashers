@@ -72,6 +72,7 @@ export function Header() {
 
       <nav className="ml-2 flex flex-wrap items-center gap-0.5">
         <Nav to="/" label={t('nav.workspace')} end />
+        <Nav to="/finance" label={t('finance.title')} />
         <Nav to="/engine" label={t('nav.engine')} />
         <Nav to="/compliance" label={t('nav.compliance')} />
         <Nav to="/manager" label={t('nav.manager')} />
@@ -145,7 +146,7 @@ export function Header() {
       >
         {i18n.language === 'en' ? 'RU' : 'EN'}
       </button>
-      <ThemeSelector />
+      <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <JuryModal open={jury} onClose={() => setJury(false)} />
     </header>
   )

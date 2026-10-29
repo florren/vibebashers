@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-015](T-015-shablony-uvedomlenij-spravochnik-podarkov-stavki.md)
-- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-090](T-090-kartochka-incidenta.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md)
+- Блокирует: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-090](T-090-kartochka-incidenta.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md), [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md)
 
 ## Что сделать
 1. app/economics/dcltv.py: resolve_rate(incident) по maps_to (продукт → система → канал → fallback bank_average), premium_addon для premium/vip/ultra_vip, affected_count (mass_impact), potential/prevented/realized по outcome_class и retention_factors (manual или simulated из v_retention_by_outcome при выборке ≥ 10).
