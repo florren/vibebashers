@@ -217,3 +217,12 @@ it('follows a related child agent via recorded engine links even without synthet
   mount()
   expect(await screen.findByRole('link', { name: /Под капотом · #12/ })).toBeInTheDocument()
 })
+
+it('does not attribute the composer client value to an unidentified pinned signal', async () => {
+  vi.mocked(loadSignal).mockResolvedValue({ id: 1, client: null, agent_runs: [], incidents: [] })
+  mount()
+  await screen.findByText(/Запрошено решение/)
+  fireEvent.change(screen.getByLabelText(/Клиент \(/), { target: { value: '7' } })
+  expect(loadClient).not.toHaveBeenCalled()
+  expect(screen.queryByText(/100\s*000/)).not.toBeInTheDocument()
+})

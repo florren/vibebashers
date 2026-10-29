@@ -90,7 +90,7 @@ export function JourneyPage() {
   const currentStage = current ? NODE_STAGE[current] : undefined
   const activeStage = currentStage ?? data?.stages.find((s) => s.status === 'active' || s.status === 'waiting_human')?.stage
   const stage = data?.stages.find((s) => s.stage === (selectedStage ?? activeStage)) ?? data?.stages.at(-1)
-  const currentClientId = signal.data?.client?.id ?? (clientId ? Number(clientId) : null)
+  const currentClientId = signal.data?.client?.id ?? null
   const client = useQuery({
     queryKey: ['clients', 'journey', currentClientId],
     queryFn: () => loadClient(currentClientId!),
