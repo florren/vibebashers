@@ -375,6 +375,7 @@
     "promptVersion": "prompt version",
     "outcome": {
       "completed": "completed",
+      "fallback_mock": "completed with fallback provider",
       "awaiting_human": "waiting for a human",
       "failed": "error",
       "running": "running",
