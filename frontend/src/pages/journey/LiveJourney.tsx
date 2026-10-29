@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getJourney } from '@/shared/api/trace'
 import { ApiError } from '@/shared/api/client'
-import { useClients } from '@/shared/api/hooks'
+import { useClients, useRefName } from '@/shared/api/hooks'
 import { IdLink } from '@/shared/components/IdLink'
 import { EventCard } from '@/pages/trace/components/EventCard'
 import { ErrorBox } from '@/shared/ui'
@@ -35,6 +35,8 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   const [now, setNow] = useState(Date.now())
   const wsStatus = useWs((s) => s.status)
   const events = useWs((s) => s.events)
+  const productName = useRefName('products')
+  const teamName = useRefName('teams')
   const clients = useClients({ q: clientSearch || undefined })
   const result = useQuery({
     queryKey: ['journey', ref, origin],
@@ -205,9 +207,9 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
       </header>
       <section aria-label={t('journeyLive.economics')} className="mb-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <div className="card p-4">
-          <h2 className="text-xs text-muted">{t('journeyLive.clientValue')}</h2>
-          <strong className="mt-2 block text-2xl num">{money(client.data?.clv_estimate_rub)}</strong>
-          <p className="mt-1 text-xs text-muted">{client.data?.display_name ?? t('journeyLive.unidentified')}</p>
+          <h2 className="text-xs text-muted">{t(currentClientId === null ? 'journeyLive.anonymousValue' : 'journeyLive.clientValue')}</h2>
+          <strong className="mt-2 block text-2xl num">{money(currentClientId === null ? economics.data?.rate_rub : client.data?.clv_estimate_rub)}</strong>
+          <p className="mt-1 text-xs text-muted">{client.data?.display_name ?? t('journeyLive.anonymousRate')}</p>
           {client.isError && <ErrorBox error={client.error} compact />}
         </div>
         <div className="card p-4">
@@ -362,6 +364,17 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
                 ))}
               </select>
             </label>
+          )}
+          {signal.data?.classification && (
+            <dl className="flex flex-wrap gap-x-4 text-xs text-muted">
+              <div>
+                {t('journeyLive.product')}:{' '}
+                {signal.data.classification.product ? productName(signal.data.classification.product) : t('journeyLive.unknownProduct')}
+              </div>
+              <div>
+                {t('journeyLive.team')}: {signal.data.decision?.route?.team ? teamName(signal.data.decision.route.team) : t('journeyLive.routingPending')}
+              </div>
+            </dl>
           )}
           <AgentExecution run={runData} current={current} onOpenSignal={(id) => nav(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`))} />
           <section className="card p-4" aria-label={t('journeyUi.bank')}>

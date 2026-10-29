@@ -61,6 +61,7 @@ vi.mock('../api', async (importOriginal) => ({
   sendJourneyMessage: vi.fn(),
 }))
 vi.mock('@/shared/api/hooks', () => ({
+  useRefName: () => (code: string) => code,
   useClients: () => ({ data: [{ id: 7, display_name: 'Тестовый клиент', public_id: 'CL-000007', segment_code: 'vip' }] }),
   useAgentGraph: () => ({
     data: {
@@ -240,4 +241,13 @@ it('pins the selected journey when automatic following is disabled and resumes l
   expect(await screen.findByRole('link', { name: 'Открыть след SIG-000001' })).toBeInTheDocument()
   fireEvent.click(screen.getByLabelText('Автопереход к новым обращениям'))
   expect(await screen.findByRole('link', { name: 'Открыть след SIG-000002' })).toBeInTheDocument()
+})
+
+it('shows the server dCLTV estimate for an anonymous customer instead of a fabricated CLV', async () => {
+  vi.mocked(loadSignal).mockResolvedValue({ id: 1, client: null, agent_runs: [], incidents: [{ id: 20 }] })
+  vi.mocked(loadEconomics).mockResolvedValue({ rate_code: 'bank_average', rate_rub: 4050, potential_loss_rub: 202.5, prevented_loss_rub: 0 })
+  mount()
+  expect(await screen.findByText(/4\s*050/)).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Оценка потери при уходе · ставка dCLTV' })).toBeInTheDocument()
+  expect(loadClient).not.toHaveBeenCalled()
 })

@@ -64,8 +64,8 @@ def _claim(
     )
 
 
-def _landing_clarification(dsn: str, signal_id: int) -> None:
-    """Сценарий 4: mock-цепочка до текста уточнения клиенту на канале landing."""
+def _landing_acceptance(dsn: str, signal_id: int) -> None:
+    """Сценарий 4: аноним получает подтверждение приёма и тикет без обязательной идентификации."""
 
     async def run() -> None:
         async with await psycopg.AsyncConnection.connect(_dsn(dsn)) as conn:
@@ -77,12 +77,21 @@ def _landing_clarification(dsn: str, signal_id: int) -> None:
         note = conn.execute(
             "select recipient_type, channel_code, template_code, body, status "
             "from notifications where signal_id = %s and template_code = %s",
-            (signal_id, "clarify_request"),
+            (signal_id, "ack_received"),
         ).fetchone()
         assert note, signal_id
-        assert note[0] == "client" and note[1] == "landing" and note[2] == "clarify_request"
+        assert note[0] == "client" and note[1] == "landing" and note[2] == "ack_received"
         assert isinstance(note[3], str) and note[3].strip()
         assert note[4] == "sent"
+        assert "О решении сообщим дополнительно" in note[3]
+        assert conn.execute("select count(*) from incident_signals where signal_id=%s", (signal_id,)).fetchone()[0] == 1
+        assert (
+            conn.execute(
+                "select count(*) from notifications where signal_id=%s and template_code='clarify_request'",
+                (signal_id,),
+            ).fetchone()[0]
+            == 0
+        )
 
 
 @pytest.mark.integration
@@ -293,7 +302,7 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
             ).fetchone()
             assert row and row[1] == "landing" and row[2] == _SCENARIO4_TEXT
             signal_id = int(row[0])
-        _landing_clarification(dsn, signal_id)
+        _landing_acceptance(dsn, signal_id)
 
 
 _TEAM_CODE = re.compile(r"team_[a-z0-9_]+")

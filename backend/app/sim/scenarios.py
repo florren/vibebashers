@@ -424,7 +424,9 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
                 if dd.get("router_action") == "request_clarification" or dd.get("clarification_question_ru")
             ]
             statuses = [s["status"] for s in d["signals"]]
-            checks.append(_check(key, bool(asked), f"уточнений {len(asked)}; статусы сигналов {statuses}"))
+            checks.append(
+                _check(key, bool(asked) == bool(want), f"уточнений {len(asked)}; статусы сигналов {statuses}")
+            )
         elif key in ("sleeps", "sleep_hours"):
             deferred = [s for s in d["signals"] if s["status"] in ("deferred", "awaiting_client")] or [
                 f for f in d["followups"] if f["reason"] in ("awaiting_client", "clarification")

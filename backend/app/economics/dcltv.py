@@ -54,6 +54,8 @@ def pick_rate(
     channel: str | None,
     segment: str | None,
     op_type: str | None = None,
+    unknown_product_average: bool = False,
+    fallback_code: str | None = None,
 ) -> Rate:
     """Чистая функция выбора ставки: продукт (+сегмент) → система (+op_type) → канал → fallback."""
     by_code = {r["code"]: r for r in rates}
@@ -75,6 +77,13 @@ def pick_rate(
             return r
         return None
 
+    if unknown_product_average:
+        fallback = by_code.get(fallback_code or "bank_average") or next(
+            (x for x in rates if (x.get("maps_to") or {}).get("fallback")), None
+        )
+        if fallback is None:
+            raise ValueError("Не настроена средняя ставка потерь для неизвестного продукта")
+        return Rate(fallback["code"], float(fallback["rate_rub"]), "продукт не определён — средняя ставка по банку")
     r = hit("products", product, segment_bound=True) or hit("products", product, segment_bound=False)
     if r:
         return Rate(r["code"], float(r["rate_rub"]), f"продукт {product}")
@@ -237,6 +246,8 @@ async def compute_incident(
             system=inc.get("system_code"),
             channel=inc.get("channel"),
             segment=inc.get("segment"),
+            unknown_product_average=inc.get("product_code") in (None, "unknown", "other"),
+            fallback_code=s.get("fallback_rate_code"),
         )
         detr, nor = float(s.get("detractor_share") or 0.1), float(s.get("no_return_share") or 0.5)
     premium = (

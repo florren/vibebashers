@@ -45,6 +45,13 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
                 results.append(
                     {"external_id": msg.get("external_id"), "status": "rejected", "signal_id": None, "error": str(exc)}
                 )
+    # HTTP-вход не ждёт завершения startup recovery слушателя LISTEN.
+    # Сначала commit, затем тот же сервис; событие в БД остаётся для остальных потребителей.
+    agent = getattr(request.app.state, "agent", None)
+    if agent is not None and agent.enabled:
+        for result in results:
+            if result.get("status") == "accepted" and result.get("signal_id"):
+                agent.submit(int(result["signal_id"]))
     return JSONResponse({"items": jsonable_encoder(results)}, status_code=202)
 
 

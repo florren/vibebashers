@@ -760,3 +760,73 @@ async def test_en_spec_keeps_ack_received_and_passes_lang(monkeypatch: pytest.Mo
     await router_tools.notify_customer(ctx, "chat", "We are already looking into the card fee.")
     assert seen["template"] == "ack_received"
     assert seen["lang"] == "en"
+
+
+@pytest.mark.parametrize("kind", ["tech_fault", "info_request", "tariff_terms", "fraud_suspicion"])
+async def test_anonymous_is_classified_and_routed_without_identity_gate(kind: str) -> None:
+    state = _decide_state(already=False, signals_7d=0)
+    state["client"] = None
+    state["classification"]["signal_type"] = kind
+    result = await decide(state, _decide_deps())  # type: ignore[arg-type]
+    decision = result["decision"]
+    assert decision["incident_action"] == "create"
+    assert decision["router_action"] == "route"
+    assert decision["clarification_question_ru"] is None
+    assert decision["client_action"]["kind"] == "acknowledge"
+    assert "О решении сообщим дополнительно" in decision["client_action"]["text_ru"]
+    assert decision["followup"]["reason"] == "awaiting_team"
+    assert decision["gift"] is None
+    assert "potential_loss_rub" not in decision["economics_preview"]
+
+
+async def test_anonymous_low_confidence_keeps_hitl_but_accepts_and_routes_before_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = _decide_state(already=False, signals_7d=0)
+    state["client"] = None
+    state["classification"]["confidence"] = 0.4
+    state["actions"] = []
+    state = await decide(state, _decide_deps())  # type: ignore[arg-type]
+    assert state["decision"]["needs_human"] and state["decision"]["human_reason"] == "low_confidence"
+    seen: dict[str, Any] = {}
+    _install_inners(monkeypatch, seen)
+    _patch_node_side_effects(monkeypatch, seen)
+    deps = _decide_deps()
+
+    async def record(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    deps.record_step = record  # type: ignore[method-assign]
+    result = await nodes.wait_human(state, deps)  # type: ignore[arg-type]
+    assert result["outcome"] == "awaiting_human"
+    assert seen["create"]["team"] == "team_cx"
+    assert seen["node_hitl"][-1]["incident_id"] == 12
+    assert "О решении сообщим дополнительно" in seen["notify_client"]
+    assert not any(c["name"] in {"refund_fee", "create_task", "request_clarification"} for c in deps.ctx.calls)
+
+
+@pytest.mark.parametrize(
+    ("kind", "reason"), [("legal_regulatory", "legal_regulatory"), ("fraud_suspicion", "fraud_amount")]
+)
+async def test_anonymous_handoff_does_not_remove_protected_human_reasons(kind: str, reason: str) -> None:
+    state = _decide_state(already=False, signals_7d=0)
+    state["client"] = None
+    state["classification"]["signal_type"] = kind
+    state["classification"]["entities"] = {"amount_rub": 100000}
+    state["normalization"]["entities"] = {"amount_rub": 100000}
+    result = await decide(state, _decide_deps())  # type: ignore[arg-type]
+    assert result["decision"]["needs_human"]
+    assert result["decision"]["human_reason"] == reason
+    assert result["decision"]["client_action"]["kind"] == "acknowledge"
+
+
+async def test_anonymous_known_product_uses_the_existing_product_route() -> None:
+    state = _decide_state(already=False, signals_7d=0)
+    state["client"] = None
+    state["classification"]["product"] = "deposit"
+    deps = _decide_deps()
+    deps.teams.append("team_deposits")
+    deps.routing_rules = [(1, {"product": "deposit"}, ["team_deposits"])]
+    result = await decide(state, deps)  # type: ignore[arg-type]
+    assert result["decision"]["route"]["team"] == "team_deposits"
+    assert result["decision"]["router_action"] == "route"
