@@ -888,7 +888,11 @@
     "legal_regulatory": "Regulator",
     "mass_fault": "Mass fault",
     "other": "Other",
-    "fee_refund": "Fee refund"
+    "fee_refund": "Fee refund",
+    "account_closure": "Account closure",
+    "info_request": "Information request",
+    "suggestion": "Suggestion",
+    "proactive": "Proactive support"
   },
   "tickets": {
     "view": {
@@ -1536,5 +1540,56 @@
       "followup scheduled": "Check scheduled",
       "!followup": "No follow-up"
     }
+  },
+  "finance": {
+    "title": "Financial impact",
+    "subtitle": "Simulation run progress and three calculation variants",
+    "run": "Run",
+    "current": "Current run",
+    "period": "Period",
+    "periods": {
+      "live": "Live · run",
+      "day": "Today",
+      "week": "Week",
+      "month": "Month",
+      "custom": "Custom dates"
+    },
+    "from": "From (UTC)",
+    "until": "Until (UTC, exclusive)",
+    "connected": "WS connected · reconciled every 5 s",
+    "polling": "WS unavailable · reconciled every 5 s",
+    "timeHint": "Periods use simulation time and UTC days. Live covers the selected run. Variants are alternatives and must not be added together.",
+    "invalidDates": "Enter both dates; the end must be after the start.",
+    "incomplete": "Incomplete: {{missing}} cases have no calculation, {{stale}} are stale. Totals are provisional.",
+    "model": "1 · Existing dCLTV model",
+    "saved": "Prevented bank losses",
+    "estimate": "Model estimate based on outcomes and retention factors. This is not verified revenue.",
+    "refund": "Refund costs",
+    "net": "Net impact",
+    "resolved": "Resolved cases",
+    "top": "Top product",
+    "comparison": "Scenario comparison",
+    "scenario": "2 · Churn probability",
+    "probability": "Churn probability",
+    "scenarioHint": "User assumption, not NLP output. One identified client per case × probability × (dCLTV + premium addon); no client means 0. Repeat cases may overlap.",
+    "fineScenario": "3 · Probability + hypothetical fine",
+    "fine": "Hypothetical fine, RUB",
+    "fineHint": "Cases with manager decision go: {{count}}. Fine is an assumption for resolved misselling cases; go does not prove a fine was avoided. Excluded from the main total.",
+    "chart": "Cumulative impact by resolution time",
+    "empty": "No resolved cases in this period.",
+    "ledger": "Resolved incident ledger",
+    "time": "Time (sim.)",
+    "case": "Incident",
+    "product": "Product",
+    "client": "Client / LTV",
+    "status": "Status",
+    "stale": "Calculation missing or stale",
+    "previous": "Previous",
+    "next": "Next",
+    "reason": "Impact calculation",
+    "noCalculation": "No saved calculation",
+    "retention": "Retention",
+    "computed": "Computed",
+    "openIncident": "Open incident"
   }
 }

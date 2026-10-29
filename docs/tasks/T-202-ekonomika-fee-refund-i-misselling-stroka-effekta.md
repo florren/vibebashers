@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-171](T-171-mock-abs-scheta-tarify-provodki-sid-i-invariant.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md)
-- Блокирует: —
+- Блокирует: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md)
 
 ## Что сделать
 1. fee_refund: potential по dCLTV, prevented минус refund_amount_rub; misselling: potential = misselling_case_cost_rub (настраивается, помечено «требует согласования»), prevented при decision=go до закрытия сделки.

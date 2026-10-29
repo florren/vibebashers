@@ -13,6 +13,7 @@ import { ClaimPage } from '@/pages/claim/ClaimPage'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { TracePage } from '@/pages/trace'
 import { JourneyPage } from '@/pages/journey'
+import { FinancePage } from '@/pages/finance/FinancePage'
 import { SetupPage } from '@/pages/setup/SetupPage'
 
 export function App() {
@@ -36,6 +37,7 @@ export function App() {
             <Route path="trace/:kind/:ref" element={<TracePage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="journey/:ref" element={<JourneyPage />} />
+            <Route path="finance" element={<FinancePage />} />
             <Route path="setup" element={<SetupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

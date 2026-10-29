@@ -204,6 +204,8 @@ python scripts/cx.py next|start|check|pr|fix|status|done   # рабочий ци
 - Расчёт пересчитывается при каждой смене `incidents.status`/`outcome_class`, результат — в `incident_economics` с развёрнутым `breakdown` и `formula_ru`.
 - v1.3: для `fee_refund` из `prevented` вычитается `refund_amount_rub`; для `misselling` `potential = economics_settings.misselling_case_cost_rub` (по умолчанию 4 050 ₽, помечено «требует согласования»), `prevented` — при решении руководителя `go` до закрытия сделки.
 
+Финансовый экран `/finance` (ТЗ 14.6, E24/T-264) сохраняет эту модель и сравнивает её с двумя отдельными сценарными допущениями по ADR-0013. Вероятность задаёт пользователь, штраф не входит в основную экономику. Подменять эти допущения результатом NLP или фактической выручкой запрещено; калибровка/доказательства — T-265. Новый GET читает один запуск без подмены отсутствующего current на all и явно показывает неполные/устаревшие расчёты.
+
 ### 6.5 Frontend
 - API-клиент и типы генерируются из `contracts/api/openapi.yaml` (`openapi-typescript` + лёгкий fetch-обёртка); ручные интерфейсы для ответов API запрещены.
 - Состояние сервера — TanStack Query + инвалидация по WebSocket-сообщениям; локальное UI-состояние — Zustand.

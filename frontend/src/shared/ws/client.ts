@@ -48,7 +48,7 @@ export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
   notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
   tasks: [['trace'], ['journey'], ['tasks']],
-  runs: [['sim-runs']],
+  runs: [['sim-runs'], ['sim-state'], ['metrics']],
   clients: [['journey'], ['clients']],
   metrics: [['journey'], ['metrics']],
   escalations: [['journey'], ['escalations'], ['tickets'], ['incidents']],
@@ -95,7 +95,7 @@ export function connectWs(qc: QueryClient): () => void {
       backoff = 1000
       useWs.getState().setStatus('open')
       ws.send(JSON.stringify({ type: 'subscribe', topics: [...TOPICS] }))
-      for (const key of ['journey', 'signals', 'agent']) void qc.invalidateQueries({ queryKey: [key] })
+      for (const key of ['journey', 'signals', 'agent', 'metrics', 'sim-state']) void qc.invalidateQueries({ queryKey: [key] })
     }
     ws.onmessage = (ev) => {
       let m: WsMessage
@@ -106,7 +106,11 @@ export function connectWs(qc: QueryClient): () => void {
       }
       if (m.topic === 'sim') {
         if (m.type === 'sim.tick' || m.type === 'sim.control') useWs.getState().setSim(m.data as SimState)
-        if (m.type === 'sim.control') void qc.invalidateQueries({ queryKey: ['sim-runs'] })
+        if (m.type === 'sim.control') {
+          void qc.invalidateQueries({ queryKey: ['sim-runs'] })
+          void qc.invalidateQueries({ queryKey: ['sim-state'] })
+          void qc.invalidateQueries({ queryKey: ['metrics'] })
+        }
         return
       }
       if (m.topic === 'system') return

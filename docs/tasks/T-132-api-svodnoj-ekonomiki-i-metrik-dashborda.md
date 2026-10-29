@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md), [T-131](T-131-raschet-ekonomiki-dcltv-po-incidentu.md), [T-037](T-037-sla-dvizhok.md), [T-161](T-161-parametricheskaya-model-sostoyanij-klienta.md)
-- Блокирует: [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md), [T-093](T-093-dashbord-kpi-i-blok-ekonomiki.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md)
+- Блокирует: [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md), [T-093](T-093-dashbord-kpi-i-blok-ekonomiki.md), [T-218](T-218-karta-sloj-zony-zelenaya-zheltaya-krasnaya-po-v.md), [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md), [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md)
 
 ## Что сделать
 1. SQL-агрегаты (через представления и индексы), кэш 5 с; метрики удержания по исходам/психотипам, account_closures, regression_share, twin_satisfaction_avg.

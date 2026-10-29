@@ -389,6 +389,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
             await conn.execute(
                 "update incidents set routing_status = 'escalated', updated_at = now() where id = %s", (id,)
             )
+        await dcltv.compute_incident(conn, id, sim_time=sim_time)
         brief = await fetch_one(
             conn,
             "select id, public_id, status, team_code, priority, routing_status from incidents where id = %s",
