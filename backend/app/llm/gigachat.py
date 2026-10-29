@@ -48,6 +48,12 @@ def _bad_authorization(status: int, text: str) -> bool:
 
 
 JSON_INSTRUCTION = (
+    "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже "
+    "(все обязательные поля, значения enum — из списка, тексты на русском). "
+    "Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{schema}"
+)
+
+LIGHTNING_JSON_INSTRUCTION = (
     "Верни РЕЗУЛЬТАТ выполнения задачи: один JSON-объект с конкретными значениями полей, без пояснений и markdown. "
     "Ниже дана JSON Schema — это описание формата результата, а НЕ шаблон ответа. "
     "Не возвращай саму схему: type, properties, required, enum, anyOf, $defs и $ref — служебные ключи схемы. "
@@ -212,7 +218,11 @@ class GigaChatProvider:
         if profile.provider == "openai_compatible":
             raise ProviderError("miss", "профиль openai_compatible")
         t0 = time.perf_counter()
-        sys_msg = JSON_INSTRUCTION.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))
+        # Уточнение нужно Lightning; общая замена ухудшила product accuracy Pro в live lite_v1.
+        instruction = (
+            LIGHTNING_JSON_INSTRUCTION if profile.model.split(":")[0] == "GigaChat-3-Lightning" else JSON_INSTRUCTION
+        )
+        sys_msg = instruction.format(schema=json.dumps(schema_for_model(schema), ensure_ascii=False))
         msgs = self._ordered(messages, sys_msg)
         total_usage = Usage(provider=self.name, model=profile.model, request_count=0)
         raw = ""

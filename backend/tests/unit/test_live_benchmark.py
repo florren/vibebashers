@@ -30,7 +30,8 @@ def test_benchmark_normalizes_temperature_without_changing_twin_profile():
     assert row["temperature"] == 0.7
 
 
-async def test_native_json_repair_is_counted_and_key_usage_not_doubled():
+@pytest.mark.parametrize("model", ["GigaChat-3-Pro", "GigaChat-3-Ultra", "GigaChat-3-Lightning"])
+async def test_native_json_repair_is_counted_and_key_usage_not_doubled(model):
     calls = []
 
     async def handler(request):
@@ -41,7 +42,7 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled():
         return httpx.Response(
             200,
             json={
-                "model": "GigaChat-3-Pro:synthetic",
+                "model": model + ":synthetic",
                 "choices": [{"message": {"content": content}}],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 5},
             },
@@ -57,7 +58,7 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled():
     profile = LLMProfile(
         code="test",
         provider="gigachat",
-        model="GigaChat-3-Pro",
+        model=model,
         temperature=0,
         extra={"request": {"temperature": 0.7, "model": "wrong", "stream": True}},
     )
@@ -69,13 +70,14 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled():
             timeout_s=5,
         )
         assert obj == {"ok": True}
-        assert all("НЕ шаблон ответа" in call["messages"][0]["content"] for call in calls)
+        assert all(
+            ("НЕ шаблон ответа" in call["messages"][0]["content"]) == (model == "GigaChat-3-Lightning")
+            for call in calls
+        )
         assert usage.request_count == 2 and usage.structured_retries == 1
         assert usage.json_valid_first_try is False
         assert usage.total_tokens == 30 and key.tokens_used == 30
-        assert all(
-            call["temperature"] == 0 and call["model"] == "GigaChat-3-Pro" and call["stream"] is False for call in calls
-        )
+        assert all(call["temperature"] == 0 and call["model"] == model and call["stream"] is False for call in calls)
     finally:
         await provider.aclose()
 
