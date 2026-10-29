@@ -1,0 +1,193 @@
+{
+  "dataset": "lite_v1",
+  "cases": 40,
+  "dataset_source": "data/bench/lite_v1.jsonl",
+  "dataset_sha256": "8d073f5a6c1d5020cd0b35862db5d264de10d237acc7d5ce7351d578d4cdf473",
+  "db_cases_match_source": true,
+  "gold_field_counts": {
+    "signal_type": 40,
+    "product": 40,
+    "system": 8
+  },
+  "code_commit": "6d7cd95e5746c219bddacb3e645bc69f4d286cec",
+  "image_id": "sha256:6cc87b224ebb6292083f51792531794de5fd471a7a73617ae2ac5f357650ff32",
+  "repeats": 1,
+  "temperature": 0,
+  "seed": 42,
+  "mode": "live",
+  "tls_verify": true,
+  "ca_bundle": "backend/app/llm/certs/gigachat-ca.pem",
+  "scope": "GIGACHAT_API_PERS",
+  "concurrency": 1,
+  "mock_calls": 0,
+  "replay_calls": 0,
+  "isolation": "BenchService in compose run; normal backend stopped; no app lifespan/workers",
+  "quota": {
+    "checked_before": true,
+    "conservative_reserve_tokens": 2000000,
+    "sufficient_before": true,
+    "checked_after": true,
+    "sufficient_after": true
+  },
+  "notes": [
+    "Initial cancelled run 1 is excluded from model comparison because old agent backlog competed for the single PERS stream.",
+    "Ultra run 2 includes two initial transport timeouts; failed cases remain in every denominator.",
+    "requests_total counts accounted attempts, including failed logical calls; timeout attempts may not have reached generation API. Token usage of cancelled HTTP requests can be unknown.",
+    "JSON validity means full classification schema validity, not merely parsable JSON. tool_success_rate means structured output schema success; no bank tool was executed.",
+    "Ruble prices are not configured; API cost_estimate=0 is not a measured monetary cost.",
+    "One repeat: stability is not measured. No criticality/team gold: recall_critical, accuracy_criticality, accuracy_route unavailable.",
+    "Seed 42 is run metadata; no upstream deterministic seed is supplied. Temperature zero does not guarantee deterministic output."
+  ],
+  "runs": [
+    {
+      "id": 2,
+      "dataset_id": 3,
+      "llm_profile_id": 1,
+      "prompt_version": "v1.1",
+      "seed": 42,
+      "repeats": 1,
+      "status": "done",
+      "metrics": {
+        "p50_ms": 2523.0,
+        "p95_ms": 6330.249999999929,
+        "sources": [
+          "live"
+        ],
+        "complete": true,
+        "stability": null,
+        "retries_avg": 0.2,
+        "temperature": 0.0,
+        "failed_cases": 2,
+        "tokens_total": 137780,
+        "accuracy_type": 0.8,
+        "cost_estimate": 0.0,
+        "fallback_rate": 0.0,
+        "expected_cases": 40,
+        "model_versions": [
+          "GigaChat-3-Ultra",
+          "GigaChat-3-Ultra:32.9.16.9"
+        ],
+        "requests_total": 48,
+        "accuracy_system": 0.75,
+        "evaluated_cases": 40,
+        "json_valid_rate": 0.75,
+        "accuracy_product": 0.95,
+        "tool_success_rate": 0.95
+      },
+      "started_at": "2026-10-29 03:49:59.547980+00:00",
+      "finished_at": "2026-10-29 03:52:47.914917+00:00",
+      "error": null,
+      "dataset_code": "lite_v1",
+      "llm_profile_code": "gigachat_ultra",
+      "progress": 1.0,
+      "errors_by_kind": {
+        "timeout": 2
+      },
+      "cost_rub": null,
+      "reported_model_versions": [
+        "GigaChat-3-Ultra:32.9.16.9"
+      ]
+    },
+    {
+      "id": 3,
+      "dataset_id": 3,
+      "llm_profile_id": 3,
+      "prompt_version": "v1.1",
+      "seed": 42,
+      "repeats": 1,
+      "status": "done",
+      "metrics": {
+        "p50_ms": 2453.5,
+        "p95_ms": 5189.449999999996,
+        "sources": [
+          "live"
+        ],
+        "complete": true,
+        "stability": null,
+        "retries_avg": 1,
+        "temperature": 0.0,
+        "failed_cases": 32,
+        "tokens_total": 38003,
+        "accuracy_type": 0.2,
+        "cost_estimate": 0.0,
+        "fallback_rate": 0.0,
+        "expected_cases": 40,
+        "model_versions": [
+          "GigaChat-3-Lightning:32.4.16.3"
+        ],
+        "requests_total": 80,
+        "accuracy_system": 0.0,
+        "evaluated_cases": 40,
+        "json_valid_rate": 0.0,
+        "accuracy_product": 0.15,
+        "tool_success_rate": 0.2
+      },
+      "started_at": "2026-10-29 03:52:49.884891+00:00",
+      "finished_at": "2026-10-29 03:54:49.709324+00:00",
+      "error": null,
+      "dataset_code": "lite_v1",
+      "llm_profile_code": "gigachat_lightning",
+      "progress": 1.0,
+      "errors_by_kind": {
+        "bad_output": 32
+      },
+      "cost_rub": null,
+      "reported_model_versions": [
+        "GigaChat-3-Lightning:32.4.16.3"
+      ]
+    },
+    {
+      "id": 4,
+      "dataset_id": 3,
+      "llm_profile_id": 2,
+      "prompt_version": "v1.1",
+      "seed": 42,
+      "repeats": 1,
+      "status": "done",
+      "metrics": {
+        "p50_ms": 2682.5,
+        "p95_ms": 3640.6499999999955,
+        "sources": [
+          "live"
+        ],
+        "complete": true,
+        "stability": null,
+        "retries_avg": 0.05,
+        "temperature": 0.0,
+        "failed_cases": 2,
+        "tokens_total": 18893,
+        "accuracy_type": 0.75,
+        "cost_estimate": 0.0,
+        "fallback_rate": 0.0,
+        "expected_cases": 40,
+        "model_versions": [
+          "GigaChat-3-Pro:32.4.30.3"
+        ],
+        "requests_total": 42,
+        "accuracy_system": 0.375,
+        "evaluated_cases": 40,
+        "json_valid_rate": 0.95,
+        "accuracy_product": 0.725,
+        "tool_success_rate": 0.95
+      },
+      "started_at": "2026-10-29 03:54:50.092828+00:00",
+      "finished_at": "2026-10-29 03:56:40.007261+00:00",
+      "error": null,
+      "dataset_code": "lite_v1",
+      "llm_profile_code": "gigachat_pro",
+      "progress": 1.0,
+      "errors_by_kind": {
+        "bad_output": 2
+      },
+      "cost_rub": null,
+      "reported_model_versions": [
+        "GigaChat-3-Pro:32.4.30.3"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "backend/app/agent/prompts/v1/classify.md": "52dd3c1836529b8c2ee2068fa60cd6c6c512c18b70170767f6231bd1cf5b0937",
+    "contracts/events/agent/classification.schema.json": "c54ba2c0bdf5e175ea73b33a5d95c92bd20ca17c8be03e2f7f19ad82ed289705",
+    "contracts/events/common.schema.json": "4b6f2b1dbfba4423c6ec277cea3b52afbdf54401da92356815b5d33182131877"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "exclusion_reason": "cancelled: background agent backlog interfered with latency",
+  "run": {
+    "id": 1,
+    "dataset_id": 3,
+    "llm_profile_id": 1,
+    "prompt_version": "v1.1",
+    "seed": 42,
+    "repeats": 1,
+    "status": "cancelled",
+    "metrics": null,
+    "started_at": "2026-10-29 03:48:49.180671+00:00",
+    "finished_at": "2026-10-29 03:49:20.028320+00:00",
+    "error": null
+  },
+  "results": [
+    {
+      "id": 1,
+      "run_id": 1,
+      "case_id": 241,
+      "repeat_no": 1,
+      "predicted": {
+        "tone": "sarcastic",
+        "flags": [
+          "churn_intent",
+          "public",
+          "sarcasm"
+        ],
+        "system": "sub_deposits",
+        "intents": [
+          "churn_threat",
+          "complaint"
+        ],
+        "product": "deposit",
+        "entities": {
+          "mentions": [
+            "churn",
+            "competitor"
+          ],
+          "amount_rub": null,
+          "promo_code": null,
+          "masked_card": null,
+          "operation_date_sim": null
+        },
+        "language": "ru",
+        "red_words": [
+          "ухожу",
+          "закрываю"
+        ],
+        "sentiment": "negative",
+        "churn_risk": 90,
+        "confidence": 0.95,
+        "error_code": null,
+        "negativity": 85,
+        "summary_ru": "Клиент закрывает вклад и уходит из-за изменения ставки после подписания договора.",
+        "criticality": "high",
+        "signal_type": "churn",
+        "product_line": "deposits",
+        "rationale_ru": "Клиент прямо заявляет о закрытии вклада и уходе к конкуренту из-за изменения ставки после подписания, что указывает на churn и претензию к условиям. Тон саркастичный, есть публичное недовольство. Продукт — вклад, система — депозиты; гипотеза — tariff_terms, так как речь о ставке.",
+        "signal_level": "churn_high",
+        "problem_summary": {
+          "problem": "Клиент закрывает вклад и уходит из-за изменения ставки после подписания договора.",
+          "severity": "high",
+          "suggested_team": "team_deposits"
+        },
+        "secondary_lines": [],
+        "secondary_types": [
+          "tariff_terms"
+        ],
+        "cause_hypothesis": "tariff_terms",
+        "related_incident_ids": [],
+        "product_line_confidence": 0.98
+      },
+      "correct": {
+        "product": true,
+        "signal_type": true
+      },
+      "json_valid_first_try": true,
+      "retries": 0,
+      "latency_ms": 11929,
+      "prompt_tokens": 2534,
+      "completion_tokens": 434,
+      "fallback_mock": false,
+      "text": "Прекрасно, просто прекрасно. Закрываю вклад и ухожу в другой банк. Там хотя бы ставка не меняется после подписания.",
+      "gold": {
+        "product": "deposit",
+        "signal_type": "churn"
+      }
+    }
+  ]
+}

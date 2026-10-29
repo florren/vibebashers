@@ -1,0 +1,33 @@
+{
+  "checks": {
+    "make lint": "passed: ruff, format, mypy 220 files, OpenAPI drift 175/175",
+    "make test": {
+      "unit": {
+        "passed": 488,
+        "skipped": 16
+      },
+      "integration": {
+        "passed": 94,
+        "skipped": 4
+      },
+      "scenarios": {
+        "passed": 22,
+        "skipped": 2
+      },
+      "execution": "sequential; isolated PostgreSQL test database"
+    },
+    "targeted tests": "43 passed",
+    "coverage": {
+      "passed": 495,
+      "skipped": 16,
+      "total_percent": 84,
+      "scope": "app.bench, app.llm.base, app.llm.failover, app.llm.gigachat"
+    },
+    "contracts": "41 schemas, 149 paths",
+    "owners": "passed with --allow-cross; authorized L1/L3",
+    "report": "all 360 case metrics independently recalculated, dataset matches canonical source",
+    "canvas": "TypeScript passed",
+    "runtime": "healthy; main Ultra, fast Lightning, twin Pro; Pro operational temperature 0.7"
+  },
+  "test_execution_note": "A concurrent coverage invocation temporarily regenerated schema modules, causing two fixture import errors in a first final make test attempt; sequential full rerun passed unchanged."
+}
