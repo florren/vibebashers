@@ -830,3 +830,34 @@ async def test_anonymous_known_product_uses_the_existing_product_route() -> None
     result = await decide(state, deps)  # type: ignore[arg-type]
     assert result["decision"]["route"]["team"] == "team_deposits"
     assert result["decision"]["router_action"] == "route"
+
+
+@pytest.mark.parametrize("verified", [False, True])
+async def test_anonymous_final_reply_requires_verified_resolution(
+    monkeypatch: pytest.MonkeyPatch, verified: bool
+) -> None:
+    from unittest.mock import AsyncMock
+
+    deps = _decide_deps()
+    notify = AsyncMock(return_value={"notification_id": 5})
+    close = AsyncMock(return_value={})
+    monkeypatch.setattr(nodes.wt, "notify_client", notify)
+    monkeypatch.setattr(nodes.wt, "close_incident", close)
+    monkeypatch.setattr(
+        nodes.wt, "render_template", AsyncMock(return_value=("Тема решения", "Работоспособность услуги восстановлена."))
+    )
+    deps.record_step = AsyncMock()  # type: ignore[method-assign]
+    state = _decide_state(already=False, signals_7d=0)
+    state.update(client=None, actions=[{"action": "incident", "incident_id": 12}], verified=verified)
+    state["decision"] = {"client_action": {"channel": "chat"}, "title_ru": "Услуга восстановлена"}
+    result = await nodes.close(state, deps)  # type: ignore[arg-type]
+    if verified:
+        notify.assert_awaited_once()
+        args, kwargs = notify.await_args
+        assert args[1:6] == (None, 10, 12, "chat", "resolved")
+        assert kwargs["text_override"] == "Работоспособность услуги восстановлена."
+        close.assert_awaited_once()
+    else:
+        assert result["outcome"] == "failed"
+        notify.assert_not_awaited()
+        close.assert_not_awaited()

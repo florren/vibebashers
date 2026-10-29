@@ -2685,17 +2685,17 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         )
         return state
     lang = communication_lang(sig.get("text") or "")
-    if incident_id and client.get("client_id"):
+    if incident_id:
         ca = d.get("client_action") or {}
         channel = str(ca.get("channel") or sig.get("channel") or "chat")
         variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
-        body, _ = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
+        _subject, body = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
         if body:
             await wt.notify_client(
                 deps.ctx,
-                client["client_id"],
+                client.get("client_id"),
                 int(sig["id"]),
                 incident_id,
                 channel,
