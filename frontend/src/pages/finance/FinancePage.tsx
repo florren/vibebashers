@@ -85,20 +85,21 @@ export function FinancePage() {
   useEffect(() => { setOffset(0); setIncident(null) }, [selectedRun])
   const validDates = period !== 'custom' || (!!start && !!end && end > start)
   const query = useQuery({
-    queryKey: ['metrics', 'finance', selectedRun ?? null, period, start, end, probability, fine, offset],
+    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset],
     queryFn: () => api<Total>('/api/v1/finance/impact/total', { query: {
-      run_id: selectedRun ?? 'current', period, probability_percent: probability, fine_per_case_rub: fine, offset,
+      run_id: run, period, probability_percent: probability, fine_per_case_rub: fine, offset,
       ...(period === 'custom' ? { start_date: `${start}:00Z`, end_date: `${end}:00Z` } : {}),
     } }),
     enabled: validDates,
     refetchInterval: 5000,
   })
+  const d = query.data
+  useEffect(() => { setOffset(0); setIncident(null) }, [d?.run_id])
   const detail = useQuery({
-    queryKey: ['metrics', 'finance-detail', selectedRun ?? null, incident, probability, fine],
-    queryFn: () => api<Detail>(`/api/v1/finance/impact/incident/${incident}`, { query: { run_id: selectedRun ?? 'current', probability_percent: probability, fine_per_case_rub: fine } }),
+    queryKey: ['metrics', 'finance-detail', d?.run_id ?? null, incident, probability, fine],
+    queryFn: () => api<Detail>(`/api/v1/finance/impact/incident/${incident}`, { query: { run_id: d?.run_id ?? run, probability_percent: probability, fine_per_case_rub: fine } }),
     enabled: incident !== null,
   })
-  const d = query.data
   const change = () => { setOffset(0); setIncident(null) }
   return <div className="h-full overflow-auto p-4 md:p-6">
     <div className="mx-auto flex max-w-7xl flex-col gap-4">

@@ -32,6 +32,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 function mount() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(<QueryClientProvider client={qc}><MemoryRouter><FinancePage /></MemoryRouter></QueryClientProvider>)
+  return qc
 }
 
 it('сравнивает три варианта, показывает отрицательный net и открывает формулу', async () => {
@@ -52,16 +53,35 @@ it('передаёт период и сценарные допущения се�
   await screen.findByText('1 · Действующая модель dCLTV')
   fireEvent.click(screen.getByRole('button', { name: 'Неделя' }))
   fireEvent.change(await screen.findByLabelText(/Вероятность оттока/), { target: { value: '50' } })
-  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ period: 'week', probability_percent: 50, run_id: 7 }) })))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ period: 'week', probability_percent: 50, run_id: 'current' }) })))
 })
 
 it('не показывает предыдущие суммы при смене запуска', async () => {
-  vi.mocked(api).mockImplementation(async (_path, options) => options?.query?.run_id === 8 ? { ...total, run_id: 8, items: [], series: [], incidents_resolved: 0, total_saved_rub: 0 } as never : total as never)
+  let backendRun = 7
+  vi.mocked(api).mockImplementation(async () => backendRun === 8 ? { ...total, run_id: 8, items: [], series: [], incidents_resolved: 0, total_saved_rub: 0 } as never : total as never)
   mount()
   await screen.findByRole('button', { name: 'INC-000001' })
+  backendRun = 8
   act(() => useWs.setState({ sim: { current_run_id: 8 } as never }))
   await waitFor(() => expect(screen.queryByRole('button', { name: 'INC-000001' })).not.toBeInTheDocument())
   expect(await screen.findAllByText('В выбранном периоде нет решённых кейсов.')).toHaveLength(2)
+})
+
+it('разрешает current на сервере при устаревшем sim_state и закрепляет детализацию за снимком', async () => {
+  let backendRun = 7
+  vi.mocked(api).mockImplementation(async (path) => path.includes('/incident/') ? detail : {
+    ...total, run_id: backendRun,
+    items: [{ ...total.items[0], incident_id: backendRun, public_id: `INC-00000${backendRun}` }],
+  } as never)
+  const qc = mount()
+  await screen.findByRole('button', { name: 'INC-000007' })
+  backendRun = 8
+  await act(async () => { await qc.invalidateQueries({ queryKey: ['metrics'] }) })
+  fireEvent.click(await screen.findByRole('button', { name: 'INC-000008' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/incident/INC-000008', expect.objectContaining({ query: expect.objectContaining({ run_id: 8 }) })))
+  const totals = vi.mocked(api).mock.calls.filter(([path]) => path.endsWith('/total'))
+  expect(totals.every(([, options]) => options?.query?.run_id === 'current')).toBe(true)
+  expect(screen.queryByRole('button', { name: 'INC-000007' })).not.toBeInTheDocument()
 })
 
 it('показывает неполноту расчётов и требует корректные пользовательские даты', async () => {

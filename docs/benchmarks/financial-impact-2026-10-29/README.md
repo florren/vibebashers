@@ -6,11 +6,11 @@
 
 `make lint && make test`: 551 unit passed / 16 skipped, 103 integration passed / 2 skipped, 22 scenarios passed / 2 skipped. Skipped — опциональные внешние/живые контуры существующего набора. Первоначальный replay-промах воспроизвёлся на исходной main; временная БД наследовала Europe/Moscow. С UTC, как в CI, replay и полный прогон прошли без правок кассет.
 
-Frontend: ESLint (0 errors; существующий warning DemoMenu), TypeScript и build успешны; Vitest 118 passed в 19 файлах. На локальном Node 26 для совместимости jsdom использован NODE_OPTIONS=--no-experimental-webstorage; CI использует Node 22. Предупреждение build о размере общего chunk не блокирует сборку. Contracts 41 schemas / 151 paths, OpenAPI drift 177/177, i18n 1306 keys, owners --allow-cross и git diff --check успешны.
+Frontend: ESLint (0 errors; существующий warning DemoMenu), TypeScript и build успешны; Vitest 119 passed в 19 файлах. На локальном Node 26 для совместимости jsdom использован NODE_OPTIONS=--no-experimental-webstorage; CI использует Node 22. Предупреждение build о размере общего chunk не блокирует сборку. Contracts 41 schemas / 151 paths, OpenAPI drift 177/177, i18n 1306 keys, owners --allow-cross и git diff --check успешны.
 
 `report.json`: Chrome headless, ru/en × light/dark × 1440×1100 и 390×844. Ошибок pageerror и горизонтального переполнения нет. Скриншоты основных состояний, модала и mobile сохранены рядом. Шапка переносит селекторы темы на узких экранах. Исторический ряд и реестр находятся в прокручиваемой области приложения.
 
-`live-smoke.json`: новый запуск 2, основной итог 0 → 22,92 ₽; один resolved/closed кейс, возврат 450 ₽, net −427,08 ₽. Сценарий с P=100 %: dCLTV 458,46 ₽, net 8,46 ₽. Получены 3 сообщения FINANCIAL_IMPACT_UPDATED (изменения исхода/множителей в одной цепочке); REST-снимок содержит один кейс, суммы не удваиваются. `live-case.png` снят после прохождения графа на MockProvider по qr_fee_public_review.
+`live-smoke.json`: новый запуск 3, основной итог 0 → 22,92 ₽; один resolved/closed кейс, возврат 450 ₽, net −427,08 ₽. Сценарий с P=100 %: dCLTV 458,46 ₽, net 8,46 ₽. Получены 3 сообщения FINANCIAL_IMPACT_UPDATED (изменения исхода/множителей в одной цепочке); REST-снимок содержит один кейс, суммы не удваиваются. `live-case.png` снят после прохождения графа на MockProvider по qr_fee_public_review. Дополнительно проверено: сумма именно в UI совпадает с серверным current-снимком и реестр содержит одну строку нового запуска даже при устаревшем sim_state. Regression test закрепляет разрешение current на сервере и детализацию по run_id снимка.
 
 ## Воспроизведение снимков
 
