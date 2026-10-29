@@ -69,6 +69,7 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled():
             timeout_s=5,
         )
         assert obj == {"ok": True}
+        assert all("НЕ шаблон ответа" in call["messages"][0]["content"] for call in calls)
         assert usage.request_count == 2 and usage.structured_retries == 1
         assert usage.json_valid_first_try is False
         assert usage.total_tokens == 30 and key.tokens_used == 30

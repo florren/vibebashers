@@ -48,9 +48,12 @@ def _bad_authorization(status: int, text: str) -> bool:
 
 
 JSON_INSTRUCTION = (
-    "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже "
-    "(все обязательные поля, значения enum — из списка, тексты на русском). "
-    "Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{schema}"
+    "Верни РЕЗУЛЬТАТ выполнения задачи: один JSON-объект с конкретными значениями полей, без пояснений и markdown. "
+    "Ниже дана JSON Schema — это описание формата результата, а НЕ шаблон ответа. "
+    "Не возвращай саму схему: type, properties, required, enum, anyOf, $defs и $ref — служебные ключи схемы. "
+    "В ответе должны быть поля из properties, все обязательные поля из required; значения enum выбирай из списка. "
+    "Для nullable-поля используй конкретное значение либо null, а не описание anyOf. Тексты пиши на русском. "
+    "JSON Schema формата результата:\n{schema}"
 )
 
 _SCHEMA_META = frozenset({"$schema", "$id", "title", "description", "examples"})
