@@ -52,7 +52,11 @@ def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
             and d.get("sent_at")
         ):
             template = str(d.get("template_code") or "")
-            message_kind = next((v for v in ("gift", "clarification", "final", "ack") if v in template), "status")
+            message_kind = (
+                "final"
+                if template == "resolved"
+                else next((v for v in ("gift", "clarification", "final", "ack") if v in template), "status")
+            )
             lane.append(
                 {
                     "channel_code": d["channel_code"],
