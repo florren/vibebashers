@@ -1,3 +1,4 @@
+import { JourneyLink } from '@/shared/components/JourneyLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Landmark, MessageSquareText, Send, Wallet } from 'lucide-react'
@@ -229,6 +230,7 @@ function PostDetail({ id }: { id: number }) {
             {reply.isError && <ErrorBox error={reply.error} compact />}
           </Section>
           <Section title={t('feed.signalCard')}>
+            {d.signal_id != null && <JourneyLink reference={`SIG-${String(d.signal_id).padStart(6, '0')}`} />}
             <KV k={t('feed.post')} v={<IdLink kind="post" value={d.public_id} />} mono />
             <KV k={t('feed.signal')} v={d.signal_id ? `#${d.signal_id}` : '—'} mono />
             <KV k={t('feed.incidentK')} v={d.incident_public_id ? <><IdLink kind="incident" value={d.incident_public_id} /> · {tEnum('incident.status', d.incident_status ?? '')}</> : '—'} />

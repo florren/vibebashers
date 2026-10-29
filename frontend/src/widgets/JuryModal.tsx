@@ -1,3 +1,4 @@
+import { JourneyLink } from '@/shared/components/JourneyLink'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -111,6 +112,7 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
           <div className="fade-in flex items-center gap-2 rounded-lg border border-ok/30 bg-ok/5 px-3 py-2 text-[13px]">
             <span className="text-ok">{t('jury.result', { id: jury.data.signal_id, run: jury.data.agent_run_id })}</span>
             <span className="mx-auto" />
+            {jury.data.signal_id !== undefined && <JourneyLink reference={`SIG-${String(jury.data.signal_id).padStart(6, '0')}`} onClick={close} />}
             {jury.data.signal_id !== undefined && (
               <button
                 className="btn btn-sm"

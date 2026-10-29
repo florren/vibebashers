@@ -226,3 +226,18 @@ it('does not attribute the composer client value to an unidentified pinned signa
   expect(loadClient).not.toHaveBeenCalled()
   expect(screen.queryByText(/100\s*000/)).not.toBeInTheDocument()
 })
+
+it('pins the selected journey when automatic following is disabled and resumes latest on request', async () => {
+  let latest = structuredClone(journey)
+  vi.mocked(getJourney).mockImplementation(async ref => ref ? structuredClone(journey) : latest)
+  const qc = mount('/journey')
+  await screen.findByRole('link', { name: 'Открыть след SIG-000001' })
+  fireEvent.click(screen.getByLabelText('Автопереход к новым обращениям'))
+  expect(await screen.findByRole('link', { name: 'Открыть след SIG-000001' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Автопереход к новым обращениям')).not.toBeChecked()
+  latest = { ...structuredClone(journey), subject: { ...journey.subject, ref: 'SIG-000002' } }
+  await act(() => qc.invalidateQueries({ queryKey: ['journey'] }))
+  expect(await screen.findByRole('link', { name: 'Открыть след SIG-000001' })).toBeInTheDocument()
+  fireEvent.click(screen.getByLabelText('Автопереход к новым обращениям'))
+  expect(await screen.findByRole('link', { name: 'Открыть след SIG-000002' })).toBeInTheDocument()
+})

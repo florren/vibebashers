@@ -21,3 +21,13 @@ export const loadSignal = (id: number) => api<SignalDetail>(`/api/signals/${id}`
 export const loadRun = (id: number) => api<AgentRunDetail>(`/api/agent/runs/${id}`)
 export const loadClient = (id: number) => api<Schemas['Client360']>(`/api/clients/${id}/360`)
 export const loadEconomics = (id: number) => api<Schemas['IncidentEconomics']>(`/api/incidents/${id}/economics`)
+
+/** Открывает существующую запись сценария, никогда не запускает сценарий заново. */
+export async function loadScenarioJourney(scenarioId: string) {
+  const runs = await api<paths['/api/sim/runs']['get']['responses'][200]['content']['application/json']>('/api/sim/runs', { query: { limit: 500 } })
+  const run = (runs.items ?? []).find((r) => r.scenario_id === scenarioId)
+  if (!run) throw new Error(i18n.t('journeyModes.noScenario'))
+  const journey = await api<import('@/shared/api/trace').Journey>('/api/journey/latest', { query: { origin: 'sim', run_id: run.id } })
+  if (!journey.stages.some((s) => s.events.some((e) => numericRef(e.run_id ?? undefined, 'SR') === run.id))) throw new Error(i18n.t('journeyModes.noScenario'))
+  return journey.subject.ref
+}
