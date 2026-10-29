@@ -375,6 +375,7 @@
     "promptVersion": "версия промптов",
     "outcome": {
       "completed": "завершён",
+      "fallback_mock": "завершён с резервным провайдером",
       "awaiting_human": "ждёт человека",
       "failed": "ошибка",
       "running": "выполняется",
