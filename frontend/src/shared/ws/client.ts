@@ -38,23 +38,25 @@ export const useWs = create<WsState>((set) => ({
     }),
 }))
 
-export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo', 'bench'] as const
+export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo', 'bench', 'clients', 'metrics'] as const
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   signals: [['trace'], ['journey'], ['search'], ['signals'], ['map']],
   incidents: [['trace'], ['journey'], ['search'], ['incidents'], ['tickets'], ['teams'], ['metrics'], ['map']],
-  agent: [['trace'], ['journey'], ['agent']],
+  agent: [['trace'], ['journey'], ['agent'], ['signals']],
   hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
   notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
   tasks: [['trace'], ['journey'], ['tasks']],
   runs: [['sim-runs']],
-  escalations: [['escalations'], ['tickets'], ['incidents']],
+  clients: [['journey'], ['clients']],
+  metrics: [['journey'], ['metrics']],
+  escalations: [['journey'], ['escalations'], ['tickets'], ['incidents']],
   tickets: [['tickets'], ['incidents']],
   compliance: [['compliance'], ['transcripts']],
   ingest: [['transcripts']],
-  feed: [['feed'], ['signals']],
-  abs: [['abs'], ['feed']],
+  feed: [['journey'], ['feed'], ['signals']],
+  abs: [['journey'], ['abs'], ['feed']],
   demo: [['demo-status']],
   bench: [['bench']],
 }
@@ -93,6 +95,7 @@ export function connectWs(qc: QueryClient): () => void {
       backoff = 1000
       useWs.getState().setStatus('open')
       ws.send(JSON.stringify({ type: 'subscribe', topics: [...TOPICS] }))
+      for (const key of ['journey', 'signals', 'agent']) void qc.invalidateQueries({ queryKey: [key] })
     }
     ws.onmessage = (ev) => {
       let m: WsMessage

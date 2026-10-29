@@ -16,6 +16,9 @@ STEP_KINDS = {
     "check_rules": ("policy_check", "Правила и политики проверены"),
     "classify": ("classification", "Проблема определена"),
     "decide": ("decision", "Путь решения выбран"),
+    "instant_decide": ("decision", "Быстрое решение принято"),
+    "apply_human_decision": ("human_decision", "Решение человека применено"),
+    "twin_react": ("client_reaction", "Реакция двойника клиента"),
     "wait_human": ("human_request", "Ожидаем решения человека"),
     "act": ("tool_call", "Действие выполнено"),
     "act_instant": ("tool_call", "Быстрое решение исполнено"),
@@ -120,7 +123,12 @@ def project(node: dict[str, Any], phase: str) -> dict[str, Any]:
     href = f"/trace/{kind}/{quote(ref, safe='')}"
     badges: dict[str, Any] = {}
     source = d.get("llm_source") or (d.get("output") or {}).get("llm_source")
-    if not source and kind == "step":
+    if (
+        not source
+        and kind == "step"
+        and d["node"]
+        in {"normalize", "classify", "decide", "instant_decide", "twin_react", "detect_misselling", "attribute_speaker"}
+    ):
         model = str(d.get("model") or "")
         sources = {call.get("source") for call in d.get("tool_calls", [])}
         source = (

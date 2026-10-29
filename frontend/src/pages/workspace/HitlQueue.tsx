@@ -57,7 +57,7 @@ export function HitlQueue({ runId, onOpenSignal }: { runId: number | undefined; 
   )
 }
 
-function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal: (id: number) => void }) {
+export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal: (id: number) => void }) {
   const { t } = useTranslation()
   const team = useRefName('teams')
   const teams = useRefs('teams')

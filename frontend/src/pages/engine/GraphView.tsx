@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { useTranslation } from 'react-i18next'
 import type { AgentGraph } from '@/shared/api/client'
 import { tEnum } from '@/shared/i18n'
 
@@ -13,7 +14,23 @@ const PER_ROW = 5
  * отдельным рядом под decide. Подсветка: пройденные узлы и рёбра — зелёные, текущий — пульсирует.
  * Без React Flow (решение B15: меньше бандл, детерминированная раскладка, SVG масштабируется через viewBox).
  */
-export function GraphView({ graph, visited, current, outcome }: { graph: AgentGraph; visited: Set<string>; current: string | null; outcome: string | null }) {
+export function GraphView({
+  graph,
+  visited,
+  current,
+  outcome,
+  failed = new Set<string>(),
+  compact = false,
+}: {
+  failed?: Set<string>
+  compact?: boolean
+  graph: AgentGraph
+  visited: Set<string>
+  current: string | null
+  outcome: string | null
+}) {
+  const { t } = useTranslation()
+  const rowGap = compact ? 24 : GY
   const nodes = graph.nodes ?? []
   const edges = graph.edges ?? []
   // Боковые узлы (HITL, отложенный мониторинг, проверка фикса) — отдельным рядом под своим предшественником.
@@ -21,8 +38,8 @@ export function GraphView({ graph, visited, current, outcome }: { graph: AgentGr
   const main = nodes.filter((n) => !isSide(n))
   const rows = Math.ceil(main.length / PER_ROW)
   const pos = new Map<string, { x: number; y: number }>()
-  main.forEach((n, i) => pos.set(n.id!, { x: 16 + (i % PER_ROW) * (W + GX), y: 16 + Math.floor(i / PER_ROW) * (H + GY) }))
-  const sideY = 16 + rows * (H + GY)
+  main.forEach((n, i) => pos.set(n.id!, { x: 16 + (i % PER_ROW) * (W + GX), y: 16 + Math.floor(i / PER_ROW) * (H + rowGap) }))
+  const sideY = 16 + rows * (H + rowGap)
   for (const n of nodes.filter(isSide)) {
     const pred = edges.find((e) => e.to === n.id)?.from ?? ''
     const pp = pos.get(pred)
@@ -45,7 +62,7 @@ export function GraphView({ graph, visited, current, outcome }: { graph: AgentGr
   }
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full max-w-[1100px]" role="img" aria-label="agent graph">
+    <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full max-w-[1100px]" role="img" aria-label={t('engine.graph')}>
       <defs>
         <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L8,4 L0,8 z" className="fill-faint" />
@@ -58,7 +75,13 @@ export function GraphView({ graph, visited, current, outcome }: { graph: AgentGr
         if (!p || !q) return null
         return (
           <g key={i}>
-            <path d={path(e.from!, e.to!)} fill="none" strokeWidth={on ? 2 : 1.2} markerEnd="url(#arr)" className={on ? 'stroke-brand' : 'stroke-line'} />
+            <path
+              d={path(e.from!, e.to!)}
+              fill="none"
+              strokeWidth={on ? 2 : 1.2}
+              markerEnd="url(#arr)"
+              className={on ? 'stroke-brand' : 'stroke-line'}
+            />
             {e.condition && p.y !== q.y && (
               <text
                 className="fill-faint text-[9px]"
@@ -75,15 +98,25 @@ export function GraphView({ graph, visited, current, outcome }: { graph: AgentGr
       {nodes.map((n) => {
         const p = pos.get(n.id!)
         if (!p) return null
-        const isCur = current === n.id && outcome !== 'completed'
+        const isCur = current === n.id && (outcome == null || outcome === 'awaiting_human')
         const done = visited.has(n.id!)
+        const error = failed.has(n.id!)
         return (
           <g key={n.id} transform={`translate(${p.x},${p.y})`}>
             <rect
               width={W}
               height={H}
               rx={10}
-              className={clsx('stroke-[1.5]', isCur ? 'fill-brand-soft stroke-brand' : done ? 'fill-surface stroke-brand' : 'fill-surface stroke-line')}
+              className={clsx(
+                'stroke-[1.5]',
+                error
+                  ? 'fill-surface stroke-danger'
+                  : isCur
+                    ? 'fill-brand-soft stroke-brand'
+                    : done
+                      ? 'fill-surface stroke-brand'
+                      : 'fill-surface stroke-line',
+              )}
             />
             {isCur && <rect width={W} height={H} rx={10} className="animate-pulse fill-none stroke-brand" strokeWidth={3} />}
             <text x={12} y={18} className={clsx('text-[11.5px] font-medium', done || isCur ? 'fill-ink' : 'fill-muted')}>

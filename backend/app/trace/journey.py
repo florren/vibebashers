@@ -98,15 +98,18 @@ def build_journey(
             else "after",
         )
         for i, n in enumerate(nodes)
+        if n["kind"] not in {"client", "employee", "branch", "rule", "error_code", "sim_run", "agent_run"}
     ]
     grouped = {s: [e for e in events if EVENT_STAGE[e["kind"]] == s] for s in STAGES}
     for values in grouped.values():
         values.sort(key=lambda e: (e["ts_sim"] or e["ts_real"], e["id"]))
+    # Статические справочники и запуск агента не являются выполненными стадиями.
     # Early acknowledgements do not advance the internal workflow to its final stage.
     active = 7 if trace["terminal"]["reached"] else max((i for i, s in enumerate(STAGES[:-1]) if grouped[s]), default=0)
     waiting = any(n["kind"] == "human_decision" and not n["data"].get("decision") for n in nodes)
     if waiting:
         active = STAGES.index("decision")
+    reached = trace["terminal"]["reached"] and not waiting
     stages = []
     for i, stage in enumerate(STAGES):
         values = grouped[stage]
@@ -114,7 +117,7 @@ def build_journey(
             "waiting_human"
             if waiting and i == active
             else "done"
-            if values and (i < active or trace["terminal"]["reached"])
+            if values and (i < active or reached)
             else "active"
             if i == active
             else "skipped"
@@ -152,7 +155,7 @@ def build_journey(
         "stages": stages,
         "client_lane": lane,
         "summary": {
-            "outcome_ru": trace["terminal"]["outcome_ru"],
+            "outcome_ru": "Ожидаем решения человека" if waiting else trace["terminal"]["outcome_ru"],
             "amount_rub": money or None,
             "duration_sim": f"PT{duration:g}S" if duration is not None else None,
             "llm_source": source,

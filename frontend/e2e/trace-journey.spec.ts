@@ -56,7 +56,7 @@ const stages = ['intake', 'understanding', 'identity', 'rules', 'decision', 'act
 const journey = {
   subject: trace.subject,
   stages: stages.map((stage, i) => ({ stage, status: i < 5 ? 'done' : i === 5 ? 'active' : 'pending', events: i === 5 ? [event] : [] })),
-  client_lane: [],
+  client_lane: [{ channel_code: 'chat', kind: 'final', text_ru: 'Мы вернули комиссию на ваш счёт.', delivered_at: '2026-10-28T09:01:00Z' }],
   summary: { outcome_ru: 'Комиссия возвращена', duration_sim: 'PT60S', amount_rub: 450, llm_source: 'replay' },
 }
 
@@ -99,7 +99,15 @@ for (const theme of ['light', 'dark'])
                   : path === '/api/sim/state'
                     ? { running: false, current_run_status: 'none', sim_time: '2026-11-09T06:00:00Z', speed: 1 }
                     : {}
-          await route.fulfill({ json: body })
+          const extra: Record<string, unknown> = {
+            '/api/clients': [],
+            '/api/signals/123': { id: 123, client: { id: 1 }, agent_runs: [{ id: 1, kind: 'agent' }], incidents: [{ id: 1 }] },
+            '/api/clients/1/360': { id: 1, display_name: 'Клиент демо', clv_estimate_rub: 120000 },
+            '/api/agent/graph': { nodes: [{ id: 'act', kind: 'tool' }], edges: [] },
+            '/api/agent/runs/1': { id: 1, kind: 'agent', outcome: 'completed', steps: [{ node: 'act', seq: 1, status: 'ok' }] },
+            '/api/incidents/1/economics': { potential_loss_rub: 4500, prevented_loss_rub: 4050, formula_ru: 'Серверный расчёт' },
+          }
+          await route.fulfill({ json: extra[path] ?? body })
         },
       )
       await page.goto('/trace/signal/SIG-000123')
@@ -116,6 +124,9 @@ for (const theme of ['light', 'dark'])
       await page.getByRole('dialog').getByRole('combobox').press('Enter')
       await page.goto('/journey/SIG-000123')
       await expect(page.getByRole('listitem')).toHaveCount(8)
+      await expect(page.getByRole('textbox', { name: lang === 'ru' ? 'Сообщение клиента' : 'Customer message', exact: true })).toBeVisible()
+      await expect(page.getByText('Мы вернули комиссию на ваш счёт.')).toBeVisible()
+      await expect(page.getByRole('img')).toBeVisible()
       await expect(page.getByText('Комиссия возвращена', { exact: true }).first()).toBeVisible()
       await page.screenshot({ path: `../docs/screenshots/trace-journey/journey-${theme}-${lang}.png`, fullPage: false })
       await page.setViewportSize({ width: 390, height: 844 })
