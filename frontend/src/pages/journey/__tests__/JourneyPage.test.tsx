@@ -7,7 +7,7 @@ import { JourneyPage } from '..'
 import type { Journey, TraceEvent } from '@/shared/api/trace'
 import { getJourney } from '@/shared/api/trace'
 import { loadSignal, loadRun, loadClient, loadEconomics, sendJourneyMessage } from '../api'
-import { ApiError } from '@/shared/api/client'
+import { ApiError, type AgentStep } from '@/shared/api/client'
 import { useWs } from '@/shared/ws/client'
 import { elapsedSeconds } from '../timing'
 
@@ -104,7 +104,7 @@ it('renders eight selectable stages, a human timer, graph and separate server CL
   expect(await screen.findByText(/Запрошено решение/)).toBeInTheDocument()
   expect(within(screen.getByRole('region', { name: 'Внутри банка' })).getAllByRole('listitem')).toHaveLength(8)
   expect(screen.getByRole('timer')).toHaveTextContent('Ожидаем решения человека:')
-  expect(screen.getByRole('img')).toBeInTheDocument()
+  expect(await screen.findByRole('group', { name: 'Граф' })).toBeInTheDocument()
   expect(await screen.findByText(/100\s*000/)).toBeInTheDocument()
   expect(screen.getByText('1 × 10% × 50% × 961')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /1\. Поступление/ }))
@@ -149,14 +149,10 @@ it('highlights WS node only from the selected run', async () => {
   vi.mocked(loadRun).mockResolvedValue({ id: 10, outcome: null, current_node: 'normalize', steps: [] })
   mount()
   await screen.findByText(/Обработка:/)
-  act(() =>
-    useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 10, node: 'classify' } }),
-  )
-  expect(screen.getByRole('img').querySelector('.animate-pulse')?.parentElement?.textContent).toContain('classify')
-  act(() =>
-    useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 99, node: 'normalize' } }),
-  )
-  expect(screen.getByRole('img').querySelector('.animate-pulse')?.parentElement?.textContent).toContain('classify')
+  act(() => useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 10, node: 'classify' } }))
+  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.animate-pulse')?.parentElement?.textContent).toContain('Классификация')
+  act(() => useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 99, node: 'normalize' } }))
+  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.animate-pulse')?.parentElement?.textContent).toContain('Классификация')
 })
 it('keeps composer available for an empty journey without fictitious monetary zeros', async () => {
   vi.mocked(getJourney).mockRejectedValue(new ApiError(404, null, 'not found'))
@@ -230,7 +226,7 @@ it('does not attribute the composer client value to an unidentified pinned signa
 
 it('pins the selected journey when automatic following is disabled and resumes latest on request', async () => {
   let latest = structuredClone(journey)
-  vi.mocked(getJourney).mockImplementation(async ref => ref ? structuredClone(journey) : latest)
+  vi.mocked(getJourney).mockImplementation(async (ref) => (ref ? structuredClone(journey) : latest))
   const qc = mount('/journey')
   await screen.findByRole('link', { name: 'Открыть след SIG-000001' })
   fireEvent.click(screen.getByLabelText('Автопереход к новым обращениям'))
@@ -250,4 +246,61 @@ it('shows the server dCLTV estimate for an anonymous customer instead of a fabri
   expect(await screen.findByText(/4\s*050/)).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Оценка потери при уходе · ставка dCLTV' })).toBeInTheDocument()
   expect(loadClient).not.toHaveBeenCalled()
+})
+
+it('links the exact retry to bank events, keeps manual selection on refresh, and returns to live following', async () => {
+  const data = structuredClone(journey)
+  const attempt = (seq: number, run = 10): TraceEvent => ({
+    ...event,
+    id: `${run}:${seq}`,
+    kind: 'classification',
+    title_ru: `Классификация ${run}:${seq}`,
+    links: { engine_step: `/engine/${run}?step=${seq}` },
+  })
+  data.stages[1]!.events = [attempt(2), attempt(3), attempt(3, 11)]
+  data.stages[5]!.events = [
+    { ...event, id: 'notification', kind: 'notification', title_ru: 'Принято командой', object_ref: { kind: 'notification', ref: 'NTF-000007' } },
+  ]
+  vi.mocked(getJourney).mockResolvedValue(data)
+  const steps: AgentStep[] = [
+    { seq: 2, node: 'classify', status: 'error' as const },
+    {
+      seq: 3,
+      node: 'classify',
+      status: 'ok' as const,
+      output: { product: null, confidence: 0.93, summary: 'PRIVATE_PROMPT' },
+      model: 'GigaChat-3-Ultra',
+      latency_ms: 150,
+      tool_calls: [{ name: 'notify_client', result: { notification_id: 7 } }],
+    },
+  ]
+  vi.mocked(loadRun).mockImplementation(async (id) => ({
+    id,
+    kind: 'agent',
+    outcome: id === 10 ? 'awaiting_human' : 'completed',
+    current_node: 'wait_human',
+    steps: id === 10 ? steps : [{ seq: 3, node: 'classify', status: 'ok' }],
+  }))
+  const qc = mount()
+  const node = await screen.findByRole('button', { name: /Классификация · Завершён/ })
+  fireEvent.keyDown(node, { key: 'Enter' })
+  const bank = screen.getByRole('region', { name: 'Внутри банка' })
+  expect(node).toHaveAttribute('aria-pressed', 'true')
+  expect(bank.querySelectorAll('[data-related-step="true"]')).toHaveLength(2)
+  expect(within(bank).getByRole('button', { name: /Принято командой/ })).toBeInTheDocument()
+  expect(screen.getByText('93%')).toBeInTheDocument()
+  expect(screen.queryByText('PRIVATE_PROMPT')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByRole('combobox', { name: /Выполнение шага/ }), { target: { value: '2' } })
+  expect(bank.querySelectorAll('[data-related-step="true"]')).toHaveLength(1)
+  expect(bank.querySelector('[data-related-step="true"]')).toHaveTextContent('Классификация 10:2')
+  steps.push({ seq: 4, node: 'normalize', status: 'ok' })
+  await act(() => qc.invalidateQueries({ queryKey: ['agent', 'journey'] }))
+  expect(screen.getByRole('combobox', { name: /Выполнение шага/ })).toHaveValue('2')
+  fireEvent.click(within(bank).getByRole('button', { name: /Классификация 11:3/ }))
+  expect(await screen.findByRole('link', { name: /Под капотом · #11/ })).toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Запуск на графе' })).toHaveValue('11')
+  fireEvent.click(within(bank).getByRole('button', { name: 'К текущему шагу' }))
+  expect(bank.querySelectorAll('[data-related-step="true"]')).toHaveLength(0)
+  expect(screen.queryByLabelText('Выбранный шаг')).not.toBeInTheDocument()
+  expect(sendJourneyMessage).not.toHaveBeenCalled()
 })

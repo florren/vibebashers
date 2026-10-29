@@ -104,7 +104,7 @@ for (const theme of ['light', 'dark'])
             '/api/signals/123': { id: 123, client: { id: 1 }, agent_runs: [{ id: 1, kind: 'agent' }], incidents: [{ id: 1 }] },
             '/api/clients/1/360': { id: 1, display_name: 'Клиент демо', clv_estimate_rub: 120000 },
             '/api/agent/graph': { nodes: [{ id: 'act', kind: 'tool' }], edges: [] },
-            '/api/agent/runs/1': { id: 1, kind: 'agent', outcome: 'completed', steps: [{ node: 'act', seq: 1, status: 'ok' }] },
+            '/api/agent/runs/1': { id: 1, kind: 'agent', outcome: 'completed', steps: [{ node: 'act', seq: 2, status: 'ok' }] },
             '/api/incidents/1/economics': { potential_loss_rub: 4500, prevented_loss_rub: 4050, formula_ru: 'Серверный расчёт' },
           }
           await route.fulfill({ json: extra[path] ?? body })
@@ -126,7 +126,11 @@ for (const theme of ['light', 'dark'])
       await expect(page.getByRole('listitem')).toHaveCount(8)
       await expect(page.getByRole('textbox', { name: lang === 'ru' ? 'Сообщение клиента' : 'Customer message', exact: true })).toBeVisible()
       await expect(page.getByText('Мы вернули комиссию на ваш счёт.')).toBeVisible()
-      await expect(page.getByRole('img')).toBeVisible()
+      await expect(page.getByRole('group', { name: lang === 'ru' ? 'Граф' : 'Graph', exact: true })).toBeVisible()
+      await page.getByRole('button', { name: lang === 'ru' ? /Действия · Завершён/ : /Actions · Completed/ }).click()
+      await expect(page.locator('[data-related-step="true"]')).toHaveCount(1)
+      await page.getByRole('button', { name: /Комиссия возвращена/ }).click()
+      await expect(page.getByRole('group', { name: lang === 'ru' ? 'Граф' : 'Graph', exact: true }).getByRole('button')).toHaveAttribute('aria-pressed', 'true')
       await expect(page.getByText('Комиссия возвращена', { exact: true }).first()).toBeVisible()
       await page.screenshot({ path: `../docs/screenshots/trace-journey/journey-${theme}-${lang}.png`, fullPage: false })
       await page.setViewportSize({ width: 390, height: 844 })
