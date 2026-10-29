@@ -1591,5 +1591,67 @@
     "retention": "Retention",
     "computed": "Computed",
     "openIncident": "Open incident"
+  },
+  "financeProof": {
+    "title": "Data-based assessment: demo and observed",
+    "boundary": "Contours are separate and must not be added together. Risk uses the first resolved case per client per run; refunds cover all cases. This is a model estimate, not proof of the agent’s causal impact.",
+    "scope": {
+      "demo": "Demo · synthetic calibration",
+      "observed": "Observed · admitted data"
+    },
+    "scopeHint": {
+      "demo": "Reproducible synthetic scores and control outcomes test the calibration mechanism, not real NLP quality. Horizon: 7 simulation days.",
+      "observed": "Requires labelled control outcomes and approvals. Demo data and hypothetical fines are excluded."
+    },
+    "uniqueRisk": "dCLTV estimate without repeated clients",
+    "unknown": "Insufficient data",
+    "fine": "Fine from evidence records",
+    "combined": "Net estimate with admitted fine",
+    "coverage": "Clients with estimate: {{known}}; unknown: {{unknown}}; unidentified cases: {{unidentified}}; repeat cases: {{duplicates}}.",
+    "deals": "Admitted deals: {{accepted}}; excluded: {{excluded}}.",
+    "partial": "Known portion: {{amount}}. Missing totals are not replaced with zero.",
+    "validation": "Train {{train}}, validation {{n}}. Brier: {{raw}} → {{calibrated}}; ECE {{ece}}.",
+    "cutoff": "Outcomes through",
+    "noCalibration": "No admitted calibration dataset for this contour.",
+    "noPolicy": "No approved fine policy for this contour.",
+    "exclusions": "Reasons for unavailable estimates",
+    "provenance": "Estimate provenance",
+    "probability": "Probability over 7 simulation days: {{p}}%",
+    "history": "Evidence version history",
+    "record": "Record evidence / new version",
+    "recordHint": "An operator declaration with a source reference, not verification of legal authority. Times use simulation UTC. Deal closure means the process ended with the stated outcome. A new version replaces the previous estimate for that deal.",
+    "contour": "Contour",
+    "alert": "Manager alert",
+    "chooseAlert": "Select an alert",
+    "deal": "Deal reference (no personal data)",
+    "intervention": "Observed intervention (UTC)",
+    "closed": "Deal process ended (UTC)",
+    "outcome": "Confirmed outcome",
+    "reference": "Evidence reference",
+    "actor": "Operator reference",
+    "save": "Record version",
+    "saved": "Version recorded; estimate is updating.",
+    "outcomes": {
+      "prevented": "Prevented / cancelled",
+      "completed": "Deal completed",
+      "unknown": "Unconfirmed / withdrawal"
+    },
+    "reasons": {
+      "no_approved_calibration": "No admitted calibration",
+      "source_mismatch": "Model, version or source mismatch",
+      "temporal_leakage": "Calibration uses later outcomes",
+      "missing_score": "No saved score",
+      "invalid_score": "Invalid score",
+      "missing_economics": "Economics missing or stale",
+      "synthetic_controls": "Synthetic control outcomes",
+      "approved_controls": "Approved control outcomes",
+      "no_approved_policy": "No approved fine basis",
+      "policy_changed": "Policy changed or withdrawn",
+      "no_go": "No current go decision",
+      "not_prevented": "Prevention unconfirmed",
+      "late_intervention": "Intervention after deal closure",
+      "outside_policy_period": "Policy inactive at intervention time",
+      "incomplete_refunds": "Some case refunds are missing or stale"
+    }
   }
 }

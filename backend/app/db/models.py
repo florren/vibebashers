@@ -405,6 +405,7 @@ class Incidents(Base):
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='incident')
     compliance_alerts: Mapped[list['ComplianceAlerts']] = relationship('ComplianceAlerts', back_populates='incident')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='incident')
+    financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='incident')
 
 
 class LlmApiKeys(Base):
@@ -1223,6 +1224,7 @@ class SimRuns(Base):
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='sim_run')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='run')
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='run')
+    financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='run')
 
 
 class SttMetrics(Base):
@@ -2187,6 +2189,7 @@ class ComplianceAlerts(Base):
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='compliance_alerts')
     session: Mapped['AudioSessions'] = relationship('AudioSessions', back_populates='compliance_alerts')
     transcript: Mapped[Optional['Transcripts']] = relationship('Transcripts', back_populates='compliance_alerts')
+    financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='alert')
 
 
 class Escalations(Base):
@@ -2271,3 +2274,43 @@ class LedgerEntries(Base):
     refund_of_entry: Mapped[Optional['LedgerEntries']] = relationship('LedgerEntries', remote_side=[id], back_populates='refund_of_entry_reverse')
     refund_of_entry_reverse: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', remote_side=[refund_of_entry_id], back_populates='refund_of_entry')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='ledger_entries')
+
+
+class FinancialEvidence(Base):
+    __tablename__ = 'financial_evidence'
+    __table_args__ = (
+        CheckConstraint('length(deal_ref) >= 1 AND length(deal_ref) <= 120', name='financial_evidence_deal_ref_check'),
+        CheckConstraint('length(evidence_ref) >= 1 AND length(evidence_ref) <= 500', name='financial_evidence_evidence_ref_check'),
+        CheckConstraint('length(idempotency_key) >= 1 AND length(idempotency_key) <= 120', name='financial_evidence_idempotency_key_check'),
+        CheckConstraint('length(recorded_by) >= 1 AND length(recorded_by) <= 120', name='financial_evidence_recorded_by_check'),
+        CheckConstraint("outcome = ANY (ARRAY['prevented'::text, 'completed'::text, 'unknown'::text])", name='financial_evidence_outcome_check'),
+        CheckConstraint("payload_sha256 ~ '^[0-9a-f]{64}$'::text", name='financial_evidence_payload_sha256_check'),
+        CheckConstraint("policy_sha256 ~ '^[0-9a-f]{64}$'::text", name='financial_evidence_policy_sha256_check'),
+        CheckConstraint("scope = ANY (ARRAY['demo'::text, 'observed'::text])", name='financial_evidence_scope_check'),
+        ForeignKeyConstraint(['alert_id'], ['compliance_alerts.id'], name='financial_evidence_alert_id_fkey'),
+        ForeignKeyConstraint(['incident_id'], ['incidents.id'], ondelete='CASCADE', name='financial_evidence_incident_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='financial_evidence_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='financial_evidence_pkey'),
+        UniqueConstraint('run_id', 'scope', 'idempotency_key', name='financial_evidence_run_id_scope_idempotency_key_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    incident_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    alert_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    scope: Mapped[str] = mapped_column(Text, nullable=False)
+    deal_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    intervention_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    deal_closed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_by: Mapped[str] = mapped_column(Text, nullable=False)
+    policy: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    policy_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+    alert: Mapped['ComplianceAlerts'] = relationship('ComplianceAlerts', back_populates='financial_evidence')
+    incident: Mapped['Incidents'] = relationship('Incidents', back_populates='financial_evidence')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='financial_evidence')
