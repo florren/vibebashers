@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from app.agent.graph import process_signal
 from app.config import Settings, get_settings
 from app.ingest.normalizer import create_signal, from_api_signal
+from app.llm.base import Usage
 from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
 from app.llm.roles import select
@@ -246,7 +247,9 @@ def test_twin_worker_waits_for_completed_agent_and_skips_old_notifications(seede
                 assert reaction is not None
                 assert provider.models == ["GigaChat-3-Pro"]
                 # Отказ схемы фиксируется отдельно и не запускает бесконечные повторы.
-                provider.complete_structured = AsyncMock(return_value=({}, SimpleNamespace(), ""))
+                provider.complete_structured = AsyncMock(
+                    return_value=({}, Usage(provider="gigachat", model="GigaChat-3-Pro"), "")
+                )
                 other = (
                     await (
                         await c.execute(
