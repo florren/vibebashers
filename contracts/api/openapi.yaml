@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.1
+  version: 1.5.2
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2261,6 +2261,123 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { type: object } } } }
         "404": { $ref: "#/components/responses/Problem" }
         "501": { $ref: "#/components/responses/Problem" }
+  /api/v1/finance/impact/total:
+    get:
+      tags:
+      - finance
+      summary: Эффект одного запуска и сценарные варианты; периоды относительно sim_state.sim_time,
+        сутки UTC
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - live
+          - day
+          - week
+          - month
+          - custom
+          default: live
+      - name: start_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      - name: end_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      - name: probability_percent
+        in: query
+        schema:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 100
+        description: Сценарное допущение пользователя; не результат NLP и не фактический
+          доход.
+      - name: fine_per_case_rub
+        in: query
+        schema:
+          type: number
+          minimum: 0
+          maximum: 100000000
+          default: 50000
+        description: Сценарное допущение пользователя; не результат NLP и не фактический
+          доход.
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialImpactTotal'
+        '404':
+          description: Запуск или кейс не найден
+        '422':
+          description: Некорректные параметры
+  /api/v1/finance/impact/incident/{incident_id}:
+    get:
+      tags:
+      - finance
+      summary: Сохранённые множители dCLTV; только resolved/closed в выбранном запуске
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      - name: probability_percent
+        in: query
+        schema: { type: number, minimum: 0, maximum: 100, default: 100 }
+      - name: fine_per_case_rub
+        in: query
+        schema: { type: number, minimum: 0, maximum: 100000000, default: 50000 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialImpactDetail'
+        '404':
+          description: Запуск или кейс не найден
+        '422':
+          description: Некорректные параметры
+
 components:
   parameters:
     IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -2759,6 +2876,10 @@ components:
         realized_loss_rub: { type: number }
         formula_ru: { type: string, example: "12 × 10 % × 50 % × (961 + 91,53) = 631,52 ₽" }
         computed_sim: { type: string, format: date-time }
+        refund_amount_rub: { type: number }
+        net_effect_rub: { type: number }
+        rate_reason: { type: string }
+        outcome_class: { type: string }
     TeamLoad:
       type: object
       properties:
@@ -3602,3 +3723,255 @@ components:
         entries: { type: integer }
         recorded_at: { type: string, format: date-time }
         stale: { type: boolean, description: "true, если версия промпта изменилась после записи" }
+    FinancialImpactCase:
+      type: object
+      required:
+      - incident_id
+      - public_id
+      - incident_type
+      - product_code
+      - product_name
+      - client_public_id
+      - client_segment
+      - client_ltv_rub
+      - status
+      - resolved_sim
+      - missing
+      - stale
+      - saved_rub
+      - refund_rub
+      - net_rub
+      - scenario_saved_rub
+      - scenario_fine_rub
+      properties:
+        incident_id:
+          type: integer
+        public_id:
+          type: string
+        incident_type:
+          type: string
+        product_code:
+          type:
+          - string
+          - 'null'
+        product_name:
+          type: string
+        client_public_id:
+          type:
+          - string
+          - 'null'
+        client_segment:
+          type:
+          - string
+          - 'null'
+        client_ltv_rub:
+          type:
+          - number
+          - 'null'
+        status:
+          type: string
+          enum:
+          - resolved
+          - closed
+        resolved_sim:
+          type: string
+          format: date-time
+        missing:
+          type: boolean
+        stale:
+          type: boolean
+        saved_rub:
+          type: number
+        refund_rub:
+          type: number
+        net_rub:
+          type: number
+        scenario_saved_rub:
+          type: number
+        scenario_fine_rub:
+          type: number
+    FinancialImpactDetail:
+      type: object
+      required:
+      - incident_id
+      - public_id
+      - incident_type
+      - product_code
+      - product_name
+      - client_public_id
+      - client_segment
+      - client_ltv_rub
+      - status
+      - resolved_sim
+      - missing
+      - stale
+      - saved_rub
+      - refund_rub
+      - net_rub
+      - run_id
+      - calculation
+      - scenario_base_rub
+      - fine_eligible
+      - scenario_saved_rub
+      - scenario_net_rub
+      - scenario_fine_rub
+      - scenario_with_fine_net_rub
+      properties:
+        incident_id:
+          type: integer
+        public_id:
+          type: string
+        incident_type:
+          type: string
+        product_code:
+          type:
+          - string
+          - 'null'
+        product_name:
+          type: string
+        client_public_id:
+          type:
+          - string
+          - 'null'
+        client_segment:
+          type:
+          - string
+          - 'null'
+        client_ltv_rub:
+          type:
+          - number
+          - 'null'
+        status:
+          type: string
+          enum:
+          - resolved
+          - closed
+        resolved_sim:
+          type: string
+          format: date-time
+        missing:
+          type: boolean
+        stale:
+          type: boolean
+        saved_rub:
+          type: number
+        refund_rub:
+          type: number
+        net_rub:
+          type: number
+        run_id:
+          type: integer
+        calculation:
+          $ref: '#/components/schemas/IncidentEconomics'
+        scenario_base_rub:
+          type: number
+        fine_eligible:
+          type: boolean
+        scenario_saved_rub: { type: number }
+        scenario_net_rub: { type: number }
+        scenario_fine_rub: { type: number }
+        scenario_with_fine_net_rub: { type: number }
+    FinancialImpactTotal:
+      type: object
+      required:
+      - incidents_resolved
+      - missing_calculations
+      - stale_calculations
+      - fine_cases
+      - offset
+      - total_saved_rub
+      - refund_rub
+      - net_effect_rub
+      - scenario_saved_rub
+      - scenario_net_rub
+      - scenario_fine_rub
+      - scenario_with_fine_net_rub
+      - probability_percent
+      - fine_per_case_rub
+      - run_id
+      - period
+      - start_date
+      - end_date
+      - top_product_saved
+      - next_offset
+      - series
+      - items
+      properties:
+        incidents_resolved:
+          type: integer
+        missing_calculations:
+          type: integer
+        stale_calculations:
+          type: integer
+        fine_cases:
+          type: integer
+        offset:
+          type: integer
+        total_saved_rub:
+          type: number
+        refund_rub:
+          type: number
+        net_effect_rub:
+          type: number
+        scenario_saved_rub:
+          type: number
+        scenario_net_rub:
+          type: number
+        scenario_fine_rub:
+          type: number
+        scenario_with_fine_net_rub:
+          type: number
+        probability_percent:
+          type: number
+        fine_per_case_rub:
+          type: number
+        run_id:
+          type:
+          - integer
+          - 'null'
+        period:
+          type: string
+          enum:
+          - live
+          - day
+          - week
+          - month
+          - custom
+        start_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        end_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        top_product_saved:
+          type:
+          - string
+          - 'null'
+        next_offset:
+          type:
+          - integer
+          - 'null'
+        series:
+          type: array
+          items:
+            type: object
+            required:
+            - time
+            - saved_rub
+            - net_rub
+            properties:
+              time:
+                type: string
+                format: date-time
+              saved_rub:
+                type: number
+              net_rub:
+                type: number
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinancialImpactCase'

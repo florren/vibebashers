@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
@@ -25,7 +26,7 @@ export function DashboardTab() {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted">{t('dash.subtitle')}</div>
+        <div className="text-sm text-muted">{t('dash.subtitle')} · <Link className="text-info underline" to="/finance">{t('finance.title')}</Link></div>
         <div className="flex overflow-hidden rounded border border-line text-xs">
           {(['run', '24h', '7d', 'all'] as Win[]).map((w) => (
             <button key={w} type="button" className={clsx('px-2 py-0.5', win === w ? 'bg-brand-strong text-on-brand' : 'text-muted hover:text-ink')} onClick={() => setWin(w)}>

@@ -7118,6 +7118,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/impact/total": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Эффект одного запуска и сценарные варианты; периоды относительно sim_state.sim_time, сутки UTC */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                    period?: "live" | "day" | "week" | "month" | "custom";
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    start_date?: string;
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    end_date?: string;
+                    /** @description Сценарное допущение пользователя; не результат NLP и не фактический доход. */
+                    probability_percent?: number;
+                    /** @description Сценарное допущение пользователя; не результат NLP и не фактический доход. */
+                    fine_per_case_rub?: number;
+                    offset?: number;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinancialImpactTotal"];
+                    };
+                };
+                /** @description Запуск или кейс не найден */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Некорректные параметры */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/impact/incident/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Сохранённые множители dCLTV; только resolved/closed в выбранном запуске */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                    probability_percent?: number;
+                    fine_per_case_rub?: number;
+                };
+                header?: never;
+                path: {
+                    incident_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinancialImpactDetail"];
+                    };
+                };
+                /** @description Запуск или кейс не найден */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Некорректные параметры */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7707,6 +7828,10 @@ export interface components {
             formula_ru?: string;
             /** Format: date-time */
             computed_sim?: string;
+            refund_amount_rub?: number;
+            net_effect_rub?: number;
+            rate_reason?: string;
+            outcome_class?: string;
         };
         TeamLoad: {
             team_code?: string;
@@ -8716,6 +8841,86 @@ export interface components {
             recorded_at?: string;
             /** @description true, если версия промпта изменилась после записи */
             stale?: boolean;
+        };
+        FinancialImpactCase: {
+            incident_id: number;
+            public_id: string;
+            incident_type: string;
+            product_code: string | null;
+            product_name: string;
+            client_public_id: string | null;
+            client_segment: string | null;
+            client_ltv_rub: number | null;
+            /** @enum {string} */
+            status: "resolved" | "closed";
+            /** Format: date-time */
+            resolved_sim: string;
+            missing: boolean;
+            stale: boolean;
+            saved_rub: number;
+            refund_rub: number;
+            net_rub: number;
+            scenario_saved_rub: number;
+            scenario_fine_rub: number;
+        };
+        FinancialImpactDetail: {
+            incident_id: number;
+            public_id: string;
+            incident_type: string;
+            product_code: string | null;
+            product_name: string;
+            client_public_id: string | null;
+            client_segment: string | null;
+            client_ltv_rub: number | null;
+            /** @enum {string} */
+            status: "resolved" | "closed";
+            /** Format: date-time */
+            resolved_sim: string;
+            missing: boolean;
+            stale: boolean;
+            saved_rub: number;
+            refund_rub: number;
+            net_rub: number;
+            run_id: number;
+            calculation: components["schemas"]["IncidentEconomics"];
+            scenario_base_rub: number;
+            fine_eligible: boolean;
+            scenario_saved_rub: number;
+            scenario_net_rub: number;
+            scenario_fine_rub: number;
+            scenario_with_fine_net_rub: number;
+        };
+        FinancialImpactTotal: {
+            incidents_resolved: number;
+            missing_calculations: number;
+            stale_calculations: number;
+            fine_cases: number;
+            offset: number;
+            total_saved_rub: number;
+            refund_rub: number;
+            net_effect_rub: number;
+            scenario_saved_rub: number;
+            scenario_net_rub: number;
+            scenario_fine_rub: number;
+            scenario_with_fine_net_rub: number;
+            probability_percent: number;
+            fine_per_case_rub: number;
+            run_id: number | null;
+            /** @enum {string} */
+            period: "live" | "day" | "week" | "month" | "custom";
+            /** Format: date-time */
+            start_date: string | null;
+            /** Format: date-time */
+            end_date: string | null;
+            top_product_saved: string | null;
+            next_offset: number | null;
+            series: {
+                /** Format: date-time */
+                time: string;
+                saved_rub: number;
+                net_rub: number;
+            }[];
+            items: components["schemas"]["FinancialImpactCase"][];
         };
         /** @enum {string} */
         tone: "neutral" | "positive" | "irritated" | "angry" | "sarcastic" | "formal";

@@ -269,6 +269,13 @@ async def compute_incident(
     res["retention_source"] = source
     res["computed_sim"] = sim_time or inc.get("now_sim") or dt.datetime.now(dt.UTC)
     breakdown = {k: v for k, v in res.items() if k not in ("computed_sim",)}
+    if inc.get("outcome_class") != outcome:
+        await conn.execute(
+            "update incidents set outcome_class = %s, updated_at = now() where id = %s", (outcome, incident_id)
+        )
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute("select breakdown from incident_economics where incident_id = %s", (incident_id,))
+        previous = await cur.fetchone()
     await conn.execute(
         """
         insert into incident_economics (incident_id, run_id, affected_count, rate_code, rate_rub, premium_addon_rub, detractor_share, no_return_share,
@@ -301,9 +308,22 @@ async def compute_incident(
             res["refund_amount_rub"],
         ),
     )
-    if inc.get("outcome_class") != outcome:
+    if previous is None or previous["breakdown"] != breakdown:
         await conn.execute(
-            "update incidents set outcome_class = %s, updated_at = now() where id = %s", (outcome, incident_id)
+            "select pg_notify('metrics', %s)",
+            (
+                dumps(
+                    {
+                        "type": "FINANCIAL_IMPACT_UPDATED",
+                        "run_id": inc["run_id"],
+                        "data": {
+                            "incident_id": incident_id,
+                            "impact_amount_rub": res["prevented_loss_rub"],
+                            "refund_rub": res["refund_amount_rub"],
+                        },
+                    }
+                ),
+            ),
         )
     return res
 
