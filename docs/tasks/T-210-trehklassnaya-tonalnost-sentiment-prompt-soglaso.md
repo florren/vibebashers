@@ -46,3 +46,5 @@ pytest backend/tests/unit/test_sentiment_thresholds.py
 
 ## Отчёт субагента
 Ветка `feat/b04-agent`. Трёхклассная тональность: normalize → sentiment positive/neutral/negative согласован с negativity (≤33/≤66/>66), сарказм/угроза ухода → negative; classify наследует sentiment нормализации и правит tone; пишется signals.sentiment (фильтр /api/incidents?sentiment= через v_tickets). Промпт `normalize.md` описывает критерии и скрытый негатив. **Отклонение:** прогон бенча sentiment (data/bench/*) и метрики — в T-129 (bench-раннер). Время: ~20 мин.
+
+Доработка 29.10.2026: сохранены валидные нулевые negativity и confidence (раньше оператор or заменял их на 50/0.5). Пост-проверки sentiment/negativity и цитат остаются после LLM. Контрольная живая выборка: 8/8 sentiment с gold; это не полный benchmark и не гарантия качества на всём корпусе.

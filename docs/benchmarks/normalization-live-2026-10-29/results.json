@@ -1,0 +1,1123 @@
+{
+  "profiles": {
+    "main": {
+      "code": "gigachat_ultra",
+      "provider": "gigachat",
+      "model": "GigaChat-3-Ultra"
+    },
+    "fast": {
+      "code": "gigachat_lightning",
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning"
+    },
+    "twin": {
+      "code": "gigachat_pro",
+      "provider": "gigachat",
+      "model": "GigaChat-3-Pro"
+    }
+  },
+  "results": [
+    {
+      "mode": "fast",
+      "case": "SIG-080097-text",
+      "gold": {},
+      "provider": null,
+      "valid": false,
+      "error_kind": "bad_output",
+      "usage": {
+        "prompt_tokens": 61,
+        "completion_tokens": 282,
+        "total_tokens": 343,
+        "latency_ms": 3139,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "latency_ms": 3141
+    },
+    {
+      "mode": "fast",
+      "case": "sent-001",
+      "gold": {
+        "sentiment": "negative"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 95,
+        "sentiment": "negative",
+        "intents": [
+          "complaint"
+        ],
+        "entities": {
+          "amount_rub": 250000.0,
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Ошибка при открытии вклада на 250 000 ₽: деньги ушли со счёта, вклада нет.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": true,
+            "confidence": 1.0,
+            "evidence_ru": "Где мои ДЕНЬГИ?!!!"
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 185,
+        "completion_tokens": 194,
+        "total_tokens": 379,
+        "latency_ms": 1351,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1352
+    },
+    {
+      "mode": "fast",
+      "case": "sent-002",
+      "gold": {
+        "sentiment": "negative"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 85,
+        "sentiment": "negative",
+        "intents": [
+          "refund_request"
+        ],
+        "entities": {
+          "amount_rub": 3200.0,
+          "operation_hint": "card_payment"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Дважды списали 3200 ₽ за одну покупку в магазине, требуется возврат.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0.0
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 85,
+        "completion_tokens": 162,
+        "total_tokens": 247,
+        "latency_ms": 1245,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1246
+    },
+    {
+      "mode": "fast",
+      "case": "sent-005",
+      "gold": {
+        "sentiment": "neutral"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 30,
+        "sentiment": "neutral",
+        "intents": [
+          "question"
+        ],
+        "entities": {
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Клиент спрашивает о возможности переоткрыть вклад на 6 месяцев без потери процентов.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 1.0
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 1.0
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 1.0
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 131,
+        "completion_tokens": 137,
+        "total_tokens": 268,
+        "latency_ms": 922,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 924
+    },
+    {
+      "mode": "fast",
+      "case": "sent-007",
+      "gold": {
+        "sentiment": "neutral"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 45,
+        "sentiment": "neutral",
+        "intents": [
+          "question"
+        ],
+        "entities": {
+          "amount_rub": null,
+          "product": null,
+          "operation_hint": null,
+          "date_hint": null,
+          "error_text": null,
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Клиент интересуется, будет ли штраф при оплате кредита на меньшую сумму.",
+        "confidence": 0.98,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 59,
+        "completion_tokens": 197,
+        "total_tokens": 256,
+        "latency_ms": 1960,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1962
+    },
+    {
+      "mode": "fast",
+      "case": "sent-029",
+      "gold": {
+        "sentiment": "positive"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 0,
+        "intents": [],
+        "entities": {},
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Вклад открыт быстро и по обещанной ставке, доволен.",
+        "confidence": 1.0,
+        "sentiment": "positive",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 61,
+        "completion_tokens": 147,
+        "total_tokens": 208,
+        "latency_ms": 1447,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1448
+    },
+    {
+      "mode": "fast",
+      "case": "sent-030",
+      "gold": {
+        "sentiment": "positive"
+      },
+      "provider": null,
+      "valid": false,
+      "error_kind": "bad_output",
+      "usage": {
+        "prompt_tokens": 238,
+        "completion_tokens": 276,
+        "total_tokens": 514,
+        "latency_ms": 1871,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "latency_ms": 1872
+    },
+    {
+      "mode": "fast",
+      "case": "hid-001",
+      "gold": {
+        "hidden_negativity": true,
+        "sentiment": "negative",
+        "markers": [
+          "sarcasm"
+        ]
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 95,
+        "sentiment": "negative",
+        "intents": [],
+        "entities": {
+          "amount_rub": 400000.0,
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "При открытии вклада на 400 000 ₽ произошла ошибка 503: деньги ушли со счёта, вклада нет.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": true,
+            "confidence": 1.0,
+            "evidence_ru": "Где мои деньги."
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 124,
+        "completion_tokens": 191,
+        "total_tokens": 315,
+        "latency_ms": 1088,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1090
+    },
+    {
+      "mode": "fast",
+      "case": "hid-061",
+      "gold": {
+        "hidden_negativity": false,
+        "sentiment": "negative",
+        "markers": []
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 95,
+        "sentiment": "negative",
+        "intents": [
+          "complaint"
+        ],
+        "entities": {
+          "amount_rub": 1200000.0,
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Ошибка при открытии вклада на 1 200 000 ₽: деньги ушли со счёта, вклада нет.",
+        "confidence": 0.98,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": true,
+            "confidence": 0.7,
+            "evidence_ru": "Где мои деньги?"
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 117,
+        "completion_tokens": 194,
+        "total_tokens": 311,
+        "latency_ms": 1112,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1113
+    },
+    {
+      "mode": "fast_main",
+      "case": "SIG-080097-text",
+      "gold": {},
+      "provider": "gigachat",
+      "model": "GigaChat-3-Ultra:32.9.16.9",
+      "output": {
+        "negativity": 40,
+        "intents": [
+          "complaint",
+          "question"
+        ],
+        "entities": {
+          "amount_rub": null,
+          "product": "debit_card",
+          "operation_hint": "card_payment",
+          "date_hint": null,
+          "error_text": "терминал отклоняет платёж",
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {
+          "nickname": null,
+          "masked_phone": null,
+          "masked_card_last4": null,
+          "city": null,
+          "name": null
+        },
+        "language": "ru",
+        "summary_ru": "Не проходит оплата дебетовой картой в терминале при наличии средств, требуется помощь.",
+        "confidence": 0.95,
+        "sentiment": "neutral",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 2196,
+        "completion_tokens": 583,
+        "total_tokens": 2779,
+        "latency_ms": 4891,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning",
+          "ok": false,
+          "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+        },
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Ultra:32.9.16.9",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 4894
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-001",
+      "gold": {
+        "sentiment": "negative"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 95,
+        "sentiment": "negative",
+        "intents": [
+          "complaint"
+        ],
+        "entities": {
+          "amount_rub": 250000.0,
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Ошибка при открытии вклада на 250 000 ₽: деньги ушли со счёта, вклада нет.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": true,
+            "confidence": 1.0,
+            "evidence_ru": "Где мои ДЕНЬГИ?!!!"
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 195,
+        "total_tokens": 252,
+        "latency_ms": 1112,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1113
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-002",
+      "gold": {
+        "sentiment": "negative"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 85,
+        "sentiment": "negative",
+        "intents": [
+          "refund_request"
+        ],
+        "entities": {
+          "amount_rub": 3200.0,
+          "operation_hint": "card_payment"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Дважды списали 3200 ₽ за одну покупку в магазине, требуется возврат.",
+        "confidence": 1.0,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0.0
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 149,
+        "completion_tokens": 162,
+        "total_tokens": 311,
+        "latency_ms": 1492,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1493
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-005",
+      "gold": {
+        "sentiment": "neutral"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Ultra:32.9.16.9",
+      "output": {
+        "negativity": 10,
+        "intents": [
+          "question"
+        ],
+        "entities": {
+          "amount_rub": null,
+          "product": "deposit",
+          "operation_hint": null,
+          "date_hint": null,
+          "error_text": null,
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {
+          "nickname": null,
+          "masked_phone": null,
+          "masked_card_last4": null,
+          "city": null,
+          "name": null
+        },
+        "language": "ru",
+        "summary_ru": "Клиент открыл вклад не на тот срок и спрашивает, можно ли переоткрыть на 6 месяцев без потери процентов.",
+        "confidence": 0.95,
+        "sentiment": "neutral",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 2320,
+        "completion_tokens": 595,
+        "total_tokens": 2915,
+        "latency_ms": 4399,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning",
+          "ok": false,
+          "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+        },
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Ultra:32.9.16.9",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 4401
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-007",
+      "gold": {
+        "sentiment": "neutral"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 45,
+        "sentiment": "neutral",
+        "intents": [
+          "question"
+        ],
+        "entities": {
+          "amount_rub": null,
+          "product": null,
+          "operation_hint": null,
+          "date_hint": null,
+          "error_text": null,
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Клиент интересуется, будет ли штраф при оплате кредита на меньшую сумму.",
+        "confidence": 0.98,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 59,
+        "completion_tokens": 197,
+        "total_tokens": 256,
+        "latency_ms": 1197,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1198
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-029",
+      "gold": {
+        "sentiment": "positive"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 0,
+        "intents": [],
+        "entities": {},
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Вклад открыт быстро и по обещанной ставке, доволен.",
+        "confidence": 1.0,
+        "sentiment": "positive",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 1.0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 61,
+        "completion_tokens": 147,
+        "total_tokens": 208,
+        "latency_ms": 934,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 935
+    },
+    {
+      "mode": "fast_main",
+      "case": "sent-030",
+      "gold": {
+        "sentiment": "positive"
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Ultra:32.9.16.9",
+      "output": {
+        "negativity": 0,
+        "intents": [
+          "gratitude"
+        ],
+        "entities": {
+          "amount_rub": null,
+          "product": null,
+          "operation_hint": "qr_payment",
+          "date_hint": "в тот же день",
+          "error_text": null,
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {
+          "nickname": null,
+          "masked_phone": null,
+          "masked_card_last4": null,
+          "city": null,
+          "name": null
+        },
+        "language": "ru",
+        "summary_ru": "Клиент благодарит за быстрый возврат комиссии за QR-оплату в тот же день.",
+        "confidence": 1,
+        "sentiment": "positive",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 2317,
+        "completion_tokens": 532,
+        "total_tokens": 2849,
+        "latency_ms": 5171,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning",
+          "ok": false,
+          "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+        },
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Ultra:32.9.16.9",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 5174
+    },
+    {
+      "mode": "fast_main",
+      "case": "hid-001",
+      "gold": {
+        "hidden_negativity": true,
+        "sentiment": "negative",
+        "markers": [
+          "sarcasm"
+        ]
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Ultra:32.9.16.9",
+      "output": {
+        "negativity": 85,
+        "intents": [
+          "complaint",
+          "refund_request"
+        ],
+        "entities": {
+          "amount_rub": 400000,
+          "product": "deposit",
+          "operation_hint": "deposit",
+          "date_hint": null,
+          "error_text": "ошибка 503",
+          "promo_code": null,
+          "merchant_hint": null
+        },
+        "contacts_hint": {
+          "nickname": null,
+          "masked_phone": null,
+          "masked_card_last4": null,
+          "city": null,
+          "name": null
+        },
+        "language": "ru",
+        "summary_ru": "При открытии вклада на 400 000 ₽ ошибка 503, деньги списаны, вклад не создан.",
+        "confidence": 0.95,
+        "sentiment": "negative",
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": true,
+            "confidence": 0.9,
+            "evidence_ru": "Ну конечно, как всегда"
+          },
+          "passive_aggression": {
+            "present": true,
+            "confidence": 0.85,
+            "evidence_ru": "как всегда"
+          },
+          "churn_threat": {
+            "present": false,
+            "confidence": 0.2,
+            "evidence_ru": null
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 2357,
+        "completion_tokens": 684,
+        "total_tokens": 3041,
+        "latency_ms": 4497,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "source": "live",
+        "key_label": "gigachat_env_2"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning",
+          "ok": false,
+          "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+        },
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Ultra:32.9.16.9",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 4499
+    },
+    {
+      "mode": "fast_main",
+      "case": "hid-061",
+      "gold": {
+        "hidden_negativity": false,
+        "sentiment": "negative",
+        "markers": []
+      },
+      "provider": "gigachat",
+      "model": "GigaChat-3-Lightning:32.4.16.3",
+      "output": {
+        "negativity": 95,
+        "sentiment": "negative",
+        "intents": [
+          "complaint"
+        ],
+        "entities": {
+          "amount_rub": 1200000.0,
+          "product": "deposit"
+        },
+        "contacts_hint": {},
+        "language": "ru",
+        "summary_ru": "Ошибка при открытии вклада на 1 200 000 ₽: деньги ушли со счёта, вклада нет.",
+        "confidence": 0.98,
+        "hidden_negativity": {
+          "sarcasm": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "passive_aggression": {
+            "present": false,
+            "confidence": 0.0,
+            "evidence_ru": null
+          },
+          "churn_threat": {
+            "present": true,
+            "confidence": 0.7,
+            "evidence_ru": "Где мои деньги?"
+          }
+        }
+      },
+      "valid": true,
+      "usage": {
+        "prompt_tokens": 53,
+        "completion_tokens": 194,
+        "total_tokens": 247,
+        "latency_ms": 999,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      },
+      "attempts": [
+        {
+          "provider": "gigachat",
+          "model": "GigaChat-3-Lightning:32.4.16.3",
+          "ok": true,
+          "error": null
+        }
+      ],
+      "latency_ms": 1001
+    }
+  ]
+}

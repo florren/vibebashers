@@ -88,6 +88,7 @@ class GigaChatProvider:
         self.oauth_url = oauth_url
         self.base_url = base_url.rstrip("/")
         self.scope = scope
+        self._token_locks: dict[str, asyncio.Lock] = {}
         from app.llm.tls import context
 
         if not verify_ssl:
@@ -99,6 +100,14 @@ class GigaChatProvider:
 
     # --- auth -------------------------------------------------------------------------------------------------------
     async def _token(self, key: ApiKey, timeout_s: float) -> str:
+        # Одновременные узлы/профили используют один кэш ключа без всплеска OAuth-запросов.
+        async with self._token_locks.setdefault(key.label, asyncio.Lock()):
+            wait = key.cooldown_until - time.monotonic()
+            if wait > 0:
+                raise ProviderError("rate_limit", "ключ временно на паузе после 429", retry_after_s=wait)
+            return await self._refresh_token(key, timeout_s)
+
+    async def _refresh_token(self, key: ApiKey, timeout_s: float) -> str:
         if key.access_token and time.time() < key.token_expires_at - 60:
             return key.access_token
         try:
@@ -199,8 +208,8 @@ class GigaChatProvider:
         while True:
             try:
                 key = self.pool.pick(exclude=tried)
-            except ProviderError:
-                raise last or ProviderError("quota", "нет ключей GigaChat") from None
+            except ProviderError as exc:
+                raise last or exc from None
             try:
                 if usage is not None:
                     usage.request_count += 1
@@ -237,6 +246,7 @@ class GigaChatProvider:
             try:
                 r, key = await self._with_keys(payload, profile, timeout_s, total_usage)
             except ProviderError as exc:
+                total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
                 exc.usage = total_usage
                 raise
             body = r.json()
@@ -275,6 +285,7 @@ class GigaChatProvider:
             ]
         total_usage.latency_ms = int((time.perf_counter() - t0) * 1000)
         total_usage.structured_retries = max(0, total_usage.request_count - 1)
+        total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
         raise ProviderError("bad_output", "ответ не соответствует схеме после попыток исправления", usage=total_usage)
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
