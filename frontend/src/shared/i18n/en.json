@@ -1420,7 +1420,13 @@
     "resumeConversation": "Follow up on this request",
     "fallback": "fallback response",
     "sendError": "Could not confirm message acceptance. Please retry.",
-    "messageOptions": "Customer and channel"
+    "messageOptions": "Customer and channel",
+    "anonymousValue": "Estimated loss at churn · dCLTV rate",
+    "anonymousRate": "Unidentified customer. Product rate; bank average when the product is unknown.",
+    "product": "Product",
+    "unknownProduct": "Not identified",
+    "team": "Responsible team",
+    "routingPending": "Determining route"
   },
   "journeyModes": {
     "modes": "Journey mode",

@@ -2,16 +2,15 @@ id: potential_client
 number: 4
 title_ru: Потенциальный клиент через лендинг или бота
 title_en: Potential client
-kind: deferred
+kind: anonymous_handoff
 signal:
   channel: telegram_bot
   identified: false
   text: Отказали в кредитной карте без объяснений
 expected:
-  clarification: true
-  sleeps: true
-  wake_on_reply: true
-description_ru: 'Неидентифицированный человек пишет в бот: агент задаёт уточняющий вопрос и откладывает обращение до ответа.'
+  clarification: false
+  incident_team: team_cx
+description_ru: 'Неидентифицированный человек пишет в бот: агент классифицирует обращение, передаёт ответственной команде и подтверждает приём без обязательной идентификации.'
 inject:
 - channel: telegram_bot
   client:

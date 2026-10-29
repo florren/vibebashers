@@ -493,6 +493,12 @@ def _short_ack(lang: str) -> str:
     return "Мы приняли ваше обращение и уже разбираемся."
 
 
+def _anonymous_ack(lang: str) -> str:
+    if lang == "en":
+        return "Your request has been received and will be reviewed by the responsible team. We will share the decision in this channel separately."
+    return "Ваше обращение принято и будет рассмотрено ответственной командой. О решении сообщим дополнительно в этом канале."
+
+
 async def normalize(state: AgentState, deps: Deps) -> AgentState:
     sig = state["signal"]
     text = sig.get("text") or ""
@@ -1724,7 +1730,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     link = next((i for i in related if i.get("same_error") and i.get("error_code")), None) or next(
         (i for i in related if i.get("is_clients") and i.get("incident_type") == incident_type), None
     )
-    if stype in NO_INCIDENT_TYPES and "churn_intent" not in flags and not fee_rule:
+    unidentified = not state.get("client")
+    anonymous_request = unidentified and stype != "gratitude"
+    if stype in NO_INCIDENT_TYPES and "churn_intent" not in flags and not fee_rule and not anonymous_request:
         incident_action, link_id = "none", None
     elif link:
         incident_action, link_id = "link_existing", int(link["incident_id"])
@@ -1733,7 +1741,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     # HITL / эскалация / уточнение
     gift = (
         giftmod.choose(segment, crit, flags, (client or {}).get("psychotype"))
-        if incident_action != "none" and stype not in NO_INCIDENT_TYPES
+        if incident_action != "none" and stype not in NO_INCIDENT_TYPES and not unidentified
         else None
     )
     pctx.gift_code = (gift or {}).get("privilege_code")
@@ -1755,13 +1763,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     )
     clarify_kind: str | None = "generic" if clarify else None
     sarcasm_clarify_path = False
-    unidentified = not state.get("client")
-    if human_reason is None and not already_asked:
-        if unidentified and stype not in ("gratitude", "suggestion"):
-            # потенциальный/неопознанный клиент (ТЗ сценарий 4): сначала идентификация, обращение ждёт ответа
-            clarify, clarify_kind = True, "identify"
-            incident_action, link_id = "none", None  # инцидент — только после идентификации
-        elif stype == "fraud_suspicion" and not str(ctx.get("hints", {}).get("error_code") or "").startswith("AF-"):
+    if not unidentified and human_reason is None and not already_asked:
+        if stype == "fraud_suspicion" and not str(ctx.get("hints", {}).get("error_code") or "").startswith("AF-"):
             # подозрение на мошенничество без подтверждения антифрода (сценарий 5): просим данные операции и ждём
             clarify, clarify_kind = True, "fraud_data"
         elif (
@@ -1772,6 +1775,15 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
             # сарказм без конкретики (сценарий 11): один уточняющий вопрос
             clarify, clarify_kind = True, "generic"
             sarcasm_clarify_path = True
+    if anonymous_request:
+        clarify, clarify_kind = False, None
+        checks.append(
+            {
+                "rule": "anonymous_handoff",
+                "passed": True,
+                "note": "Приём и маршрут без обязательной идентификации; деньги и HITL — по прежним политикам",
+            }
+        )
     checks += [
         {
             "rule": "confidence>=threshold",
@@ -1870,6 +1882,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         checks.append({"rule": "forbidden_phrases", "passed": True})
     if text_ru:
         text_ru = wt.PII_RE.sub("****", text_ru)[:2000]
+    if anonymous_request:
+        kind = "public_reply_and_dm" if public else "acknowledge"
+        text_ru = _anonymous_ack(signal_lang)
     question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip() or None
     if clarify and clarify_kind == "identify":
         question = _fixed_question("identify", signal_lang)
@@ -1942,8 +1957,12 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         "economics_preview": (
             {
                 "affected_count": int(mass_impact),
-                "rate_code": f"{stype}_{crit}",
-                "potential_loss_rub": float(mass_impact) * 1500.0,
+                # При неизвестном продукте оценку даст сервер экономики после приёма, без фиктивной ставки.
+                **(
+                    {"rate_code": f"{stype}_{crit}", "potential_loss_rub": float(mass_impact) * 1500.0}
+                    if c.get("product") not in (None, "unknown", "other")
+                    else {}
+                ),
             }
             if incident_action != "none"
             else None
@@ -1981,6 +2000,9 @@ async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     """Создаёт запрос HITL и прерывает граф (outcome awaiting_human); чекпоинт — вход этого шага."""
     d, sig = state["decision"], state["signal"]
     incident_id = await _hitl_incident_id(deps, d)
+    if not state.get("client") and not sig.get("client_id") and d.get("incident_action") in ("create", "link_existing"):
+        incident_id = await _accept_anonymous_before_hitl(state, deps)
+
     res = await wt.request_human_decision(
         deps.ctx,
         sig["id"],
@@ -2162,6 +2184,44 @@ async def _act_escalate(deps: Deps, d: dict[str, Any], mark: Callable[..., None]
         str(esc_spec.get("to_role") or "cx_lead"),
     )
     mark("escalation", escalation_id=esc.get("escalation_id"), public_id=esc.get("public_id"))
+
+
+async def _accept_anonymous_before_hitl(state: AgentState, deps: Deps) -> int:
+    """До HITL разрешён только приём: маршрут, уведомления и обязательная эскалация. Деньги/подарки не исполняются."""
+    d, c, sig = state["decision"], state["classification"], state["signal"]
+    done = {a["action"] for a in state["actions"]}
+    incident_id = next((a["incident_id"] for a in state["actions"] if a.get("incident_id")), None)
+    deps.ctx.act_frame = ActFrame(
+        signal_id=int(sig["id"]),
+        client_id=None,
+        incident_id=incident_id,
+        link_incident_id=d.get("link_incident_id"),
+        spec=_act_spec(d, c, sig, None, state["context"].get("sla_full") or {}, state),
+    )
+
+    def mark(action: str, **kw: Any) -> None:
+        state["actions"].append({"action": action, **kw})
+
+    if incident_id is None:
+        incident_id = await _act_route(deps, d, c, mark)
+    if d.get("router_action") == "escalate" and "escalation" not in done:
+        await _act_escalate(deps, d, mark)
+    if "notify_team" not in done:
+        notice = await wt.notify_team(
+            deps.ctx, d["route"]["team"], incident_id, sig["id"], d.get("team_notice_ru") or ""
+        )
+        mark("notify_team", notification_id=notice.get("notification_id"))
+    lang = deps.ctx.act_frame.spec["lang"]
+    message = _anonymous_ack(lang)
+    if "notify_client" not in done:
+        notice = await router_tools.notify_customer(deps.ctx, str(sig.get("channel") or "chat"), message)
+        mark("notify_client", notification_id=notice.get("notification_id"))
+    if sig.get("external_post_id") and "feed_reply" not in done:
+        reply = await abs_tools.publish_public_reply(
+            deps.ctx, int(sig["external_post_id"]), message, incident_id, True, False
+        )
+        mark("feed_reply", post_id=sig["external_post_id"], reply_id=reply.get("reply_id"))
+    return int(incident_id)
 
 
 async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark: Callable[..., None]) -> int | None:
@@ -2625,17 +2685,17 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         )
         return state
     lang = communication_lang(sig.get("text") or "")
-    if incident_id and client.get("client_id"):
+    if incident_id:
         ca = d.get("client_action") or {}
         channel = str(ca.get("channel") or sig.get("channel") or "chat")
         variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
-        body, _ = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
+        _subject, body = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
         if body:
             await wt.notify_client(
                 deps.ctx,
-                client["client_id"],
+                client.get("client_id"),
                 int(sig["id"]),
                 incident_id,
                 channel,

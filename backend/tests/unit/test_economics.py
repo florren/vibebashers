@@ -88,3 +88,28 @@ def test_outcome_of() -> None:
     assert outcome_of({**base, "status": "in_progress"}, gift_given=False, regression=False, churned=False) == "open"
     assert outcome_of({**base, "status": "rejected"}, gift_given=False, regression=False, churned=False) == "rejected"
     assert outcome_of(base, gift_given=False, regression=False, churned=True) == "churned"
+
+
+def test_unknown_product_uses_configured_average_even_with_system_and_channel() -> None:
+    rate = pick_rate(
+        RATES, product=None, system="processing", channel="social", segment=None, unknown_product_average=True
+    )
+    assert rate.code == "bank_average" and rate.rub == 4050
+    custom = [*RATES, {"code": "configured_average", "rate_rub": 7000, "maps_to": {}}]
+    rate = pick_rate(
+        custom,
+        product=None,
+        system="processing",
+        channel="social",
+        segment=None,
+        unknown_product_average=True,
+        fallback_code="configured_average",
+    )
+    assert rate.code == "configured_average" and rate.rub == 7000
+
+
+def test_unknown_product_missing_average_is_explicit_error() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="Не настроена средняя ставка"):
+        pick_rate([], product=None, system=None, channel=None, segment=None, unknown_product_average=True)

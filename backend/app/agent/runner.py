@@ -34,6 +34,7 @@ class AgentService:
         self.sem = asyncio.Semaphore(concurrency)
         self._task: asyncio.Task[None] | None = None
         self._inflight: set[asyncio.Task[Any]] = set()
+        self._by_signal: dict[int, asyncio.Task[Any]] = {}
         self.processed = 0
         self.failed = 0
         self.enabled = True
@@ -119,9 +120,19 @@ class AgentService:
                 await asyncio.sleep(2)
 
     def submit(self, signal_id: int, sim_time: dt.datetime | None = None) -> asyncio.Task[Any]:
+        existing = self._by_signal.get(signal_id)
+        if existing is not None and not existing.done():
+            return existing
         t = asyncio.create_task(self._process(signal_id, sim_time), name=f"agent-{signal_id}")
+        self._by_signal[signal_id] = t
         self._inflight.add(t)
-        t.add_done_callback(self._inflight.discard)
+
+        def finished(task: asyncio.Task[Any]) -> None:
+            self._inflight.discard(task)
+            if self._by_signal.get(signal_id) is task:
+                self._by_signal.pop(signal_id, None)
+
+        t.add_done_callback(finished)
         return t
 
     async def _expire_hitl(self, sim_time: dt.datetime) -> None:
