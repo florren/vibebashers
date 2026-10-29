@@ -75,3 +75,42 @@ it.each([1, 8, 11] as const)('presents scenario %i notes, keyboard navigation an
   fireEvent.click(screen.getByRole('button', { name: 'Сбросить таймер' }))
   expect(screen.getByRole('timer')).toHaveTextContent('00:00')
 })
+
+it('takes a fresh snapshot when the recording is reopened after leaving the mode', async () => {
+  vi.mocked(getJourney).mockResolvedValue(recording(8))
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const view = () => (
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <RecordedJourney mode="presenter" reference="SIG-8" />
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+  const first = render(view())
+  await screen.findByText('Тезис сценария 8')
+  first.unmount()
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+  const updated = recording(8)
+  updated.stages[0]!.events[0]!.brief_ru = 'Обновлённая запись'
+  vi.mocked(getJourney).mockResolvedValue(updated)
+  render(view())
+  expect(await screen.findByText('Обновлённая запись')).toBeInTheDocument()
+  expect(getJourney).toHaveBeenCalledTimes(2)
+})
+
+it('resumes the remaining real interval after pause instead of restarting its clock', async () => {
+  mount('replay', 8)
+  await screen.findByRole('button', { name: 'Воспроизвести' })
+  vi.useFakeTimers()
+  fireEvent.change(screen.getByLabelText('Темп'), { target: { value: 'real' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }))
+  await act(() => vi.advanceTimersByTimeAsync(0))
+  await act(() => vi.advanceTimersByTimeAsync(30000))
+  fireEvent.click(screen.getByRole('button', { name: 'Пауза' }))
+  await act(() => vi.advanceTimersByTimeAsync(90000))
+  fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }))
+  await act(() => vi.advanceTimersByTimeAsync(29999))
+  expect(screen.queryByText('Фактический исход')).not.toBeInTheDocument()
+  await act(() => vi.advanceTimersByTimeAsync(1))
+  expect(screen.getByText('Фактический исход')).toBeInTheDocument()
+})

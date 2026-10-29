@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +13,12 @@ export function RecordedJourney({ reference, mode }: { reference: string; mode: 
     queryKey: ['journey-recording', reference, mode],
     queryFn: () => getJourney(reference, 'any', mode === 'presenter'),
     staleTime: Infinity,
+    gcTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: 1,
   })
+  const wait = useRef<{ cursor: number; tempo: string; remaining: number } | null>(null)
   const [state, dispatch] = useReducer(playbackReducer, initialPlayback)
   const [stageIndex, setStageIndex] = useState(0)
   const [help, setHelp] = useState(false)
@@ -39,9 +41,12 @@ export function RecordedJourney({ reference, mode }: { reference: string; mode: 
   useEffect(() => {
     if (!state.playing || !frames.length) return
     // Браузер ограничивает setTimeout 32-битным интервалом; долгие паузы делятся на части.
-    let remaining = frameDelay(frames, state.cursor, state.tempo)
+    const saved = wait.current
+    let remaining = saved?.cursor === state.cursor && saved.tempo === state.tempo ? saved.remaining : frameDelay(frames, state.cursor, state.tempo)
+    let started = Date.now()
     let timeout: ReturnType<typeof setTimeout>
     const schedule = () => {
+      started = Date.now()
       const part = Math.min(remaining, 2_000_000_000)
       timeout = setTimeout(() => {
         remaining -= part
@@ -50,7 +55,10 @@ export function RecordedJourney({ reference, mode }: { reference: string; mode: 
       }, part)
     }
     schedule()
-    return () => clearTimeout(timeout)
+    return () => {
+      clearTimeout(timeout)
+      wait.current = { cursor: state.cursor, tempo: state.tempo, remaining: Math.max(0, remaining - (Date.now() - started)) }
+    }
   }, [frames, state.cursor, state.playing, state.tempo])
   useEffect(() => {
     if (timer.started === null) return
