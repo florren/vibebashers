@@ -326,8 +326,12 @@ async def create_task(
     requires_hitl: bool = False,
     due_sim: dt.datetime | None = None,
 ) -> dict[str, Any]:
+    # Подарок один на инцидент/клиента: стадия gift может повториться после выдачи в resolved.
+    # Блокировка инцидента сериализует одновременное создание таких задач.
+    if kind == "gift" and incident_id is not None:
+        await ctx.conn.execute("select id from incidents where id = %s for update", (incident_id,))
     dup = await ctx.fetchone(
-        "select id from tasks where incident_id is not distinct from %s and kind = %s and client_id is not distinct from %s and status = 'open' and run_id = %s",
+        "select id from tasks where incident_id is not distinct from %s and kind = %s and client_id is not distinct from %s and (status = 'open' or (kind = 'gift' and incident_id is not null)) and run_id = %s order by id limit 1",
         (incident_id, kind, client_id, ctx.run_id),
     )
     if dup:
