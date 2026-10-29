@@ -12,6 +12,7 @@ import { useWs } from '@/shared/ws/client'
 import { ROUTES } from '@/shared/routes'
 import { AgentExecution } from './AgentExecution'
 import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourneyMessage } from './api'
+import { eventStep, relatedEvents, selectedAttempt, type StepSelection } from './stepSelection'
 import { elapsedSeconds, NODE_STAGE } from './timing'
 
 type Origin = 'jury' | 'feed' | 'sim' | 'any'
@@ -31,6 +32,10 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   const [channel, setChannel] = useState<'chat' | 'email' | 'social'>('chat')
   const [followup, setFollowup] = useState(false)
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
+  const [selection, setSelection] = useState<StepSelection | null>(null)
+  const [eventNotice, setEventNotice] = useState(false)
+  const [scrollToEvents, setScrollToEvents] = useState(false)
+  const bank = useRef<HTMLElement | null>(null)
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const wsStatus = useWs((s) => s.status)
@@ -57,7 +62,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
     enabled: signalId !== null,
     refetchInterval: 2000,
   })
-  const relatedRunIds = [
+  const recentRunIds = [
     ...new Set([
       ...(signal.data?.agent_runs ?? []).flatMap((r) => (r.id == null ? [] : [r.id])),
       ...traceEvents.flatMap((e) => {
@@ -69,6 +74,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   ]
     .sort((a, b) => b - a)
     .slice(0, 10)
+  const relatedRunIds = [...new Set([...recentRunIds, ...(selectedRunId == null ? [] : [selectedRunId])])]
   const runQueries = useQueries({
     queries: relatedRunIds.map((id) => ({ queryKey: ['agent', 'journey', id], queryFn: () => loadRun(id), refetchInterval: 2000 })),
   })
@@ -90,6 +96,52 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   const currentStage = current ? NODE_STAGE[current] : undefined
   const activeStage = currentStage ?? data?.stages.find((s) => s.status === 'active' || s.status === 'waiting_human')?.stage
   const stage = data?.stages.find((s) => s.stage === (selectedStage ?? activeStage)) ?? data?.stages.at(-1)
+  const chosenRun = selection ? availableRuns.find((r) => r.id === selection.runId) : undefined
+  const chosenStep = selectedAttempt(chosenRun, selection)
+  const highlighted = new Set(selection ? relatedEvents(traceEvents, selection.runId, chosenStep).map((e) => e.id) : [])
+  const visibleEvents = [...(stage?.events ?? []), ...traceEvents.filter((e) => highlighted.has(e.id) && !stage?.events.some((s) => s.id === e.id))]
+  const selectEvent = (event: (typeof traceEvents)[number]) => {
+    const direct = eventStep(event)
+    if (direct) {
+      selectStep(direct, false)
+      setSelectedStage(data?.stages.find((s) => s.events.some((e) => e.id === event.id))?.stage ?? null)
+      return
+    }
+    const candidates = availableRuns.flatMap((r) =>
+      (r.steps ?? []).filter((s) => r.id != null && relatedEvents([event], r.id, s).length > 0).map((s) => ({ runId: r.id!, seq: s.seq, node: s.node })),
+    )
+    if (candidates.length === 1) {
+      selectStep(candidates[0]!, false)
+      setSelectedStage(data?.stages.find((s) => s.events.some((e) => e.id === event.id))?.stage ?? null)
+    } else setEventNotice(true)
+  }
+  const selectStep = (value: StepSelection, scroll = true) => {
+    const selectedRun = availableRuns.find((r) => r.id === value.runId)
+    const selected = selectedAttempt(selectedRun, value)
+    const linked = relatedEvents(traceEvents, value.runId, selected)
+    setEventNotice(false)
+    setSelectedRunId(value.runId)
+    setSelection(value)
+    setSelectedStage(
+      data?.stages.find((s) => s.events.some((e) => linked.some((l) => l.id === e.id)))?.stage ?? NODE_STAGE[value.node ?? selected?.node ?? ''] ?? null,
+    )
+    setScrollToEvents(scroll)
+  }
+  const followCurrent = () => {
+    setEventNotice(false)
+    setScrollToEvents(false)
+    setSelection(null)
+    setSelectedStage(null)
+    setSelectedRunId(null)
+  }
+  useEffect(() => {
+    setSelection(null)
+    setSelectedStage(null)
+    setSelectedRunId(null)
+  }, [subjectSignal])
+  useEffect(() => {
+    if (scrollToEvents && selection) bank.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [selection, scrollToEvents])
   const currentClientId = signal.data?.client?.id ?? null
   const client = useQuery({
     queryKey: ['clients', 'journey', currentClientId],
@@ -354,7 +406,15 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
           {availableRuns.length > 1 && (
             <label className="block text-xs">
               {t('journeyLive.selectRun')}{' '}
-              <select className="input" value={selectedRunId ?? ''} onChange={(e) => setSelectedRunId(e.target.value ? Number(e.target.value) : null)}>
+              <select
+                className="input"
+                value={selectedRunId ?? ''}
+                onChange={(e) => {
+                  setSelectedRunId(e.target.value ? Number(e.target.value) : null)
+                  setSelection(null)
+                  setSelectedStage(null)
+                }}
+              >
                 <option value="">{t('journeyLive.autoRun')}</option>
                 {availableRuns.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -376,9 +436,30 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
               </div>
             </dl>
           )}
-          <AgentExecution run={runData} current={current} onOpenSignal={(id) => nav(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`))} />
-          <section className="card p-4" aria-label={t('journeyUi.bank')}>
+          <AgentExecution
+            events={traceEvents}
+            selection={selection}
+            onSelectStep={selectStep}
+            onFollowCurrent={followCurrent}
+            run={runData}
+            current={current}
+            onOpenSignal={(id) => nav(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`))}
+          />
+          <section ref={bank} className="card scroll-mt-3 p-4" aria-label={t('journeyUi.bank')}>
             <h2 className="mb-3 font-semibold">{t('journeyUi.bank')}</h2>
+            {eventNotice && (
+              <p role="status" className="mb-2 text-xs text-muted">
+                {t('journeyGraph.notMapped')}
+              </p>
+            )}
+            {selection && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand bg-brand-soft p-2 text-sm" role="status">
+                {t('journeyGraph.selected', { run: selection.runId, step: chosenStep?.seq ?? '—', n: highlighted.size })}
+                <button className="btn btn-sm ml-auto" onClick={followCurrent}>
+                  {t('journeyGraph.followCurrent')}
+                </button>
+              </div>
+            )}
             {result.isPending && <p role="status">{t('traceUi.loading')}</p>}
             {empty && <p className="text-sm text-muted">{t('journeyLive.startHint')}</p>}
             <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -394,7 +475,10 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
                     <button
                       type="button"
                       aria-pressed={stage?.stage === s.stage}
-                      onClick={() => setSelectedStage(s.stage)}
+                      onClick={() => {
+                        setSelectedStage(s.stage)
+                        setScrollToEvents(false)
+                      }}
                       className={`h-full w-full rounded-xl border p-3 text-left text-xs ${stage?.stage === s.stage ? 'border-brand bg-brand-soft' : status === 'pending' ? 'border-dashed border-line' : 'border-line'}`}
                     >
                       <strong className="block">
@@ -409,7 +493,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
               })}
             </ol>
             {selectedStage && (
-              <button className="btn btn-sm my-2" onClick={() => setSelectedStage(null)}>
+              <button className="btn btn-sm my-2" onClick={followCurrent}>
                 {t('journeyLive.followActive')}
               </button>
             )}
@@ -427,10 +511,18 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
                     })}
                   </p>
                 )}
-                {!stage.events.length && <p className="mt-3 text-sm text-muted">{t('journeyLive.pendingStage')}</p>}
-                {stage.events.map((e) => (
-                  <div key={e.id}>
-                    <EventCard event={e} />
+                {!visibleEvents.length && <p className="mt-3 text-sm text-muted">{t('journeyLive.pendingStage')}</p>}
+                {visibleEvents.map((e) => (
+                  <div
+                    key={e.id}
+                    data-related-step={highlighted.has(e.id) ? 'true' : undefined}
+                    className={highlighted.has(e.id) ? 'rounded-xl border-l-4 border-brand bg-brand-soft px-2' : undefined}
+                  >
+                    {highlighted.has(e.id) && <span className="text-xs font-semibold text-brand">{t('journeyGraph.linked')}</span>}
+                    {!stage.events.some((s) => s.id === e.id) && (
+                      <p className="text-xs text-muted">{t(`journeyUi.stage.${data?.stages.find((s) => s.events.some((item) => item.id === e.id))?.stage}`)}</p>
+                    )}
+                    <EventCard event={e} onSelect={selectEvent} />
                     <dl className="text-xs text-muted">
                       {e.key_facts.map((f, j) => (
                         <div key={j}>

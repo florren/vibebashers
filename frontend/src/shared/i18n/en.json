@@ -394,13 +394,15 @@
       "classify": "Classification",
       "decide": "Decision",
       "wait_human": "Waiting for a human",
-      "apply_human_decision": "Apply human decision",
+      "apply_human_decision": "Human decision",
       "act": "Actions",
       "close": "Close",
       "followup_monitor": "Deferred check",
       "verify": "Verify the fix",
       "twin_react": "Customer twin",
-      "instant_decide": "Fast decision"
+      "instant_decide": "Fast decision",
+      "act_instant": "Instant actions",
+      "gift": "Reward"
     },
     "stepStatus": {
       "ok": "ok",
@@ -1461,5 +1463,77 @@
     "recordedScenario": "Recorded journey · scenario {{n}}",
     "noScenario": "No recorded scenario found in the latest 500 runs. Run it first and open the recorded request.",
     "opening": "Opening recorded journey…"
+  },
+  "journeyGraph": {
+    "summary": "Selected step",
+    "attempt": "Step execution",
+    "genericIntent": "Request processing step. Results come from recorded data.",
+    "related": "Related events: {{n}}",
+    "noLinkedEvents": "No explicitly linked journey events for this execution. Step data is available under the hood.",
+    "noExecution": "No recorded execution of this node in this run.",
+    "followCurrent": "Follow current step",
+    "selected": "Run #{{run}} · step #{{step}} · related events: {{n}}",
+    "linked": "Linked to the selected step",
+    "notMapped": "No unambiguous link to a single agent step. Open Trace for event context.",
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Completed",
+      "fallback": "Fallback response",
+      "error": "Error",
+      "waiting_human": "Waiting for a human",
+      "scheduled": "Check scheduled",
+      "skipped": "Branch not used",
+      "not_reached": "Not executed"
+    },
+    "fact": {
+      "product": "Product",
+      "team": "Team",
+      "confidence": "Confidence",
+      "sentiment": "Sentiment",
+      "action": "Action",
+      "tools": "Tool calls",
+      "suggestedTeam": "Suggested team"
+    },
+    "sentiment": {
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative"
+    },
+    "action": {
+      "route": "Route to team",
+      "escalate": "Route and escalate",
+      "request_clarification": "Request clarification",
+      "none": "No routing"
+    },
+    "intent": {
+      "ingest": "Accepts the message and links it to the request.",
+      "normalize": "Detects sentiment and extracts message features.",
+      "identify_client": "Checks whether the customer can be identified from available data.",
+      "gather_context": "Collects available transaction and related issue context.",
+      "check_rules": "Checks applicable business rules and policies.",
+      "classify": "Determines request type, product and the appropriate team.",
+      "decide": "Chooses an action and checks whether human approval is needed.",
+      "instant_decide": "Chooses a fast action under a confirmed business rule.",
+      "wait_human": "Hands the required decision to a human.",
+      "apply_human_decision": "Applies the recorded human decision.",
+      "act": "Performs permitted actions and records their results.",
+      "act_instant": "Performs the fast action allowed by a business rule.",
+      "followup_monitor": "Schedules follow-up and execution monitoring.",
+      "verify": "Checks that the issue was actually resolved.",
+      "close": "Completes processing after confirming the result.",
+      "gift": "Checks and performs an allowed customer reward.",
+      "twin_react": "Records the twin response to a message visible to the customer."
+    },
+    "hint": "Select a step to see its result and linked events below. Scroll the graph horizontally when needed.",
+    "edge": {
+      "fast_path": "Instant rule",
+      "!fast_path": "Standard processing",
+      "needs_human": "Human required",
+      "!needs_human": "Autonomous",
+      "human decided": "Decision recorded",
+      "followup scheduled": "Check scheduled",
+      "!followup": "No follow-up"
+    }
   }
 }

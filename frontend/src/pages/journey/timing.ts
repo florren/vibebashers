@@ -14,6 +14,8 @@ export const NODE_STAGE: Record<string, string> = {
   gather_context: 'identity',
   check_rules: 'rules',
   decide: 'decision',
+  instant_decide: 'decision',
+  twin_react: 'client_outcome',
   wait_human: 'decision',
   apply_human_decision: 'decision',
   act: 'action',
