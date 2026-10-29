@@ -53,6 +53,11 @@ class KeyPool:
     def pick(self, exclude: set[str] | None = None) -> ApiKey:
         cands = [k for k in self.keys if k.available() and k.label not in (exclude or set())]
         if not cands:
+            active = [k for k in self.keys if k.is_active and k.label not in (exclude or set())]
+            cooling = [k for k in active if k.remaining > 0]
+            if cooling and len(cooling) == len(active):
+                wait = max(0.0, min(k.cooldown_until for k in cooling) - time.monotonic())
+                raise ProviderError("rate_limit", "ключи временно на паузе после 429", retry_after_s=wait)
             raise ProviderError("quota", "нет доступных ключей (все исчерпаны, неактивны или на паузе после 429)")
         return max(cands, key=lambda k: k.remaining)
 

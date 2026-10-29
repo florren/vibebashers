@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
@@ -27,6 +27,7 @@ class Attempt:
     ok: bool
     ms: int
     error: str | None = None
+    model: str | None = None
 
 
 @dataclass
@@ -87,56 +88,118 @@ class ProviderChain:
         profile: LLMProfile,
         *,
         context: Context | str = "default",
+        fallback_profile: LLMProfile | None = None,
     ) -> ChainResult:
         timeout_s = self.timeout_for(context)
+        # Резервная LLM разрешена только для живого профиля и другой модели.
+        backup = None
+        if (
+            fallback_profile is not None
+            and profile.provider not in ("mock", "replay")
+            and fallback_profile.provider not in ("mock", "replay")
+            and (profile.provider, profile.model, profile.base_url)
+            != (fallback_profile.provider, fallback_profile.model, fallback_profile.base_url)
+        ):
+            backup = next((p for p in self.providers if p.name == fallback_profile.provider), None)
+        deadline = time.perf_counter() + timeout_s if backup is not None else None
+        backup_used = False
+        failed_usage = Usage(request_count=0)
         attempts: list[Attempt] = []
         last_error: ProviderError | None = None
         for prov in self.providers:
             if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
                 continue
-            t0 = time.perf_counter()
-            try:
-                if prov.name not in ("mock", "replay"):
-                    await self.limiter.acquire(profile.code, profile.rpm_limit, profile.rpd_limit)
-                obj, usage, raw = await asyncio.wait_for(
-                    prov.complete_structured(messages, schema, profile, timeout_s=timeout_s), timeout=timeout_s
-                )
-            except TimeoutError:
-                last_error = ProviderError("timeout", "провайдер не ответил вовремя")
+            requests = [(prov, profile)]
+            for candidate, selected in requests:
+                remaining = max(0.0, deadline - time.perf_counter()) if deadline else timeout_s
+                if candidate.name not in ("mock", "replay") and remaining <= 0:
+                    continue
+                budget = remaining if candidate.name not in ("mock", "replay") else timeout_s
+                t0 = time.perf_counter()
+                try:
+
+                    async def invoke(
+                        provider: Provider, requested: LLMProfile, limit: float
+                    ) -> tuple[dict[str, Any], Usage, str]:
+                        if provider.name not in ("mock", "replay"):
+                            await self.limiter.acquire(requested.code, requested.rpm_limit, requested.rpd_limit)
+                        return await provider.complete_structured(messages, schema, requested, timeout_s=limit)
+
+                    obj, usage, raw = await asyncio.wait_for(invoke(candidate, selected, budget), timeout=budget)
+                except TimeoutError:
+                    last_error = ProviderError("timeout", "провайдер не ответил вовремя")
+                    ms = int((time.perf_counter() - t0) * 1000)
+                    attempts.append(
+                        Attempt(candidate.name, False, ms, f"timeout {budget:.1f}s ({context})", selected.model)
+                    )
+                    log.warning("llm_timeout", provider=candidate.name, model=selected.model, context=context, ms=ms)
+                    continue
+                except ProviderError as exc:
+                    last_error = exc
+                    ms = int((time.perf_counter() - t0) * 1000)
+                    attempts.append(
+                        Attempt(candidate.name, False, ms, f"{exc.kind}: {exc.detail[:160]}", selected.model)
+                    )
+                    if exc.usage:
+                        failed_usage.prompt_tokens += exc.usage.prompt_tokens
+                        failed_usage.completion_tokens += exc.usage.completion_tokens
+                        failed_usage.cost_rub += exc.usage.cost_rub
+                        failed_usage.request_count += exc.usage.request_count
+                        failed_usage.structured_retries += exc.usage.structured_retries
+                    (log.info if exc.kind == "miss" else log.warning)(
+                        "llm_provider_error", provider=candidate.name, model=selected.model, kind=exc.kind, ms=ms
+                    )
+                    # Ошибка формата/доступности быстрой модели не должна сразу вести к mock.
+                    # При auth/quota/429 сохраняем штатный failover без дополнительной попытки основной моделью.
+                    if (
+                        backup is not None
+                        and fallback_profile is not None
+                        and not backup_used
+                        and candidate.name == profile.provider
+                        and exc.kind in ("bad_output", "unavailable")
+                    ):
+                        requests.append((backup, fallback_profile))
+                        backup_used = True
+                    continue
+                except Exception as exc:  # любая иная ошибка — тоже failover, с полным логом
+                    last_error = ProviderError("unavailable", type(exc).__name__)
+                    ms = int((time.perf_counter() - t0) * 1000)
+                    attempts.append(
+                        Attempt(candidate.name, False, ms, f"{type(exc).__name__}: {str(exc)[:160]}", selected.model)
+                    )
+                    log.exception("llm_provider_crash", provider=candidate.name)
+                    continue
                 ms = int((time.perf_counter() - t0) * 1000)
-                attempts.append(Attempt(prov.name, False, ms, f"timeout {timeout_s:.0f}s ({context})"))
-                log.warning("llm_timeout", provider=prov.name, context=context, ms=ms)
-                continue
-            except ProviderError as e:
-                last_error = e
-                ms = int((time.perf_counter() - t0) * 1000)
-                attempts.append(Attempt(prov.name, False, ms, f"{e.kind}: {e.detail[:160]}"))
-                (log.info if e.kind == "miss" else log.warning)(
-                    "llm_provider_error", provider=prov.name, kind=e.kind, ms=ms
+                attempts.append(Attempt(candidate.name, True, ms, model=usage.model or selected.model))
+                if self.record_store is not None and usage.source == "live":
+                    self.record_store.record(
+                        candidate.name,
+                        selected.model,
+                        messages,
+                        schema,
+                        response=obj,
+                        usage=usage.as_dict(),
+                        scenario_id=self.scenario_id,
+                        prompt_version=self.prompt_version,
+                    )
+                if any(not a.ok for a in attempts):
+                    log.info(
+                        "llm_failover",
+                        used=candidate.name,
+                        model=selected.model,
+                        failed=[a.provider for a in attempts if not a.ok],
+                    )
+                usage = replace(
+                    usage,
+                    prompt_tokens=usage.prompt_tokens + failed_usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens + failed_usage.completion_tokens,
+                    cost_rub=usage.cost_rub + failed_usage.cost_rub,
+                    request_count=usage.request_count + failed_usage.request_count,
+                    structured_retries=usage.structured_retries + failed_usage.structured_retries,
+                    json_valid_first_try=usage.json_valid_first_try and not any(not a.ok for a in attempts),
+                    latency_ms=sum(a.ms for a in attempts),
                 )
-                continue
-            except Exception as e:  # любая иная ошибка — тоже failover, но с полным логом
-                last_error = ProviderError("unavailable", type(e).__name__)
-                ms = int((time.perf_counter() - t0) * 1000)
-                attempts.append(Attempt(prov.name, False, ms, f"{type(e).__name__}: {str(e)[:160]}"))
-                log.exception("llm_provider_crash", provider=prov.name)
-                continue
-            ms = int((time.perf_counter() - t0) * 1000)
-            attempts.append(Attempt(prov.name, True, ms))
-            if self.record_store is not None and usage.source == "live":
-                self.record_store.record(
-                    prov.name,
-                    profile.model,
-                    messages,
-                    schema,
-                    response=obj,
-                    usage=usage.as_dict(),
-                    scenario_id=self.scenario_id,
-                    prompt_version=self.prompt_version,
-                )
-            if attempts and any(not a.ok for a in attempts):
-                log.info("llm_failover", used=prov.name, failed=[a.provider for a in attempts if not a.ok])
-            return ChainResult(obj, usage, raw, prov.name, attempts)
+                return ChainResult(obj, usage, raw, candidate.name, attempts)
         if self.strict and last_error is not None:
             raise last_error
         raise ProviderError(

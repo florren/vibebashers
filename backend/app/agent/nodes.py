@@ -349,6 +349,7 @@ async def _llm(
     *,
     profile: LLMProfile | None = None,
     context: str = "default",
+    fallback_profile: LLMProfile | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Вызов цепочки: system = system.md + промпт задачи (с контекстом), user = текст сигнала. Возвращает (obj, meta)."""
     prompt = (
@@ -359,7 +360,8 @@ async def _llm(
     messages: list[Message] = [{"role": "system", "content": prompt}, {"role": "user", "content": user_text}]
     schema = deref(schema_name)
     t0 = time.perf_counter()
-    res = await deps.chain.complete_structured(messages, schema, profile or deps.profile, context=context)
+    options: dict[str, Any] = {"fallback_profile": fallback_profile} if fallback_profile is not None else {}
+    res = await deps.chain.complete_structured(messages, schema, profile or deps.profile, context=context, **options)
     obj = prune(res.obj, schema)
     meta = {
         "prompt": prompt,
@@ -370,6 +372,9 @@ async def _llm(
         "provider": res.provider,
         "fallback_mock": res.fallback_mock,
         "error": res.error,
+        "attempts": [
+            {"provider": a.provider, "model": a.model, "ok": a.ok, "ms": a.ms, "error": a.error} for a in res.attempts
+        ],
     }
     return obj, meta
 
@@ -515,6 +520,9 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
             text,
             profile=deps.fast_profile or deps.profile,
             context="fast_path",
+            fallback_profile=deps.profile
+            if deps.fast_profile and deps.profile.provider not in ("mock", "replay")
+            else None,
         )
         if meta.get("fallback_mock"):
             status = "fallback"
@@ -522,7 +530,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
         status = "error"
         state["errors"].append(f"normalize: {exc}")
     # пост-проверки (T-210): согласованность sentiment/negativity, сарказм → negative, подсказки регулярок
-    neg = int(obj.get("negativity") or 50)
+    neg = int(obj["negativity"]) if obj.get("negativity") is not None else 50
     sentiment = obj.get("sentiment") or ("positive" if neg <= 33 else "neutral" if neg <= 66 else "negative")
     hidden = clamp_hidden_evidence(text, obj.get("hidden_negativity") or {})
     if (hidden.get("sarcasm") or {}).get("present") or (hidden.get("churn_threat") or {}).get("present"):
@@ -555,7 +563,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
         "intents": intents,
         "entities": ents,
         "contacts_hint": contacts,
-        "confidence": float(obj.get("confidence") or 0.5),
+        "confidence": float(obj["confidence"]) if obj.get("confidence") is not None else 0.5,
     }
     errors = validate(norm, "agent/normalization")
     if errors:
@@ -587,11 +595,12 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
     await deps.record_step(
         "normalize",
         status,
-        {"hints": hints},
+        {"hints": hints, "llm_attempts": meta.get("attempts", []), "fallback_reason": meta.get("error")},
         norm,
         prompt=meta.get("prompt"),
         raw=meta.get("raw"),
-        reasoning=f"Тональность {sentiment} ({neg}/100); намерения: {', '.join(intents) or 'нет'}; сущности: {', '.join(f'{k}={v}' for k, v in ents.items()) or 'нет'}.",
+        reasoning=f"Тональность {sentiment} ({neg}/100); намерения: {', '.join(intents) or 'нет'}; сущности: {', '.join(f'{k}={v}' for k, v in ents.items()) or 'нет'}."
+        + (f" Причина резервирования: {meta['error']}" if meta.get("error") else ""),
         model=meta.get("model"),
         usage=meta.get("usage"),
         latency_ms=int(meta.get("latency_ms") or 0),

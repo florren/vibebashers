@@ -47,3 +47,5 @@ pytest backend/tests/integration/test_tracing.py
 - **Доработка 2/2:** patch `record_step` в integration-тесте resume только после HITL-паузы; в API-тесте сценарий QR-комиссии (mass), как в `test_agent.py`, для стабильного `outcome=completed`.
 - **Отклонения:** нет
 - **Контракты:** не менялись (`contracts/` без правок)
+
+Доработка 29.10.2026: input шага normalize содержит попытки provider/model/ok/ms/error и fallback_reason, reasoning объясняет переход на резерв. Успешный main отражается фактической моделью и source=live. Токены и стоимость невалидных оплаченных попыток добавляются к общему usage, а не теряются при смене модели. API/схема БД не менялись.
