@@ -106,7 +106,14 @@ def build_journey(
     # Статические справочники и запуск агента не являются выполненными стадиями.
     # Early acknowledgements do not advance the internal workflow to its final stage.
     active = 7 if trace["terminal"]["reached"] else max((i for i, s in enumerate(STAGES[:-1]) if grouped[s]), default=0)
-    waiting = any(n["kind"] == "human_decision" and not n["data"].get("decision") for n in nodes)
+    # Параллельная эскалация руководителю создаёт HITL-запись, но не блокирует агент.
+    # Обычный запрос решения по-прежнему останавливает путь, даже если есть ответ клиенту.
+    waiting = any(
+        n["kind"] == "human_decision"
+        and not n["data"].get("decision")
+        and (n["data"].get("agent_proposal") or {}).get("kind") != "escalation"
+        for n in nodes
+    )
     if waiting:
         active = STAGES.index("decision")
     reached = trace["terminal"]["reached"] and not waiting
