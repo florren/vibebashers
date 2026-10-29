@@ -379,7 +379,8 @@
       "failed": "error",
       "running": "running",
       "cancelled": "cancelled",
-      "none": "—"
+      "none": "—",
+      "deferred": "waiting for a scheduled check"
     },
     "needHuman": "human needed",
     "selectRun": "Select a run on the left",
@@ -393,11 +394,13 @@
       "classify": "Classification",
       "decide": "Decision",
       "wait_human": "Waiting for a human",
-      "apply_human_decision": "Human decision",
+      "apply_human_decision": "Apply human decision",
       "act": "Actions",
       "close": "Close",
       "followup_monitor": "Deferred check",
-      "verify": "Verify the fix"
+      "verify": "Verify the fix",
+      "twin_react": "Customer twin",
+      "instant_decide": "Fast decision"
     },
     "stepStatus": {
       "ok": "ok",
@@ -1365,5 +1368,58 @@
       "skipped": "Skipped",
       "waiting_human": "Waiting for human"
     }
+  },
+  "journeyLive": {
+    "subtitle": "Customer message, agent execution and bank reply in one workspace",
+    "graph": "Agent execution graph",
+    "noRun": "Send a message to see its actual agent run and execution steps.",
+    "execution": "Processing",
+    "models": "Models used for completed steps",
+    "ms": "ms",
+    "humanDecision": "Human decision required",
+    "connected": "Updating in real time",
+    "polling": "Reconnecting · refreshing every 2 s",
+    "follow": "Follow",
+    "origin": {
+      "jury": "Demo messages",
+      "feed": "Feed",
+      "sim": "Simulation",
+      "any": "All sources"
+    },
+    "economics": "Customer value and retention",
+    "clientValue": "Customer value at churn · CLV estimate",
+    "incidentRisk": "Potential incident loss · dCLTV",
+    "prevented": "Prevented loss · dCLTV",
+    "unidentified": "Customer not identified yet",
+    "noIncident": "Available after an incident is created",
+    "startHint": "Enter a customer message. This panel shows the message and replies actually delivered by the bank.",
+    "conversation": "Messages and replies",
+    "deliveredOnly": "Customer messages and delivered bank replies",
+    "actor": {
+      "client": "Customer",
+      "bank": "Bank"
+    },
+    "sim": "Sim. time",
+    "waitingHumanReply": "No reply delivered yet — a human decision is required.",
+    "waitingReply": "No reply delivered yet. Processing continues.",
+    "followup": "Follow-up to this message",
+    "newMessage": "New customer message",
+    "newRequest": "New request",
+    "findClient": "Find a customer by name or ID",
+    "message": "Customer message",
+    "sending": "Accepting message…",
+    "send": "Send for processing",
+    "followActive": "Follow the active stage",
+    "pendingStage": "Events appear as this stage runs.",
+    "replyTiming": "From intake to first delivered reply · real time",
+    "sources": "Journey modes",
+    "selectRun": "Graph run",
+    "autoRun": "Follow the active agent",
+    "twin": "Customer twin",
+    "mainAgent": "Request agent",
+    "resumeConversation": "Follow up on this request",
+    "fallback": "fallback response",
+    "sendError": "Could not confirm message acceptance. Please retry.",
+    "messageOptions": "Customer and channel"
   }
 }

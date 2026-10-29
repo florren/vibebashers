@@ -176,3 +176,39 @@ def test_notification_terminal_requires_recorded_reaction():
     assert not terminal_for(notice, [])["reached"]
     reaction = node("reaction", reaction="thanks")
     assert terminal_for(notice, [reaction])["event_ref"] == "EVT-reaction:1"
+
+
+def test_step_and_pending_human_use_real_start_timestamps():
+    from app.trace.projections import project
+
+    step = node("step", node="normalize", run_id=1, seq=1, started_at=TS, latency_ms=100)
+    pending = node("human_decision", requested_at=TS, requested_sim="2026-11-10T10:00:00Z", decision=None)
+    assert project(step, "after")["ts_real"] == TS
+    assert project(pending, "after")["ts_real"] == TS
+    assert project(pending, "after")["ts_sim"] == "2026-11-10T10:00:00Z"
+
+
+def test_static_client_and_agent_run_do_not_advance_journey_to_decision():
+    subject = node("signal", status="new")
+    nodes = [subject, node("client"), node("agent_run", outcome=None)]
+    result = build_journey(render(subject, [], nodes[1:], []), nodes)
+    assert result["stages"][0]["status"] == "active"
+    assert result["stages"][4]["status"] == "pending"
+    assert not result["stages"][4]["events"]
+
+
+def test_non_llm_step_does_not_report_mock_llm_from_tool_metadata():
+    step = node("step", node="wait_human", run_id=1, seq=1, tool_calls=[{"source": "mock"}])
+    assert "llm_source" not in project(step, "after")["badges"]
+
+
+def test_pending_human_prevents_a_closed_summary_for_the_related_path():
+    subject = node("signal", status="closed")
+    waiting = node("human_decision", requested_at=TS, requested_sim=TS, decision=None)
+    nodes = [subject, waiting]
+    trace = render(subject, [], [waiting], [])
+    assert trace["terminal"]["reached"]
+    result = build_journey(trace, nodes)
+    assert result["summary"]["outcome_ru"] == "Ожидаем решения человека"
+    assert result["stages"][4]["status"] == "waiting_human"
+    assert result["stages"][7]["status"] != "done"
