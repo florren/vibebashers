@@ -44,6 +44,20 @@ async def test_recorded_scenario_read_only(seeded, scenario_id):
         assert not any(k in json.dumps(result) for k in ("response_raw", "prompt_tokens", "Authorization"))
         model = await journey(reader, ref, str(rid), presenter=True)
         JourneyResponse.model_validate(model)
+        assert model == await journey(reader, ref, str(rid), presenter=True)
+        assert any(
+            fact["label_ru"] == "Заметка ведущего"
+            for stage in model["stages"]
+            for event in stage["events"]
+            for fact in event["key_facts"]
+        )
+        plain = await journey(reader, ref, str(rid), presenter=False)
+        assert not any(
+            fact["label_ru"] == "Заметка ведущего"
+            for stage in plain["stages"]
+            for event in stage["events"]
+            for fact in event["key_facts"]
+        )
         assert len(model["stages"]) == 8
         assert any(s["events"] for s in model["stages"][1:])
         if scenario_id == "qr_fee_public_review":

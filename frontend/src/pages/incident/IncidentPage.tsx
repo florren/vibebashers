@@ -1,3 +1,4 @@
+import { JourneyLink } from '@/shared/components/JourneyLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ArrowLeft, Cpu } from 'lucide-react'
 import { useState } from 'react'
@@ -48,6 +49,7 @@ export function IncidentPage() {
               <ArrowLeft size={14} /> {t('common.back')}
             </Link>
             <IdLink kind="incident" value={inc.public_id} />
+            <JourneyLink reference={inc.public_id ?? `INC-${String(id).padStart(6, '0')}`} />
             <Badge tone={incidentStatusTone(inc.status)}>{tEnum('incident.status', inc.status)}</Badge>
             <Badge tone={criticalityTone(inc.criticality)}>
               P{inc.priority} · {tEnum('incident.criticality', inc.criticality)}

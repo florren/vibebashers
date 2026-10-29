@@ -1,3 +1,4 @@
+import { JourneyLink } from '@/shared/components/JourneyLink'
 import { clsx } from 'clsx'
 import { Copy } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -28,6 +29,7 @@ export function EnginePage() {
   const runs = useAgentRuns({ run_id: onlyCurrent ? simRunId : undefined, limit: 100 })
   const [tab, setTab] = useState<Tab>('steps')
   const items = runs.data?.items ?? []
+  const selectedRun = useAgentRun(runId)
 
   return (
     <div className="flex h-full">
@@ -70,6 +72,7 @@ export function EnginePage() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
+        {selectedRun.data?.signal_id != null && <div className="px-3 py-2"><JourneyLink reference={`SIG-${String(selectedRun.data.signal_id).padStart(6, '0')}`} /></div>}
         <Tabs
           value={tab}
           onChange={setTab}

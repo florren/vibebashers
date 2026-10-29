@@ -1,3 +1,6 @@
+import { useNavigate } from 'react-router-dom'
+import { loadScenarioJourney } from '@/pages/journey/api'
+import { ROUTES } from '@/shared/routes'
 import { create } from 'zustand'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +22,8 @@ export const useDemoMenu = create<DemoMenuStore>((set) => ({
 
 export function DemoMenu() {
   const { t } = useTranslation()
+  const nav = useNavigate()
+  const [opening, setOpening] = useState(false)
   const open = useDemoMenu((s) => s.open)
   const setOpen = useDemoMenu((s) => s.setOpen)
   const status = useDemoStatus()
@@ -129,6 +134,14 @@ export function DemoMenu() {
             >
               {t('demoMenu.scenario10')}
             </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {([[1, 'deposit_promo_rate'], [8, 'qr_fee_public_review'], [9, 'branch_misselling'], [11, 'social_sarcasm_escalation']] as const).map(([n, scenario]) => <button key={n} className="btn btn-sm justify-start" disabled={opening} onClick={() => void run(async () => {
+              setOpening(true)
+              try { const ref = await loadScenarioJourney(scenario); nav(`${ROUTES.journeyObject(ref)}?mode=presenter`); setOpen(false) }
+              finally { setOpening(false) }
+            })}>{t('journeyModes.recordedScenario', { n })}</button>)}
+            {opening && <p role="status">{t('journeyModes.opening')}</p>}
           </div>
           <div>
             <p className="mb-1 text-xs text-muted">{t('theme.appearance')}</p>

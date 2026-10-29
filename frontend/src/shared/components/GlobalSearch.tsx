@@ -1,3 +1,4 @@
+import { JourneyLink } from './JourneyLink'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -151,6 +152,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
                 {h.run_id} · {h.status} {h.snippet_ru}
               </small>
             </button>
+            {['signal', 'incident', 'post', 'transcript'].includes(h.kind) && <JourneyLink reference={h.ref} onClick={close} />}
           </div>
         ))}
       </div>

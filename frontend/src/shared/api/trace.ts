@@ -6,8 +6,8 @@ export type TraceEvent = components['schemas']['trace_event.schema']
 export type Journey = Omit<components['schemas']['journey.schema'], '$defs'>
 export type Search = components['schemas']['search_response.schema']
 export const getTrace = (kind: string, ref: string) => api<Trace>(`/api/trace/${encodeURIComponent(kind)}/${encodeURIComponent(ref)}`)
-export const getJourney = (ref?: string, origin: 'jury' | 'feed' | 'sim' | 'any' = 'jury') =>
+export const getJourney = (ref?: string, origin: 'jury' | 'feed' | 'sim' | 'any' = 'jury', presenter = false) =>
   api<Journey>(ref ? `/api/journey/${encodeURIComponent(ref)}` : '/api/journey/latest', {
-    query: { run_id: ref ? 'all' : 'current', ...(!ref ? { origin } : {}) },
+    query: { run_id: ref ? 'all' : 'current', ...(!ref ? { origin } : {}), ...(presenter ? { presenter: 1 } : {}) },
   })
 export const searchObjects = (q: string, signal?: AbortSignal) => api<Search>('/api/search', { query: { q }, signal })
