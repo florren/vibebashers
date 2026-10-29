@@ -7,6 +7,7 @@ import { api } from '@/shared/api/client'
 import { useWs } from '@/shared/ws/client'
 import { FinancePage } from './FinancePage'
 
+vi.mock('./EvidencePanel', () => ({ EvidencePanel: () => null, CaseEvidence: () => null }))
 vi.mock('echarts', () => ({ init: () => ({ setOption: vi.fn(), dispose: vi.fn(), resize: vi.fn() }) }))
 vi.mock('@/shared/api/client', async (original) => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn() }))
 vi.mock('@/shared/api/hooks', () => ({

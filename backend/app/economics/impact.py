@@ -21,6 +21,7 @@ def bounds(
         if end <= start or end - start > dt.timedelta(days=366):
             raise Problem(422, "Период должен быть положительным и не больше 366 дней")
         return start, end
+    now = now.astimezone(dt.UTC)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if period == "day":
         return midnight, midnight + dt.timedelta(days=1)

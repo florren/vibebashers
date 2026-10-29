@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.2
+  version: 1.5.3
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2378,6 +2378,91 @@ paths:
         '422':
           description: Некорректные параметры
 
+  /api/v1/finance/impact/assessment:
+    get:
+      tags:
+      - finance
+      summary: 'T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя
+        версия сделки'
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - live
+          - day
+          - week
+          - month
+          - custom
+          default: live
+      - name: start_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      - name: end_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceAssessment'
+        '404':
+          description: Запуск не найден
+        '422':
+          description: Ошибка параметров
+  /api/v1/finance/impact/evidence:
+    post:
+      tags:
+      - finance
+      summary: 'T-265: добавить версию декларации вмешательства; идемпотентный ключ,
+        без денежных проводок'
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceEvidenceBody'
+      responses:
+        '201':
+          description: Записано или точный повтор; новая версия сделки отзывает прежнюю
+            оценку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceEvidenceResult'
+        '404':
+          description: Алерт вне запуска
+        '409':
+          description: Нет политики/запуска или конфликт ключа
+        '422':
+          description: Некорректное доказательство
+
 components:
   parameters:
     IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -3871,6 +3956,7 @@ components:
         scenario_net_rub: { type: number }
         scenario_fine_rub: { type: number }
         scenario_with_fine_net_rub: { type: number }
+        proof: { $ref: '#/components/schemas/FinanceCaseProof' }
     FinancialImpactTotal:
       type: object
       required:
@@ -3975,3 +4061,483 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FinancialImpactCase'
+
+    FinanceFinePolicy:
+      type: object
+      required:
+      - id
+      - scope
+      - currency
+      - amount_rub
+      - unit
+      - basis_ref
+      - business_approval_ref
+      - legal_approval_ref
+      - effective_from_sim
+      - effective_until_sim
+      - additive_to_dcltv
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        currency:
+          type: string
+          enum:
+          - RUB
+        amount_rub:
+          type: number
+        unit:
+          type: string
+          enum:
+          - deal
+        basis_ref:
+          type: string
+        business_approval_ref:
+          type: string
+        legal_approval_ref:
+          type:
+          - string
+          - 'null'
+        effective_from_sim:
+          type: string
+          format: date-time
+        effective_until_sim:
+          type: string
+          format: date-time
+        additive_to_dcltv:
+          type: boolean
+    FinanceCalibration:
+      type: object
+      required:
+      - id
+      - scope
+      - data_kind
+      - model
+      - prompt_version
+      - horizon_days
+      - cutoff_sim
+      - business_approval_ref
+      - score_pipeline
+      - dataset_sha256
+      - artifact_sha256
+      - train_n
+      - metrics
+      - bins
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        data_kind:
+          type: string
+        model:
+          type: string
+        prompt_version:
+          type: string
+        horizon_days:
+          type: integer
+        cutoff_sim:
+          type: string
+          format: date-time
+        business_approval_ref:
+          type: string
+        score_pipeline:
+          type: string
+        dataset_sha256:
+          type: string
+        artifact_sha256:
+          type: string
+        train_n:
+          type: integer
+        metrics:
+          type: object
+          required:
+          - raw_brier
+          - calibrated_brier
+          - ece
+          - validation_n
+          properties:
+            raw_brier:
+              type: number
+            calibrated_brier:
+              type: number
+            ece:
+              type: number
+            validation_n:
+              type: integer
+        bins:
+          type: array
+          items:
+            type: object
+            required:
+            - lower
+            - upper
+            - n
+            - churned
+            - probability
+            properties:
+              lower:
+                type: number
+              upper:
+                type: number
+              n:
+                type: integer
+              churned:
+                type: integer
+              probability:
+                type: number
+    FinanceRisk:
+      type: object
+      required:
+      - scope
+      - status
+      - probability
+      - reason
+      - raw_score
+      - model
+      - prompt_version
+      - score_pipeline
+      - predicted_sim
+      - horizon_days
+      - calibration_id
+      - dataset_sha256
+      - artifact_sha256
+      - agent_run_id
+      - step_id
+      - graph_version
+      properties:
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        status:
+          type: string
+          enum:
+          - calibrated
+          - unknown
+        probability:
+          type:
+          - number
+          - 'null'
+        reason:
+          type: string
+        raw_score:
+          type:
+          - number
+          - 'null'
+        model:
+          type:
+          - string
+          - 'null'
+        prompt_version:
+          type:
+          - string
+          - 'null'
+        score_pipeline:
+          type:
+          - string
+          - 'null'
+        predicted_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        horizon_days:
+          type: integer
+        calibration_id:
+          type:
+          - string
+          - 'null'
+        dataset_sha256:
+          type:
+          - string
+          - 'null'
+        artifact_sha256:
+          type:
+          - string
+          - 'null'
+        agent_run_id:
+          type:
+          - integer
+          - 'null'
+        step_id:
+          type:
+          - integer
+          - 'null'
+        graph_version:
+          type:
+          - string
+          - 'null'
+    FinanceEvidenceRecord:
+      type: object
+      required:
+      - id
+      - scope
+      - deal_ref
+      - intervention_sim
+      - deal_closed_sim
+      - outcome
+      - evidence_ref
+      - recorded_by
+      - policy
+      - policy_sha256
+      - recorded_at
+      properties:
+        id:
+          type: integer
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        deal_ref:
+          type: string
+        intervention_sim:
+          type: string
+          format: date-time
+        deal_closed_sim:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum:
+          - prevented
+          - completed
+          - unknown
+        evidence_ref:
+          type: string
+        recorded_by:
+          type: string
+        policy:
+          $ref: '#/components/schemas/FinanceFinePolicy'
+        policy_sha256:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+    FinanceCaseProof:
+      type: object
+      required:
+      - risks
+      - alerts
+      - records
+      - policies
+      properties:
+        risks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinanceRisk'
+        alerts:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - decision
+            - session_ref
+            properties:
+              id:
+                type: integer
+              decision:
+                type:
+                - string
+                - 'null'
+              session_ref:
+                type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinanceEvidenceRecord'
+        policies:
+          type: object
+          required:
+          - demo
+          - observed
+          properties:
+            demo:
+              anyOf:
+              - $ref: '#/components/schemas/FinanceFinePolicy'
+              - type: 'null'
+            observed:
+              anyOf:
+              - $ref: '#/components/schemas/FinanceFinePolicy'
+              - type: 'null'
+    FinanceAssessment:
+      type: object
+      required:
+      - run_id
+      - start_date
+      - end_date
+      - horizon_days
+      - contours
+      properties:
+        run_id:
+          type:
+          - integer
+          - 'null'
+        start_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        end_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        horizon_days:
+          type: integer
+        contours:
+          type: array
+          items:
+            type: object
+            required:
+            - scope
+            - known_risk_rub
+            - risk_total_rub
+            - net_rub
+            - refund_rub
+            - fine_rub
+            - combined_net_rub
+            - known_clients
+            - unknown_clients
+            - duplicate_cases
+            - unidentified_cases
+            - qualified_deals
+            - excluded_deals
+            - reasons
+            - calibration
+            - fine_policy
+            - case_count
+            properties:
+              scope:
+                type: string
+                enum:
+                - demo
+                - observed
+              known_risk_rub:
+                type: number
+              risk_total_rub:
+                type:
+                - number
+                - 'null'
+              net_rub:
+                type:
+                - number
+                - 'null'
+              refund_rub:
+                type: number
+              fine_rub:
+                type:
+                - number
+                - 'null'
+              combined_net_rub:
+                type:
+                - number
+                - 'null'
+              known_clients:
+                type: integer
+              unknown_clients:
+                type: integer
+              duplicate_cases:
+                type: integer
+              unidentified_cases:
+                type: integer
+              qualified_deals:
+                type: integer
+              excluded_deals:
+                type: integer
+              reasons:
+                type: object
+                additionalProperties:
+                  type: integer
+              calibration:
+                anyOf:
+                - $ref: '#/components/schemas/FinanceCalibration'
+                - type: 'null'
+              fine_policy:
+                anyOf:
+                - $ref: '#/components/schemas/FinanceFinePolicy'
+                - type: 'null'
+              case_count:
+                type: integer
+    FinanceEvidenceBody:
+      type: object
+      required:
+      - scope
+      - incident_id
+      - alert_id
+      - policy_id
+      - deal_ref
+      - idempotency_key
+      - intervention_sim
+      - deal_closed_sim
+      - outcome
+      - evidence_ref
+      - recorded_by
+      properties:
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        incident_id:
+          type: integer
+          minimum: 1
+        alert_id:
+          type: integer
+          minimum: 1
+        policy_id:
+          type: string
+          minLength: 1
+          maxLength: 120
+        deal_ref:
+          type: string
+          minLength: 1
+          maxLength: 120
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 120
+        intervention_sim:
+          type: string
+          format: date-time
+        deal_closed_sim:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum:
+          - prevented
+          - completed
+          - unknown
+        evidence_ref:
+          type: string
+          minLength: 1
+          maxLength: 500
+        recorded_by:
+          type: string
+          minLength: 1
+          maxLength: 120
+      additionalProperties: false
+    FinanceEvidenceResult:
+      type: object
+      required:
+      - id
+      - run_id
+      - replayed
+      properties:
+        id:
+          type: integer
+        run_id:
+          type: integer
+        replayed:
+          type: boolean

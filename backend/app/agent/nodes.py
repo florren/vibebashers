@@ -27,6 +27,7 @@ from app.agent.tools import router_tools
 from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
 from app.contracts.registry import deref, validate
+from app.economics.calibration import PIPELINE as SCORE_PIPELINE
 from app.i18n import communication_lang
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
@@ -933,6 +934,9 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         {
             "instant": {k: inst.get(k) for k in ("rule_codes", "confidence", "actions")},
             "classification_type": cls.get("signal_type"),
+            "churn_risk": cls.get("churn_risk"),
+            "score_pipeline": SCORE_PIPELINE,
+            "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
         },
         prompt=meta.get("prompt"),
         raw=meta.get("raw"),
@@ -1558,7 +1562,12 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         "classify",
         status,
         {"normalization": state["normalization"], "hints": state["context"].get("hints")},
-        {**c, "postcheck_notes": notes},
+        {
+            **c,
+            "postcheck_notes": notes,
+            "score_pipeline": SCORE_PIPELINE,
+            "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
+        },
         prompt=meta.get("prompt"),
         raw=meta.get("raw"),
         reasoning=(c.get("rationale_ru") or "") + ((" Пост-проверки: " + "; ".join(notes) + ".") if notes else ""),

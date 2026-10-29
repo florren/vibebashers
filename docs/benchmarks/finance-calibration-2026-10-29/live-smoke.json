@@ -1,0 +1,15 @@
+{
+  "run_id": 3,
+  "steps": [
+    {
+      "node": "normalize",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9"
+    },
+    {
+      "node": "instant_decide",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9"
+    }
+  ]
+}

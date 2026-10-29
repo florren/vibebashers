@@ -1,0 +1,61 @@
+import { chromium } from '../../../frontend/node_modules/playwright/index.mjs'
+import fs from 'node:fs/promises'
+import assert from 'node:assert/strict'
+const dir = process.env.CX_SCREENSHOT_DIR ?? '/tmp/finance-calibration-visual'
+const base = process.env.CX_BASE_URL ?? 'http://localhost:8000'
+await fs.mkdir(dir, { recursive: true })
+const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_EXECUTABLE ? { executablePath: process.env.CHROME_EXECUTABLE } : {}) })
+const report = []
+for (const lang of ['ru','en']) for (const theme of ['light','dark']) {
+ const context = await browser.newContext({viewport:{width:1440,height:1100},reducedMotion:'reduce'})
+ await context.addInitScript(({lang,theme})=>{localStorage.setItem('cx.lang',lang);localStorage.setItem('cx.ui.mode',theme);localStorage.setItem('cx.ui.pending',JSON.stringify({mode:theme}))},{lang,theme})
+ const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message))
+ await page.goto(`${base}/finance`)
+ const dictionaries=JSON.parse(await fs.readFile(new URL(`../../../frontend/src/shared/i18n/${lang}.json`,import.meta.url),'utf8'))
+ const t=dictionaries.financeProof
+ const panel=page.getByRole('region',{name:t.title})
+ await panel.getByText('demo-mock-7d-v1',{exact:false}).waitFor()
+ const snapshot = await(await context.request.get(`${base}/api/v1/finance/impact/assessment`)).json()
+ const money = value => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'ru-RU', {style:'currency',currency:'RUB',minimumFractionDigits:2,maximumFractionDigits:2}).format(value)
+ await panel.getByText(money(snapshot.contours[0].risk_total_rub),{exact:true}).waitFor()
+ await panel.getByText(money(snapshot.contours[0].net_rub),{exact:true}).first().waitFor()
+ await panel.evaluate(el=>el.scrollIntoView({block:'start'}))
+ assert.equal(await panel.getByText(t.noCalibration,{exact:true}).count(),1)
+ assert.equal(await panel.getByText(t.noPolicy,{exact:true}).count(),1)
+ await page.screenshot({path:`${dir}/${lang}-${theme}.png`})
+ await page.setViewportSize({width:390,height:844}); await panel.evaluate(el=>el.scrollIntoView({block:'start'}))
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth || [...document.querySelectorAll('section[aria-label] > div > div')].some(el=>el.scrollWidth>el.clientWidth+1))
+ if(lang==='ru'&&theme==='light') await page.screenshot({path:`${dir}/ru-light-mobile.png`})
+ await page.setViewportSize({width:1440,height:1100})
+ const total=await(await context.request.get(`${base}/api/v1/finance/impact/total`)).json()
+ const misselling=total.items.find(i=>i.incident_type==='misselling')
+ if(misselling && lang==='ru' && theme==='light') {
+  await page.getByRole('button',{name:misselling.public_id,exact:true}).click()
+  const dialog=page.getByRole('dialog'); await dialog.getByText(t.provenance,{exact:true}).waitFor()
+  await dialog.getByText(t.record,{exact:true}).click()
+  await dialog.getByLabel(t.alert).selectOption({index:1})
+  const detail = await(await context.request.get(`${base}/api/v1/finance/impact/incident/${misselling.incident_id}?run_id=${total.run_id}`)).json()
+  await dialog.getByLabel(t.deal,{exact:true}).fill(detail.proof.records[0]?.deal_ref ?? 'DEMO-BROWSER-1')
+  await dialog.getByLabel(t.intervention,{exact:true}).fill('2026-11-09T05:00')
+  await dialog.getByLabel(t.closed,{exact:true}).fill('2026-11-09T06:00')
+  await dialog.getByLabel(t.outcome).selectOption('prevented')
+  await dialog.getByLabel(t.reference,{exact:true}).fill('DEMO-SYNTHETIC-BROWSER-EVIDENCE')
+  await dialog.getByRole('button',{name:t.save,exact:true}).click()
+  await dialog.getByRole('status').filter({hasText:t.saved}).waitFor()
+  await dialog.getByText(t.history,{exact:true}).click()
+  await page.screenshot({path:`${dir}/ru-light-proof.png`})
+  const assessed=await(await context.request.get(`${base}/api/v1/finance/impact/assessment`)).json()
+  assert.equal(assessed.contours[0].qualified_deals,1)
+  assert.equal(assessed.contours[0].fine_rub,50000)
+  assert.equal(assessed.contours[0].duplicate_cases,1)
+  assert.equal(assessed.contours[1].risk_total_rub,null)
+  assert.equal(assessed.contours[1].fine_rub,null)
+  await fs.writeFile(`${dir}/assessment.json`,JSON.stringify(assessed,null,2))
+  await page.keyboard.press('Escape')
+  await panel.getByText(money(assessed.contours[0].fine_rub),{exact:true}).waitFor()
+ }
+ report.push({lang,theme,errors,overflow}); await context.close()
+}
+await browser.close(); await fs.writeFile(`${dir}/report.json`,JSON.stringify(report,null,2))
+console.log(JSON.stringify(report))
+assert.ok(report.every(r=>!r.errors.length&&!r.overflow))

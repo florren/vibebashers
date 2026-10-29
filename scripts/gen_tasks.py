@@ -1375,14 +1375,19 @@ TASKS.extend([
                  "Итог и временной ряд не зависят от страницы реестра; формулы доступны по клику."],
          check=["make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "pytest backend/tests/integration/test_finance.py"]),
     dict(id=265, title="Калибровка вероятности оттока и доказательства штрафа", epic="E24", agent="SA-Economics", size="L", wave=9,
-         goal="После согласования данных превратить сценарные допущения в проверяемую модель; GitHub #89. До этого P и штраф не входят в основную модель.",
-         tz=["14.6"], contracts=["docs/adr/ADR-0013-financial-impact.md", "events/agent/classification.schema.json (будущее additive изменение)"], deps=[264],
-         steps=["Согласовать горизонт оттока, размеченный набор и калибровку NLP, provenance модели/версии/времени.",
-                "Согласовать основание и размер штрафа; сохранять доказательства вмешательства до закрытия сделки. decision=go этого не доказывает.",
-                "Проверить пересечение кейсов одного клиента и формулу агрегирования портфельного эффекта."],
-         accept=["Есть утверждённый ADR, additive контракты и golden/calibration tests.",
-                 "Неизвестная вероятность остаётся неизвестной; пример штрафа не становится фактом без доказательств."],
-         check=["Golden/calibration tests на согласованном наборе; make lint && make test"]),
+         goal="По уточнению заказчика показать рядом демо-калибровку и рабочий контур допуска данных; неизвестность не подменять демо. GitHub #89, E24 #87, ADR-0014.",
+         tz=["14.6", "14.7"], contracts=["docs/adr/ADR-0014-finance-calibration-evidence.md", "api/openapi.yaml: FinanceAssessment, FinanceCaseProof, FinanceEvidenceBody", "db/migrations/0008_financial_evidence.sql"], deps=[264],
+         steps=["Сохранить версию и время существующего скора classification.churn_risk в шаге агента; LLM-промпты/схемы и ключи кассет не менять.",
+                "Воспроизводимая демо-калибровка на синтетических контрольных исходах за 7 сим-дней, disjoint train/validation, метрики, checksum и допуск источника. Рабочий набор требует собственных согласованных данных.",
+                "Версионированная политика штрафа и append-only журнал деклараций с временными доказательствами. go без доказательства суммы не даёт; неизвестный/поздний исход и отзыв исключают оценку.",
+                "Один риск на клиента за запуск, один штраф на сделку; возвраты по всем кейсам; unknown остаётся null. UI показывает оба контура и provenance, форму/историю доказательства.",
+                "Golden/calibration, unit/integration/frontend tests; replay совместимость, миграция 0008, docs и ru/en × light/dark."],
+         accept=["Есть принятый для прототипа ADR-0014, additive контракты и golden/calibration tests.",
+                 "Неизвестная вероятность остаётся неизвестной; пример штрафа не становится фактом без доказательств.",
+                 "Демо и рабочий контур показаны рядом; без рабочего набора/согласований нет рабочего числового итога.",
+                 "Повторные кейсы клиента и версии сделки не удваивают оценку; отзыв сохраняет историю и исключает сумму."],
+         check=["make sync-contracts && make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "python scripts/gen_churn_demo.py && git diff --exit-code -- data/economics"]),
+
 ])
 
 

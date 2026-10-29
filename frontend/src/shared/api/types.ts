@@ -7239,6 +7239,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/impact/assessment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя версия сделки */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                    period?: "live" | "day" | "week" | "month" | "custom";
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    start_date?: string;
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    end_date?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinanceAssessment"];
+                    };
+                };
+                /** @description Запуск не найден */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Ошибка параметров */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/impact/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** T-265: добавить версию декларации вмешательства; идемпотентный ключ, без денежных проводок */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FinanceEvidenceBody"];
+                };
+            };
+            responses: {
+                /** @description Записано или точный повтор; новая версия сделки отзывает прежнюю оценку */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinanceEvidenceResult"];
+                    };
+                };
+                /** @description Алерт вне запуска */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Нет политики/запуска или конфликт ключа */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Некорректное доказательство */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8889,6 +9011,7 @@ export interface components {
             scenario_net_rub: number;
             scenario_fine_rub: number;
             scenario_with_fine_net_rub: number;
+            proof?: components["schemas"]["FinanceCaseProof"];
         };
         FinancialImpactTotal: {
             incidents_resolved: number;
@@ -8921,6 +9044,157 @@ export interface components {
                 net_rub: number;
             }[];
             items: components["schemas"]["FinancialImpactCase"][];
+        };
+        FinanceFinePolicy: {
+            id: string;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            /** @enum {string} */
+            currency: "RUB";
+            amount_rub: number;
+            /** @enum {string} */
+            unit: "deal";
+            basis_ref: string;
+            business_approval_ref: string;
+            legal_approval_ref: string | null;
+            /** Format: date-time */
+            effective_from_sim: string;
+            /** Format: date-time */
+            effective_until_sim: string;
+            additive_to_dcltv: boolean;
+        };
+        FinanceCalibration: {
+            id: string;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            data_kind: string;
+            model: string;
+            prompt_version: string;
+            horizon_days: number;
+            /** Format: date-time */
+            cutoff_sim: string;
+            business_approval_ref: string;
+            score_pipeline: string;
+            dataset_sha256: string;
+            artifact_sha256: string;
+            train_n: number;
+            metrics: {
+                raw_brier: number;
+                calibrated_brier: number;
+                ece: number;
+                validation_n: number;
+            };
+            bins: {
+                lower: number;
+                upper: number;
+                n: number;
+                churned: number;
+                probability: number;
+            }[];
+        };
+        FinanceRisk: {
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            /** @enum {string} */
+            status: "calibrated" | "unknown";
+            probability: number | null;
+            reason: string;
+            raw_score: number | null;
+            model: string | null;
+            prompt_version: string | null;
+            score_pipeline: string | null;
+            /** Format: date-time */
+            predicted_sim: string | null;
+            horizon_days: number;
+            calibration_id: string | null;
+            dataset_sha256: string | null;
+            artifact_sha256: string | null;
+            agent_run_id: number | null;
+            step_id: number | null;
+            graph_version: string | null;
+        };
+        FinanceEvidenceRecord: {
+            id: number;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            deal_ref: string;
+            /** Format: date-time */
+            intervention_sim: string;
+            /** Format: date-time */
+            deal_closed_sim: string;
+            /** @enum {string} */
+            outcome: "prevented" | "completed" | "unknown";
+            evidence_ref: string;
+            recorded_by: string;
+            policy: components["schemas"]["FinanceFinePolicy"];
+            policy_sha256: string;
+            /** Format: date-time */
+            recorded_at: string;
+        };
+        FinanceCaseProof: {
+            risks: components["schemas"]["FinanceRisk"][];
+            alerts: {
+                id: number;
+                decision: string | null;
+                session_ref: string;
+            }[];
+            records: components["schemas"]["FinanceEvidenceRecord"][];
+            policies: {
+                demo: components["schemas"]["FinanceFinePolicy"] | null;
+                observed: components["schemas"]["FinanceFinePolicy"] | null;
+            };
+        };
+        FinanceAssessment: {
+            run_id: number | null;
+            /** Format: date-time */
+            start_date: string | null;
+            /** Format: date-time */
+            end_date: string | null;
+            horizon_days: number;
+            contours: {
+                /** @enum {string} */
+                scope: "demo" | "observed";
+                known_risk_rub: number;
+                risk_total_rub: number | null;
+                net_rub: number | null;
+                refund_rub: number;
+                fine_rub: number | null;
+                combined_net_rub: number | null;
+                known_clients: number;
+                unknown_clients: number;
+                duplicate_cases: number;
+                unidentified_cases: number;
+                qualified_deals: number;
+                excluded_deals: number;
+                reasons: {
+                    [key: string]: number;
+                };
+                calibration: components["schemas"]["FinanceCalibration"] | null;
+                fine_policy: components["schemas"]["FinanceFinePolicy"] | null;
+                case_count: number;
+            }[];
+        };
+        FinanceEvidenceBody: {
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            incident_id: number;
+            alert_id: number;
+            policy_id: string;
+            deal_ref: string;
+            idempotency_key: string;
+            /** Format: date-time */
+            intervention_sim: string;
+            /** Format: date-time */
+            deal_closed_sim: string;
+            /** @enum {string} */
+            outcome: "prevented" | "completed" | "unknown";
+            evidence_ref: string;
+            recorded_by: string;
+        };
+        FinanceEvidenceResult: {
+            id: number;
+            run_id: number;
+            replayed: boolean;
         };
         /** @enum {string} */
         tone: "neutral" | "positive" | "irritated" | "angry" | "sarcastic" | "formal";

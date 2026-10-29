@@ -7,6 +7,7 @@ import { api, type Schemas } from '@/shared/api/client'
 import { useSimRuns, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
 import { formatMoney as fmtRub } from './money'
+import { EvidencePanel, CaseEvidence } from './EvidencePanel'
 import { tEnum } from '@/shared/i18n'
 import { ErrorBox, Modal, Skeleton } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
@@ -148,6 +149,7 @@ export function FinancePage() {
             <p className="mt-2 text-xs text-muted">{t('finance.fineHint', { count: d.fine_cases })}</p>
           </div>
         </section>
+        <EvidencePanel runId={d.run_id} period={period} start={start} end={end} />
         <section className="card p-4"><h2 className="font-semibold">{t('finance.chart')}</h2>
           {d.series.length ? <GrowthChart series={d.series} /> : <p className="py-10 text-center text-muted">{t('finance.empty')}</p>}
         </section>
@@ -202,6 +204,7 @@ function Explanation({ detail: d, probability }: { detail: Detail; probability: 
     <h3 className="font-semibold">{t('finance.fineScenario')}</h3>
     <p className="num">{fmtRub(scenario)} + {fmtRub(d.scenario_fine_rub)} − {fmtRub(d.refund_rub)} = {fmtRub(d.scenario_with_fine_net_rub)}</p>
     <p className="text-xs text-muted">{t('finance.scenarioHint')} {t('finance.fineHint', { count: d.fine_eligible ? 1 : 0 })}</p>
+    <CaseEvidence detail={d} />
     <Link className="btn btn-sm" to={`/incidents/${d.incident_id}`}>{t('finance.openIncident')}</Link>
   </div>
 }
