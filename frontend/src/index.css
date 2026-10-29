@@ -152,8 +152,12 @@ body,
 #root {
   height: 100%;
 }
+/* CSS viewport учитывает системный HiDPI scaling и zoom браузера. */
+html {
+  font-size: clamp(16px, calc(14px + 0.25vw), 18px);
+}
 body {
-  @apply bg-bg text-ink font-sans text-[13.5px] leading-snug antialiased;
+  @apply bg-bg text-ink font-sans text-base leading-normal antialiased;
   font-feature-settings: 'cv11', 'ss01', 'tnum';
 }
 ::-webkit-scrollbar {
@@ -172,7 +176,7 @@ body {
   @apply rounded-xl bg-surface shadow-card;
 }
 .btn {
-  @apply inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-medium text-ink transition hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex h-10 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink transition hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50;
 }
 .btn-primary {
   @apply border-transparent;
@@ -186,10 +190,10 @@ body {
   @apply border-transparent bg-danger text-white hover:bg-[#b83a3a];
 }
 .btn-sm {
-  @apply h-7 px-2 text-xs;
+  @apply h-8 px-2 text-sm;
 }
 .input {
-  @apply h-8 rounded-lg border bg-surface px-2.5 text-[13px] text-ink placeholder:text-muted focus:border-brand focus:outline-none;
+  @apply h-10 min-w-0 rounded-lg border bg-surface px-2.5 text-sm text-ink placeholder:text-muted focus:border-brand focus:outline-none;
   border-color: rgb(var(--control-line));
 }
 .chip {
@@ -227,5 +231,5 @@ body {
   outline-offset: 2px;
 }
 html[data-density='compact'] .input,
-html[data-density='compact'] .btn { min-height: 28px; height: 28px; }
+html[data-density='compact'] .btn { min-height: 2rem; height: 2rem; }
 html[data-pack='ops'] :where(label, th, .num) { font-family: 'JetBrains Mono', monospace; }

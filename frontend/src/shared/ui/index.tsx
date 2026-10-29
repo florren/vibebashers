@@ -19,7 +19,7 @@ export function Badge({ tone = 'neutral', children, className, title }: { tone?:
   return (
     <span
       title={title}
-      className={clsx('inline-flex h-5 items-center whitespace-nowrap rounded-md border px-1.5 text-[11px] font-medium leading-none', TONE[tone], className)}
+      className={clsx('inline-flex h-5 items-center whitespace-nowrap rounded-md border px-1.5 text-xs font-medium leading-none', TONE[tone], className)}
     >
       {children}
     </span>
@@ -66,8 +66,8 @@ export function ErrorBox({ error, compact }: { error: unknown; compact?: boolean
 
 export function Section({ title, children, right, className }: { title: ReactNode; children: ReactNode; right?: ReactNode; className?: string }) {
   return (
-    <section className={clsx('card', className)}>
-      <header className="flex h-9 items-center justify-between border-b border-line px-3">
+    <section className={clsx('card min-w-0', className)}>
+      <header className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h3>
         {right}
       </header>
@@ -78,7 +78,7 @@ export function Section({ title, children, right, className }: { title: ReactNod
 
 export function KV({ k, v, mono }: { k: ReactNode; v: ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1 text-[13px]">
+    <div className="flex items-baseline justify-between gap-3 py-1 text-sm">
       <span className="shrink-0 text-muted">{k}</span>
       <span className={clsx('min-w-0 truncate text-right', mono && 'font-mono text-xs')}>{v ?? '—'}</span>
     </div>
@@ -175,12 +175,12 @@ export function Tabs<T extends string>({
           aria-selected={value === it.id}
           onClick={() => onChange(it.id)}
           className={clsx(
-            '-mb-px flex h-9 shrink-0 items-center gap-1.5 border-b-2 px-3 text-[13px] transition',
+            '-mb-px flex h-9 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm transition',
             value === it.id ? 'border-brand font-medium text-ink' : 'border-transparent text-muted hover:text-ink',
           )}
         >
           {it.label}
-          {it.count !== undefined && it.count !== null && <span className="num rounded-full bg-raised px-1.5 text-[11px] text-muted">{it.count}</span>}
+          {it.count !== undefined && it.count !== null && <span className="num rounded-full bg-raised px-1.5 text-xs text-muted">{it.count}</span>}
         </button>
       ))}
     </div>

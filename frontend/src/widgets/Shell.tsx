@@ -9,7 +9,7 @@ function DemoModeFooter() {
   if (q.isError || !badge) return null
   return (
     <footer data-testid="demo-mode-footer" className="shrink-0 border-t border-line px-3 py-1 text-center">
-      <span className="text-[11px] text-muted">{badge}</span>
+      <span className="text-xs text-muted">{badge}</span>
     </footer>
   )
 }

@@ -32,7 +32,7 @@ export function KpiStrip({ runId }: { runId: number | undefined }) {
 function Kpi({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: string; tone?: 'ok' | 'warn' | 'danger' }) {
   return (
     <div className="card px-3 py-2" title={hint}>
-      <div className="truncate text-[11px] uppercase tracking-wide text-muted">{label}</div>
+      <div className="truncate text-xs uppercase tracking-wide text-muted">{label}</div>
       <div
         className={clsx(
           'num mt-0.5 text-xl font-semibold leading-none',

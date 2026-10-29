@@ -87,7 +87,7 @@ export function Header() {
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
           <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
           <span className="text-xs text-muted">{t('sim.clock')}</span>
-          <span className="num font-mono text-[13px]">{fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
+          <span className="num font-mono text-sm">{fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
           <span className="hidden text-xs text-muted md:inline">
             {sim?.day_no !== undefined && t('sim.day', { n: sim.day_no + 1 })} · {sim?.phase ? t(`sim.phase.${sim.phase}`) : '—'}
           </span>
@@ -157,7 +157,7 @@ function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {
       to={to}
       end={end}
       className={({ isActive }) =>
-        clsx('h-8 rounded-lg px-2.5 text-[13px] leading-8', isActive ? 'bg-raised font-medium text-ink' : 'text-muted hover:text-ink')
+        clsx('inline-flex min-h-10 items-center whitespace-nowrap rounded-lg px-2.5 text-sm', isActive ? 'bg-raised font-medium text-ink' : 'text-muted hover:text-ink')
       }
     >
       {label}
