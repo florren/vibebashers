@@ -1,27 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { geoConicConformal, geoPath } from 'd3-geo'
-import { feature } from 'topojson-client'
-import type { FeatureCollection, Geometry } from 'geojson'
-import type { Topology, GeometryCollection } from 'topojson-specification'
-import topoRaw from '@/shared/geo/russia-regions.topo.json'
+import { RUSSIA, MAP_WIDTH as W, MAP_HEIGHT as H, russiaProjection } from '@/shared/geo/russia'
 import { clsx } from 'clsx'
 import { useMapCities, useMapHeat, useMapZones, type MapLayer } from '@/shared/api/hooks'
 import type { MapZone, RegionHeat } from '@/shared/api/client'
 import { Badge, Empty, ErrorBox, KV, Section, Skeleton } from '@/shared/ui'
 
 type Mode = 'heat' | 'zones'
-type RegionProps = { code: string; name: string }
-const W = 960
-const H = 540
 const LAYERS: MapLayer[] = ['signals', 'critical', 'incidents', 'churn']
 const WINDOWS = [24, 24 * 7, 24 * 30]
-
-/** Проекция: коническая конформная, развёрнутая под Россию; Чукотка переносится через 180° поворотом. */
-const projection = geoConicConformal().rotate([-105, 0]).center([0, 63]).parallels([52, 64]).scale(680).translate([W / 2 + 30, H / 2 + 55])
-const path = geoPath(projection)
-const topo = topoRaw as unknown as Topology<{ regions: GeometryCollection<RegionProps> }>
-const GEO = feature(topo, topo.objects.regions) as FeatureCollection<Geometry, RegionProps>
 
 function heatColor(intensity: number): string {
   if (intensity <= 0) return 'var(--map-empty, #e9edf2)'
@@ -37,11 +24,15 @@ export function MapTab() {
   const [win, setWin] = useState(24 * 7)
   const [runScope, setRunScope] = useState<'current' | 'all'>('all')
   const [selected, setSelected] = useState<string | null>(null)
-  const geo = GEO
+  const geo = RUSSIA
 
   const heat = useMapHeat(layer, win, runScope)
   const zones = useMapZones(runScope)
   const cities = useMapCities(selected, win, runScope)
+
+  const { projection, path } = useMemo(() => russiaProjection(
+    (heat.data ?? []).flatMap((r): [number, number][] => r.lon != null && r.lat != null ? [[r.lon, r.lat]] : []),
+  ), [heat.data])
 
   const byCode = useMemo(() => new Map((heat.data ?? []).map((r) => [r.region_code ?? '', r])), [heat.data])
   const zoneBy = useMemo(() => new Map((zones.data?.items ?? []).map((z) => [z.region_code ?? '', z])), [zones.data])
@@ -57,9 +48,10 @@ export function MapTab() {
   const selZone = selected ? zoneBy.get(selected) : undefined
 
   return (
-    <div className="grid gap-3 p-3 lg:grid-cols-[1fr_320px]">
+    <div className="grid h-full items-start gap-4 overflow-auto p-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Section
         title={t('map.title')}
+        className="min-w-0"
         right={
           <div className="flex flex-wrap items-center gap-1 text-xs">
             <Seg value={mode} onChange={setMode} items={[{ id: 'heat', label: t('map.mode.heat') }, { id: 'zones', label: t('map.mode.zones') }]} />
@@ -71,8 +63,8 @@ export function MapTab() {
       >
         {heat.error && <ErrorBox error={heat.error} compact />}
         {(
-          <div className="relative">
-            <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={t('map.title')}>
+          <div>
+            <svg viewBox={`0 0 ${W} ${H}`} className="block h-[clamp(14rem,calc(100dvh-25rem),42rem)] w-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map.title')}>
               <rect width={W} height={H} fill="transparent" onClick={() => setSelected(null)} />
               {geo.features.map((f) => {
                 const code = f.properties.code
@@ -120,7 +112,7 @@ export function MapTab() {
                   )
                 })}
             </svg>
-            <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded bg-white/85 px-2 py-1 text-[11px] text-muted">
+            <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-muted">
               {mode === 'heat' ? (
                 <>
                   <span>{t('map.legend.low')}</span>
