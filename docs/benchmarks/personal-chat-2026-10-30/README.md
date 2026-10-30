@@ -28,3 +28,5 @@
 Локальные проверки: frontend 22 файла / 131 тест успешно; backend lint, format и mypy (230 файлов) успешно; 42 JSON Schema / 158 путей OpenAPI; drift 186/186; i18n 1413 ключей; owners с разрешённым cross-layer. Targeted coverage четырёх новых модулей API/agent/tool — 87%. Полный backend-прогон и результаты CI фиксируются в PR.
 
 Финальный `make lint test`: unit 581 passed / 17 skipped; integration 116 passed / 2 skipped; scenarios 22 passed / 2 skipped. Итого 719 passed / 21 skipped; предупреждения существующих зависимостей/маркера live. Повторный публичный smoke после подготовки Vosk: SIG-101204, ответ за 43,4 с, ошибок HTTP/JS нет; JSON и скриншот обновлены этим прогоном. Первый SIG-100558 / AR-001904 сохранён в БД как отдельная проверка GigaChat.
+
+Трасса повторного smoke: AR-001937, outcome deferred, client_id NULL и meta.tags ui_pers_demo. Normalize использовал mock fallback, classify/decide — GigaChat-3-Ultra со статусом ok. Таким образом, проверены и live-модель, и штатное отображение fallback; первый AR-001904 прошёл все три LLM-шага на GigaChat без fallback.
