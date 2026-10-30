@@ -44,3 +44,5 @@ data/baseline/*.dump
 # Сопутствующие файлы локальных baseline-снимков (T-040)
 data/baseline/*.dump.sha256
 data/baseline/*.meta.json
+
+frontend/dist-personal

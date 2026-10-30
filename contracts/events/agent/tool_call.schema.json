@@ -42,7 +42,8 @@
         "route_to_department",
         "notify_customer",
         "escalate_to_manager",
-        "request_clarification"
+        "request_clarification",
+        "apply_operator_feedback"
       ]
     },
     "args": {

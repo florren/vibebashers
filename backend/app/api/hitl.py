@@ -185,7 +185,7 @@ async def get_hitl_feedback(
             raise HTTPException(404, "запрос HITL не найден")
         rows = await fetch_all(
             conn,
-            "select * from hitl_feedback where human_decision_id=%s and (%s::bigint is null or id<%s) order by id desc limit %s",
+            "select f.*,p.status as processing_status,p.agent_run_id,ar.public_id as review_run_ref,p.review,p.applied_at,p.error as processing_error from hitl_feedback f left join hitl_feedback_processing p on p.feedback_id=f.id left join agent_runs ar on ar.id=p.agent_run_id where f.human_decision_id=%s and (%s::bigint is null or f.id<%s) order by f.id desc limit %s",
             (id, cursor, cursor, limit),
         )
     return page(rows, limit)

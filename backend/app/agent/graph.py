@@ -361,6 +361,11 @@ async def resume_after_followup(
     if reason == "escalation_check":
         return None
     state: AgentState = orjson.loads(dumps(checkpoint))
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(conn, int(state["signal"]["id"]), int(run_id))
+    if feedback:
+        state.setdefault("context", {})["operator_feedback"] = feedback
     sim_time = sim_time or dt.datetime.now(dt.UTC)
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
@@ -588,6 +593,11 @@ async def resume_after_human(
         return None
     agent_run_id, decision, modified, run_id, checkpoint, nsteps = row
     state: AgentState = orjson.loads(dumps(checkpoint))
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(conn, int(state["signal"]["id"]), int(run_id))
+    if feedback:
+        state.setdefault("context", {})["operator_feedback"] = feedback
     sim_time = sim_time or dt.datetime.now(dt.UTC)
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
@@ -603,6 +613,12 @@ async def resume_after_human(
     deps.text_bytes_used = int(budget_row[0]) if budget_row else 0
     deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
     state = nodes.apply_human_decision(state, str(decision), dict(modified or {}))
+    if decision == "accept":
+        from app.agent.operator_feedback import planned_priority
+
+        d = state.get("decision") or {}
+        if isinstance(d.get("priority"), int):
+            d["priority"] = planned_priority(state.get("context") or {}, d["priority"])
     await deps.record_step(
         "wait_human",
         "ok",

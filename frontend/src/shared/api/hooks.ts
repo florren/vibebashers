@@ -140,7 +140,7 @@ export const useHitlPages = (query: Query) => useInfiniteQuery({
   getNextPageParam: page => page.next_cursor ?? undefined,
 })
 export const useHitlFeedback = (id: number | undefined) => useInfiniteQuery({
-  queryKey: ['hitl', 'feedback', id], initialPageParam: null as string | null, enabled: id !== undefined,
+  queryKey: ['hitl', 'feedback', id], refetchInterval: 5000, initialPageParam: null as string | null, enabled: id !== undefined,
   queryFn: ({ pageParam }) => api<Schemas['HitlFeedbackList']>(`/api/hitl/${id}/feedback`, { query: { cursor: pageParam } }),
   getNextPageParam: page => page.next_cursor ?? undefined,
 })

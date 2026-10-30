@@ -703,6 +703,14 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     else:
         ctx["products"], ctx["operations"] = [], []
     hint_product = state["normalization"].get("entities", {}).get("product")
+    if sig.get("channel_subtype") == "ui_pers_demo":
+        form_product = (sig.get("meta") or {}).get("product_code")
+        ctx["form_context"] = {
+            "product_code": form_product,
+            "region_code": (sig.get("geo") or {}).get("region_code"),
+            "city_id": (sig.get("geo") or {}).get("city_id"),
+        }
+        hint_product = hint_product or form_product
     if hint_product:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
@@ -739,6 +747,17 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         "nearby_faults": [f["error_code"] for f in nearby][:3],
     }
     ctx["source"] = {"operation_id": sig.get("source_operation_id"), "fault_id": sig.get("source_fault_id")}
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(deps.ctx.conn, sig["id"], deps.ctx.run_id)
+    if feedback:
+        ctx["operator_feedback"] = feedback
+    if sig.get("channel_subtype") == "ui_pers_demo":
+        rows = await deps.ctx.fetchall(
+            "select s.text,(select jsonb_agg(n.body order by n.id) from notifications n where n.signal_id=s.id and n.recipient_type='client') from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=(select session_id from personal_chat_messages where signal_id=%s) and m.signal_id<%s order by m.id desc limit 20",
+            (sig["id"], sig["id"]),
+        )
+        ctx["conversation"] = [{"user": r[0], "agent": r[1] or []} for r in reversed(rows)]
     state["context"].update(ctx)
     state["current_node"] = "check_rules"
     await deps.record_step(
@@ -1584,6 +1603,9 @@ def _context_for_prompt(state: AgentState) -> dict[str, Any]:
         "client": {k: client.get(k) for k in ("segment", "psychotype", "city", "region_code", "state", "churn_risk")}
         if client
         else None,
+        **({"operator_feedback": ctx["operator_feedback"]} if ctx.get("operator_feedback") else {}),
+        **({"conversation": ctx["conversation"]} if ctx.get("conversation") else {}),
+        **({"form_context": ctx["form_context"]} if ctx.get("form_context") else {}),
         "identification": ctx.get("identification"),
         "products": [{k: p.get(k) for k in ("product", "status", "card_last4")} for p in ctx.get("products") or []],
         "operations": [
@@ -1680,6 +1702,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         state.get("client") or {},
         state["context"],
     )
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(deps.ctx.conn, sig["id"], deps.ctx.run_id)
+    if feedback:
+        ctx["operator_feedback"] = feedback
     text = sig.get("text") or ""
     stype = c["signal_type"]
     flags = list(c.get("flags") or [])
@@ -1742,6 +1769,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     ):
         incident_type = "tech_fault"
     prio = slam.priority(crit, int(c.get("churn_risk") or 0), segment, flags)
+    from app.agent.operator_feedback import planned_priority
+
+    prio = planned_priority(ctx, prio)
     sla_full = slam.sla_for(complexity, crit, deps.ctx.sim_time, deps.sla_matrix)
     # инцидент: создать / связать / не нужен
     related = ctx.get("related_incidents") or []

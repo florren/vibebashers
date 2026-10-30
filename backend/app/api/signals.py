@@ -15,7 +15,7 @@ from app.trace.store import allowed_run
 router = APIRouter(tags=["signals"])
 
 SIGNAL_SQL = (
-    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, s.classification, s.sentiment, s.geo, s.run_id, rs.public_id as run_public_id, "
+    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, coalesce(s.meta->'tags','[]'::jsonb) as tags, s.classification, s.sentiment, s.geo, s.run_id, rs.public_id as run_public_id, "
     "coalesce(c.region_code, s.geo->>'region_code') as region_code, "
     "case when c.id is null then null else jsonb_build_object('id', c.id, 'public_id', c.public_id, 'display_name', c.display_name, 'segment_code', c.segment_code, 'region_code', c.region_code, 'city_name', ci.name_ru, 'churn_risk', c.churn_risk, 'is_active', c.is_active) end as client, "
     "coalesce((select array_agg(isg.incident_id order by isg.incident_id) from incident_signals isg where isg.signal_id = s.id), '{}') as incident_ids, "
@@ -29,6 +29,7 @@ async def get_signals(
     request: Request,
     run_id: str = Query(default="current"),
     q: str | None = Query(None, max_length=200),
+    tag: str | None = Query(None, max_length=100),
     channel: list[str] | None = Query(default=None),
     signal_type: list[str] | None = Query(default=None),
     status: list[str] | None = Query(default=None),
@@ -55,6 +56,9 @@ async def get_signals(
             if cte:
                 predicate += " or s.id in (select id from case_signals)"
             where.append(predicate + ")")
+        if tag:
+            where.append("s.meta->'tags' ? %s")
+            args.append(tag)
         for expr, val in (
             ("s.channel_code = any(%s)", channel or None),
             ("s.classification->>'signal_type' = any(%s)", signal_type or None),

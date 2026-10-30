@@ -19,6 +19,7 @@ services:
     command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
 
   backend:
+    image: cx-pulse-backend:latest
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -34,6 +35,25 @@ services:
     volumes:
       - ./data:/data
       - ./.env:/data/env/.env   # мастер настройки (/setup) правит .env на месте
+
+  personal:
+    image: cx-pulse-backend:latest
+    command: ["uvicorn", "app.public_chat:app", "--host", "0.0.0.0", "--port", "9999", "--proxy-headers", "--forwarded-allow-ips=*"]
+    ports: ["127.0.0.1:9999:9999"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://cx:cx@postgres:5432/cx_pulse
+      APP_SECRET: ${APP_SECRET:-change-me}
+      PERSONAL_FRONTEND_DIST: /frontend/dist-personal
+      STT_PROVIDER: vosk
+    volumes:
+      - ./data/models/stt:/data/models/stt:ro
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9999/api/personal/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
 
   mailpit:
     image: axllent/mailpit:latest

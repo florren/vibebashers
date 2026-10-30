@@ -1907,6 +1907,8 @@ export interface paths {
                     run_id?: components["parameters"]["RunId"];
                     /** @description Текст или код сущности, включая связанные SIG/INC. Все статусы доступны без status-фильтра; run_id=all ищет во всех запусках. */
                     q?: string;
+                    /** @description Тег источника, например ui_pers_demo */
+                    tag?: string;
                     channel?: string[];
                     signal_type?: string[];
                     status?: string[];
@@ -7454,6 +7456,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/personal/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Анонимная сессия и справочники отдельного чата */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonalSession"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Только собственная история чата (HttpOnly session cookie) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonalHistory"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Сообщение анонимного посетителя с тегом ui_pers_demo */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PersonalMessageBody"];
+                };
+            };
+            responses: {
+                /** @description Принято штатным normalizer */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            accepted: boolean;
+                            public_id: string;
+                        };
+                    };
+                };
+                /** @description Пассивная защита; Retry-After позволяет дождаться отправки без CAPTCHA */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Забыть анонимную сессию в этом браузере */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cookie удалена; история остаётся в обработке */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Готовность публичного приложения */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            status?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7812,6 +7992,7 @@ export interface components {
             telegram_chat_id?: number;
         };
         Signal: {
+            tags?: string[];
             run_id?: number;
             run_public_id?: string;
             /** @description Коды связанных инцидентов в том же запуске */
@@ -8119,6 +8300,18 @@ export interface components {
             recorded_sim: string;
             /** Format: date-time */
             recorded_at: string;
+            review_run_ref?: string | null;
+            /** @enum {string|null} */
+            processing_status?: "pending" | "applied" | "failed" | null;
+            agent_run_id?: number | null;
+            review?: {
+                summary_ru?: string;
+                priority?: number;
+                next_step?: string;
+            } | null;
+            /** Format: date-time */
+            applied_at?: string | null;
+            processing_error?: string | null;
         };
         HitlFeedbackList: {
             items: components["schemas"]["HitlFeedback"][];
@@ -9338,6 +9531,54 @@ export interface components {
             id: number;
             run_id: number;
             replayed: boolean;
+        };
+        PersonalSession: {
+            form_token: string;
+            /** @constant */
+            tag: "ui_pers_demo";
+            minimum_form_ms: number;
+            products: {
+                code: string;
+                name_ru: string;
+                name_en: string;
+            }[];
+            regions: {
+                code: string;
+                name_ru: string;
+            }[];
+            cities: {
+                id: number;
+                name_ru: string;
+                region_code: string;
+            }[];
+        };
+        PersonalMessageBody: {
+            /** Format: uuid */
+            request_id: string;
+            form_token: string;
+            text: string;
+            product_code?: string | null;
+            region_code?: string | null;
+            city_id?: number | null;
+            /** @default  */
+            website: string;
+            /** @default false */
+            voice: boolean;
+        };
+        PersonalHistory: {
+            messages: {
+                public_id: string;
+                text: string;
+                status: string;
+                /** Format: date-time */
+                received_at: string;
+            }[];
+            answers: {
+                id: number;
+                text: string;
+                /** Format: date-time */
+                at: string;
+            }[];
         };
         /** @enum {string} */
         tone: "neutral" | "positive" | "irritated" | "angry" | "sarcastic" | "formal";
