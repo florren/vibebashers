@@ -31,10 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -f scripts/check_openapi_drift.py ] && [ -d backend/app ]; then
-            uv venv .venv2
-            . .venv2/bin/activate
-            uv pip install pyyaml
-            python scripts/check_openapi_drift.py
+            (cd backend; uv sync --frozen)
+            backend/.venv/bin/python scripts/check_openapi_drift.py
           else echo "backend ещё нет — пропуск"; fi
 
   db:
