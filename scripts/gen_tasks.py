@@ -1401,6 +1401,19 @@ TASKS.extend([
                  "Локальный стенд обновлён, миграция подтверждена, новый запуск и UI/API проверены."],
          check=["make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "Browser ru/en light/dark/mobile и локальный Docker smoke"]),
 
+    dict(id=267, title="Непрерывность сигналов и информации оператора HITL", epic="E6", agent="SA-Agent", size="M", wave=9,
+         goal="SIG-088489 и любой сигнал доступны во всех состояниях; поиск связанных кодов и поздняя информация в HITL. GitHub #95.",
+         tz=["9.3", "12.2"], contracts=["api/openapi.yaml: signals/hitl/feedback", "db/migrations/0009_hitl_feedback.sql", "events/common.schema.json: signal_status"], deps=[76,230],
+         steps=["Диагностировать SIG-088489/INC-000826/HD-001351; сохранить исходные решения и историю.",
+                "Поиск всех статусов/прошлых запусков, коды реестра, пагинация Signals/HITL и явная связь SIG→INC.",
+                "Различить wait_human и non-blocking эскалацию; сохранить выбранную карточку и общий черновик при продолжении графа.",
+                "Append-only журнал информации оператора с идемпотентностью, без replay старого графа/денег/перезаписи решения. Применить 0009 к локальному стенду и проверить исходный кейс read-only."],
+         accept=["Поиск SIG/INC и других кодов находит связанные записи; все статусы и пагинация доступны.",
+                 "После продолжения процесса ввод и черновик сохраняются; автоматическое действие не выдается за человеческое.",
+                 "Поздняя информация доступна в истории, не повторяет граф/деньги и не переписывает прежний ответ.",
+                 "Исходный HD-001351 не решён за пользователя; миграция и UI локального стенда проверены."],
+         check=["make sync-contracts && make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "Browser ru/en light/dark/mobile, исходный SIG read-only и синтетический feedback smoke"]),
+
 ])
 
 

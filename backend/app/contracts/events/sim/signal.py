@@ -568,6 +568,20 @@ class TraceEventKind(StrEnum):
     compliance_alert = "compliance_alert"
 
 
+class SignalStatus(StrEnum):
+    new = "new"
+    processing = "processing"
+    classified = "classified"
+    linked = "linked"
+    deferred = "deferred"
+    awaiting_human = "awaiting_human"
+    awaiting_client = "awaiting_client"
+    answered = "answered"
+    closed = "closed"
+    noise = "noise"
+    error = "error"
+
+
 class GeneratorHint(BaseModel):
     """
     Служебно для тестов: истинные метки генератора (агенту не передаётся)

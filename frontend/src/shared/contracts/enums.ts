@@ -513,3 +513,18 @@ export const TraceEventKind = {
   COMPLIANCE_ALERT: "compliance_alert",
 } as const;
 export type TraceEventKind = (typeof TraceEventKind)[keyof typeof TraceEventKind];
+
+export const SignalStatus = {
+  NEW: "new",
+  PROCESSING: "processing",
+  CLASSIFIED: "classified",
+  LINKED: "linked",
+  DEFERRED: "deferred",
+  AWAITING_HUMAN: "awaiting_human",
+  AWAITING_CLIENT: "awaiting_client",
+  ANSWERED: "answered",
+  CLOSED: "closed",
+  NOISE: "noise",
+  ERROR: "error",
+} as const;
+export type SignalStatus = (typeof SignalStatus)[keyof typeof SignalStatus];

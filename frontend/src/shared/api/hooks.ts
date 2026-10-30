@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Schemas } from './client'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   api,
   ApiError,
@@ -128,6 +129,21 @@ export function useSimControl() {
 
 export const useSignals = (query: Query) =>
   useQuery({ queryKey: ['signals', 'list', query], queryFn: () => api<List<Signal>>('/api/signals', { query }), placeholderData: (p) => p })
+export const useSignalPages = (query: Query) => useInfiniteQuery({
+  queryKey: ['signals', 'pages', query], refetchInterval: 5000, initialPageParam: null as string | null,
+  queryFn: ({ pageParam }) => api<List<Signal>>('/api/signals', { query: { ...query, cursor: pageParam } }),
+  getNextPageParam: page => page.next_cursor ?? undefined,
+})
+export const useHitlPages = (query: Query) => useInfiniteQuery({
+  queryKey: ['hitl', 'pages', query], refetchInterval: 5000, initialPageParam: null as string | null,
+  queryFn: ({ pageParam }) => api<Schemas['HitlList']>('/api/hitl/queue', { query: { ...query, cursor: pageParam } }),
+  getNextPageParam: page => page.next_cursor ?? undefined,
+})
+export const useHitlFeedback = (id: number | undefined) => useInfiniteQuery({
+  queryKey: ['hitl', 'feedback', id], initialPageParam: null as string | null, enabled: id !== undefined,
+  queryFn: ({ pageParam }) => api<Schemas['HitlFeedbackList']>(`/api/hitl/${id}/feedback`, { query: { cursor: pageParam } }),
+  getNextPageParam: page => page.next_cursor ?? undefined,
+})
 export const useSignal = (id: number | null) =>
   useQuery({ queryKey: ['signals', 'one', id], queryFn: () => api<SignalDetail>(`/api/signals/${id}`), enabled: id !== null })
 export const useDeferred = (query: Query) =>
@@ -157,9 +173,9 @@ export const useIncidentComms = (id: number | null) =>
   })
 
 export const useHitlQueue = (query: Query) =>
-  useQuery({ queryKey: ['hitl', 'queue', query], queryFn: () => api<List<HitlItem>>('/api/hitl/queue', { query }), placeholderData: (p) => p })
+  useQuery({ queryKey: ['hitl', 'queue', query], queryFn: () => api<Schemas['HitlList']>('/api/hitl/queue', { query }), refetchInterval: 5000, placeholderData: (p) => p })
 export const useHitlItem = (id: number | null) =>
-  useQuery({ queryKey: ['hitl', 'one', id], queryFn: () => api<HitlItem>(`/api/hitl/${id}`), enabled: id !== null })
+  useQuery({ queryKey: ['hitl', 'one', id], queryFn: () => api<HitlItem>(`/api/hitl/${id}`), enabled: id !== null, refetchInterval: 5000 })
 export function useHitlDecide() {
   const qc = useQueryClient()
   return useMutation({

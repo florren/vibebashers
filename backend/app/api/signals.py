@@ -9,15 +9,18 @@ from pydantic import BaseModel, Field
 
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
+from app.search.cases import case_search
+from app.trace.store import allowed_run
 
 router = APIRouter(tags=["signals"])
 
 SIGNAL_SQL = (
-    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, s.classification, s.sentiment, s.geo, s.run_id, "
+    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, s.classification, s.sentiment, s.geo, s.run_id, rs.public_id as run_public_id, "
     "coalesce(c.region_code, s.geo->>'region_code') as region_code, "
     "case when c.id is null then null else jsonb_build_object('id', c.id, 'public_id', c.public_id, 'display_name', c.display_name, 'segment_code', c.segment_code, 'region_code', c.region_code, 'city_name', ci.name_ru, 'churn_risk', c.churn_risk, 'is_active', c.is_active) end as client, "
-    "coalesce((select array_agg(isg.incident_id order by isg.incident_id) from incident_signals isg where isg.signal_id = s.id), '{}') as incident_ids "
-    "from signals s left join clients c on c.id = s.client_id left join cities ci on ci.id = c.city_id"
+    "coalesce((select array_agg(isg.incident_id order by isg.incident_id) from incident_signals isg where isg.signal_id = s.id), '{}') as incident_ids, "
+    "coalesce((select array_agg(i.public_id order by i.id) from incident_signals x join incidents i on i.id=x.incident_id and i.run_id=s.run_id where x.signal_id=s.id), '{}') as incident_refs "
+    "from signals s left join sim_runs rs on rs.id=s.run_id left join clients c on c.id = s.client_id left join cities ci on ci.id = c.city_id"
 )
 
 
@@ -25,7 +28,7 @@ SIGNAL_SQL = (
 async def get_signals(
     request: Request,
     run_id: str = Query(default="current"),
-    q: str | None = None,
+    q: str | None = Query(None, max_length=200),
     channel: list[str] | None = Query(default=None),
     signal_type: list[str] | None = Query(default=None),
     status: list[str] | None = Query(default=None),
@@ -36,18 +39,22 @@ async def get_signals(
     criticality: str | None = None,
     since_sim: str | None = None,
     limit: int = Query(default=50, ge=1, le=500),
-    cursor: str | None = None,
+    cursor: int | None = Query(None, gt=0),
 ) -> Any:
     async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
+        rid = await allowed_run(conn, run_id)
         where: list[str] = ["true"]
         args: list[Any] = []
         if rid is not None:
             where.append("s.run_id = %s")
             args.append(rid)
-        if q:
-            where.append("s.text ilike %s")
-            args.append(f"%{q}%")
+        cte, search_args, pattern = await case_search(conn, q.strip()) if q and q.strip() else ("", [], "")
+        if q and q.strip():
+            predicate = "(s.text ilike %s or s.public_id ilike %s"
+            args.extend([pattern, pattern])
+            if cte:
+                predicate += " or s.id in (select id from case_signals)"
+            where.append(predicate + ")")
         for expr, val in (
             ("s.channel_code = any(%s)", channel or None),
             ("s.classification->>'signal_type' = any(%s)", signal_type or None),
@@ -66,7 +73,9 @@ async def get_signals(
             where.append("s.id < %s")
             args.append(int(cursor))
         rows = await fetch_all(
-            conn, f"{SIGNAL_SQL} where {' and '.join(where)} order by s.id desc limit %s", [*args, limit]
+            conn,
+            f"{cte}{SIGNAL_SQL} where {' and '.join(where)} order by s.id desc limit %s",
+            [*search_args, *args, limit],
         )  # noqa: S608
     return page(rows, limit)
 

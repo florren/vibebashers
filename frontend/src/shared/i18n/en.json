@@ -1666,5 +1666,31 @@
       "include": "Selected: {{count}}",
       "exclude": "Excluded: {{count}}"
     }
+  },
+  "continuity": {
+    "signalSearch": "Find signal: identifier or text",
+    "hitlSearch": "Find related entities",
+    "scope": "Search scope",
+    "allRuns": "All runs",
+    "currentRun": "Current run",
+    "more": "Load more",
+    "includeDecided": "Include human-handled requests",
+    "searchHint": "Identifier or text search also includes handled requests and related entities.",
+    "lineage": "Case origin",
+    "waitingGraph": "Graph is waiting for a human decision",
+    "progressed": "Process continues; operator input remains available",
+    "automatic": "Automatic continuation after timeout",
+    "contextRequest": "This escalation did not pause the graph. Add information to the journal while the process continues.",
+    "acknowledge": "Request handled",
+    "feedback": "Operator information",
+    "feedbackHint": "Available in every request state. Appended to the history and linked to SIG/INC. Completed actions, decisions and financial operations are never replayed or overwritten.",
+    "information": "Additional information",
+    "sendInformation": "Submit information",
+    "saved": "Information saved to the request history.",
+    "openHitl": "Decisions and operator information",
+    "preparing": "The graph is preparing this request. Information can be saved now; the decision becomes available when ready.",
+    "related": "Related entities",
+    "relatedLimit": "Showing the first 100 links. Enter an object identifier to narrow the result.",
+    "noRequest": "No HITL request; related objects are available in the list."
   }
 }

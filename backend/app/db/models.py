@@ -2157,6 +2157,7 @@ class HumanDecisions(Base):
     task: Mapped[Optional['Tasks']] = relationship('Tasks', back_populates='human_decisions')
     compliance_alerts: Mapped[list['ComplianceAlerts']] = relationship('ComplianceAlerts', back_populates='human_decision')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='human_decision')
+    hitl_feedback: Mapped[list['HitlFeedback']] = relationship('HitlFeedback', back_populates='human_decision')
 
 
 class ComplianceAlerts(Base):
@@ -2233,6 +2234,28 @@ class Escalations(Base):
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='escalations')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='escalations')
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='escalations')
+
+
+class HitlFeedback(Base):
+    __tablename__ = 'hitl_feedback'
+    __table_args__ = (
+        CheckConstraint('length(btrim(comment)) >= 1 AND length(btrim(comment)) <= 4000', name='hitl_feedback_comment_check'),
+        CheckConstraint('length(btrim(recorded_by)) >= 1 AND length(btrim(recorded_by)) <= 120', name='hitl_feedback_recorded_by_check'),
+        CheckConstraint('length(idempotency_key) >= 1 AND length(idempotency_key) <= 120', name='hitl_feedback_idempotency_key_check'),
+        ForeignKeyConstraint(['human_decision_id'], ['human_decisions.id'], ondelete='CASCADE', name='hitl_feedback_human_decision_id_fkey'),
+        PrimaryKeyConstraint('id', name='hitl_feedback_pkey'),
+        UniqueConstraint('human_decision_id', 'idempotency_key', name='hitl_feedback_human_decision_id_idempotency_key_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    human_decision_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(Text, nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_by: Mapped[str] = mapped_column(Text, nullable=False)
+    recorded_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+    human_decision: Mapped['HumanDecisions'] = relationship('HumanDecisions', back_populates='hitl_feedback')
 
 
 class LedgerEntries(Base):
