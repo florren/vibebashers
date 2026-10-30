@@ -49,4 +49,4 @@ T-271: необязательное имя/псевдоним, сохранен�
 
 [Проверки и скриншоты](../benchmarks/seed-visitor-2026-10-30/README.md): regression seed error/preserve, API/session/idempotency, ru/en light/dark/mobile, ответы mock-агента. Реальный GigaChat и установка на стенде проверяются после merge, без reset.
 
-Локально: make lint/test (588 unit, 121 integration, 22 scenarios; 21 skip), дополнительно 31 compliance; frontend 132 passed. Финальный targeted 30 passed, coverage 88%; contracts/drift/i18n/owners успешны. Скриншоты обеих тем/языков приложены.
+Локально: make lint/test (588 unit, 121 integration, 22 scenarios; 21 skip), дополнительно 31 compliance; frontend 132 passed. Финальный targeted 31 passed, coverage 88%; contracts/drift/i18n/owners успешны. Скриншоты обеих тем/языков приложены.

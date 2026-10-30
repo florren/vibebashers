@@ -134,11 +134,11 @@ async def post_personal_message(request: Request, body: PersonalMessageBody) -> 
         raise HTTPException(403, "Не удалось проверить форму, обновите страницу")
     async with db() as conn, conn.transaction():
         s = await session(conn, request, True)
-        request_hash = token_hash(
-            json.dumps(
-                body.model_dump(exclude={"request_id", "form_token", "website"}), sort_keys=True, ensure_ascii=False
-            )
-        )
+        fingerprint = body.model_dump(exclude={"request_id", "form_token", "website"})
+        # Старые payload и сохранённые request_hash не содержат нового поля.
+        if body.display_name is None:
+            fingerprint.pop("display_name")
+        request_hash = token_hash(json.dumps(fingerprint, sort_keys=True, ensure_ascii=False))
         existing = await fetch_one(
             conn,
             "select m.signal_id,m.request_hash,s.public_id,s.text from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=%s and m.request_id=%s",

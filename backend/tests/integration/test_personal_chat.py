@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import uuid
 from typing import Any
 
@@ -18,6 +20,31 @@ from tests.helpers import MOCK_PROFILE, dsn, mock_chain
 from tests.integration.test_hitl_continuity import patch_db
 
 pytestmark = pytest.mark.integration
+
+
+def test_legacy_message_hash_survives_optional_name(seeded: str, conn: Any, monkeypatch: Any) -> None:
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    try:
+        client = TestClient(create_public_app())
+        boot = client.get("/api/personal/session").json()
+        conn.execute("update personal_chat_sessions set created_at=now()-interval '3 seconds'")
+        payload = {
+            "text": "Расскажите про условия карты",
+            "request_id": str(uuid.uuid4()),
+            "form_token": boot["form_token"],
+        }
+        reply = client.post("/api/personal/messages", json=payload)
+        assert reply.status_code == 202
+        legacy = {"text": payload["text"], "product_code": None, "region_code": None, "city_id": None, "voice": False}
+        expected = hashlib.sha256(json.dumps(legacy, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        assert conn.execute("select request_hash from personal_chat_messages").fetchone()[0] == expected
+        assert client.post("/api/personal/messages", json=payload).json() == reply.json()
+        assert (
+            client.post("/api/personal/messages", json={**payload, "display_name": "Новая подпись"}).status_code == 409
+        )
+    finally:
+        get_settings.cache_clear()
 
 
 def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkeypatch: Any) -> None:
