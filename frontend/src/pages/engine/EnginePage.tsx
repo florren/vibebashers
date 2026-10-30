@@ -1,3 +1,4 @@
+import { EntityFilter } from '@/shared/components/EntityFilter'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { clsx } from 'clsx'
 import { Copy } from 'lucide-react'
@@ -18,6 +19,7 @@ type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench'
 
 /** Экран 3 «Под капотом» (ТЗ 12.2): список прогонов, шаги с промптами, граф, цепочка решений, живые события WS. */
 export function EnginePage() {
+  const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const { runId: runStr } = useParams()
   const nav = useNavigate()
@@ -26,7 +28,7 @@ export function EnginePage() {
   const simQ = useSimState()
   const simRunId = (live ?? simQ.data)?.current_run_id ?? undefined
   const [onlyCurrent, setOnlyCurrent] = useState(true)
-  const runs = useAgentRuns({ run_id: onlyCurrent ? simRunId : undefined, limit: 100 })
+  const runs = useAgentRuns({ q: entityQuery || undefined, run_id: onlyCurrent ? simRunId : 'all', limit: 100 })
   const [tab, setTab] = useState<Tab>('steps')
   const items = runs.data?.items ?? []
   const selectedRun = useAgentRun(runId)
@@ -40,6 +42,7 @@ export function EnginePage() {
             <input type="checkbox" checked={onlyCurrent} onChange={(e) => setOnlyCurrent(e.target.checked)} /> {t('common.runId', { id: simRunId ?? '—' })}
           </label>
         </div>
+        <div className="p-2"><EntityFilter onChange={setEntityQuery} /></div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {runs.isPending && <SkeletonRows />}
           {runs.isError && <ErrorBox error={runs.error} />}

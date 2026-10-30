@@ -20,6 +20,7 @@ from app.compliance.txt_parser import TranscriptParseError, parse_txt
 from app.ingest.normalizer import IngestError, create_signal
 from app.ingest.sources import is_external_url, poll_source
 from app.logging import get_logger
+from app.search.cases import entity_filter
 
 log = get_logger(__name__)
 
@@ -72,6 +73,7 @@ IMPORT_DIR = Path(__file__).resolve().parents[3] / "data" / "import" / "transcri
 @router.get("/api/ingest/transcripts", summary="[ДТЗ FR-1.1] Список импортированных транскриптов")
 async def get_ingest_transcripts(
     request: Request,
+    q: str | None = Query(None, max_length=200),
     run_id: str | None = None,
     kind: str | None = None,
     status: str | None = None,
@@ -83,6 +85,9 @@ async def get_ingest_transcripts(
     args: list[Any] = []
     async with db() as conn:
         rid = await resolve_run_id(conn, run_id)
+        predicate, values = await entity_filter(conn, q, "transcript")
+        where.append(predicate)
+        args.extend(values)
         if rid is not None:
             where.append("t.run_id = %s")
             args.append(rid)

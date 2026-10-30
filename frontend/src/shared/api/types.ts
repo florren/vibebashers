@@ -2967,6 +2967,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/metrics/economics/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Калькулятор потерь без записи в БД */
+        get: {
+            parameters: {
+                query?: {
+                    affected?: number;
+                    product?: string;
+                    system?: string;
+                    segment?: string;
+                    detractor_share?: number;
+                    no_return_share?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IncidentEconomics"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/metrics/economics": {
         parameters: {
             query?: never;
@@ -3182,6 +3225,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     kind?: "agent" | "client_twin" | "team_emulator" | "bench" | "compare";
@@ -5000,6 +5045,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     branch_code?: string;
@@ -5707,6 +5754,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     kind?: components["schemas"]["TranscriptKind"];
@@ -7216,6 +7265,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
                     product_mode?: "all" | "include" | "exclude";
                     /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */
@@ -7341,6 +7392,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
                     product_mode?: "all" | "include" | "exclude";
                     /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */

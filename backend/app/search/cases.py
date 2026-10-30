@@ -135,3 +135,44 @@ async def related_entities(conn: Conn, cte: str, args: list[Any], rid: int | Non
         [*args, rid, rid, rid, rid],
     )
     return rows[:100], len(rows) > 100
+
+
+async def entity_filter(conn: Conn, query: str | None, target: str) -> tuple[str, list[Any]]:
+    """Фильтр до пагинации; SQL-выражения задаются вызывающим кодом, не пользователем."""
+    if not query or not query.strip():
+        return "true", []
+    cte, args, pattern = await case_search(conn, query)
+    predicates = {
+        "incident": "i.id in (select id from case_incidents)",
+        "agent": "ar.signal_id in (select id from case_signals) or ar.incident_id in (select id from case_incidents)",
+        "transcript": "t.signal_id in (select id from case_signals) or t.id in (select transcript_id from signals where id in (select id from case_signals)) or t.audio_session_id in (select id from audio_sessions where incident_id in (select id from case_incidents))",
+        "alert": "a.incident_id in (select id from case_incidents) or a.transcript_id in (select transcript_id from signals where id in (select id from case_signals)) or a.session_id in (select t.audio_session_id from transcripts t where t.signal_id in (select id from case_signals) or t.id in (select transcript_id from signals where id in (select id from case_signals)))",
+    }
+    direct = {
+        "incident": "i.public_id",
+        "agent": "'AR-'||lpad(ar.id::text,6,'0')",
+        "transcript": "t.public_id",
+        "alert": "a.id::text",
+    }[target]
+    direct_relations = {
+        "incident": [],
+        "agent": [],
+        "transcript": [
+            "t.audio_session_id in (select id from audio_sessions where public_id ilike %s)",
+            "t.employee_id in (select id from employees where public_id ilike %s)",
+            "t.branch_id in (select id from branches where ('VSP-'||regexp_replace(code,'^VSP-','')) ilike %s)",
+            "t.client_id in (select id from clients where public_id ilike %s)",
+        ],
+        "alert": [
+            "s.public_id ilike %s",
+            "e.public_id ilike %s",
+            "('VSP-'||regexp_replace(b.code,'^VSP-','')) ilike %s",
+            "a.transcript_id in (select id from transcripts where public_id ilike %s)",
+        ],
+    }[target]
+    predicate = " or ".join([f"{direct} ilike %s", *direct_relations])
+    values: list[Any] = [pattern] * (1 + len(direct_relations))
+    if cte:
+        predicate += f" or exists ({cte} select 1 where {predicates[target]})"
+        values.extend(args)
+    return "(" + predicate + ")", values

@@ -82,6 +82,7 @@ def scope(
     end: dt.datetime | None,
     product_codes: tuple[str, ...] = (),
     product_mode: ProductMode = "all",
+    case_filter: tuple[str, list[Any]] = ("true", []),
 ) -> tuple[str, list[Any]]:
     # Отсутствие текущего запуска не означает «все запуски».
     sql = BASE + " and i.run_id = %s"
@@ -90,7 +91,8 @@ def scope(
         sql += " and coalesce(i.resolved_sim, i.closed_sim) >= %s and coalesce(i.resolved_sim, i.closed_sim) < %s"
         args.extend([start, end])
     clause, values = product_filter(product_codes, product_mode, "i.product_code")
-    return sql + clause, args + values
+    predicate, search_args = case_filter
+    return sql + clause + " and " + predicate, args + values + search_args
 
 
 async def total(
@@ -106,8 +108,9 @@ async def total(
     limit: int,
     product_codes: tuple[str, ...] = (),
     product_mode: ProductMode = "all",
+    case_filter: tuple[str, list[Any]] = ("true", []),
 ) -> dict[str, Any]:
-    sql, args = scope(run_id, start, end, product_codes, product_mode)
+    sql, args = scope(run_id, start, end, product_codes, product_mode, case_filter)
     # Округление каждого кейса совпадает с детализацией; чистый эффект допускает отрицательные значения.
     cte = (
         "with cases as ("

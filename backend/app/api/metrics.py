@@ -457,3 +457,43 @@ async def get_metrics_cx_index(run_id: str | None = Query(None)) -> Any:
     from app.errors import NotImplementedYet
 
     raise NotImplementedYet("T-256")
+
+
+@router.get("/api/metrics/economics/preview", summary="Калькулятор потерь без записи в БД")
+async def get_economics_preview(
+    affected: int = Query(12, ge=0, le=100000000),
+    product: str | None = None,
+    system: str | None = None,
+    segment: str | None = None,
+    detractor_share: float = Query(0.1, ge=0, le=1, allow_inf_nan=False),
+    no_return_share: float = Query(0.5, ge=0, le=1, allow_inf_nan=False),
+) -> Any:
+    async with db() as conn:
+        cfg = await dcltv.load_settings(conn)
+    rate = dcltv.pick_rate(
+        cfg["rates"],
+        product=product,
+        channel=None,
+        system=system,
+        segment=segment,
+        fallback_code=cfg["settings"].get("fallback_rate_code"),
+    )
+    premium = (
+        next((float(r["rate_rub"]) for r in cfg["rates"] if r["code"] == "premium_service"), 91.53)
+        if segment in dcltv.PREMIUM_SEGMENTS
+        else 0.0
+    )
+    # compute нормирует реальный инцидент минимум к одному клиенту; калькулятор допускает ноль.
+    result = dcltv.compute(
+        affected=affected,
+        detractor_share=detractor_share if affected else 0,
+        no_return_share=no_return_share,
+        rate=rate,
+        premium_addon=premium,
+        retention_factor=0,
+        outcome_class="open",
+    )
+    if affected == 0:
+        result["affected_count"] = 0
+        result["formula_ru"] = "0 × " + result["formula_ru"].split(" × ", 1)[1]
+    return result

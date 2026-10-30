@@ -1,3 +1,4 @@
+import { EntityFilter } from '@/shared/components/EntityFilter'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -69,6 +70,7 @@ function GrowthChart({ series }: { series: Total['series'] }) {
 }
 
 export function FinancePage() {
+  const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const [products, setProducts] = useState<ProductSelection>({ mode: 'all', codes: [] })
   const [period, setPeriod] = useState<Period>('live')
@@ -86,11 +88,12 @@ export function FinancePage() {
   const currentRun = live !== null ? live.current_run_id : state.data?.current_run_id
   const selectedRun = run === 'current' ? currentRun : Number(run)
   useEffect(() => { setOffset(0); setIncident(null) }, [selectedRun])
+  useEffect(() => { setOffset(0); setIncident(null) }, [entityQuery])
   const validDates = period !== 'custom' || (!!start && !!end && end > start)
   const query = useQuery({
-    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset, products],
+    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset, products, entityQuery],
     queryFn: () => api<Total>('/api/v1/finance/impact/total', { query: {
-      run_id: run, period, product_mode: products.mode, product_codes: products.codes, probability_percent: probability, fine_per_case_rub: fine, offset,
+      q: entityQuery || undefined, run_id: run, period, product_mode: products.mode, product_codes: products.codes, probability_percent: probability, fine_per_case_rub: fine, offset,
       ...(period === 'custom' ? { start_date: `${start}:00Z`, end_date: `${end}:00Z` } : {}),
     } }),
     enabled: validDates,
@@ -121,8 +124,9 @@ export function FinancePage() {
         </>}
         <span className="ml-auto text-xs text-muted">{t(wsStatus === 'open' ? 'finance.connected' : 'finance.polling')}</span>
       </div>
+      <EntityFilter onChange={setEntityQuery} />
       <ProductFilter value={products} onChange={value => { setProducts(value); change() }} />
-      <p className="text-xs text-muted">{t('finance.timeHint')}</p>
+      <p className="text-xs text-muted">{t('finance.timeHint')} · <Link className="text-info underline" to="/economics">{t('calculator.title')}</Link></p>
       {!validDates && <p role="status" className="text-warn">{t('finance.invalidDates')}</p>}
       {query.isError && <ErrorBox error={query.error} />}
       {query.isLoading && <Skeleton className="h-36" />}
@@ -152,7 +156,7 @@ export function FinancePage() {
             <p className="mt-2 text-xs text-muted">{t('finance.fineHint', { count: d.fine_cases })}</p>
           </div>
         </section>
-        <EvidencePanel runId={d.run_id} period={period} start={start} end={end} products={products} />
+        <EvidencePanel entityQuery={entityQuery} runId={d.run_id} period={period} start={start} end={end} products={products} />
         <section className="card p-4"><h2 className="font-semibold">{t('finance.chart')}</h2>
           {d.series.length ? <GrowthChart series={d.series} /> : <p className="py-10 text-center text-muted">{t('finance.empty')}</p>}
         </section>
