@@ -1715,6 +1715,9 @@
     "placeholder": "Describe the situation or dictate a message…",
     "waiting": "Sending in a few seconds…",
     "sending": "Sending…",
-    "cancelled": "Sending cancelled"
+    "cancelled": "Sending cancelled",
+    "displayName": "What should we call you?",
+    "displayNamePlaceholder": "Name, nickname or any label",
+    "displayNameHint": "Optional. A chat name, without identity verification."
   }
 }

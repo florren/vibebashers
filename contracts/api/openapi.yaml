@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.6
+  version: 1.5.7
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -4691,6 +4691,7 @@ components:
       type: object
       required: [form_token, products, regions, cities, tag, minimum_form_ms]
       properties:
+        display_name: { type: string, maxLength: 120, description: Неподтверждённое обращение посетителя из последнего сообщения собственной сессии }
         form_token: { type: string }
         tag: { type: string, const: ui_pers_demo }
         minimum_form_ms: { type: integer }
@@ -4705,6 +4706,7 @@ components:
         request_id: { type: string, format: uuid }
         form_token: { type: string, minLength: 64, maxLength: 64 }
         text: { type: string, minLength: 1, maxLength: 4000 }
+        display_name: { type: [string, "null"], maxLength: 120, pattern: '^[^\x00-\x1f\x7f-\x9f]*$', description: Необязательное имя или псевдоним; null сохраняет предыдущее обращение, пустая строка убирает его }
         product_code: { type: [string, "null"], maxLength: 100 }
         region_code: { type: [string, "null"], maxLength: 10 }
         city_id: { type: [integer, "null"] }
@@ -4714,5 +4716,5 @@ components:
       type: object
       required: [messages, answers]
       properties:
-        messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, status: { type: string }, received_at: { type: string, format: date-time } } } }
+        messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, display_name: { type: string, maxLength: 120 }, status: { type: string }, received_at: { type: string, format: date-time } } } }
         answers: { type: array, items: { type: object, required: [id, text, at], properties: { id: { type: integer }, text: { type: string }, at: { type: string, format: date-time } } } }

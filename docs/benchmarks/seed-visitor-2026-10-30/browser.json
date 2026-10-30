@@ -1,0 +1,49 @@
+{
+  "base": "http://localhost:19999",
+  "results": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "width": 1440,
+      "signal": "SIG-000826",
+      "nameRestored": true,
+      "htmlEscaped": true,
+      "agentAnswers": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "width": 1440,
+      "signal": "SIG-000827",
+      "nameRestored": true,
+      "htmlEscaped": true,
+      "agentAnswers": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "width": 390,
+      "signal": "SIG-000838",
+      "nameRestored": true,
+      "htmlEscaped": true,
+      "agentAnswers": 1,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "width": 390,
+      "signal": "SIG-000839",
+      "nameRestored": true,
+      "htmlEscaped": true,
+      "agentAnswers": 1,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}

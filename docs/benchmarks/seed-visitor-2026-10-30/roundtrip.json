@@ -1,0 +1,6 @@
+{
+  "postgres_major": 16,
+  "client_major": 16,
+  "baseline_restore_clients": 200,
+  "restore_job_created": true
+}

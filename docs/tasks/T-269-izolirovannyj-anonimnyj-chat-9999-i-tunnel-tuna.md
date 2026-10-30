@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md), [T-207](T-207-edinaya-shema-soobscheniya-i-normalizator-ingest.md)
-- Блокирует: —
+- Блокирует: [T-270](T-270-bezopasnyj-povtornyj-seed-i-pg-dump-v-docker.md), [T-271](T-271-neobyazatelnoe-obraschenie-posetitelya-v-chate.md)
 
 ## Что сделать
 1. Отдельная сборка UI и публичный FastAPI на loopback:9999: без операторской оболочки/API, только своя сессия и ответы штатного агента.

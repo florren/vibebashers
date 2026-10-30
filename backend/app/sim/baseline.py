@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import uuid
@@ -46,6 +47,20 @@ def _pg_tool(name: str) -> str:
     if not path:
         raise BaselineToolingError(f"{name} не найден в PATH")
     return path
+
+
+def check_tools(server_version: int) -> dict[str, int]:
+    """Для roundtrip используем pg_dump/pg_restore той же major-версии, что сервер."""
+    versions = {"server": server_version // 10000}
+    for name in ("pg_dump", "pg_restore"):
+        proc = subprocess.run([_pg_tool(name), "--version"], capture_output=True, text=True, check=False)
+        match = re.search(r"PostgreSQL\) (\d+)\.", proc.stdout)
+        if proc.returncode or not match:
+            raise BaselineToolingError(f"Не удалось определить версию {name}")
+        versions[name] = int(match[1])
+        if versions[name] != versions["server"]:
+            raise BaselineToolingError(f"Нужен {name} major {versions['server']}, установлен {versions[name]}")
+    return versions
 
 
 def baseline_dir() -> Path:

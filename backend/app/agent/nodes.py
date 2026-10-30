@@ -707,6 +707,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         form_product = (sig.get("meta") or {}).get("product_code")
         ctx["form_context"] = {
             "product_code": form_product,
+            "visitor_name": (sig.get("meta") or {}).get("visitor_name") or None,
             "region_code": (sig.get("geo") or {}).get("region_code"),
             "city_id": (sig.get("geo") or {}).get("city_id"),
         }

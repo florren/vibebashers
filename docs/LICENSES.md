@@ -16,3 +16,7 @@
 ### Публичные сертификаты GigaChat
 
 `backend/app/llm/certs/` содержит общедоступные X.509 сертификаты НУЦ Минцифры с gu-st.ru и их объединение `gigachat-ca.pem`. Это публичные сертификаты, не закрытые ключи и не новые программные зависимости. Источники, SHA-256 fingerprints и даты действия — в README каталога. Системное хранилище доверия и certifi не модифицируются; цепочка добавляется только в SSLContext клиента GigaChat.
+
+### Инструменты baseline (T-270)
+
+postgresql-client-16 (pg_dump, pg_restore, libpq) — PostgreSQL License, [официальная лицензия](https://www.postgresql.org/about/licence/). Устанавливается в Docker через подписанный [официальный PGDG](https://www.postgresql.org/download/linux/debian/), Debian bookworm; версия сервера остаётся 16. Python/npm-зависимости не добавлялись.

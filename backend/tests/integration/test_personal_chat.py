@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import uuid
 from typing import Any
 
@@ -18,6 +20,31 @@ from tests.helpers import MOCK_PROFILE, dsn, mock_chain
 from tests.integration.test_hitl_continuity import patch_db
 
 pytestmark = pytest.mark.integration
+
+
+def test_legacy_message_hash_survives_optional_name(seeded: str, conn: Any, monkeypatch: Any) -> None:
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    try:
+        client = TestClient(create_public_app())
+        boot = client.get("/api/personal/session").json()
+        conn.execute("update personal_chat_sessions set created_at=now()-interval '3 seconds'")
+        payload = {
+            "text": "Расскажите про условия карты",
+            "request_id": str(uuid.uuid4()),
+            "form_token": boot["form_token"],
+        }
+        reply = client.post("/api/personal/messages", json=payload)
+        assert reply.status_code == 202
+        legacy = {"text": payload["text"], "product_code": None, "region_code": None, "city_id": None, "voice": False}
+        expected = hashlib.sha256(json.dumps(legacy, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        assert conn.execute("select request_hash from personal_chat_messages").fetchone()[0] == expected
+        assert client.post("/api/personal/messages", json=payload).json() == reply.json()
+        assert (
+            client.post("/api/personal/messages", json={**payload, "display_name": "Новая подпись"}).status_code == 409
+        )
+    finally:
+        get_settings.cache_clear()
 
 
 def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkeypatch: Any) -> None:
@@ -46,7 +73,10 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
             "request_id": str(uuid.uuid4()),
             "form_token": data["form_token"],
             "product_code": "credit_card",
+            "display_name": "Любитель походов",
         }
+        for name in ("a" * 121, "Плохое\nимя", "Имя\x00"):
+            assert client.post("/api/personal/messages", json={**payload, "display_name": name}).status_code == 422
         assert client.post("/api/personal/messages", json=payload).status_code == 429
         assert client.post("/api/personal/messages", json=payload).headers["retry-after"]
         assert (
@@ -64,6 +94,7 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
         assert response.status_code == 202, response.text
         assert client.post("/api/personal/messages", json=payload).json() == response.json()
         assert client.post("/api/personal/messages", json={**payload, "text": "Другой текст"}).status_code == 409
+        assert client.post("/api/personal/messages", json={**payload, "display_name": "Другое имя"}).status_code == 409
         row = conn.execute(
             "select id,client_id,origin,meta,channel_subtype from signals where public_id=%s",
             (response.json()["public_id"],),
@@ -73,6 +104,7 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
             and row[1] is None
             and row[2] == "landing"
             and row[3]["tags"] == ["ui_pers_demo"]
+            and row[3]["visitor_name"] == payload["display_name"]
             and row[4] == "ui_pers_demo"
         )
         assert conn.execute("select count(*) from personal_chat_messages").fetchone()[0] == 1
@@ -81,14 +113,18 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
             async with await psycopg.AsyncConnection.connect(dsn(seeded)) as ac:
                 state = await process_signal(ac, signal_id=row[0], chain=mock_chain(), profile=MOCK_PROFILE)
                 assert state
+                assert state.get("client") is None
+                assert state["context"]["form_context"]["visitor_name"] == payload["display_name"]
 
         asyncio.run(run())
         history = client.get("/api/personal/messages").json()
         assert history["messages"][0]["public_id"] == response.json()["public_id"]
+        assert history["messages"][0]["display_name"] == payload["display_name"]
+        assert client.get("/api/personal/session").json()["display_name"] == payload["display_name"]
         assert history["answers"] and all(set(a) == {"id", "text", "at"} for a in history["answers"])
         assert client.get("/api/personal/messages").headers["referrer-policy"] == "no-referrer"
         other = TestClient(create_public_app())
-        other.get("/api/personal/session")
+        assert other.get("/api/personal/session").json()["display_name"] == ""
         assert other.get("/api/personal/messages").json() == {"messages": [], "answers": []}
         assert (
             other.post("/api/personal/messages", json={**payload, "request_id": str(uuid.uuid4())}).status_code == 403
@@ -98,7 +134,12 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
         assert [x["id"] for x in feed["items"]] == [row[0]]
         assert feed["items"][0]["tags"] == ["ui_pers_demo"]
         conn.execute("update personal_chat_sessions set last_message_at=now()-interval '3 seconds'")
-        followup = {**payload, "request_id": str(uuid.uuid4()), "text": "Какие есть альтернативы?"}
+        followup = {
+            **payload,
+            "request_id": str(uuid.uuid4()),
+            "text": "Какие есть альтернативы?",
+            "display_name": None,
+        }
         assert client.post("/api/personal/messages", json=followup).status_code == 202
         child = conn.execute("select signal_id from personal_chat_messages order by id desc limit 1").fetchone()[0]
 
@@ -107,8 +148,18 @@ def test_public_chat_isolation_ingest_and_answers(seeded: str, conn: Any, monkey
                 state = await process_signal(ac, signal_id=child, chain=mock_chain(), profile=MOCK_PROFILE)
                 assert state and state["context"]["conversation"][0]["user"] == payload["text"]
                 assert state["context"]["form_context"]["product_code"] == "credit_card"
+                assert state["context"]["form_context"]["visitor_name"] == payload["display_name"]
 
         asyncio.run(run_child())
+        conn.execute("update personal_chat_sessions set last_message_at=now()-interval '3 seconds'")
+        assert (
+            client.post(
+                "/api/personal/messages", json={**followup, "request_id": str(uuid.uuid4()), "display_name": ""}
+            ).status_code
+            == 202
+        )
+        assert client.get("/api/personal/session").json()["display_name"] == ""
+        assert client.get("/api/personal/messages").json()["messages"][0]["display_name"] == payload["display_name"]
         assert client.post("/api/personal/reset", json={}).status_code == 204
         assert client.get("/api/personal/messages").status_code == 401
     finally:

@@ -6,9 +6,15 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-FROM python:3.12-slim AS base
+FROM python:3.12-slim-bookworm AS base
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_PROJECT_ENVIRONMENT=/opt/venv PATH="/opt/venv/bin:$PATH" FRONTEND_DIST=/frontend/dist
-RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl libpq5 && rm -rf /var/lib/apt/lists/*
+# Официальный подписанный PGDG: клиент 16 совпадает с PostgreSQL в docker-compose.
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl --fail --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && printf '%s\n' 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update -qq && apt-get install -y -qq --no-install-recommends postgresql-client-16 \
+    && pg_dump --version && pg_restore --version && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 COPY backend/pyproject.toml backend/uv.lock ./
