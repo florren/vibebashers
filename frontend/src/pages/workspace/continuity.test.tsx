@@ -61,6 +61,7 @@ it('не теряет карточку и черновик после продо
   const qc = mount(<HitlQueue runId={11} onOpenSignal={vi.fn()} />)
   const input = await screen.findByLabelText('Дополнительная информация')
   fireEvent.change(input, { target: { value: 'Уточнение по тарифу' } })
+  await waitFor(() => expect(qc.getQueryState(['hitl', 'one', 1351])?.status).toBe('success'))
   item = { ...item, decision: 'accept', decided_by: 'operator' }
   await act(async () => { await qc.invalidateQueries({ queryKey: ['hitl'] }) })
   expect(screen.getByLabelText('Дополнительная информация')).toHaveValue('Уточнение по тарифу')
@@ -78,6 +79,7 @@ it('переносит набранный комментарий в доступ
   item = { ...item, can_resume: true, process_outcome: 'awaiting_human', agent_proposal: undefined }
   const qc = mount(<HitlQueue runId={11} onOpenSignal={vi.fn()} />)
   fireEvent.change(await screen.findByLabelText('Комментарий'), { target: { value: 'Черновик до таймаута' } })
+  await waitFor(() => expect(qc.getQueryState(['hitl', 'one', 1351])?.status).toBe('success'))
   item = { ...item, can_resume: false, decision: 'modify', decided_by: 'timeout', automatic_decision: true, process_outcome: 'deferred' }
   await act(async () => { await qc.invalidateQueries({ queryKey: ['hitl'] }) })
   expect(screen.getByLabelText('Дополнительная информация')).toHaveValue('Черновик до таймаута')
