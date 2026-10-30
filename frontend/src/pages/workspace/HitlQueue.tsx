@@ -32,7 +32,7 @@ export function HitlQueue({ runId, onOpenSignal }: { runId: number | undefined; 
   const current = detail.data ?? items.find(i => i.id === selected) ?? (selected === null ? items[0] : null) ?? null
 
   return (
-    <div className="flex h-full flex-col lg:flex-row">
+    <div className="flex h-full flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <aside className="max-h-[45vh] w-full shrink-0 overflow-y-auto border-b border-line lg:max-h-none lg:w-80 lg:border-r">
         <div className="sticky top-0 z-10 space-y-2 border-b border-line bg-panel p-3">
           <label className="block text-xs">{t('continuity.hitlSearch')}<input className="input mt-1 w-full" maxLength={200} value={search} onChange={e => { setSearch(e.target.value); setSelected(null); if (params.has('q')) setParams(p => { p.delete('q'); return p }, { replace: true }) }} placeholder="SIG, INC, HD, ESC, AR, CL, TSK…" /></label>
@@ -70,7 +70,7 @@ export function HitlQueue({ runId, onOpenSignal }: { runId: number | undefined; 
         </ul>
         {q.hasNextPage && <button className="btn m-3" disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{t('continuity.more')}</button>}
       </aside>
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div className="min-w-0 shrink-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {detail.error && <ErrorBox error={detail.error} />}
         {current ? <HitlCard key={current.id} item={current} onOpenSignal={onOpenSignal} /> : q.data && <Empty title={t(q.data?.pages[0]?.related_entities?.length ? 'continuity.noRequest' : 'hitl.empty')} />}
       </div>

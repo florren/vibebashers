@@ -4,8 +4,10 @@
       "lang": "ru",
       "mode": "light",
       "width": 1440,
+      "actualMode": "light",
       "lineage": true,
       "feedbackEnabled": true,
+      "feedbackVisible": true,
       "draftPreserved": true,
       "overflow": false
     },
@@ -13,8 +15,10 @@
       "lang": "en",
       "mode": "dark",
       "width": 1440,
+      "actualMode": "dark",
       "lineage": true,
       "feedbackEnabled": true,
+      "feedbackVisible": true,
       "draftPreserved": true,
       "overflow": false
     },
@@ -22,8 +26,10 @@
       "lang": "ru",
       "mode": "dark",
       "width": 390,
+      "actualMode": "dark",
       "lineage": true,
       "feedbackEnabled": true,
+      "feedbackVisible": true,
       "draftPreserved": true,
       "overflow": false
     },
@@ -31,8 +37,10 @@
       "lang": "en",
       "mode": "light",
       "width": 390,
+      "actualMode": "light",
       "lineage": true,
       "feedbackEnabled": true,
+      "feedbackVisible": true,
       "draftPreserved": true,
       "overflow": false
     }

@@ -32,7 +32,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
   const hasFilters = q || types.length || statuses.length || channels.length
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <aside className="max-h-[40vh] w-full shrink-0 space-y-4 overflow-y-auto border-b border-line p-3 md:max-h-none md:w-56 md:border-r">
         <label className="relative block">
           <Search size={13} className="pointer-events-none absolute left-2 top-2.5 text-faint" />
@@ -56,7 +56,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
           </button>
         ) : null}
       </aside>
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <div className="min-w-0 shrink-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
         {list.isPending && <SkeletonRows n={8} />}
         {list.isError && <ErrorBox error={list.error} />}
         {list.data && items.length === 0 && <Empty title={t('common.empty')} />}
