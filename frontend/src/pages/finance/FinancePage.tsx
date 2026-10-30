@@ -8,6 +8,7 @@ import { useSimRuns, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
 import { formatMoney as fmtRub } from './money'
 import { EvidencePanel, CaseEvidence } from './EvidencePanel'
+import { ProductFilter, type ProductSelection } from './ProductFilter'
 import { tEnum } from '@/shared/i18n'
 import { ErrorBox, Modal, Skeleton } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
@@ -69,6 +70,7 @@ function GrowthChart({ series }: { series: Total['series'] }) {
 
 export function FinancePage() {
   const { t } = useTranslation()
+  const [products, setProducts] = useState<ProductSelection>({ mode: 'all', codes: [] })
   const [period, setPeriod] = useState<Period>('live')
   const [run, setRun] = useState('current')
   const [start, setStart] = useState('')
@@ -86,9 +88,9 @@ export function FinancePage() {
   useEffect(() => { setOffset(0); setIncident(null) }, [selectedRun])
   const validDates = period !== 'custom' || (!!start && !!end && end > start)
   const query = useQuery({
-    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset],
+    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset, products],
     queryFn: () => api<Total>('/api/v1/finance/impact/total', { query: {
-      run_id: run, period, probability_percent: probability, fine_per_case_rub: fine, offset,
+      run_id: run, period, product_mode: products.mode, product_codes: products.codes, probability_percent: probability, fine_per_case_rub: fine, offset,
       ...(period === 'custom' ? { start_date: `${start}:00Z`, end_date: `${end}:00Z` } : {}),
     } }),
     enabled: validDates,
@@ -119,6 +121,7 @@ export function FinancePage() {
         </>}
         <span className="ml-auto text-xs text-muted">{t(wsStatus === 'open' ? 'finance.connected' : 'finance.polling')}</span>
       </div>
+      <ProductFilter value={products} onChange={value => { setProducts(value); change() }} />
       <p className="text-xs text-muted">{t('finance.timeHint')}</p>
       {!validDates && <p role="status" className="text-warn">{t('finance.invalidDates')}</p>}
       {query.isError && <ErrorBox error={query.error} />}
@@ -149,7 +152,7 @@ export function FinancePage() {
             <p className="mt-2 text-xs text-muted">{t('finance.fineHint', { count: d.fine_cases })}</p>
           </div>
         </section>
-        <EvidencePanel runId={d.run_id} period={period} start={start} end={end} />
+        <EvidencePanel runId={d.run_id} period={period} start={start} end={end} products={products} />
         <section className="card p-4"><h2 className="font-semibold">{t('finance.chart')}</h2>
           {d.series.length ? <GrowthChart series={d.series} /> : <p className="py-10 text-center text-muted">{t('finance.empty')}</p>}
         </section>

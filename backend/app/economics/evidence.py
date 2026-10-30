@@ -185,7 +185,12 @@ def risk_of(row: dict[str, Any], profile: dict[str, Any] | None) -> dict[str, An
 
 
 async def assessment(
-    conn: Any, run_id: int | None, start: dt.datetime | None, end: dt.datetime | None
+    conn: Any,
+    run_id: int | None,
+    start: dt.datetime | None,
+    end: dt.datetime | None,
+    product_codes: tuple[str, ...] = (),
+    product_mode: impact.ProductMode = "all",
 ) -> dict[str, Any]:
     registry = cal.load_registry()
     profiles = {scope: cal.load_profile(scope, registry) for scope in ("demo", "observed")}
@@ -221,6 +226,9 @@ async def assessment(
     if start is not None:
         sql += " and r.resolved_sim >= %s and r.resolved_sim < %s"
         params.extend([start, end])
+    product_clause, product_params = impact.product_filter(product_codes, product_mode, "r.product_code")
+    sql += product_clause
+    params.extend(product_params)
     # Память ограничена одним пакетом; выбор первого кейса клиента выполняется PostgreSQL до фильтра периода.
     refund = Decimal(0)
     case_count = 0
@@ -250,6 +258,7 @@ async def assessment(
                             str(impact.money(row["scenario_base"] * Decimal(str(risk["probability"]))))
                         )
     # Последняя версия каждой сделки выбирается по всему запуску; отзыв исключает прежнюю оценку.
+    fine_clause, fine_params = impact.product_filter(product_codes, product_mode, "i.product_code")
     fine_rows = await fetch_all(
         conn,
         """
@@ -264,8 +273,9 @@ async def assessment(
             " and coalesce(i.resolved_sim,i.closed_sim)>=%s and coalesce(i.resolved_sim,i.closed_sim)<%s"
             if start is not None
             else ""
-        ),
-        (run_id, start, end) if start is not None else (run_id,),
+        )
+        + fine_clause,
+        [*((run_id, start, end) if start is not None else (run_id,)), *fine_params],
     )
     for row in fine_rows:
         agg = aggregates[row["scope"]]

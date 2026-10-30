@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any
+from typing import Any, Literal
 
 from app.api.common import fetch_all, fetch_one
 from app.errors import Problem
@@ -60,14 +60,37 @@ where i.status in ('resolved', 'closed')
 """
 
 
-def scope(run_id: int | None, start: dt.datetime | None, end: dt.datetime | None) -> tuple[str, list[Any]]:
+ProductMode = Literal["all", "include", "exclude"]
+
+
+def product_filter(codes: tuple[str, ...], mode: ProductMode, column: str) -> tuple[str, list[Any]]:
+    """Колонка задаётся кодом; значения продуктов всегда передаются параметром SQL."""
+    if column not in ("i.product_code", "r.product_code"):
+        raise ValueError("Неизвестная колонка продукта")
+    if mode == "all" or (mode == "exclude" and not codes):
+        return "", []
+    if not codes:
+        return " and false", []
+    if mode == "include":
+        return f" and {column} = any(%s)", [list(codes)]
+    return f" and ({column} is null or not ({column} = any(%s)))", [list(codes)]
+
+
+def scope(
+    run_id: int | None,
+    start: dt.datetime | None,
+    end: dt.datetime | None,
+    product_codes: tuple[str, ...] = (),
+    product_mode: ProductMode = "all",
+) -> tuple[str, list[Any]]:
     # Отсутствие текущего запуска не означает «все запуски».
     sql = BASE + " and i.run_id = %s"
     args: list[Any] = [run_id]
     if start is not None:
         sql += " and coalesce(i.resolved_sim, i.closed_sim) >= %s and coalesce(i.resolved_sim, i.closed_sim) < %s"
         args.extend([start, end])
-    return sql, args
+    clause, values = product_filter(product_codes, product_mode, "i.product_code")
+    return sql + clause, args + values
 
 
 async def total(
@@ -81,8 +104,10 @@ async def total(
     fine: float,
     offset: int,
     limit: int,
+    product_codes: tuple[str, ...] = (),
+    product_mode: ProductMode = "all",
 ) -> dict[str, Any]:
-    sql, args = scope(run_id, start, end)
+    sql, args = scope(run_id, start, end, product_codes, product_mode)
     # Округление каждого кейса совпадает с детализацией; чистый эффект допускает отрицательные значения.
     cte = (
         "with cases as ("

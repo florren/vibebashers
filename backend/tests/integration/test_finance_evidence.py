@@ -85,6 +85,26 @@ def test_agent_snapshot_and_client_deduplication(seeded: str, conn: Any, monkeyp
         assert risk["status"] == "calibrated" and risk["step_id"] is not None and risk["predicted_sim"]
         assert risk["dataset_sha256"] == demo["calibration"]["dataset_sha256"]
         duplicate_id = add_case(conn, rid, cid, now=dt.datetime(2026, 11, 9, 7, tzinfo=dt.UTC))
+        other_product = conn.execute(
+            "select code from products where code<>'debit_card' order by code limit 1"
+        ).fetchone()[0]
+        conn.execute("update incidents set product_code=%s where id=%s", (other_product, duplicate_id))
+        conn.execute("update incident_economics set computed_at=now() where incident_id=%s", (duplicate_id,))
+        selected = client.get(
+            url, params={"run_id": rid, "product_mode": "include", "product_codes": other_product}
+        ).json()["contours"]
+        # Первый кейс по всему запуску не переносится на выбранный более поздний продукт.
+        assert selected[0]["duplicate_cases"] == 1 and selected[0]["known_clients"] == 0
+        assert selected[0]["risk_total_rub"] == 0 and selected[0]["refund_rub"] == 10 and selected[0]["net_rub"] == -10
+        assert selected[1]["risk_total_rub"] is None and selected[1]["refund_rub"] == 10
+        excluded = client.get(
+            url, params={"run_id": rid, "product_mode": "exclude", "product_codes": other_product}
+        ).json()["contours"][0]
+        assert (
+            excluded["known_clients"] == 1
+            and excluded["risk_total_rub"] == demo["risk_total_rub"]
+            and excluded["refund_rub"] == 450
+        )
         duplicate = client.get(url, params={"run_id": rid}).json()["contours"][0]
         assert duplicate["duplicate_cases"] == 1 and duplicate["known_clients"] == 1
         assert duplicate["risk_total_rub"] == demo["risk_total_rub"]
@@ -169,6 +189,18 @@ def test_fine_evidence_versions_replay_withdrawal_and_scope(
         admitted = assessed()[0]
         assert admitted["qualified_deals"] == 1 and admitted["fine_rub"] == 50000
         assert admitted["risk_total_rub"] is None and admitted["combined_net_rub"] is None
+        for mode in ("include", "exclude"):
+            filtered = client.get(
+                "/api/v1/finance/impact/assessment",
+                params={"run_id": rid, "product_mode": mode, "product_codes": "debit_card"},
+            ).json()["contours"]
+            assert filtered[0]["fine_rub"] == (50000 if mode == "include" else 0)
+            assert filtered[0]["case_count"] == (1 if mode == "include" else 0)
+            assert filtered[1]["fine_rub"] is None
+        assert (
+            client.get("/api/v1/finance/impact/assessment", params={"product_codes": "bad-product"}).status_code == 422
+        )
+
         assert record({**payload, "idempotency_key": "DEMO-KEY-2"}).status_code == 201
         assert assessed()[0]["qualified_deals"] == 1 and assessed()[0]["fine_rub"] == 50000
         assert record({**payload, "idempotency_key": "DEMO-KEY-3", "outcome": "unknown"}).status_code == 201

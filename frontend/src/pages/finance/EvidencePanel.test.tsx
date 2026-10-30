@@ -70,3 +70,10 @@ it('не допускает рабочую запись без согласов�
   expect(screen.getByText('Нет согласованной политики штрафов для этого контура.')).toBeInTheDocument()
   expect(post).not.toHaveBeenCalled()
 })
+
+
+it('передаёт выбор продуктов обоим контурам серверного снимка', async () => {
+  mount(<EvidencePanel runId={42} period="live" start="" end="" products={{ mode: 'exclude', codes: ['deposit'] }} />)
+  await screen.findByText('Рабочий · допущенные наблюдения')
+  expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/assessment', expect.objectContaining({ query: expect.objectContaining({ run_id: 42, product_mode: 'exclude', product_codes: ['deposit'] }) }))
+})

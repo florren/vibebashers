@@ -5,7 +5,7 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
-from app.economics.impact import bounds, money, scope
+from app.economics.impact import bounds, money, product_filter, scope
 from app.errors import Problem
 from app.main import create_app
 
@@ -56,6 +56,7 @@ def test_missing_run_never_removes_scope() -> None:
         "fine_per_case_rub=-1",
         "fine_per_case_rub=inf",
         "period=year",
+        "product_mode=bad",
         "offset=-1",
         "limit=101",
         "period=custom",
@@ -66,3 +67,14 @@ def test_invalid_queries_are_422(query: str) -> None:
     with TestClient(create_app()) as client:
         response = client.get("/api/v1/finance/impact/total?" + query)
     assert response.status_code == 422, response.text
+
+
+def test_product_filters_are_parameterized_and_keep_null_in_exclusions() -> None:
+    assert product_filter((), "all", "i.product_code") == ("", [])
+    assert product_filter((), "exclude", "i.product_code") == ("", [])
+    assert product_filter((), "include", "i.product_code") == (" and false", [])
+    sql, params = product_filter(("bad' OR true --",), "include", "r.product_code")
+    assert "bad" not in sql and params == [["bad' OR true --"]]
+    assert "is null" in product_filter(("deposit",), "exclude", "i.product_code")[0]
+    with pytest.raises(ValueError):
+        product_filter((), "all", "untrusted_column")

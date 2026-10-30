@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.3
+  version: 1.5.4
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2268,6 +2268,16 @@ paths:
       summary: Эффект одного запуска и сценарные варианты; периоды относительно sim_state.sim_time,
         сутки UTC
       parameters:
+      - name: product_mode
+        in: query
+        description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.
+        schema: { type: string, enum: [all, include, exclude], default: all }
+      - name: product_codes
+        in: query
+        description: Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр.
+        style: form
+        explode: true
+        schema: { type: array, maxItems: 100, items: { type: string } }
       - name: run_id
         in: query
         schema:
@@ -2385,6 +2395,16 @@ paths:
       summary: 'T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя
         версия сделки'
       parameters:
+      - name: product_mode
+        in: query
+        description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.
+        schema: { type: string, enum: [all, include, exclude], default: all }
+      - name: product_codes
+        in: query
+        description: Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр.
+        style: form
+        explode: true
+        schema: { type: array, maxItems: 100, items: { type: string } }
       - name: run_id
         in: query
         schema:

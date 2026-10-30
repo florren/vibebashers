@@ -1388,6 +1388,19 @@ TASKS.extend([
                  "Повторные кейсы клиента и версии сделки не удваивают оценку; отзыв сохраняет историю и исключает сумму."],
          check=["make sync-contracts && make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "python scripts/gen_churn_demo.py && git diff --exit-code -- data/economics"]),
 
+    dict(id=266, title="Фильтр продуктов финансового эффекта и локальный стенд", epic="E24", agent="SA-Economics", size="M", wave=9,
+         goal="Выбор продуктов на /finance и проверка обоих контуров нового запуска локальной эмуляции; GitHub #93.",
+         tz=["14.6", "14.7"], contracts=["api/openapi.yaml: finance total/assessment product_mode/product_codes"], deps=[265],
+         steps=["Серверные all/include/exclude, пустые выборки и валидация справочника; общий фильтр для итогов, графика, реестра и demo/observed.",
+                "Выбор отдельных продуктов, Все продукты, снятие выделения, переключение Все кроме выбранных. Кэш и пагинация учитывают выбор.",
+                "Первый кейс клиента и последняя версия сделки выбираются по всему запуску до фильтра продукта/даты; риск не переносится между продуктами.",
+                "Применить alembic upgrade head (0008), перезапустить локальный Docker-стенд без сброса данных и проверить /finance на новом запуске."],
+         accept=["Фильтр применяется одинаково к основной модели, ручным сценариям и обоим контурам.",
+                 "Все выделяет весь список; инверсия сохраняет выбранные позиции; пустые include/exclude дают ни одного/все.",
+                 "Дедупликация, unknown рабочего контура и изоляция запусков сохранены.",
+                 "Локальный стенд обновлён, миграция подтверждена, новый запуск и UI/API проверены."],
+         check=["make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "Browser ru/en light/dark/mobile и локальный Docker smoke"]),
+
 ])
 
 

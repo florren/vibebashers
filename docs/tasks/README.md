@@ -242,13 +242,14 @@
 | [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md) Сценарии 14 «Кабинет менеджера: красные слова и отчёт» и 15 «CSI и ВСП»: YAML, кассеты, автотесты, блок F демо-скрипта | E19 | L5 | `SA-QA` | M | — | T-242, T-249, T-250, T-239 |
 | [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md) Экран финансового эффекта и сравнение моделей | E24 | L2 | `SA-Economics` | L | — | T-131, T-132, T-093, T-202 |
 | [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md) Калибровка вероятности оттока и доказательства штрафа | E24 | L2 | `SA-Economics` | L | — | T-264 |
+| [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md) Фильтр продуктов финансового эффекта и локальный стенд | E24 | L2 | `SA-Economics` | M | — | T-265 |
 
 ## По слоям (кто ведёт — docs/TEAM-SPLIT.md)
 
 | Слой | Карточек | Из них в демо-минимуме | Объём (чел.-дни по оценкам) | Объём демо-минимума | Пик по волнам |
 |---|---|---|---|---|---|
 | `L1` Базис | 42 | 31 | 52 | 41 | в1: 14, в2: 12, в3: 2, в4: 1, в5: 6, в6: 1, в7: 4, в9: 2 |
-| `L2` Симулятор и данные | 37 | 24 | 73 | 47 | в2: 17, в3: 10, в4: 5, в8: 3, в9: 2 |
+| `L2` Симулятор и данные | 38 | 24 | 74 | 47 | в2: 17, в3: 10, в4: 5, в8: 3, в9: 3 |
 | `L3` Агент и контуры | 52 | 33 | 94 | 64 | в2: 8, в3: 22, в4: 10, в5: 2, в8: 8, в9: 2 |
 | `L4` Фронт | 48 | 32 | 95 | 64 | в1: 1, в2: 2, в3: 5, в4: 20, в5: 2, в7: 2, в8: 5, в9: 11 |
 | `L5` Качество | 15 | 7 | 20 | 10 | в1: 1, в4: 4, в5: 6, в9: 4 |
@@ -270,7 +271,7 @@
 - Волна 3: [T-020](T-020-predystoriya-signalov-incidentov-statusov-artefa.md), [T-035](T-035-generator-oshibok-klientov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-037](T-037-sla-dvizhok.md), [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md), [T-132](T-132-api-svodnoj-ekonomiki-i-metrik-dashborda.md), [T-162](T-162-detekciya-snizheniya-aktivnosti-molchalivyj-uhod.md), [T-163](T-163-llm-dvojniki-podsvechennyh-klientov.md), [T-164](T-164-uhod-klienta-churn-events-incident-account-closu.md), [T-209](T-209-adaptery-istochnikov-ingest-sources-rest-polling.md) (откл.)
 - Волна 4: [T-038](T-038-dvizhok-scenariev-yaml-i-7-demo-scenariev.md) (откл.), [T-133](T-133-ekran-kalkulyator-poter-dopuscheniya-v-stile-biz.md) (откл.), [T-165](T-165-kalibrovka-koefficientov-uderzhaniya-po-faktam-s.md) (откл.), [T-166](T-166-vkladka-kalkulyatora-fakt-po-simulyacii-api-ui-e.md) (откл.), [T-202](T-202-ekonomika-fee-refund-i-misselling-stroka-effekta.md) (откл.)
 - Волна 8: [T-240](T-240-korpus-product-lines-v1-i-istoriya-teksty-po-15.md) (откл.), [T-245](T-245-spravochnik-vsp-v2-rasshirenie-branches-generato.md) (откл.), [T-247](T-247-korpus-csi-csi-v1-300-zhalob-csi-visits-agg-znam.md) (откл.)
-- Волна 9: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md) (откл.), [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md) (откл.)
+- Волна 9: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md) (откл.), [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md) (откл.), [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md) (откл.)
 
 ### `L3` Агент и контуры
 
@@ -324,7 +325,7 @@
 - **E21 Дизайн-система v2: темы, циркадный режим, «кикубари», каркас и «Обзор» [ПРОТО]** — 8 карточек: [T-251](T-251-tokeny-i-pakety-tem-semanticheskie-tokeny-pakety.md), [T-252](T-252-cirkadnyj-dvizhok-6-faz-istochniki-sim-real-fixe.md), [T-253](T-253-rezhimy-tihij-kikubari-i-situacionnyj-centr-prav.md), [T-254](T-254-karkas-v2-bokovaya-navigaciya-sostoyanie-sistemy.md), [T-255](T-255-ekran-obzor-overview-kpi-polosa-indeks-cx-miks-k.md), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md), [T-257](T-257-modal-novyj-signal-vyravnivanie-s-prototipom-2-4.md), [T-258](T-258-vizualnaya-regressiya-i-a11y-pakety-tem-rezhimy.md). Субагенты: `SA-Analytics`, `SA-QA`, `SA-UI-Design`, `SA-UI-Workspace`.
 - **E22 Сквозная демонстрация «Путь обращения» [АРХ]** — 7 карточек: [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md), [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md), [T-226](T-226-ekran-put-obrascheniya-journey-ref-stepper-iz-8.md), [T-227](T-227-put-obrascheniya-rezhimy-sledit-povtor-veduschij.md), [T-228](T-228-put-obrascheniya-dorozhka-glazami-klienta-emulya.md), [T-229](T-229-scenarij-12-put-obrascheniya-tri-traektorii-yaml.md). Субагенты: `SA-DB`, `SA-QA`, `SA-Trace`, `SA-UI-Trace`.
 - **E23 Поиск и след объекта [АРХ]** — 6 карточек: [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md), [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md), [T-232](T-232-ekran-sled-trace-kind-ref-do-obekt-posle-itog-oz.md), [T-233](T-233-sled-adaptery-kartochki-obekta-i-rendery-sobytij.md), [T-234](T-234-sled-rezhim-graf-uzly-po-tipam-podsvetka-puti-do.md), [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md). Субагенты: `SA-QA`, `SA-Trace`, `SA-UI-Trace`.
-- **E24 Финансовый эффект запуска и сравнение моделей** — 2 карточек: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md), [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md). Субагенты: `SA-Economics`.
+- **E24 Финансовый эффект запуска и сравнение моделей** — 3 карточек: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md), [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md), [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md). Субагенты: `SA-Economics`.
 
 ## Граф зависимостей (критический путь выделен порядком волн)
 
@@ -571,6 +572,7 @@ graph LR
   subgraph E24[E24 Финансовый эффект запуска и сравнение моделей]
     T264[T-264]
     T265[T-265]
+    T266[T-266]
   end
   T001 --> T002
   T002 --> T003
@@ -1085,11 +1087,12 @@ graph LR
   T093 --> T264
   T202 --> T264
   T264 --> T265
+  T265 --> T266
 ```
 
 ## Сводка
 
-- Всего карточек: 194; по оценкам: S — 44, M — 112, L — 38.
+- Всего карточек: 195; по оценкам: S — 44, M — 113, L — 38.
 - Критический путь (ядро): T-001 → T-005 → T-006 → T-046 → T-056 → T-057 → T-058 → T-061 → T-062 → T-063 → T-090 → T-142 → T-151.
 - Критический путь v1.3 (BRD-1): T-005 → T-199 → T-171 → T-172 → T-174 → T-176 → T-177 → T-179; (BRD-2): T-181 → T-183 → T-185 → T-186 → T-187 → T-192; подстраховка T-194 → T-195 → T-198 нужна до первой репетиции.
 - Демо-минимум (если времени не хватает): все карточки волн 1–3 (включая T-040 запуски и T-041 возобновление) плюс T-077, T-078, T-090, T-094, T-106, T-107, T-108, T-119, T-120, T-131, T-142, T-151. Бот (T-121/122), бенчмарк-UI (T-130), калькулятор «Факт» (T-166) и перф-тесты можно отложить без потери ключевого сценария.
