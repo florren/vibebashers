@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.7
+  version: 1.5.8
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -924,6 +924,20 @@ paths:
         - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d, run], default: run } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DashboardMetrics" } } } }
+  /api/metrics/economics/preview:
+    get:
+      tags: [metrics]
+      summary: Калькулятор потерь без записи в БД
+      parameters:
+        - { name: affected, in: query, schema: { type: integer, default: 12, minimum: 0, maximum: 100000000 } }
+        - { name: product, in: query, schema: { type: string } }
+        - { name: system, in: query, schema: { type: string } }
+        - { name: segment, in: query, schema: { type: string } }
+        - { name: detractor_share, in: query, schema: { type: number, default: 0.1, minimum: 0, maximum: 1 } }
+        - { name: no_return_share, in: query, schema: { type: number, default: 0.5, minimum: 0, maximum: 1 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+
   /api/metrics/economics:
     get:
       tags: [metrics]
@@ -976,6 +990,7 @@ paths:
       tags: [engine]
       summary: Запуски агента (живая трассировка)
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - { $ref: "#/components/parameters/RunId" }
         - { name: kind, in: query, schema: { type: string, enum: [agent, client_twin, team_emulator, bench, compare] } }
         - { name: signal_id, in: query, schema: { type: integer } }
@@ -1587,6 +1602,7 @@ paths:
       tags: [compliance]
       summary: Лента алертов для устройства руководителя (/manager)
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - $ref: "#/components/parameters/RunId"
         - { name: branch_code, in: query, schema: { type: string } }
         - { name: unacknowledged, in: query, schema: { type: boolean } }
@@ -1841,6 +1857,7 @@ paths:
       tags: [ingest]
       summary: "[ДТЗ FR-1.1] Список импортированных транскриптов"
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - { $ref: "#/components/parameters/RunId" }
         - { name: kind, in: query, schema: { $ref: "#/components/schemas/TranscriptKind" } }
         - { name: status, in: query, schema: { type: string, enum: [received, analyzing, done, failed] } }
@@ -2306,6 +2323,7 @@ paths:
       summary: Эффект одного запуска и сценарные варианты; периоды относительно sim_state.sim_time,
         сутки UTC
       parameters:
+      - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
       - name: product_mode
         in: query
         description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.
@@ -2433,6 +2451,7 @@ paths:
       summary: 'T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя
         версия сделки'
       parameters:
+      - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
       - name: product_mode
         in: query
         description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.

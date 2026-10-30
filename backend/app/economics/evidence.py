@@ -191,6 +191,7 @@ async def assessment(
     end: dt.datetime | None,
     product_codes: tuple[str, ...] = (),
     product_mode: impact.ProductMode = "all",
+    case_filter: tuple[str, list[Any]] = ("true", []),
 ) -> dict[str, Any]:
     registry = cal.load_registry()
     profiles = {scope: cal.load_profile(scope, registry) for scope in ("demo", "observed")}
@@ -218,7 +219,7 @@ async def assessment(
       select c.*,i.run_id,i.created_sim,i.primary_client_id,i.agent_run_id as primary_agent_run_id,
              row_number() over(partition by i.primary_client_id order by i.created_sim,i.id) as client_rank
       from all_cases c join incidents i on i.id=c.incident_id)
-      select r.*,prediction.* from ranked r """
+      select r.*,prediction.* from ranked r join incidents i on i.id=r.incident_id """
         + SNAPSHOT
         + " where true"
     )
@@ -228,7 +229,10 @@ async def assessment(
         params.extend([start, end])
     product_clause, product_params = impact.product_filter(product_codes, product_mode, "r.product_code")
     sql += product_clause
+    predicate, search_args = case_filter
+    sql += " and " + predicate
     params.extend(product_params)
+    params.extend(search_args)
     # Память ограничена одним пакетом; выбор первого кейса клиента выполняется PostgreSQL до фильтра периода.
     refund = Decimal(0)
     case_count = 0
@@ -274,8 +278,10 @@ async def assessment(
             if start is not None
             else ""
         )
-        + fine_clause,
-        [*((run_id, start, end) if start is not None else (run_id,)), *fine_params],
+        + fine_clause
+        + " and "
+        + case_filter[0],
+        [*((run_id, start, end) if start is not None else (run_id,)), *fine_params, *case_filter[1]],
     )
     for row in fine_rows:
         agg = aggregates[row["scope"]]

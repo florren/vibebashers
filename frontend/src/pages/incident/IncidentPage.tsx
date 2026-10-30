@@ -1,3 +1,4 @@
+import { IncidentEconomics } from './IncidentEconomics'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ArrowLeft, Cpu } from 'lucide-react'
@@ -187,7 +188,7 @@ export function IncidentPage() {
           {tab === 'history' && <History id={id} />}
           {tab === 'signals' && <IncidentSignals id={id} onOpen={setSignalId} seg={seg} />}
           {tab === 'comms' && <Comms id={id} />}
-          {tab === 'economics' && <Empty title={t('common.notImplemented')} hint="Экономика инцидента — пакет B06 (T-079/T-080)." />}
+          {tab === 'economics' && <IncidentEconomics id={id!} />}
         </div>
       </div>
       <aside className="hidden w-[380px] shrink-0 border-l border-line xl:block">

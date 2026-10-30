@@ -19,6 +19,7 @@ from app.compliance import taxonomy
 from app.compliance.session import ComplianceService
 from app.compliance.transcripts import create_transcript, load_file
 from app.config import get_settings
+from app.search.cases import entity_filter
 from app.sim.events import dumps
 from app.stt import registry
 from app.stt.live import play_wav, request_stop, set_file_speaker
@@ -401,6 +402,7 @@ async def post_compliance_triggers_id(request: Request, id: int, body: dict[str,
 @router.get("/api/compliance/alerts", summary="Лента алертов для устройства руководителя (/manager)")
 async def get_compliance_alerts(
     request: Request,
+    q: str | None = Query(None, max_length=200),
     run_id: str | None = None,
     branch_code: str | None = None,
     unacknowledged: bool | None = None,
@@ -410,6 +412,9 @@ async def get_compliance_alerts(
     args: list[Any] = []
     async with db() as conn:
         rid = await resolve_run_id(conn, run_id)
+        predicate, values = await entity_filter(conn, q, "alert")
+        where.append(predicate)
+        args.extend(values)
         if rid is not None:
             where.append("s.run_id = %s")
             args.append(rid)

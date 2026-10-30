@@ -14,6 +14,7 @@ from pydantic_core import PydanticCustomError
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.economics import evidence, impact
 from app.errors import Problem
+from app.search.cases import entity_filter
 
 router = APIRouter(tags=["finance"])
 
@@ -40,6 +41,7 @@ async def selected_products(conn: Any, codes: list[str] | None) -> tuple[str, ..
 
 @router.get("/api/v1/finance/impact/total", summary="Эффект запуска и отдельные сценарные оценки")
 async def get_impact_total(
+    q: str | None = Query(None, max_length=200),
     period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
     product_mode: impact.ProductMode = Query("all"),
     product_codes: list[str] | None = Query(None, max_length=100),
@@ -73,6 +75,7 @@ async def get_impact_total(
                 limit=limit,
                 product_codes=products,
                 product_mode=product_mode,
+                case_filter=await entity_filter(conn, q, "incident"),
             )
     return JSONResponse(jsonable_encoder(res))
 
@@ -97,6 +100,7 @@ async def get_impact_incident(
     "/api/v1/finance/impact/assessment", summary="Демо и рабочая калибровка, уникальные клиенты и основания штрафов"
 )
 async def get_impact_assessment(
+    q: str | None = Query(None, max_length=200),
     run_id: str = Query("current"),
     period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
     product_mode: impact.ProductMode = Query("all"),
@@ -115,7 +119,9 @@ async def get_impact_assessment(
             start, end = impact.bounds(
                 period, state["sim_time"] if state else dt.datetime.now(dt.UTC), start_date, end_date
             )
-            result = await evidence.assessment(conn, rid, start, end, products, product_mode)
+            result = await evidence.assessment(
+                conn, rid, start, end, products, product_mode, await entity_filter(conn, q, "incident")
+            )
     return JSONResponse(jsonable_encoder(result))
 
 

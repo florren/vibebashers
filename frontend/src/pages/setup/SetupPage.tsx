@@ -506,7 +506,7 @@ function StepSla() {
 
 // ---- 7. Economics ---------------------------------------------------------------
 const RF_KEYS = ['closed_in_sla_with_gift', 'closed_in_sla', 'closed_late', 'closed_with_regression', 'open', 'rejected', 'churned'] as const
-function StepEconomics() {
+export function StepEconomics() {
   const { t } = useTranslation()
   const q = useEconomicsSettings()
   const save = useSaveSetting<EconomicsSettingsT>('economics', '/api/settings/economics')

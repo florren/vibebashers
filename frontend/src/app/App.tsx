@@ -1,3 +1,4 @@
+import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -37,6 +38,7 @@ export function App() {
             <Route path="trace/:kind/:ref" element={<TracePage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="journey/:ref" element={<JourneyPage />} />
+            <Route path="economics" element={<EconomicsPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="setup" element={<SetupPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

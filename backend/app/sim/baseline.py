@@ -11,12 +11,13 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
 import psycopg
-from psycopg.conninfo import make_conninfo
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.types.json import Jsonb
 
 from app.config import get_settings
@@ -88,6 +89,27 @@ def runs_export_dir() -> Path:
 
 def _dump_path(profile: str) -> Path:
     return baseline_dir() / f"{profile}.dump"
+
+
+def _restore_dump_path(profile: str) -> Path:
+    source = _dump_path(profile)
+    prepared = source.with_suffix(".compatible.dump")
+    if not source.is_file() or not prepared.is_file():
+        return source
+    provenance = prepared.with_suffix(".dump.provenance.json")
+    try:
+        metadata = json.loads(provenance.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BaselineToolingError("Нет корректного provenance подготовленного baseline") from exc
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("source_sha256") != _sha256_file(source)
+        or metadata.get("output_sha256") != _sha256_file(prepared)
+    ):
+        raise BaselineToolingError(
+            "Контрольные суммы подготовленного baseline не совпадают; повторите подготовку в изолированной БД"
+        )
+    return prepared
 
 
 def _meta_path(profile: str) -> Path:
@@ -293,23 +315,69 @@ async def _restore_sim_runs(conn: psycopg.AsyncConnection[Any], rows: list[tuple
 
 
 def _run_pg_restore(dsn: str, dump_path: Path) -> None:
-    cmd = [
-        _pg_tool("pg_restore"),
-        "--clean",
-        "--if-exists",
-        "--no-owner",
-        "--no-acl",
-        "-d",
-        dsn,
-        str(dump_path),
-    ]
-    log.info("baseline_restore_pg_start", path=str(dump_path))
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        # pg_restore часто возвращает 1 при harmless warnings
-        err = proc.stderr or proc.stdout or ""
-        if proc.returncode > 1 or "FATAL" in err.upper():
-            raise BaselineToolingError(f"pg_restore завершился с кодом {proc.returncode}: {err.strip()[-800:]}")
+    # sim_runs исключена из dump. Её исходящие FK мешают --clean удалять PK
+    # scenarios/llm_profiles. Снимаем их и возвращаем в той же транзакции.
+    with tempfile.TemporaryDirectory(prefix="cx-restore-") as directory:
+        script = Path(directory) / "restore.sql"
+        proc = subprocess.run(
+            [
+                _pg_tool("pg_restore"),
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                "--no-acl",
+                "-f",
+                str(script),
+                str(dump_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode:
+            raise BaselineToolingError(
+                "Архив не читается; используйте scripts/seed/prepare_baseline.py в изолированной БД"
+            )
+        wrapped = Path(directory) / "transaction.sql"
+        with wrapped.open("w") as out, script.open() as src:
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
+            out.write("DROP INDEX IF EXISTS public.sim_runs_public_id_trgm_idx;\n")
+            shutil.copyfileobj(src, out)
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
+            # Старые запуски могут ссылаться на сценарии/профили, отсутствующие в baseline.
+            # NOT VALID сохраняет метаданные истории, проверяя все новые изменения.
+            out.write(
+                "ALTER TABLE public.sim_runs ADD CONSTRAINT sim_runs_scenario_fk FOREIGN KEY(scenario_id) REFERENCES public.scenarios(id) NOT VALID;\n"
+            )
+            out.write(
+                "ALTER TABLE public.sim_runs ADD CONSTRAINT sim_runs_llm_profile_fk FOREIGN KEY(llm_profile_id) REFERENCES public.llm_profiles(id) NOT VALID;\n"
+            )
+            out.write(
+                "CREATE INDEX IF NOT EXISTS sim_runs_public_id_trgm_idx ON public.sim_runs USING gin(public_id public.gin_trgm_ops);\n"
+            )
+        keys = {
+            "host": "PGHOST",
+            "hostaddr": "PGHOSTADDR",
+            "port": "PGPORT",
+            "dbname": "PGDATABASE",
+            "user": "PGUSER",
+            "password": "PGPASSWORD",
+            "sslmode": "PGSSLMODE",
+        }
+        env = {**os.environ, **{keys[k]: str(v) for k, v in conninfo_to_dict(dsn).items() if k in keys}}
+        proc = subprocess.run(
+            [_pg_tool("psql"), "-X", "--single-transaction", "--set=ON_ERROR_STOP=1", "-f", str(wrapped)],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode:
+            raise BaselineToolingError(
+                f"pg_restore/psql завершился с кодом {proc.returncode}; транзакция восстановления отменена"
+            )
 
 
 def _csi_repair_script() -> Path:
@@ -365,7 +433,7 @@ async def restore(
 ) -> str:
     """Откат БД к снимку baseline; sim_runs и runs/ восстанавливаются отдельно."""
     prof = resolve_profile(profile)
-    dump_path = _dump_path(prof)
+    dump_path = _restore_dump_path(prof)
     if not dump_path.is_file():
         raise BaselineUnavailableError(f"снимок baseline для профиля {prof} не найден")
     repair_script = _csi_repair_script()
