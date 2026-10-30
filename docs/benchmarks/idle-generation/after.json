@@ -1,0 +1,370 @@
+[
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 0,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "pre_startup",
+    "at": "2026-10-30T11:58:47.785151+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "idle_0",
+    "at": "2026-10-30T11:58:52.102240+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "idle_60",
+    "at": "2026-10-30T11:59:52.154325+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "idle_120",
+    "at": "2026-10-30T12:00:52.207681+00:00"
+  },
+  {
+    "state": {
+      "running": true,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "running"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "running",
+    "at": "2026-10-30T12:01:07.324684+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_0",
+    "at": "2026-10-30T12:01:07.382344+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_60",
+    "at": "2026-10-30T12:02:07.435237+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_120",
+    "at": "2026-10-30T12:03:07.488809+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "restarted_paused_0",
+    "at": "2026-10-30T12:03:20.880189+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "restarted_paused_60",
+    "at": "2026-10-30T12:04:20.933586+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 802,
+    "sim_events": 38,
+    "posts": 0,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "restarted_paused_120",
+    "at": "2026-10-30T12:05:20.987022+00:00"
+  }
+]

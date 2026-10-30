@@ -19,6 +19,7 @@ from app.agent.graph import (
     wake_followups_for_incident,
 )
 from app.db.session import psycopg_dsn
+from app.ingest.synthetic import AUTOMATIC_EXCLUDED_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -107,17 +108,20 @@ class AgentService:
             await conn.execute(
                 "update agent_runs set outcome = 'failed', finished_at = now(), error = 'прерван рестартом' "
                 "where kind = 'agent' and outcome is null and started_at < %s "
-                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled')",
+                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled') "
+                f"and exists(select 1 from signals s where s.id=agent_runs.signal_id and not {AUTOMATIC_EXCLUDED_SQL})",
                 (self.started_at,),
             )
             await conn.execute(
-                "update signals s set status = 'new' where s.status = 'processing' and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.started_at>=%s)",
+                "update signals s set status = 'new' where s.status = 'processing' and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.started_at>=%s) "
+                f"and not {AUTOMATIC_EXCLUDED_SQL}",
                 (self.started_at,),
             )
             rows = await (
                 await conn.execute(
                     "select s.id from signals s, sim_state st where st.id = 1 and s.run_id = st.current_run_id and s.status = 'new' "
-                    "and s.origin <> 'scenario' and s.channel_subtype is distinct from 'ui_pers_demo' and s.received_sim >= st.sim_time - interval '2 hours' order by s.id limit 50"
+                    "and s.origin <> 'scenario' and s.channel_subtype is distinct from 'ui_pers_demo' and s.received_sim >= st.sim_time - interval '2 hours' "
+                    f"and not {AUTOMATIC_EXCLUDED_SQL} order by s.id limit 50"
                 )
             ).fetchall()
             await conn.commit()
@@ -161,8 +165,13 @@ class AgentService:
                         if sid:
                             async with await self._conn() as lookup:
                                 source = await (
-                                    await lookup.execute("select channel_subtype from signals where id=%s", (sid,))
+                                    await lookup.execute(
+                                        f"select s.channel_subtype,{AUTOMATIC_EXCLUDED_SQL} from signals s where s.id=%s",
+                                        (sid,),
+                                    )
                                 ).fetchone()
+                            if not source or source[1]:
+                                continue
                             self.submit(
                                 int(sid),
                                 dt.datetime.fromisoformat(sim_time) if sim_time else None,

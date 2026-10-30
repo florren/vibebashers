@@ -13,6 +13,7 @@ from app.compliance.transcripts import analyze_transcript
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
+from app.sim.runs import ensure_live_run
 
 log = get_logger(__name__)
 
@@ -21,8 +22,14 @@ async def run_context(request: Request, conn: psycopg.AsyncConnection[dict[str, 
     """Текущий запуск и сим-время (из симулятора, иначе из sim_state)."""
     sim = getattr(request.app.state, "sim", None)
     rid = await resolve_run_id(conn, None)
+    if rid is None:
+        if sim is not None:
+            rid = await sim.ensure_live_run()
+        else:
+            async with conn.transaction():
+                rid = await ensure_live_run(conn)
     if sim is not None:
-        return int(rid or sim.run_id), sim.clock.sim_time
+        return int(rid), sim.clock.sim_time
     row = await fetch_one(conn, "select sim_time, current_run_id from sim_state where id = 1")
     if not row or not (rid or row["current_run_id"]):
         raise RuntimeError("нет активного запуска эмуляции")
