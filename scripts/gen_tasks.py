@@ -1433,6 +1433,19 @@ TASKS.extend([
          accept=["Публичный чат не открывает управление приложением и данные чужой сессии.", "Каждое сообщение анонимно проходит штатный normalizer/агент, имеет тег, получает ответы в чате.", "Диктовка и обе темы/языка работают; защиты не требуют решения CAPTCHA.", "Повторный install не плодит туннели, ключ не попадает в argv/логи/репозиторий; публичный HTTPS проверен."],
          check=["make lint && make test", "cd frontend && npm run lint && npm run typecheck && npm test -- --run && npm run build", "python scripts/tuna_tunnel.py start --env-file .env; Browser :9999 и публичный HTTPS"]),
 
+    dict(id=270, title="Безопасный повторный seed и pg_dump в Docker", epic="E1", agent="SA-Infra", size="M", wave=9,
+         goal="GitHub #100: сохранить текущие данные при install и явно обрабатывать ошибки seed/baseline.",
+         tz=["4.4", "4.6", "16.2"], contracts=[], deps=[3,40,269],
+         steps=["Режим --if-needed: существующие данные/настройки/снимки только читать, явно сообщать coverage и незавершённый seed.", "Не скрывать exit 2/3/4; проверить pg_dump/pg_restore до записи, включить совместимый клиент 16 в Docker.", "Regression всех таблиц и baseline bytes; настоящий PostgreSQL 16, первичная и повторная установка, backup стенда без reset."],
+         accept=["Повтор установки сохраняет данные, настройки и baseline; старое неполное coverage явно показано.", "Ошибки первичного seed/baseline имеют ненулевой код и останавливают install.", "pg_dump/pg_restore 16 доступны, реальный dump/restore и локальный стенд проверены."],
+         check=["make lint && make test", "docker build; seed --if-needed на копии и install.sh без reset"]),
+    dict(id=271, title="Необязательное обращение посетителя в чате", epic="E9", agent="SA-Landing", size="S", wave=9,
+         goal="GitHub #101: посетитель :9999 может представиться свободно, сохраняя анонимность.",
+         tz=["11.4", "12.2"], contracts=["api/openapi.yaml: PersonalSession/PersonalMessageBody/PersonalHistory"], deps=[269],
+         steps=["Необязательное display_name до 120 символов: UI ru/en, валидация, своя история и восстановление.", "Имя в метаданных нормализованного сигнала и контексте агента, вне контактов банковской идентификации.", "Idempotency, удаление подписи, изоляция сессий, безопасный текст, regression и браузер."],
+         accept=["Можно назвать себя произвольно либо оставить поле пустым; подпись восстанавливается и безопасно отображается.", "Имя учитывается в контексте агента, анонимность и ui_pers_demo сохранены.", "Регрессии и ru/en light/dark/mobile проверены."],
+         check=["make lint && make test", "frontend lint/typecheck/test/build; Browser :9999"]),
+
 ])
 
 

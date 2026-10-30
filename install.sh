@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PROFILE=lite; OFFLINE=0
+PROFILE=""; OFFLINE=0
 NO_STT=0; RECORD_CASSETTES=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -41,7 +41,12 @@ if [ ! -f .env ]; then
   sed -i.bak "s|^APP_SECRET=.*|APP_SECRET=$secret|" .env && rm -f .env.bak
   say ".env создан из .env.example (APP_SECRET сгенерирован). Ключи GigaChat впишите в .env и перезапустите."
 fi
-sed -i.bak "s|^PROFILE=.*|PROFILE=$PROFILE|" .env && rm -f .env.bak
+existing_profile=$(python3 -c 'import pathlib,re,sys; s=pathlib.Path(sys.argv[1]).read_text(); m=re.search(r"^PROFILE\s*=\s*([^\s#]+)",s,re.M); print(m[1].strip(chr(34)+chr(39)) if m else "lite")' .env)
+PROFILE=${PROFILE:-$existing_profile}
+case "$PROFILE" in lite|demo|stress) ;; *) die "Неизвестный профиль: $PROFILE" ;; esac
+if [ "$PROFILE" != "$existing_profile" ]; then
+  sed -i.bak "s|^PROFILE=.*|PROFILE=$PROFILE|" .env && rm -f .env.bak
+fi
 [ -n "$SEED" ] && sed -i.bak "s|^SIM_SEED=.*|SIM_SEED=$SEED|" .env && rm -f .env.bak
 if [ "$OFFLINE" = 1 ]; then
   sed -i.bak "s|^LLM_PROVIDER=.*|LLM_PROVIDER=mock|; s|^LLM_CHAIN=.*|LLM_CHAIN=replay,mock|; s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=|" .env && rm -f .env.bak
@@ -76,7 +81,12 @@ for i in $(seq 1 60); do
   [ "$i" = 60 ] && die "backend не поднялся за 120 с: docker compose logs backend"
 done
 say "сид данных ($PROFILE)"
-docker compose exec -T backend python /scripts/seed/run.py --profile "$PROFILE" ${SEED:+--seed "$SEED"} || say "сид ещё не реализован (E2) — пропуск"
+if docker compose exec -T backend python /scripts/seed/run.py --if-needed --profile "$PROFILE" ${SEED:+--seed "$SEED"}; then
+  say "seed-этап завершён; при существующих данных выполнена только проверка"
+else
+  seed_status=$?
+  die "seed-этап завершился с кодом $seed_status (2 — coverage, 3 — baseline/pg_dump, 4 — незавершённый seed). Установка остановлена; автоматического сброса данных нет."
+fi
 
 HEALTH=$(curl -fs http://localhost:8000/api/health)
 say "health: $HEALTH"

@@ -54,6 +54,15 @@ async def session(conn: Any, request: Request, lock: bool = False) -> dict[str, 
     return row
 
 
+async def visitor_name(conn: Any, session_id: int) -> str:
+    row = await fetch_one(
+        conn,
+        "select coalesce(s.meta->>'visitor_name','') as name from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=%s order by m.id desc limit 1",
+        (session_id,),
+    )
+    return row["name"] if row else ""
+
+
 @router.get("/api/personal/session", summary="Анонимная сессия и публичные справочники формы")
 async def get_personal_session(request: Request, response: Response) -> Any:
     same_origin(request)
@@ -88,10 +97,14 @@ async def get_personal_session(request: Request, response: Response) -> Any:
                 max_age=86400,
                 path="/",
             )
+        if row is None:
+            raise HTTPException(500, "Не удалось создать сессию")
         products = await fetch_all(conn, "select code,name_ru,name_en from products order by name_ru")
         regions = await fetch_all(conn, "select code,name_ru from regions order by name_ru")
         cities = await fetch_all(conn, "select id,name_ru,region_code from cities order by name_ru")
+        display_name = await visitor_name(conn, row["id"])
     return {
+        "display_name": display_name,
         "form_token": form_token(raw),
         "products": products,
         "regions": regions,
@@ -106,6 +119,7 @@ class PersonalMessageBody(BaseModel):
     request_id: uuid.UUID
     form_token: str = Field(min_length=64, max_length=64)
     text: str = Field(min_length=1, max_length=4000)
+    display_name: str | None = Field(None, max_length=120, pattern=r"^[^\x00-\x1f\x7f-\x9f]*$")
     product_code: str | None = Field(None, max_length=100)
     region_code: str | None = Field(None, max_length=10)
     city_id: int | None = None
@@ -192,6 +206,10 @@ async def post_personal_message(request: Request, body: PersonalMessageBody) -> 
         )
         msg["channel_subtype"] = TAG
         msg["meta"]["tags"] = [TAG]
+        # Самопредставление — только контекст диалога, не контакт для identify_client.
+        msg["meta"]["visitor_name"] = (
+            body.display_name if body.display_name is not None else await visitor_name(conn, s["id"])
+        )
         result = await create_signal(conn, msg, source_code=TAG, run_id=rid, sim_time=sim_time)
         if result["status"] not in ("accepted", "duplicate"):
             raise HTTPException(422, "Не удалось принять сообщение")
@@ -211,7 +229,7 @@ async def get_personal_messages(request: Request) -> Any:
         s = await session(conn, request)
         messages = await fetch_all(
             conn,
-            "select s.public_id,s.text,s.status,s.received_at from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=%s order by m.id limit 200",
+            "select s.public_id,s.text,s.status,s.received_at,coalesce(s.meta->>'visitor_name','') as display_name from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=%s order by m.id limit 200",
             (s["id"],),
         )
         # Не выдаём внутренние рекомендации, задания, чужих клиентов, токены и операторские комментарии.

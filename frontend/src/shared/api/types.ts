@@ -9533,6 +9533,8 @@ export interface components {
             replayed: boolean;
         };
         PersonalSession: {
+            /** @description Неподтверждённое обращение посетителя из последнего сообщения собственной сессии */
+            display_name?: string;
             form_token: string;
             /** @constant */
             tag: "ui_pers_demo";
@@ -9557,6 +9559,8 @@ export interface components {
             request_id: string;
             form_token: string;
             text: string;
+            /** @description Необязательное имя или псевдоним; null сохраняет предыдущее обращение */
+            display_name?: string | null;
             product_code?: string | null;
             region_code?: string | null;
             city_id?: number | null;
@@ -9569,6 +9573,7 @@ export interface components {
             messages: {
                 public_id: string;
                 text: string;
+                display_name?: string;
                 status: string;
                 /** Format: date-time */
                 received_at: string;

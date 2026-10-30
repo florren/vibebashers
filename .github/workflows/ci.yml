@@ -105,7 +105,7 @@ jobs:
   tests:
     name: tests
     needs: [contracts, db]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -121,6 +121,11 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - name: PostgreSQL 16 dump/restore tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
       - name: Backend lint + tests
         run: |
           set -euo pipefail
