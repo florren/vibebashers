@@ -1,0 +1,22 @@
+{
+  "covered": 32,
+  "statements": 34,
+  "percent": 94.12,
+  "files": [
+    {
+      "file": "backend/app/sim/baseline.py",
+      "covered": 28,
+      "statements": 28,
+      "missing": []
+    },
+    {
+      "file": "scripts/seed/repair_csi.py",
+      "covered": 4,
+      "statements": 6,
+      "missing": [
+        159,
+        160
+      ]
+    }
+  ]
+}

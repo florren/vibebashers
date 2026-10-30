@@ -21,7 +21,7 @@ GitHub #103: покрытие 480/480 без сброса данных и реш
 
 ## Зависимости
 - Зависит от: [T-270](T-270-bezopasnyj-povtornyj-seed-i-pg-dump-v-docker.md)
-- Блокирует: —
+- Блокирует: [T-275](T-275-avtomaticheskij-csi-remont-posle-baseline-restor.md)
 
 ## Что сделать
 1. Dry-run и атомарный repair через normalizer только для недостающих CSI baseline.

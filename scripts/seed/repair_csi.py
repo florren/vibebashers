@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -143,15 +144,20 @@ def repair(conn: psycopg.Connection[Any], *, apply: bool = False) -> dict[str, A
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--json", action="store_true", help="машиночитаемый результат для baseline.restore")
     parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
     try:
         with connect(args.database_url) as conn:
             result = repair(conn, apply=args.apply)
         log.info("csi_history_repair", **result)
+        if args.json:
+            sys.stdout.write(json.dumps(result, ensure_ascii=False) + "\n")
         return 0
     except RepairError as exc:
         log.error("csi_history_repair_failed", reason=str(exc))
+        if args.json:
+            sys.stdout.write(json.dumps({"error": str(exc)}, ensure_ascii=False) + "\n")
         return 2
 
 
