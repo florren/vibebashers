@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md)
-- Блокирует: [T-183](T-183-audiosessii-repliki-i-tri-rezhima-razdeleniya-sp.md)
+- Блокирует: [T-183](T-183-audiosessii-repliki-i-tri-rezhima-razdeleniya-sp.md), [T-274](T-274-pervyj-live-http-vhod-bez-current-run-id.md)
 
 ## Что сделать
 1. app/sim/runs.py: ensure_live_run() — если current_run_id IS NULL, создать sim_runs(kind='live', label='живой показ') и выставить текущим; вызывается приёмником отзывов, сессиями аудио и голосовым вводом.

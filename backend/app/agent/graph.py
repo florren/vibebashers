@@ -17,6 +17,7 @@ from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
 from app.agent.tools import write as wt
 from app.agent.tools.base import ToolContext
+from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -491,8 +492,9 @@ async def wake_due_followups(
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
         await conn.execute(
-            "with due as (select id from followups where status = 'scheduled' and wake_sim <= %s "
-            "and agent_run_id is not null and signal_id is not null for update skip locked) "
+            "with due as (select f.id from followups f join signals s on s.id=f.signal_id "
+            "where f.status = 'scheduled' and f.wake_sim <= %s and f.agent_run_id is not null "
+            f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
             "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
             (sim_time,),
         )
@@ -516,7 +518,8 @@ async def wake_followups_for_incident(
 ) -> int:
     await conn.execute(
         "update followups set wake_sim = %s where incident_id = %s and status = 'scheduled' "
-        "and reason is distinct from 'awaiting_client'",
+        "and reason is distinct from 'awaiting_client' "
+        f"and not exists(select 1 from signals s where s.id=followups.signal_id and {LEGACY_MOCK_SQL})",
         (sim_time, incident_id),
     )
     await conn.commit()
@@ -538,7 +541,8 @@ async def expire_hitl(
     rows = await (
         await conn.execute(
             "select hd.id, hd.agent_run_id, hd.signal_id, hd.incident_id, ar.sim_run_id from human_decisions hd "
-            "join agent_runs ar on ar.id = hd.agent_run_id where hd.decision is null and hd.requested_sim <= %s",
+            "join agent_runs ar on ar.id = hd.agent_run_id left join signals s on s.id=hd.signal_id "
+            f"where hd.decision is null and hd.requested_sim <= %s and not {LEGACY_MOCK_SQL}",
             (cutoff,),
         )
     ).fetchall()

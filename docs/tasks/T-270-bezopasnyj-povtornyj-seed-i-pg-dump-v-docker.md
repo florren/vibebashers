@@ -21,7 +21,7 @@ GitHub #100: сохранить текущие данные при install и я
 
 ## Зависимости
 - Зависит от: [T-003](T-003-install-sh-ustanovka-odnoj-komandoj.md), [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md), [T-269](T-269-izolirovannyj-anonimnyj-chat-9999-i-tunnel-tuna.md)
-- Блокирует: —
+- Блокирует: [T-272](T-272-dobavochnyj-csi-remont-staroj-istorii.md)
 
 ## Что сделать
 1. Режим --if-needed: существующие данные/настройки/снимки только читать, явно сообщать coverage и незавершённый seed.

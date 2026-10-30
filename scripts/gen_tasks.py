@@ -1446,6 +1446,25 @@ TASKS.extend([
          accept=["Можно назвать себя произвольно либо оставить поле пустым; подпись восстанавливается и безопасно отображается.", "Имя учитывается в контексте агента, анонимность и ui_pers_demo сохранены.", "Регрессии и ru/en light/dark/mobile проверены."],
          check=["make lint && make test", "frontend lint/typecheck/test/build; Browser :9999"]),
 
+    dict(id=272, title="Добавочный CSI-ремонт старой истории", epic="E2", agent="SA-Signals", size="M", wave=9,
+         goal="GitHub #103: покрытие 480/480 без сброса данных и решений.",
+         tz=["4.4", "4.6"], contracts=[], deps=[270],
+         steps=["Dry-run и атомарный repair через normalizer только для недостающих CSI baseline.", "Идемпотентность, отказ при чужих пробелах, сохранность всех прежних строк/решений и baseline.", "Backup, проверка копии и применение на стенде без reset."],
+         accept=["Старый набор имеет 480/480; добавлены только недостающие CSI.", "Повтор no-op, ошибка откатывает всю транзакцию; решения и часы сохранены."],
+         check=["make lint && make test", "repair_csi.py dry-run / --apply / повтор на копии и стенде"]),
+    dict(id=273, title="Синтетика только по явному запуску", epic="E18", agent="SA-Agent", size="M", wave=9,
+         goal="GitHub #104: доказать источник фоновой генерации и исключить её в idle/pause/restart.",
+         tz=["3.7", "4.6", "4.7"], contracts=[], deps=[207],
+         steps=["Чистые стенды до/после: SQL, 120 секунд idle/pause/restart.", "Явный mock без real-time генерации, run_id и corpus; реальный вход сохранён.", "Recovery и callbacks исключают legacy fake, настоящие обращения восстанавливаются."],
+         accept=["Enabled mock не растёт в idle/pause и после restart; start/resume штатны.", "Fixed seed воспроизводим; URL не подменяется синтетикой; live не блокируется."],
+         check=["make lint && make test", "docs/benchmarks/idle-generation/observe.py"]),
+    dict(id=274, title="Первый live HTTP-вход без current_run_id", epic="E18", agent="SA-Agent", size="S", wave=9,
+         goal="GitHub #105: согласованная точечная интеграция ensure_live_run в run_context.",
+         tz=["4.7", "21.2"], contracts=[], deps=[180,273],
+         steps=["Создать live только по явному входу и только при NULL, поддержать dict_row.", "Синхронизировать память Simulator без запуска часов, проверить конкуренцию и shutdown."],
+         accept=["Три первых запроса создают один live, агент обрабатывает реальный вход при running=false.", "Baseline/free не заменяются; shutdown сохраняет созданный указатель."],
+         check=["make lint && make test", "test_synthetic_ingest.py и test_live_run.py"]),
+
 ])
 
 

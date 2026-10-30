@@ -27,3 +27,4 @@ ADR-0001…0007 оформлены 27.10.2026 задним числом по р�
 - [ADR-0016](ADR-0016-operator-feedback-processing.md) — поздние сведения в дальнейшей обработке агента.
 - [ADR-0017](ADR-0017-public-personal-chat.md) — изолированный анонимный чат 9999 и Tuna.
 - [ADR-0018](ADR-0018-safe-install-seed.md) — безопасный повторный seed и PostgreSQL 16 tooling.
+- [ADR-0019](ADR-0019-explicit-synthetic-ingest.md) — явная синтетика, безопасное recovery и добавочный CSI-ремонт.

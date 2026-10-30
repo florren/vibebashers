@@ -38,9 +38,12 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
     source = request.headers.get("x-source-code") or "api"
     results = []
     async with db() as conn:
+        run_id, sim_time = await run_context(request, conn) if items else (None, None)
         for msg in items:
             try:
-                results.append(await create_signal(conn, dict(msg), source_code=source))
+                results.append(
+                    await create_signal(conn, dict(msg), source_code=source, run_id=run_id, sim_time=sim_time)
+                )
             except IngestError as exc:
                 results.append(
                     {"external_id": msg.get("external_id"), "status": "rejected", "signal_id": None, "error": str(exc)}
@@ -349,7 +352,7 @@ async def post_ingest_sources_code_poll(code: str) -> Any:
         if row["kind"] != "polling":
             raise HTTPException(status_code=409, detail="опрос только для kind=polling")
         try:
-            return await poll_source(conn, row)
+            return await poll_source(conn, row, manual=True)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=409, detail=str(exc)[:200]) from exc
 
@@ -403,6 +406,8 @@ async def post_ingest_csi(request: Request) -> Any:
     else:
         async with db() as conn:
             try:
+                if rows:
+                    await run_context(request, conn)
                 report = await import_rows(conn, rows)
             except IngestError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc

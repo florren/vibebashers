@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.api._compliance_support import run_context
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
 from app.search.cases import case_search
@@ -101,7 +102,8 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     msg = from_api_signal(body.model_dump(exclude_none=True), origin="jury", source_code="api")
     async with db() as conn:
         try:
-            res = await create_signal(conn, msg, source_code="api", emit_event=False)
+            run_id, sim_time = await run_context(request, conn)
+            res = await create_signal(conn, msg, source_code="api", emit_event=False, run_id=run_id, sim_time=sim_time)
         except IngestError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
     if res["status"] == "rejected":

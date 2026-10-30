@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Any
 
 import psycopg
+from psycopg.rows import tuple_row
 
 from app.sim.events import dumps
 
@@ -39,8 +40,9 @@ async def list_runs(conn: psycopg.AsyncConnection[Any], limit: int = 50) -> list
 
 
 async def current_run_id(conn: psycopg.AsyncConnection[Any]) -> int | None:
-    cur = await conn.execute("select current_run_id from sim_state where id = 1")
-    row = await cur.fetchone()
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute("select current_run_id from sim_state where id = 1")
+        row = await cur.fetchone()
     return int(row[0]) if row and row[0] else None
 
 
@@ -62,20 +64,21 @@ async def create_run(
             "update sim_runs set status = 'stopped', finished_sim = coalesce(finished_sim, %s), finished_at = coalesce(finished_at, now()) where id = %s and status in ('running','paused','interrupted')",
             (sim_time, cur_id),
         )
-    cur = await conn.execute(
-        "insert into sim_runs (kind, label, scenario_id, seed, reset_mode, parent_run_id, status, started_sim, settings_snapshot) values (%s, %s, %s, %s, %s, %s, 'running', %s, %s::jsonb) returning id",
-        (
-            kind,
-            label,
-            scenario_id,
-            seed,
-            reset_mode,
-            parent_run_id or cur_id,
-            sim_time,
-            dumps({"created_by": "sim_control"}),
-        ),
-    )
-    run_id = int((await cur.fetchone())[0])  # type: ignore[index]
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute(
+            "insert into sim_runs (kind, label, scenario_id, seed, reset_mode, parent_run_id, status, started_sim, settings_snapshot) values (%s, %s, %s, %s, %s, %s, 'running', %s, %s::jsonb) returning id",
+            (
+                kind,
+                label,
+                scenario_id,
+                seed,
+                reset_mode,
+                parent_run_id or cur_id,
+                sim_time,
+                dumps({"created_by": "sim_control"}),
+            ),
+        )
+        run_id = int((await cur.fetchone())[0])  # type: ignore[index]
     await conn.execute("update sim_state set current_run_id = %s, updated_at = now() where id = 1", (run_id,))
     await conn.execute(
         "select pg_notify('runs', %s)",
@@ -91,8 +94,9 @@ async def ensure_live_run(conn: psycopg.AsyncConnection[Any]) -> int:
     started_sim берётся из sim_state.sim_time. create_run вызывается только при current_run_id IS NULL,
     поэтому уже текущие baseline/free/scenario не останавливаются.
     """
-    cur = await conn.execute("select current_run_id, seed, sim_time from sim_state where id = 1 for update")
-    row = await cur.fetchone()
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute("select current_run_id, seed, sim_time from sim_state where id = 1 for update")
+        row = await cur.fetchone()
     if row is None:
         raise RuntimeError("нет строки sim_state id=1")
     current_id, seed, sim_time = row

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from app.agent.runner import AgentService
 from app.api import ingest
@@ -20,8 +21,9 @@ async def test_ingest_dispatches_only_accepted_after_commit(monkeypatch):
         yield object()
         committed = True
 
-    async def create(*_args, **_kwargs):
-        return {"status": "accepted", "signal_id": 17}
+    stamp = dt.datetime(2026, 11, 9, tzinfo=dt.UTC)
+    create = AsyncMock(return_value={"status": "accepted", "signal_id": 17})
+    context = AsyncMock(return_value=(7, stamp))
 
     def submit(signal_id):
         assert committed
@@ -31,9 +33,13 @@ async def test_ingest_dispatches_only_accepted_after_commit(monkeypatch):
     request = SimpleNamespace(headers={}, app=SimpleNamespace(state=SimpleNamespace(agent=agent)))
     monkeypatch.setattr(ingest, "db", db)
     monkeypatch.setattr(ingest, "create_signal", create)
+    monkeypatch.setattr(ingest, "run_context", context)
     result = await ingest.post_ingest_messages(request, {"text": "Синтетическое обращение"})
     assert result.status_code == 202
     agent.submit.assert_called_once_with(17)
+    context.assert_awaited_once()
+    assert create.call_args.kwargs["run_id"] == 7
+    assert create.call_args.kwargs["sim_time"] == stamp
 
 
 async def test_agent_submit_coalesces_concurrent_http_and_listen(monkeypatch):
