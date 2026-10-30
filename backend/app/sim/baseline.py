@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 
 from app.config import get_settings
@@ -35,7 +39,7 @@ class BaselineUnavailableError(Exception):
 
 
 class BaselineToolingError(Exception):
-    """pg_dump или pg_restore недоступен."""
+    """Инструмент снимка или авторемонта недоступен либо завершился ошибкой."""
 
 
 class BaselineActiveRunError(Exception):
@@ -231,6 +235,11 @@ def dump_for_connection(
     return info(prof)
 
 
+def _connection_dsn(conn: psycopg.AsyncConnection[Any]) -> str:
+    # info.dsn исключает пароль. Сохраняем аутентификацию, но не выбираем другую БД из Settings.
+    return make_conninfo(conn.info.dsn, password=conn.info.password)
+
+
 async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -> dict[str, Any]:
     """Создать снимок baseline из текущего состояния БД."""
     prof = resolve_profile(profile)
@@ -243,7 +252,7 @@ async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -
         prof = str(seed_done["profile"])
     dump_path = _dump_path(prof)
     dump_path.parent.mkdir(parents=True, exist_ok=True)
-    dsn = psycopg_dsn()
+    dsn = _connection_dsn(conn)
     await conn.commit()
     _run_pg_dump(dsn, dump_path)
     meta = {
@@ -303,6 +312,44 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
             raise BaselineToolingError(f"pg_restore завершился с кодом {proc.returncode}: {err.strip()[-800:]}")
 
 
+def _csi_repair_script() -> Path:
+    # Нативный checkout и Docker используют тот же CLI с единственной логикой ремонта.
+    path = REPO_ROOT / "scripts" / "seed" / "repair_csi.py"
+    if not path.is_file():
+        raise BaselineToolingError("не найден scripts/seed/repair_csi.py; baseline не восстановлен")
+    return path
+
+
+def _run_csi_repair(dsn: str, script: Path) -> dict[str, Any]:
+    # DSN передаём окружением, а не argv; отдельный процесс изолирует logging seed-модулей.
+    proc = subprocess.run(
+        [sys.executable, str(script), "--apply", "--json"],
+        env={**os.environ, "DATABASE_URL": dsn},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        result: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        log.error("baseline_csi_repair_failed", returncode=proc.returncode, detail=proc.stderr[-2000:])
+        raise BaselineToolingError("CSI-ремонт не вернул результат; восстановление baseline не завершено") from exc
+    if (
+        proc.returncode != 0
+        or not isinstance(result, dict)
+        or not all(isinstance(result.get(key), int) for key in ("after", "total", "added"))
+        or result.get("after") != result.get("total")
+    ):
+        reason = (
+            result.get("error", "неполное покрытие или неверный результат")
+            if isinstance(result, dict)
+            else "неверный результат"
+        )
+        raise BaselineToolingError(f"Автоматический CSI-ремонт: {reason}; восстановление baseline не завершено")
+    log.info("baseline_csi_repair_done", **result)
+    return result
+
+
 async def _notify(conn: psycopg.AsyncConnection[Any], event_type: str, job_id: str) -> None:
     await conn.execute(
         "select pg_notify('runs', %s)",
@@ -321,8 +368,9 @@ async def restore(
     dump_path = _dump_path(prof)
     if not dump_path.is_file():
         raise BaselineUnavailableError(f"снимок baseline для профиля {prof} не найден")
+    repair_script = _csi_repair_script()
     job_id = str(uuid.uuid4())
-    dsn = psycopg_dsn()
+    dsn = _connection_dsn(conn)
     runs_dir = runs_export_dir()
     runs_backup: Path | None = None
     if runs_dir.is_dir() and any(runs_dir.iterdir()):
@@ -350,6 +398,9 @@ async def restore(
                 shutil.rmtree(runs_dir)
             shutil.copytree(runs_backup, runs_dir)
             shutil.rmtree(runs_backup, ignore_errors=True)
+        # CLI открывает свою транзакцию: сохранённые sim_runs должны быть видны до ремонта.
+        await new_conn.commit()
+        await asyncio.to_thread(_run_csi_repair, dsn, repair_script)
         await _notify(new_conn, "baseline_restore_finished", job_id)
         await new_conn.commit()
 

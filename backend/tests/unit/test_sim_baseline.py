@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -54,6 +55,7 @@ def _attach_mock_sim(client: TestClient) -> MagicMock:
 def _mock_dump_conn(profile: str) -> AsyncMock:
     mock_conn = AsyncMock()
     mock_conn.closed = False
+    mock_conn.info = SimpleNamespace(dsn="dbname=isolated_mock", password="")
     mock_conn.commit = AsyncMock()
 
     async def _execute(sql: str, params: tuple[Any, ...] | None = None) -> AsyncMock:
@@ -284,6 +286,7 @@ async def test_restore_preserves_sim_runs_summary(tmp_path: Path, monkeypatch: p
     )
 
     conn = AsyncMock()
+    conn.info = SimpleNamespace(dsn="dbname=isolated_mock", password="")
     fetch_cur = AsyncMock()
     fetch_cur.fetchall = AsyncMock(return_value=[sim_row])
     notify_cur = AsyncMock()
@@ -323,7 +326,11 @@ async def test_restore_preserves_sim_runs_summary(tmp_path: Path, monkeypatch: p
         AsyncMock(return_value=_ConnCtx()),
     )
 
+    repair = MagicMock(return_value={"added": 0, "after": 480, "total": 480})
+    monkeypatch.setattr(baseline_svc, "_run_csi_repair", repair)
     job_id = await baseline_svc.restore(conn)
+    repair.assert_called_once()
+    assert new_conn.commit.await_count == 2
     assert job_id
     assert inserted, "sim_runs должны быть восстановлены после pg_restore"
     assert isinstance(inserted[0][14], Jsonb)

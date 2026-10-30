@@ -1,0 +1,49 @@
+{
+  "snapshots": [
+    {
+      "phase": "before",
+      "coverage": "440",
+      "csi": 0,
+      "distinct_csi": 0,
+      "signals": 731,
+      "agents": 0,
+      "running": false,
+      "run_id": 1,
+      "time": "2026-11-09T06:00:00+00:00"
+    },
+    {
+      "phase": "restore_1",
+      "coverage": "480",
+      "csi": 40,
+      "distinct_csi": 40,
+      "signals": 771,
+      "agents": 0,
+      "running": false,
+      "run_id": 1,
+      "time": "2026-11-09T06:00:00+00:00"
+    },
+    {
+      "phase": "restore_2",
+      "coverage": "480",
+      "csi": 40,
+      "distinct_csi": 40,
+      "signals": 771,
+      "agents": 0,
+      "running": false,
+      "run_id": 1,
+      "time": "2026-11-09T06:00:00+00:00"
+    },
+    {
+      "phase": "restore_and_start_then_pause",
+      "coverage": "480",
+      "csi": 40,
+      "distinct_csi": 40,
+      "signals": 771,
+      "agents": 0,
+      "running": false,
+      "run_id": 2,
+      "time": "2026-11-09T06:00:00+00:00"
+    }
+  ],
+  "archive_unchanged": true
+}

@@ -8,6 +8,7 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from app.config import get_settings
 from app.sim import baseline as baseline_svc
 
 pytestmark = pytest.mark.skipif(
@@ -32,8 +33,19 @@ async def _count_clients(dsn: str) -> int:
         return int(row[0]) if row else 0
 
 
+@pytest.fixture
+def wrong_global_url(monkeypatch: pytest.MonkeyPatch):
+    # Переданное соединение — источник истины; глобальная настройка указывает в пустоту.
+    monkeypatch.setenv("DATABASE_URL", "postgresql://127.0.0.1:1/not_the_connection?connect_timeout=1")
+    get_settings.cache_clear()
+    try:
+        yield
+    finally:
+        get_settings.cache_clear()
+
+
 @pytest.mark.asyncio
-async def test_dump_after_seed_and_restore_roundtrip(seeded: str, baseline_tmp: Path) -> None:
+async def test_dump_after_seed_and_restore_roundtrip(seeded: str, baseline_tmp: Path, wrong_global_url) -> None:
     dsn = seeded.replace("postgresql+psycopg://", "postgresql://", 1)
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=False) as conn:
         info = await baseline_svc.dump(conn, profile="lite")
