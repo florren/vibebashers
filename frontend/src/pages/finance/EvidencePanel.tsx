@@ -5,6 +5,7 @@ import { api, post, type Schemas } from '@/shared/api/client'
 import { ErrorBox, Skeleton } from '@/shared/ui'
 import { fmtSim } from '@/shared/lib/format'
 import { formatMoney } from './money'
+import type { ProductSelection } from './ProductFilter'
 
 type Assessment = Schemas['FinanceAssessment']
 type Proof = Schemas['FinanceCaseProof']
@@ -12,11 +13,11 @@ type Detail = Schemas['FinancialImpactDetail']
 type EvidenceBody = Schemas['FinanceEvidenceBody']
 type Period = Schemas['FinancialImpactTotal']['period']
 
-export function EvidencePanel({ runId, period, start, end }: { runId: number | null; period: Period; start: string; end: string }) {
+export function EvidencePanel({ runId, period, start, end, products = { mode: 'all', codes: [] } }: { runId: number | null; period: Period; start: string; end: string; products?: ProductSelection }) {
   const { t } = useTranslation()
   const q = useQuery({
-    queryKey: ['metrics', 'finance-assessment', runId, period, start, end],
-    queryFn: () => api<Assessment>('/api/v1/finance/impact/assessment', { query: { run_id: runId ?? 'current', period,
+    queryKey: ['metrics', 'finance-assessment', runId, period, start, end, products],
+    queryFn: () => api<Assessment>('/api/v1/finance/impact/assessment', { query: { run_id: runId ?? 'current', period, product_mode: products.mode, product_codes: products.codes,
       ...(period === 'custom' ? { start_date: `${start}:00Z`, end_date: `${end}:00Z` } : {}),
     } }), enabled: runId !== null, refetchInterval: 5000,
   })

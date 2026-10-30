@@ -1653,5 +1653,18 @@
       "outside_policy_period": "Policy inactive at intervention time",
       "incomplete_refunds": "Some case refunds are missing or stale"
     }
+  },
+  "financeProducts": {
+    "title": "Products",
+    "all": "All products",
+    "clear": "Clear selection",
+    "mode": "Selection mode",
+    "include": "Selected only",
+    "exclude": "All except selected",
+    "hint": "Applies to all totals, chart, ledger and both contours. The first client case is selected across the run before filtering; its risk is not reassigned to another product.",
+    "summary": {
+      "include": "Selected: {{count}}",
+      "exclude": "Excluded: {{count}}"
+    }
   }
 }

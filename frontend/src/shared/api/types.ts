@@ -7129,6 +7129,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
+                    product_mode?: "all" | "include" | "exclude";
+                    /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */
+                    product_codes?: string[];
                     /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
                     run_id?: string;
                     period?: "live" | "day" | "week" | "month" | "custom";
@@ -7250,6 +7254,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
+                    product_mode?: "all" | "include" | "exclude";
+                    /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */
+                    product_codes?: string[];
                     /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
                     run_id?: string;
                     period?: "live" | "day" | "week" | "month" | "custom";

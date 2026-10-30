@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from app.api.common import db, fetch_one, resolve_run_id
+from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.economics import evidence, impact
 from app.errors import Problem
 
@@ -29,9 +29,20 @@ async def selected_run(conn: Any, run_id: str) -> int | None:
     return rid
 
 
+async def selected_products(conn: Any, codes: list[str] | None) -> tuple[str, ...]:
+    selected = tuple(sorted(set(codes or [])))
+    if selected:
+        known = await fetch_all(conn, "select code from products where code = any(%s)", (list(selected),))
+        if set(selected) != {row["code"] for row in known}:
+            raise Problem(422, "Неизвестный код продукта")
+    return selected
+
+
 @router.get("/api/v1/finance/impact/total", summary="Эффект запуска и отдельные сценарные оценки")
 async def get_impact_total(
     period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
+    product_mode: impact.ProductMode = Query("all"),
+    product_codes: list[str] | None = Query(None, max_length=100),
     run_id: str = Query("current"),
     start_date: dt.datetime | None = Query(None),
     end_date: dt.datetime | None = Query(None),
@@ -46,6 +57,7 @@ async def get_impact_total(
         async with conn.transaction():
             await conn.execute("set transaction isolation level repeatable read, read only")
             rid = await selected_run(conn, run_id)
+            products = await selected_products(conn, product_codes)
             state = await fetch_one(conn, "select sim_time from sim_state where id = 1")
             now = state["sim_time"] if state else dt.datetime.now(dt.UTC)
             start, end = impact.bounds(period, now, start_date, end_date)
@@ -59,6 +71,8 @@ async def get_impact_total(
                 fine=fine_per_case_rub,
                 offset=offset,
                 limit=limit,
+                product_codes=products,
+                product_mode=product_mode,
             )
     return JSONResponse(jsonable_encoder(res))
 
@@ -85,6 +99,8 @@ async def get_impact_incident(
 async def get_impact_assessment(
     run_id: str = Query("current"),
     period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
+    product_mode: impact.ProductMode = Query("all"),
+    product_codes: list[str] | None = Query(None, max_length=100),
     start_date: dt.datetime | None = Query(None),
     end_date: dt.datetime | None = Query(None),
 ) -> Any:
@@ -94,11 +110,12 @@ async def get_impact_assessment(
         async with conn.transaction():
             await conn.execute("set transaction isolation level repeatable read, read only")
             rid = await selected_run(conn, run_id)
+            products = await selected_products(conn, product_codes)
             state = await fetch_one(conn, "select sim_time from sim_state where id=1")
             start, end = impact.bounds(
                 period, state["sim_time"] if state else dt.datetime.now(dt.UTC), start_date, end_date
             )
-            result = await evidence.assessment(conn, rid, start, end)
+            result = await evidence.assessment(conn, rid, start, end, products, product_mode)
     return JSONResponse(jsonable_encoder(result))
 
 

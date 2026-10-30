@@ -11,6 +11,7 @@ vi.mock('./EvidencePanel', () => ({ EvidencePanel: () => null, CaseEvidence: () 
 vi.mock('echarts', () => ({ init: () => ({ setOption: vi.fn(), dispose: vi.fn(), resize: vi.fn() }) }))
 vi.mock('@/shared/api/client', async (original) => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn() }))
 vi.mock('@/shared/api/hooks', () => ({
+  useRefs: () => ({ data: [{ code: 'debit_card', name_ru: 'Дебетовые карты' }, { code: 'deposit', name_ru: 'Вклады' }] }),
   useSimRuns: () => ({ data: { items: [{ id: 7, label: 'Run 7', status: 'running' }] } }),
   useSimState: () => ({ data: { current_run_id: 7 }, isSuccess: true }),
 }))
@@ -92,4 +93,22 @@ it('показывает неполноту расчётов и требует �
   fireEvent.click(screen.getByRole('button', { name: 'Выбрать даты' }))
   expect(screen.getByRole('status')).toHaveTextContent('Укажите начало и конец периода')
   expect(screen.queryByText('1 · Действующая модель dCLTV')).not.toBeInTheDocument()
+})
+
+
+it('фильтрует продукты, выбирает все и переключает исключения', async () => {
+  mount()
+  await screen.findByText('1 · Действующая модель dCLTV')
+  fireEvent.click(screen.getByText('Продукты · Все продукты'))
+  expect(screen.getByRole('checkbox', { name: 'Вклады' })).toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Снять выделение' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'include', product_codes: [] }) })))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Вклады' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'include', product_codes: ['deposit'] }) })))
+  fireEvent.change(screen.getByLabelText('Режим выбора'), { target: { value: 'exclude' } })
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'exclude', product_codes: ['deposit'] }) })))
+  fireEvent.click(screen.getByRole('button', { name: 'Все продукты' }))
+  expect(screen.getByRole('checkbox', { name: 'Вклады' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Дебетовые карты' })).toBeChecked()
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'all', product_codes: [] }) })))
 })

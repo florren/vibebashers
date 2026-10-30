@@ -23,7 +23,7 @@
 
 ## Зависимости
 - Зависит от: [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md)
-- Блокирует: —
+- Блокирует: [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md)
 
 ## Что сделать
 1. Сохранить версию и время существующего скора classification.churn_risk в шаге агента; LLM-промпты/схемы и ключи кассет не менять.
