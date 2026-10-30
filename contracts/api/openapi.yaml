@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.5
+  version: 1.5.6
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -596,6 +596,7 @@ paths:
       parameters:
         - { $ref: "#/components/parameters/RunId" }
         - { name: q, in: query, schema: { type: string, maxLength: 200 }, description: "Текст или код сущности, включая связанные SIG/INC. Все статусы доступны без status-фильтра; run_id=all ищет во всех запусках." }
+        - { name: tag, in: query, schema: { type: string, maxLength: 100 }, description: "Тег источника, например ui_pers_demo" }
         - { name: channel, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
         - { name: signal_type, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
         - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
@@ -2520,6 +2521,41 @@ paths:
         '422':
           description: Некорректное доказательство
 
+  /api/personal/session:
+    get:
+      tags: [personal]
+      summary: Анонимная сессия и справочники отдельного чата
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PersonalSession" } } } }
+  /api/personal/messages:
+    get:
+      tags: [personal]
+      summary: Только собственная история чата (HttpOnly session cookie)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PersonalHistory" } } } }
+    post:
+      tags: [personal]
+      summary: Сообщение анонимного посетителя с тегом ui_pers_demo
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/PersonalMessageBody" } }
+      responses:
+        "202": { description: Принято штатным normalizer, content: { application/json: { schema: { type: object, required: [accepted, public_id], properties: { accepted: { type: boolean }, public_id: { type: string } } } } } }
+        "429": { description: Пассивная защита; Retry-After позволяет дождаться отправки без CAPTCHA }
+  /api/personal/reset:
+    post:
+      tags: [personal]
+      summary: Забыть анонимную сессию в этом браузере
+      responses:
+        "204": { description: Cookie удалена; история остаётся в обработке }
+  /api/personal/health:
+    get:
+      tags: [personal]
+      summary: Готовность публичного приложения
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { status: { type: string } } } } } }
+
 components:
   parameters:
     IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -2836,6 +2872,7 @@ components:
     Signal:
       type: object
       properties:
+        tags: { type: array, items: { type: string } }
         run_id: { type: integer }
         run_public_id: { type: string }
         incident_refs: { type: array, items: { type: string }, description: Коды связанных инцидентов в том же запуске }
@@ -3081,6 +3118,12 @@ components:
         recorded_by: { type: string }
         recorded_sim: { type: string, format: date-time }
         recorded_at: { type: string, format: date-time }
+        review_run_ref: { type: [string, "null"] }
+        processing_status: { type: [string, "null"], enum: [pending, applied, failed, null] }
+        agent_run_id: { type: [integer, "null"] }
+        review: { type: [object, "null"], properties: { summary_ru: { type: string }, priority: { type: integer }, next_step: { type: string } } }
+        applied_at: { type: [string, "null"], format: date-time }
+        processing_error: { type: [string, "null"] }
     HitlFeedbackList:
       type: object
       required: [items, next_cursor]
@@ -4643,3 +4686,33 @@ components:
           type: integer
         replayed:
           type: boolean
+
+    PersonalSession:
+      type: object
+      required: [form_token, products, regions, cities, tag, minimum_form_ms]
+      properties:
+        form_token: { type: string }
+        tag: { type: string, const: ui_pers_demo }
+        minimum_form_ms: { type: integer }
+        products: { type: array, items: { type: object, required: [code, name_ru, name_en], properties: { code: { type: string }, name_ru: { type: string }, name_en: { type: string } } } }
+        regions: { type: array, items: { type: object, required: [code, name_ru], properties: { code: { type: string }, name_ru: { type: string } } } }
+        cities: { type: array, items: { type: object, required: [id, name_ru, region_code], properties: { id: { type: integer }, name_ru: { type: string }, region_code: { type: string } } } }
+    PersonalMessageBody:
+      type: object
+      additionalProperties: false
+      required: [request_id, form_token, text]
+      properties:
+        request_id: { type: string, format: uuid }
+        form_token: { type: string, minLength: 64, maxLength: 64 }
+        text: { type: string, minLength: 1, maxLength: 4000 }
+        product_code: { type: [string, "null"], maxLength: 100 }
+        region_code: { type: [string, "null"], maxLength: 10 }
+        city_id: { type: [integer, "null"] }
+        website: { type: string, maxLength: 200, default: "" }
+        voice: { type: boolean, default: false }
+    PersonalHistory:
+      type: object
+      required: [messages, answers]
+      properties:
+        messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, status: { type: string }, received_at: { type: string, format: date-time } } } }
+        answers: { type: array, items: { type: object, required: [id, text, at], properties: { id: { type: integer }, text: { type: string }, at: { type: string, format: date-time } } } }

@@ -403,7 +403,8 @@
       "twin_react": "Customer twin",
       "instant_decide": "Fast decision",
       "act_instant": "Instant actions",
-      "gift": "Reward"
+      "gift": "Reward",
+      "operator_feedback": "Operator information review"
     },
     "stepStatus": {
       "ok": "ok",
@@ -1683,7 +1684,7 @@
     "contextRequest": "This escalation did not pause the graph. Add information to the journal while the process continues.",
     "acknowledge": "Request handled",
     "feedback": "Operator information",
-    "feedbackHint": "Available in every request state. Appended to the history and linked to SIG/INC. Completed actions, decisions and financial operations are never replayed or overwritten.",
+    "feedbackHint": "The agent considers this information in further processing of the linked incident. Completed actions, decisions and financial operations are not replayed.",
     "information": "Additional information",
     "sendInformation": "Submit information",
     "saved": "Information saved to the request history.",
@@ -1691,6 +1692,29 @@
     "preparing": "The graph is preparing this request. Information can be saved now; the decision becomes available when ready.",
     "related": "Related entities",
     "relatedLimit": "Showing the first 100 links. Enter an object identifier to narrow the result.",
-    "noRequest": "No HITL request; related objects are available in the list."
+    "noRequest": "No HITL request; related objects are available in the list.",
+    "feedbackPending": "Waiting for the agent",
+    "feedbackApplied": "Considered by the agent",
+    "feedbackFailed": "Review failed; information is saved"
+  },
+  "personal": {
+    "title": "Contact the Bank",
+    "subtitle": "Your conversation with the assistant",
+    "topic": "What would you like to discuss?",
+    "anonymous": "You can remain anonymous, even if you are not a customer yet.",
+    "unspecified": "Not specified",
+    "privacy": "This is a demonstration. Do not send real personal details, card numbers or passwords.",
+    "newChat": "Start a new chat",
+    "conversation": "Your conversation",
+    "assistant": "Bank assistant",
+    "liveReply": "The reply will appear here after the agent processes your message.",
+    "welcome": "Hello! Tell us what happened or what you would like to know.",
+    "you": "You",
+    "processing": "The agent is processing your request…",
+    "message": "Your message",
+    "placeholder": "Describe the situation or dictate a message…",
+    "waiting": "Sending in a few seconds…",
+    "sending": "Sending…",
+    "cancelled": "Sending cancelled"
   }
 }

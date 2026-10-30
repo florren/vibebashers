@@ -11,3 +11,7 @@ frontend/dist
 .env.*
 data/models/stt/*/
 data/baseline/*.dump
+
+frontend/dist-personal
+
+.cx/

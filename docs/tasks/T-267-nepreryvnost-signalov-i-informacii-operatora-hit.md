@@ -23,7 +23,7 @@ SIG-088489 и любой сигнал доступны во всех состо�
 
 ## Зависимости
 - Зависит от: [T-076](T-076-politiki-hitl-policies-py-i-testy.md), [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md)
-- Блокирует: —
+- Блокирует: [T-268](T-268-uchet-pozdnih-svedenij-agentom-bez-povtoreniya-d.md)
 
 ## Что сделать
 1. Диагностировать SIG-088489/INC-000826/HD-001351; сохранить исходные решения и историю.

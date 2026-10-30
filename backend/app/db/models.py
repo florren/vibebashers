@@ -18,7 +18,7 @@ class Base(DeclarativeBase):
 class AgentRuns(Base):
     __tablename__ = 'agent_runs'
     __table_args__ = (
-        CheckConstraint("kind = ANY (ARRAY['agent'::text, 'client_twin'::text, 'team_emulator'::text, 'bench'::text, 'compare'::text, 'compliance_detector'::text, 'speaker_attribution'::text])", name='agent_runs_kind_check'),
+        CheckConstraint("kind = ANY (ARRAY['agent'::text, 'client_twin'::text, 'team_emulator'::text, 'bench'::text, 'compare'::text, 'compliance_detector'::text, 'speaker_attribution'::text, 'operator_review'::text])", name='agent_runs_kind_check'),
         CheckConstraint("outcome = ANY (ARRAY['completed'::text, 'awaiting_human'::text, 'deferred'::text, 'failed'::text, 'fallback_mock'::text, 'cancelled'::text])", name='agent_runs_outcome_check'),
         ForeignKeyConstraint(['client_id'], ['clients.id'], name='agent_runs_client_id_fkey'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='agent_runs_incident_id_fkey'),
@@ -66,6 +66,7 @@ class AgentRuns(Base):
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='agent_run')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='agent_run')
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='agent_run')
+    hitl_feedback_processing: Mapped[list['HitlFeedbackProcessing']] = relationship('HitlFeedbackProcessing', back_populates='agent_run')
 
 
 class AudioSessions(Base):
@@ -753,6 +754,7 @@ class Signals(Base):
     incident_signals: Mapped[list['IncidentSignals']] = relationship('IncidentSignals', back_populates='signal')
     followups: Mapped[list['Followups']] = relationship('Followups', back_populates='signal')
     ingest_messages: Mapped[list['IngestMessages']] = relationship('IngestMessages', back_populates='signal')
+    personal_chat_messages: Mapped['PersonalChatMessages'] = relationship('PersonalChatMessages', uselist=False, back_populates='signal')
     rule_evaluations: Mapped[list['RuleEvaluations']] = relationship('RuleEvaluations', back_populates='signal')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='signal')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='signal')
@@ -1211,6 +1213,7 @@ class SimRuns(Base):
     incident_artifacts: Mapped[list['IncidentArtifacts']] = relationship('IncidentArtifacts', back_populates='run')
     incident_economics: Mapped[list['IncidentEconomics']] = relationship('IncidentEconomics', back_populates='run')
     ingest_messages: Mapped[list['IngestMessages']] = relationship('IngestMessages', back_populates='run')
+    personal_chat_sessions: Mapped[list['PersonalChatSessions']] = relationship('PersonalChatSessions', back_populates='run')
     sim_events: Mapped[list['SimEvents']] = relationship('SimEvents', back_populates='run')
     sim_state: Mapped[list['SimState']] = relationship('SimState', back_populates='current_run')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='run')
@@ -1588,6 +1591,24 @@ class IngestMessages(Base):
     ingest_sources: Mapped['IngestSources'] = relationship('IngestSources', back_populates='ingest_messages')
 
 
+class PersonalChatSessions(Base):
+    __tablename__ = 'personal_chat_sessions'
+    __table_args__ = (
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='personal_chat_sessions_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='personal_chat_sessions_pkey'),
+        UniqueConstraint('token_hash', name='personal_chat_sessions_token_hash_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    last_message_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='personal_chat_sessions')
+    personal_chat_messages: Mapped[list['PersonalChatMessages']] = relationship('PersonalChatMessages', back_populates='session')
+
+
 class ProductSignalHistory(Base):
     __tablename__ = 'product_signal_history'
     __table_args__ = (
@@ -1793,6 +1814,28 @@ class Clients(Base):
     tasks: Mapped[list['Tasks']] = relationship('Tasks', back_populates='client')
     accounts: Mapped[list['Accounts']] = relationship('Accounts', back_populates='client')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='client')
+
+
+class PersonalChatMessages(Base):
+    __tablename__ = 'personal_chat_messages'
+    __table_args__ = (
+        CheckConstraint('length(request_hash) = 64', name='personal_chat_messages_request_hash_check'),
+        ForeignKeyConstraint(['session_id'], ['personal_chat_sessions.id'], ondelete='CASCADE', name='personal_chat_messages_session_id_fkey'),
+        ForeignKeyConstraint(['signal_id'], ['signals.id'], ondelete='CASCADE', name='personal_chat_messages_signal_id_fkey'),
+        PrimaryKeyConstraint('id', name='personal_chat_messages_pkey'),
+        UniqueConstraint('session_id', 'request_id', name='personal_chat_messages_session_id_request_id_key'),
+        UniqueConstraint('signal_id', name='personal_chat_messages_signal_id_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    request_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    request_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    signal_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+    session: Mapped['PersonalChatSessions'] = relationship('PersonalChatSessions', back_populates='personal_chat_messages')
+    signal: Mapped['Signals'] = relationship('Signals', back_populates='personal_chat_messages')
 
 
 class RuleEvaluations(Base):
@@ -2256,6 +2299,7 @@ class HitlFeedback(Base):
     recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
 
     human_decision: Mapped['HumanDecisions'] = relationship('HumanDecisions', back_populates='hitl_feedback')
+    hitl_feedback_processing: Mapped['HitlFeedbackProcessing'] = relationship('HitlFeedbackProcessing', uselist=False, back_populates='feedback')
 
 
 class LedgerEntries(Base):
@@ -2337,3 +2381,25 @@ class FinancialEvidence(Base):
     alert: Mapped['ComplianceAlerts'] = relationship('ComplianceAlerts', back_populates='financial_evidence')
     incident: Mapped['Incidents'] = relationship('Incidents', back_populates='financial_evidence')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='financial_evidence')
+
+
+class HitlFeedbackProcessing(Base):
+    __tablename__ = 'hitl_feedback_processing'
+    __table_args__ = (
+        CheckConstraint("status = ANY (ARRAY['pending'::text, 'applied'::text, 'failed'::text])", name='hitl_feedback_processing_status_check'),
+        ForeignKeyConstraint(['agent_run_id'], ['agent_runs.id'], name='hitl_feedback_processing_agent_run_id_fkey'),
+        ForeignKeyConstraint(['feedback_id'], ['hitl_feedback.id'], ondelete='CASCADE', name='hitl_feedback_processing_feedback_id_fkey'),
+        PrimaryKeyConstraint('feedback_id', name='hitl_feedback_processing_pkey')
+    )
+
+    feedback_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'::text"))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    retry_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    agent_run_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    review: Mapped[Optional[dict]] = mapped_column(JSONB)
+    applied_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    error: Mapped[Optional[str]] = mapped_column(Text)
+
+    agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='hitl_feedback_processing')
+    feedback: Mapped['HitlFeedback'] = relationship('HitlFeedback', back_populates='hitl_feedback_processing')

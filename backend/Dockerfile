@@ -18,6 +18,7 @@ COPY contracts/ /contracts/
 COPY data/ /data/
 COPY scripts/ /scripts/
 COPY --from=frontend /fe/dist /frontend/dist
+COPY --from=frontend /fe/dist-personal /frontend/dist-personal
 RUN uv sync --frozen --no-dev
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=12 CMD curl -fs http://localhost:8000/api/health || exit 1

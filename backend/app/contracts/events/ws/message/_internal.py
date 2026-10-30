@@ -1032,6 +1032,7 @@ class Name(StrEnum):
     notify_customer = "notify_customer"
     escalate_to_manager = "escalate_to_manager"
     request_clarification = "request_clarification"
+    apply_operator_feedback = "apply_operator_feedback"
 
 
 class Schema_6(BaseModel):

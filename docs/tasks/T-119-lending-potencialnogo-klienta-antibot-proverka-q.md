@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-007](T-007-karkas-frontend-vite-ts-strict-tailwind-tokeny-t.md), [T-062](T-062-uzel-act-kommunikacii-klientu-i-komandam.md)
-- Блокирует: [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md)
+- Блокирует: [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-143](T-143-playwright-smouk-i-vizualnaya-regressiya.md), [T-156](T-156-polnye-slovari-ru-en-i-proverka-i18n.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md), [T-269](T-269-izolirovannyj-anonimnyj-chat-9999-i-tunnel-tuna.md)
 
 ## Что сделать
 1. Страница /landing в стиле ТЗ 12.1 без брендирования: описание, форма (контакт, регион/город, продукт, текст, согласие), арифметическая captcha, лимит 5 обращений/мин с IP.

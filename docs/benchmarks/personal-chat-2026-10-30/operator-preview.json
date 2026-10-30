@@ -1,0 +1,28 @@
+{
+  "synthetic_preview": true,
+  "hid": 3,
+  "feedback_id": 1,
+  "processing_status": "applied",
+  "review_run_ref": "AR-000004",
+  "before": {
+    "ledger": 1802,
+    "source_steps": 8,
+    "decision": null
+  },
+  "after": {
+    "ledger": 1802,
+    "source_steps": 8,
+    "decision": null
+  },
+  "review": {
+    "kind": "operator_review",
+    "nodes": [
+      "operator_feedback"
+    ],
+    "models": [
+      "mock:mock-rules-v1"
+    ],
+    "task_count": 0,
+    "artifact_count": 1
+  }
+}

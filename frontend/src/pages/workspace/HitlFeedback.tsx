@@ -5,6 +5,7 @@ import { post, type Schemas } from '@/shared/api/client'
 import { useHitlFeedback } from '@/shared/api/hooks'
 import { ErrorBox } from '@/shared/ui'
 import { fmtSim } from '@/shared/lib/format'
+import { IdLink } from '@/shared/components/IdLink'
 
 export function HitlFeedback({ id, comment, onComment }: { id: number; comment: string; onComment: (value: string) => void }) {
   const { t } = useTranslation()
@@ -32,7 +33,7 @@ export function HitlFeedback({ id, comment, onComment }: { id: number; comment: 
       {save.isSuccess && <p role="status" className="text-xs text-ok">{t('continuity.saved')}</p>}
     </form>
     {history.error && <ErrorBox error={history.error} />}
-    <ul className="space-y-2">{history.data?.pages.flatMap(p => p.items).map(f => <li className="rounded border border-line p-2" key={f.id}><p className="whitespace-pre-wrap break-words text-sm">{f.comment}</p><p className="mt-1 text-xs text-muted">{f.recorded_by} · {fmtSim(f.recorded_at)}</p></li>)}</ul>
+    <ul className="space-y-2">{history.data?.pages.flatMap(p => p.items).map(f => <li className="rounded border border-line p-2" key={f.id}><p className="whitespace-pre-wrap break-words text-sm">{f.comment}</p><p className="mt-1 text-xs text-muted">{t(f.processing_status === 'applied' ? 'continuity.feedbackApplied' : f.processing_status === 'failed' ? 'continuity.feedbackFailed' : 'continuity.feedbackPending')}</p>{f.review_run_ref && <IdLink kind="agent_run" value={f.review_run_ref}/>} {f.review?.summary_ru && <p className="mt-1 text-sm">{f.review.summary_ru}</p>}<p className="mt-1 text-xs text-muted">{f.recorded_by} · {fmtSim(f.recorded_at)}</p></li>)}</ul>
     {history.hasNextPage && <button className="btn btn-sm" disabled={history.isFetchingNextPage} onClick={() => void history.fetchNextPage()}>{t('continuity.more')}</button>}
   </section>
 }

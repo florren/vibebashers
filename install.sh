@@ -4,11 +4,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PROFILE=lite; OFFLINE=0; RECORD_CASSETTES=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
+PROFILE=lite; OFFLINE=0
+NO_STT=0; RECORD_CASSETTES=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile) PROFILE="$2"; shift 2 ;;
     --offline) OFFLINE=1; shift ;;
+    --no-stt) NO_STT=1; shift ;;
     --record-cassettes) RECORD_CASSETTES=1; shift ;;
     --reset) RESET=1; shift ;;
     --seed) SEED="$2"; shift 2 ;;
@@ -23,10 +25,11 @@ done
 say() { printf '\033[1;32m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
+command -v python3 >/dev/null || die "Нужен Python 3 для подготовки модели и запуска туннеля"
 command -v docker >/dev/null || die "Docker не найден. Установите Docker Engine ≥ 24 и docker compose v2: https://docs.docker.com/engine/install/"
 docker compose version >/dev/null 2>&1 || die "docker compose v2 не найден (нужна команда «docker compose», не «docker-compose»)"
 docker info >/dev/null 2>&1 || die "Docker не запущен или нет прав (добавьте пользователя в группу docker: sudo usermod -aG docker \$USER)"
-for p in 5432 8000; do
+for p in 5432 8000 9999; do
   if (command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$p ") ; then
     docker compose ps --status running 2>/dev/null | grep -q cx-pulse || die "Порт $p занят другим процессом"
   fi
@@ -56,6 +59,14 @@ if [ "$RESET" = 1 ]; then
   docker compose "${PROFILES[@]}" down -v --remove-orphans
 fi
 
+if [ "$NO_STT" != 1 ]; then
+  if [ "$OFFLINE" != 1 ]; then
+    say "подготовка локальной диктовки Vosk"
+    python3 scripts/stt_model.py || die "модель Vosk не подготовлена; проверьте сеть или явно используйте --no-stt"
+  elif [ ! -d data/models/stt/vosk-model-small-ru-0.22/am ]; then
+    say "--offline: модели Vosk нет; диктовка недоступна, заранее выполните make stt-model"
+  fi
+fi
 say "сборка и запуск (профиль данных: $PROFILE)"
 docker compose "${PROFILES[@]}" up -d --build
 say "ожидание PostgreSQL и миграций"
@@ -74,4 +85,18 @@ say "Интерфейс: $URL  · API: $URL/api/health  · документац�
 say "мастер настройки (UI) появится в E1 (T-010): $URL/setup"
 if command -v python3 >/dev/null && python3 -c 'import qrcode' 2>/dev/null; then
   python3 -c "import qrcode,sys;q=qrcode.QRCode(border=1);q.add_data('$URL');q.print_ascii(invert=True)"
+fi
+
+say "ожидание отдельного пользовательского чата :9999"
+for i in $(seq 1 60); do
+  if curl -fs http://127.0.0.1:9999/api/personal/health >/dev/null 2>&1; then break; fi
+  sleep 2
+  [ "$i" = 60 ] && die "публичный чат не поднялся: docker compose logs personal"
+done
+say "Анонимный чат: http://localhost:9999 (без операторского интерфейса)"
+if [ "$OFFLINE" != 1 ]; then
+  python3 scripts/tuna_tunnel.py start --env-file .env || die "Tuna не подтвердил готовность; локальные интерфейсы работают"
+else
+  python3 scripts/tuna_tunnel.py stop --env-file .env
+  say "--offline: внешний туннель не запускается"
 fi

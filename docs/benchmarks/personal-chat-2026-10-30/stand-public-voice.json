@@ -1,0 +1,11 @@
+{
+  "base": "https://royal-penguin-6552.a.tuna.free",
+  "automaticStop": true,
+  "elapsedMs": 33168,
+  "pcmBytes": 959828,
+  "maxPcmBytes": 960000,
+  "transcriptCharacters": 331,
+  "provider": "vosk",
+  "httpStatus": 200,
+  "errors": []
+}

@@ -19,17 +19,18 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
   const { t } = useTranslation()
   const [scope, setScope] = useState<'all' | 'current'>('all')
   const [q, setQ] = useState('')
+  const [personalOnly, setPersonalOnly] = useState(false)
   const [types, setTypes] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([])
   const [channels, setChannels] = useState<string[]>([])
   const query = useMemo(
-    () => ({ run_id: scope === 'all' ? 'all' : runId ?? 'current', q: q || undefined, signal_type: types, status: statuses, channel: channels, limit: 100 }),
-    [runId, scope, q, types, statuses, channels],
+    () => ({ run_id: scope === 'all' ? 'all' : runId ?? 'current', q: q || undefined, tag: personalOnly ? 'ui_pers_demo' : undefined, signal_type: types, status: statuses, channel: channels, limit: 100 }),
+    [runId, scope, q, personalOnly, types, statuses, channels],
   )
   const list = useSignalPages(query)
   const items = list.data?.pages.flatMap(page => page.items ?? []) ?? []
   const segName = useRefName('segments')
-  const hasFilters = q || types.length || statuses.length || channels.length
+  const hasFilters = personalOnly || q || types.length || statuses.length || channels.length
 
   return (
     <div className="flex h-full flex-col overflow-y-auto md:flex-row md:overflow-hidden">
@@ -39,6 +40,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
           <input className="input w-full pl-7" value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('continuity.signalSearch')} maxLength={200} placeholder={t('continuity.signalSearch')} />
         </label>
         <label className="block text-xs text-muted">{t('continuity.scope')}<select className="input mt-1 w-full" value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="all">{t('continuity.allRuns')}</option><option value="current">{t('continuity.currentRun')}</option></select></label>
+        <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={personalOnly} onChange={e=>setPersonalOnly(e.target.checked)}/>ui_pers_demo</label>
         <FilterGroup title={t('common.type')} items={TYPES} value={types} onChange={setTypes} label={(c) => tEnum('signal.type', c)} />
         <FilterGroup title={t('common.status')} items={STATUSES} value={statuses} onChange={setStatuses} label={(c) => tEnum('signal.status', c)} />
         <FilterGroup title={t('common.channel')} items={CHANNELS} value={channels} onChange={setChannels} label={(c) => tEnum('channel', c)} />
@@ -47,6 +49,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
             className="btn btn-ghost btn-sm w-full"
             onClick={() => {
               setQ('')
+              setPersonalOnly(false)
               setTypes([])
               setStatuses([])
               setChannels([])
@@ -108,6 +111,7 @@ export function SignalRow({
                   {tEnum('signal.flags', f)}
                 </Badge>
               ))}
+            {s.tags?.map(tag => <Badge key={tag} tone="info">{tag}</Badge>)}
             {s.origin && s.origin !== 'sim' && <Badge tone="neutral">{tEnum('signal.origin', s.origin)}</Badge>}
           </span>
           <span className={clsx('mt-1 block text-[13px] leading-snug', compact ? 'line-clamp-1' : 'line-clamp-2')}>{s.text}</span>

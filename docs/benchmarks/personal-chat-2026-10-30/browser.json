@@ -1,0 +1,52 @@
+{
+  "base": "http://localhost:19999",
+  "results": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "width": 1440,
+      "actualMode": "light",
+      "signal": "SIG-001494",
+      "agentAnswers": 1,
+      "overflow": false,
+      "managementRequests": 0
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "width": 1440,
+      "actualMode": "dark",
+      "signal": "SIG-001495",
+      "agentAnswers": 1,
+      "overflow": false,
+      "managementRequests": 0
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "width": 390,
+      "actualMode": "dark",
+      "signal": "SIG-001501",
+      "agentAnswers": 1,
+      "overflow": false,
+      "managementRequests": 0
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "width": 390,
+      "actualMode": "light",
+      "signal": "SIG-001507",
+      "agentAnswers": 1,
+      "overflow": false,
+      "managementRequests": 0
+    },
+    {
+      "dictation": true,
+      "provider": "vosk",
+      "transcriptCharacters": 107
+    }
+  ],
+  "errors": [],
+  "forbidden": []
+}
