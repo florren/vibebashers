@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-006](T-006-sync-contracts-generaciya-enums-pydantic-shem-ts.md), [T-014](T-014-kody-oshibok-tipy-signalov-pravila-marshrutizaci.md)
-- Блокирует: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md)
+- Блокирует: [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-174](T-174-bystryj-put-agenta-uslovnoe-rebro-act-instant-st.md), [T-213](T-213-router-instrumenty-route-to-department-notify-cu.md), [T-267](T-267-nepreryvnost-signalov-i-informacii-operatora-hit.md)
 
 ## Что сделать
 1. needs_human(classification, context, policy_settings) → HumanReason|None: low_confidence (< порога), ultra_vip, legal_regulatory, fraud_amount (> 50 000 ₽), partner_privilege, repeat_3plus, classifier_conflict; настройки из settings.policies.

@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-223](T-223-kontrakty-sleda-i-poiska-migraciya-0004-openapi.md), [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md)
-- Блокирует: [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md), [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md)
+- Блокирует: [T-231](T-231-globalnyj-poisk-v-interfejse-stroka-v-shapke-ctr.md), [T-235](T-235-scenarij-13-poisk-i-sled-yaml-e2e-po-vsem-tipam.md), [T-267](T-267-nepreryvnost-signalov-i-informacii-operatora-hit.md)
 
 ## Что сделать
 1. `backend/app/search/grammar.py`: таблица префиксов и форматов из ТЗ 28.2 (SIG, INC, CL, POST, TR, ESC, AS, EMP, AR, SR, TSK, NTF, LED, HD, FUP, CSI, VSP, RULE, коды ошибок, UUID, токен трекинга, `@ник`, маска карты и телефона, только цифры), нормализация регистра, пробелов, дефисов и ведущих нулей.

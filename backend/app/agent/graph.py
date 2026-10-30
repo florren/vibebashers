@@ -556,12 +556,16 @@ async def expire_hitl(
             )
             await conn.commit()
             continue
-        await conn.execute(
-            "update human_decisions set decision = 'modify', modified_proposal = %s::jsonb, decided_by = 'timeout', "
-            "decided_sim = %s, decided_at = now(), use_as_fewshot = false where id = %s and decision is null",
-            (timeout_proposal, sim_time, hid),
-        )
+        updated = await (
+            await conn.execute(
+                "update human_decisions set decision = 'modify', modified_proposal = %s::jsonb, decided_by = 'timeout', "
+                "decided_sim = %s, decided_at = now(), use_as_fewshot = false where id = %s and decision is null returning id",
+                (timeout_proposal, sim_time, hid),
+            )
+        ).fetchone()
         await conn.commit()
+        if not updated:
+            continue
         await resume_after_human(conn, human_decision_id=int(hid), chain=chain, profile=profile, sim_time=sim_time)
 
 

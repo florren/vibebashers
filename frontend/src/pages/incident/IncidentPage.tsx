@@ -49,6 +49,7 @@ export function IncidentPage() {
               <ArrowLeft size={14} /> {t('common.back')}
             </Link>
             <IdLink kind="incident" value={inc.public_id} />
+            <Link className="btn btn-sm" to={`/?tab=hitl&q=${encodeURIComponent(inc.public_id ?? '')}`}>{t('continuity.openHitl')}</Link>
             <JourneyLink reference={inc.public_id ?? `INC-${String(id).padStart(6, '0')}`} />
             <Badge tone={incidentStatusTone(inc.status)}>{tEnum('incident.status', inc.status)}</Badge>
             <Badge tone={criticalityTone(inc.criticality)}>

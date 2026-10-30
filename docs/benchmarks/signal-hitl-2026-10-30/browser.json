@@ -1,0 +1,41 @@
+{
+  "results": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "width": 1440,
+      "lineage": true,
+      "feedbackEnabled": true,
+      "draftPreserved": true,
+      "overflow": false
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "width": 1440,
+      "lineage": true,
+      "feedbackEnabled": true,
+      "draftPreserved": true,
+      "overflow": false
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "width": 390,
+      "lineage": true,
+      "feedbackEnabled": true,
+      "draftPreserved": true,
+      "overflow": false
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "width": 390,
+      "lineage": true,
+      "feedbackEnabled": true,
+      "draftPreserved": true,
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

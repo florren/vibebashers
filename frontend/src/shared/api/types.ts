@@ -1905,6 +1905,7 @@ export interface paths {
                 query?: {
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
+                    /** @description Текст или код сущности, включая связанные SIG/INC. Все статусы доступны без status-фильтра; run_id=all ищет во всех запусках. */
                     q?: string;
                     channel?: string[];
                     signal_type?: string[];
@@ -2475,6 +2476,12 @@ export interface paths {
                 query?: {
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
+                    /** @description all / current / id; default all сохраняет доступ к прошлым запросам */
+                    run_id?: string;
+                    /** @description Текст или код любой сущности реестра. Поиск включает уже решённые запросы и связанные SIG/INC. */
+                    q?: string;
+                    /** @description Без поиска показываются открытые и автоматически продолженные запросы; true добавляет обработанные человеком. */
+                    include_decided?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -2534,7 +2541,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Решение человека — возвращается в граф агента */
+        /** Решение или подтверждение запроса; продолжение только для активного wait_human */
         post: {
             parameters: {
                 query?: never;
@@ -2559,7 +2566,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Принято, граф продолжен */
+                /** @description Принято; граф продолжен только для активного wait_human */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2570,6 +2577,84 @@ export interface paths {
                 };
                 /** @description Уже решено */
                 409: components["responses"]["Problem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hitl/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        /** История информации оператора, доступная после продолжения процесса */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: components["parameters"]["Cursor"];
+                };
+                header?: never;
+                path: {
+                    id: components["parameters"]["IdPath"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HitlFeedbackList"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        /** Сохранить дополнительную информацию без повторного выполнения графа или денег */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["IdPath"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        comment: string;
+                        /** @default operator */
+                        recorded_by?: string;
+                        idempotency_key: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Запись сохранена; точный повтор ключа возвращает ту же запись */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HitlFeedback"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -7381,8 +7466,7 @@ export interface components {
         Criticality: "low" | "medium" | "high";
         /** @enum {string} */
         IncidentStatus: "new" | "classified" | "routed" | "in_progress" | "fix_proposed" | "fix_deployed" | "verifying" | "resolved" | "closed" | "awaiting_human" | "awaiting_client" | "escalated" | "duplicate" | "rejected";
-        /** @enum {string} */
-        SignalStatus: "new" | "processing" | "classified" | "linked" | "deferred" | "awaiting_human" | "awaiting_client" | "answered" | "closed" | "noise" | "error";
+        SignalStatus: components["schemas"]["signal_status"];
         /** @enum {string} */
         OutcomeClass: "closed_in_sla_with_gift" | "closed_in_sla" | "closed_late" | "closed_with_regression" | "open" | "rejected" | "churned";
         /** @enum {string} */
@@ -7728,6 +7812,10 @@ export interface components {
             telegram_chat_id?: number;
         };
         Signal: {
+            run_id?: number;
+            run_public_id?: string;
+            /** @description Коды связанных инцидентов в том же запуске */
+            incident_refs?: string[];
             /** @description [ДТЗ] */
             sentiment?: components["schemas"]["Sentiment"] | null;
             /** @description [ДТЗ] */
@@ -7741,7 +7829,7 @@ export interface components {
             text?: string;
             /** Format: date-time */
             received_sim?: string;
-            status?: components["schemas"]["SignalStatus"];
+            status?: components["schemas"]["signal_status"];
             origin?: string;
             classification?: components["schemas"]["classification.schema"] | null;
             region_code?: string | null;
@@ -7976,11 +8064,37 @@ export interface components {
         };
         HitlItem: {
             id?: number;
-            signal?: components["schemas"]["Signal"];
+            run_public_id?: string;
+            public_id?: string;
+            agent_run_id?: number | null;
+            incident_id?: number | null;
+            task_id?: number | null;
+            comment?: string | null;
+            /** Format: date-time */
+            decided_sim?: string | null;
+            sim_run_id?: number;
+            signal?: components["schemas"]["Signal"] | null;
+            process_outcome?: string | null;
+            /** @description Только незавершённый wait_human допускает продолжение графа */
+            can_resume?: boolean;
+            automatic_decision?: boolean;
+            feedback_count?: number;
+            related_incidents?: components["schemas"]["IncidentBrief"][];
+            escalations?: {
+                kind: string;
+                ref: string;
+            }[];
             incident?: components["schemas"]["IncidentBrief"] | null;
             task?: components["schemas"]["Task"] | null;
             reason?: string;
-            agent_proposal?: components["schemas"]["decision.schema"];
+            agent_proposal?: components["schemas"]["decision.schema"] | {
+                /** @enum {string} */
+                kind: "escalation";
+                escalation_id?: number;
+                public_id?: string;
+                severity?: string;
+                to_role?: string;
+            };
             options?: {
                 code?: string;
                 label_ru?: string;
@@ -7995,10 +8109,31 @@ export interface components {
             decision?: string | null;
             decided_by?: string | null;
         };
+        HitlFeedback: {
+            id: number;
+            human_decision_id: number;
+            idempotency_key: string;
+            comment: string;
+            recorded_by: string;
+            /** Format: date-time */
+            recorded_sim: string;
+            /** Format: date-time */
+            recorded_at: string;
+        };
+        HitlFeedbackList: {
+            items: components["schemas"]["HitlFeedback"][];
+            next_cursor: string | null;
+        };
         HitlList: {
             items?: components["schemas"]["HitlItem"][];
             next_cursor?: string | null;
             total?: number;
+            /** @description Связанная цепочка видна и без HD; только коды, без текста/токенов. */
+            related_entities?: {
+                kind: string;
+                ref: string;
+            }[];
+            related_entities_truncated?: boolean;
         };
         Task: {
             id?: number;
@@ -9281,6 +9416,8 @@ export interface components {
             /** @description Смещение оценки удовлетворённости двойника */
             satisfaction_bias?: number;
         };
+        /** @enum {string} */
+        signal_status: "new" | "processing" | "classified" | "linked" | "deferred" | "awaiting_human" | "awaiting_client" | "answered" | "closed" | "noise" | "error";
         /** @enum {string} */
         signal_type: "tech_fault" | "client_error" | "tariff_terms" | "service_quality" | "fraud_suspicion" | "legal_regulatory" | "info_request" | "gratitude" | "suggestion" | "churn";
         /** @enum {string} */

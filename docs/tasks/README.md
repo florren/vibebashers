@@ -243,6 +243,7 @@
 | [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md) Экран финансового эффекта и сравнение моделей | E24 | L2 | `SA-Economics` | L | — | T-131, T-132, T-093, T-202 |
 | [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md) Калибровка вероятности оттока и доказательства штрафа | E24 | L2 | `SA-Economics` | L | — | T-264 |
 | [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md) Фильтр продуктов финансового эффекта и локальный стенд | E24 | L2 | `SA-Economics` | M | — | T-265 |
+| [T-267](T-267-nepreryvnost-signalov-i-informacii-operatora-hit.md) Непрерывность сигналов и информации оператора HITL | E6 | L3 | `SA-Agent` | M | — | T-076, T-230 |
 
 ## По слоям (кто ведёт — docs/TEAM-SPLIT.md)
 
@@ -250,7 +251,7 @@
 |---|---|---|---|---|---|
 | `L1` Базис | 42 | 31 | 52 | 41 | в1: 14, в2: 12, в3: 2, в4: 1, в5: 6, в6: 1, в7: 4, в9: 2 |
 | `L2` Симулятор и данные | 38 | 24 | 74 | 47 | в2: 17, в3: 10, в4: 5, в8: 3, в9: 3 |
-| `L3` Агент и контуры | 52 | 33 | 94 | 64 | в2: 8, в3: 22, в4: 10, в5: 2, в8: 8, в9: 2 |
+| `L3` Агент и контуры | 53 | 33 | 96 | 64 | в2: 8, в3: 22, в4: 10, в5: 2, в8: 8, в9: 3 |
 | `L4` Фронт | 48 | 32 | 95 | 64 | в1: 1, в2: 2, в3: 5, в4: 20, в5: 2, в7: 2, в8: 5, в9: 11 |
 | `L5` Качество | 15 | 7 | 20 | 10 | в1: 1, в4: 4, в5: 6, в9: 4 |
 
@@ -280,7 +281,7 @@
 - Волна 4: [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md) (откл.), [T-063](T-063-uzly-followup-monitor-verify-close-gift-i-otlozh.md) (откл.), [T-064](T-064-deduplikaciya-i-massovye-incidenty.md) (откл.), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md) (откл.), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md) (откл.), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md) (откл.), [T-130](T-130-ui-benchmarkov.md) (откл.), [T-189](T-189-alert-o-missellinge-v-telegram-rukovoditelyu.md) (откл.), [T-191](T-191-benchmark-detektora-missellinga-i-stt-ranner-met.md) (откл.)
 - Волна 5: [T-122](T-122-qr-kod-bota-zhyuri-rezhim-i-instrukcii-dlya-fina.md) (откл.), [T-193](T-193-opcionalnye-stt-provajdery-browser-web-speech-sa.md) (откл.)
 - Волна 8: [T-224](T-224-sborschik-sleda-app-trace-kauzalnyj-obhod-fazy-d.md), [T-225](T-225-model-put-obrascheniya-stadii-dorozhka-klienta-i.md), [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md), [T-238](T-238-klassifikaciya-po-napravleniyu-i-urovnyu-signala.md) (откл.), [T-239](T-239-krasnye-slova-i-route-to-product-team-data-red-w.md) (откл.), [T-241](T-241-api-kabineta-menedzhera-api-cabinet-overview-sig.md) (откл.), [T-246](T-246-priem-csi-post-api-ingest-csi-json-xlsx-csi-resp.md) (откл.), [T-256](T-256-indeks-cx-i-ryady-potoka-get-api-metrics-cx-inde.md) (откл.)
-- Волна 9: [T-244](T-244-otchet-po-napravleniyu-dlya-cheloveka-get-api-ca.md) (откл.), [T-248](T-248-api-analitiki-csi-i-vsp-korrelyacii-scatter-dolz.md) (откл.)
+- Волна 9: [T-244](T-244-otchet-po-napravleniyu-dlya-cheloveka-get-api-ca.md) (откл.), [T-248](T-248-api-analitiki-csi-i-vsp-korrelyacii-scatter-dolz.md) (откл.), [T-267](T-267-nepreryvnost-signalov-i-informacii-operatora-hit.md) (откл.)
 
 ### `L4` Фронт
 
@@ -307,7 +308,7 @@
 - **E3 Симулятор банка, команды, SLA** — 12 карточек: [T-031](T-031-simclock-sim-state-i-upravlenie-simulyaciej.md), [T-032](T-032-shina-sobytij-simulyatora.md), [T-033](T-033-generator-operacij-v-realnom-vremeni.md), [T-034](T-034-generator-sboev-i-vosstanovlenij.md), [T-035](T-035-generator-oshibok-klientov.md), [T-036](T-036-emulyator-komand-i-cifrovoj-sled-incidenta.md), [T-037](T-037-sla-dvizhok.md), [T-038](T-038-dvizhok-scenariev-yaml-i-7-demo-scenariev.md), [T-039](T-039-proaktivnaya-vetka-sboj-uvedomleniya-zatronutym.md), [T-040](T-040-servis-zapuskov-emulyacii-sim-runs-run-id-rezhim.md), [T-041](T-041-preryvanie-i-vozobnovlenie-emulyacii-vosstanovle.md), [T-042](T-042-itogovye-metriki-zapuska-summary-i-eksport.md). Субагенты: `SA-Agent`, `SA-Economics`, `SA-Logs`, `SA-Scenarios`, `SA-Teams`.
 - **E4 LLM-слой** — 6 карточек: [T-046](T-046-interfejs-llm-provajdera-i-strukturirovannyj-vyv.md), [T-047](T-047-gigachat-provajder-s-pulom-klyuchej-i-uchetom-to.md), [T-048](T-048-openai-sovmestimyj-provajder-openrouter-i-lokaln.md), [T-049](T-049-mock-provajder-pravila-shablony-determinizm.md), [T-050](T-050-rate-limiter-byudzhety-fallback-i-maskirovanie-s.md), [T-051](T-051-api-i-ui-profilej-llm-i-klyuchej.md). Субагенты: `SA-LLM`.
 - **E5 Агент LangGraph** — 12 карточек: [T-056](T-056-agentstate-graf-langgraph-checkpointer-zapusk-po.md), [T-057](T-057-instrumenty-chteniya-konteksta.md), [T-058](T-058-instrumenty-zapisi-i-pobochnyh-effektov.md), [T-059](T-059-uzly-ingest-normalize-identify-client-gather-con.md), [T-060](T-060-uzel-classify-i-prompty-v1.md), [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-062](T-062-uzel-act-kommunikacii-klientu-i-komandam.md), [T-063](T-063-uzly-followup-monitor-verify-close-gift-i-otlozh.md), [T-064](T-064-deduplikaciya-i-massovye-incidenty.md), [T-065](T-065-trassirovka-zapuskov-i-striming-tokenov.md), [T-066](T-066-versionirovanie-promptov-i-gate-na-lite-benchmar.md), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md). Субагенты: `SA-Agent`, `SA-Prompts`.
-- **E6 HITL и подарки** — 5 карточек: [T-076](T-076-politiki-hitl-policies-py-i-testy.md), [T-077](T-077-uzel-wait-human-ochered-hitl-i-vozvrat-resheniya.md), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-079](T-079-ui-ocheredi-hitl-i-kartochki-resheniya.md), [T-080](T-080-ui-zadach-i-podarkov.md). Субагенты: `SA-Agent`, `SA-UI-Workspace`.
+- **E6 HITL и подарки** — 6 карточек: [T-076](T-076-politiki-hitl-policies-py-i-testy.md), [T-077](T-077-uzel-wait-human-ochered-hitl-i-vozvrat-resheniya.md), [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-079](T-079-ui-ocheredi-hitl-i-kartochki-resheniya.md), [T-080](T-080-ui-zadach-i-podarkov.md), [T-267](T-267-nepreryvnost-signalov-i-informacii-operatora-hit.md). Субагенты: `SA-Agent`, `SA-UI-Workspace`.
 - **E7 Рабочее место CX** — 9 карточек: [T-086](T-086-layout-rabochego-mesta-cx-shapka-sim-chasy-panel.md), [T-087](T-087-lenta-signalov.md), [T-088](T-088-teplovaya-karta-rf-s-drill-down-do-gorodov.md), [T-089](T-089-doska-i-tablica-incidentov-s-indikatorami-sla.md), [T-090](T-090-kartochka-incidenta.md), [T-091](T-091-klient-360.md), [T-092](T-092-vkladki-otlozhennye-komandy-uvedomleniya.md), [T-093](T-093-dashbord-kpi-i-blok-ekonomiki.md), [T-094](T-094-vkladka-zapuski-istoriya-sravnenie-sbros-k-basel.md). Субагенты: `SA-Map`, `SA-UI-Workspace`.
 - **E8 «Под капотом»** — 6 карточек: [T-106](T-106-zhivaya-trassirovka-agenta.md), [T-107](T-107-graf-langgraph-s-podsvetkoj-uzla-i-graf-suschnos.md), [T-108](T-108-lenta-izmenenij-bd-schetchiki-tablic-prosmotr-st.md), [T-109](T-109-panel-ii-protiv-pravil.md), [T-110](T-110-dialog-agent-dvojnik-i-sostoyanie-klienta.md), [T-201](T-201-panel-log-debug-kak-obschij-komponent-demo-ekran.md). Субагенты: `SA-UI-Engine`.
 - **E9 Лендинг, трекинг, Telegram-бот** — 5 карточек: [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md), [T-120](T-120-stranica-trekinga-obrascheniya-i-dopolnenie.md), [T-121](T-121-telegram-bot-cxpulsecontrolbot-aiogram.md), [T-122](T-122-qr-kod-bota-zhyuri-rezhim-i-instrukcii-dlya-fina.md), [T-206](T-206-nadiktovat-zhalobu-voiceinput-v-rezhime-pokaza-i.md). Субагенты: `SA-Landing`, `SA-TgBot`, `SA-UI-Compliance`.
@@ -402,6 +403,7 @@ graph LR
     T078[T-078]
     T079[T-079]
     T080[T-080]
+    T267[T-267]
   end
   subgraph E7[E7 Рабочее место CX]
     T086[T-086]
@@ -1088,11 +1090,13 @@ graph LR
   T202 --> T264
   T264 --> T265
   T265 --> T266
+  T076 --> T267
+  T230 --> T267
 ```
 
 ## Сводка
 
-- Всего карточек: 195; по оценкам: S — 44, M — 113, L — 38.
+- Всего карточек: 196; по оценкам: S — 44, M — 114, L — 38.
 - Критический путь (ядро): T-001 → T-005 → T-006 → T-046 → T-056 → T-057 → T-058 → T-061 → T-062 → T-063 → T-090 → T-142 → T-151.
 - Критический путь v1.3 (BRD-1): T-005 → T-199 → T-171 → T-172 → T-174 → T-176 → T-177 → T-179; (BRD-2): T-181 → T-183 → T-185 → T-186 → T-187 → T-192; подстраховка T-194 → T-195 → T-198 нужна до первой репетиции.
 - Демо-минимум (если времени не хватает): все карточки волн 1–3 (включая T-040 запуски и T-041 возобновление) плюс T-077, T-078, T-090, T-094, T-106, T-107, T-108, T-119, T-120, T-131, T-142, T-151. Бот (T-121/122), бенчмарк-UI (T-130), калькулятор «Факт» (T-166) и перф-тесты можно отложить без потери ключевого сценария.
