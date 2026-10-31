@@ -135,6 +135,34 @@ async def link_signal_to_incident(
     return brief
 
 
+async def resume_approved_incident(
+    ctx: ToolContext, incident_id: int, approval_agent_run_id: int | None = None
+) -> dict[str, Any]:
+    """Снять только уже согласованное ожидание; другой незавершённый HITL сохраняет блокировку."""
+    row = await ctx.fetchone(
+        "select status from incidents where id=%s and run_id=%s for update", (incident_id, ctx.run_id)
+    )
+    if not row or row[0] != "awaiting_human":
+        return {"resumed": False, "reason": "not_awaiting_human"}
+    approved = await ctx.fetchone(
+        "select id,decision from human_decisions where agent_run_id=%s and incident_id=%s and decision is not null order by id desc limit 1",
+        (approval_agent_run_id or ctx.agent_run_id, incident_id),
+    )
+    if not approved or approved[1] not in ("accept", "modify"):
+        return {"resumed": False, "reason": "no_approval"}
+    pending = await ctx.fetchone(
+        "select h.id from human_decisions h where h.decision is null and "
+        "(h.incident_id=%s or exists(select 1 from incident_signals x where x.incident_id=%s and x.signal_id=h.signal_id)) limit 1",
+        (incident_id, incident_id),
+    )
+    if pending:
+        return {"resumed": False, "reason": "pending_human_decision"}
+    brief = await update_incident(
+        ctx, incident_id, "routed", f"HITL {approved[0]} согласован: передача команде", {"routing_status": "routed"}
+    )
+    return {**brief, "resumed": True, "human_decision_id": approved[0]}
+
+
 @tool("update_incident")
 async def update_incident(
     ctx: ToolContext, incident_id: int, status: str, reason: str | None = None, fields: dict[str, Any] | None = None
