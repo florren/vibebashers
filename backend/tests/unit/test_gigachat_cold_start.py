@@ -190,6 +190,7 @@ def test_cancelled_parallel_request_cannot_override_retry_after(monkeypatch):
     pool = KeyPool([key])
     pool.mark_error(key, ProviderError("rate_limit", "controlled", retry_after_s=60))
     pool.mark_error(key, ProviderError("timeout", "cancelled"))
+    pool.add_usage(key, 8)  # Запоздавший успешный ответ тоже не снимает Retry-After.
     assert key.cooldown_until == 160 and key.last_error.startswith("rate_limit:")
     with pytest.raises(ProviderError) as exc:
         pool.pick()

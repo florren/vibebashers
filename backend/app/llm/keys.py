@@ -72,8 +72,9 @@ class KeyPool:
             key.requests_day, key.requests_today = today, 0
         key.tokens_used += tokens
         key.requests_today += 1
-        key.last_error = None
-        key.cooldown_until = 0.0
+        if not (key.cooldown_until > time.monotonic() and (key.last_error or "").startswith("rate_limit:")):
+            key.last_error = None
+            key.cooldown_until = 0.0
 
     def mark_error(self, key: ApiKey, err: ProviderError) -> None:
         if (
