@@ -262,7 +262,7 @@ class TeamEmulator:
                     continue
             if step.action in ("rca", "fix_decision", "release", "verify", "close") and status == "awaiting_client":
                 continue
-            if step.action == "take" and status != "routed":
+            if step.action == "take" and status != "routed" and not (plan.outcome and status == "escalated"):
                 self.done.add(key)
                 continue
             step_ctx = ToolContext(

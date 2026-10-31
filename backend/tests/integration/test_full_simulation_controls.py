@@ -403,7 +403,8 @@ async def test_shared_profile_survives_stop_and_new_start(seeded, monkeypatch):
         get_settings.cache_clear()
 
 
-async def test_shared_teams_progress_with_continuous_employee_work(seeded, monkeypatch):
+@pytest.mark.parametrize("status", ["routed", "escalated"])
+async def test_shared_teams_progress_with_continuous_employee_work(seeded, monkeypatch, status):
     app, request = app_for(monkeypatch, seeded)
     sim, svc = app.state.sim, app.state.agent
     await sim.load_state()
@@ -422,12 +423,18 @@ async def test_shared_teams_progress_with_continuous_employee_work(seeded, monke
             return True
 
         monkeypatch.setattr("app.demo.execution.employees", another_employee_decided)
+        if status == "escalated":
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                await conn.execute("update incidents set status='escalated' where run_id=%s", (sim.run_id,))
         await cycle(app)
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             actions = await (
                 await conn.execute("select count(*) from team_actions where run_id=%s", (sim.run_id,))
             ).fetchone()
-        assert actions[0] > 0
+            take = await (
+                await conn.execute("select payload from team_actions where run_id=%s and action='take'", (sim.run_id,))
+            ).fetchone()
+        assert actions[0] > 0 and take and take[0]["plan"]
     finally:
         await svc.stop()
         await sim.shutdown()
