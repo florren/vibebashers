@@ -12,7 +12,7 @@ import psycopg
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import STATUS_TRANSITIONS, render_template, update_incident
 from app.logging import get_logger
-from app.sim.clock import MSK, add_working_days, add_working_hours, is_working_day
+from app.sim.clock import MSK, WORK_END, WORK_START, add_working_days, add_working_hours, is_working_day
 from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
 
@@ -52,6 +52,7 @@ class PlannedStep:
     report_day: int | None = None
     skipped: bool = False
     regression: dict[str, Any] | None = None
+    due: dt.datetime | None = None
 
 
 @dataclass
@@ -275,7 +276,9 @@ class TeamEmulator:
         product_code: str | None,
     ) -> IncidentPlan:
         if self.demo_outcome:
-            return demo_plan(incident_id, team_code, self.demo_outcome, created_sim, take_due_sim, sla_due_sim)
+            return demo_plan(
+                incident_id, team_code, self.demo_outcome, created_sim, take_due_sim, sla_due_sim, report_due_sims
+            )
         th = profile.get("take_hours") or [1, 4]
         lo, hi = float(th[0]), float(th[1])
         take_delay = lo if hi <= lo else lo + self.rng.random() * (hi - lo)
@@ -465,7 +468,7 @@ class TeamEmulator:
                     dumps({"report_day": step.report_day, "version": "1.0.0", **self.artifact_meta}),
                     team_code,
                     "llm" if self.artifact_meta.get("source") in ("live", "replay") else "template",
-                    step.at if step.action == "progress_report" else None,
+                    (step.due or step.at) if step.action == "progress_report" else None,
                     ctx.sim_time,
                 ),
             )
@@ -498,7 +501,7 @@ class TeamEmulator:
             "artifact_id": artifact_id,
             "artifact_kind": artifact_kind,
             "report_day": step.report_day,
-            "on_time": step.at >= ctx.sim_time if step.action == "progress_report" else None,
+            "on_time": ctx.sim_time <= (step.due or step.at) if step.action == "progress_report" else None,
             "payload": payload,
         }
         await self.bus.emit(self.run_id, f"team.{step.action}", event_payload, ctx.sim_time)
@@ -701,6 +704,7 @@ def _plan_blob(plan: IncidentPlan) -> dict[str, Any]:
                 "report_day": s.report_day,
                 "skipped": s.skipped,
                 "regression": s.regression,
+                "due": s.due.isoformat() if s.due else None,
             }
             for s in plan.steps
         ],
@@ -715,6 +719,7 @@ def _plan_from_blob(incident_id: int, blob: dict[str, Any]) -> IncidentPlan:
             report_day=s.get("report_day"),
             skipped=bool(s.get("skipped")),
             regression=s.get("regression"),
+            due=_parse_ts(s["due"]) if s.get("due") else None,
         )
         for s in blob.get("steps") or []
     ]
@@ -731,8 +736,35 @@ def _plan_from_blob(incident_id: int, blob: dict[str, Any]) -> IncidentPlan:
 __all__ = ["TeamEmulator", "PII_RE", "ACTIVE_STATUSES"]
 
 
+def _before_working_hours(at: dt.datetime, hours: float) -> dt.datetime:
+    """Обратный рабочий интервал; add_working_hours поддерживает только движение вперёд."""
+    current = at.astimezone(MSK)
+    remaining = dt.timedelta(hours=hours)
+    if remaining < dt.timedelta(0):
+        raise ValueError("обратный рабочий интервал должен быть неотрицательным")
+    while remaining > dt.timedelta(0):
+        start = current.replace(hour=WORK_START, minute=0, second=0, microsecond=0)
+        end = current.replace(hour=WORK_END, minute=0, second=0, microsecond=0)
+        if not is_working_day(current) or current <= start:
+            current = (current - dt.timedelta(days=1)).replace(hour=WORK_END, minute=0, second=0, microsecond=0)
+            while not is_working_day(current):
+                current -= dt.timedelta(days=1)
+            continue
+        current = min(current, end)
+        step = min(remaining, current - start)
+        current -= step
+        remaining -= step
+    return current
+
+
 def demo_plan(
-    incident_id: int, team_code: str, outcome: str, created: dt.datetime, take_due: dt.datetime, due: dt.datetime
+    incident_id: int,
+    team_code: str,
+    outcome: str,
+    created: dt.datetime,
+    take_due: dt.datetime,
+    due: dt.datetime,
+    report_dues: list[dt.datetime] | None = None,
 ) -> IncidentPlan:
     """Пять детерминированных траекторий; SLA остаётся из контракта, время — рабочее."""
     if outcome not in ("on_time", "late", "no_work", "failed", "recovered"):
@@ -742,16 +774,39 @@ def demo_plan(
     if outcome == "no_work":
         steps = [PlannedStep("escalate_ack", add_working_hours(due, 1))]
     else:
-        close_at = add_working_hours(due, 8 if outcome == "recovered" else 4) if late else add_working_hours(due, -0.25)
-        span = max(0.1, _working_hours_span(start, close_at))
+        close_at = (
+            add_working_hours(due, 8 if outcome == "recovered" else 4)
+            if late
+            else max(created, _before_working_hours(due, 0.25))
+        )
+        from app.sim.sla import working_seconds_between
+
+        span = max(0.0, working_seconds_between(start, close_at) / 3600)
         steps = [PlannedStep("take", start)]
         for action, fraction in (("rca", 0.1), ("fix_decision", 0.2), ("progress_report", 0.35)):
             steps.append(PlannedStep(action, add_working_hours(start, span * fraction)))
         if outcome in ("failed", "recovered"):
             steps.append(PlannedStep("escalate_ack", add_working_hours(due, 0.5)))
         if outcome != "failed":
-            for action, before_close in (("release", 2.0), ("verify", 0.5), ("close", 0.0)):
+            release_at = min(close_at, add_working_hours(start, span * 0.8))
+            if outcome == "recovered":
+                release_at = max(release_at, add_working_hours(due, 1))
+            verify_at = max(release_at, min(close_at, add_working_hours(start, span * 0.9)))
+            steps.extend(
+                [PlannedStep("release", release_at), PlannedStep("verify", verify_at), PlannedStep("close", close_at)]
+            )
+    if outcome == "on_time" and report_dues:
+        # Проверка SLA сопоставляет отчёт с исходным due_sim; ранняя публикация не меняет дедлайн.
+        steps = [s for s in steps if s.action != "progress_report"]
+        close_time = next(s.at for s in steps if s.action == "close")
+        for report_due in report_dues:
+            if report_due < close_time:
                 steps.append(
-                    PlannedStep(action, add_working_hours(close_at, -before_close) if before_close else close_at)
+                    PlannedStep(
+                        "progress_report",
+                        max(created, _before_working_hours(report_due, 0.25)),
+                        report_day=_working_days_between(created, report_due),
+                        due=report_due,
+                    )
                 )
     return IncidentPlan(incident_id, team_code, late, False, sorted(steps, key=lambda s: s.at), outcome=outcome)

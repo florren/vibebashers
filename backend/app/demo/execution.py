@@ -9,6 +9,7 @@ from typing import Any
 
 import psycopg
 from fastapi import HTTPException, Request
+from psycopg.rows import tuple_row
 
 from app.agent.nodes import Deps
 from app.agent.tools.base import ToolContext
@@ -29,11 +30,11 @@ log = get_logger(__name__)
 
 
 async def configuration(conn: Any, run_id: int) -> dict[str, Any]:
-    row = await (
-        await conn.execute(
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute(
             "select settings_snapshot->'demo_execution' from sim_runs where id=%s and kind='scenario'", (run_id,)
         )
-    ).fetchone()
+        row = await cur.fetchone()
     return dict(row[0] or {}) if row else {}
 
 
@@ -126,6 +127,18 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
 
 
 async def compliance_customer_case(
+    conn: Any, app: Any, run_id: int, alert_id: int, at: dt.datetime, meta: dict[str, Any]
+) -> None:
+    """Инструменты используют tuple-строки; HTTP-роутер передаёт dict_row в той же транзакции."""
+    original_factory = conn.row_factory
+    try:
+        conn.row_factory = tuple_row
+        await _compliance_customer_case(conn, app, run_id, alert_id, at, meta)
+    finally:
+        conn.row_factory = original_factory
+
+
+async def _compliance_customer_case(
     conn: Any, app: Any, run_id: int, alert_id: int, at: dt.datetime, meta: dict[str, Any]
 ) -> None:
     """Подтверждённое нарушение требует ответа клиенту даже без его жалобы."""
@@ -295,8 +308,10 @@ async def cycle(app: Any) -> None:
             await conn.execute(
                 "select (select count(*) from signals where run_id=%s and status in ('new','processing')) + "
                 "(select count(*) from agent_runs where sim_run_id=%s and kind='agent' and (outcome is null or outcome='awaiting_human')) + "
-                "(select count(*) from transcripts where run_id=%s and status in ('received','analyzing'))",
-                (rid, rid, rid),
+                "(select count(*) from transcripts where run_id=%s and status in ('received','analyzing')) + "
+                "(select count(*) from incidents where run_id=%s and status='awaiting_human') + "
+                "(select count(*) from compliance_alerts a join audio_sessions s on s.id=a.session_id where s.run_id=%s and a.acknowledged_at is null)",
+                (rid, rid, rid, rid, rid),
             )
         ).fetchone()
         await conn.commit()

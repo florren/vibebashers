@@ -46,6 +46,20 @@ async def test_demo_full_cycle(seeded, monkeypatch, outcome):
         with pytest.raises(HTTPException) as blocked:
             await post_sim_control(request, SimControlRequest(action="resume"))
         assert blocked.value.status_code == 409
+        if outcome == "on_time":
+            from app.sim.clock import add_working_days
+
+            if svc._inflight:
+                await asyncio.gather(*list(svc._inflight))
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                await conn.execute(
+                    "update incidents set complexity='hard',sla_due_sim=%s,report_due_sims=%s where run_id=%s",
+                    (
+                        add_working_days(sim.clock.sim_time, 10),
+                        [add_working_days(sim.clock.sim_time, day) for day in (3, 6, 9)],
+                        rid,
+                    ),
+                )
         for _ in range(24):
             if svc._inflight:
                 await asyncio.gather(*list(svc._inflight))
@@ -62,6 +76,23 @@ async def test_demo_full_cycle(seeded, monkeypatch, outcome):
                 )
             ).fetchall()
             assert incidents
+            if outcome == "on_time":
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from sim_events where run_id=%s and event_type='sla.report_missing'",
+                            (rid,),
+                        )
+                    ).fetchone()
+                )[0] == 0
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from incident_artifacts where run_id=%s and kind='progress_report' and published_sim<=due_sim",
+                            (rid,),
+                        )
+                    ).fetchone()
+                )[0] == 3
             success = outcome not in ("no_work", "failed")
             assert all((r[0] == "closed") == success for r in incidents)
             if success:
@@ -214,7 +245,8 @@ async def test_twenty_inputs_parallel_run_isolation(seeded):
     assert len(inputs) == 20
 
 
-async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
+@pytest.mark.parametrize("manual", [False, True])
+async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch, manual):
     from app.compliance.session import ComplianceService
 
     monkeypatch.setenv("DATABASE_URL", seeded)
@@ -225,6 +257,30 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
     await sim.load_state()
     app.state.llm_chain, app.state.llm_profile = svc.chain, svc.profile
     request = Request({"type": "http", "app": app, "headers": []})
+    from app.api.compliance import post_compliance_alerts_id_ack
+    from app.demo import execution
+
+    original_employees = execution.employees
+    delayed_once = False
+
+    async def delay_manager_once(app, conn, rid, at):
+        nonlocal delayed_once
+        row = await (
+            await conn.execute(
+                "select a.id from compliance_alerts a join audio_sessions s on s.id=a.session_id join transcripts t on t.id=s.transcript_id where s.run_id=%s and a.acknowledged_at is null and t.status='done' limit 1",
+                (rid,),
+            )
+        ).fetchone()
+        if row and not delayed_once:
+            delayed_once = True
+            if manual:
+                await post_compliance_alerts_id_ack(
+                    request, row[0], {"decision": "open_incident", "comment": "Решение руководителя вручную"}
+                )
+            return False
+        return await original_employees(app, conn, rid, at)
+
+    monkeypatch.setattr(execution, "employees", delay_manager_once)
     try:
         state = await post_demo_execution(request, DemoExecutionBody(scenario_id="branch_misselling"))
         rid = state["run_id"]
@@ -238,6 +294,7 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
                 break
             await asyncio.sleep(0.1)
         assert config["status"] == "finished"
+        assert delayed_once
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             rows = await (
                 await conn.execute(
@@ -253,7 +310,8 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
                 )
             ).fetchall()
             assert notices and all(n[0] and n[1] for n in notices)
-            assert all(r[1] == "open_incident" and r[2].startswith("demo-agent:manager:mock") for r in rows)
+            assert all(r[1] == "open_incident" for r in rows)
+            assert all(r[2] == "branch_manager" if manual else r[2].startswith("demo-agent:manager:mock") for r in rows)
             for aid, decision, by, iid, hid in rows:
                 service = ComplianceService(
                     conn, run_id=rid, sim_time=sim.clock.sim_time, chain=svc.chain, profile=svc.profile
@@ -270,7 +328,9 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
                     hd = await (
                         await conn.execute("select decision,use_as_fewshot from human_decisions where id=%s", (hid,))
                     ).fetchone()
-                    assert hd == ("accept", False)
+                    assert hd[0] == "accept"
+                    if not manual:
+                        assert hd[1] is False
                 if iid:
                     assert (await (await conn.execute("select status from incidents where id=%s", (iid,))).fetchone())[
                         0

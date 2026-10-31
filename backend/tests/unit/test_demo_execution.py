@@ -91,3 +91,25 @@ def test_demo_employee_projection_is_distinct_from_human() -> None:
     assert "DEMO" in result["title_ru"]
     assert "эмуляция" in result["actor"]["label_ru"]
     assert result["badges"]["llm_source"] == "mock"
+
+
+def test_on_time_hard_case_meets_every_progress_report_deadline() -> None:
+    created = dt.datetime(2026, 11, 9, 9, tzinfo=MSK)
+    reports = [add_working_days(created, day) for day in (3, 6, 9)]
+    plan = demo_plan(
+        10, "team_deposits", "on_time", created, add_working_hours(created, 4), add_working_days(created, 10), reports
+    )
+    actual = [s for s in plan.steps if s.action == "progress_report"]
+    assert [s.due for s in actual] == reports
+    assert all(created <= s.at < s.due for s in actual)
+    assert _plan_blob(_plan_from_blob(10, _plan_blob(plan))) == _plan_blob(plan)
+
+
+def test_reverse_working_interval_skips_weekend_and_is_not_negative_add() -> None:
+    from app.sim.teams import _before_working_hours
+
+    monday = dt.datetime(2026, 11, 9, 9, tzinfo=MSK)
+    assert _before_working_hours(monday, 0.25) == dt.datetime(2026, 11, 6, 17, 45, tzinfo=MSK)
+    assert _before_working_hours(monday, 0) == monday
+    with pytest.raises(ValueError):
+        _before_working_hours(monday, -1)

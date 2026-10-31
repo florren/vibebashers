@@ -436,7 +436,7 @@ async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[st
     if decision not in ("go", "false_positive", "open_incident"):
         raise HTTPException(status_code=422, detail="decision: go | false_positive | open_incident")
     by = request.headers.get("x-role") or "branch_manager"
-    async with db() as conn:
+    async with db() as conn, conn.transaction():
         run_id, sim_time = await run_context(request, conn)
         svc = ComplianceService(
             conn,
@@ -448,6 +448,21 @@ async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[st
         res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"))
         if not res:
             raise HTTPException(status_code=404, detail="алерт не найден")
+        from app.demo.execution import compliance_customer_case, configuration
+
+        if (
+            not res.get("deduplicated")
+            and res["decision"] in ("go", "open_incident")
+            and (await configuration(conn, run_id)).get("enabled")
+        ):
+            await compliance_customer_case(
+                conn,
+                request.app,
+                run_id,
+                id,
+                sim_time,
+                {"source": "mock", "model": None, "usage": {}, "fallback": False},
+            )
         return await fetch_one(conn, f"select {ALERT_COLS} {ALERT_FROM} where a.id = %s", (id,))  # noqa: S608
 
 

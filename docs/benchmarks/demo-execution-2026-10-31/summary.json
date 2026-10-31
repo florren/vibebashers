@@ -16,7 +16,7 @@
   },
   "normalization_fallback_observed": true,
   "targeted_tests": {
-    "passed": 27,
+    "passed": 30,
     "new_demo_coverage_percent": 88
   },
   "frontend_tests": {
@@ -43,5 +43,14 @@
     "integration_skipped": 2,
     "scenario_passed": 42,
     "scenario_skipped": 2
-  }
+  },
+  "final_unit_tests": {
+    "passed": 660,
+    "skipped": 18
+  },
+  "hard_case_reports": {
+    "deadlines": 3,
+    "missing": 0
+  },
+  "manual_and_demo_compliance_reply": true
 }
