@@ -16,11 +16,11 @@ from app.demo.execution import cycle
 from app.demo.settings import configuration, save
 from app.main import create_app
 from app.sim.engine import Simulator
-from tests.helpers import MOCK_PROFILE, dsn, mock_chain
+from tests.helpers import MOCK_PROFILE, dsn, mock_chain, run_agent_on
 
 
-@pytest.mark.parametrize("faulted", [False, True])
-async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, monkeypatch, faulted):
+@pytest.mark.parametrize("faulted,humans", [(False, True), (True, True), (True, False)])
+async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, monkeypatch, faulted, humans):
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     app = create_app()
@@ -30,7 +30,9 @@ async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, mo
     app.state.llm_chain, app.state.llm_profile = svc.chain, svc.profile
     request = Request({"type": "http", "app": app, "headers": []})
     try:
-        await post_demo_execution(request, DemoExecutionBody(mode="simulation", emulate_humans=True, auto_advance=True))
+        await post_demo_execution(
+            request, DemoExecutionBody(mode="simulation", emulate_humans=humans, auto_advance=True)
+        )
         rid = sim.run_id
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             cid = (
@@ -62,6 +64,15 @@ async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, mo
                     (submitted["signal_id"],),
                 )
             ).fetchone()
+            if not humans:
+                assert row[0] is None
+                assert (
+                    await (
+                        await conn.execute("select status from signals where id=%s", (submitted["signal_id"],))
+                    ).fetchone()
+                )[0] == "awaiting_human"
+                assert not sim.clock.running and sim.clock.sim_time == original
+                return
             assert row[0] == "accept" and row[1].startswith("demo-agent:operator:") and not row[2]
             assert (
                 await (
@@ -93,6 +104,113 @@ async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, mo
 
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize("already_accepted", [False, True])
+async def test_related_bulk_review_is_in_manual_chain_but_unrelated_review_is_not(
+    seeded, monkeypatch, already_accepted
+):
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    app = create_app()
+    svc = app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
+    sim = app.state.sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    app.state.llm_chain, app.state.llm_profile = svc.chain, svc.profile
+    request = Request({"type": "http", "app": app, "headers": []})
+    try:
+        await post_demo_execution(request, DemoExecutionBody(mode="simulation", emulate_humans=True))
+        rid = sim.run_id
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            await conn.execute(
+                "insert into settings(key,value) values ('policies','{\"confidence_threshold\":0.99}') on conflict(key) do update set value=settings.value || excluded.value"
+            )
+            bulk, bstate = await run_agent_on(
+                conn,
+                "В мобильном приложении не открывается вклад, ошибка 503",
+                client_id=None,
+                run_id=rid,
+                origin="sim",
+            )
+            unrelated, ustate = await run_agent_on(
+                conn,
+                "Не загружается PDF выписка по кредитной карте в приложении",
+                client_id=None,
+                run_id=rid,
+                origin="sim",
+            )
+            assert bstate["outcome"] == "awaiting_human" and ustate["outcome"] == "awaiting_human"
+            cid = (
+                await (
+                    await conn.execute("select id from clients where segment_code='ultra_vip' order by id limit 1")
+                ).fetchone()
+            )[0]
+            cfg = await configuration(conn, rid)
+            cfg.update(enabled=False, status="error", error="ToolError")
+            await save(conn, rid, cfg)
+        result = await post_signals(
+            request,
+            SignalCreate(
+                channel_code="chat", client_id=cid, text="В мобильном приложении не открывается вклад, ошибка 503"
+            ),
+        )
+        if svc._inflight:
+            await asyncio.gather(*list(svc._inflight))
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            # Явная общая связь: anonymous mock не обязан распознавать тот же инцидент.
+            iid = (
+                await (
+                    await conn.execute("select incident_id from incident_signals where signal_id=%s", (bulk,))
+                ).fetchone()
+            )[0]
+            await conn.execute(
+                "insert into incident_signals(incident_id,signal_id,linked_sim) values (%s,%s,%s) on conflict do nothing",
+                (iid, result["signal_id"], sim.clock.sim_time),
+            )
+            await conn.execute(
+                'update human_decisions set agent_proposal=agent_proposal || \'{"kind":"escalation"}\'::jsonb where signal_id=%s',
+                (bulk,),
+            )
+            if already_accepted:
+                await conn.execute(
+                    "update human_decisions set decision='accept',decided_by='operator',decided_at=now() where signal_id=%s",
+                    (bulk,),
+                )
+        before = sim.clock.sim_time
+        for _ in range(40):
+            if svc._inflight:
+                await asyncio.gather(*list(svc._inflight))
+            await cycle(app)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            ids = await (
+                await conn.execute(
+                    "select signal_id from incident_signals where incident_id=%s and signal_id=any(%s)",
+                    (iid, [bulk, result["signal_id"]]),
+                )
+            ).fetchall()
+            assert len(ids) == 2
+            assert (
+                await (
+                    await conn.execute("select decision from human_decisions where signal_id=%s", (bulk,))
+                ).fetchone()
+            )[0] == "accept"
+            assert (
+                await (
+                    await conn.execute("select decision from human_decisions where signal_id=%s", (unrelated,))
+                ).fetchone()
+            )[0] is None
+            assert (
+                await (
+                    await conn.execute(
+                        "select outcome from agent_runs where signal_id=%s and kind='agent'", (result["signal_id"],)
+                    )
+                ).fetchone()
+            )[0] == "completed"
+        assert not sim.clock.running and sim.clock.sim_time == before
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()
 
 
 @pytest.mark.parametrize("fast", [False, True, None])

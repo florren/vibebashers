@@ -19,8 +19,8 @@ HITL_SQL = """
 select hd.id,hd.public_id,hd.sim_run_id,(select r.public_id from sim_runs r where r.id=hd.sim_run_id) as run_public_id,hd.reason,hd.agent_proposal,hd.options,hd.recommendation,
  hd.requested_sim,hd.requested_at,hd.decision,hd.decided_by,hd.comment,hd.decided_sim,
  hd.agent_run_id,hd.incident_id,hd.task_id,ar.outcome as process_outcome,
- (hd.decision is null and ar.outcome='awaiting_human' and coalesce(hd.agent_proposal->>'kind','')<>'escalation' and exists
-   (select 1 from agent_steps st where st.run_id=ar.id and st.node='wait_human' and st.output->>'human_decision_id'=hd.id::text)) as can_resume,
+ (hd.decision is null and ar.outcome='awaiting_human' and
+   (select case when st.input->>'current_node'='wait_human' then st.output->>'human_decision_id' end from agent_steps st where st.run_id=ar.id and st.node='wait_human' order by st.seq desc limit 1)=hd.id::text) as can_resume,
  (hd.decided_by='timeout') as automatic_decision,
  (select count(*) from hitl_feedback f where f.human_decision_id=hd.id) as feedback_count,
  (select to_jsonb(t) from tasks t where t.id=hd.task_id and t.run_id=hd.sim_run_id) as task,

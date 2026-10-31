@@ -528,7 +528,7 @@ class TeamEmulator:
 
             ar = await ctx.fetchone(
                 "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
-                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v2','demo-execution-v1',%s) returning id",
+                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s) returning id",
                 (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
             )
             assert ar is not None

@@ -61,14 +61,25 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
     svc = app.state.agent
     request = Request({"type": "http", "app": app, "headers": []})
     cur = await conn.execute(
-        "select h.id,h.reason,h.agent_proposal from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
-        "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms where ms.id=a.signal_id and (ms.origin='jury' or ms.channel_subtype='ui_pers_demo'))) and h.decision is null and (a.outcome is not null or a.id is null) "
+        "select h.id,h.reason,h.agent_proposal,h.decision from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
+        "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms "
+        "where ms.run_id=h.sim_run_id and (ms.origin='jury' or ms.channel_subtype='ui_pers_demo') and "
+        "(ms.id=a.signal_id or exists(select 1 from incident_signals mx where mx.signal_id=ms.id and "
+        "(mx.incident_id=h.incident_id or exists(select 1 from incident_signals hx where hx.incident_id=mx.incident_id and hx.signal_id=coalesce(h.signal_id,a.signal_id))))))) "
+        "and (h.decision is null or (a.outcome='awaiting_human' and "
+        "(select case when st.input->>'current_node'='wait_human' then st.output->>'human_decision_id' end from agent_steps st where st.run_id=a.id and st.node='wait_human' order by st.seq desc limit 1)=h.id::text)) "
+        "and (a.outcome is not null or a.id is null) "
         "and (h.agent_proposal->>'kind'='escalation' or a.id is null or exists(select 1 from agent_steps s where s.run_id=a.id and s.node='wait_human' and s.output->>'human_decision_id'=h.id::text)) order by h.id limit 1",
         (run_id, manual_only),
     )
     row = await cur.fetchone()
     if row:
-        hid, reason, proposal = row
+        hid, reason, proposal, recorded_decision = row
+        if recorded_decision is not None:
+            # Решение уже сохранено, но граф мог прерваться до продолжения.
+            await conn.commit()
+            await svc.resume(int(hid), at)
+            return True
         profile = svc.chain.profile_for("twin", svc.profile)
         obj, meta = await respond(
             svc.chain,
@@ -198,7 +209,7 @@ async def _compliance_customer_case(
     ar = (
         await (
             await conn.execute(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v2','demo-execution-v1',%s) returning id",
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v3','demo-execution-v1',%s) returning id",
                 (run_id, sid, incident_id, at),
             )
         ).fetchone()

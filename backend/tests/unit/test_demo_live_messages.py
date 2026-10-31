@@ -5,8 +5,34 @@ import pytest
 from app.demo.roles import respond
 from app.llm.base import LLMProfile, ProviderError
 from app.llm.failover import ProviderChain, provider_messages
-from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START
+from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.ratelimit import RateLimiter
+
+
+async def test_operator_prompt_is_the_current_hitl_review():
+    seen = []
+
+    class Capture(MockProvider):
+        async def complete_structured(self, messages, schema, profile, *, timeout_s):
+            seen.extend(messages)
+            return await super().complete_structured(messages, schema, profile, timeout_s=timeout_s)
+
+    obj, meta = await respond(
+        ProviderChain([Capture()]),
+        LLMProfile(code="mock", provider="mock", model="mock-1"),
+        {
+            "role": "bank_operator",
+            "reason": "ultra_vip",
+            "proposal": {"needs_human": True, "requires_hitl": True},
+            "language": "ru",
+        },
+        "Предложение рассмотрено и согласовано в пределах действующих правил.",
+    )
+    system = next(m["content"] for m in seen if m["role"] == "system")
+    assert "текущий этап HITL" in system
+    assert "не являются признаком нарушения" in system
+    assert "не отменяет отдельные согласования" in system
+    assert obj["decision"] == "accept" and meta["prompt_version"] == "demo-role-v3"
 
 
 @pytest.mark.parametrize("provider", ["gigachat", "openai_compatible"])
