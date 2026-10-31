@@ -56,6 +56,8 @@ async def run_scenario(
     body = body or ScenarioRunRequest()
     if body.reset_mode == "baseline":
         raise NotImplementedYet("T-040")
+    async with db() as conn:
+        await sc.ensure_registered(conn, scenario)
     sim: Simulator = request.app.state.sim
     svc = agent_service(request)
     if start_paused:

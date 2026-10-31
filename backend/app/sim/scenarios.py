@@ -45,6 +45,23 @@ def get(scenario_id: str) -> dict[str, Any] | None:
     return next((s for s in load_all() if s.get("id") == scenario_id), None)
 
 
+async def ensure_registered(conn: Any, scenario: dict[str, Any]) -> None:
+    """Аддитивная регистрация YAML после обновления кода без повторного seed существующей БД."""
+    source = yaml.safe_dump(
+        {k: v for k, v in scenario.items() if not k.startswith("_")}, allow_unicode=True, sort_keys=False
+    )
+    await conn.execute(
+        "insert into scenarios(id,title_ru,title_en,yaml_source,expected) values (%s,%s,%s,%s,%s::jsonb) on conflict(id) do nothing",
+        (
+            scenario["id"],
+            scenario.get("title_ru") or scenario["id"],
+            scenario.get("title_en") or scenario["id"],
+            source,
+            dumps(scenario.get("expected") or {}),
+        ),
+    )
+
+
 def is_runnable(s: dict[str, Any]) -> bool:
     return bool(s.get("inject") or s.get("file"))
 

@@ -16,7 +16,7 @@
   },
   "normalization_fallback_observed": true,
   "targeted_tests": {
-    "passed": 26,
+    "passed": 27,
     "new_demo_coverage_percent": 88
   },
   "frontend_tests": {
@@ -34,5 +34,14 @@
       "light",
       "dark"
     ]
+  },
+  "catalog_upgrade_without_seed": true,
+  "full_local_make_test": {
+    "unit_passed": 658,
+    "unit_skipped": 18,
+    "integration_passed": 153,
+    "integration_skipped": 2,
+    "scenario_passed": 42,
+    "scenario_skipped": 2
   }
 }

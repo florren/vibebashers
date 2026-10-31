@@ -279,3 +279,40 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch):
         await svc.stop()
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+async def test_new_catalog_case_runs_without_reseeding_existing_database(seeded, monkeypatch):
+    from app.sim import scenarios as sc
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    app = create_app()
+    svc = app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
+    sim = app.state.sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    request = Request({"type": "http", "app": app, "headers": []})
+    scenario_id = "demo20_01_branch_queue"
+    try:
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            clients_before = (await (await conn.execute("select count(*) from clients")).fetchone())[0]
+            await conn.execute("delete from scenarios where id=%s", (scenario_id,))
+        result = await post_demo_execution(request, DemoExecutionBody(scenario_id=scenario_id))
+        assert result["subject_ref"].startswith("SIG-")
+        if svc._inflight:
+            await asyncio.gather(*list(svc._inflight))
+        await delete_demo_execution(request)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            row = await (
+                await conn.execute("select title_ru,yaml_source from scenarios where id=%s", (scenario_id,))
+            ).fetchone()
+            assert row and row[0] == sc.get(scenario_id)["title_ru"] and scenario_id in row[1]
+            assert (await (await conn.execute("select count(*) from clients")).fetchone())[0] == clients_before
+            await conn.execute("update scenarios set last_result='{}'::jsonb where id=%s", (scenario_id,))
+            await sc.ensure_registered(conn, sc.get(scenario_id))
+            assert (
+                await (await conn.execute("select last_result from scenarios where id=%s", (scenario_id,))).fetchone()
+            )[0] == {}
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()
