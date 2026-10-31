@@ -45,7 +45,6 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
       <button className="btn btn-sm" disabled={isolated || change.isPending || apply.isPending} onClick={() => apply.mutate()}>{t('demoExecution.applySimulation')}</button>
     </div>
     {state.data?.run_id && Boolean(config?.mode) && <p role="status" className="my-2 text-xs">{t(config?.mode === 'simulation' ? 'demoExecution.simulation' : 'demoExecution.demo')} · SR-{state.data.run_id} · {t(`demoExecution.outcomes.${String(config?.team_outcome)}`)}</p>}
-    {state.data?.incidents?.map(i => <p key={i.id} className="mt-1 text-xs">{i.public_id} · {t(`incident.status.${i.status}`, { defaultValue: i.status })}{i.sla_breached && ` · ${t('demoExecution.breached')}`}</p>)}
     {config?.status === 'paused' && <p className="mt-2 text-xs text-muted">{t('demoExecution.pausedHint')}</p>}
     {apply.isError && <ErrorBox error={apply.error} />}
     {Boolean(config?.error) && <p role="alert">{t('demoExecution.error')}: {String(config?.error)}</p>}
