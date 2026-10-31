@@ -1799,7 +1799,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
         demo_team_task = bool(
             await deps.ctx.fetchone(
-                "select id from sim_runs where id=%s and kind='scenario' "
+                "select id from sim_runs where id=%s and kind<>'baseline' "
                 "and settings_snapshot->'demo_execution'->>'enabled'='true'",
                 (deps.ctx.run_id,),
             )

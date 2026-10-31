@@ -439,3 +439,43 @@ async def test_shared_teams_progress_with_continuous_employee_work(seeded, monke
         await svc.stop()
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+async def test_shared_information_request_gets_team_final(seeded, monkeypatch):
+    app, request = app_for(monkeypatch, seeded)
+    sim, svc = app.state.sim, app.state.agent
+    await sim.load_state()
+    sim._intensities = dict.fromkeys(("op", "fault", "client_error", "signal_noise"), 0.0)
+    try:
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            cid = (
+                await (
+                    await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+                ).fetchone()
+            )[0]
+        result = await post_signals(
+            request,
+            SignalCreate(
+                channel_code="chat", client_id=cid, text="Подскажите, какие документы нужны, чтобы оформить вклад?"
+            ),
+        )
+        await post_sim_control(request, SimControlRequest(action="resume"))
+        await finish_shared(app, request, seeded)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            row = await (
+                await conn.execute(
+                    "select i.status from incidents i join incident_signals x on x.incident_id=i.id where x.signal_id=%s",
+                    (result["signal_id"],),
+                )
+            ).fetchone()
+            notice = await (
+                await conn.execute(
+                    "select status from notifications where signal_id=%s and template_code='resolved'",
+                    (result["signal_id"],),
+                )
+            ).fetchone()
+        assert row and row[0] == "closed" and notice and notice[0] == "sent"
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()
