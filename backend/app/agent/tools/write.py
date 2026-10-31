@@ -135,7 +135,6 @@ async def link_signal_to_incident(
     return brief
 
 
-@tool("resume_approved_incident")
 async def resume_approved_incident(
     ctx: ToolContext, incident_id: int, approval_agent_run_id: int | None = None
 ) -> dict[str, Any]:
@@ -146,10 +145,10 @@ async def resume_approved_incident(
     if not row or row[0] != "awaiting_human":
         return {"resumed": False, "reason": "not_awaiting_human"}
     approved = await ctx.fetchone(
-        "select id from human_decisions where agent_run_id=%s and incident_id=%s and decision in ('accept','modify') limit 1",
+        "select id,decision from human_decisions where agent_run_id=%s and incident_id=%s and decision is not null order by id desc limit 1",
         (approval_agent_run_id or ctx.agent_run_id, incident_id),
     )
-    if not approved:
+    if not approved or approved[1] not in ("accept", "modify"):
         return {"resumed": False, "reason": "no_approval"}
     pending = await ctx.fetchone(
         "select h.id from human_decisions h where h.decision is null and "

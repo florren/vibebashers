@@ -12,6 +12,7 @@ from app.agent.tools.base import ToolContext
 from app.agent.tools.write import resume_approved_incident
 from app.api.demo_execution import DemoExecutionBody, post_demo_execution
 from app.config import get_settings
+from app.contracts.registry import validate
 from app.demo.execution import cycle
 from app.main import create_app
 from app.sim.engine import Simulator
@@ -73,9 +74,12 @@ async def test_approved_anonymous_handoff_reaches_final(seeded, monkeypatch, oth
             assert status == ("awaiting_human" if other_pending else "routed")
             if other_pending:
                 assert (await resume_approved_incident(ctx, iid))["reason"] == "pending_human_decision"
+                await conn.execute("update human_decisions set decision='reject' where id=%s", (extra,))
+                assert (await resume_approved_incident(ctx, iid))["reason"] == "no_approval"
                 await conn.execute("update human_decisions set decision='accept' where id=%s", (extra,))
                 assert (await resume_approved_incident(ctx, iid))["resumed"]
             assert not (await resume_approved_incident(ctx, iid))["resumed"]
+            assert all(not validate(call, "agent/tool_call") for call in ctx.calls)
             await conn.commit()
         await sim.load_state()
         request = Request({"type": "http", "app": app, "headers": []})
