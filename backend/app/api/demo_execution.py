@@ -92,7 +92,15 @@ async def start_demo(request: Request, body: DemoExecutionBody) -> Any:
         async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
             await conn.execute(
                 "insert into settings(key,value) values ('simulation_execution',%s) on conflict(key) do update set value=excluded.value",
-                (Jsonb({"team_outcome": body.team_outcome, "emulate_humans": body.emulate_humans}),),
+                (
+                    Jsonb(
+                        {
+                            "team_outcome": body.team_outcome,
+                            "emulate_humans": body.emulate_humans,
+                            "auto_advance": body.auto_advance,
+                        }
+                    ),
+                ),
             )
             rid = sim.run_id or await sim.ensure_live_run()
             rid = await prepare(request, conn, rid)
@@ -100,7 +108,7 @@ async def start_demo(request: Request, body: DemoExecutionBody) -> Any:
             config.update(
                 mode="simulation",
                 scenario_id=None,
-                auto_advance=False,
+                auto_advance=body.auto_advance,
                 enabled=True,
                 status="running" if sim.clock.running else "paused",
                 team_outcome=body.team_outcome,

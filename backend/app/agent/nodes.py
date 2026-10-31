@@ -1694,6 +1694,30 @@ def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
     )
 
 
+def matching_incident(
+    related: list[dict[str, Any]], classification: dict[str, Any], incident_type: str
+) -> dict[str, Any] | None:
+    """Общий клиент/тип не доказывают общую проблему; разные коды ошибки не склеиваем."""
+    code = classification.get("error_code")
+    words = set(re.findall(r"[а-яёa-z]{6,}", str(classification.get("summary_ru") or "").lower()))
+    for incident in related:
+        if code:
+            if incident.get("error_code") == code:
+                return incident
+            continue
+        if (
+            incident.get("is_clients")
+            and incident.get("incident_type") == incident_type
+            and classification.get("system")
+            and incident.get("system") == classification["system"]
+            and classification.get("product")
+            and incident.get("product") == classification["product"]
+            and len(words & set(re.findall(r"[а-яёa-z]{6,}", str(incident.get("title") or "").lower()))) >= 2
+        ):
+            return incident
+    return None
+
+
 def _decision_rationale(llm: str | None, cls: str | None, own: str) -> str:
     """Обоснование решения: если модель вернула то же, что в классификации (mock), берём своё резюме маршрута/SLA."""
     llm = (llm or "").strip()
@@ -1788,10 +1812,18 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     prio = planned_priority(ctx, prio)
     sla_full = slam.sla_for(complexity, crit, deps.ctx.sim_time, deps.sla_matrix)
     # инцидент: создать / связать / не нужен
-    related = ctx.get("related_incidents") or []
-    link = next((i for i in related if i.get("same_error") and i.get("error_code")), None) or next(
-        (i for i in related if i.get("is_clients") and i.get("incident_type") == incident_type), None
+    # После классификации известна проблема самого сообщения, а не только старых операций клиента.
+    related = await rt.find_related_incidents(
+        deps.ctx,
+        (client or {}).get("client_id"),
+        c.get("error_code"),
+        c.get("system"),
+        c.get("product"),
+        (client or {}).get("region_code"),
+        hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
     )
+    ctx["related_incidents"] = related
+    link = matching_incident(related, c, incident_type)
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
     demo_team_task = False

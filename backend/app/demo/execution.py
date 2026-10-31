@@ -32,25 +32,27 @@ from app.sim.teams import TeamEmulator
 log = get_logger(__name__)
 
 
-async def execution_active(app: Any, conn: Any, run_id: int) -> bool:
+async def execution_active(app: Any, conn: Any, run_id: int, *, manual_only: bool = False) -> bool:
     config = await configuration(conn, run_id)
     return bool(
         app.state.sim.run_id == run_id
-        and app.state.sim.clock.running
         and config.get("enabled")
-        and config.get("status") == "running"
+        and (
+            (manual_only and config.get("mode") == "simulation" and config.get("auto_advance"))
+            or (app.state.sim.clock.running and config.get("status") == "running")
+        )
     )
 
 
-async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
+async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual_only: bool = False) -> bool:
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
     request = Request({"type": "http", "app": app, "headers": []})
     cur = await conn.execute(
         "select h.id,h.reason,h.agent_proposal from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
-        "where h.sim_run_id=%s and h.decision is null and (a.outcome is not null or a.id is null) "
+        "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms where ms.id=a.signal_id and ms.origin='jury')) and h.decision is null and (a.outcome is not null or a.id is null) "
         "and (h.agent_proposal->>'kind'='escalation' or a.id is null or exists(select 1 from agent_steps s where s.run_id=a.id and s.node='wait_human' and s.output->>'human_decision_id'=h.id::text)) order by h.id limit 1",
-        (run_id,),
+        (run_id, manual_only),
     )
     row = await cur.fetchone()
     if row:
@@ -64,7 +66,7 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
         )
         decision = obj["decision"] if obj["decision"] in ("accept", "reject") else "reject"
         async with app.state.sim._lock:
-            if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id):
+            if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id, manual_only=manual_only):
                 return False
             try:
                 await post_hitl_id(
@@ -81,6 +83,8 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
                 if exc.status_code != 409:
                     raise
         return True
+    if manual_only:
+        return False
     alert = await (
         await conn.execute(
             "select a.id,a.recommendation_ru,(select jsonb_agg(t.quote order by t.id) from compliance_triggers t where t.session_id=s.id and t.status='confirmed') from compliance_alerts a join audio_sessions s on s.id=a.session_id where s.run_id=%s and a.acknowledged_at is null and (s.transcript_id is null or exists(select 1 from transcripts tr where tr.id=s.transcript_id and tr.status='done')) order by a.id limit 1",
@@ -101,11 +105,11 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
             "Демонстрационный руководитель подтвердил разбор нарушения и поручил устранить проблему клиента.",
             "open_incident",
         )
-        if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id):
+        if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id, manual_only=manual_only):
             return False
         # Не разрешаем модели отбрасывать подтверждённое нарушение без доказательств.
         async with app.state.sim._lock, conn.transaction():
-            if not await execution_active(app, conn, run_id):
+            if not await execution_active(app, conn, run_id, manual_only=manual_only):
                 return False
             locked = await (
                 await conn.execute(
@@ -203,16 +207,19 @@ async def _compliance_customer_case(
     await finish_run(conn, ar, meta)
 
 
-async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> None:
+async def notify_results(
+    conn: Any, app: Any, run_id: int, at: dt.datetime, *, incident_ids: list[int] | None = None
+) -> None:
     """Один итог на сигнал, включая дедуплицированных клиентов. Тикет = тот же инцидент."""
     rows = await (
         await conn.execute(
             "select i.id,i.status,i.resolution_summary,i.sla_breached,s.id,s.client_id,s.text,c.segment_code,c.consents,s.channel_code "
             "from incidents i join incident_signals x on x.incident_id=i.id join signals s on s.id=x.signal_id "
             "left join clients c on c.id=s.client_id where i.run_id=%s and s.run_id=%s "
+            "and (%s::bigint[] is null or i.id=any(%s::bigint[])) "
             "and (i.status='closed' or exists(select 1 from team_actions ta where ta.incident_id=i.id and ta.action='escalate_ack')) "
             "and not exists(select 1 from notifications n where n.run_id=i.run_id and n.signal_id=s.id and n.template_code=case when i.status='closed' then 'resolved' else 'demo_unresolved' end) order by s.id",
-            (run_id, run_id),
+            (run_id, run_id, incident_ids, incident_ids),
         )
     ).fetchall()
     svc = app.state.agent
@@ -285,6 +292,64 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         await finish_run(conn, arid, meta)
 
 
+async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) -> None:
+    """Событийное время ручных цепочек хранится в профиле; часы фонового банка не двигаются."""
+    sim, svc = app.state.sim, app.state.agent
+    if config.get("emulate_humans") and await employees(app, conn, rid, sim.clock.sim_time, manual_only=True):
+        return
+    # Ожидание одного клиента/оператора не блокирует другие независимые инциденты.
+    rows = await (
+        await conn.execute(
+            "select distinct x.incident_id from incident_signals x join signals s on s.id=x.signal_id "
+            "where s.run_id=%s and s.origin='jury' and not exists("
+            "select 1 from incident_signals px join signals ps on ps.id=px.signal_id "
+            "where px.incident_id=x.incident_id and (ps.status in ('new','processing','awaiting_human') "
+            "or exists(select 1 from agent_runs a where a.signal_id=ps.id and a.kind='agent' "
+            "and (a.outcome is null or a.outcome='awaiting_human'))))",
+            (rid,),
+        )
+    ).fetchall()
+    ids = [int(row[0]) for row in rows]
+    if not ids:
+        return
+    await conn.commit()
+    async with sim._lock:
+        if not await execution_active(app, conn, rid, manual_only=True):
+            return
+        emulator = TeamEmulator(
+            SimRng(sim.seed),
+            conn,
+            EventBus(conn),
+            rid,
+            demo_outcome=config["team_outcome"],
+            llm=(svc.chain, svc.chain.profile_for("twin", svc.profile)),
+            incident_ids=ids,
+        )
+        await emulator.load()
+        times = dict(config.get("manual_times") or {})
+        for iid in ids:
+            at = max(
+                sim.clock.sim_time, dt.datetime.fromisoformat(times.get(str(iid)) or sim.clock.sim_time.isoformat())
+            )
+            emulator.incident_ids = [iid]
+            await emulator.tick(at, SimpleNamespace(active_faults=[]))
+            await notify_results(conn, app, rid, at, incident_ids=[iid])
+            plan = emulator.plans.get(iid)
+            future = (
+                [
+                    step.at
+                    for step in plan.steps
+                    if not step.skipped and (iid, step.action, step.report_day) not in emulator.done and step.at > at
+                ]
+                if plan
+                else []
+            )
+            times[str(iid)] = (min(future) if future else at).isoformat()
+        config = await configuration(conn, rid)
+        config["manual_times"] = times
+        await save(conn, rid, config)
+
+
 async def cycle(app: Any) -> None:
     sim = app.state.sim
     svc = app.state.agent
@@ -302,6 +367,11 @@ async def cycle(app: Any) -> None:
         if not config and getattr(sim, "full_execution", False):
             config = await ensure(conn, rid, running=sim.clock.running)
         await conn.commit()
+        if config.get("enabled") and config.get("mode") == "simulation" and config.get("auto_advance"):
+            await manual_cycle(app, conn, rid, config)
+            await conn.commit()
+            if not sim.clock.running:
+                return
         if not config.get("enabled") or config.get("status") != "running" or not sim.clock.running:
             return
         if config.get("emulate_humans"):

@@ -37,6 +37,11 @@ async def prepare(request: Any, conn: Any, run_id: int) -> int:
             sim.run_id, sim.run_status, sim.world = run_id, status, None
         config = await ensure(conn, run_id, running=sim.clock.running)
         if config.get("status") == "finished":
-            config.update(enabled=True, status="running" if sim.clock.running else "paused")
+            config.update(
+                enabled=True,
+                status="running" if sim.clock.running else "paused",
+                mode="simulation",
+                scenario_id=None,
+            )
             await save(conn, run_id, config)
     return run_id

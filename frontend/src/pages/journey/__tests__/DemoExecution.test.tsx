@@ -19,7 +19,7 @@ it('starts explicit employee simulation with selected outcome and stops it', asy
   const onStarted = vi.fn()
   render(<QueryClientProvider client={qc}><DemoExecution onStarted={onStarted} /></QueryClientProvider>)
   fireEvent.click(screen.getByText(/Эмуляция команд/))
-  const start = await screen.findByRole('button', { name: 'Запустить демо' })
+  const start = await screen.findByRole('button', { name: 'Запустить отдельный сценарий' })
   await waitFor(() => expect(start).toBeEnabled())
   fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
   fireEvent.click(start)
@@ -42,9 +42,24 @@ it('applies the shared employee profile while paused without creating a scenario
   await screen.findByText(/Команды и сотрудники на паузе/)
   fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'late' } })
   fireEvent.click(screen.getByLabelText('Агент отвечает за сотрудников'))
-  fireEvent.click(screen.getByRole('button', { name: 'Применить к общей симуляции' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль обработки' }))
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: 'late', emulate_humans: false, auto_advance: false }) })))
   expect(onStarted).not.toHaveBeenCalled()
-  expect(screen.getByRole('button', { name: 'Запустить демо' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Запустить отдельный сценарий' })).toBeEnabled()
+  qc.clear()
+})
+
+it('loads and saves the fast manual profile without starting a scenario', async () => {
+  vi.mocked(api).mockImplementation(async path => {
+    if (path === '/api/scenarios') return [] as never
+    return { run_id: 4, configuration: { mode: 'simulation', enabled: true, status: 'paused', team_outcome: 'on_time', auto_advance: true, emulate_humans: true }, incidents: [] } as never
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(<QueryClientProvider client={qc}><DemoExecution /></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Эмуляция команд/))
+  await waitFor(() => expect(screen.getByLabelText('Ускорять ручные обращения до итогового ответа')).toBeChecked())
+  expect(screen.queryByText(/Команды и сотрудники на паузе/)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль обработки' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: 'on_time', emulate_humans: true, auto_advance: true }) })))
   qc.clear()
 })
