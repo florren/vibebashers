@@ -115,6 +115,15 @@ class ProviderChain:
                 if candidate.name not in ("mock", "replay") and remaining <= 0:
                     continue
                 budget = remaining if candidate.name not in ("mock", "replay") else timeout_s
+                if (
+                    context == "normalization"
+                    and backup is not None
+                    and not backup_used
+                    and candidate.name == profile.provider
+                ):
+                    # Быстрая модель не расходует весь общий дедлайн: оставляем половину
+                    # основной модели при зависании или неверном structured output.
+                    budget = min(budget, timeout_s / 2)
                 t0 = time.perf_counter()
                 try:
 
@@ -133,6 +142,15 @@ class ProviderChain:
                         Attempt(candidate.name, False, ms, f"timeout {budget:.1f}s ({context})", selected.model)
                     )
                     log.warning("llm_timeout", provider=candidate.name, model=selected.model, context=context, ms=ms)
+                    if (
+                        context == "normalization"
+                        and backup is not None
+                        and fallback_profile is not None
+                        and not backup_used
+                        and candidate.name == profile.provider
+                    ):
+                        requests.append((backup, fallback_profile))
+                        backup_used = True
                     continue
                 except ProviderError as exc:
                     last_error = exc
@@ -156,7 +174,10 @@ class ProviderChain:
                         and fallback_profile is not None
                         and not backup_used
                         and candidate.name == profile.provider
-                        and exc.kind in ("bad_output", "unavailable")
+                        and (
+                            exc.kind in ("bad_output", "unavailable")
+                            or (context == "normalization" and exc.kind == "timeout")
+                        )
                     ):
                         requests.append((backup, fallback_profile))
                         backup_used = True

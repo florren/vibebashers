@@ -336,6 +336,27 @@ async def process_signal(
     return await run_graph(state, deps, conn)
 
 
+async def _restore_recording_state(conn: psycopg.AsyncConnection[Any], deps: Deps) -> None:
+    """Продолжение графа учитывает уже записанные шаги, даже если итог AR устарел."""
+    row = await (
+        await conn.execute(
+            "select coalesce(sum(st.prompt_tokens),0), coalesce(sum(st.completion_tokens),0), "
+            "coalesce(sum(st.latency_ms),0), ar.cost_estimate, coalesce(max(st.seq),0), "
+            "coalesce(sum(octet_length(coalesce(st.prompt,'')) + octet_length(coalesce(st.response_raw,'')) + "
+            "octet_length(coalesce(st.reasoning,'')) + octet_length(coalesce(st.output::text,'')) + "
+            "octet_length(coalesce(st.tool_calls::text,''))),0) "
+            "from agent_runs ar left join agent_steps st on st.run_id=ar.id "
+            "where ar.id=%s group by ar.id,ar.cost_estimate",
+            (deps.ctx.agent_run_id,),
+        )
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Запуск агента отсутствует при восстановлении статистики")
+    deps.tokens.update(prompt=int(row[0]), completion=int(row[1]), latency_ms=int(row[2]), cost=float(row[3] or 0))
+    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(row[4]))]
+    deps.text_bytes_used = int(row[5])
+
+
 async def resume_after_followup(
     conn: psycopg.AsyncConnection[Any],
     *,
@@ -357,7 +378,7 @@ async def resume_after_followup(
     ).fetchone()
     if not row or row[7] is None:
         return None
-    agent_run_id, signal_id, incident_id, reason, payload, _fstatus, run_id, checkpoint, nsteps = row
+    agent_run_id, signal_id, incident_id, reason, payload, _fstatus, run_id, checkpoint, _nsteps = row
     reason = str(reason)
     if reason == "escalation_check":
         return None
@@ -371,7 +392,7 @@ async def resume_after_followup(
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
     )
-    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
+    await _restore_recording_state(conn, deps)
     sig = await _load_signal(conn, int(signal_id))
     if sig:
         state["signal"] = sig
@@ -595,7 +616,7 @@ async def resume_after_human(
     ).fetchone()
     if not row or not row[4]:
         return None
-    agent_run_id, decision, modified, run_id, checkpoint, nsteps = row
+    agent_run_id, decision, modified, run_id, checkpoint, _nsteps = row
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 
@@ -606,16 +627,7 @@ async def resume_after_human(
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
     )
-    budget_row = await (
-        await conn.execute(
-            "select coalesce(sum(octet_length(coalesce(prompt,'')) + octet_length(coalesce(response_raw,'')) + "
-            "octet_length(coalesce(reasoning,'')) + octet_length(coalesce(output::text,'')) + "
-            "octet_length(coalesce(tool_calls::text,''))), 0) from agent_steps where run_id = %s",
-            (agent_run_id,),
-        )
-    ).fetchone()
-    deps.text_bytes_used = int(budget_row[0]) if budget_row else 0
-    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
+    await _restore_recording_state(conn, deps)
     state = nodes.apply_human_decision(state, str(decision), dict(modified or {}))
     if decision == "accept":
         from app.agent.operator_feedback import planned_priority

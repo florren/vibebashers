@@ -1,0 +1,49 @@
+{
+  "signal_id": 105869,
+  "human_decision_id": 1890,
+  "run_id": 11,
+  "id": 2121,
+  "incident_id": 1394,
+  "outcome": "deferred",
+  "before": {
+    "total_tokens": 9312,
+    "prompt_tokens": 7995,
+    "completion_tokens": 1317,
+    "total_latency_ms": 16047,
+    "cost_estimate": "0.000000",
+    "step_prompt": 7995,
+    "step_completion": 1317,
+    "step_latency": 16047
+  },
+  "after": {
+    "total_tokens": 9312,
+    "prompt_tokens": 7995,
+    "completion_tokens": 1317,
+    "total_latency_ms": 16047,
+    "cost_estimate": "0.000000",
+    "step_prompt": 7995,
+    "step_completion": 1317,
+    "step_latency": 16047
+  },
+  "llm_steps": [
+    {
+      "node": "normalize",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+      "latency_ms": 7830
+    },
+    {
+      "node": "classify",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+      "latency_ms": 3955
+    },
+    {
+      "node": "decide",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+      "latency_ms": 4262
+    }
+  ],
+  "ledger_entries": 0
+}

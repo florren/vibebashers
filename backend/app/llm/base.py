@@ -8,8 +8,14 @@ from typing import Any, Literal, Protocol, TypedDict
 
 ProviderKind = Literal["gigachat", "openai_compatible", "replay", "mock"]
 ErrorKind = Literal["auth", "rate_limit", "quota", "timeout", "network", "bad_output", "miss", "unavailable"]
-Context = Literal["fast_path", "detector", "batch", "default"]
-TIMEOUTS_S: dict[str, float] = {"fast_path": 8.0, "detector": 5.0, "batch": 12.0, "default": 30.0}
+Context = Literal["normalization", "fast_path", "detector", "batch", "default"]
+TIMEOUTS_S: dict[str, float] = {
+    "normalization": 10.0,
+    "fast_path": 8.0,
+    "detector": 5.0,
+    "batch": 12.0,
+    "default": 30.0,
+}
 
 
 class Message(TypedDict):
