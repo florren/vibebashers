@@ -50,6 +50,7 @@ async def run(dataset: Path, output: Path, limits: list[float], context: str) ->
             # Порядок бюджетов чередуется, провайдер/кэш OAuth общий на весь прогон.
             for limit in limits if index % 2 == 0 else list(reversed(limits)):
                 chain = ProviderChain(providers, append_mock=False, timeouts={context: limit})
+                chain.role_profiles = profiles
                 deps = SimpleNamespace(chain=chain, profile=profiles["main"])
                 start = time.perf_counter()
                 result = {"case": case["id"], "limit_s": limit, "chars": len(case["text"])}
