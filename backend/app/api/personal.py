@@ -178,6 +178,9 @@ async def post_personal_message(request: Request, body: PersonalMessageBody) -> 
         if (count and count["n"] >= 60) or (own and own["n"] >= 5):
             raise HTTPException(429, "Ограничение частоты сообщений", headers={"Retry-After": "60"})
         rid, sim_time = await run_context(request, conn)
+        from app.demo.inputs import prepare
+
+        rid = await prepare(request, conn, rid, public_input=True)
         if s["run_id"] is not None and rid != s["run_id"]:
             # Разговор не переносится в другой запуск незаметно для агента.
             raise HTTPException(409, "Запуск демонстрации изменился. Начните новый чат.")

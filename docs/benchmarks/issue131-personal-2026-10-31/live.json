@@ -1,0 +1,48 @@
+{
+  "provider": "gigachat",
+  "team_outcome": "late",
+  "bank_clock_unchanged": true,
+  "session_isolation": true,
+  "operator_api_not_exposed": true,
+  "cases": [
+    {
+      "entry": "public",
+      "public_id": "SIG-000802",
+      "voice_input_marker": false,
+      "elapsed_seconds": 44.23,
+      "id": 802,
+      "status": "closed",
+      "incident_id": 152,
+      "incident_status": "closed",
+      "product_code": "deposit",
+      "sla_breached": true,
+      "outcome_class": "closed_late",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Ошибка 503 при открытии вклада в мобильном приложении». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    },
+    {
+      "entry": "public",
+      "public_id": "SIG-000803",
+      "voice_input_marker": true,
+      "elapsed_seconds": 30.16,
+      "id": 803,
+      "status": "closed",
+      "incident_id": 153,
+      "incident_status": "closed",
+      "product_code": "credit_card",
+      "sla_breached": true,
+      "outcome_class": "closed_late",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Не открывается PDF-выписка по кредитной карте в мобильном приложении». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    },
+    {
+      "entry": "journey",
+      "elapsed_seconds": 39.06,
+      "public_id": "SIG-000804",
+      "status": "closed",
+      "incident_id": 154,
+      "incident_status": "closed",
+      "sla_breached": true,
+      "outcome_class": "closed_late",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Ошибка 503 при открытии вклада в мобильном приложении». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    }
+  ]
+}
