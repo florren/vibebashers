@@ -401,3 +401,34 @@ async def test_shared_profile_survives_stop_and_new_start(seeded, monkeypatch):
         await app.state.agent.stop()
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+async def test_shared_teams_progress_with_continuous_employee_work(seeded, monkeypatch):
+    app, request = app_for(monkeypatch, seeded)
+    sim, svc = app.state.sim, app.state.agent
+    await sim.load_state()
+    try:
+        await post_signals(
+            request,
+            SignalCreate(
+                channel_code="chat", text="Мобильное приложение зависает с ошибкой 503, невозможно оплатить покупку."
+            ),
+        )
+        if svc._inflight:
+            await asyncio.gather(*list(svc._inflight))
+        await post_sim_control(request, SimControlRequest(action="resume"))
+
+        async def another_employee_decided(*args):
+            return True
+
+        monkeypatch.setattr("app.demo.execution.employees", another_employee_decided)
+        await cycle(app)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            actions = await (
+                await conn.execute("select count(*) from team_actions where run_id=%s", (sim.run_id,))
+            ).fetchone()
+        assert actions[0] > 0
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()

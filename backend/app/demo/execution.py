@@ -304,8 +304,10 @@ async def cycle(app: Any) -> None:
         await conn.commit()
         if not config.get("enabled") or config.get("status") != "running" or not sim.clock.running:
             return
-        if config.get("emulate_humans") and await employees(app, conn, rid, sim.clock.sim_time):
-            return
+        if config.get("emulate_humans"):
+            decided = await employees(app, conn, rid, sim.clock.sim_time)
+            if decided and config.get("mode") == "demo":
+                return
         # Не перемещаем время, пока агент или анализ транскрипта готовит данные.
         pending_row = await (
             await conn.execute(
