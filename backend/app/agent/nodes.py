@@ -1732,7 +1732,7 @@ def matching_incident(
         if (
             same_context
             and (not numbers or not source_numbers or numbers == source_numbers)
-            and (summary_match or source_match)
+            and ((incident.get("is_clients") and summary_match) or source_match)
         ):
             return incident
     return None

@@ -27,6 +27,7 @@ def test_missing_error_requires_product_system_and_problem_overlap():
         "summary_ru": "Ошибка открытия депозита повторилась",
     }
     assert matching_incident([incident], classification, "tech_fault") == incident
+    assert matching_incident([{**incident, "is_clients": False}], classification, "tech_fault") is None
     assert matching_incident([incident], {**classification, "summary_ru": "Потерялись документы"}, "tech_fault") is None
     assert matching_incident([incident], {**classification, "product": "credit_card"}, "tech_fault") is None
 
