@@ -1741,6 +1741,7 @@
       "recovered": "Recovery after escalation"
     },
     "status": {
+      "manual": "manual requests fast-forwarding",
       "idle": "not started",
       "running": "running",
       "finished": "cycle finished",

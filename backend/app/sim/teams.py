@@ -678,6 +678,8 @@ class TeamEmulator:
 
     async def _process_regressions(self, sim_time: dt.datetime, world: Any) -> None:
         for pr in list(self.pending_regressions):
+            if self.incident_ids is not None and pr.incident_id not in self.incident_ids:
+                continue
             if sim_time < pr.release_sim + dt.timedelta(minutes=pr.delay_min):
                 continue
             if pr.incident_id in getattr(self, "_regressed_incidents", set()):

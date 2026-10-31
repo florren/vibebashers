@@ -35,8 +35,9 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
   }, [config, edited])
   const enabled = config?.enabled === true
   const isolated = enabled && config?.mode === 'demo'
+  const status = enabled && config?.mode === 'simulation' && config.auto_advance === true ? 'manual' : String(config?.status ?? 'idle')
   return <details className="shrink-0 border-b border-line bg-surface px-4 py-2">
-    <summary className="cursor-pointer text-sm font-semibold">{t('demoExecution.title')} · {t(`demoExecution.status.${String(config?.status ?? 'idle')}`)}</summary>
+    <summary className="cursor-pointer text-sm font-semibold">{t('demoExecution.title')} · {t(`demoExecution.status.${status}`)}</summary>
     <p className="my-2 text-xs text-muted">{t('demoExecution.hint')}</p>
     <div className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1 text-xs">{t('demoExecution.scenario')}
