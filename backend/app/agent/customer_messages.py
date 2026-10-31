@@ -48,10 +48,25 @@ async def customer_outcome(
 
 
 async def has_emulated_verification(ctx: Any, incident_id: int) -> bool:
+    """Формат для verified close, включая закрытые legacy-цепочки без финального отчёта."""
     return bool(
         await ctx.fetchone(
-            "select 1 from incident_artifacts where run_id=%s and incident_id=%s and kind='verification_report' "
-            "and meta->>'demo'='true' and meta->>'outcome' in ('on_time','late','recovered') limit 1",
+            "select 1 from incident_artifacts a join incidents i on i.id=a.incident_id "
+            "where a.run_id=%s and a.incident_id=%s and (a.kind='verification_report' "
+            "or (a.kind='release_note' and i.status='closed')) "
+            "and a.meta->>'demo'='true' and a.meta->>'outcome' in ('on_time','late','recovered') limit 1",
+            (ctx.run_id, incident_id),
+        )
+    )
+
+
+async def emulated_team_pending(ctx: Any, incident_id: int) -> bool:
+    """Релиз/устранённый fault ещё не заменяют проверку услуги по плану команды."""
+    return bool(
+        await ctx.fetchone(
+            "select 1 from team_actions ta join incidents i on i.id=ta.incident_id "
+            "where ta.run_id=%s and ta.incident_id=%s and ta.payload->>'demo'='true' "
+            "and i.status<>'closed' limit 1",
             (ctx.run_id, incident_id),
         )
     )

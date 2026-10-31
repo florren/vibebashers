@@ -18,7 +18,7 @@ import orjson
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
-from app.agent.customer_messages import customer_outcome, has_emulated_verification
+from app.agent.customer_messages import customer_outcome, emulated_team_pending, has_emulated_verification
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
@@ -1104,6 +1104,27 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
     if incident_id is None:
         row = await deps.ctx.fetchone("select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,))
         incident_id = int(row[0]) if row and row[0] else None
+    if incident_id and await emulated_team_pending(deps.ctx, int(incident_id)):
+        # Общий fault может быть устранён до проверки конкретного клиентского сценария.
+        # Ожидание команды не является неудачной проверкой и не расходует reopen cap.
+        pending = await deps.ctx.fetchone(
+            "select id from followups where agent_run_id=%s and status='scheduled' limit 1",
+            (deps.ctx.agent_run_id,),
+        )
+        if not pending:
+            await wt.schedule_followup(
+                deps.ctx, int(sig["id"]), int(incident_id), 4.0, "verify_fix", {"incident_id": incident_id}
+            )
+        state["verified"] = False
+        state["current_node"] = "followup_monitor"
+        await deps.record_step(
+            "verify",
+            "ok",
+            {"incident_id": incident_id},
+            {"ok": False, "pending_team_verification": True, "reopened": False},
+            reasoning="Ожидается проверка клиентского сценария командой после релиза.",
+        )
+        return state
     evidence: list[str] = []
     ok = False
     reopened = False
@@ -1306,6 +1327,11 @@ def _text_matches_error(text: str, error_code: str) -> bool:
     if not words:
         return True  # неизвестный код — доверяем контексту
     t = text.lower()
+    if error_code == "APP-CRASH-PAY":
+        return error_code.lower() in t or (
+            any(w in t for w in ("платеж", "платёж", "оплат", "payment"))
+            and any(w in t for w in ("вылет", "падает", "закрыва", "завис", "crash", "freez"))
+        )
     return any(w in t for w in words)
 
 
@@ -1338,6 +1364,11 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         if stype != "tech_fault":
             notes.append(f"активный сбой {hints['error_code']} на пути операции клиента → tech_fault (модель: {stype})")
         stype, c["system"], c["error_code"] = "tech_fault", hints.get("system") or c.get("system"), hints["error_code"]
+    if c.get("error_code") == "APP-CRASH-PAY" and not _text_matches_error(
+        state["signal"].get("text") or "", "APP-CRASH-PAY"
+    ):
+        notes.append("APP-CRASH-PAY исключён: обращение не описывает падение при платеже")
+        c["error_code"] = None
     c["signal_type"] = stype
     # продукт ↔ система
     product = (
