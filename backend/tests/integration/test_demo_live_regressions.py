@@ -48,15 +48,17 @@ async def test_unknown_model_error_code_does_not_break_incident(seeded, monkeypa
             row = await (
                 await conn.execute("select error_code,status from incidents where run_id=%s", (state["run_id"],))
             ).fetchone()
-            assert row == (None if code == "ATM-DEPOSIT-HANG" else code, "closed")
+            assert row == (
+                None,
+                "closed",
+            )  # Неизвестный код и чужой платёжный сбой не относятся к обращению о банкомате.
             step = await (
                 await conn.execute(
                     "select s.output from agent_steps s join agent_runs a on a.id=s.run_id where a.sim_run_id=%s and s.node='classify'",
                     (state["run_id"],),
                 )
             ).fetchone()
-            if code == "ATM-DEPOSIT-HANG":
-                assert any("ATM-DEPOSIT-HANG" in note for note in step[0]["postcheck_notes"])
+            assert any(code in note for note in step[0]["postcheck_notes"])
     finally:
         await svc.stop()
         await sim.shutdown()
