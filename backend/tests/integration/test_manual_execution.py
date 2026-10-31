@@ -42,8 +42,8 @@ async def test_manual_paused_history_and_final_reply(seeded, monkeypatch, fast):
             )[0]
         ids = []
         for text in (
-            "Не могу открыть вклад, ошибка DEP-TIMEOUT-503 в приложении",
-            "Повторно: не могу открыть вклад, ошибка DEP-TIMEOUT-503 в приложении",
+            "Не могу открыть вклад в мобильном приложении: после подтверждения ошибка 503",
+            "Повторно: ошибка 503 при открытии вклада в мобильном приложении",
         ):
             submitted = await post_signals(request, SignalCreate(channel_code="chat", client_id=cid, text=text))
             ids.append(submitted["signal_id"])

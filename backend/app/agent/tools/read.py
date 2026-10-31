@@ -138,7 +138,8 @@ async def find_related_incidents(
     rows = await ctx.fetchall(
         "with p as (select %s::bigint as client_id, %s::text as error_code, %s::text as system, %s::text as product, %s::text as region_code, %s::timestamptz as since) "
         "select i.id, i.public_id, i.title, i.incident_type, i.error_code, i.system_code, i.product_code, i.team_code, i.status, i.mass_impact, i.created_sim, i.primary_client_id, "
-        "(p.error_code is not null and i.error_code = p.error_code) as same_error "
+        "(p.error_code is not null and i.error_code = p.error_code) as same_error, "
+        "(select left(s.text,600) from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id order by s.id limit 1) "
         "from incidents i, p where i.run_id = %s and i.status not in ('closed','rejected','duplicate') and ("
         "  (p.client_id is not null and i.primary_client_id = p.client_id) or "
         "  (i.created_sim >= p.since and ((p.error_code is not null and i.error_code = p.error_code) or (p.system is not null and i.system_code = p.system and i.product_code = p.product) or (p.region_code is not null and i.region_code = p.region_code and i.product_code = p.product and i.mass_impact >= 3)))"
@@ -160,6 +161,7 @@ async def find_related_incidents(
             "created_sim": r[10],
             "is_clients": r[11] == client_id,
             "same_error": bool(r[12]),
+            "source_text": r[13],
         }
         for r in rows
     ]

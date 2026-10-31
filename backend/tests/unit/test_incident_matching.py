@@ -29,3 +29,27 @@ def test_missing_error_requires_product_system_and_problem_overlap():
     assert matching_incident([incident], classification, "tech_fault") == incident
     assert matching_incident([incident], {**classification, "summary_ru": "Потерялись документы"}, "tech_fault") is None
     assert matching_incident([incident], {**classification, "product": "credit_card"}, "tech_fault") is None
+
+
+def test_generic_summary_uses_original_problem_and_distinguishes_numbers():
+    incident = {
+        "is_clients": True,
+        "incident_type": "tech_fault",
+        "product": "deposit",
+        "system": "mobile_app",
+        "title": "Техническая проблема",
+        "source_text": "Не могу открыть вклад в мобильном приложении: после подтверждения ошибка 503",
+    }
+    classification = {"product": "deposit", "system": "mobile_app", "summary_ru": "Техническая проблема"}
+    assert (
+        matching_incident(
+            [incident], classification, "tech_fault", "Повторно: ошибка 503 при открытии вклада в мобильном приложении"
+        )
+        == incident
+    )
+    assert (
+        matching_incident(
+            [incident], classification, "tech_fault", "Ошибка 500 при открытии вклада в мобильном приложении"
+        )
+        is None
+    )

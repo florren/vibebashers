@@ -1695,24 +1695,45 @@ def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
 
 
 def matching_incident(
-    related: list[dict[str, Any]], classification: dict[str, Any], incident_type: str
+    related: list[dict[str, Any]], classification: dict[str, Any], incident_type: str, text: str = ""
 ) -> dict[str, Any] | None:
     """Общий клиент/тип не доказывают общую проблему; разные коды ошибки не склеиваем."""
     code = classification.get("error_code")
-    words = set(re.findall(r"[а-яёa-z]{6,}", str(classification.get("summary_ru") or "").lower()))
+    words = set(re.findall(r"[а-яёa-z]{6,}", str(classification.get("summary_ru") or "").lower())) - {
+        "техническая",
+        "проблема",
+        "клиента",
+        "обращение",
+        "ошибка",
+    }
+    # Резервная модель может дать общий заголовок. Сравниваем также исходные сообщения.
+    ignored = {"ошибк", "мобил", "прило", "повто", "прошу", "сообщ", "резул", "оконч", "после"}
+
+    def problem_words(value: str) -> set[str]:
+        return {w[:5] for w in re.findall(r"[а-яёa-z]{4,}|\d{3,}", value.lower())} - ignored
+
+    original = problem_words(text)
     for incident in related:
         if code:
             if incident.get("error_code") == code:
                 return incident
             continue
-        if (
+        same_context = (
             incident.get("is_clients")
             and incident.get("incident_type") == incident_type
             and classification.get("system")
             and incident.get("system") == classification["system"]
             and classification.get("product")
             and incident.get("product") == classification["product"]
-            and len(words & set(re.findall(r"[а-яёa-z]{6,}", str(incident.get("title") or "").lower()))) >= 2
+        )
+        summary_match = len(words & set(re.findall(r"[а-яёa-z]{6,}", str(incident.get("title") or "").lower()))) >= 2
+        source = problem_words(str(incident.get("source_text") or ""))
+        numbers, source_numbers = {w for w in original if w.isdigit()}, {w for w in source if w.isdigit()}
+        source_match = len(original & source) >= 3 and (not numbers or not source_numbers or numbers == source_numbers)
+        if (
+            same_context
+            and (not numbers or not source_numbers or numbers == source_numbers)
+            and (summary_match or source_match)
         ):
             return incident
     return None
@@ -1823,7 +1844,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
     )
     ctx["related_incidents"] = related
-    link = matching_incident(related, c, incident_type)
+    link = matching_incident(related, c, incident_type, sig.get("text") or "")
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
     demo_team_task = False
@@ -2402,6 +2423,24 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             flags_now = list(dict.fromkeys([*(c.get("flags") or []), "mass_impact"]))
             c["flags"] = flags_now
             state["decision"] = d
+    elif d["incident_action"] == "create" and "incident" not in done and client:
+        # Два сигнала могут принять решение до создания первого тикета (например, ожидая HITL).
+        await deps.ctx.conn.execute(
+            "select pg_advisory_xact_lock(hashtext(%s))",
+            (f"incident:{deps.ctx.run_id}:client:{client['client_id']}:{c.get('system')}:{c.get('product')}",),
+        )
+        related = await rt.find_related_incidents(
+            deps.ctx,
+            client["client_id"],
+            None,
+            c.get("system"),
+            c.get("product"),
+            client.get("region_code"),
+            hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
+        )
+        incident_match = matching_incident(related, c, c.get("signal_type") or "tech_fault", sig.get("text") or "")
+        if incident_match:
+            d["incident_action"], d["link_incident_id"] = "link_existing", int(incident_match["incident_id"])
     spec = _act_spec(d, c, sig, client, sla_full, state)
     link_id = (
         int(d["link_incident_id"])
