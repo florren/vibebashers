@@ -18,10 +18,13 @@ from app.api.hitl import HitlDecisionBody, post_hitl_id
 from app.compliance.session import ComplianceService
 from app.db.session import psycopg_dsn
 from app.demo.roles import finish_run, respond
+from app.demo.settings import configuration as configuration
+from app.demo.settings import ensure
+from app.demo.settings import save as save
 from app.ingest.normalizer import create_signal
 from app.logging import get_logger
 from app.sim import scenarios
-from app.sim.events import EventBus, dumps
+from app.sim.events import EventBus
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
@@ -29,19 +32,13 @@ from app.sim.teams import TeamEmulator
 log = get_logger(__name__)
 
 
-async def configuration(conn: Any, run_id: int) -> dict[str, Any]:
-    async with conn.cursor(row_factory=tuple_row) as cur:
-        await cur.execute(
-            "select settings_snapshot->'demo_execution' from sim_runs where id=%s and kind='scenario'", (run_id,)
-        )
-        row = await cur.fetchone()
-    return dict(row[0] or {}) if row else {}
-
-
-async def save(conn: Any, run_id: int, value: dict[str, Any]) -> None:
-    await conn.execute(
-        "update sim_runs set settings_snapshot=jsonb_set(settings_snapshot,'{demo_execution}',%s::jsonb) where id=%s and kind='scenario'",
-        (dumps(value), run_id),
+async def execution_active(app: Any, conn: Any, run_id: int) -> bool:
+    config = await configuration(conn, run_id)
+    return bool(
+        app.state.sim.run_id == run_id
+        and app.state.sim.clock.running
+        and config.get("enabled")
+        and config.get("status") == "running"
     )
 
 
@@ -66,22 +63,23 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
             "Демонстрационный оператор рассмотрел предложение агента и согласовал исполнение в пределах действующих правил.",
         )
         decision = obj["decision"] if obj["decision"] in ("accept", "reject") else "reject"
-        if app.state.sim.run_id != run_id or not (await configuration(conn, run_id)).get("enabled"):
-            return False
-        try:
-            await post_hitl_id(
-                request,
-                int(hid),
-                HitlDecisionBody(
-                    decision=decision,
-                    decided_by=f"demo-agent:operator:{meta['source']}",
-                    comment="[DEMO] " + obj["body"] + " · " + str(meta["model"]),
-                    use_as_fewshot=False,
-                ),
-            )
-        except HTTPException as exc:
-            if exc.status_code != 409:
-                raise
+        async with app.state.sim._lock:
+            if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id):
+                return False
+            try:
+                await post_hitl_id(
+                    request,
+                    int(hid),
+                    HitlDecisionBody(
+                        decision=decision,
+                        decided_by=f"demo-agent:operator:{meta['source']}",
+                        comment="[DEMO] " + obj["body"] + " · " + str(meta["model"]),
+                        use_as_fewshot=False,
+                    ),
+                )
+            except HTTPException as exc:
+                if exc.status_code != 409:
+                    raise
         return True
     alert = await (
         await conn.execute(
@@ -103,10 +101,12 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime) -> bool:
             "Демонстрационный руководитель подтвердил разбор нарушения и поручил устранить проблему клиента.",
             "open_incident",
         )
-        if app.state.sim.run_id != run_id or not (await configuration(conn, run_id)).get("enabled"):
+        if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id):
             return False
         # Не разрешаем модели отбрасывать подтверждённое нарушение без доказательств.
-        async with conn.transaction():
+        async with app.state.sim._lock, conn.transaction():
+            if not await execution_active(app, conn, run_id):
+                return False
             locked = await (
                 await conn.execute(
                     "select a.id from compliance_alerts a join audio_sessions s on s.id=a.session_id where a.id=%s and s.run_id=%s and a.acknowledged_at is null for update of a",
@@ -299,8 +299,10 @@ async def cycle(app: Any) -> None:
     rid = sim.run_id
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
         config = await configuration(conn, rid)
+        if not config and getattr(sim, "full_execution", False):
+            config = await ensure(conn, rid, running=sim.clock.running)
         await conn.commit()
-        if not config.get("enabled"):
+        if not config.get("enabled") or config.get("status") != "running" or not sim.clock.running:
             return
         if config.get("emulate_humans") and await employees(app, conn, rid, sim.clock.sim_time):
             return
@@ -317,7 +319,7 @@ async def cycle(app: Any) -> None:
         ).fetchone()
         await conn.commit()
         pending = pending_row[0] if pending_row else 0
-        if pending or svc._inflight:
+        if config.get("mode") == "demo" and (pending or svc._inflight):
             return
         failed = await (
             await conn.execute(
@@ -326,13 +328,22 @@ async def cycle(app: Any) -> None:
                 (rid, rid),
             )
         ).fetchone()
-        if failed and failed[0]:
+        if failed and failed[0] and config.get("mode") == "demo":
+            sim.clock.running = False
+            sim.run_status = "paused"
+            await conn.execute("update sim_state set running=false where id=1 and current_run_id=%s", (rid,))
+            await conn.execute("update sim_runs set status='paused' where id=%s", (rid,))
             config.update(enabled=False, status="error", error="agent_processing_failed")
             await save(conn, rid, config)
             return
         async with sim._lock:
             config = await configuration(conn, rid)
-            if sim.run_id != rid or sim.clock.running or not config.get("enabled"):
+            if (
+                sim.run_id != rid
+                or not sim.clock.running
+                or not config.get("enabled")
+                or config.get("status") != "running"
+            ):
                 return
             next_time = sim.clock.sim_time
             bus = EventBus(conn)
@@ -342,7 +353,8 @@ async def cycle(app: Any) -> None:
                 bus,
                 rid,
                 demo_outcome=config["team_outcome"],
-                demo_context=(scenarios.get(config["scenario_id"]) or {}).get("demo_evidence"),
+                demo_context=(scenarios.get(str(config.get("scenario_id") or "")) or {}).get("demo_evidence"),
+                demo_scenario_id=config.get("scenario_id"),
                 llm=(svc.chain, svc.chain.profile_for("twin", svc.profile)),
             )
             await emulator.load()
@@ -356,7 +368,7 @@ async def cycle(app: Any) -> None:
                 and (plan.incident_id, step.action, step.report_day) not in emulator.done
                 and step.at > sim.clock.sim_time
             ]
-            if future and config.get("auto_advance"):
+            if future and config.get("auto_advance") and config.get("mode") == "demo":
                 at = min(future)
                 # Событийный скачок: генераторы фонового банка не запускаются.
                 sla = SlaEngine(conn, bus, rid)
@@ -366,7 +378,11 @@ async def cycle(app: Any) -> None:
                 await conn.execute(
                     "update sim_state set sim_time=%s,updated_at=now() where id=1 and current_run_id=%s", (at, rid)
                 )
-            elif not future:
+            elif not future and config.get("mode") == "demo":
+                sim.clock.running = False
+                sim.run_status = "paused"
+                await conn.execute("update sim_state set running=false where id=1 and current_run_id=%s", (rid,))
+                await conn.execute("update sim_runs set status='paused' where id=%s", (rid,))
                 config["status"] = "finished"
                 config["enabled"] = False
                 await save(conn, rid, config)

@@ -40,6 +40,10 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
     results = []
     async with db() as conn:
         run_id, sim_time = await run_context(request, conn) if items else (None, None)
+        from app.demo.inputs import prepare
+
+        if run_id is not None:
+            run_id = await prepare(request, conn, run_id)
         for msg in items:
             try:
                 results.append(

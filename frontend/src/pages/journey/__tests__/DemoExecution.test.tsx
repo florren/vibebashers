@@ -23,9 +23,28 @@ it('starts explicit employee simulation with selected outcome and stops it', asy
   await waitFor(() => expect(start).toBeEnabled())
   fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
   fireEvent.click(start)
-  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ scenario_id: 'deposit_promo_rate', team_outcome: 'failed', emulate_humans: true, auto_advance: true }) })))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ mode: 'demo', scenario_id: 'deposit_promo_rate', team_outcome: 'failed', emulate_humans: true, auto_advance: true }) })))
   await waitFor(() => expect(onStarted).toHaveBeenCalledWith('SIG-000002'))
   fireEvent.click(await screen.findByRole('button', { name: 'Остановить эмуляцию' }))
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', { method: 'DELETE' }))
+  qc.clear()
+})
+
+it('applies the shared employee profile while paused without creating a scenario', async () => {
+  vi.mocked(api).mockImplementation(async path => {
+    if (path === '/api/scenarios') return [{ id: 'deposit_promo_rate', title_ru: 'Вклад' }] as never
+    return { run_id: 4, configuration: { mode: 'simulation', enabled: true, status: 'paused', team_outcome: 'on_time' }, incidents: [] } as never
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const onStarted = vi.fn()
+  render(<QueryClientProvider client={qc}><DemoExecution onStarted={onStarted} /></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Эмуляция команд/))
+  await screen.findByText(/Команды и сотрудники на паузе/)
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'late' } })
+  fireEvent.click(screen.getByLabelText('Агент отвечает за сотрудников'))
+  fireEvent.click(screen.getByRole('button', { name: 'Применить к общей симуляции' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: 'late', emulate_humans: false, auto_advance: false }) })))
+  expect(onStarted).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Запустить демо' })).toBeEnabled()
   qc.clear()
 })

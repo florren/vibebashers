@@ -39,7 +39,13 @@ from starlette.requests import Request
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument(
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument(
+        "--matrix",
+        action="store_true",
+        help="Все 20 сценариев × 5 исходов (100 запусков)",
+    )
+    selection.add_argument(
         "--case",
         action="append",
         help="scenario_id:outcome; без флага — 20 входов и 5 дополнительных проверок",
@@ -164,6 +170,13 @@ async def main():
         ("demo20_11_mobile_crash", x)
         for x in ("late", "no_work", "failed", "recovered")
     ] + [("branch_misselling", "on_time")]
+    if ARGS.matrix:
+        cases = [
+            (x["id"], outcome)
+            for x in scenarios.load_all()
+            if x["id"].startswith("demo20_")
+            for outcome in ("on_time", "late", "no_work", "failed", "recovered")
+        ]
     if ARGS.case:
         cases = [tuple(x.split(":")) for x in ARGS.case]
     failed_cases = 0
