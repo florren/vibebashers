@@ -47,6 +47,14 @@ def _bad_authorization(status: int, text: str) -> bool:
     return "authorization" in low or "decode" in low
 
 
+CONNECT_TIMEOUT_S = 2.0
+
+
+def request_timeout(budget: float) -> httpx.Timeout:
+    """Не расходуем бюджет генерации на зависший TCP/TLS; пул попробует другой ключ."""
+    return httpx.Timeout(budget, connect=min(CONNECT_TIMEOUT_S, budget))
+
+
 JSON_INSTRUCTION = (
     "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже "
     "(все обязательные поля, значения enum — из списка, тексты на русском). "
@@ -93,17 +101,83 @@ class GigaChatProvider:
 
         if not verify_ssl:
             raise ValueError("GigaChat требует проверку TLS; настройте GIGACHAT_CA_BUNDLE_FILE")
-        self._client = httpx.AsyncClient(verify=context(ca_bundle_file), transport=transport, timeout=30.0)
+        self._client = httpx.AsyncClient(
+            verify=context(ca_bundle_file),
+            transport=transport,
+            timeout=30.0,
+            limits=httpx.Limits(keepalive_expiry=60.0),
+        )
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+    async def _request(self, method: str, key: ApiKey, url: str, **kwargs: Any) -> httpx.Response:
+        try:
+            return await self._client.request(method, url, **kwargs)
+        except asyncio.CancelledError:
+            # Только отмена активного I/O, а не ожидания общего generation_slot.
+            # Резервная модель не должна повторно использовать зависший ключ.
+            self.pool.mark_error(key, ProviderError("timeout", "HTTP-запрос отменён"))
+            raise
+
+    async def prepare(self, profiles: list[LLMProfile], *, timeout_s: float = 12.0) -> bool:
+        """Холодные OAuth/TLS до готовности сервиса; GET /models не генерирует токены."""
+        bases = {self._chat_base(p) for p in profiles if p.provider == self.name}
+        if not bases:
+            return True
+        t0 = time.perf_counter()
+        deadline = t0 + timeout_s
+        ready: set[str] = set()
+        keys = [k for k in self.pool.keys if k.available()]
+        # Второй проход нужен при неудаче первой попытки подготовки.
+        # Ключи с 429 отсекаются _token, auth — is_active; общий дедлайн прежний.
+        for _ in range(2):
+            for index, key in enumerate(keys):
+                if not key.is_active or time.perf_counter() >= deadline:
+                    continue
+                budget = max(0.0, (deadline - time.perf_counter()) / (len(keys) - index))
+                try:
+                    async with asyncio.timeout(budget):
+                        token = await self._token(key, budget)
+                        for base in sorted(bases - ready):
+                            response = await self._request(
+                                "GET",
+                                key,
+                                f"{base}/models",
+                                headers={"Authorization": f"Bearer {token}"},
+                                timeout=request_timeout(budget),
+                            )
+                            if response.status_code == 429:
+                                raise ProviderError(
+                                    "rate_limit",
+                                    "models 429",
+                                    retry_after_s=float(response.headers.get("Retry-After", 20)),
+                                )
+                            if response.status_code >= 400:
+                                raise ProviderError("unavailable", f"models {response.status_code}")
+                            ready.add(base)
+                except (TimeoutError, httpx.HTTPError, ProviderError) as exc:
+                    error = (
+                        exc
+                        if isinstance(exc, ProviderError)
+                        else ProviderError(
+                            "timeout" if isinstance(exc, (TimeoutError, httpx.TimeoutException)) else "network",
+                            f"подготовка: {type(exc).__name__}",
+                        )
+                    )
+                    self.pool.mark_error(key, error)
+            if ready == bases:
+                break
+        ok = ready == bases
+        log.info("gigachat_prepared", ok=ok, ms=int((time.perf_counter() - t0) * 1000))
+        return ok
 
     # --- auth -------------------------------------------------------------------------------------------------------
     async def _token(self, key: ApiKey, timeout_s: float) -> str:
         # Одновременные узлы/профили используют один кэш ключа без всплеска OAuth-запросов.
         async with self._token_locks.setdefault(key.label, asyncio.Lock()):
             wait = key.cooldown_until - time.monotonic()
-            if wait > 0:
+            if wait > 0 and not (key.last_error or "").startswith(("timeout:", "network:")):
                 raise ProviderError("rate_limit", "ключ временно на паузе после 429", retry_after_s=wait)
             return await self._refresh_token(key, timeout_s)
 
@@ -111,7 +185,9 @@ class GigaChatProvider:
         if key.access_token and time.time() < key.token_expires_at - 60:
             return key.access_token
         try:
-            r = await self._client.post(
+            r = await self._request(
+                "POST",
+                key,
                 self.oauth_url,
                 headers={
                     "Authorization": f"Basic {key.secret}",
@@ -120,7 +196,7 @@ class GigaChatProvider:
                     "Accept": "application/json",
                 },
                 data={"scope": self.scope},
-                timeout=timeout_s,
+                timeout=request_timeout(timeout_s),
             )
         except httpx.TimeoutException as e:
             raise ProviderError("timeout", f"oauth: {e}") from e
@@ -167,7 +243,9 @@ class GigaChatProvider:
         token = await self._token(key, timeout_s)
         try:
             async with generation_slot(self.scope):
-                r = await self._client.post(
+                r = await self._request(
+                    "POST",
+                    key,
                     f"{self._chat_base(profile)}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {token}",
@@ -175,7 +253,7 @@ class GigaChatProvider:
                         "Accept": "application/json",
                     },
                     json=payload,
-                    timeout=timeout_s,
+                    timeout=request_timeout(timeout_s),
                 )
         except httpx.TimeoutException as e:
             raise ProviderError("timeout", str(e)) from e
@@ -204,6 +282,7 @@ class GigaChatProvider:
         self, payload: dict[str, Any], profile: LLMProfile, timeout_s: float, usage: Usage | None = None
     ) -> tuple[httpx.Response, ApiKey]:
         tried: set[str] = set()
+        deadline = time.perf_counter() + timeout_s
         last: ProviderError | None = None
         while True:
             try:
@@ -213,12 +292,18 @@ class GigaChatProvider:
             try:
                 if usage is not None:
                     usage.request_count += 1
-                return await self._chat(key, payload, profile, timeout_s), key
+                remaining = max(0.0, deadline - time.perf_counter())
+                async with asyncio.timeout(remaining):
+                    return await self._chat(key, payload, profile, remaining), key
+            except TimeoutError as exc:
+                raise ProviderError("timeout", "бюджет запроса исчерпан") from exc
             except ProviderError as e:
                 self.pool.mark_error(key, e)
                 last = e
                 tried.add(key.label)
-                if e.kind not in ("rate_limit", "quota", "auth"):
+                if e.kind not in ("rate_limit", "quota", "auth", "timeout", "network"):
+                    raise
+                if time.perf_counter() >= deadline:
                     raise
 
     async def complete_structured(
@@ -244,7 +329,8 @@ class GigaChatProvider:
                 "stream": False,
             }
             try:
-                r, key = await self._with_keys(payload, profile, timeout_s, total_usage)
+                remaining = max(0.0, timeout_s - (time.perf_counter() - t0))
+                r, key = await self._with_keys(payload, profile, remaining, total_usage)
             except ProviderError as exc:
                 total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
                 exc.usage = total_usage

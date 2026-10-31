@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import time
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,6 +22,7 @@ from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.ingest.normalizer import create_signal, from_api_signal
 from app.llm.failover import build_chain
+from app.llm.gigachat import GigaChatProvider
 from app.llm.roles import refresh
 from psycopg.rows import dict_row
 
@@ -43,12 +45,23 @@ async def main():
     chain = build_chain(settings)
     app = SimpleNamespace(state=SimpleNamespace(llm_chain=chain))
     await refresh(app, settings, required=True)
+    initialization_start = time.perf_counter()
+    for provider in chain.providers:
+        if isinstance(provider, GigaChatProvider) and not await provider.prepare(
+            list(chain.role_profiles.values())
+        ):
+            raise RuntimeError("Не удалось подготовить GigaChat для live E2E")
+    initialization_ms = round((time.perf_counter() - initialization_start) * 1000)
     if app.state.llm_profile.provider != "gigachat":
         raise RuntimeError("Main должен использовать GigaChat")
     try:
-        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+        async with await psycopg.AsyncConnection.connect(
+            psycopg_dsn(), row_factory=dict_row
+        ) as conn:
             current = await (
-                await conn.execute("select current_run_id,sim_time,running from sim_state where id=1")
+                await conn.execute(
+                    "select current_run_id,sim_time,running from sim_state where id=1"
+                )
             ).fetchone()
             if current["running"]:
                 raise RuntimeError("Live-проверка требует текущего стенда на паузе")
@@ -62,7 +75,9 @@ async def main():
                 )
             ).fetchone()
             if not client:
-                raise RuntimeError("Не найден синтетический клиент для отдельного теста")
+                raise RuntimeError(
+                    "Не найден синтетический клиент для отдельного теста"
+                )
             signal = await create_signal(
                 conn,
                 from_api_signal(
@@ -83,7 +98,11 @@ async def main():
         # Раннер использует tuple-row cursor, как в штатном сервисе.
         async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
             state = await process_signal(
-                conn, signal_id=signal["signal_id"], chain=chain, profile=app.state.llm_profile, sim_time=now
+                conn,
+                signal_id=signal["signal_id"],
+                chain=chain,
+                profile=app.state.llm_profile,
+                sim_time=now,
             )
             if state is None or state.get("outcome") != "awaiting_human":
                 raise RuntimeError("Ожидался штатный HITL для ultra_vip")
@@ -97,7 +116,9 @@ async def main():
             if not hd or hd[1].get("incident_type") == "fee_refund":
                 raise RuntimeError("Тест не подтверждает денежное предложение")
             await conn.commit()
-        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+        async with await psycopg.AsyncConnection.connect(
+            psycopg_dsn(), row_factory=dict_row
+        ) as conn:
             before = await totals(conn, arid)
             await conn.execute(
                 "update human_decisions set decision='accept',decided_by='codex_e2e',comment='Live-регрессия статистики HITL по запросу пользователя, без движения денег',decided_sim=%s,decided_at=now(),use_as_fewshot=false where id=%s and decision is null",
@@ -106,31 +127,53 @@ async def main():
             await conn.commit()
         async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
             await resume_after_human(
-                conn, human_decision_id=hd[0], chain=chain, profile=app.state.llm_profile, sim_time=now
+                conn,
+                human_decision_id=hd[0],
+                chain=chain,
+                profile=app.state.llm_profile,
+                sim_time=now,
             )
-        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+        async with await psycopg.AsyncConnection.connect(
+            psycopg_dsn(), row_factory=dict_row
+        ) as conn:
             after = await totals(conn, arid)
             assert (
-                after["total_tokens"] == after["step_prompt"] + after["step_completion"] >= before["total_tokens"] > 0
+                after["total_tokens"]
+                == after["step_prompt"] + after["step_completion"]
+                >= before["total_tokens"]
+                > 0
             )
-            assert after["total_latency_ms"] == after["step_latency"] >= before["total_latency_ms"]
+            assert (
+                after["total_latency_ms"]
+                == after["step_latency"]
+                >= before["total_latency_ms"]
+            )
             assert after["cost_estimate"] >= before["cost_estimate"]
             steps = await (
                 await conn.execute(
-                    "select node,status,model,latency_ms from agent_steps where run_id=%s order by seq", (arid,)
+                    "select node,status,model,latency_ms from agent_steps where run_id=%s order by seq",
+                    (arid,),
                 )
             ).fetchall()
             llm = [dict(s) for s in steps if s["model"]]
-            assert all(s["model"].startswith("gigachat:") and s["status"] == "ok" for s in llm), llm
+            assert all(
+                s["model"].startswith("gigachat:") and s["status"] == "ok" for s in llm
+            ), llm
             ledger = await (
-                await conn.execute("select count(*) as n from ledger_entries where agent_run_id=%s", (arid,))
+                await conn.execute(
+                    "select count(*) as n from ledger_entries where agent_run_id=%s",
+                    (arid,),
+                )
             ).fetchone()
             assert ledger["n"] == 0
             info = await (
-                await conn.execute("select id,incident_id,outcome from agent_runs where id=%s", (arid,))
+                await conn.execute(
+                    "select id,incident_id,outcome from agent_runs where id=%s", (arid,)
+                )
             ).fetchone()
             result = {
                 "signal_id": signal["signal_id"],
+                "initialization_ms": initialization_ms,
                 "human_decision_id": hd[0],
                 "run_id": rid,
                 **dict(info),
