@@ -74,7 +74,12 @@ async def test_team_receives_only_current_stage_evidence(monkeypatch, kind):
             "source": "synthetic_fixture",
         },
     )
-    await emulator._artifact_body(None, kind, PlannedStep("rca", dt.datetime.now(dt.UTC)), {"title": "Очередь"})
+    body = await emulator._artifact_body(None, kind, PlannedStep("rca", dt.datetime.now(dt.UTC)), {"title": "Очередь"})
+    if kind == "verification_report":
+        assert body == "Клиент обслужен"
+        assert emulator.artifact_meta["content_source"] == "verified_facts"
+        assert not seen
+        return
     assert "verification" not in seen["evidence"]
     assert seen["verified"] == (kind == "verification_report")
     if kind != "verification_report":

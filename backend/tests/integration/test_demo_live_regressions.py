@@ -184,18 +184,11 @@ async def test_counter_alert_uses_contract_policy_and_keeps_db_kind(seeded):
         assert validate(payload, "compliance/session_event") == []
 
 
-async def test_client_policy_fallback_does_not_keep_live_label(seeded, monkeypatch):
+async def test_client_final_uses_verified_facts_and_does_not_call_llm(seeded, monkeypatch):
     from tests.helpers import mock_chain
 
     async def unsafe_reply(*args, **kwargs):
-        return {"body": "Гарантируем результат сегодня же.", "decision": "accept"}, {
-            "source": "live",
-            "model": "live-test",
-            "provider": "gigachat",
-            "usage": {},
-            "fallback": False,
-            "grounded": True,
-        }
+        raise AssertionError("Итоговый ответ не должен свободно генерироваться моделью")
 
     monkeypatch.setenv("DATABASE_URL", seeded)
     monkeypatch.setattr("app.demo.execution.respond", unsafe_reply)
@@ -217,12 +210,12 @@ async def test_client_policy_fallback_does_not_keep_live_label(seeded, monkeypat
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             row = await (
                 await conn.execute(
-                    "select s.output from agent_steps s join agent_runs a on a.id=s.run_id where a.sim_run_id=%s and s.node='close' and s.output ? 'policy_fallback'",
+                    "select s.output from agent_steps s join agent_runs a on a.id=s.run_id where a.sim_run_id=%s and s.node='close' and s.output->>'content_source'='verified_facts'",
                     (state["run_id"],),
                 )
             ).fetchone()
             assert row[0]["source"] == "mock"
-            assert row[0]["fallback"]
+            assert row[0]["content_source"] == "verified_facts"
             body = (
                 await (
                     await conn.execute(
@@ -231,6 +224,13 @@ async def test_client_policy_fallback_does_not_keep_live_label(seeded, monkeypat
                     )
                 ).fetchone()
             )[0]
+            summary = (
+                await (
+                    await conn.execute("select resolution_summary from incidents where run_id=%s", (state["run_id"],))
+                ).fetchone()
+            )[0]
+            assert summary in body
+            assert "Обращение закрыто" in body
             assert "Гарантируем" not in body
     finally:
         await svc.stop()

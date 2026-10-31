@@ -216,7 +216,7 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         )
     ).fetchall()
     svc = app.state.agent
-    for iid, status, summary, breached, sid, cid, text, segment, consents, channel in rows:
+    for iid, status, summary, _breached, sid, cid, text, segment, consents, channel in rows:
         success = status == "closed"
         from app.i18n import communication_lang
 
@@ -224,35 +224,35 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         facts = str(summary or "Устранение проблемы пока не подтверждено. Обращение эскалировано, работа продолжается.")
         if lang == "en" and not success:
             facts = "The issue remains unresolved. Your case has been escalated and work continues."
-        fallback = facts
-        if lang == "en" and success:
-            fallback = "The team completed the fix and verified the customer workflow in this demonstration. Your case is closed."
-        obj, meta = await respond(
-            svc.chain,
-            svc.chain.profile_for("fast", svc.profile),
-            {
-                "role": "customer_reply",
-                "language": lang,
-                "outcome": "success" if success else "unresolved",
-                "facts": facts,
-                "sla_breached": breached,
-            },
-            fallback,
-        )
+        if lang == "en":
+            if success:
+                facts = "The demonstration check is complete. External financial actions have not been performed."
+            body = facts + (" Your case is closed." if success else " Your case remains open.")
+        else:
+            body = (
+                "Демонстрационная проверка завершена. " + facts + " Обращение закрыто."
+                if success
+                else facts + " Обращение остаётся открытым."
+            )
+        meta: dict[str, Any] = {
+            "demo": True,
+            "source": "mock",
+            "content_source": "verified_facts",
+            "model": "deterministic-customer-result",
+            "provider": "mock",
+            "usage": {},
+            "grounded": True,
+            "fallback": False,
+            "prompt_version": "demo-result-v1",
+        }
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v2','demo-execution-v1',%s) returning id",
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-result-v1','demo-execution-v1',%s) returning id",
                     (run_id, sid, iid, at),
                 )
             ).fetchone()
         )[0]
-        from app.agent.policies import forbidden_phrases
-
-        body = str(obj["body"])
-        if forbidden_phrases(body):
-            body = fallback
-            meta.update(source="mock", fallback=True, grounded=False, policy_fallback="forbidden_phrases")
         ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=at, llm_source=meta["source"])
         await notify_client(
             ctx,

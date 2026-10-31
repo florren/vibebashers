@@ -240,6 +240,17 @@ async def main():
                     for i in data.get("incidents", [])
                     if i["status"] == "closed"
                 ),
+                "canonical_result_used": all(
+                    i["resolution_summary"]
+                    and all(
+                        i["resolution_summary"] in notice["body"]
+                        for notice in data.get("notifications", [])
+                        if notice["incident_id"] == i["id"]
+                        and notice["template_code"] == "resolved"
+                    )
+                    for i in data.get("incidents", [])
+                    if i["status"] == "closed"
+                ),
                 "expected_sla": all(
                     bool(i["sla_breached"]) == (outcome != "on_time")
                     for i in data.get("incidents", [])
@@ -248,12 +259,14 @@ async def main():
                     artifact["meta"].get("source") == "live"
                     and artifact["meta"].get("grounded")
                     for artifact in data.get("artifacts", [])
+                    if artifact["meta"].get("content_source") != "verified_facts"
                 )
                 and all(
                     step["output"].get("source") == "live"
                     and step["output"].get("grounded")
                     for step in data.get("steps", [])
                     if "confirmed" in (step.get("output") or {})
+                    and step["output"].get("content_source") != "verified_facts"
                 ),
                 "no_failed_agent_runs": not any(
                     x["outcome"] == "failed" for x in data.get("runs", [])

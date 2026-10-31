@@ -576,6 +576,22 @@ class TeamEmulator:
                 stage_facts[kind] = "План работы (ещё не выполнен): " + stage_facts[kind]
             facts["result"] = stage_facts[kind]
             fallback = f"{incident_ctx['title']}: {facts['result']}"
+            if kind == "verification_report":
+                # Результат проверки задаёт стенд, а не свободное заключение модели.
+                self.artifact_meta = {
+                    "demo": True,
+                    "source": "mock",
+                    "content_source": "verified_facts",
+                    "model": "deterministic-verification",
+                    "provider": "mock",
+                    "usage": {},
+                    "grounded": True,
+                    "fallback": False,
+                    "outcome": outcome,
+                    "stage": kind,
+                    "confirmed_result": facts["result"],
+                }
+                return str(facts["result"])
             obj, self.artifact_meta = await respond(self.llm[0], self.llm[1], facts, fallback)
             self.artifact_meta["outcome"] = outcome
             self.artifact_meta["stage"] = kind
