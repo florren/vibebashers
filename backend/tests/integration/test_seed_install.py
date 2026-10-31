@@ -2,19 +2,86 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import os
 import subprocess
 import sys
 from pathlib import Path
 
+import psycopg
 import pytest
 from psycopg import sql
 
 from app.sim import baseline
+from app.sim.engine import Simulator
 
 ROOT = Path(__file__).resolve().parents[3]
 pytestmark = pytest.mark.integration
+
+
+def test_first_install_after_backend_bootstrap_generates_events(migrated_db):
+    """Health уже доступен и sim_state существует, но первичный банк ещё не заполнен."""
+    url = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(url, autocommit=True) as connection:
+        connection.execute("drop schema public cascade; create schema public")
+    env = {**os.environ, "DATABASE_URL": migrated_db}
+    migrated = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=ROOT / "backend",
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    assert migrated.returncode == 0, migrated.stderr
+
+    async def bootstrap():
+        sim = Simulator(seed=42, dsn=migrated_db)
+        try:
+            await sim.load_state()
+        finally:
+            await sim.shutdown()
+
+    asyncio.run(bootstrap())
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/seed/run.py"),
+            "--if-needed",
+            "--profile",
+            "lite",
+            "--clients",
+            "200",
+            "--seed",
+            "42",
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "seed_existing_incomplete" not in result.stderr
+    with psycopg.connect(url) as connection:
+        assert connection.execute("select count(*) from clients").fetchone()[0] == 200
+        assert connection.execute("select value->>'seed' from settings where key='seed_done'").fetchone()[0] == "42"
+
+    async def generate():
+        sim = Simulator(seed=42, dsn=migrated_db)
+        try:
+            await sim.load_state()
+            await sim.control("start", label="Проверка чистой установки", start_paused=True)
+            await sim.step(120)
+            assert sim.stats["ops"] > 0 and sim.stats["signals"] > 0
+            return sim.run_id
+        finally:
+            await sim.shutdown()
+
+    run_id = asyncio.run(generate())
+    with psycopg.connect(url) as connection:
+        assert connection.execute("select count(*) from operations where run_id=%s", (run_id,)).fetchone()[0] > 0
+        assert connection.execute("select count(*) from signals where run_id=%s", (run_id,)).fetchone()[0] > 0
+        assert connection.execute("select count(*) from sim_events where run_id=%s", (run_id,)).fetchone()[0] > 0
 
 
 def snapshot(conn):
