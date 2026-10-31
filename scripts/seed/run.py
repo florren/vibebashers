@@ -38,9 +38,9 @@ from scripts.seed.refs import seed_all_refs  # noqa: E402
 
 def preserve_existing(cur: psycopg.Cursor[Any], profile: str) -> int | None:
     """Повтор install — только чтение. None означает действительно пустую БД."""
-    existing = cur.execute(
-        "select exists(select 1 from clients) or exists(select 1 from sim_runs) or exists(select 1 from sim_state)"
-    ).fetchone()[0]
+    # Backend создаёт sim_state ещё до первого seed. Это служебное состояние,
+    # а не признак заполненного банка; реальные клиенты/запуски по-прежнему защищены.
+    existing = cur.execute("select exists(select 1 from clients) or exists(select 1 from sim_runs)").fetchone()[0]
     if not existing:
         return None
     seed_done = get_setting(cur, "seed_done")
