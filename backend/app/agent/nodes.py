@@ -520,7 +520,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
             {"hints": hints, "channel": sig.get("channel"), "text": text},
             text,
             profile=deps.fast_profile or deps.profile,
-            context="fast_path",
+            context="normalization",
             fallback_profile=deps.profile
             if deps.fast_profile and deps.profile.provider not in ("mock", "replay")
             else None,

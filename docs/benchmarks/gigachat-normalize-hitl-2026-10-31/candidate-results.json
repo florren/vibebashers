@@ -1,0 +1,458 @@
+[
+  {
+    "case": "sent-001",
+    "limit_s": 10.0,
+    "chars": 97,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 311,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 3393,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 3396
+  },
+  {
+    "case": "sent-002",
+    "limit_s": 10.0,
+    "chars": 79,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 199,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1855,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 1857
+  },
+  {
+    "case": "sent-003",
+    "limit_s": 10.0,
+    "chars": 100,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 2780,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 2259,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 3384,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 5644
+  },
+  {
+    "case": "sent-004",
+    "limit_s": 10.0,
+    "chars": 91,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 269,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1103,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 1104
+  },
+  {
+    "case": "sent-005",
+    "limit_s": 10.0,
+    "chars": 81,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 163,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 978,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 979
+  },
+  {
+    "case": "sent-006",
+    "limit_s": 10.0,
+    "chars": 69,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 197,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1121,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 1123
+  },
+  {
+    "case": "sent-007",
+    "limit_s": 10.0,
+    "chars": 70,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 252,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1067,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 1069
+  },
+  {
+    "case": "sent-008",
+    "limit_s": 10.0,
+    "chars": 86,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 178,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 963,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 965
+  },
+  {
+    "case": "hid-001",
+    "limit_s": 10.0,
+    "chars": 118,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 2933,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 1958,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2118,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 4078
+  },
+  {
+    "case": "hid-002",
+    "limit_s": 10.0,
+    "chars": 114,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 2713,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 1948,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2008,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 3958
+  },
+  {
+    "case": "hid-003",
+    "limit_s": 10.0,
+    "chars": 125,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 241,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1108,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 1110
+  },
+  {
+    "case": "hid-004",
+    "limit_s": 10.0,
+    "chars": 96,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 873,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 2221,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2100,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 4323
+  },
+  {
+    "case": "hid-005",
+    "limit_s": 10.0,
+    "chars": 118,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 2845,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 2023,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 1941,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 3966
+  },
+  {
+    "case": "hid-006",
+    "limit_s": 10.0,
+    "chars": 90,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 785,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 1977,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2000,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 3980
+  },
+  {
+    "case": "hid-007",
+    "limit_s": 10.0,
+    "chars": 91,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 208,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1244,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 1245
+  },
+  {
+    "case": "hid-008",
+    "limit_s": 10.0,
+    "chars": 115,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 834,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 2059,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2042,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 4103
+  },
+  {
+    "case": "e2e-long-deposit",
+    "limit_s": 10.0,
+    "chars": 304,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+    "tokens": 811,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning",
+        "ok": false,
+        "ms": 1849,
+        "error": "bad_output: ответ не соответствует схеме после попыток исправления"
+      },
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Ultra:32.9.16.9",
+        "ok": true,
+        "ms": 2069,
+        "error": null
+      }
+    ],
+    "sentiment": "negative",
+    "elapsed_ms": 3919
+  },
+  {
+    "case": "e2e-mortgage",
+    "limit_s": 10.0,
+    "chars": 157,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 375,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 2226,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 2227
+  },
+  {
+    "case": "english-question",
+    "limit_s": 10.0,
+    "chars": 86,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 196,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1721,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 1723
+  },
+  {
+    "case": "long-formal",
+    "limit_s": 10.0,
+    "chars": 522,
+    "ok": true,
+    "provider": "gigachat",
+    "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+    "tokens": 225,
+    "attempts": [
+      {
+        "provider": "gigachat",
+        "model": "GigaChat-3-Lightning:32.4.16.3",
+        "ok": true,
+        "ms": 1824,
+        "error": null
+      }
+    ],
+    "sentiment": "neutral",
+    "elapsed_ms": 1826
+  }
+]
