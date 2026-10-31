@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 import psycopg
+from app.agent.customer_messages import outcome_text
 from app.agent.runner import AgentService
 from app.api.demo_execution import (
     DemoExecutionBody,
@@ -255,14 +256,19 @@ async def main():
                 ),
                 "canonical_result_used": all(
                     i["resolution_summary"]
-                    and all(
-                        i["resolution_summary"] in notice["body"]
-                        for notice in data.get("notifications", [])
-                        if notice["incident_id"] == i["id"]
-                        and notice["template_code"] == "resolved"
+                    and any(
+                        a["incident_id"] == i["id"] and a["kind"] == "verification_report"
+                        and a["body_md"] == i["resolution_summary"]
+                        for a in data.get("artifacts", [])
                     )
                     for i in data.get("incidents", [])
                     if i["status"] == "closed"
+                ),
+                "customer_result_used": all(
+                    n["body"].startswith(outcome_text("ru", resolved=n["template_code"] == "resolved", late=bool(i["sla_breached"])))
+                    for i in data.get("incidents", [])
+                    for n in data.get("notifications", [])
+                    if n["incident_id"] == i["id"] and n["template_code"] in ("resolved", "demo_unresolved")
                 ),
                 "expected_sla": all(
                     bool(i["sla_breached"]) == (outcome != "on_time")

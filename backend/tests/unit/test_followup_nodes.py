@@ -344,3 +344,4 @@ async def test_wake_followups_for_incident_skips_awaiting_client() -> None:
     sql, _params = conn.calls[0]
     assert "awaiting_client" in sql
     assert "distinct from" in sql.lower() or "!=" in sql or "<>" in sql
+    assert monkey_wake.await_args.kwargs["incident_id"] == 9

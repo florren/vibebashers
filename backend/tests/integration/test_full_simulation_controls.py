@@ -171,7 +171,8 @@ async def test_manual_inputs_wait_for_resume_then_finish(seeded, monkeypatch, en
                     "select body,status from notifications where signal_id=%s and template_code='resolved'", (sid,)
                 )
             ).fetchone()
-            assert notice[1] == "sent" and incident[1] in notice[0]
+            assert notice[1] == "sent" and "Проблема по вашему обращению устранена" in notice[0]
+            assert incident[1] not in notice[0] and "стенд" not in notice[0].lower()
             if identified:
                 decisions = await (
                     await conn.execute(

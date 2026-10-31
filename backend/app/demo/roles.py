@@ -38,10 +38,17 @@ async def respond(
         )
     else:
         instructions = (
+            "Вы выполняете текущий этап HITL: рассматриваете переданное Вам предложение агента. "
+            "needs_human, human_reason и requires_hitl объясняют необходимость этой проверки, "
+            "а не являются признаком нарушения или пропущенного согласования. "
+            "Не отклоняйте предложение только из-за наличия этих полей или сегмента ultra_vip. "
             "Оператор оценивает proposal в пределах правил: decision=accept или reject. "
+            "Согласуйте допустимый маршрут и ответ; отклоняйте конкретное нарушение правил. "
+            "Ваше решение не отменяет отдельные согласования gift/task с requires_hitl "
+            "и не разрешает финансовые действия без действующего основания. "
             "Объясни, почему согласовано или отклонено именно это предложение; не объявляй проблему решённой."
         )
-    prompt = load("demo_role", "v2").render(instructions=instructions)
+    prompt = load("demo_role", "v3").render(instructions=instructions)
     messages: list[Message] = [
         {"role": "system", "content": prompt},
         {"role": "user", "content": dumps(context)},
@@ -121,7 +128,7 @@ async def respond(
         "model": result.usage.model,
         "provider": result.provider,
         "usage": usage,
-        "prompt_version": "demo-role-v2",
+        "prompt_version": "demo-role-v3",
         "fallback": result.fallback_mock or not grounded,
         "grounding_reviews": reviews,
         "grounded": grounded,
