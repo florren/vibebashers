@@ -2511,6 +2511,10 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             "update human_decisions set incident_id = %s where agent_run_id = %s and incident_id is null",
             (incident_id, deps.ctx.agent_run_id),
         )
+    if incident_id and human in ("accept", "modify") and router_action in ("route", "escalate"):
+        resumed = await wt.resume_approved_incident(deps.ctx, incident_id)
+        if resumed["resumed"]:
+            mark("human_handoff", incident_id=incident_id)
     # --- Mock-АБС: возврат ошибочной комиссии (ТЗ 9.2–9.3, 21.4): автономно в лимите или после решения человека
     fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
     refund_check = next((pc for pc in (d.get("policy_checks") or []) if pc.get("rule") == "refund_autonomy"), None)
