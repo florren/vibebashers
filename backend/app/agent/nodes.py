@@ -28,7 +28,7 @@ from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
 from app.contracts.registry import deref, validate
 from app.economics.calibration import PIPELINE as SCORE_PIPELINE
-from app.i18n import communication_lang
+from app.i18n import communication_lang, declined_action_text
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -1847,7 +1847,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
     demo_team_task = False
-    if stype == "info_request" and sig.get("origin") in ("scenario", "jury"):
+    if stype == "info_request" and (
+        sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo"
+    ):
         # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
         demo_team_task = bool(
             await deps.ctx.fetchone(
@@ -2184,6 +2186,7 @@ def apply_human_decision(state: AgentState, decision: str, modified: dict[str, A
             "client_action": {**state["decision"]["client_action"], "kind": "none"},
             "gift": None,
             "escalation": None,
+            "followup": None,
         }
     state["current_node"] = "act"
     state["outcome"] = None
@@ -2754,7 +2757,12 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             requires_hitl=True,
         )
         mark("delegate_task", task_id=t.get("task_id"))
-    if d.get("followup") and "followup" not in done and d.get("router_action") != "request_clarification":
+    if (
+        d.get("followup")
+        and "followup" not in done
+        and d.get("router_action") != "request_clarification"
+        and (incident_id is not None or d["followup"]["reason"] not in ("awaiting_team", "verify_fix", "report_due"))
+    ):
         f = await wt.schedule_followup(
             deps.ctx,
             sig["id"],
@@ -2877,6 +2885,20 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
             "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
         )
     elif not incident_id:
+        if (state.get("human") or {}).get("status") == "reject":
+            await wt.notify_client(
+                deps.ctx,
+                client.get("client_id"),
+                int(sig["id"]),
+                None,
+                str(sig.get("channel") or "chat"),
+                "final_no_action_131",
+                {},
+                text_override=declined_action_text(lang),
+                segment=client.get("segment"),
+                consents=client.get("consents"),
+                lang=lang,
+            )
         await deps.ctx.conn.execute(
             "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
         )

@@ -50,7 +50,7 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
     request = Request({"type": "http", "app": app, "headers": []})
     cur = await conn.execute(
         "select h.id,h.reason,h.agent_proposal from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
-        "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms where ms.id=a.signal_id and ms.origin='jury')) and h.decision is null and (a.outcome is not null or a.id is null) "
+        "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms where ms.id=a.signal_id and (ms.origin='jury' or ms.channel_subtype='ui_pers_demo'))) and h.decision is null and (a.outcome is not null or a.id is null) "
         "and (h.agent_proposal->>'kind'='escalation' or a.id is null or exists(select 1 from agent_steps s where s.run_id=a.id and s.node='wait_human' and s.output->>'human_decision_id'=h.id::text)) order by h.id limit 1",
         (run_id, manual_only),
     )
@@ -301,7 +301,7 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
     rows = await (
         await conn.execute(
             "select distinct x.incident_id from incident_signals x join signals s on s.id=x.signal_id "
-            "where s.run_id=%s and s.origin='jury' and not exists("
+            "where s.run_id=%s and (s.origin='jury' or s.channel_subtype='ui_pers_demo') and not exists("
             "select 1 from incident_signals px join signals ps on ps.id=px.signal_id "
             "where px.incident_id=x.incident_id and (ps.status in ('new','processing','awaiting_human') "
             "or exists(select 1 from agent_runs a where a.signal_id=ps.id and a.kind='agent' "
@@ -353,13 +353,20 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
 async def cycle(app: Any) -> None:
     sim = app.state.sim
     svc = app.state.agent
-    if (
-        sim is None
-        or svc is None
-        or not svc.enabled
-        or sim.run_id is None
-        or sim.run_status not in ("running", "paused")
-    ):
+    if sim is None or svc is None or not svc.enabled:
+        return
+    # Публичный процесс создаёт live-run в БД; операторский процесс подхватывает его без старта часов.
+    if not sim.clock.running:
+        async with sim._lock:
+            async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as lookup:
+                row = await (
+                    await lookup.execute(
+                        "select r.id,r.status from sim_state st join sim_runs r on r.id=st.current_run_id where st.id=1 and r.kind='live' and r.status='paused'"
+                    )
+                ).fetchone()
+            if row and sim.run_id != row[0]:
+                sim.run_id, sim.run_status, sim.world = int(row[0]), row[1], None
+    if sim.run_id is None or sim.run_status not in ("running", "paused"):
         return
     rid = sim.run_id
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
