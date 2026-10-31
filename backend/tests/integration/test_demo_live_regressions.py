@@ -229,8 +229,17 @@ async def test_client_final_uses_verified_facts_and_does_not_call_llm(seeded, mo
                     await conn.execute("select resolution_summary from incidents where run_id=%s", (state["run_id"],))
                 ).fetchone()
             )[0]
-            assert summary in body
-            assert "Обращение закрыто" in body
+            report = (
+                await (
+                    await conn.execute(
+                        "select body_md from incident_artifacts where run_id=%s and kind='verification_report' order by id desc limit 1",
+                        (state["run_id"],),
+                    )
+                ).fetchone()
+            )[0]
+            assert summary == report
+            assert "Проблема по вашему обращению устранена" in body
+            assert not any(word in body.lower() for word in ("стенд", "демонстрац", "маршрут", "внешние действия"))
             assert "Гарантируем" not in body
     finally:
         await svc.stop()

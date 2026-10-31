@@ -18,6 +18,7 @@ import orjson
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
+from app.agent.customer_messages import customer_outcome, has_emulated_verification
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
@@ -2863,6 +2864,15 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         resolution = str((resolution_row[0] if resolution_row else None) or d.get("title_ru") or "")
         variables = {"name": mask_name(client.get("name")), "resolution": resolution}
         _subject, body = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
+        if await has_emulated_verification(deps.ctx, int(incident_id)):
+            body = await customer_outcome(
+                deps.ctx,
+                int(incident_id),
+                client.get("client_id"),
+                lang,
+                resolved=True,
+                late=bool(resolution_row and resolution_row[1]),
+            )
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
         if body:

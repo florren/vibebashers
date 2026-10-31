@@ -21,5 +21,5 @@ def communication_lang(text: str) -> str:
 def declined_action_text(lang: str) -> str:
     """Итог отказа от автоматических действий без заявления об устранении проблемы."""
     if lang == "en":
-        return "The review is complete. Automated actions were not approved; no refund or gift was issued. You can provide additional information to continue the review."
-    return "Проверка обращения завершена. Автоматические действия по нему не согласованы; возврат средств и выдача подарка не выполнялись. Для продолжения разбора можно направить дополнительную информацию."
+        return "We have reviewed your request. Unfortunately, we could not approve the requested action based on the information available. We are sorry. Please reply with any additional details so we can continue reviewing your case."
+    return "Мы рассмотрели ваше обращение. К сожалению, по результатам проверки согласовать запрошенное действие не удалось. Приносим извинения. Если у вас есть дополнительные сведения, ответьте на это сообщение — продолжим разбор."

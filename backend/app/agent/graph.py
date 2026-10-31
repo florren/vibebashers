@@ -509,15 +509,17 @@ async def wake_due_followups(
     sim_time: dt.datetime,
     chain: ProviderChain,
     profile: LLMProfile,
+    incident_id: int | None = None,
 ) -> int:
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
         await conn.execute(
             "with due as (select f.id from followups f join signals s on s.id=f.signal_id "
             "where f.status = 'scheduled' and f.wake_sim <= %s and f.agent_run_id is not null "
+            "and (%s::bigint is null or (f.incident_id=%s and f.reason is distinct from 'awaiting_client')) "
             f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
             "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
-            (sim_time,),
+            (sim_time, incident_id, incident_id),
         )
     ).fetchall()
     resumed = 0
@@ -544,7 +546,7 @@ async def wake_followups_for_incident(
         (sim_time, incident_id),
     )
     await conn.commit()
-    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile)
+    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile, incident_id=incident_id)
 
 
 async def expire_hitl(

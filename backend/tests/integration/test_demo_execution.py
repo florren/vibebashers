@@ -115,6 +115,14 @@ async def test_demo_full_cycle(seeded, monkeypatch, outcome):
             assert len({r[0] for r in final_notices}) == 2
             assert len(notices) == (4 if outcome == "recovered" else 2)
             assert len({(r[0], r[1]) for r in notices}) == len(notices)
+            for _, code, body in notices:
+                assert not any(
+                    word in body.lower() for word in ("стенд", "демонстрац", "маршрут", "эскалац", "внешние действия")
+                )
+                assert ("устранена" in body) == (code == "resolved")
+                assert ("остаётся открытым" in body) == (code == "demo_unresolved")
+                if code == "resolved" and outcome in ("late", "recovered"):
+                    assert "больше времени" in body
             assert not (
                 await (
                     await conn.execute(
