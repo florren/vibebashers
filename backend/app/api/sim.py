@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.db.session import psycopg_dsn
+from app.demo.execution import configuration, save
 from app.errors import NotImplementedYet
 from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
@@ -50,6 +51,14 @@ async def post_sim_control(request: Request, body: SimControlRequest) -> Any:
     sim = _sim(request)
     kw = body.model_dump(exclude_none=True)
     action = kw.pop("action")
+    if sim.run_id and action in ("start", "resume", "step", "jump_to", "reset_day", "stop"):
+        async with await _conn() as conn:
+            demo = await configuration(conn, sim.run_id)
+            if demo.get("enabled"):
+                if action != "stop":
+                    raise HTTPException(409, "Сначала остановите эмуляцию команд: она управляет временем этого запуска")
+                demo.update(enabled=False, status="stopped")
+                await save(conn, sim.run_id, demo)
     if action == "set_speed" and "speed" not in kw:
         raise HTTPException(status_code=422, detail="speed обязателен для set_speed")
     if action == "set_preset" and "preset" not in kw:

@@ -53,9 +53,9 @@ async def test_scenario(seeded: str, scenario: dict) -> None:
 
 
 def test_all_scenarios_listed() -> None:
-    """Все 13 сценариев ТЗ присутствуют; у незапускаемых указан пакет, который их включит."""
+    """Все 33 сценария, включая 20 тематических входов ТЗ, присутствуют; у незапускаемых указан пакет, который их включит."""
     items = sc.load_all()
-    assert [s["number"] for s in items] == list(range(1, 14))
+    assert [s["number"] for s in items] == list(range(1, 34))
     for s in items:
         if not sc.is_runnable(s):
             assert s.get("requires"), s["id"]

@@ -1,0 +1,22 @@
+id: demo20_11_mobile_crash
+number: 24
+title_ru: 'ТЗ 11: Приложение падает при оплате'
+title_en: 'Brief 11: Mobile payment crash'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: При оплате налога с дедлайном сегодня приложение закрывается на этапе подтверждения.
+    Не могу провести срочный платёж.
+expected: {}
+demo_evidence:
+  observed: Синтетический клиент не может завершить срочный платёж из-за падения приложения.
+  action: Исправить клиентский сценарий и проверить доступный способ оплаты.
+  verification: Контрольный сценарий оплаты прошёл в эмуляции, реальный платёж не
+    отправлялся.
+  source: synthetic_fixture

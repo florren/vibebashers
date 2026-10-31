@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.8
+  version: 1.5.9
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -84,6 +84,46 @@ tags:
     description: "[ЕТЗ] Справочник и динамика сети ВСП (ТЗ 25.3)"
 
 paths:
+  /api/demo/execution:
+    get:
+      tags:
+      - demo
+      summary: Текущий изолированный demo-запуск
+      responses:
+        '200':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
+    post:
+      tags:
+      - demo
+      summary: Запуск эмуляции сотрудников и команд
+      responses:
+        '202':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoExecutionRequest'
+    delete:
+      tags:
+      - demo
+      summary: Остановка demo-исполнения с сохранением истории
+      responses:
+        '200':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
   /api/health:
     get:
       tags: [health]
@@ -2607,6 +2647,69 @@ components:
               instance: { type: string }
               errors: { type: array, items: { type: object, properties: { loc: { type: array, items: { type: string } }, msg: { type: string } } } }
   schemas:
+    DemoExecutionRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - scenario_id
+      properties:
+        scenario_id:
+          type: string
+        team_outcome:
+          type: string
+          enum:
+          - on_time
+          - late
+          - no_work
+          - failed
+          - recovered
+          default: on_time
+        emulate_humans:
+          type: boolean
+          default: true
+        auto_advance:
+          type: boolean
+          default: true
+    DemoExecutionState:
+      type: object
+      required:
+      - run_id
+      - subject_ref
+      - configuration
+      - incidents
+      properties:
+        run_id:
+          type:
+          - integer
+          - 'null'
+        subject_ref:
+          type: [string, "null"]
+        configuration:
+          type: object
+          additionalProperties: true
+        incidents:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - public_id
+            - status
+            - sla_breached
+            - resolution_summary
+            properties:
+              id:
+                type: integer
+              public_id:
+                type: string
+              status:
+                type: string
+              sla_breached:
+                type: boolean
+              resolution_summary:
+                type:
+                - string
+                - 'null'
     LlmProvider: { type: string, enum: [gigachat, openai_compatible, mock] }
     Complexity: { type: string, enum: [easy, medium, hard] }
     Criticality: { type: string, enum: [low, medium, high] }

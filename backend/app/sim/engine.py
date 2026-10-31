@@ -199,7 +199,13 @@ class Simulator:
                 await run_svc.set_run_status(conn, self.run_id, "running")
                 self.run_status = "running"
                 await conn.commit()
-            self._start_loop()
+            if kw.get("start_paused"):
+                self.clock.running = False
+                if self.run_id:
+                    await run_svc.set_run_status(conn, self.run_id, "paused")
+                self.run_status = "paused"
+            else:
+                self._start_loop()
         elif action == "resume":
             if self.run_id and self.run_status in ("paused", "interrupted"):
                 await run_svc.set_run_status(conn, self.run_id, "running")

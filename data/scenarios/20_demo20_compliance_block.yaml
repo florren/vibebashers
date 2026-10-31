@@ -1,0 +1,21 @@
+id: demo20_07_compliance_block
+number: 20
+title_ru: 'ТЗ 07: Блокировка операции'
+title_en: 'Brief 07: Compliance block'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Операция по карте заблокирована, деньги нужны срочно. Прошу уполномоченного
+    сотрудника проверить основания и сообщить решение.
+expected: {}
+demo_evidence:
+  observed: Синтетическая операция остановлена контрольной проверкой.
+  action: Передать основания блокировки уполномоченному сотруднику; не отключать контроль.
+  verification: Проверено рассмотрение блокировки ответственным сотрудником на стенде.
+  source: synthetic_fixture

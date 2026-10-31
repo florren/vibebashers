@@ -155,7 +155,7 @@ class SlaEngine:
             self._cursor = at
 
     async def _tick_at(self, sim_time: dt.datetime) -> None:
-        ctx = ToolContext(self.conn, run_id=self.run_id, agent_run_id=0, sim_time=sim_time, llm_source="template")
+        ctx = ToolContext(self.conn, run_id=self.run_id, agent_run_id=0, sim_time=sim_time, llm_source="mock")
         cur = await self.conn.execute(
             "select id, status, team_code, created_sim, take_due_sim, sla_due_sim, report_due_sims, "
             "complexity, sla_breached, outcome_class, agent_run_id "

@@ -1722,5 +1722,30 @@
     "displayName": "What should we call you?",
     "displayNamePlaceholder": "Name, nickname or any label",
     "displayNameHint": "Optional. A chat name, without identity verification."
+  },
+  "demoExecution": {
+    "title": "Team and employee simulation",
+    "hint": "Separate demo run. The agent plays employees; manual input remains available. Time advances to the next event without background traffic. Unresolved cases stay open.",
+    "scenario": "Input scenario",
+    "outcome": "Team outcome",
+    "humans": "Agent plays employees",
+    "start": "Start demo",
+    "stop": "Stop simulation",
+    "breached": "SLA breached",
+    "error": "Simulation error",
+    "outcomes": {
+      "on_time": "Success on time",
+      "late": "Late success",
+      "no_work": "Deadlines missed, no work started",
+      "failed": "Attempt failed to restore service",
+      "recovered": "Recovery after escalation"
+    },
+    "status": {
+      "idle": "not started",
+      "running": "running",
+      "finished": "cycle finished",
+      "stopped": "stopped",
+      "error": "error"
+    }
   }
 }

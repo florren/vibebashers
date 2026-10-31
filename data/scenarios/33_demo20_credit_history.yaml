@@ -1,0 +1,22 @@
+id: demo20_20_credit_history
+number: 33
+title_ru: 'ТЗ 20: Ошибочная запись в БКИ'
+title_en: 'Brief 20: Incorrect credit history entry'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Из-за технического овердрафта 15 рублей появилась просрочка в кредитной истории.
+    Прошу проверить и исправить ошибочную запись после подтверждения.
+expected: {}
+demo_evidence:
+  observed: Синтетический технический овердрафт 15 рублей дал ошибочную просрочку.
+  action: Проверить основание долга и согласовать исправление данных.
+  verification: Проверен согласованный разбор ошибочной записи на стенде; в БКИ сведения
+    не отправлялись.
+  source: synthetic_fixture

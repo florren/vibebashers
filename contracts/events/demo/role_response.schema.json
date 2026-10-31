@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DemoRoleResponse v1 — текст эмулируемого сотрудника без полномочий менять факты",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "body",
+    "decision"
+  ],
+  "properties": {
+    "body": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 2000
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "reject",
+        "open_incident"
+      ]
+    }
+  },
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/demo/role_response.schema.json"
+}
