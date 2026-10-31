@@ -510,7 +510,7 @@ class TeamEmulator:
 
             ar = await ctx.fetchone(
                 "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
-                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v2','demo-execution-v1',%s) returning id",
                 (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
             )
             assert ar is not None
@@ -555,11 +555,9 @@ class TeamEmulator:
                 "stage": kind,
                 "outcome": outcome,
                 "language": "ru",
-                "incident": incident_ctx,
-                "evidence": self.demo_context,
-                "result": "Исправление внедрено; проверка клиентского сценария успешна"
-                if success
-                else "Попытка исправления не восстановила услугу; нужна эскалация",
+                "subject": incident_ctx["title"],
+                "evidence": {"source": self.demo_context.get("source", "synthetic_fixture")},
+                "verified": kind == "verification_report" and success,
             }
             stage_facts = {
                 "rca": "Команда завершила диагностику и подготовила разбор причины.",
@@ -574,8 +572,26 @@ class TeamEmulator:
                 stage_facts["rca"] = str(self.demo_context["observed"])
                 stage_facts["fix_decision"] = str(self.demo_context["action"])
                 stage_facts["verification_report"] = str(self.demo_context["verification"])
+            if kind == "fix_decision":
+                stage_facts[kind] = "План работы (ещё не выполнен): " + stage_facts[kind]
             facts["result"] = stage_facts[kind]
             fallback = f"{incident_ctx['title']}: {facts['result']}"
+            if kind == "verification_report":
+                # Результат проверки задаёт стенд, а не свободное заключение модели.
+                self.artifact_meta = {
+                    "demo": True,
+                    "source": "mock",
+                    "content_source": "verified_facts",
+                    "model": "deterministic-verification",
+                    "provider": "mock",
+                    "usage": {},
+                    "grounded": True,
+                    "fallback": False,
+                    "outcome": outcome,
+                    "stage": kind,
+                    "confirmed_result": facts["result"],
+                }
+                return str(facts["result"])
             obj, self.artifact_meta = await respond(self.llm[0], self.llm[1], facts, fallback)
             self.artifact_meta["outcome"] = outcome
             self.artifact_meta["stage"] = kind

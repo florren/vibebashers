@@ -182,7 +182,7 @@ async def _compliance_customer_case(
     ar = (
         await (
             await conn.execute(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v2','demo-execution-v1',%s) returning id",
                 (run_id, sid, incident_id, at),
             )
         ).fetchone()
@@ -216,7 +216,7 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         )
     ).fetchall()
     svc = app.state.agent
-    for iid, status, summary, breached, sid, cid, text, segment, consents, channel in rows:
+    for iid, status, summary, _breached, sid, cid, text, segment, consents, channel in rows:
         success = status == "closed"
         from app.i18n import communication_lang
 
@@ -224,35 +224,36 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         facts = str(summary or "Устранение проблемы пока не подтверждено. Обращение эскалировано, работа продолжается.")
         if lang == "en" and not success:
             facts = "The issue remains unresolved. Your case has been escalated and work continues."
-        fallback = facts
-        if lang == "en" and success:
-            fallback = "The team completed the fix and verified the customer workflow in this demonstration. Your case is closed."
-        obj, meta = await respond(
-            svc.chain,
-            svc.chain.profile_for("fast", svc.profile),
-            {
-                "role": "customer_reply",
-                "language": lang,
-                "outcome": "success" if success else "unresolved",
-                "facts": facts,
-                "sla_breached": breached,
-            },
-            fallback,
-        )
+        if lang == "en":
+            if success:
+                facts = "The demonstration check is complete. External financial actions have not been performed."
+            body = facts + (" Your case is closed." if success else " Your case remains open.")
+        else:
+            body = (
+                "Демонстрационная проверка завершена. " + facts + " Обращение закрыто."
+                if success
+                else facts + " Обращение остаётся открытым."
+            )
+        meta: dict[str, Any] = {
+            "demo": True,
+            "source": "mock",
+            "content_source": "verified_facts",
+            "model": "deterministic-customer-result",
+            "provider": "mock",
+            "usage": {},
+            "grounded": True,
+            "fallback": False,
+            "prompt_version": "demo-result-v1",
+        }
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-result-v1','demo-execution-v1',%s) returning id",
                     (run_id, sid, iid, at),
                 )
             ).fetchone()
         )[0]
         ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=at, llm_source=meta["source"])
-        from app.agent.policies import forbidden_phrases
-
-        body = str(obj["body"])
-        if forbidden_phrases(body):
-            body = fallback
         await notify_client(
             ctx,
             cid,
@@ -317,6 +318,17 @@ async def cycle(app: Any) -> None:
         await conn.commit()
         pending = pending_row[0] if pending_row else 0
         if pending or svc._inflight:
+            return
+        failed = await (
+            await conn.execute(
+                "select exists(select 1 from signals where run_id=%s and status='error') "
+                "or exists(select 1 from agent_runs where sim_run_id=%s and outcome='failed')",
+                (rid, rid),
+            )
+        ).fetchone()
+        if failed and failed[0]:
+            config.update(enabled=False, status="error", error="agent_processing_failed")
+            await save(conn, rid, config)
             return
         async with sim._lock:
             config = await configuration(conn, rid)

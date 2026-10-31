@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cx-pulse.local/contracts/events/demo/grounding_review.schema.json",
+  "title": "Проверка соответствия отчёта текущим подтверждённым фактам demo",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["supported", "reason"],
+  "properties": {
+    "supported": {"type": "boolean", "description": "Текст соответствует текущим фактам и сохраняет ограничения. Не означает, что проблема решена."},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 1000}
+  },
+  "examples": [{"supported": false, "reason": "Рассмотрение блокировки не подтверждает её снятие."}]
+}

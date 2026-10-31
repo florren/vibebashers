@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
-from app.llm.mock import MockProvider
+from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
 from app.llm.ratelimit import limiter as default_limiter
@@ -19,6 +19,21 @@ from app.logging import get_logger
 from app.replay.store import CassetteStore
 
 log = get_logger(__name__)
+
+
+def provider_messages(messages: list[Message], provider: str) -> list[Message]:
+    """Служебный ответ mock не является предыдущим ответом живой модели."""
+    if provider not in ("gigachat", "openai_compatible"):
+        return messages
+    return [
+        message
+        for message in messages
+        if not (
+            message["role"] == "assistant"
+            and message["content"].strip().startswith(MOCK_HINT_START)
+            and message["content"].strip().endswith(MOCK_HINT_END)
+        )
+    ]
 
 
 @dataclass
@@ -136,7 +151,9 @@ class ProviderChain:
                     ) -> tuple[dict[str, Any], Usage, str]:
                         if provider.name not in ("mock", "replay"):
                             await self.limiter.acquire(requested.code, requested.rpm_limit, requested.rpd_limit)
-                        return await provider.complete_structured(messages, schema, requested, timeout_s=limit)
+                        return await provider.complete_structured(
+                            provider_messages(messages, provider.name), schema, requested, timeout_s=limit
+                        )
 
                     obj, usage, raw = await asyncio.wait_for(invoke(candidate, selected, budget), timeout=budget)
                 except TimeoutError:
@@ -237,7 +254,7 @@ class ProviderChain:
                 continue
             started = False
             try:
-                async for chunk in prov.stream(messages, profile, timeout_s=timeout_s):
+                async for chunk in prov.stream(provider_messages(messages, prov.name), profile, timeout_s=timeout_s):
                     started = True
                     yield chunk
                 return

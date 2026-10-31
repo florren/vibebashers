@@ -353,10 +353,17 @@ async def _llm(
     fallback_profile: LLMProfile | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Вызов цепочки: system = system.md + промпт задачи (с контекстом), user = текст сигнала. Возвращает (obj, meta)."""
+    requested_profile = profile or deps.profile
+    # Старые кассеты записаны на v1: явный offline-показ сохраняет исходный ключ запроса.
+    live_prompt = requested_profile.provider not in ("mock", "replay") and any(
+        name in ("gigachat", "openai_compatible") for name in deps.chain.names
+    )
     prompt = (
         load_prompt("system").body
         + "\n\n"
-        + load_prompt(task).render(**{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()})
+        + load_prompt(task, "v2" if live_prompt and task in ("classify", "normalize") else "v1").render(
+            **{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()}
+        )
     )
     messages: list[Message] = [{"role": "system", "content": prompt}, {"role": "user", "content": user_text}]
     schema = deref(schema_name)
@@ -1527,6 +1534,12 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         status = "error"
         state["errors"].append(f"classify: {exc}")
     c, notes = _postcheck_classification(obj, state, deps)
+    if c.get("error_code") and not await deps.ctx.fetchone(
+        "select code from error_codes where code=%s", (c["error_code"],)
+    ):
+        # Гипотеза модели не создаёт новый код справочника и не должна ломать FK инцидента.
+        notes.append(f"неизвестный код ошибки {c['error_code']} исключён: в справочнике отсутствует")
+        c["error_code"] = None
     c.setdefault("tone", "neutral")
     c.setdefault("churn_risk", 0)
     c = prune(c, deref("agent/classification"))
@@ -1781,7 +1794,31 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     )
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
-    if stype in NO_INCIDENT_TYPES and "churn_intent" not in flags and not fee_rule and not anonymous_request:
+    demo_team_task = False
+    if stype == "info_request" and sig.get("origin") == "scenario":
+        # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
+        demo_team_task = bool(
+            await deps.ctx.fetchone(
+                "select id from sim_runs where id=%s and kind='scenario' "
+                "and settings_snapshot->'demo_execution'->>'enabled'='true'",
+                (deps.ctx.run_id,),
+            )
+        )
+        if demo_team_task:
+            checks.append(
+                {
+                    "rule": "demo_team_task",
+                    "passed": True,
+                    "note": "Запрос передаётся demo-команде для итогового ответа",
+                }
+            )
+    if (
+        stype in NO_INCIDENT_TYPES
+        and "churn_intent" not in flags
+        and not fee_rule
+        and not anonymous_request
+        and not demo_team_task
+    ):
         incident_action, link_id = "none", None
     elif link:
         incident_action, link_id = "link_existing", int(link["incident_id"])
