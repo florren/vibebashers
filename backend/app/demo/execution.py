@@ -182,7 +182,7 @@ async def _compliance_customer_case(
     ar = (
         await (
             await conn.execute(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v2','demo-execution-v1',%s) returning id",
                 (run_id, sid, incident_id, at),
             )
         ).fetchone()
@@ -242,7 +242,7 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v2','demo-execution-v1',%s) returning id",
                     (run_id, sid, iid, at),
                 )
             ).fetchone()
@@ -317,6 +317,17 @@ async def cycle(app: Any) -> None:
         await conn.commit()
         pending = pending_row[0] if pending_row else 0
         if pending or svc._inflight:
+            return
+        failed = await (
+            await conn.execute(
+                "select exists(select 1 from signals where run_id=%s and status='error') "
+                "or exists(select 1 from agent_runs where sim_run_id=%s and outcome='failed')",
+                (rid, rid),
+            )
+        ).fetchone()
+        if failed and failed[0]:
+            config.update(enabled=False, status="error", error="agent_processing_failed")
+            await save(conn, rid, config)
             return
         async with sim._lock:
             config = await configuration(conn, rid)

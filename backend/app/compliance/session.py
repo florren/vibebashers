@@ -429,7 +429,7 @@ class ComplianceService:
         )
         alert = {
             "alert_id": alert_id,
-            "kind": kind,
+            "kind": "counter" if kind == "threshold" else kind,
             "incident_id": s.incident_id,
             "channels": ["ws"],
             "summary_ru": f"{'Немедленный алерт' if kind == 'immediate' else 'Порог срабатываний'}: {(trigger or {}).get('pattern_code', '—')} ({s.trigger_count}/{s.alert_threshold})",

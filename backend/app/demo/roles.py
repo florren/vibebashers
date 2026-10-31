@@ -16,10 +16,34 @@ from app.sim.events import dumps
 async def respond(
     chain: ProviderChain, profile: LLMProfile, context: dict[str, Any], fallback: str, decision: str = "accept"
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    prompt = load("demo_role").render(context=dumps(context))
+    role = context.get("role")
+    if role == "product_team":
+        instructions = (
+            "Напиши внутренний отчёт команды о текущем этапе stage. Единственный текущий результат — result. "
+            "outcome задаёт траекторию целиком. Если verified=false, проверка устранения ещё не выполнена: "
+            "не объявляй проблему решённой. Если verified=true, сообщи именно подтверждённый result, "
+            "а не исходную жалобу. Для RCA — причина, для fix_decision — план, для release_note — внедрение без проверки."
+        )
+    elif role == "customer_reply":
+        instructions = (
+            "Напиши конечный ответ непосредственно клиенту от Банка, обращайся на Вы. "
+            "Основа ответа — подтверждённые facts. При outcome=success сообщи результат рассмотрения и закрытие обращения. "
+            "Не заменяй итог обещанием проверить позднее. При outcome=unresolved явно сообщи, что проблема не решена, "
+            "обращение открыто и передано на эскалацию. Не используй внутренние названия систем и Mock-АБС."
+        )
+    elif role == "branch_manager":
+        instructions = (
+            "Руководитель подтверждает разбор нарушения по confirmed_quotes и recommendation: decision=open_incident."
+        )
+    else:
+        instructions = (
+            "Оператор оценивает proposal в пределах правил: decision=accept или reject. "
+            "Объясни, почему согласовано или отклонено именно это предложение; не объявляй проблему решённой."
+        )
+    prompt = load("demo_role", "v2").render(instructions=instructions)
     messages: list[Message] = [
         {"role": "system", "content": prompt},
-        {"role": "user", "content": "Подготовь ответ по указанным фактам."},
+        {"role": "user", "content": dumps(context)},
     ]
     # Эталон по фактам задаёт детерминированный ответ последнего mock-провайдера.
     hint = {"body": fallback[:2000], "decision": decision}
@@ -34,7 +58,7 @@ async def respond(
         "model": result.usage.model,
         "provider": result.provider,
         "usage": result.usage.as_dict(),
-        "prompt_version": "demo-role-v1",
+        "prompt_version": "demo-role-v2",
         "fallback": result.fallback_mock,
     }
 
