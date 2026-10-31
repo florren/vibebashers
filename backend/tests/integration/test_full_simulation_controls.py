@@ -76,6 +76,8 @@ async def test_manual_inputs_wait_for_resume_then_finish(seeded, monkeypatch, en
     await sim.load_state()
     sim._intensities = dict.fromkeys(("op", "fault", "client_error", "signal_noise"), 0.0)
     try:
+        # Здесь проверяется обычная пауза; ускоренный режим покрыт test_manual_execution.py.
+        await post_demo_execution(request, DemoExecutionBody(mode="simulation", auto_advance=False))
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             cid = (
                 (
@@ -419,7 +421,7 @@ async def test_shared_teams_progress_with_continuous_employee_work(seeded, monke
             await asyncio.gather(*list(svc._inflight))
         await post_sim_control(request, SimControlRequest(action="resume"))
 
-        async def another_employee_decided(*args):
+        async def another_employee_decided(*args, **kwargs):
             return True
 
         monkeypatch.setattr("app.demo.execution.employees", another_employee_decided)

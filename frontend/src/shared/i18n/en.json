@@ -1725,11 +1725,11 @@
   },
   "demoExecution": {
     "title": "Team and employee simulation",
-    "hint": "Scenarios run separately with event-driven time. The shared profile applies to new team and employee tasks, including manual inputs. Start, pause and stop use the shared simulation controls.",
+    "hint": "Configure teams and employees. Manual requests can reach a final reply even while the simulation is paused.",
     "scenario": "Input scenario",
     "outcome": "Team outcome",
     "humans": "Agent plays employees",
-    "start": "Start demo",
+    "start": "Run a separate scenario",
     "stop": "Stop simulation",
     "breached": "SLA breached",
     "error": "Simulation error",
@@ -1741,6 +1741,7 @@
       "recovered": "Recovery after escalation"
     },
     "status": {
+      "manual": "manual requests fast-forwarding",
       "idle": "not started",
       "running": "running",
       "finished": "cycle finished",
@@ -1748,9 +1749,12 @@
       "error": "error",
       "paused": "paused"
     },
-    "applySimulation": "Apply to shared simulation",
+    "applySimulation": "Save processing profile",
     "simulation": "Shared simulation",
     "demo": "DEMO",
-    "pausedHint": "Teams and employees are paused. Resume using the shared simulation controls."
+    "pausedHint": "Teams and employees are paused. Resume using the shared simulation controls.",
+    "fastManual": "Fast-forward manual requests to a final reply",
+    "controlsHelp": "“Run a separate scenario” creates a new run with the selected input and switches the current history. “Save processing profile” applies settings to the current and future runs without creating a message. Scenario selection only affects a separate run. If employee emulation is disabled, approvals require manual action.",
+    "fastHint": "Fast mode is enabled: manual requests and related incidents advance without waiting for simulated days, even while paused. Background bank clocks and generators remain unchanged. Live LLM calls take time; unresolved issues remain open."
   }
 }

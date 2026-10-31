@@ -140,7 +140,9 @@ class TeamEmulator:
         llm: Any = None,
         demo_context: dict[str, Any] | None = None,
         demo_scenario_id: str | None = None,
+        incident_ids: list[int] | None = None,
     ) -> None:
+        self.incident_ids = incident_ids
         self.demo_context = demo_context or {}
         self.demo_scenario_id = demo_scenario_id
         self.demo_outcome = demo_outcome
@@ -181,6 +183,8 @@ class TeamEmulator:
             (self.run_id,),
         )
         self._regressed_incidents = {int(r[1]) for r in await cur.fetchall()}
+        if self.incident_ids is not None:
+            release_by_incident = {iid: value for iid, value in release_by_incident.items() if iid in self.incident_ids}
         self._restore_pending_regressions(release_by_incident)
 
     async def tick(self, sim_time: dt.datetime, world: Any) -> None:
@@ -188,8 +192,9 @@ class TeamEmulator:
         cur = await self.conn.execute(
             "select id, status, team_code, created_sim, take_due_sim, sla_due_sim, report_due_sims, "
             "complexity, criticality, title, system_code, product_code, error_code, agent_run_id "
-            "from incidents where run_id = %s and status = any(%s)",
-            (self.run_id, list(ACTIVE_STATUSES)),
+            "from incidents where run_id = %s and status = any(%s) "
+            "and (%s::bigint[] is null or id=any(%s::bigint[]))",
+            (self.run_id, list(ACTIVE_STATUSES), self.incident_ids, self.incident_ids),
         )
         for row in await cur.fetchall():
             await self._tick_incident(sim_time, world, row)
@@ -673,6 +678,8 @@ class TeamEmulator:
 
     async def _process_regressions(self, sim_time: dt.datetime, world: Any) -> None:
         for pr in list(self.pending_regressions):
+            if self.incident_ids is not None and pr.incident_id not in self.incident_ids:
+                continue
             if sim_time < pr.release_sim + dt.timedelta(minutes=pr.delay_min):
                 continue
             if pr.incident_id in getattr(self, "_regressed_incidents", set()):

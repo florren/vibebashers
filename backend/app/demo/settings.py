@@ -40,7 +40,7 @@ async def ensure(conn: Any, run_id: int, *, running: bool) -> dict[str, Any]:
         "scenario_id": None,
         "team_outcome": values.get("team_outcome", "on_time"),
         "emulate_humans": values.get("emulate_humans", True),
-        "auto_advance": False,
+        "auto_advance": values.get("auto_advance", True),
         "enabled": True,
         "status": "running" if running else "paused",
         "error": None,

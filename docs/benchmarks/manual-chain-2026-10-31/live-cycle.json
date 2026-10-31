@@ -1,0 +1,155 @@
+{
+  "provider": "gigachat",
+  "elapsed_seconds": 32.07,
+  "sim_time_unchanged": true,
+  "signal": [
+    {
+      "public_id": "SIG-000802",
+      "status": "closed",
+      "incident_id": 152,
+      "incident_status": "closed"
+    }
+  ],
+  "steps": [
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "ingest",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "normalize",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Lightning:32.4.16.3"
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "identify_client",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "gather_context",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "check_rules",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "classify",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9"
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "decide",
+      "status": "ok",
+      "model": "gigachat:GigaChat-3-Ultra:32.9.16.9"
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "act",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "followup_monitor",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "verify",
+      "status": "fallback",
+      "model": null
+    },
+    {
+      "agent_run_id": 10,
+      "kind": "agent",
+      "node": "followup_monitor",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 11,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 12,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": "GigaChat-3-Pro:32.4.30.3"
+    },
+    {
+      "agent_run_id": 13,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": "GigaChat-3-Pro:32.4.30.3"
+    },
+    {
+      "agent_run_id": 14,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": "GigaChat-3-Pro:32.4.30.3"
+    },
+    {
+      "agent_run_id": 15,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": "GigaChat-3-Pro:32.4.30.3"
+    },
+    {
+      "agent_run_id": 16,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": "deterministic-verification"
+    },
+    {
+      "agent_run_id": 17,
+      "kind": "team_emulator",
+      "node": "act",
+      "status": "ok",
+      "model": null
+    },
+    {
+      "agent_run_id": 18,
+      "kind": "team_emulator",
+      "node": "close",
+      "status": "ok",
+      "model": "deterministic-customer-result"
+    }
+  ],
+  "final_notifications": [
+    {
+      "signal_id": 802,
+      "template_code": "resolved",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Ошибка 503 при открытии вклада в мобильном приложении». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    }
+  ]
+}
