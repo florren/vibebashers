@@ -182,3 +182,57 @@ async def test_counter_alert_uses_contract_policy_and_keeps_db_kind(seeded):
         )[0]
         assert payload["alert"]["kind"] == "counter"
         assert validate(payload, "compliance/session_event") == []
+
+
+async def test_client_policy_fallback_does_not_keep_live_label(seeded, monkeypatch):
+    from tests.helpers import mock_chain
+
+    async def unsafe_reply(*args, **kwargs):
+        return {"body": "Гарантируем результат сегодня же.", "decision": "accept"}, {
+            "source": "live",
+            "model": "live-test",
+            "provider": "gigachat",
+            "usage": {},
+            "fallback": False,
+            "grounded": True,
+        }
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    monkeypatch.setattr("app.demo.execution.respond", unsafe_reply)
+    get_settings.cache_clear()
+    app = create_app()
+    svc = app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
+    sim = app.state.sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    app.state.llm_chain, app.state.llm_profile = svc.chain, svc.profile
+    try:
+        state = await post_demo_execution(
+            Request({"type": "http", "app": app, "headers": []}),
+            DemoExecutionBody(scenario_id="demo20_01_branch_queue"),
+        )
+        for _ in range(30):
+            if svc._inflight:
+                await asyncio.gather(*list(svc._inflight))
+            await cycle(app)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            row = await (
+                await conn.execute(
+                    "select s.output from agent_steps s join agent_runs a on a.id=s.run_id where a.sim_run_id=%s and s.node='close' and s.output ? 'policy_fallback'",
+                    (state["run_id"],),
+                )
+            ).fetchone()
+            assert row[0]["source"] == "mock"
+            assert row[0]["fallback"]
+            body = (
+                await (
+                    await conn.execute(
+                        "select body from notifications where run_id=%s and template_code='resolved'",
+                        (state["run_id"],),
+                    )
+                ).fetchone()
+            )[0]
+            assert "Гарантируем" not in body
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()

@@ -81,3 +81,51 @@ async def test_team_receives_only_current_stage_evidence(monkeypatch, kind):
         assert "Клиент обслужен" not in str(seen)
     if kind == "fix_decision":
         assert "ещё не выполнен" in seen["result"]
+
+
+@pytest.mark.parametrize("accepted_after_retry", [False, True])
+async def test_live_reply_is_checked_corrected_and_honestly_falls_back(accepted_after_retry):
+    from app.llm.base import Usage
+    from app.llm.failover import ChainResult
+
+    class ReviewChain:
+        def __init__(self):
+            self.calls = []
+
+        def profile_for(self, role, default):
+            return default
+
+        async def complete_structured(self, messages, schema, profile):
+            self.calls.append(messages)
+            n = len(self.calls)
+            obj = (
+                {
+                    "supported": accepted_after_retry and n == 4,
+                    "reason": "Разблокировка не подтверждена.",
+                }
+                if n in (2, 4)
+                else {"decision": "accept", "body": "Ваша карта разблокирована."}
+            )
+            return ChainResult(
+                obj,
+                Usage(prompt_tokens=10, completion_tokens=5, provider="gigachat", model="test", source="live"),
+                "",
+                "gigachat",
+            )
+
+    chain = ReviewChain()
+    body, meta = await respond(
+        chain,
+        LLMProfile(code="live", provider="gigachat", model="test"),
+        {"role": "customer_reply", "outcome": "success", "facts": "Рассмотрение блокировки проверено."},
+        "Рассмотрение блокировки проверено.",
+    )
+    assert len(chain.calls) == 4
+    assert "Исправь текст" in chain.calls[2][-1]["content"]
+    assert meta["usage"]["total_tokens"] == 60
+    assert len(meta["grounding_reviews"]) == 2
+    assert meta["grounded"] == accepted_after_retry
+    assert meta["source"] == ("live" if accepted_after_retry else "mock")
+    if not accepted_after_retry:
+        assert body["body"] == "Рассмотрение блокировки проверено."
+        assert meta["fallback"]

@@ -244,6 +244,17 @@ async def main():
                     bool(i["sla_breached"]) == (outcome != "on_time")
                     for i in data.get("incidents", [])
                 ),
+                "all_role_outputs_live": all(
+                    artifact["meta"].get("source") == "live"
+                    and artifact["meta"].get("grounded")
+                    for artifact in data.get("artifacts", [])
+                )
+                and all(
+                    step["output"].get("source") == "live"
+                    and step["output"].get("grounded")
+                    for step in data.get("steps", [])
+                    if "confirmed" in (step.get("output") or {})
+                ),
                 "no_failed_agent_runs": not any(
                     x["outcome"] == "failed" for x in data.get("runs", [])
                 ),

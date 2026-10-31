@@ -353,10 +353,15 @@ async def _llm(
     fallback_profile: LLMProfile | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Вызов цепочки: system = system.md + промпт задачи (с контекстом), user = текст сигнала. Возвращает (obj, meta)."""
+    requested_profile = profile or deps.profile
+    # Старые кассеты записаны на v1: явный offline-показ сохраняет исходный ключ запроса.
+    live_prompt = requested_profile.provider not in ("mock", "replay") and any(
+        name in ("gigachat", "openai_compatible") for name in deps.chain.names
+    )
     prompt = (
         load_prompt("system").body
         + "\n\n"
-        + load_prompt(task, "v2" if task in ("classify", "normalize") else "v1").render(
+        + load_prompt(task, "v2" if live_prompt and task in ("classify", "normalize") else "v1").render(
             **{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()}
         )
     )

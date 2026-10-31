@@ -247,12 +247,13 @@ async def notify_results(conn: Any, app: Any, run_id: int, at: dt.datetime) -> N
                 )
             ).fetchone()
         )[0]
-        ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=at, llm_source=meta["source"])
         from app.agent.policies import forbidden_phrases
 
         body = str(obj["body"])
         if forbidden_phrases(body):
             body = fallback
+            meta.update(source="mock", fallback=True, grounded=False, policy_fallback="forbidden_phrases")
+        ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=at, llm_source=meta["source"])
         await notify_client(
             ctx,
             cid,
