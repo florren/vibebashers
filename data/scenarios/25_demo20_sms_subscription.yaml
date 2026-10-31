@@ -1,0 +1,21 @@
+id: demo20_12_sms_subscription
+number: 25
+title_ru: 'ТЗ 12: Навязанные SMS'
+title_en: 'Brief 12: Unwanted SMS subscription'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Платную услугу SMS подключили без моего согласия, списывают по 99 рублей.
+    Прошу отключить услугу и проверить возврат списаний.
+expected: {}
+demo_evidence:
+  observed: После перевыпуска карты синтетический флаг платных SMS восстановился.
+  action: Проверить согласие на подписку и устранить повторное подключение.
+  verification: Проверка флага подписки после перевыпуска прошла в эмуляции.
+  source: synthetic_fixture

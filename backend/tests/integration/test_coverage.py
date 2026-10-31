@@ -53,7 +53,7 @@ def test_reference_counts(conn) -> None:
     assert conn.execute("select count(*) from branches where code = '0042'").fetchone()[0] == 1
     assert conn.execute("select count(*) from business_rules where code = 'RULE-QR-FEE-001'").fetchone()[0] == 1
     assert conn.execute("select count(*) from error_codes where code = 'PROC-QR-FEE-CHARGED'").fetchone()[0] == 1
-    assert conn.execute("select count(*) from scenarios").fetchone()[0] == 13
+    assert conn.execute("select count(*) from scenarios").fetchone()[0] == 33
     assert conn.execute("select count(*) from bench_datasets").fetchone()[0] >= 5
     assert abs(float(conn.execute("select sum(population_share) from segments").fetchone()[0]) - 1.0) < 1e-6
     for seg, total in conn.execute("select segment_code, sum(share) from segment_psychotype_mix group by 1").fetchall():

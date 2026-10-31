@@ -2737,7 +2737,12 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
     if incident_id:
         ca = d.get("client_action") or {}
         channel = str(ca.get("channel") or sig.get("channel") or "chat")
-        variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
+        resolution_row = await deps.ctx.fetchone(
+            "select resolution_summary,sla_breached from incidents where id=%s and run_id=%s",
+            (incident_id, deps.ctx.run_id),
+        )
+        resolution = str((resolution_row[0] if resolution_row else None) or d.get("title_ru") or "")
+        variables = {"name": mask_name(client.get("name")), "resolution": resolution}
         _subject, body = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
@@ -2758,8 +2763,8 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         await wt.close_incident(
             deps.ctx,
             int(incident_id),
-            str(d.get("title_ru") or "обращение закрыто")[:500],
-            "closed_in_sla",
+            resolution[:2000] or "обращение закрыто",
+            "closed_late" if resolution_row and resolution_row[1] else "closed_in_sla",
         )
         await deps.ctx.conn.execute(
             "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)

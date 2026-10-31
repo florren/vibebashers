@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/shared/routes'
+import { DemoExecution } from './DemoExecution'
 import { SignalPicker } from './SignalPicker'
 import { LiveJourney } from './LiveJourney'
 import { RecordedJourney } from './RecordedJourney'
@@ -45,6 +46,7 @@ export function JourneyPage() {
           </label>
         )}
       </nav>
+      <DemoExecution onStarted={reference => nav(ROUTES.journeyObject(reference))} />
       <SignalPicker onSelect={reference => nav(`${ROUTES.journeyObject(reference)}${mode === 'follow' ? '' : `?mode=${mode}`}`)} />
       {mode === 'follow' ? (
         <LiveJourney onSubject={setSubject} />

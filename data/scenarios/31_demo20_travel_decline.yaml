@@ -1,0 +1,22 @@
+id: demo20_18_travel_decline
+number: 31
+title_ru: 'ТЗ 18: Отклонение оплаты за рубежом'
+title_en: 'Brief 18: Travel payment declined'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Дважды отклонена покупка авиабилетов за границей. Подтверждаю, что операцию
+    инициировал я. Прошу проверить причину отказа.
+expected: {}
+demo_evidence:
+  observed: Синтетический географический контроль отклонил две оплаты билетов.
+  action: Проверить операцию с подтверждением клиента; не отключать правила безопасности.
+  verification: На стенде проверен маршрут подтверждения операции; ограничения карты
+    не меняются.
+  source: synthetic_fixture

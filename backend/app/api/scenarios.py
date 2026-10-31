@@ -42,6 +42,12 @@ async def get_scenarios(request: Request) -> Any:
     "/api/scenarios/{id}/run", summary="Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)", status_code=202
 )
 async def post_scenarios_id_run(request: Request, id: str, body: ScenarioRunRequest | None = None) -> Any:  # noqa: A002
+    return await run_scenario(request, id, body)
+
+
+async def run_scenario(
+    request: Request, id: str, body: ScenarioRunRequest | None = None, *, start_paused: bool = False
+) -> Any:  # noqa: A002
     scenario = sc.get(id)
     if scenario is None:
         raise HTTPException(status_code=404, detail="сценарий не найден")
@@ -50,10 +56,15 @@ async def post_scenarios_id_run(request: Request, id: str, body: ScenarioRunRequ
     body = body or ScenarioRunRequest()
     if body.reset_mode == "baseline":
         raise NotImplementedYet("T-040")
+    async with db() as conn:
+        await sc.ensure_registered(conn, scenario)
     sim: Simulator = request.app.state.sim
     svc = agent_service(request)
+    if start_paused:
+        await sim.control("pause")
     await sim.control(
         "start",
+        start_paused=start_paused,
         kind="scenario",
         scenario_id=id,
         label=body.label or f"Сценарий {scenario.get('number')}: {scenario.get('title_ru')}",

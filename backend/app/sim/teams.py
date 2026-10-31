@@ -12,7 +12,7 @@ import psycopg
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import STATUS_TRANSITIONS, render_template, update_incident
 from app.logging import get_logger
-from app.sim.clock import MSK, add_working_days, add_working_hours, is_working_day
+from app.sim.clock import MSK, WORK_END, WORK_START, add_working_days, add_working_hours, is_working_day
 from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
 
@@ -52,6 +52,7 @@ class PlannedStep:
     report_day: int | None = None
     skipped: bool = False
     regression: dict[str, Any] | None = None
+    due: dt.datetime | None = None
 
 
 @dataclass
@@ -63,6 +64,7 @@ class IncidentPlan:
     steps: list[PlannedStep] = field(default_factory=list)
     paused_after_clarify: bool = False
     resumed: bool = False
+    outcome: str | None = None
 
 
 @dataclass
@@ -133,7 +135,15 @@ class TeamEmulator:
         conn: psycopg.AsyncConnection[Any],
         bus: EventBus,
         run_id: int,
+        *,
+        demo_outcome: str | None = None,
+        llm: Any = None,
+        demo_context: dict[str, Any] | None = None,
     ) -> None:
+        self.demo_context = demo_context or {}
+        self.demo_outcome = demo_outcome
+        self.llm = llm
+        self.artifact_meta: dict[str, Any] = {}
         self.rng = rng
         self.conn = conn
         self.bus = bus
@@ -202,6 +212,8 @@ class TeamEmulator:
         incident_id = int(iid)
         profile = self._team_profiles.get(str(team_code)) or {}
         plan = self.plans.get(incident_id)
+        if plan is not None and plan.outcome and not self.demo_outcome:
+            return
         if plan is None:
             plan = self._build_plan(
                 incident_id,
@@ -263,6 +275,10 @@ class TeamEmulator:
         system_code: str,
         product_code: str | None,
     ) -> IncidentPlan:
+        if self.demo_outcome:
+            return demo_plan(
+                incident_id, team_code, self.demo_outcome, created_sim, take_due_sim, sla_due_sim, report_due_sims
+            )
         th = profile.get("take_hours") or [1, 4]
         lo, hi = float(th[0]), float(th[1])
         take_delay = lo if hi <= lo else lo + self.rng.random() * (hi - lo)
@@ -365,6 +381,10 @@ class TeamEmulator:
         if cur == "escalated" and target not in STATUS_TRANSITIONS.get("escalated", set()):
             await update_incident(ctx, incident_id, "in_progress", "возврат в работу после эскалации SLA")
             cur = "in_progress"
+        if target == "verifying" and cur == "in_progress" and (incident_id, "release", None) in self.done:
+            # SLA-эскалация могла вернуть уже выпущенный фикс в работу между release и verify.
+            await update_incident(ctx, incident_id, "fix_deployed", "возобновление проверки выпущенного фикса")
+            cur = "fix_deployed"
         if target != cur:
             await update_incident(ctx, incident_id, target, reason)
 
@@ -379,8 +399,11 @@ class TeamEmulator:
         incident_ctx: dict[str, Any],
         status: str,
     ) -> None:
+        self.artifact_meta = {}
         key = (incident_id, step.action, step.report_day)
-        payload: dict[str, Any] = {"plan": _plan_blob(plan)} if step.action == "take" and key not in self.done else {}
+        payload: dict[str, Any] = {"plan": _plan_blob(plan)}
+        if plan.outcome:
+            payload.update(demo=True, outcome=plan.outcome)
         artifact_id: int | None = None
         artifact_kind: str | None = None
 
@@ -390,6 +413,11 @@ class TeamEmulator:
             payload["question"] = CLARIFY_QUESTION
             await self._update_status(ctx, incident_id, status, "awaiting_client", "уточнение от команды")
             plan.paused_after_clarify = True
+        elif step.action == "escalate_ack":
+            if status != "escalated":
+                await self._update_status(
+                    ctx, incident_id, status, "escalated", "demo: сроки нарушены, устранение не подтверждено"
+                )
         elif step.action == "fix_decision":
             await self._update_status(ctx, incident_id, status, "fix_proposed", "решение о фиксе")
         elif step.action == "release":
@@ -397,6 +425,22 @@ class TeamEmulator:
         elif step.action == "verify":
             await self._update_status(ctx, incident_id, status, "verifying", "проверка услуги")
         elif step.action == "close":
+            if plan.outcome:
+                check = await ctx.fetchone(
+                    "select body_md from incident_artifacts where incident_id=%s and run_id=%s and kind='verification_report' and meta->>'outcome' in ('on_time','late','recovered') order by id desc limit 1",
+                    (incident_id, self.run_id),
+                )
+                if not check:
+                    raise ValueError("demo: закрытие без успешного артефакта проверки запрещено")
+                await update_incident(
+                    ctx,
+                    incident_id,
+                    status,
+                    fields={
+                        "resolution_summary": check[0],
+                        "outcome_class": "closed_in_sla" if plan.outcome == "on_time" else "closed_late",
+                    },
+                )
             await self._update_status(ctx, incident_id, status, "resolved", "инцидент устранён")
             status_row = await ctx.fetchone("select status from incidents where id = %s", (incident_id,))
             st = str(status_row[0]) if status_row else status
@@ -414,16 +458,17 @@ class TeamEmulator:
             }[artifact_kind]
             cur = await self.conn.execute(
                 "insert into incident_artifacts (run_id, incident_id, kind, title, body_md, meta, author_team, generated_by, due_sim, published_sim) "
-                "values (%s, %s, %s, %s, %s, %s::jsonb, %s, 'template', %s, %s) returning id",
+                "values (%s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s) returning id",
                 (
                     self.run_id,
                     incident_id,
                     artifact_kind,
                     title,
                     body,
-                    dumps({"report_day": step.report_day, "version": "1.0.0"}),
+                    dumps({"report_day": step.report_day, "version": "1.0.0", **self.artifact_meta}),
                     team_code,
-                    step.at if step.action == "progress_report" else None,
+                    "llm" if self.artifact_meta.get("source") in ("live", "replay") else "template",
+                    (step.due or step.at) if step.action == "progress_report" else None,
                     ctx.sim_time,
                 ),
             )
@@ -456,10 +501,40 @@ class TeamEmulator:
             "artifact_id": artifact_id,
             "artifact_kind": artifact_kind,
             "report_day": step.report_day,
-            "on_time": step.at >= ctx.sim_time if step.action == "progress_report" else None,
+            "on_time": ctx.sim_time <= (step.due or step.at) if step.action == "progress_report" else None,
             "payload": payload,
         }
         await self.bus.emit(self.run_id, f"team.{step.action}", event_payload, ctx.sim_time)
+        if plan.outcome:
+            from app.agent.nodes import Deps
+
+            ar = await ctx.fetchone(
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
+                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v1','demo-execution-v1',%s) returning id",
+                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
+            )
+            assert ar is not None
+            ctx.agent_run_id = int(ar[0])
+            deps = Deps(ctx=ctx, chain=self.llm[0], profile=self.llm[1])
+            await deps.record_step(
+                "act",
+                "ok",
+                {"action": step.action},
+                {
+                    "demo": True,
+                    "action": step.action,
+                    "artifact_id": artifact_id,
+                    "llm_source": self.artifact_meta.get("source", "mock"),
+                    "outcome": plan.outcome,
+                },
+                reasoning="Действие demo-команды по сохранённому плану.",
+                model=self.artifact_meta.get("model"),
+                usage=self.artifact_meta.get("usage"),
+                latency_ms=int((self.artifact_meta.get("usage") or {}).get("latency_ms") or 0),
+            )
+            from app.demo.roles import finish_run
+
+            await finish_run(self.conn, ctx.agent_run_id, self.artifact_meta)
         self.done.add(key)
 
         if step.action == "release" and step.regression:
@@ -469,6 +544,42 @@ class TeamEmulator:
                     break
 
     async def _artifact_body(self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]) -> str:
+        self.artifact_meta = {}
+        if self.demo_outcome and self.llm:
+            from app.demo.roles import respond
+
+            outcome = self.demo_outcome
+            success = outcome in ("on_time", "late", "recovered")
+            facts = {
+                "role": "product_team",
+                "stage": kind,
+                "outcome": outcome,
+                "language": "ru",
+                "incident": incident_ctx,
+                "evidence": self.demo_context,
+                "result": "Исправление внедрено; проверка клиентского сценария успешна"
+                if success
+                else "Попытка исправления не восстановила услугу; нужна эскалация",
+            }
+            stage_facts = {
+                "rca": "Команда завершила диагностику и подготовила разбор причины.",
+                "fix_decision": "Подготовлено решение об исправлении; результат ещё не подтверждён.",
+                "progress_report": "Команда выполняет работу; проверка устранения ещё не завершена."
+                if success
+                else "Попытка исправления не устранила проблему. Требуется эскалация.",
+                "release_note": "Команда внедрила исправление и передала результат на проверку.",
+                "verification_report": "Исправление внедрено, клиентский сценарий успешно проверен.",
+            }
+            if self.demo_context:
+                stage_facts["rca"] = str(self.demo_context["observed"])
+                stage_facts["fix_decision"] = str(self.demo_context["action"])
+                stage_facts["verification_report"] = str(self.demo_context["verification"])
+            facts["result"] = stage_facts[kind]
+            fallback = f"{incident_ctx['title']}: {facts['result']}"
+            obj, self.artifact_meta = await respond(self.llm[0], self.llm[1], facts, fallback)
+            self.artifact_meta["outcome"] = outcome
+            self.artifact_meta["stage"] = kind
+            return PII_RE.sub("****", str(obj["body"]))
         variables = {
             **incident_ctx,
             "summary": incident_ctx.get("title"),
@@ -585,6 +696,7 @@ def _plan_blob(plan: IncidentPlan) -> dict[str, Any]:
         "team_code": plan.team_code,
         "sla_breach": plan.sla_breach,
         "do_clarify": plan.do_clarify,
+        "outcome": plan.outcome,
         "steps": [
             {
                 "action": s.action,
@@ -592,6 +704,7 @@ def _plan_blob(plan: IncidentPlan) -> dict[str, Any]:
                 "report_day": s.report_day,
                 "skipped": s.skipped,
                 "regression": s.regression,
+                "due": s.due.isoformat() if s.due else None,
             }
             for s in plan.steps
         ],
@@ -606,6 +719,7 @@ def _plan_from_blob(incident_id: int, blob: dict[str, Any]) -> IncidentPlan:
             report_day=s.get("report_day"),
             skipped=bool(s.get("skipped")),
             regression=s.get("regression"),
+            due=_parse_ts(s["due"]) if s.get("due") else None,
         )
         for s in blob.get("steps") or []
     ]
@@ -615,7 +729,84 @@ def _plan_from_blob(incident_id: int, blob: dict[str, Any]) -> IncidentPlan:
         bool(blob.get("sla_breach")),
         bool(blob.get("do_clarify")),
         steps,
+        outcome=blob.get("outcome"),
     )
 
 
 __all__ = ["TeamEmulator", "PII_RE", "ACTIVE_STATUSES"]
+
+
+def _before_working_hours(at: dt.datetime, hours: float) -> dt.datetime:
+    """Обратный рабочий интервал; add_working_hours поддерживает только движение вперёд."""
+    current = at.astimezone(MSK)
+    remaining = dt.timedelta(hours=hours)
+    if remaining < dt.timedelta(0):
+        raise ValueError("обратный рабочий интервал должен быть неотрицательным")
+    while remaining > dt.timedelta(0):
+        start = current.replace(hour=WORK_START, minute=0, second=0, microsecond=0)
+        end = current.replace(hour=WORK_END, minute=0, second=0, microsecond=0)
+        if not is_working_day(current) or current <= start:
+            current = (current - dt.timedelta(days=1)).replace(hour=WORK_END, minute=0, second=0, microsecond=0)
+            while not is_working_day(current):
+                current -= dt.timedelta(days=1)
+            continue
+        current = min(current, end)
+        step = min(remaining, current - start)
+        current -= step
+        remaining -= step
+    return current
+
+
+def demo_plan(
+    incident_id: int,
+    team_code: str,
+    outcome: str,
+    created: dt.datetime,
+    take_due: dt.datetime,
+    due: dt.datetime,
+    report_dues: list[dt.datetime] | None = None,
+) -> IncidentPlan:
+    """Пять детерминированных траекторий; SLA остаётся из контракта, время — рабочее."""
+    if outcome not in ("on_time", "late", "no_work", "failed", "recovered"):
+        raise ValueError("неизвестный исход demo-команды")
+    late = outcome != "on_time"
+    start = add_working_hours(take_due, 1) if late else created
+    if outcome == "no_work":
+        steps = [PlannedStep("escalate_ack", add_working_hours(due, 1))]
+    else:
+        close_at = (
+            add_working_hours(due, 8 if outcome == "recovered" else 4)
+            if late
+            else max(created, _before_working_hours(due, 0.25))
+        )
+        from app.sim.sla import working_seconds_between
+
+        span = max(0.0, working_seconds_between(start, close_at) / 3600)
+        steps = [PlannedStep("take", start)]
+        for action, fraction in (("rca", 0.1), ("fix_decision", 0.2), ("progress_report", 0.35)):
+            steps.append(PlannedStep(action, add_working_hours(start, span * fraction)))
+        if outcome in ("failed", "recovered"):
+            steps.append(PlannedStep("escalate_ack", add_working_hours(due, 0.5)))
+        if outcome != "failed":
+            release_at = min(close_at, add_working_hours(start, span * 0.8))
+            if outcome == "recovered":
+                release_at = max(release_at, add_working_hours(due, 1))
+            verify_at = max(release_at, min(close_at, add_working_hours(start, span * 0.9)))
+            steps.extend(
+                [PlannedStep("release", release_at), PlannedStep("verify", verify_at), PlannedStep("close", close_at)]
+            )
+    if outcome == "on_time" and report_dues:
+        # Проверка SLA сопоставляет отчёт с исходным due_sim; ранняя публикация не меняет дедлайн.
+        steps = [s for s in steps if s.action != "progress_report"]
+        close_time = next(s.at for s in steps if s.action == "close")
+        for report_due in report_dues:
+            if report_due < close_time:
+                steps.append(
+                    PlannedStep(
+                        "progress_report",
+                        max(created, _before_working_hours(report_due, 0.25)),
+                        report_day=_working_days_between(created, report_due),
+                        due=report_due,
+                    )
+                )
+    return IncidentPlan(incident_id, team_code, late, False, sorted(steps, key=lambda s: s.at), outcome=outcome)

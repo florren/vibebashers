@@ -1,0 +1,22 @@
+id: demo20_10_identity_data
+number: 23
+title_ru: 'ТЗ 10: Ошибка паспортных данных'
+title_en: 'Brief 10: Identity data mismatch'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Приложение не принимает мои паспортные данные после замены документа. Прошу
+    исправить ошибку после проверки.
+expected: {}
+demo_evidence:
+  observed: В синтетических данных указано расхождение реквизитов документа.
+  action: Передать проверку и исправление ответственному сотруднику.
+  verification: Контрольный тест согласованного исправления данных выполнен в эмуляции;
+    запрос в МВД не отправлялся.
+  source: synthetic_fixture
