@@ -72,3 +72,37 @@ def test_original_problem_can_link_other_clients_without_error_code():
         )
         == incident
     )
+
+
+def test_payment_crash_requires_payment_context():
+    from app.agent.nodes import _text_matches_error
+
+    assert not _text_matches_error("Не открывается вклад в мобильном приложении: ошибка503", "APP-CRASH-PAY")
+    assert not _text_matches_error("Приложение зависает при открытии вклада", "APP-CRASH-PAY")
+    assert _text_matches_error("Приложение закрывается при подтверждении платежа", "APP-CRASH-PAY")
+    assert _text_matches_error("APP-CRASH-PAY: код ошибки", "APP-CRASH-PAY")
+
+
+def test_model_payment_crash_is_not_attached_to_deposit_case():
+    from types import SimpleNamespace
+
+    from app.agent.nodes import _postcheck_classification
+    from app.agent.state import new_state
+
+    state = new_state(
+        1, {"id": 1, "text": "Не открывается вклад в мобильном приложении: ошибка503", "channel": "chat"}, 1, "v1.1"
+    )
+    state["context"] = {"hints": {"error_code": "APP-CRASH-PAY", "system": "mobile_app"}, "products": []}
+    cls, _ = _postcheck_classification(
+        {
+            "signal_type": "tech_fault",
+            "product": "deposit",
+            "system": "mobile_app",
+            "error_code": "APP-CRASH-PAY",
+            "summary_ru": "Не открывается вклад",
+        },
+        state,
+        SimpleNamespace(teams=["team_cx"], policies={}, routing_rules=[]),
+    )
+    assert cls["error_code"] is None
+    assert cls["product"] == "deposit" and cls["signal_type"] == "tech_fault"
