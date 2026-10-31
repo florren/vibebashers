@@ -111,7 +111,7 @@ async def test_manual_inputs_wait_for_resume_then_finish(seeded, monkeypatch, en
         if svc._inflight:
             await asyncio.gather(*list(svc._inflight))
         assert sim.run_id != 1
-        assert not sim.clock.running
+        assert not sim.clock.running and sim.run_status == "paused"
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             config = await configuration(conn, sim.run_id)
             assert config["mode"] == "simulation" and config["status"] == "paused"

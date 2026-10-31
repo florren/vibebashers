@@ -31,7 +31,10 @@ async def prepare(request: Any, conn: Any, run_id: int) -> int:
                 sim_time=sim.clock.sim_time,
                 reset_mode="none",
             )
-            sim.run_id, sim.run_status, sim.world = run_id, "running", None
+            status = "running" if sim.clock.running else "paused"
+            if status == "paused":
+                await runs.set_run_status(conn, run_id, status)
+            sim.run_id, sim.run_status, sim.world = run_id, status, None
         config = await ensure(conn, run_id, running=sim.clock.running)
         if config.get("status") == "finished":
             config.update(enabled=True, status="running" if sim.clock.running else "paused")
