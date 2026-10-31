@@ -1719,8 +1719,7 @@ def matching_incident(
                 return incident
             continue
         same_context = (
-            incident.get("is_clients")
-            and incident.get("incident_type") == incident_type
+            incident.get("incident_type") == incident_type
             and classification.get("system")
             and incident.get("system") == classification["system"]
             and classification.get("product")
@@ -2427,7 +2426,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         # Два сигнала могут принять решение до создания первого тикета (например, ожидая HITL).
         await deps.ctx.conn.execute(
             "select pg_advisory_xact_lock(hashtext(%s))",
-            (f"incident:{deps.ctx.run_id}:client:{client['client_id']}:{c.get('system')}:{c.get('product')}",),
+            (f"incident:{deps.ctx.run_id}:context:{c.get('system')}:{c.get('product')}",),
         )
         related = await rt.find_related_incidents(
             deps.ctx,

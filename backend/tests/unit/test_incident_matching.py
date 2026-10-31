@@ -53,3 +53,21 @@ def test_generic_summary_uses_original_problem_and_distinguishes_numbers():
         )
         is None
     )
+
+
+def test_original_problem_can_link_other_clients_without_error_code():
+    incident = {
+        "is_clients": False,
+        "incident_type": "tech_fault",
+        "product": "deposit",
+        "system": "mobile_app",
+        "title": "Техническая проблема",
+        "source_text": "Не могу открыть вклад в мобильном приложении: ошибка 503",
+    }
+    classification = {"product": "deposit", "system": "mobile_app", "summary_ru": "Техническая проблема"}
+    assert (
+        matching_incident(
+            [incident], classification, "tech_fault", "Ошибка 503 при открытии вклада в мобильном приложении"
+        )
+        == incident
+    )
