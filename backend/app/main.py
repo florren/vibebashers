@@ -25,6 +25,7 @@ from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
+from app.llm.gigachat import GigaChatProvider
 from app.llm.openai_compat import OpenAICompatProvider, openrouter_deactivation_plan
 from app.llm.roles import refresh as refresh_roles
 from app.logging import configure_logging, get_logger
@@ -82,6 +83,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.llm_profile = default_profile(s)
     if not s.is_test:
         await refresh_roles(app, s)
+        for provider in app.state.llm_chain.providers:
+            if isinstance(provider, GigaChatProvider):
+                await provider.prepare(list(app.state.llm_chain.role_profiles.values()))
     if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
         await _sync_openrouter_models(app.state.llm_chain)
     log.info(

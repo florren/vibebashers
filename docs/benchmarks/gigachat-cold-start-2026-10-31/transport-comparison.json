@@ -1,0 +1,642 @@
+[
+  {
+    "case": 0,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1201
+  },
+  {
+    "case": 0,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1774
+  },
+  {
+    "case": 0,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 2735
+  },
+  {
+    "case": 0,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1767
+  },
+  {
+    "case": 1,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 2486
+  },
+  {
+    "case": 1,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 915
+  },
+  {
+    "case": 1,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 901
+  },
+  {
+    "case": 1,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1984
+  },
+  {
+    "case": 2,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 917
+  },
+  {
+    "case": 2,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1384
+  },
+  {
+    "case": 2,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 899
+  },
+  {
+    "case": 2,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1126
+  },
+  {
+    "case": 3,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 927
+  },
+  {
+    "case": 3,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1360
+  },
+  {
+    "case": 3,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 901
+  },
+  {
+    "case": 3,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 964
+  },
+  {
+    "case": 4,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 902
+  },
+  {
+    "case": 4,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 966
+  },
+  {
+    "case": 4,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1333
+  },
+  {
+    "case": 4,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 926
+  },
+  {
+    "case": 5,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 912
+  },
+  {
+    "case": 5,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": false,
+    "error": "ConnectTimeout",
+    "ms": 2004
+  },
+  {
+    "case": 5,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 912
+  },
+  {
+    "case": 5,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1507
+  },
+  {
+    "case": 6,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 913
+  },
+  {
+    "case": 6,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 999
+  },
+  {
+    "case": 6,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1093
+  },
+  {
+    "case": 6,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 927
+  },
+  {
+    "case": 7,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1914
+  },
+  {
+    "case": 7,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 909
+  },
+  {
+    "case": 7,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 910
+  },
+  {
+    "case": 7,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 903
+  },
+  {
+    "case": 8,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1485
+  },
+  {
+    "case": 8,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1378
+  },
+  {
+    "case": 8,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 906
+  },
+  {
+    "case": 8,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 926
+  },
+  {
+    "case": 9,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1191
+  },
+  {
+    "case": 9,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 918
+  },
+  {
+    "case": 9,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 956
+  },
+  {
+    "case": 9,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 918
+  },
+  {
+    "case": 10,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 904
+  },
+  {
+    "case": 10,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 922
+  },
+  {
+    "case": 10,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 911
+  },
+  {
+    "case": 10,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1392
+  },
+  {
+    "case": 11,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1390
+  },
+  {
+    "case": 11,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 915
+  },
+  {
+    "case": 11,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1072
+  },
+  {
+    "case": 11,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": false,
+    "error": "ConnectTimeout",
+    "ms": 2004
+  },
+  {
+    "case": 12,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 896
+  },
+  {
+    "case": 12,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 961
+  },
+  {
+    "case": 12,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 914
+  },
+  {
+    "case": 12,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 904
+  },
+  {
+    "case": 13,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 933
+  },
+  {
+    "case": 13,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 925
+  },
+  {
+    "case": 13,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 928
+  },
+  {
+    "case": 13,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1305
+  },
+  {
+    "case": 14,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 930
+  },
+  {
+    "case": 14,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 925
+  },
+  {
+    "case": 14,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 923
+  },
+  {
+    "case": 14,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 933
+  },
+  {
+    "case": 15,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 901
+  },
+  {
+    "case": 15,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 914
+  },
+  {
+    "case": 15,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1224
+  },
+  {
+    "case": 15,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1046
+  },
+  {
+    "case": 16,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 939
+  },
+  {
+    "case": 16,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 943
+  },
+  {
+    "case": 16,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 923
+  },
+  {
+    "case": 16,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 967
+  },
+  {
+    "case": 17,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 901
+  },
+  {
+    "case": 17,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 996
+  },
+  {
+    "case": 17,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 898
+  },
+  {
+    "case": 17,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 920
+  },
+  {
+    "case": 18,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 1077
+  },
+  {
+    "case": 18,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 1103
+  },
+  {
+    "case": 18,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 988
+  },
+  {
+    "case": 18,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 935
+  },
+  {
+    "case": 19,
+    "mode": "mss1200",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 895
+  },
+  {
+    "case": 19,
+    "mode": "mss1200",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 943
+  },
+  {
+    "case": 19,
+    "mode": "default",
+    "endpoint": "oauth",
+    "ok": true,
+    "status": 405,
+    "ms": 918
+  },
+  {
+    "case": 19,
+    "mode": "default",
+    "endpoint": "api",
+    "ok": true,
+    "status": 403,
+    "ms": 957
+  }
+]

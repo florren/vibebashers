@@ -55,6 +55,11 @@ class KeyPool:
         if not cands:
             active = [k for k in self.keys if k.is_active and k.label not in (exclude or set())]
             cooling = [k for k in active if k.remaining > 0]
+            # Транспортная пауза мягкая: если других ключей нет, пробуем самый
+            # давно отказавший. 429/auth/quota по-прежнему не обходятся.
+            transient = [k for k in cooling if (k.last_error or "").startswith(("timeout:", "network:"))]
+            if transient:
+                return min(transient, key=lambda k: k.cooldown_until)
             if cooling and len(cooling) == len(active):
                 wait = max(0.0, min(k.cooldown_until for k in cooling) - time.monotonic())
                 raise ProviderError("rate_limit", "ключи временно на паузе после 429", retry_after_s=wait)
@@ -68,11 +73,23 @@ class KeyPool:
         key.tokens_used += tokens
         key.requests_today += 1
         key.last_error = None
+        key.cooldown_until = 0.0
 
     def mark_error(self, key: ApiKey, err: ProviderError) -> None:
+        if (
+            err.kind in ("timeout", "network")
+            and key.cooldown_until > time.monotonic()
+            and (key.last_error or "").startswith("rate_limit:")
+        ):
+            # Отмена другого запроса не должна сокращать уже полученный Retry-After.
+            return
         key.last_error = f"{err.kind}: {err.detail[:200]}"
         if err.kind == "rate_limit":
             key.cooldown_until = time.monotonic() + (err.retry_after_s or 20.0)
+        elif err.kind in ("timeout", "network"):
+            # Короткая пауза не списывает квоту и не деактивирует рабочий ключ.
+            # Нужна и после внешней отмены: резервная модель должна сменить ключ.
+            key.cooldown_until = time.monotonic() + 10.0
         elif err.kind == "quota":
             key.tokens_used = key.tokens_limit or key.tokens_used
         elif err.kind == "auth":

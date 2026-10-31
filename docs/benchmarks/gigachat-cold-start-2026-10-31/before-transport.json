@@ -1,0 +1,222 @@
+[
+  {
+    "t_ms": 1006,
+    "stage": "key_attempt",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Lightning",
+    "cached": false,
+    "budget": 3.9999937480024528
+  },
+  {
+    "t_ms": 1006,
+    "stage": "oauth_start",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 1036,
+    "stage": "oauth:connection.connect_tcp.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 1202,
+    "stage": "oauth:connection.connect_tcp.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 1202,
+    "stage": "oauth:connection.start_tls.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 5010,
+    "stage": "oauth:connection.start_tls.failed",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 5010,
+    "stage": "oauth_end",
+    "key": "gigachat_env_1",
+    "error": "CancelledError",
+    "ms": 4004
+  },
+  {
+    "t_ms": 5010,
+    "stage": "cancelled",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Lightning"
+  },
+  {
+    "t_ms": 5010,
+    "stage": "key_attempt",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Pro",
+    "cached": false,
+    "budget": 2.9954629140047473
+  },
+  {
+    "t_ms": 5011,
+    "stage": "oauth_start",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 5011,
+    "stage": "oauth:connection.connect_tcp.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 5013,
+    "stage": "oauth:connection.connect_tcp.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 5013,
+    "stage": "oauth:connection.start_tls.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8009,
+    "stage": "oauth:connection.start_tls.failed",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8010,
+    "stage": "oauth_end",
+    "key": "gigachat_env_1",
+    "error": "CancelledError",
+    "ms": 2999
+  },
+  {
+    "t_ms": 8010,
+    "stage": "cancelled",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Pro"
+  },
+  {
+    "t_ms": 8010,
+    "stage": "key_attempt",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Ultra",
+    "cached": false,
+    "budget": 2.9958819480016246
+  },
+  {
+    "t_ms": 8010,
+    "stage": "oauth_start",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8010,
+    "stage": "oauth:connection.connect_tcp.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8012,
+    "stage": "oauth:connection.connect_tcp.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8012,
+    "stage": "oauth:connection.start_tls.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8633,
+    "stage": "oauth:connection.start_tls.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8633,
+    "stage": "oauth:http11.send_request_headers.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8634,
+    "stage": "oauth:http11.send_request_headers.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8634,
+    "stage": "oauth:http11.send_request_body.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8634,
+    "stage": "oauth:http11.send_request_body.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8634,
+    "stage": "oauth:http11.receive_response_headers.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8926,
+    "stage": "oauth:http11.receive_response_headers.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8926,
+    "stage": "oauth:http11.receive_response_body.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8926,
+    "stage": "oauth:http11.receive_response_body.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8927,
+    "stage": "oauth:http11.response_closed.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8927,
+    "stage": "oauth:http11.response_closed.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8927,
+    "stage": "oauth_end",
+    "key": "gigachat_env_1",
+    "status": 200,
+    "ms": 917
+  },
+  {
+    "t_ms": 8927,
+    "stage": "chat_start",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 8927,
+    "stage": "chat:connection.connect_tcp.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 9393,
+    "stage": "chat:connection.connect_tcp.complete",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 9393,
+    "stage": "chat:connection.start_tls.started",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 11007,
+    "stage": "chat:connection.start_tls.failed",
+    "key": "gigachat_env_1"
+  },
+  {
+    "t_ms": 11008,
+    "stage": "chat_end",
+    "key": "gigachat_env_1",
+    "error": "CancelledError",
+    "ms": 2081
+  },
+  {
+    "t_ms": 11008,
+    "stage": "cancelled",
+    "key": "gigachat_env_1",
+    "model": "GigaChat-3-Ultra"
+  }
+]
