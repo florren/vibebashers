@@ -37,15 +37,17 @@ async def test_demo_full_cycle(seeded, monkeypatch, outcome):
             request, DemoExecutionBody(scenario_id="deposit_promo_rate", team_outcome=outcome, emulate_humans=True)
         )
         rid = result["run_id"]
-        assert not sim.clock.running
+        assert sim.clock.running
         assert result["subject_ref"].startswith("SIG-")
-        from fastapi import HTTPException
-
         from app.api.sim import SimControlRequest, post_sim_control
 
-        with pytest.raises(HTTPException) as blocked:
-            await post_sim_control(request, SimControlRequest(action="resume"))
-        assert blocked.value.status_code == 409
+        await post_sim_control(request, SimControlRequest(action="pause"))
+        paused_at = sim.clock.sim_time
+        await cycle(app)
+        assert sim.clock.sim_time == paused_at
+        assert not sim.clock.running
+        await post_sim_control(request, SimControlRequest(action="resume"))
+        assert sim.clock.running
         if outcome == "on_time":
             from app.sim.clock import add_working_days
 
@@ -173,7 +175,7 @@ async def test_demo_operator_and_manual_priority(seeded, monkeypatch, manual):
                 ],
             }
             signal = (await sc.inject(conn, scenario, rid, sim_time=await sim_now(conn)))[0]
-            await save(conn, rid, {"enabled": True, "emulate_humans": True})
+            await save(conn, rid, {"enabled": True, "emulate_humans": True, "status": "running"})
             await conn.commit()
             state = await process_signal(
                 conn,
@@ -198,6 +200,7 @@ async def test_demo_operator_and_manual_priority(seeded, monkeypatch, manual):
                     hid,
                     HitlDecisionBody(decision="accept", decided_by="operator-review", comment="Решение человека"),
                 )
+            sim.clock.running = True
             await employees(app, conn, rid, sim.clock.sim_time)
             result = await (
                 await conn.execute("select decision,decided_by,use_as_fewshot from human_decisions where id=%s", (hid,))

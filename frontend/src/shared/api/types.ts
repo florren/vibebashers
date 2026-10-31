@@ -7772,7 +7772,14 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         DemoExecutionRequest: {
-            scenario_id: string;
+            /** @description Обязателен при mode=demo. */
+            scenario_id?: string | null;
+            /**
+             * @description Изолированный сценарий либо профиль общей симуляции и ручных входов.
+             * @default demo
+             * @enum {string}
+             */
+            mode: "demo" | "simulation";
             /**
              * @default on_time
              * @enum {string}
@@ -7782,7 +7789,7 @@ export interface components {
             emulate_humans: boolean;
             /** @default true */
             auto_advance: boolean;
-        };
+        } & unknown;
         DemoExecutionState: {
             run_id: number | null;
             subject_ref: string | null;

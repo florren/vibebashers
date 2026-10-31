@@ -1795,11 +1795,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
     demo_team_task = False
-    if stype == "info_request" and sig.get("origin") == "scenario":
+    if stype == "info_request" and sig.get("origin") in ("scenario", "jury"):
         # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
         demo_team_task = bool(
             await deps.ctx.fetchone(
-                "select id from sim_runs where id=%s and kind='scenario' "
+                "select id from sim_runs where id=%s and kind<>'baseline' "
                 "and settings_snapshot->'demo_execution'->>'enabled'='true'",
                 (deps.ctx.run_id,),
             )

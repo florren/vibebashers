@@ -139,8 +139,10 @@ class TeamEmulator:
         demo_outcome: str | None = None,
         llm: Any = None,
         demo_context: dict[str, Any] | None = None,
+        demo_scenario_id: str | None = None,
     ) -> None:
         self.demo_context = demo_context or {}
+        self.demo_scenario_id = demo_scenario_id
         self.demo_outcome = demo_outcome
         self.llm = llm
         self.artifact_meta: dict[str, Any] = {}
@@ -231,7 +233,18 @@ class TeamEmulator:
         if plan.do_clarify and plan.paused_after_clarify and status == "in_progress" and not plan.resumed:
             plan.resumed = True
 
+        evidence = self.demo_context
+        if self.demo_scenario_id:
+            original = await (
+                await self.conn.execute(
+                    "select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=%s and s.run_id=%s and s.origin='scenario' and s.meta->>'scenario_id'=%s limit 1",
+                    (incident_id, self.run_id, self.demo_scenario_id),
+                )
+            ).fetchone()
+            if not original:
+                evidence = {}
         incident_ctx = {
+            "demo_evidence": evidence,
             "title": title,
             "system": system_code,
             "product": product_code,
@@ -249,7 +262,7 @@ class TeamEmulator:
                     continue
             if step.action in ("rca", "fix_decision", "release", "verify", "close") and status == "awaiting_client":
                 continue
-            if step.action == "take" and status != "routed":
+            if step.action == "take" and status != "routed" and not (plan.outcome and status == "escalated"):
                 self.done.add(key)
                 continue
             step_ctx = ToolContext(
@@ -548,6 +561,7 @@ class TeamEmulator:
         if self.demo_outcome and self.llm:
             from app.demo.roles import respond
 
+            evidence = incident_ctx.get("demo_evidence", self.demo_context)
             outcome = self.demo_outcome
             success = outcome in ("on_time", "late", "recovered")
             facts = {
@@ -556,7 +570,7 @@ class TeamEmulator:
                 "outcome": outcome,
                 "language": "ru",
                 "subject": incident_ctx["title"],
-                "evidence": {"source": self.demo_context.get("source", "synthetic_fixture")},
+                "evidence": {"source": evidence.get("source", "demo_emulation")},
                 "verified": kind == "verification_report" and success,
             }
             stage_facts = {
@@ -566,12 +580,12 @@ class TeamEmulator:
                 if success
                 else "Попытка исправления не устранила проблему. Требуется эскалация.",
                 "release_note": "Команда внедрила исправление и передала результат на проверку.",
-                "verification_report": "Исправление внедрено, клиентский сценарий успешно проверен.",
+                "verification_report": f"На стенде проверен согласованный маршрут решения обращения «{incident_ctx['title']}». Внешние действия и движение денег не выполнялись.",
             }
-            if self.demo_context:
-                stage_facts["rca"] = str(self.demo_context["observed"])
-                stage_facts["fix_decision"] = str(self.demo_context["action"])
-                stage_facts["verification_report"] = str(self.demo_context["verification"])
+            if evidence:
+                stage_facts["rca"] = str(evidence["observed"])
+                stage_facts["fix_decision"] = str(evidence["action"])
+                stage_facts["verification_report"] = str(evidence["verification"])
             if kind == "fix_decision":
                 stage_facts[kind] = "План работы (ещё не выполнен): " + stage_facts[kind]
             facts["result"] = stage_facts[kind]

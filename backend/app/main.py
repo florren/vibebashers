@@ -113,6 +113,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
         app.state.twins.start()
         sim = Simulator(seed=s.sim_seed)
+        sim.full_execution = True
         try:
             await sim.load_state()
             app.state.sim = sim

@@ -1725,7 +1725,7 @@
   },
   "demoExecution": {
     "title": "Team and employee simulation",
-    "hint": "Separate demo run. The agent plays employees; manual input remains available. Time advances to the next event without background traffic. Unresolved cases stay open.",
+    "hint": "Scenarios run separately with event-driven time. The shared profile applies to new team and employee tasks, including manual inputs. Start, pause and stop use the shared simulation controls.",
     "scenario": "Input scenario",
     "outcome": "Team outcome",
     "humans": "Agent plays employees",
@@ -1745,7 +1745,12 @@
       "running": "running",
       "finished": "cycle finished",
       "stopped": "stopped",
-      "error": "error"
-    }
+      "error": "error",
+      "paused": "paused"
+    },
+    "applySimulation": "Apply to shared simulation",
+    "simulation": "Shared simulation",
+    "demo": "DEMO",
+    "pausedHint": "Teams and employees are paused. Resume using the shared simulation controls."
   }
 }

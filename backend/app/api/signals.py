@@ -103,6 +103,9 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     async with db() as conn:
         try:
             run_id, sim_time = await run_context(request, conn)
+            from app.demo.inputs import prepare
+
+            run_id = await prepare(request, conn, run_id)
             res = await create_signal(conn, msg, source_code="api", emit_event=False, run_id=run_id, sim_time=sim_time)
         except IngestError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
