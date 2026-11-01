@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.logging import get_logger
+from app.observability.http import safe_public_path
 
 log = get_logger(__name__)
 PROBLEM = "application/problem+json"
@@ -28,7 +29,12 @@ class Problem(Exception):
         if instance:
             body["instance"] = instance
         body.update(self.extra)
-        return JSONResponse(body, status_code=self.status, media_type=PROBLEM)
+        response = JSONResponse(body, status_code=self.status, media_type=PROBLEM)
+        if instance and instance.startswith(("/api/public/track/", "/track/")):
+            response.headers.update(
+                {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow"}
+            )
+        return response
 
 
 class NotImplementedYet(Problem):
@@ -43,12 +49,12 @@ class NotImplementedYet(Problem):
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Problem)
     async def _problem(request: Request, exc: Problem) -> JSONResponse:
-        return exc.to_response(str(request.url.path))
+        return exc.to_response(safe_public_path(str(request.url.path)))
 
     @app.exception_handler(HTTPException)
     async def _http(request: Request, exc: HTTPException) -> JSONResponse:
         response = Problem(exc.status_code, str(exc.detail) if exc.detail else "Ошибка").to_response(
-            str(request.url.path)
+            safe_public_path(str(request.url.path))
         )
         response.headers.update(exc.headers or {})
         return response
@@ -56,10 +62,14 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
         return Problem(422, "Невалидный запрос", "Проверьте поля запроса", errors=exc.errors()).to_response(
-            str(request.url.path)
+            safe_public_path(str(request.url.path))
         )
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-        log.exception("unhandled", path=str(request.url.path))
-        return Problem(500, "Внутренняя ошибка").to_response(str(request.url.path))
+        path = safe_public_path(str(request.url.path))
+        if path != request.url.path:
+            log.error("unhandled", path=path, error_type=type(exc).__name__)
+        else:
+            log.exception("unhandled", path=path)
+        return Problem(500, "Внутренняя ошибка").to_response(safe_public_path(str(request.url.path)))
