@@ -64,3 +64,24 @@ Each accepted row creates one signal and one `csi_responses` record in the same 
 Migration `0007_csi_audit` supports the CSI signal primary key and the composite visit-aggregate key in `db_activity_log`. Repeating the seed backfills details only for legacy synthetic CSI history of the current run, preserving signal IDs/status and the enclosing transaction. Archived runs are not changed. Migration downgrade retains the compatible audit function; no CSI data are deleted.
 
 Проверка T-014: `backend/.venv/bin/python scripts/seed/validate_refs.py`; регрессии — `tests/unit/test_refs_routing.py` и `tests/integration/test_refs_routing.py` (в backend). Интеграционная проверка требует отдельной `DATABASE_URL_TEST` и пересоздаёт только тестовую схему.
+
+### Предыстория операций (T-017)
+
+`op_paths.yaml` задаёт 14-дневное окно, op_type/system_path, положительные часовые
+и недельные веса, относительную интенсивность сегментов и параметры логнормальных сумм.
+Время интерпретируется в часовом поясе переданного `sim_time`, включая неполные часы.
+Общий объём нормирован по фактическому составу сегментов: `lite` — около 24 операций
+на клиента, `demo`/`stress` — около 120. Поэтому demo5000 даёт около600000 операций,
+а stress20000 — около2400000. Операции передаются в PostgreSQL потоком COPY;
+в памяти остаются клиенты/продукты и336–337 часовых интервалов, не вся история.
+
+Доля failed —1%; error_code выбирается только из систем пути и совместимого продукта.
+Отдельно сохранена модель BRD ошибочной комиссии у4% успешных QR-платежей
+(это не политика возврата и не дополнительные failed). Новая генерация использует
+синтетические названия мерчантов. Повторный seed сохраняет существующий run целиком;
+для изменения конфигурации используйте новый пустой тестовый банк. Данные работающего
+стенда автоматически не перегенерируются. У каждого нового клиента1–4 продукта,
+карточные terms содержат только masked_number вида `**** 1234`.
+
+Проверка конфигурации без записи в БД:
+`backend/.venv/bin/python scripts/seed/operations.py --profile lite --check`.
