@@ -21,6 +21,7 @@ from app.bench import runner
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Provider, ProviderError
+from app.llm.budget import load_openrouter_budget
 from app.llm.failover import ProviderChain
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
@@ -211,7 +212,18 @@ class BenchService:
                 )
             )
         elif profile.provider == "openai_compatible":
+            local = bool(profile.extra.get("local"))
+            base = profile.base_url or (settings.local_llm_base_url if local else settings.openrouter_base_url)
+            if not base:
+                raise ProviderError("unavailable", "LOCAL_LLM_BASE_URL или base_url локального профиля не задан")
             keys = self.available_keys(profile.provider, saved)
+            if local:
+                # Ключ локального endpoint выбирается явно; OpenRouter secret не подставляется.
+                keys = [
+                    key
+                    for key in keys
+                    if profile.extra.get("api_key_id") is not None and key.get("id") == profile.extra["api_key_id"]
+                ]
 
             def capacity(item: dict[str, Any]) -> int:
                 remaining = self.remaining([item])
@@ -223,7 +235,11 @@ class BenchService:
                 raise ProviderError("quota", "ключи OpenAI-compatible исчерпаны")
             if chosen is None and not profile.extra.get("local"):
                 raise ProviderError("auth", "нет активного OpenAI-compatible ключа")
-            secret = (chosen.get("_secret") or key_plain(chosen)) if chosen else None
+            secret = (
+                (chosen.get("_secret") or key_plain(chosen))
+                if chosen
+                else (getattr(settings, "local_llm_api_key", None) if local else None)
+            )
             if chosen is not None:
                 selected_key = chosen["label"]
                 if selected_key not in self.keys or self.keys[selected_key].secret != secret:
@@ -241,7 +257,10 @@ class BenchService:
                 self.keys[selected_key].tokens_limit = chosen.get("tokens_limit")
             providers.append(
                 OpenAICompatProvider(
-                    secret, profile.base_url or settings.openrouter_base_url, budget_usd=settings.openrouter_budget_usd
+                    secret,
+                    base,
+                    budget_usd=settings.openrouter_budget_usd,
+                    budget_loader=partial(load_openrouter_budget, settings.openrouter_budget_usd),
                 )
             )
         else:

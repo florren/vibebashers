@@ -419,6 +419,8 @@ async def test_openrouter_headers_three_models_valid_json() -> None:
     models: list[str] = []
 
     def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/key"):
+            return httpx.Response(200, json={"data": {"usage": 0, "limit_remaining": 10}})
         paths.append(req.url.path)
         assert req.headers["X-Title"] == "CX Pulse Control"
         assert req.headers["HTTP-Referer"] == "http://localhost:8000"

@@ -21,6 +21,7 @@
 | python | colorama | 0.4.6 | runtime | BSD-3-Clause |
 | python | datamodel-code-generator | 0.86.0 | dev | MIT |
 | python | defusedxml | 0.7.1 | runtime | PSF-2.0 |
+| python | distro | 1.9.0 | runtime | Apache-2.0 |
 | python | dnspython | 2.9.0 | runtime | ISC |
 | python | email-validator | 2.3.0 | runtime | Unlicense |
 | python | et-xmlfile | 2.0.0 | runtime | MIT |
@@ -37,6 +38,7 @@
 | python | isort | 8.0.1 | dev | MIT |
 | python | jaraco-functools | 4.6.0 | dev | MIT |
 | python | jinja2 | 3.1.6 | dev | BSD-3-Clause |
+| python | jiter | 0.18.0 | runtime | MIT |
 | python | jsonschema | 4.26.0 | runtime | MIT |
 | python | jsonschema-path | 0.5.0 | dev | Apache-2.0 |
 | python | jsonschema-specifications | 2025.9.1 | runtime | MIT |
@@ -47,6 +49,7 @@
 | python | more-itertools | 11.2.1 | dev | MIT |
 | python | mypy | 2.4.0 | dev | MIT |
 | python | mypy-extensions | 1.1.0 | dev | MIT |
+| python | openai | 2.54.0 | runtime | Apache-2.0 |
 | python | openapi-schema-validator | 0.9.0 | dev | BSD-3-Clause |
 | python | openapi-spec-validator | 0.9.0 | dev | Apache-2.0 |
 | python | openpyxl | 3.1.5 | runtime | MIT |
@@ -78,6 +81,7 @@
 | python | rpds-py | 2026.9.1 | runtime | MIT |
 | python | ruff | 0.17.1 | dev | MIT |
 | python | six | 1.17.0 | dev | MIT |
+| python | sniffio | 1.3.1 | runtime | MIT OR Apache-2.0 |
 | python | sqlacodegen | 4.0.4 | dev | MIT |
 | python | sqlalchemy | 2.0.55 | runtime | MIT |
 | python | srt | 3.5.3 | runtime | MIT |
