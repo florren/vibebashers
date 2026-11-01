@@ -74,12 +74,16 @@ class ToolContext:
         agent_run_id: int,
         sim_time: dt.datetime,
         llm_source: str = "mock",
+        dry_run: bool = False,
+        trace_conn: psycopg.AsyncConnection[Any] | None = None,
     ) -> None:
         self.conn = conn
         self.run_id = run_id
         self.agent_run_id = agent_run_id
         self.sim_time = sim_time
         self.llm_source = llm_source
+        self.dry_run = dry_run
+        self.trace_conn = trace_conn
         self.calls: list[dict[str, Any]] = []  # tool_calls текущего узла (сбрасывает узел)
         self.pending_wraps: list[str] = []  # внутренние имена, которые фасад свернёт в wraps
         self.act_frame: ActFrame | None = None
@@ -89,7 +93,9 @@ class ToolContext:
         return calls
 
     async def notify(self, channel: str, type_: str, data: dict[str, Any]) -> None:
-        await self.conn.execute(
+        if self.dry_run and channel not in ("agent", "agent_tokens"):
+            return
+        await (self.trace_conn or self.conn).execute(
             "select pg_notify(%s, %s)", (channel, dumps({"type": type_, "run_id": self.run_id, "data": data}))
         )
 
@@ -139,6 +145,8 @@ def tool(name: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitab
                 "source": ctx.llm_source,
             }
             try:
+                if ctx.dry_run and name in SIDE_EFFECT_TOOLS:
+                    raise ToolError(f"Инструмент {name} недоступен в сравнении без побочных эффектов")
                 result = await fn(*args, **kwargs)
             except Exception as exc:
                 del ctx.pending_wraps[wraps_mark:]

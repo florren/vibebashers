@@ -1,5 +1,6 @@
 import { IncidentEconomics } from './IncidentEconomics'
 import { JourneyLink } from '@/shared/components/JourneyLink'
+import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ArrowLeft, Cpu } from 'lucide-react'
 import { useState } from 'react'
@@ -141,6 +142,7 @@ export function IncidentPage() {
                             <Badge tone={inc.primary_client.segment_code?.includes('vip') ? 'brand' : 'neutral'}>{seg(inc.primary_client.segment_code)}</Badge>
                           }
                         />
+                        <ClientProfileLink id={inc.primary_client.id} runId={(inc as { run_id?: number }).run_id} />
                         <KV k={inc.primary_client.city_name ?? '—'} v={<IdLink kind="client" value={inc.primary_client.public_id} />} />
                         <KV k="churn risk" v={<span className="num">{inc.primary_client.churn_risk ?? 0}</span>} />
                       </>

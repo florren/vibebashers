@@ -259,7 +259,7 @@ class Deps:
         finished_payload = finished_with_tools if _utf8_len(notify_body) <= PG_NOTIFY_PAYLOAD_LIMIT else finished
         await self.ctx.notify("agent", "step_finished", finished_payload)
 
-        await self.ctx.conn.execute(
+        await (getattr(self.ctx, "trace_conn", None) or self.ctx.conn).execute(
             "insert into agent_steps (run_id, seq, node, status, input, output, prompt, response_raw, reasoning, tool_calls, model, prompt_tokens, completion_tokens, latency_ms, started_at, finished_at) "
             "values (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, now() - make_interval(secs => %s / 1000.0), now())",
             (
@@ -601,10 +601,11 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
         "mock" if meta.get("provider", "mock") == "mock" else ("replay" if meta.get("provider") == "replay" else "live")
     )
     deps.ctx.llm_source = state["llm_source"]
-    await deps.ctx.conn.execute(
-        "update signals set sentiment = %s, lang = %s, updated_at = now() where id = %s",
-        (sentiment, norm["language"], sig["id"]),
-    )
+    if not getattr(deps.ctx, "dry_run", False):
+        await deps.ctx.conn.execute(
+            "update signals set sentiment = %s, lang = %s, updated_at = now() where id = %s",
+            (sentiment, norm["language"], sig["id"]),
+        )
     state["current_node"] = "identify_client"
     await deps.record_step(
         "normalize",
@@ -656,10 +657,11 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
                 client = profile
                 how = "mock_crm"
                 conf = float(winner["confidence"])
-                await deps.ctx.conn.execute(
-                    "update signals set client_id = %s, updated_at = now() where id = %s and client_id is null",
-                    (client["client_id"], sig["id"]),
-                )
+                if not getattr(deps.ctx, "dry_run", False):
+                    await deps.ctx.conn.execute(
+                        "update signals set client_id = %s, updated_at = now() where id = %s and client_id is null",
+                        (client["client_id"], sig["id"]),
+                    )
                 sig["client_id"] = client["client_id"]
             else:
                 how = "not_found"
@@ -1612,10 +1614,11 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
             else "neutral"
         )
     state["classification"] = c
-    await deps.ctx.conn.execute(
-        "update signals set classification = %s::jsonb, status = 'classified', updated_at = now() where id = %s",
-        (dumps(c), sig["id"]),
-    )
+    if not getattr(deps.ctx, "dry_run", False):
+        await deps.ctx.conn.execute(
+            "update signals set classification = %s::jsonb, status = 'classified', updated_at = now() where id = %s",
+            (dumps(c), sig["id"]),
+        )
     await deps.ctx.notify(
         "signals",
         "classified",
@@ -2152,9 +2155,10 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         state["errors"].append(f"decision schema: {errors[:2]}")
     state["decision"] = decision
     state["context"]["sla_full"] = sla_full
-    await deps.ctx.conn.execute(
-        "update signals set decision = %s::jsonb, updated_at = now() where id = %s", (dumps(decision), sig["id"])
-    )
+    if not getattr(deps.ctx, "dry_run", False):
+        await deps.ctx.conn.execute(
+            "update signals set decision = %s::jsonb, updated_at = now() where id = %s", (dumps(decision), sig["id"])
+        )
     state["current_node"] = "wait_human" if decision["needs_human"] else "act"
     await deps.record_step(
         "decide",

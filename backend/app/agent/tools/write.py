@@ -103,11 +103,12 @@ async def create_incident(
         ),
     )
     incident_id = int(row[0])  # type: ignore[index]
-    await _history(ctx, incident_id, None, "new", "создан агентом")
     await ctx.conn.execute(
         "insert into incident_signals (incident_id, signal_id, link_type, linked_sim) values (%s, %s, 'primary', %s) on conflict do nothing",
         (incident_id, signal_id, ctx.sim_time),
     )
+    # T-108: audit отражает связь первичного сигнала до первой записи истории.
+    await _history(ctx, incident_id, None, "new", "создан агентом")
     await update_incident(ctx, incident_id, "classified", "классификация агента")
     if spec.get("team"):
         await update_incident(ctx, incident_id, "routed", f"маршрут → {spec['team']}")

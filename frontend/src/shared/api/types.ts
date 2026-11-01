@@ -2100,6 +2100,8 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
+                429: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -2937,6 +2939,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     ops_hours?: number;
                 };
                 header?: never;
@@ -3503,6 +3507,8 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
+                429: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -3561,7 +3567,10 @@ export interface paths {
         /** Счётчики строк по таблицам (реальное время) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -3577,8 +3586,10 @@ export interface paths {
                         "application/json": {
                             table?: string;
                             rows?: number;
+                            /** @description Точный счётчик; false — оценка pg_stat_user_tables */
+                            exact?: boolean;
                             /** Format: date-time */
-                            last_change_at?: string;
+                            last_change_at?: string | null;
                         }[];
                     };
                 };
@@ -3606,6 +3617,8 @@ export interface paths {
             parameters: {
                 query?: {
                     limit?: components["parameters"]["Limit"];
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                 };
                 header?: never;
                 path: {
@@ -3651,6 +3664,10 @@ export interface paths {
                 query?: {
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    /** @description Фильтр имени из allow-list; неизвестное имя — 403 */
+                    table?: string;
                 };
                 header?: never;
                 path?: never;
@@ -8768,6 +8785,8 @@ export interface components {
         };
         DbActivity: {
             id?: number;
+            /** @description Запуск эмуляции; null — legacy или глобальное изменение */
+            run_id?: number | null;
             table_name?: string;
             /** @enum {string} */
             op?: "INSERT" | "UPDATE" | "DELETE";
