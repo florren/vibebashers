@@ -6,6 +6,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,10 +21,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Проверка JSON-схем, OpenAPI и карточек
         run: |
-          uv venv .venv && . .venv/bin/activate
-          uv pip install pyyaml jsonschema openapi-spec-validator referencing
-          python scripts/contracts_check.py
-          python scripts/gen_tasks.py && git diff --exit-code -- docs/tasks || (echo "::error::docs/tasks устарели — запустите python scripts/gen_tasks.py"; exit 1)
+          (cd backend && uv sync --frozen)
+          backend/.venv/bin/python scripts/contracts_check.py
+          backend/.venv/bin/python scripts/gen_tasks.py && git diff --exit-code -- docs/tasks || (echo "::error::docs/tasks устарели — запустите python scripts/gen_tasks.py"; exit 1)
       - name: Дрейф OpenAPI ↔ код (когда появится backend)
         run: |
           set -euo pipefail
@@ -47,6 +49,9 @@ jobs:
       PGDATABASE: cx_pulse
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Зафиксированные backend зависимости
+        run: cd backend && uv sync --frozen
       - name: psql
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
       - name: schema.sql на чистой БД
@@ -65,9 +70,8 @@ jobs:
       - name: Alembic (когда появится backend)
         run: |
           if [ -f backend/alembic.ini ]; then
-            pip install -q alembic sqlalchemy psycopg[binary]
             psql -q -c "drop schema public cascade; create schema public;"
-            (cd backend && export DATABASE_URL=postgresql+psycopg://cx:cx@localhost:5432/cx_pulse && alembic upgrade head && alembic downgrade 0003 && alembic upgrade head && alembic check)
+            (cd backend && export DATABASE_URL=postgresql+psycopg://cx:cx@localhost:5432/cx_pulse && uv run --frozen alembic upgrade head && uv run --frozen alembic downgrade 0003 && uv run --frozen alembic upgrade head && uv run --frozen alembic check)
           else
             echo "backend/alembic.ini ещё нет — пропуск"
           fi
@@ -98,10 +102,28 @@ jobs:
           raise SystemExit(subprocess.call(cmd))
           PY
 
-  tests:
-    name: tests
-    needs: [contracts, db]
+  lint:
     runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: cd backend && uv sync --frozen
+      - run: cd frontend && npm ci
+      - name: Backend lint и типы
+        run: cd backend && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy app
+      - name: Frontend lint и типы
+        run: cd frontend && npm run lint && npm run typecheck
+      - name: Лицензии и i18n
+        run: make licenses-check && python3 scripts/i18n_check.py
+
+  backend-tests:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     services:
       postgres:
         image: postgres:16
@@ -111,46 +133,133 @@ jobs:
           --health-cmd "pg_isready -U cx" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgresql+psycopg://cx:cx@localhost:5432/cx_pulse_test
+      APP_ENV: test
       LLM_PROVIDER: mock
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - name: PostgreSQL 16 dump/restore tools
+      - name: Утилиты PostgreSQL 16 dump/restore
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-16
           echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
-      - name: Backend lint + tests
+      - run: cd backend && uv sync --frozen
+      - name: Полная коллекция pytest, изолированный shard модулей
+        run: backend/.venv/bin/python scripts/ci_test_shard.py --index ${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-shard-${{ matrix.shard }}
+          path: test-results/
+          if-no-files-found: error
+
+  frontend-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - uses: astral-sh/setup-uv@v5
+      - run: cd frontend && npm ci && npm test -- --run && npm run build && npm run -s gen:types
+      - run: git diff --exit-code -- frontend/src/shared/api/types.ts
+      - name: Локальные шрифты после frontend build
+        run: cd backend && uv sync --frozen && uv run --frozen pytest -q tests/integration/test_no_cdn.py
+
+  build-images:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: cx-pulse-backend:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Экспорт собранного candidate image
         run: |
           set -euo pipefail
-          if [ -f backend/pyproject.toml ]; then
-            cd backend
-            uv sync --frozen
-            uv run ruff check .
-            uv run ruff format --check .
-            uv run mypy app
-            uv run pytest -q
-            cd ..
-            backend/.venv/bin/python scripts/check_openapi_drift.py
-          else echo "backend ещё нет — пропуск"; fi
-      - name: Frontend lint + tests + build
-        run: |
+          docker save cx-pulse-backend:ci | zstd -T0 -3 -o /tmp/candidate.tar.zst
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-image
+          path: /tmp/candidate.tar.zst
+          compression-level: 0
+          retention-days: 1
+
+  e2e-smoke:
+    needs: build-images
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - uses: actions/download-artifact@v4
+        with: { name: candidate-image, path: /tmp/candidate-image }
+      - run: |
           set -euo pipefail
-          if [ -f frontend/package.json ]; then
-            cd frontend
-            npm ci
-            npm run lint
-            npx tsc --noEmit
-            npm test -- --run
-            npm run build
-            npm run -s gen:types
-            git diff --exit-code -- src/shared/api/types.ts
-          else echo "frontend ещё нет — пропуск"; fi
-      - name: Local font assets after frontend build
-        run: cd backend && uv run pytest -q tests/integration/test_no_cdn.py
-      - name: Лицензии всех Python/npm зависимостей
-        run: make licenses-check
-      - name: i18n
-        run: python3 scripts/i18n_check.py
+          zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
+      - run: cd frontend && npm ci && npx playwright install --with-deps chromium
+      - name: Настоящий image, изолированный Compose, все Playwright tests
+        run: python3 scripts/ci_compose.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: frontend/test-results/
+
+  tests:
+    name: tests
+    if: always()
+    needs: [contracts, db, owners, lint, backend-tests, frontend-tests, build-images, e2e-smoke]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Явный отказ при failed, cancelled и skipped jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          results = json.loads(os.environ["NEEDS_JSON"])
+          failures = {
+              name: job["result"] for name, job in results.items()
+              if job["result"] != "success" and not (
+                  name == "owners" and job["result"] == "skipped"
+                  and os.environ["GITHUB_EVENT_NAME"] != "pull_request"
+              )
+          }
+          if failures:
+              raise SystemExit(f"Required jobs did not succeed: {failures}")
+          PY
+      - uses: actions/download-artifact@v4
+        with: { pattern: backend-shard-*, path: test-results }
+      - name: Проверка четырёх manifests и точного объединения всего suite
+        run: python3 scripts/ci_test_shard.py --verify test-results
+
+  nightly:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: build-images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - uses: actions/download-artifact@v4
+        with: { name: candidate-image, path: /tmp/candidate-image }
+      - run: |
+          set -euo pipefail
+          zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
+      - run: cd frontend && npm ci && npx playwright install --with-deps chromium
+      - name: Demo seed ≤90 с, API p95 ≤300 мс с активным симулятором, полный browser suite
+        run: python3 scripts/ci_compose.py --performance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-performance
+          path: |
+            frontend/performance-results/
+            frontend/test-results/

@@ -47,11 +47,12 @@ export function MapTab() {
   const sel = selected ? byCode.get(selected) : undefined
   const selZone = selected ? zoneBy.get(selected) : undefined
 
+  // Карта занимает доступную строку целиком; боковая панель на узком экране прокручивается ниже.
   return (
-    <div className="grid h-full items-start gap-4 overflow-auto p-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="map-layout grid h-full min-h-0 auto-rows-[100%] items-start gap-4 overflow-auto p-3 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Section
         title={t('map.title')}
-        className="min-w-0"
+        className="map-panel flex h-full min-h-0 min-w-0 flex-col [&>header]:shrink-0 [&>div]:flex [&>div]:min-h-0 [&>div]:flex-1 [&>div]:flex-col"
         right={
           <div className="flex flex-wrap items-center gap-1 text-xs">
             <Seg value={mode} onChange={setMode} items={[{ id: 'heat', label: t('map.mode.heat') }, { id: 'zones', label: t('map.mode.zones') }]} />
@@ -63,8 +64,8 @@ export function MapTab() {
       >
         {heat.error && <ErrorBox error={heat.error} compact />}
         {(
-          <div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="block h-[clamp(14rem,calc(100dvh-25rem),42rem)] w-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map.title')}>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <svg viewBox={`0 0 ${W} ${H}`} className="map-canvas block min-h-0 w-full flex-1" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map.title')}>
               <rect width={W} height={H} fill="transparent" onClick={() => setSelected(null)} />
               {geo.features.map((f) => {
                 const code = f.properties.code
@@ -112,7 +113,7 @@ export function MapTab() {
                   )
                 })}
             </svg>
-            <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-muted">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-muted">
               {mode === 'heat' ? (
                 <>
                   <span>{t('map.legend.low')}</span>
