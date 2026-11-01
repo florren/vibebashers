@@ -16,6 +16,13 @@ from app.observability.redaction import REDACTED, redact, redact_event, redact_t
 AUTH = "synthetic-auth-only-for-unit"
 API = "synthetic-api-only-for-unit"
 BASIC = "c3ludGhldGljLWJhc2ljLW9ubHktZm9yLXVuaXQ="
+CONTAINERS = [
+    "['synthetic-secret-A']",
+    "{'token': 'synthetic-secret-B'}",
+    "[{'nested': ['synthetic-secret-C', {'token': 'synthetic-secret-D'}]}]",
+    "{'literal': 'synthetic-secret-]with}brackets', 'escaped': 'synthetic-secret-\\'quote'}",
+    "('synthetic-secret-E', {'token': ['synthetic-secret-F']})",
+]
 
 
 @pytest.fixture(autouse=True)
@@ -129,6 +136,56 @@ def test_nonsecret_labels_counts_and_business_text_are_not_redacted():
         "customer_id": 123,
         "is_active": True,
     }
+
+
+@pytest.mark.parametrize("container", CONTAINERS)
+def test_labeled_container_repr_is_fully_masked_preserving_outside_identifiers(container):
+    tail = "; key_hint=1234 key_label=provider_1 request_id=request-1 operation_id=42 prompt_tokens=7"
+    result = redact_text("api_key=" + container + tail)
+    assert result == "api_key=" + REDACTED + tail
+    assert redact_text(result) == result
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        "['synthetic-secret-truncated'",
+        "{'token': ['synthetic-secret-truncated']",
+        "[{'token': 'synthetic-secret-truncated",
+        "[{'token': 'synthetic-secret-mismatched'} }]",
+    ],
+)
+def test_truncated_or_malformed_credential_container_masks_rest_conservatively(container):
+    result = redact_text("diagnostic api_key=" + container)
+    assert "synthetic-secret" not in result and result == "diagnostic api_key=" + REDACTED
+    assert redact_text(result) == result
+
+
+def test_multiple_labeled_containers_and_noncredential_containers_are_preserved_correctly():
+    value = "api_key=['synthetic-secret-A']; data={'operation_id':42}; Authorization={'token':'synthetic-secret-B'}"
+    assert redact_text(value) == f"api_key={REDACTED}; data={{'operation_id':42}}; Authorization={REDACTED}"
+
+
+@pytest.mark.parametrize("env", ["dev", "prod"])
+@pytest.mark.parametrize("container", [*CONTAINERS, "[{'token':'synthetic-secret-truncated'"])
+def test_container_exception_is_masked_in_console_jsonl_and_ring_before_retention(tmp_path, env, container):
+    path = tmp_path / "app.jsonl"
+    console = io.StringIO()
+    stats = HttpStats()
+    error = "api_key=" + container
+    with redirect_stderr(console):
+        configure_logging(env, path)
+        logger = get_logger("synthetic_container_exception")
+        try:
+            raise ValueError(error)
+        except ValueError:
+            logger.exception("synthetic_container", request_id="request-1", operation_id=42)
+    stats.record("GET", "/synthetic", 500, 1, path="/synthetic", request_id="request-1", error=error)
+    outputs = console.getvalue() + path.read_text() + json.dumps(stats.snapshot()) + str(list(stats.errors))
+    assert "synthetic-secret" not in outputs
+    assert REDACTED in outputs and "ValueError" in path.read_text()
+    row = json.loads(path.read_text())
+    assert row["request_id"] == "request-1" and row["operation_id"] == 42
 
 
 @pytest.mark.parametrize("env", ["dev", "prod"])

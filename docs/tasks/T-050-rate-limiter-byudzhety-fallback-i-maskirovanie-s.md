@@ -49,3 +49,8 @@ pytest backend/tests/unit/test_ratelimit.py
 Targeted 37 passed; lint зелёный, coverage redactor/app.logging 100%. Полные evidence/границы: `docs/reviews/T-050-secret-redaction.md`. Нет новых dependencies/DB/live/credential probes или изменений money/HITL. T050 остаётся in_progress; durable counters/rate-policy очередь и fallback требуют отдельных пакетов. Streaming-enforcement реализован отдельно и не смешан с этой веткой.
 
 Полный unit: 953 passed / 18 skipped, exit 0; make lint и license gate 526 прошли. Новый redactor и app.logging имеют 100% statement coverage по stdlib trace. Полный DB/integration suite не запускался: согласованный no-DB packet.
+
+
+Follow-up parent review: named credential containers внутри diagnostic repr теперь маскируются целиком (list/dict/tuple/nested/quoted/escaped), без eval. Truncated/malformed container скрывает остаток строки; outside IDs после balanced container сохраняются. Targeted 59 passed; lint/100% coverage прошли. Подробности и итог полного unit — в `docs/reviews/T-050-secret-redaction.md`.
+
+Follow-up полный unit: 975 passed / 18 skipped, exit 0; source и credentials/environment boundaries сохранены.

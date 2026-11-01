@@ -36,13 +36,52 @@ SECRET_FIELDS = frozenset(
     }
 )
 _LABELS = "|".join(re.escape(label).replace("_", "[_-]") for label in sorted(SECRET_FIELDS, key=len, reverse=True))
+_LABEL_PREFIX = rf"""(?P<prefix>(?<![\w-])(?:\\?["'])?(?:{_LABELS})(?:\\?["'])?\s*[:=]\s*)"""
 _NAMED_SECRET = re.compile(
-    rf"""(?P<prefix>(?<![\w-])(?:\\?["'])?(?:{_LABELS})(?:\\?["'])?\s*[:=]\s*)"""
-    r"""(?P<value>\\["'](?:\\.|[^\\])*?(?:\\["']|\\?$)|"(?:\\.|[^"\\])*(?:\\)?(?:"|$)|'(?:\\.|[^'\\])*(?:\\)?(?:'|$)|(?:Bearer|Basic)\s+\[REDACTED\]|(?:Bearer|Basic)\s+[^\s,;&{}\[\]<>"']+|[^\s,;&{}\[\]<>"']+)""",
+    _LABEL_PREFIX
+    + r"""(?P<value>\\["'](?:\\.|[^\\])*?(?:\\["']|\\?$)|"(?:\\.|[^"\\])*(?:\\)?(?:"|$)|'(?:\\.|[^'\\])*(?:\\)?(?:'|$)|(?:Bearer|Basic)\s+\[REDACTED\]|(?:Bearer|Basic)\s+[^\s,;&{}\[\]<>"']+|[^\s,;&{}\[\]<>"']+)""",
     re.IGNORECASE,
 )
 _AUTH_SCHEME = re.compile(r"\b(Bearer|Basic)\s+([A-Za-z0-9._~+/=-]+)", re.IGNORECASE)
 _TRACKING_URL = re.compile(r"((?:/api/public)?/track/)[^?\s]+(?:\?[^\s]*)?")
+_CONTAINER_SECRET = re.compile(_LABEL_PREFIX + r"(?P<opening>[\[({])", re.IGNORECASE)
+_CLOSING = {"[": "]", "{": "}", "(": ")"}
+
+
+def _container_end(value: str, start: int) -> int:
+    """Только границы repr/JSON, без вычисления содержимого контейнера."""
+    stack: list[str] = []
+    quote: str | None = None
+    escaped = False
+    for index in range(start, len(value)):
+        char = value[index]
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        elif char in _CLOSING:
+            stack.append(_CLOSING[char])
+        elif char in _CLOSING.values():
+            if not stack or char != stack.pop():
+                break
+            if not stack:
+                return index + 1
+    # При обрезанном/некорректном repr безопасную границу доказать нельзя.
+    return len(value)
+
+
+def _redact_containers(value: str) -> str:
+    parts: list[str] = []
+    cursor = 0
+    while match := _CONTAINER_SECRET.search(value, cursor):
+        parts.extend((value[cursor : match.start()], match["prefix"], REDACTED))
+        cursor = _container_end(value, match.start("opening"))
+    return "".join(parts) + value[cursor:]
 
 
 def redact_tracking_urls(value: str) -> str:
@@ -57,7 +96,8 @@ def redact_text(value: str) -> str:
         return match["prefix"] + quote + REDACTED + quote
 
     return _AUTH_SCHEME.sub(
-        lambda match: match[1] + " " + REDACTED, _NAMED_SECRET.sub(named, redact_tracking_urls(value))
+        lambda match: match[1] + " " + REDACTED,
+        _NAMED_SECRET.sub(named, redact_tracking_urls(_redact_containers(value))),
     )
 
 

@@ -29,3 +29,11 @@ Regression выполняет actual ASGI GET неизвестного tracking 
 Root agent ведёт PR/CI/merge; самостоятельно remote actions не выполнялись. T050 остаётся in_progress: durable daily key counters/API synchronization, queue setting/head-of-line blocking и quota fallback policy — отдельные packets. Этот diff не закрывает всю карточку.
 
 Логи: `/tmp/t050-redaction-targeted-final.log`, `/tmp/t050-redaction-full-unit.log`, `/tmp/t050-redaction-lint.log`, `/tmp/t050-redaction-coverage.log`, `/tmp/t050-redaction-licenses.log`. Машинная сводка: `/tmp/t050-redaction-verification.json`.
+
+## Follow-up parent review: labeled credential containers
+
+Parent review подтвердил оставшийся пробел: строковые `api_key=['synthetic-secret-A']` и `api_key={'token':'synthetic-secret-B'}` проходили без маскирования. Это named credential value в formatted exception/repr, а не неизвестная unlabeled строка.
+
+Добавлен линейный разбор только границ labeled list/dict/tuple: учитываются вложенные контейнеры, строки, скобки внутри строк и backslash escapes. Содержимое не вычисляется; eval/новых зависимостей нет. После корректно закрытого контейнера сохраняются hints/labels/token counters/business IDs и весь остальной контекст. При обрезанном или некорректном контейнере безопасную границу доказать нельзя: маскируется остаток diagnostic text. Отдельные структурные request_id/business fields не меняются. Повторное маскирование idempotent.
+
+59 targeted tests passed, включая оба исходных контрпримера, nested/escaped/truncated/mismatched containers и formatted exceptions в dev/prod console, JSONL и HTTP ring buffer до retention. Остальные предыдущие regression tests сохранены. `make lint` exit 0: Ruff, format 339, mypy 248, frontend 144 passed, OpenAPI 191/191. Stdlib trace: 100% statement coverage redactor (73 executable lines), app.logging (38 executable lines). Полный `make test-unit`: 975 passed / 18 skipped, exit 0. No env/real credentials/LLM/DB calls. Логи: `/tmp/t050-redaction-containers-targeted.log`, `/tmp/t050-redaction-containers-full-unit.log`, `/tmp/t050-redaction-containers-lint.log`, `/tmp/t050-redaction-containers-coverage.log`.
