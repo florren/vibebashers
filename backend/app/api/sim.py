@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.db.session import psycopg_dsn
+from app.llm.run_profiles import validate_main_profile
 from app.sim import baseline as baseline_svc
 from app.sim import run_lifecycle, run_summary
 from app.sim import runs as run_svc
@@ -191,12 +192,11 @@ async def post_sim_runs(request: Request, body: SimRunCreate) -> Any:
     if body.scenario_id:
         raise HTTPException(422, "scenario_id допустим только для сценарного запуска")
     if body.llm_profile_id is not None:
-        async with await _conn() as conn:
-            profile = await (
-                await conn.execute("select id from llm_profiles where id=%s and is_active", (body.llm_profile_id,))
-            ).fetchone()
-            if profile is None:
-                raise HTTPException(409, "профиль LLM отсутствует или неактивен")
+        try:
+            async with await _conn() as conn:
+                await validate_main_profile(conn, body.llm_profile_id)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
     if body.reset_mode == "baseline":
         if not baseline_svc.info()["available"]:
             raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")

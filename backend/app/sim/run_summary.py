@@ -33,7 +33,9 @@ async def build_summary(
     conn: psycopg.AsyncConnection[Any], run_id: int, *, refresh_economics: bool = False
 ) -> dict[str, Any]:
     run = await fetch_one(
-        conn, "select id,started_at,finished_at,started_sim,finished_sim from sim_runs where id=%s", (run_id,)
+        conn,
+        "select id,started_at,finished_at,started_sim,finished_sim,settings_snapshot from sim_runs where id=%s",
+        (run_id,),
     )
     if run is None:
         raise LookupError("запуск не найден")
@@ -49,6 +51,25 @@ async def build_summary(
         "group by ar.llm_profile_id,p.id,ar.kind order by ar.llm_profile_id nulls last,ar.kind",
         (run_id,),
     )
+    snapshot = (run.get("settings_snapshot") or {}).get("llm_profiles") or {}
+    pinned = {
+        pid: snapshot.get("roles", {}).get(role)
+        for role, pid in snapshot.get("profile_ids", {}).items()
+        if pid is not None
+    }
+    for row in profiles:
+        frozen = pinned.get(row["llm_profile_id"])
+        # Compare/bench выбирают собственный профиль явно и не наследуют роли запуска.
+        if frozen is not None and row["kind"] not in ("compare", "bench"):
+            for key in ("code", "provider", "model", "price_in_per_1m", "price_out_per_1m"):
+                row[key] = frozen[key]
+            row["tariff_cost_estimate"] = (
+                Decimal(str(frozen["price_in_per_1m"])) * row["prompt_tokens"]
+                + Decimal(str(frozen["price_out_per_1m"])) * row["completion_tokens"]
+            ) / Decimal(1000000)
+            row["tariff_source"] = "run_snapshot"
+        else:
+            row["tariff_source"] = "current_catalog" if row["code"] is not None else "unknown"
     counters = await fetch_one(conn, "select * from v_run_counters where run_id=%s", (run_id,))
     quality = await fetch_one(
         conn,

@@ -20,6 +20,7 @@ from app.agent.tools.base import ToolContext
 from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim.events import dumps
 
@@ -103,6 +104,8 @@ async def load_deps(
     dry_run: bool = False,
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
 ) -> Deps:
+    if not dry_run:
+        chain, profile = await run_profiles(conn, run_id, chain, profile)
     ctx = ToolContext(
         conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
     )
@@ -284,16 +287,23 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
+    chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
     )
     pv = prompt_version()
-    profile_row = await (
-        await conn.execute(
-            "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
-            (profile.code,),
-        )
-    ).fetchone()
+    pinned_id = chain.role_profile_ids.get("main")
+    if pinned_id is not None:
+        profile_row = await (
+            await conn.execute("select id,price_in_per_1m,price_out_per_1m from llm_profiles where id=%s", (pinned_id,))
+        ).fetchone()
+    else:
+        profile_row = await (
+            await conn.execute(
+                "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
+                (profile.code,),
+            )
+        ).fetchone()
     if profile_row is None:
         profile_row = await (
             await conn.execute(
@@ -304,6 +314,7 @@ async def process_signal(
     llm_profile_id = int(profile_row[0]) if profile_row else None
     if (
         profile_row
+        and not chain.role_profiles_pinned
         and profile.price_in_per_1m == 0
         and profile.price_out_per_1m == 0
         and (float(profile_row[1] or 0) or float(profile_row[2] or 0))

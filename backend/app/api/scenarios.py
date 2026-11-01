@@ -17,6 +17,7 @@ from app.api._compliance_support import analyze_in_background
 from app.api.common import agent_service, db, fetch_all
 from app.db.session import psycopg_dsn
 from app.errors import NotImplementedYet
+from app.llm.run_profiles import validate_main_profile
 from app.sim import runs as run_svc
 from app.sim import scenarios as sc
 from app.sim.engine import Simulator
@@ -59,12 +60,11 @@ async def run_scenario(
     if scenario.get("reset_mode_required") == "baseline" and body.reset_mode != "baseline":
         raise HTTPException(409, "Для этого сценария требуется явный reset_mode=baseline")
     if body.llm_profile_id is not None:
-        async with db() as conn:
-            profile = await (
-                await conn.execute("select id from llm_profiles where id=%s and is_active", (body.llm_profile_id,))
-            ).fetchone()
-            if profile is None:
-                raise HTTPException(409, "профиль LLM отсутствует или неактивен")
+        try:
+            async with db() as conn:
+                await validate_main_profile(conn, body.llm_profile_id)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
     if body.reset_mode == "baseline":
         from app.api.sim import _restore_baseline
 
