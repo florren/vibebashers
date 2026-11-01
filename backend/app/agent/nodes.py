@@ -18,7 +18,12 @@ import orjson
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
-from app.agent.customer_messages import customer_outcome, emulated_team_pending, has_emulated_verification
+from app.agent.customer_messages import (
+    customer_outcome,
+    emulated_team_pending,
+    gratitude_text,
+    has_emulated_verification,
+)
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
@@ -2619,6 +2624,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         lang = "ru"
     if (refund_total or refund_dup) and ca["kind"] != "none":
         ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup, lang)}
+    if c["signal_type"] == "gratitude" and state.get("llm_source") == "mock":
+        ca = {**ca, "text_ru": gratitude_text(lang)}
     human_mod = (state.get("human") or {}).get("modified") or {}
     if human == "modify" and isinstance(human_mod.get("gift"), dict) and d.get("gift"):
         gift = d["gift"]

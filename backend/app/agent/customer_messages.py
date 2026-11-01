@@ -5,6 +5,12 @@ from typing import Any
 from app.agent.gifts import _gift_label
 
 
+def gratitude_text(lang: str) -> str:
+    if lang == "en":
+        return "Thank you for your kind words! We are glad we could help. Please contact us if you have any further questions."
+    return "Спасибо за тёплые слова! Рады, что смогли помочь. Обращайтесь, если возникнут вопросы."
+
+
 def outcome_text(lang: str, *, resolved: bool, late: bool, gift: str | None = None) -> str:
     if lang == "en":
         if resolved:

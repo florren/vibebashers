@@ -11,7 +11,7 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 from weakref import WeakKeyDictionary
 
@@ -97,6 +97,7 @@ class GigaChatProvider:
         self.base_url = base_url.rstrip("/")
         self.scope = scope
         self._token_locks: dict[str, asyncio.Lock] = {}
+        self._auth_task: asyncio.Task[None] | None = None
         from app.llm.tls import context
 
         if not verify_ssl:
@@ -108,16 +109,28 @@ class GigaChatProvider:
             limits=httpx.Limits(keepalive_expiry=60.0),
         )
 
+    async def stop_auth_refresh(self) -> None:
+        """Смена цепочки останавливает фон, сохраняя HTTP-клиент для уже выполняющихся запросов."""
+        if self._auth_task is not None:
+            self._auth_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._auth_task
+            self._auth_task = None
+
     async def aclose(self) -> None:
+        await self.stop_auth_refresh()
         await self._client.aclose()
 
-    async def _request(self, method: str, key: ApiKey, url: str, **kwargs: Any) -> httpx.Response:
+    async def _request(
+        self, method: str, key: ApiKey, url: str, *, penalize_cancellation: bool = True, **kwargs: Any
+    ) -> httpx.Response:
         try:
             return await self._client.request(method, url, **kwargs)
         except asyncio.CancelledError:
             # Только отмена активного I/O, а не ожидания общего generation_slot.
             # Резервная модель не должна повторно использовать зависший ключ.
-            self.pool.mark_error(key, ProviderError("timeout", "HTTP-запрос отменён"))
+            if penalize_cancellation:
+                self.pool.mark_error(key, ProviderError("timeout", "HTTP-запрос отменён"))
             raise
 
     async def prepare(self, profiles: list[LLMProfile], *, timeout_s: float = 12.0) -> bool:
@@ -138,14 +151,14 @@ class GigaChatProvider:
                 budget = max(0.0, (deadline - time.perf_counter()) / (len(keys) - index))
                 try:
                     async with asyncio.timeout(budget):
-                        token = await self._token(key, budget)
+                        token = await self._token(key, budget, proactive=True)
                         for base in sorted(bases - ready):
                             response = await self._request(
                                 "GET",
                                 key,
                                 f"{base}/models",
                                 headers={"Authorization": f"Bearer {token}"},
-                                timeout=request_timeout(budget),
+                                timeout=httpx.Timeout(budget),
                             )
                             if response.status_code == 429:
                                 raise ProviderError(
@@ -170,19 +183,54 @@ class GigaChatProvider:
                 break
         ok = ready == bases
         log.info("gigachat_prepared", ok=ok, ms=int((time.perf_counter() - t0) * 1000))
+        if self._auth_task is None or self._auth_task.done():
+            self._auth_task = asyncio.create_task(self._auth_loop(), name="gigachat-auth-refresh")
         return ok
 
+    async def refresh_auth(self, *, timeout_s: float = 12.0) -> None:
+        """Обновление за три минуты до истечения не расходует бюджет генерации."""
+        for key in self.pool.keys:
+            if not key.available() or (key.access_token and time.time() < key.token_expires_at - 180):
+                continue
+            try:
+                async with asyncio.timeout(timeout_s):
+                    async with self._token_locks.setdefault(key.label, asyncio.Lock()):
+                        if not key.available():
+                            continue
+                        await self._refresh_token(key, timeout_s, proactive=True)
+            except (TimeoutError, httpx.HTTPError, ProviderError, ValueError, KeyError) as exc:
+                # Сетевая ошибка подготовки не отменяет ещё рабочий токен. 429/auth обязательны.
+                if isinstance(exc, ProviderError) and exc.kind in ("auth", "rate_limit", "quota"):
+                    self.pool.mark_error(key, exc)
+                log.warning("gigachat_auth_refresh_failed", key=key.label, error_type=type(exc).__name__)
+
+    async def _auth_loop(self) -> None:
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await self.refresh_auth()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # Защита фонового worker; следующий цикл повторяет подготовку.
+                log.exception("gigachat_auth_refresh_failed", error_type=type(exc).__name__)
+
     # --- auth -------------------------------------------------------------------------------------------------------
-    async def _token(self, key: ApiKey, timeout_s: float) -> str:
+    async def _token(self, key: ApiKey, timeout_s: float, *, proactive: bool = False) -> str:
+        # Пока фон обновляет токен заранее, генерация использует ещё действующий кэш.
+        wait = key.cooldown_until - time.monotonic()
+        if wait > 0 and (key.last_error or "").startswith("rate_limit:"):
+            raise ProviderError("rate_limit", "ключ временно на паузе после 429", retry_after_s=wait)
+        if key.is_active and key.access_token and time.time() < key.token_expires_at - (180 if proactive else 60):
+            return key.access_token
         # Одновременные узлы/профили используют один кэш ключа без всплеска OAuth-запросов.
         async with self._token_locks.setdefault(key.label, asyncio.Lock()):
             wait = key.cooldown_until - time.monotonic()
             if wait > 0 and not (key.last_error or "").startswith(("timeout:", "network:")):
                 raise ProviderError("rate_limit", "ключ временно на паузе после 429", retry_after_s=wait)
-            return await self._refresh_token(key, timeout_s)
+            return await self._refresh_token(key, timeout_s, proactive=proactive)
 
-    async def _refresh_token(self, key: ApiKey, timeout_s: float) -> str:
-        if key.access_token and time.time() < key.token_expires_at - 60:
+    async def _refresh_token(self, key: ApiKey, timeout_s: float, *, proactive: bool = False) -> str:
+        if key.access_token and time.time() < key.token_expires_at - (180 if proactive else 60):
             return key.access_token
         try:
             r = await self._request(
@@ -196,7 +244,9 @@ class GigaChatProvider:
                     "Accept": "application/json",
                 },
                 data={"scope": self.scope},
-                timeout=request_timeout(timeout_s),
+                # Холодный OAuth/TLS фона может занять больше двух секунд; генерация не ждёт его.
+                timeout=httpx.Timeout(timeout_s) if proactive else request_timeout(timeout_s),
+                penalize_cancellation=not proactive,
             )
         except httpx.TimeoutException as e:
             raise ProviderError("timeout", f"oauth: {e}") from e

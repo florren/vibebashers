@@ -192,7 +192,9 @@ async def get_env() -> dict[str, Any]:
 async def apply_runtime(app: Any, updates: dict[str, str | None]) -> tuple[Settings, list[str], str | None, list[str]]:
     """Переменные процесса → сброс кэша Settings → новая цепочка LLM и профиль → подмена в приложении и агенте."""
     from app.llm.failover import build_chain, default_profile
+    from app.llm.gigachat import GigaChatProvider
 
+    previous_chain = getattr(app.state, "llm_chain", None)
     for k, v in updates.items():
         if v:
             os.environ[k] = v
@@ -219,6 +221,14 @@ async def apply_runtime(app: Any, updates: dict[str, str | None]) -> tuple[Setti
     from app.llm.roles import refresh
 
     await refresh(app, s)
+    if chain is not previous_chain:
+        for provider in getattr(previous_chain, "providers", []):
+            if isinstance(provider, GigaChatProvider):
+                await provider.stop_auth_refresh()
+        if not s.is_test:
+            for provider in getattr(chain, "providers", []):
+                if isinstance(provider, GigaChatProvider):
+                    await provider.prepare(list(chain.role_profiles.values()))
     profile = app.state.llm_profile
     names = list(getattr(chain, "names", []) or [])
     if names == ["mock"] and any(k in updates for k in ("GIGACHAT_AUTH_KEY_1", "OPENROUTER_API_KEY", "LLM_CHAIN")):
