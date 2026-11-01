@@ -2100,6 +2100,8 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
+                429: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -2937,6 +2939,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     ops_hours?: number;
                 };
                 header?: never;
@@ -3503,6 +3507,8 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
+                429: components["responses"]["Problem"];
             };
         };
         delete?: never;
