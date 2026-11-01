@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import random
 from pathlib import Path
 from typing import Any
 
 import psycopg
-from scripts.seed.common import DATA, J, load_csv, load_yaml, log, set_setting
-
 from app.sim.branch_directory import Branch, network_history, provider
+
+from scripts.seed.common import DATA, J, load_csv, load_yaml, log, set_setting
 
 
 def seed_geo(cur: psycopg.Cursor[Any]) -> None:
@@ -118,12 +119,28 @@ def seed_catalogs(cur: psycopg.Cursor[Any]) -> None:
             "insert into sla_matrix (complexity, criticality, fix_days, report_days, take_hours) values (%(complexity)s, %(criticality)s, %(fix_days)s, %(report_days)s, %(take_hours)s) on conflict (complexity, criticality) do update set fix_days = excluded.fix_days, report_days = excluded.report_days, take_hours = excluded.take_hours",
             r,
         )
-    cur.execute("delete from routing_rules")  # полная замена: таблица — проекция YAML
+    # Условие — стабильная идентичность правила: повторный seed не меняет
+    # rule_id, сохранённый в исторических решениях агента.
+    existing_rules: dict[str, int] = {}
+    for rule_id, condition in cur.execute("select id, match from routing_rules order by id").fetchall():
+        existing_rules.setdefault(json.dumps(condition, sort_keys=True), rule_id)
+    retained_rule_ids: list[int] = []
     for r in sla["routing_rules"]:
-        cur.execute(
-            "insert into routing_rules (priority, match, team_codes, notes_ru) values (%s, %s, %s, %s)",
-            (r["priority"], J(r["match"]), r["team_codes"], r.get("notes_ru")),
-        )
+        rule_id = existing_rules.get(json.dumps(r["match"], sort_keys=True))
+        if rule_id is None:
+            inserted = cur.execute(
+                "insert into routing_rules (priority, match, team_codes, notes_ru) values (%s, %s, %s, %s) returning id",
+                (r["priority"], J(r["match"]), r["team_codes"], r.get("notes_ru")),
+            ).fetchone()
+            assert inserted is not None
+            rule_id = int(inserted[0])
+        else:
+            cur.execute(
+                "update routing_rules set priority=%s, team_codes=%s, notes_ru=%s where id=%s",
+                (r["priority"], r["team_codes"], r.get("notes_ru"), rule_id),
+            )
+        retained_rule_ids.append(rule_id)
+    cur.execute("delete from routing_rules where not (id = any(%s))", (retained_rule_ids,))
     for p in load_yaml("llm_profiles.yaml")["llm_profiles"]:
         cur.execute(
             "insert into llm_profiles (code, provider, model, base_url, role, temperature, rpm_limit, rpd_limit, price_in_per_1m, price_out_per_1m, supports_tools, supports_stream, is_active, extra) "
