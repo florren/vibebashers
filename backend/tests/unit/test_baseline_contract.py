@@ -1,6 +1,5 @@
 """T-040: contract digest связывает архив с миграциями и фактической схемой."""
 
-
 import pytest
 
 from app.sim import baseline_contract as contract

@@ -181,3 +181,48 @@ async def test_new_nonpublic_checkpoint_schema_refuses_old_archive_before_effect
         assert conn.execute("select to_regclass('maintenance_checkpoint_probe.checkpoints')").fetchone()[0]
     finally:
         conn.execute("drop schema maintenance_checkpoint_probe cascade")
+
+
+async def test_real_agent_db_writer_drains_before_restore_and_cannot_write_reused_ids(
+    seeded, conn, snapshot_dir, monkeypatch
+):
+    from app.agent import runner
+    from app.sim.maintenance import MaintenanceCoordinator
+
+    c = MaintenanceCoordinator()
+    await make_dump(seeded)
+    cid = conn.execute("select id from clients where is_active order by id limit 1").fetchone()[0]
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    stages = []
+
+    async def delayed(conn, **kwargs):
+        entered.set()
+        await release.wait()
+        await conn.execute("update clients set is_active=false where id=%s", (cid,))
+        stages.append("agent-effect")
+        return {"outcome": "completed"}
+
+    monkeypatch.setattr(runner, "process_signal", delayed)
+    agent = runner.AgentService(None, None, dsn=seeded)
+    with c.bind():
+        actor = agent.submit(1)
+    await entered.wait()
+
+    async def action(job):
+        stages.append("restore")
+        assert actor.done()
+        async with await connect(seeded) as ac:
+            await baseline.restore(ac, profile="lite", job_id=job)
+        return job
+
+    resetting = asyncio.create_task(c.restore(action, park=agent.stop))
+    await asyncio.sleep(0)
+    assert c.phase == "draining" and stages == []
+    release.set()
+    await resetting
+    assert stages == ["agent-effect", "restore"]
+    assert actor.done() and not agent._inflight and not agent._by_signal
+    assert conn.execute("select is_active from clients where id=%s", (cid,)).fetchone() == (True,)
+    async with await connect(seeded) as ac:
+        await baseline.preflight_restore(ac, profile="lite")

@@ -171,3 +171,84 @@ async def test_real_actor_entrypoints_reject_before_db_access():
         ):
             with pytest.raises(MaintenanceBusy):
                 await call()
+
+
+def test_real_audio_ws_is_protected_until_disconnect(wired, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    app, sim = wired
+    restore = AsyncMock()
+    monkeypatch.setattr(baseline, "restore", restore)
+    with TestClient(app) as client:
+        app.state.sim = sim
+        with client.websocket_connect("/ws/audio/1"):
+            assert any(row.kind == "audio" for row in app.state.maintenance._records.values())
+            assert client.post("/api/sim/baseline/restore").status_code == 409
+            assert app.state.maintenance.phase == "ready"
+            restore.assert_not_awaited()
+            app.state.maintenance_park.assert_not_awaited()
+
+
+async def test_agent_stop_waits_timer_cleanup_and_clears_identity_cache():
+    from app.agent.runner import AgentService
+    from app.sim.maintenance import MaintenanceCoordinator
+
+    c = MaintenanceCoordinator()
+    service = AgentService(None, None)
+    entered = asyncio.Event()
+    cleaned = []
+
+    async def timer():
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await asyncio.sleep(0)
+            cleaned.append("closed")
+
+    with c.bind():
+        task = service._background(timer(), name="maintenance-proof-timer")
+    service._by_signal[17] = task
+    await entered.wait()
+    await service.stop()
+    assert cleaned == ["closed"] and task.cancelled()
+    assert not service._inflight and not service._by_signal
+
+
+async def test_runtime_cache_instances_are_replaced_before_daemon_admission(monkeypatch):
+    from app import main
+    from app.db import session
+    from app.sim.maintenance import MaintenanceCoordinator
+
+    c = MaintenanceCoordinator()
+    c.phase = "reloading"
+    c._ready.clear()
+    old_agent = SimpleNamespace(stop=AsyncMock(), enabled=False)
+    old_twins = SimpleNamespace(stop=AsyncMock())
+    old_bench = SimpleNamespace(stop=AsyncMock())
+    fake = SimpleNamespace(
+        state=SimpleNamespace(
+            maintenance=c,
+            runtime_components={"agent", "twins"},
+            agent=old_agent,
+            twins=old_twins,
+            bench=old_bench,
+            llm_chain=None,
+            llm_profile=None,
+            sim=SimpleNamespace(clock=SimpleNamespace(running=False), shutdown=AsyncMock()),
+        )
+    )
+    engine = SimpleNamespace(dispose=AsyncMock())
+    monkeypatch.setattr(session, "get_engine", lambda: engine)
+    await main._park_runtime(fake)
+    await main._resume_runtime(fake)
+    assert fake.state.agent is not old_agent and fake.state.twins is not old_twins
+    assert fake.state.bench is not old_bench and fake.state.agent.enabled is False
+    old_agent.stop.assert_awaited_once()
+    old_twins.stop.assert_awaited_once()
+    old_bench.stop.assert_awaited_once()
+    engine.dispose.assert_awaited_once()
+    # Новые listener/twin/cache не касаются БД до открытия ready.
+    assert not c._records
+    await fake.state.agent.stop()
+    await fake.state.twins.stop()
