@@ -698,6 +698,7 @@ paths:
                   signal_id: { type: integer }
                   agent_run_id: { type: integer }
                   compare_run_id: { type: [integer, "null"] }
+        "429": { $ref: "#/components/responses/Problem", description: "Общий лимит жюри: не более 10 запросов в минуту; Retry-After содержит задержку в секундах" }
   /api/signals/{id}:
     parameters: [{ $ref: "#/components/parameters/IdPath" }]
     get:
@@ -1084,7 +1085,7 @@ paths:
               type: object
               required: [text, channel_code]
               properties:
-                text: { type: string }
+                text: { type: string, minLength: 3, maxLength: 4000 }
                 channel_code: { type: string }
                 client_id: { type: [integer, "null"] }
                 llm_profile_id: { type: integer }
@@ -1101,6 +1102,7 @@ paths:
                   diff: { type: array, items: { type: object, properties: { field: { type: string }, llm: {}, mock: {} } } }
                   llm_run_id: { type: integer }
                   mock_run_id: { type: integer }
+        "429": { $ref: "#/components/responses/Problem", description: "Общий лимит жюри: не более 10 запросов в минуту; Retry-After содержит задержку в секундах" }
   /api/engine/entity-graph:
     get:
       tags: [engine]
