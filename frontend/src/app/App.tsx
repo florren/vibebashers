@@ -14,6 +14,7 @@ import { FeedPage } from '@/pages/feed/FeedPage'
 import { Client360Page } from '@/pages/client/Client360Page'
 import { ClaimPage } from '@/pages/claim/ClaimPage'
 import { PublicLayout } from '@/pages/claim/PublicLayout'
+import { TrackingPage } from '@/pages/claim/TrackingPage'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { TracePage } from '@/pages/trace'
 import { JourneyPage } from '@/pages/journey'
@@ -36,6 +37,7 @@ export function App() {
           <Route element={<PublicLayout />}>
             <Route path="claim" element={<ClaimPage />} />
             <Route path="landing" element={<ClaimPage />} />
+            <Route path="track/:token" element={<TrackingPage />} />
           </Route>
           <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspacePage />} />

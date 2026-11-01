@@ -21,9 +21,13 @@
 
 postgresql-client-16 (pg_dump, pg_restore, libpq) — PostgreSQL License, [официальная лицензия](https://www.postgresql.org/about/licence/). Устанавливается в Docker через подписанный [официальный PGDG](https://www.postgresql.org/download/linux/debian/), Debian bookworm; версия сервера остаётся 16. Python/npm-зависимости не добавлялись.
 
+### OpenAI-compatible SDK (T-048)
+
+- openai 2.54.0 — Apache-2.0, [официальная библиотека](https://github.com/openai/openai-python); версия фиксируется `backend/uv.lock`.
+- distro 1.9.0 — Apache-2.0; jiter 0.18.0 — MIT; sniffio 1.3.1 — MIT OR Apache-2.0; транзитивные зависимости SDK, лицензии проверены по metadata установленных wheel. Остальные зависимости уже присутствовали в lock.
 ## Полный inventory и gate (T-152)
 
-[`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md) генерируется из обоих lock-файлов и version-bound Python metadata: 89 Python и 437 npm записей (runtime/dev, включая platform-only distributions). `make licenses-check` не обращается к сети и требует актуальности отчёта. Новая/изменённая версия без metadata, неизвестный SPDX identifier, неоднозначная строка `SEE LICENSE`, `UNLICENSED` и непроверенный `WITH` завершают проверку ошибкой. `AND`/`OR` и скобки разбираются структурно; известная разрешённая ветка `OR` может быть выбрана, неизвестная ветка никогда не игнорируется.
+[`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md) генерируется из обоих lock-файлов и version-bound Python metadata: 93 Python и 437 npm записей (runtime/dev, включая platform-only distributions). `make licenses-check` не обращается к сети и требует актуальности отчёта. Новая/изменённая версия без metadata, неизвестный SPDX identifier, неоднозначная строка `SEE LICENSE`, `UNLICENSED` и непроверенный `WITH` завершают проверку ошибкой. `AND`/`OR` и скобки разбираются структурно; известная разрешённая ветка `OR` может быть выбрана, неизвестная ветка никогда не игнорируется.
 
 Python evidence: `docs/licenses/python-metadata.json` сохраняет исходные поля METADATA, SHA-256 license notices и источник. Для platform-only colorama/jaraco-functools/tzdata wheel скачаны из официального PyPI без установки; SHA-256 каждого архива сверен с `uv.lock`. Для legacy Jinja2 3.1.6 (BSD-3-Clause), qrcode 8.2 (BSD-3-Clause AND MIT) и colorama 0.4.6 (BSD-3-Clause) текст notice проверен адресно. Повтор сбора: `backend/.venv/bin/python scripts/collect_license_metadata.py --wheel-dir /path/to/downloaded-wheels`; collector проверяет hash wheel по lock и не скачивает/устанавливает зависимости. Затем `backend/.venv/bin/python scripts/licenses_check.py --write`. Новые legacy-варианты требуют явной проверки их notices, не наследуют разрешение по имени пакета.
 
