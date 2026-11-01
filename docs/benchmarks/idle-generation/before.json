@@ -1,0 +1,397 @@
+[
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 0,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "pre_startup",
+    "at": "2026-10-30T11:32:34.518401+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 800,
+    "sim_events": 0,
+    "posts": 0,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800
+    },
+    "sources": {
+      "csi": 69
+    },
+    "agent_kinds": null,
+    "phase": "idle_0",
+    "at": "2026-10-30T11:32:38.879318+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 850,
+    "sim_events": 50,
+    "posts": 50,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800,
+      "polling": 50
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 20,
+      "mock_social_polling": 30
+    },
+    "agent_kinds": null,
+    "phase": "idle_60",
+    "at": "2026-10-30T11:33:38.933400+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 1,
+      "sim_time": "2026-11-09T06:00:00+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      }
+    ],
+    "signals": 900,
+    "sim_events": 100,
+    "posts": 100,
+    "agent_runs": 0,
+    "ledger": 1802,
+    "notifications": 0,
+    "origins": {
+      "sim": 800,
+      "polling": 100
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 40,
+      "mock_social_polling": 60
+    },
+    "agent_kinds": null,
+    "phase": "idle_120",
+    "at": "2026-10-30T11:34:38.985377+00:00"
+  },
+  {
+    "state": {
+      "running": true,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "running"
+      }
+    ],
+    "signals": 917,
+    "sim_events": 153,
+    "posts": 115,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802,
+      "polling": 115
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 45,
+      "mock_social_polling": 70
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "running",
+    "at": "2026-10-30T11:34:54.103540+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 917,
+    "sim_events": 153,
+    "posts": 115,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802,
+      "polling": 115
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 45,
+      "mock_social_polling": 70
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_0",
+    "at": "2026-10-30T11:34:54.161530+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 962,
+    "sim_events": 198,
+    "posts": 160,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802,
+      "polling": 160
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 65,
+      "mock_social_polling": 95
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_60",
+    "at": "2026-10-30T11:35:54.216079+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 1012,
+    "sim_events": 248,
+    "posts": 210,
+    "agent_runs": 2,
+    "ledger": 1822,
+    "notifications": 2,
+    "origins": {
+      "sim": 802,
+      "polling": 210
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 85,
+      "mock_social_polling": 125
+    },
+    "agent_kinds": {
+      "agent": 2
+    },
+    "phase": "paused_120",
+    "at": "2026-10-30T11:36:54.269779+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 1022,
+    "sim_events": 262,
+    "posts": 220,
+    "agent_runs": 6,
+    "ledger": 1822,
+    "notifications": 10,
+    "origins": {
+      "sim": 802,
+      "polling": 220
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 90,
+      "mock_social_polling": 130
+    },
+    "agent_kinds": {
+      "agent": 6
+    },
+    "phase": "restarted_paused_0",
+    "at": "2026-10-30T11:37:07.656304+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 1072,
+    "sim_events": 358,
+    "posts": 270,
+    "agent_runs": 52,
+    "ledger": 1822,
+    "notifications": 102,
+    "origins": {
+      "sim": 802,
+      "polling": 270
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 110,
+      "mock_social_polling": 160
+    },
+    "agent_kinds": {
+      "agent": 52
+    },
+    "phase": "restarted_paused_60",
+    "at": "2026-10-30T11:38:07.708955+00:00"
+  },
+  {
+    "state": {
+      "running": false,
+      "run": 2,
+      "sim_time": "2026-11-09T06:15:30+00:00"
+    },
+    "runs": [
+      {
+        "id": 1,
+        "kind": "baseline",
+        "status": "completed"
+      },
+      {
+        "id": 2,
+        "kind": "free",
+        "status": "paused"
+      }
+    ],
+    "signals": 1122,
+    "sim_events": 408,
+    "posts": 320,
+    "agent_runs": 52,
+    "ledger": 1822,
+    "notifications": 102,
+    "origins": {
+      "sim": 802,
+      "polling": 320
+    },
+    "sources": {
+      "csi": 69,
+      "review_portal_feed": 130,
+      "mock_social_polling": 190
+    },
+    "agent_kinds": {
+      "agent": 52
+    },
+    "phase": "restarted_paused_120",
+    "at": "2026-10-30T11:39:07.761591+00:00"
+  }
+]

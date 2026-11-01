@@ -1,5 +1,6 @@
 @import './shared/theming/brand.css';
 @import './shared/theming/ops.css';
+@import './shared/layout/mobile.css';
 
 /* Inter + JetBrains Mono — локальные woff2 (T-263, OFL 1.1, frontend/public/fonts/) */
 @font-face {

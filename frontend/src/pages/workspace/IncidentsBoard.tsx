@@ -44,7 +44,7 @@ export function IncidentsBoard({ runId }: { runId: number | undefined }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
+      <div className="incident-filters flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <div className="flex rounded-lg border border-line p-0.5">
           <button
             className={clsx('flex h-6 items-center gap-1 rounded-md px-2 text-xs', mode === 'board' ? 'bg-raised font-medium' : 'text-muted')}
@@ -88,7 +88,7 @@ export function IncidentsBoard({ runId }: { runId: number | undefined }) {
 
 function Board({ items, teamName }: { items: IncidentBrief[]; teamName: (c?: string | null) => string }) {
   return (
-    <div className="flex min-h-0 flex-1 gap-2 overflow-x-auto p-3">
+    <div className="incident-board flex min-h-0 flex-1 gap-2 overflow-x-auto p-3">
       {COLUMNS.map((col) => {
         const rows = items.filter((i) => col.statuses.includes(i.status ?? ''))
         return (

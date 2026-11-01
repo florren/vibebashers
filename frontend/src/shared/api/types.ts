@@ -4,6 +4,126 @@
  */
 
 export interface paths {
+    "/api/demo/execution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Текущий изолированный demo-запуск */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Состояние demo-исполнения */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DemoExecutionState"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Запуск эмуляции сотрудников и команд */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DemoExecutionRequest"];
+                };
+            };
+            responses: {
+                /** @description Состояние demo-исполнения */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DemoExecutionState"];
+                    };
+                };
+            };
+        };
+        /** Остановка demo-исполнения с сохранением истории */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Состояние demo-исполнения */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DemoExecutionState"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/incidents/{id}/recover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Продолжить неудачную demo-попытку в том же инциденте */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Продолжение зарегистрировано; повтор идемпотентен */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DemoExecutionState"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1905,7 +2025,10 @@ export interface paths {
                 query?: {
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
+                    /** @description Текст или код сущности, включая связанные SIG/INC. Все статусы доступны без status-фильтра; run_id=all ищет во всех запусках. */
                     q?: string;
+                    /** @description Тег источника, например ui_pers_demo */
+                    tag?: string;
                     channel?: string[];
                     signal_type?: string[];
                     status?: string[];
@@ -2475,6 +2598,12 @@ export interface paths {
                 query?: {
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
+                    /** @description all / current / id; default all сохраняет доступ к прошлым запросам */
+                    run_id?: string;
+                    /** @description Текст или код любой сущности реестра. Поиск включает уже решённые запросы и связанные SIG/INC. */
+                    q?: string;
+                    /** @description Без поиска показываются открытые и автоматически продолженные запросы; true добавляет обработанные человеком. */
+                    include_decided?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -2534,7 +2663,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Решение человека — возвращается в граф агента */
+        /** Решение или подтверждение запроса; продолжение только для активного wait_human */
         post: {
             parameters: {
                 query?: never;
@@ -2559,7 +2688,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Принято, граф продолжен */
+                /** @description Принято; граф продолжен только для активного wait_human */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2570,6 +2699,84 @@ export interface paths {
                 };
                 /** @description Уже решено */
                 409: components["responses"]["Problem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/hitl/{id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        /** История информации оператора, доступная после продолжения процесса */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: components["parameters"]["Cursor"];
+                };
+                header?: never;
+                path: {
+                    id: components["parameters"]["IdPath"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HitlFeedbackList"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        /** Сохранить дополнительную информацию без повторного выполнения графа или денег */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: components["parameters"]["IdPath"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        comment: string;
+                        /** @default operator */
+                        recorded_by?: string;
+                        idempotency_key: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Запись сохранена; точный повтор ключа возвращает ту же запись */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HitlFeedback"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -2880,6 +3087,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/metrics/economics/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Калькулятор потерь без записи в БД */
+        get: {
+            parameters: {
+                query?: {
+                    affected?: number;
+                    product?: string;
+                    system?: string;
+                    segment?: string;
+                    detractor_share?: number;
+                    no_return_share?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IncidentEconomics"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/metrics/economics": {
         parameters: {
             query?: never;
@@ -3095,6 +3345,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     kind?: "agent" | "client_twin" | "team_emulator" | "bench" | "compare";
@@ -4913,6 +5165,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     branch_code?: string;
@@ -5620,6 +5874,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                     kind?: components["schemas"]["TranscriptKind"];
@@ -7129,6 +7385,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
+                    /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
+                    product_mode?: "all" | "include" | "exclude";
+                    /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */
+                    product_codes?: string[];
                     /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
                     run_id?: string;
                     period?: "live" | "day" | "week" | "month" | "custom";
@@ -7239,10 +7501,351 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/impact/assessment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя версия сделки */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Код SIG/INC или связанной сущности; фильтрация до пагинации */
+                    q?: string;
+                    /** @description all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра. */
+                    product_mode?: "all" | "include" | "exclude";
+                    /** @description Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр. */
+                    product_codes?: string[];
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                    period?: "live" | "day" | "week" | "month" | "custom";
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    start_date?: string;
+                    /** @description Граница симуляционного времени с часовым поясом, [start_date, end_date). Обе границы обязательны вместе; максимум 366 дней. */
+                    end_date?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinanceAssessment"];
+                    };
+                };
+                /** @description Запуск не найден */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Ошибка параметров */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/impact/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** T-265: добавить версию декларации вмешательства; идемпотентный ключ, без денежных проводок */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Один запуск: current или положительный id. all запрещён. Без текущего запуска возвращается пустой срез. */
+                    run_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FinanceEvidenceBody"];
+                };
+            };
+            responses: {
+                /** @description Записано или точный повтор; новая версия сделки отзывает прежнюю оценку */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FinanceEvidenceResult"];
+                    };
+                };
+                /** @description Алерт вне запуска */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Нет политики/запуска или конфликт ключа */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Некорректное доказательство */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Анонимная сессия и справочники отдельного чата */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonalSession"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Только собственная история чата (HttpOnly session cookie) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonalHistory"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Сообщение анонимного посетителя с тегом ui_pers_demo */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PersonalMessageBody"];
+                };
+            };
+            responses: {
+                /** @description Принято штатным normalizer */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            accepted: boolean;
+                            public_id: string;
+                        };
+                    };
+                };
+                /** @description Пассивная защита; Retry-After позволяет дождаться отправки без CAPTCHA */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Забыть анонимную сессию в этом браузере */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cookie удалена; история остаётся в обработке */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/personal/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Готовность публичного приложения */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            status?: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DemoExecutionRequest: {
+            /** @description Обязателен при mode=demo. */
+            scenario_id?: string | null;
+            /**
+             * @description Изолированный сценарий либо профиль общей симуляции и ручных входов.
+             * @default demo
+             * @enum {string}
+             */
+            mode: "demo" | "simulation";
+            /**
+             * @default on_time
+             * @enum {string}
+             */
+            team_outcome: "on_time" | "late" | "no_work" | "failed" | "recovered";
+            /** @default true */
+            emulate_humans: boolean;
+            /** @default true */
+            auto_advance: boolean;
+        } & unknown;
+        DemoExecutionState: {
+            run_id: number | null;
+            subject_ref: string | null;
+            configuration: {
+                [key: string]: unknown;
+            };
+            incidents: {
+                id: number;
+                public_id: string;
+                status: string;
+                sla_breached: boolean;
+                /** @description Доступно явное продолжение неудачной ручной demo-попытки. */
+                can_recover?: boolean;
+                resolution_summary: string | null;
+            }[];
+        };
         /** @enum {string} */
         LlmProvider: "gigachat" | "openai_compatible" | "mock";
         /** @enum {string} */
@@ -7251,8 +7854,7 @@ export interface components {
         Criticality: "low" | "medium" | "high";
         /** @enum {string} */
         IncidentStatus: "new" | "classified" | "routed" | "in_progress" | "fix_proposed" | "fix_deployed" | "verifying" | "resolved" | "closed" | "awaiting_human" | "awaiting_client" | "escalated" | "duplicate" | "rejected";
-        /** @enum {string} */
-        SignalStatus: "new" | "processing" | "classified" | "linked" | "deferred" | "awaiting_human" | "awaiting_client" | "answered" | "closed" | "noise" | "error";
+        SignalStatus: components["schemas"]["signal_status"];
         /** @enum {string} */
         OutcomeClass: "closed_in_sla_with_gift" | "closed_in_sla" | "closed_late" | "closed_with_regression" | "open" | "rejected" | "churned";
         /** @enum {string} */
@@ -7598,6 +8200,11 @@ export interface components {
             telegram_chat_id?: number;
         };
         Signal: {
+            tags?: string[];
+            run_id?: number;
+            run_public_id?: string;
+            /** @description Коды связанных инцидентов в том же запуске */
+            incident_refs?: string[];
             /** @description [ДТЗ] */
             sentiment?: components["schemas"]["Sentiment"] | null;
             /** @description [ДТЗ] */
@@ -7611,7 +8218,7 @@ export interface components {
             text?: string;
             /** Format: date-time */
             received_sim?: string;
-            status?: components["schemas"]["SignalStatus"];
+            status?: components["schemas"]["signal_status"];
             origin?: string;
             classification?: components["schemas"]["classification.schema"] | null;
             region_code?: string | null;
@@ -7846,11 +8453,37 @@ export interface components {
         };
         HitlItem: {
             id?: number;
-            signal?: components["schemas"]["Signal"];
+            run_public_id?: string;
+            public_id?: string;
+            agent_run_id?: number | null;
+            incident_id?: number | null;
+            task_id?: number | null;
+            comment?: string | null;
+            /** Format: date-time */
+            decided_sim?: string | null;
+            sim_run_id?: number;
+            signal?: components["schemas"]["Signal"] | null;
+            process_outcome?: string | null;
+            /** @description Только незавершённый wait_human допускает продолжение графа */
+            can_resume?: boolean;
+            automatic_decision?: boolean;
+            feedback_count?: number;
+            related_incidents?: components["schemas"]["IncidentBrief"][];
+            escalations?: {
+                kind: string;
+                ref: string;
+            }[];
             incident?: components["schemas"]["IncidentBrief"] | null;
             task?: components["schemas"]["Task"] | null;
             reason?: string;
-            agent_proposal?: components["schemas"]["decision.schema"];
+            agent_proposal?: components["schemas"]["decision.schema"] | {
+                /** @enum {string} */
+                kind: "escalation";
+                escalation_id?: number;
+                public_id?: string;
+                severity?: string;
+                to_role?: string;
+            };
             options?: {
                 code?: string;
                 label_ru?: string;
@@ -7865,10 +8498,43 @@ export interface components {
             decision?: string | null;
             decided_by?: string | null;
         };
+        HitlFeedback: {
+            id: number;
+            human_decision_id: number;
+            idempotency_key: string;
+            comment: string;
+            recorded_by: string;
+            /** Format: date-time */
+            recorded_sim: string;
+            /** Format: date-time */
+            recorded_at: string;
+            review_run_ref?: string | null;
+            /** @enum {string|null} */
+            processing_status?: "pending" | "applied" | "failed" | null;
+            agent_run_id?: number | null;
+            review?: {
+                summary_ru?: string;
+                priority?: number;
+                next_step?: string;
+            } | null;
+            /** Format: date-time */
+            applied_at?: string | null;
+            processing_error?: string | null;
+        };
+        HitlFeedbackList: {
+            items: components["schemas"]["HitlFeedback"][];
+            next_cursor: string | null;
+        };
         HitlList: {
             items?: components["schemas"]["HitlItem"][];
             next_cursor?: string | null;
             total?: number;
+            /** @description Связанная цепочка видна и без HD; только коды, без текста/токенов. */
+            related_entities?: {
+                kind: string;
+                ref: string;
+            }[];
+            related_entities_truncated?: boolean;
         };
         Task: {
             id?: number;
@@ -8889,6 +9555,7 @@ export interface components {
             scenario_net_rub: number;
             scenario_fine_rub: number;
             scenario_with_fine_net_rub: number;
+            proof?: components["schemas"]["FinanceCaseProof"];
         };
         FinancialImpactTotal: {
             incidents_resolved: number;
@@ -8921,6 +9588,210 @@ export interface components {
                 net_rub: number;
             }[];
             items: components["schemas"]["FinancialImpactCase"][];
+        };
+        FinanceFinePolicy: {
+            id: string;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            /** @enum {string} */
+            currency: "RUB";
+            amount_rub: number;
+            /** @enum {string} */
+            unit: "deal";
+            basis_ref: string;
+            business_approval_ref: string;
+            legal_approval_ref: string | null;
+            /** Format: date-time */
+            effective_from_sim: string;
+            /** Format: date-time */
+            effective_until_sim: string;
+            additive_to_dcltv: boolean;
+        };
+        FinanceCalibration: {
+            id: string;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            data_kind: string;
+            model: string;
+            prompt_version: string;
+            horizon_days: number;
+            /** Format: date-time */
+            cutoff_sim: string;
+            business_approval_ref: string;
+            score_pipeline: string;
+            dataset_sha256: string;
+            artifact_sha256: string;
+            train_n: number;
+            metrics: {
+                raw_brier: number;
+                calibrated_brier: number;
+                ece: number;
+                validation_n: number;
+            };
+            bins: {
+                lower: number;
+                upper: number;
+                n: number;
+                churned: number;
+                probability: number;
+            }[];
+        };
+        FinanceRisk: {
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            /** @enum {string} */
+            status: "calibrated" | "unknown";
+            probability: number | null;
+            reason: string;
+            raw_score: number | null;
+            model: string | null;
+            prompt_version: string | null;
+            score_pipeline: string | null;
+            /** Format: date-time */
+            predicted_sim: string | null;
+            horizon_days: number;
+            calibration_id: string | null;
+            dataset_sha256: string | null;
+            artifact_sha256: string | null;
+            agent_run_id: number | null;
+            step_id: number | null;
+            graph_version: string | null;
+        };
+        FinanceEvidenceRecord: {
+            id: number;
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            deal_ref: string;
+            /** Format: date-time */
+            intervention_sim: string;
+            /** Format: date-time */
+            deal_closed_sim: string;
+            /** @enum {string} */
+            outcome: "prevented" | "completed" | "unknown";
+            evidence_ref: string;
+            recorded_by: string;
+            policy: components["schemas"]["FinanceFinePolicy"];
+            policy_sha256: string;
+            /** Format: date-time */
+            recorded_at: string;
+        };
+        FinanceCaseProof: {
+            risks: components["schemas"]["FinanceRisk"][];
+            alerts: {
+                id: number;
+                decision: string | null;
+                session_ref: string;
+            }[];
+            records: components["schemas"]["FinanceEvidenceRecord"][];
+            policies: {
+                demo: components["schemas"]["FinanceFinePolicy"] | null;
+                observed: components["schemas"]["FinanceFinePolicy"] | null;
+            };
+        };
+        FinanceAssessment: {
+            run_id: number | null;
+            /** Format: date-time */
+            start_date: string | null;
+            /** Format: date-time */
+            end_date: string | null;
+            horizon_days: number;
+            contours: {
+                /** @enum {string} */
+                scope: "demo" | "observed";
+                known_risk_rub: number;
+                risk_total_rub: number | null;
+                net_rub: number | null;
+                refund_rub: number;
+                fine_rub: number | null;
+                combined_net_rub: number | null;
+                known_clients: number;
+                unknown_clients: number;
+                duplicate_cases: number;
+                unidentified_cases: number;
+                qualified_deals: number;
+                excluded_deals: number;
+                reasons: {
+                    [key: string]: number;
+                };
+                calibration: components["schemas"]["FinanceCalibration"] | null;
+                fine_policy: components["schemas"]["FinanceFinePolicy"] | null;
+                case_count: number;
+            }[];
+        };
+        FinanceEvidenceBody: {
+            /** @enum {string} */
+            scope: "demo" | "observed";
+            incident_id: number;
+            alert_id: number;
+            policy_id: string;
+            deal_ref: string;
+            idempotency_key: string;
+            /** Format: date-time */
+            intervention_sim: string;
+            /** Format: date-time */
+            deal_closed_sim: string;
+            /** @enum {string} */
+            outcome: "prevented" | "completed" | "unknown";
+            evidence_ref: string;
+            recorded_by: string;
+        };
+        FinanceEvidenceResult: {
+            id: number;
+            run_id: number;
+            replayed: boolean;
+        };
+        PersonalSession: {
+            /** @description Неподтверждённое обращение посетителя из последнего сообщения собственной сессии */
+            display_name?: string;
+            form_token: string;
+            /** @constant */
+            tag: "ui_pers_demo";
+            minimum_form_ms: number;
+            products: {
+                code: string;
+                name_ru: string;
+                name_en: string;
+            }[];
+            regions: {
+                code: string;
+                name_ru: string;
+            }[];
+            cities: {
+                id: number;
+                name_ru: string;
+                region_code: string;
+            }[];
+        };
+        PersonalMessageBody: {
+            /** Format: uuid */
+            request_id: string;
+            form_token: string;
+            text: string;
+            /** @description Необязательное имя или псевдоним; null сохраняет предыдущее обращение */
+            display_name?: string | null;
+            product_code?: string | null;
+            region_code?: string | null;
+            city_id?: number | null;
+            /** @default  */
+            website: string;
+            /** @default false */
+            voice: boolean;
+        };
+        PersonalHistory: {
+            messages: {
+                public_id: string;
+                text: string;
+                display_name?: string;
+                status: string;
+                /** Format: date-time */
+                received_at: string;
+            }[];
+            answers: {
+                id: number;
+                text: string;
+                /** Format: date-time */
+                at: string;
+            }[];
         };
         /** @enum {string} */
         tone: "neutral" | "positive" | "irritated" | "angry" | "sarcastic" | "formal";
@@ -8999,6 +9870,8 @@ export interface components {
             /** @description Смещение оценки удовлетворённости двойника */
             satisfaction_bias?: number;
         };
+        /** @enum {string} */
+        signal_status: "new" | "processing" | "classified" | "linked" | "deferred" | "awaiting_human" | "awaiting_client" | "answered" | "closed" | "noise" | "error";
         /** @enum {string} */
         signal_type: "tech_fault" | "client_error" | "tariff_terms" | "service_quality" | "fraud_suspicion" | "legal_regulatory" | "info_request" | "gratitude" | "suggestion" | "churn";
         /** @enum {string} */

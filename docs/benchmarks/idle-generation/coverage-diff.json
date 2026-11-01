@@ -1,0 +1,95 @@
+{
+  "covered": 162,
+  "statements": 185,
+  "percent": 87.57,
+  "files": [
+    {
+      "file": "backend/app/agent/graph.py",
+      "covered": 1,
+      "statements": 1,
+      "missing": []
+    },
+    {
+      "file": "backend/app/agent/runner.py",
+      "covered": 1,
+      "statements": 3,
+      "missing": [
+        173,
+        174
+      ]
+    },
+    {
+      "file": "backend/app/api/_compliance_support.py",
+      "covered": 7,
+      "statements": 7,
+      "missing": []
+    },
+    {
+      "file": "backend/app/api/ingest.py",
+      "covered": 2,
+      "statements": 5,
+      "missing": [
+        355,
+        409,
+        410
+      ]
+    },
+    {
+      "file": "backend/app/api/signals.py",
+      "covered": 1,
+      "statements": 3,
+      "missing": [
+        105,
+        106
+      ]
+    },
+    {
+      "file": "backend/app/ingest/sources.py",
+      "covered": 36,
+      "statements": 42,
+      "missing": [
+        44,
+        90,
+        93,
+        96,
+        99,
+        118
+      ]
+    },
+    {
+      "file": "backend/app/sim/engine.py",
+      "covered": 9,
+      "statements": 9,
+      "missing": []
+    },
+    {
+      "file": "backend/app/sim/runs.py",
+      "covered": 10,
+      "statements": 10,
+      "missing": []
+    },
+    {
+      "file": "backend/app/ingest/synthetic.py",
+      "covered": 8,
+      "statements": 8,
+      "missing": []
+    },
+    {
+      "file": "scripts/seed/repair_csi.py",
+      "covered": 87,
+      "statements": 97,
+      "missing": [
+        35,
+        41,
+        45,
+        72,
+        94,
+        116,
+        138,
+        153,
+        154,
+        155
+      ]
+    }
+  ]
+}

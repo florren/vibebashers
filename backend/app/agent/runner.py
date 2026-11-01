@@ -19,6 +19,7 @@ from app.agent.graph import (
     wake_followups_for_incident,
 )
 from app.db.session import psycopg_dsn
+from app.ingest.synthetic import AUTOMATIC_EXCLUDED_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -32,18 +33,61 @@ class AgentService:
     ) -> None:
         self.chain, self.profile, self.dsn = chain, profile, dsn
         self.sem = asyncio.Semaphore(concurrency)
+        self.personal_sem = asyncio.Semaphore(2)
         self._task: asyncio.Task[None] | None = None
+        self._feedback_task: asyncio.Task[None] | None = None
+        self._personal_task: asyncio.Task[None] | None = None
         self._inflight: set[asyncio.Task[Any]] = set()
         self._by_signal: dict[int, asyncio.Task[Any]] = {}
         self.processed = 0
         self.failed = 0
         self.enabled = True
+        self.started_at = dt.datetime.now(dt.UTC)
 
     def start(self) -> None:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop(), name="agent-listener")
+        if self._feedback_task is None or self._feedback_task.done():
+            from app.agent.operator_feedback import worker
+
+            self._feedback_task = asyncio.create_task(
+                worker(lambda: (self.chain, self.profile), self.dsn), name="operator-feedback"
+            )
+
+        if self._personal_task is None or self._personal_task.done():
+            self._personal_task = asyncio.create_task(self._personal_loop(), name="personal-chat-queue")
+
+    async def _personal_loop(self) -> None:
+        # Публичный чат не ждёт восстановления старой фоновой очереди. Данные остаются в общем signals.
+        while True:
+            try:
+                if self.enabled:
+                    async with await self._conn() as conn:
+                        rows = await (
+                            await conn.execute(
+                                "select s.id from signals s where s.channel_subtype='ui_pers_demo' and s.status='new' and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.kind='agent' and a.outcome is distinct from 'failed') order by s.id limit 20"
+                            )
+                        ).fetchall()
+                        await conn.commit()
+                    for (sid,) in rows:
+                        self.submit(int(sid), interactive=True)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("personal_queue_failed", error=type(exc).__name__)
+            await asyncio.sleep(2)
 
     async def stop(self) -> None:
+        if self._personal_task:
+            self._personal_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._personal_task
+            self._personal_task = None
+        if self._feedback_task:
+            self._feedback_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._feedback_task
+            self._feedback_task = None
         if self._task:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -63,14 +107,21 @@ class AgentService:
             await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
             await conn.execute(
                 "update agent_runs set outcome = 'failed', finished_at = now(), error = 'прерван рестартом' "
-                "where kind = 'agent' and outcome is null "
-                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled')"
+                "where kind = 'agent' and outcome is null and started_at < %s "
+                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled') "
+                f"and exists(select 1 from signals s where s.id=agent_runs.signal_id and not {AUTOMATIC_EXCLUDED_SQL})",
+                (self.started_at,),
             )
-            await conn.execute("update signals set status = 'new' where status = 'processing'")
+            await conn.execute(
+                "update signals s set status = 'new' where s.status = 'processing' and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.started_at>=%s) "
+                f"and not {AUTOMATIC_EXCLUDED_SQL}",
+                (self.started_at,),
+            )
             rows = await (
                 await conn.execute(
                     "select s.id from signals s, sim_state st where st.id = 1 and s.run_id = st.current_run_id and s.status = 'new' "
-                    "and s.origin <> 'scenario' and s.received_sim >= st.sim_time - interval '2 hours' order by s.id limit 50"
+                    "and s.origin <> 'scenario' and s.channel_subtype is distinct from 'ui_pers_demo' and s.received_sim >= st.sim_time - interval '2 hours' "
+                    f"and not {AUTOMATIC_EXCLUDED_SQL} order by s.id limit 50"
                 )
             ).fetchall()
             await conn.commit()
@@ -112,18 +163,36 @@ class AgentService:
                         sid = (body.get("payload") or {}).get("signal_id")
                         sim_time = body.get("sim_time")
                         if sid:
-                            self.submit(int(sid), dt.datetime.fromisoformat(sim_time) if sim_time else None)
+                            async with await self._conn() as lookup:
+                                source = await (
+                                    await lookup.execute(
+                                        f"select s.channel_subtype,{AUTOMATIC_EXCLUDED_SQL} from signals s where s.id=%s",
+                                        (sid,),
+                                    )
+                                ).fetchone()
+                            if not source or source[1]:
+                                continue
+                            self.submit(
+                                int(sid),
+                                dt.datetime.fromisoformat(sim_time) if sim_time else None,
+                                interactive=bool(source and source[0] == "ui_pers_demo"),
+                            )
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001
                 log.warning("agent_listen_failed", error=str(exc)[:200])
                 await asyncio.sleep(2)
 
-    def submit(self, signal_id: int, sim_time: dt.datetime | None = None) -> asyncio.Task[Any]:
+    def submit(
+        self, signal_id: int, sim_time: dt.datetime | None = None, *, interactive: bool = False
+    ) -> asyncio.Task[Any]:
         existing = self._by_signal.get(signal_id)
         if existing is not None and not existing.done():
             return existing
-        t = asyncio.create_task(self._process(signal_id, sim_time), name=f"agent-{signal_id}")
+        t = asyncio.create_task(
+            self._process(signal_id, sim_time, interactive=True) if interactive else self._process(signal_id, sim_time),
+            name=f"agent-{signal_id}",
+        )
         self._by_signal[signal_id] = t
         self._inflight.add(t)
 
@@ -161,8 +230,9 @@ class AgentService:
             except Exception as exc:  # noqa: BLE001
                 log.warning("wake_release_followups_failed", incident_id=incident_id, error=str(exc)[:200])
 
-    async def _process(self, signal_id: int, sim_time: dt.datetime | None) -> None:
-        async with self.sem:
+    async def _process(self, signal_id: int, sim_time: dt.datetime | None, *, interactive: bool = False) -> None:
+        semaphore = self.personal_sem if interactive else self.sem
+        async with semaphore:
             try:
                 async with await self._conn() as conn:
                     state = await process_signal(

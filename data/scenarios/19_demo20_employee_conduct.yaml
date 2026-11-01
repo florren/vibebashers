@@ -1,0 +1,21 @@
+id: demo20_06_employee_conduct
+number: 19
+title_ru: 'ТЗ 06: Грубость оператора'
+title_en: 'Brief 06: Employee misconduct'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Сотрудник поддержки грубо ответил и отказался разбираться. Прошу руководителя
+    проверить качество обслуживания.
+expected: {}
+demo_evidence:
+  observed: Синтетический диалог содержит жалобу на грубость оператора.
+  action: Передать руководителю проверку качества и организовать обратную связь.
+  verification: Проверено решение руководителя и подготовка ответа по качеству обслуживания.
+  source: synthetic_fixture

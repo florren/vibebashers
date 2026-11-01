@@ -38,17 +38,17 @@ export function WorkspacePage() {
   const live = useWs((s) => s.sim)
   const simQ = useSimState()
   const runId = (live ?? simQ.data)?.current_run_id ?? undefined
-  const hitl = useHitlQueue({ run_id: runId })
+  const hitl = useHitlQueue({ run_id: 'all' })
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="workspace-page flex h-full min-w-0 flex-col">
       <KpiStrip runId={runId} />
       <Tabs
         value={tab}
         onChange={setTab}
-        items={TABS.map((id) => ({ id, label: t(`tabs.${id}`), count: id === 'hitl' ? (hitl.data?.items?.length ?? null) : undefined }))}
+        items={TABS.map((id) => ({ id, label: t(`tabs.${id}`), count: id === 'hitl' ? (hitl.data?.total ?? hitl.data?.items?.length ?? null) : undefined }))}
       />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="workspace-body min-h-0 min-w-0 flex-1 overflow-hidden">
         {tab === 'signals' && <SignalsFeed runId={runId} onOpen={setSignalId} />}
         {tab === 'incidents' && <IncidentsBoard runId={runId} />}
         {tab === 'hitl' && <HitlQueue runId={runId} onOpenSignal={setSignalId} />}

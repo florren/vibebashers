@@ -50,6 +50,7 @@ async def post_sim_control(request: Request, body: SimControlRequest) -> Any:
     sim = _sim(request)
     kw = body.model_dump(exclude_none=True)
     action = kw.pop("action")
+    sim.full_execution = True
     if action == "set_speed" and "speed" not in kw:
         raise HTTPException(status_code=422, detail="speed обязателен для set_speed")
     if action == "set_preset" and "preset" not in kw:

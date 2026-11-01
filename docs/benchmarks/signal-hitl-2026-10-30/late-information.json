@@ -1,0 +1,9 @@
+{
+  "hd": 1531,
+  "source_signal": "SIG-092812",
+  "decision": "reject",
+  "decided_by": "t267-smoke",
+  "can_resume": false,
+  "feedback_count": 1,
+  "feedbackVisibleAfterReload": true
+}

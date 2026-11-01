@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import hashlib
 import json
+import os
+import re
 import shutil
 import subprocess
+import sys
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.types.json import Jsonb
 
 from app.config import get_settings
@@ -34,7 +40,7 @@ class BaselineUnavailableError(Exception):
 
 
 class BaselineToolingError(Exception):
-    """pg_dump или pg_restore недоступен."""
+    """Инструмент снимка или авторемонта недоступен либо завершился ошибкой."""
 
 
 class BaselineActiveRunError(Exception):
@@ -46,6 +52,20 @@ def _pg_tool(name: str) -> str:
     if not path:
         raise BaselineToolingError(f"{name} не найден в PATH")
     return path
+
+
+def check_tools(server_version: int) -> dict[str, int]:
+    """Для roundtrip используем pg_dump/pg_restore той же major-версии, что сервер."""
+    versions = {"server": server_version // 10000}
+    for name in ("pg_dump", "pg_restore"):
+        proc = subprocess.run([_pg_tool(name), "--version"], capture_output=True, text=True, check=False)
+        match = re.search(r"PostgreSQL\) (\d+)\.", proc.stdout)
+        if proc.returncode or not match:
+            raise BaselineToolingError(f"Не удалось определить версию {name}")
+        versions[name] = int(match[1])
+        if versions[name] != versions["server"]:
+            raise BaselineToolingError(f"Нужен {name} major {versions['server']}, установлен {versions[name]}")
+    return versions
 
 
 def baseline_dir() -> Path:
@@ -69,6 +89,27 @@ def runs_export_dir() -> Path:
 
 def _dump_path(profile: str) -> Path:
     return baseline_dir() / f"{profile}.dump"
+
+
+def _restore_dump_path(profile: str) -> Path:
+    source = _dump_path(profile)
+    prepared = source.with_suffix(".compatible.dump")
+    if not source.is_file() or not prepared.is_file():
+        return source
+    provenance = prepared.with_suffix(".dump.provenance.json")
+    try:
+        metadata = json.loads(provenance.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BaselineToolingError("Нет корректного provenance подготовленного baseline") from exc
+    if (
+        not isinstance(metadata, dict)
+        or metadata.get("source_sha256") != _sha256_file(source)
+        or metadata.get("output_sha256") != _sha256_file(prepared)
+    ):
+        raise BaselineToolingError(
+            "Контрольные суммы подготовленного baseline не совпадают; повторите подготовку в изолированной БД"
+        )
+    return prepared
 
 
 def _meta_path(profile: str) -> Path:
@@ -216,6 +257,11 @@ def dump_for_connection(
     return info(prof)
 
 
+def _connection_dsn(conn: psycopg.AsyncConnection[Any]) -> str:
+    # info.dsn исключает пароль. Сохраняем аутентификацию, но не выбираем другую БД из Settings.
+    return make_conninfo(conn.info.dsn, password=conn.info.password)
+
+
 async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -> dict[str, Any]:
     """Создать снимок baseline из текущего состояния БД."""
     prof = resolve_profile(profile)
@@ -228,7 +274,7 @@ async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -
         prof = str(seed_done["profile"])
     dump_path = _dump_path(prof)
     dump_path.parent.mkdir(parents=True, exist_ok=True)
-    dsn = psycopg_dsn()
+    dsn = _connection_dsn(conn)
     await conn.commit()
     _run_pg_dump(dsn, dump_path)
     meta = {
@@ -269,23 +315,107 @@ async def _restore_sim_runs(conn: psycopg.AsyncConnection[Any], rows: list[tuple
 
 
 def _run_pg_restore(dsn: str, dump_path: Path) -> None:
-    cmd = [
-        _pg_tool("pg_restore"),
-        "--clean",
-        "--if-exists",
-        "--no-owner",
-        "--no-acl",
-        "-d",
-        dsn,
-        str(dump_path),
-    ]
-    log.info("baseline_restore_pg_start", path=str(dump_path))
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        # pg_restore часто возвращает 1 при harmless warnings
-        err = proc.stderr or proc.stdout or ""
-        if proc.returncode > 1 or "FATAL" in err.upper():
-            raise BaselineToolingError(f"pg_restore завершился с кодом {proc.returncode}: {err.strip()[-800:]}")
+    # sim_runs исключена из dump. Её исходящие FK мешают --clean удалять PK
+    # scenarios/llm_profiles. Снимаем их и возвращаем в той же транзакции.
+    with tempfile.TemporaryDirectory(prefix="cx-restore-") as directory:
+        script = Path(directory) / "restore.sql"
+        proc = subprocess.run(
+            [
+                _pg_tool("pg_restore"),
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                "--no-acl",
+                "-f",
+                str(script),
+                str(dump_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode:
+            raise BaselineToolingError(
+                "Архив не читается; используйте scripts/seed/prepare_baseline.py в изолированной БД"
+            )
+        wrapped = Path(directory) / "transaction.sql"
+        with wrapped.open("w") as out, script.open() as src:
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
+            out.write("DROP INDEX IF EXISTS public.sim_runs_public_id_trgm_idx;\n")
+            shutil.copyfileobj(src, out)
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
+            out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
+            # Старые запуски могут ссылаться на сценарии/профили, отсутствующие в baseline.
+            # NOT VALID сохраняет метаданные истории, проверяя все новые изменения.
+            out.write(
+                "ALTER TABLE public.sim_runs ADD CONSTRAINT sim_runs_scenario_fk FOREIGN KEY(scenario_id) REFERENCES public.scenarios(id) NOT VALID;\n"
+            )
+            out.write(
+                "ALTER TABLE public.sim_runs ADD CONSTRAINT sim_runs_llm_profile_fk FOREIGN KEY(llm_profile_id) REFERENCES public.llm_profiles(id) NOT VALID;\n"
+            )
+            out.write(
+                "CREATE INDEX IF NOT EXISTS sim_runs_public_id_trgm_idx ON public.sim_runs USING gin(public_id public.gin_trgm_ops);\n"
+            )
+        keys = {
+            "host": "PGHOST",
+            "hostaddr": "PGHOSTADDR",
+            "port": "PGPORT",
+            "dbname": "PGDATABASE",
+            "user": "PGUSER",
+            "password": "PGPASSWORD",
+            "sslmode": "PGSSLMODE",
+        }
+        env = {**os.environ, **{keys[k]: str(v) for k, v in conninfo_to_dict(dsn).items() if k in keys}}
+        proc = subprocess.run(
+            [_pg_tool("psql"), "-X", "--single-transaction", "--set=ON_ERROR_STOP=1", "-f", str(wrapped)],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode:
+            raise BaselineToolingError(
+                f"pg_restore/psql завершился с кодом {proc.returncode}; транзакция восстановления отменена"
+            )
+
+
+def _csi_repair_script() -> Path:
+    # Нативный checkout и Docker используют тот же CLI с единственной логикой ремонта.
+    path = REPO_ROOT / "scripts" / "seed" / "repair_csi.py"
+    if not path.is_file():
+        raise BaselineToolingError("не найден scripts/seed/repair_csi.py; baseline не восстановлен")
+    return path
+
+
+def _run_csi_repair(dsn: str, script: Path) -> dict[str, Any]:
+    # DSN передаём окружением, а не argv; отдельный процесс изолирует logging seed-модулей.
+    proc = subprocess.run(
+        [sys.executable, str(script), "--apply", "--json"],
+        env={**os.environ, "DATABASE_URL": dsn},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        result: dict[str, Any] = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        log.error("baseline_csi_repair_failed", returncode=proc.returncode, detail=proc.stderr[-2000:])
+        raise BaselineToolingError("CSI-ремонт не вернул результат; восстановление baseline не завершено") from exc
+    if (
+        proc.returncode != 0
+        or not isinstance(result, dict)
+        or not all(isinstance(result.get(key), int) for key in ("after", "total", "added"))
+        or result.get("after") != result.get("total")
+    ):
+        reason = (
+            result.get("error", "неполное покрытие или неверный результат")
+            if isinstance(result, dict)
+            else "неверный результат"
+        )
+        raise BaselineToolingError(f"Автоматический CSI-ремонт: {reason}; восстановление baseline не завершено")
+    log.info("baseline_csi_repair_done", **result)
+    return result
 
 
 async def _notify(conn: psycopg.AsyncConnection[Any], event_type: str, job_id: str) -> None:
@@ -303,11 +433,12 @@ async def restore(
 ) -> str:
     """Откат БД к снимку baseline; sim_runs и runs/ восстанавливаются отдельно."""
     prof = resolve_profile(profile)
-    dump_path = _dump_path(prof)
+    dump_path = _restore_dump_path(prof)
     if not dump_path.is_file():
         raise BaselineUnavailableError(f"снимок baseline для профиля {prof} не найден")
+    repair_script = _csi_repair_script()
     job_id = str(uuid.uuid4())
-    dsn = psycopg_dsn()
+    dsn = _connection_dsn(conn)
     runs_dir = runs_export_dir()
     runs_backup: Path | None = None
     if runs_dir.is_dir() and any(runs_dir.iterdir()):
@@ -335,6 +466,9 @@ async def restore(
                 shutil.rmtree(runs_dir)
             shutil.copytree(runs_backup, runs_dir)
             shutil.rmtree(runs_backup, ignore_errors=True)
+        # CLI открывает свою транзакцию: сохранённые sim_runs должны быть видны до ремонта.
+        await new_conn.commit()
+        await asyncio.to_thread(_run_csi_repair, dsn, repair_script)
         await _notify(new_conn, "baseline_restore_finished", job_id)
         await new_conn.commit()
 

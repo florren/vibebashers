@@ -1,0 +1,13 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "$id":"https://cx-pulse.local/contracts/events/agent/operator_feedback.schema.json",
+ "title":"OperatorFeedbackReview",
+ "description":"T-268: план дальнейшей работы с новыми сведениями; без повторения выполненных действий.",
+ "type":"object", "additionalProperties":false,
+ "required":["summary_ru","priority","next_step"],
+ "properties":{
+  "summary_ru":{"type":"string","minLength":1,"maxLength":2000},
+  "priority":{"type":"integer","minimum":1,"maximum":4},
+  "next_step":{"type":"string","enum":["continue_monitoring","manual_review","request_clarification"]}
+ }
+}

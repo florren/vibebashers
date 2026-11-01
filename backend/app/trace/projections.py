@@ -122,7 +122,12 @@ def project(node: dict[str, Any], phase: str) -> dict[str, Any]:
     ref = reference(node)
     href = f"/trace/{kind}/{quote(ref, safe='')}"
     badges: dict[str, Any] = {}
-    source = d.get("llm_source") or (d.get("output") or {}).get("llm_source")
+    source = (
+        d.get("llm_source")
+        or (d.get("output") or {}).get("llm_source")
+        or (d.get("meta") or {}).get("source")
+        or (d.get("output") or {}).get("source")
+    )
     if (
         not source
         and kind == "step"
@@ -140,6 +145,10 @@ def project(node: dict[str, Any], phase: str) -> dict[str, Any]:
             if model
             else None
         )
+    demo_actor = kind == "human_decision" and str(d.get("decided_by") or "").startswith("demo-agent:")
+    if demo_actor:
+        title = "Агент ответил за сотрудника (DEMO)"
+        source = str(d["decided_by"]).split(":")[-1]
     if source in ("live", "replay", "mock"):
         badges["llm_source"] = source
     if kind == "ledger":
@@ -161,7 +170,9 @@ def project(node: dict[str, Any], phase: str) -> dict[str, Any]:
         "ts_real": time_value(d, True) or "1970-01-01T00:00:00Z",
         "actor": {
             "kind": spec.actor,
-            "label_ru": {
+            "label_ru": "Агент — эмуляция сотрудника (DEMO)"
+            if demo_actor
+            else {
                 "agent": "Агент",
                 "client": "Клиент",
                 "human": "Человек",

@@ -1,0 +1,12 @@
+{
+  "id": "demo-mock-7d-v1",
+  "scope": "demo",
+  "data_kind": "synthetic_controls",
+  "model": "mock:mock-rules-v1",
+  "prompt_version": "v1.1",
+  "horizon_days": 7,
+  "cutoff_sim": "2026-10-08T00:00:00Z",
+  "business_approval_ref": "prototype-demo-request-2026-10-29",
+  "generator": "gen_churn_demo-v1-seed265",
+  "population": "synthetic_retail"
+}

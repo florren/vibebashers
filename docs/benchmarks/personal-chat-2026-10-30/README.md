@@ -1,0 +1,32 @@
+# T-268 / T-269 — приёмка 30.10.2026
+
+Ветка `codex/agent-feedback-public-chat`; задачи GitHub #97 и #98. Все вводы в проверках синтетические. Исходный HD-001351 / SIG-088489 не отвечен: `decision` и `decided_by` остались NULL.
+
+## Агент и поздняя информация
+
+`operator-preview.json`: дополнение к синтетическому кейсу обработано отдельным AR-000004 (`kind=operator_review`, шаг `operator_feedback`, mock). Создан новый отчёт инцидента; исходные 8 шагов, 1802 проводки и формальный ответ не изменились. Regression проверяет повышение приоритета, создание новой задачи, изоляцию несвязанных обращений, закрытый кейс, повтор, конкурентный запуск и rollback всех эффектов при сбое. Новые сведения повторно загружаются перед последующими решениями и возобновлениями графа.
+
+## Отдельный чат
+
+`browser.json` и `personal-*.png`: настоящий preview на изолированной PostgreSQL с lite-сидом и mock-агентом, без подмены HTTP. ru/en, light/dark, ширины 1440/390; нет переполнения, JavaScript-ошибок и запросов к операторским API. Диктовка: настоящий AudioWorklet → локальный Vosk, 107 символов после 10 секунд синтетического WAV.
+
+`stand-public-browser.json` и `stand-public-chat.png`: настоящий HTTPS Tuna → :9999 → normalizer → штатный агент. SIG-100558, анонимный `client_id=NULL`, тег `ui_pers_demo`, AR-001904. Шаги normalize/classify/decide выполнены `gigachat:GigaChat-3-Ultra:32.9.16.9`, статус ok; клиентский ответ появился за 14,2 с. Cookie Secure/HttpOnly/SameSite=Strict; `/api/settings`, `/api/hitl/queue`, `/docs`, `/finance` возвращают 404 на публичном сервере. На основном :8000 они сохраняются.
+
+Публичный адрес, фактически назначенный CLI: https://royal-penguin-6552.a.tuna.free. Бесплатный Tuna перед первым посещением показывает собственную страницу с кнопкой «Посетить»; это ограничение сервиса перед загрузкой приложения. Тариф не менялся, обход предупреждения не реализован. Источник: https://tuna.am/en/docs/abuse/.
+
+## Воспроизведение и безопасность
+
+- Backend: `make lint test` с `DATABASE_URL` и `DATABASE_URL_TEST` **только отдельной тестовой БД**; не запускать pytest на БД стенда.
+- Frontend: `npm run lint`, `npx tsc --noEmit`, `npm test -- --run`, `npm run build` (обе сборки). Для локального Node 26 нужен `NODE_OPTIONS=--no-experimental-webstorage` при Vitest; CI использует Node 22.
+- Контракты: `scripts/contracts_check.py`, `scripts/check_openapi_drift.py`, `scripts/i18n_check.py`, `scripts/check_owners.py --base main --allow-cross`.
+- Миграция 0010 применена к локальному стенду PostgreSQL 16. Перед ней сохранена приватная резервная копия; схема аддитивная, downgrade намеренно сохраняет историю. Для отката приложения доступен предыдущий Docker image; новые таблицы можно оставить до расследования, откат данных — из резервной копии.
+- Ключ Tuna берётся только из `.env`, не передаётся в argv и не включён в материалы проверки. Публичный контейнер получает только настройки БД, HMAC и Vosk, без `.env`-mount и ключей LLM/Tuna. Модель и приватные журналы не коммитятся.
+- Пассивная защита ограничивает частоту, размер тела, продолжительность аудио, создание сессий; проверяет origin, nonce и honeypot. Это защита демо, а не доказательство отсутствия ботов. Бесплатный туннель и живой LLM зависят от доступности внешних сервисов.
+
+`stand-public-voice.json`: публичный HTTPS, реальная диктовка с автоматическим остановом на 30 с; 959828 байт PCM (лимит 960000), HTTP 200, 331 символ, без JS-ошибок. В личном сервисе используется подготовленная установщиком модель из `/data/models/stt`; комментарий старого `STT_MODEL_PATH` из `.env` туда не переносится.
+
+Локальные проверки: frontend 22 файла / 131 тест успешно; backend lint, format и mypy (230 файлов) успешно; 42 JSON Schema / 158 путей OpenAPI; drift 186/186; i18n 1413 ключей; owners с разрешённым cross-layer. Targeted coverage четырёх новых модулей API/agent/tool — 87%. Полный backend-прогон и результаты CI фиксируются в PR.
+
+Финальный `make lint test`: unit 581 passed / 17 skipped; integration 116 passed / 2 skipped; scenarios 22 passed / 2 skipped. Итого 719 passed / 21 skipped; предупреждения существующих зависимостей/маркера live. Повторный публичный smoke после подготовки Vosk: SIG-101204, ответ за 43,4 с, ошибок HTTP/JS нет; JSON и скриншот обновлены этим прогоном. Первый SIG-100558 / AR-001904 сохранён в БД как отдельная проверка GigaChat.
+
+Трасса повторного smoke: AR-001937, outcome deferred, client_id NULL и meta.tags ui_pers_demo. Normalize использовал mock fallback, classify/decide — GigaChat-3-Ultra со статусом ok. Таким образом, проверены и live-модель, и штатное отображение fallback; первый AR-001904 прошёл все три LLM-шага на GigaChat без fallback.

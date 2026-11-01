@@ -20,6 +20,7 @@ from app.compliance.txt_parser import TranscriptParseError, parse_txt
 from app.ingest.normalizer import IngestError, create_signal
 from app.ingest.sources import is_external_url, poll_source
 from app.logging import get_logger
+from app.search.cases import entity_filter
 
 log = get_logger(__name__)
 
@@ -38,9 +39,16 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
     source = request.headers.get("x-source-code") or "api"
     results = []
     async with db() as conn:
+        run_id, sim_time = await run_context(request, conn) if items else (None, None)
+        from app.demo.inputs import prepare
+
+        if run_id is not None:
+            run_id = await prepare(request, conn, run_id)
         for msg in items:
             try:
-                results.append(await create_signal(conn, dict(msg), source_code=source))
+                results.append(
+                    await create_signal(conn, dict(msg), source_code=source, run_id=run_id, sim_time=sim_time)
+                )
             except IngestError as exc:
                 results.append(
                     {"external_id": msg.get("external_id"), "status": "rejected", "signal_id": None, "error": str(exc)}
@@ -69,6 +77,7 @@ IMPORT_DIR = Path(__file__).resolve().parents[3] / "data" / "import" / "transcri
 @router.get("/api/ingest/transcripts", summary="[ДТЗ FR-1.1] Список импортированных транскриптов")
 async def get_ingest_transcripts(
     request: Request,
+    q: str | None = Query(None, max_length=200),
     run_id: str | None = None,
     kind: str | None = None,
     status: str | None = None,
@@ -80,6 +89,9 @@ async def get_ingest_transcripts(
     args: list[Any] = []
     async with db() as conn:
         rid = await resolve_run_id(conn, run_id)
+        predicate, values = await entity_filter(conn, q, "transcript")
+        where.append(predicate)
+        args.extend(values)
         if rid is not None:
             where.append("t.run_id = %s")
             args.append(rid)
@@ -349,7 +361,7 @@ async def post_ingest_sources_code_poll(code: str) -> Any:
         if row["kind"] != "polling":
             raise HTTPException(status_code=409, detail="опрос только для kind=polling")
         try:
-            return await poll_source(conn, row)
+            return await poll_source(conn, row, manual=True)
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=409, detail=str(exc)[:200]) from exc
 
@@ -403,6 +415,8 @@ async def post_ingest_csi(request: Request) -> Any:
     else:
         async with db() as conn:
             try:
+                if rows:
+                    await run_context(request, conn)
                 report = await import_rows(conn, rows)
             except IngestError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc

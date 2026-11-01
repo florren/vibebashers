@@ -569,6 +569,20 @@ class SearchMode(StrEnum):
     text = "text"
 
 
+class SignalStatus(StrEnum):
+    new = "new"
+    processing = "processing"
+    classified = "classified"
+    linked = "linked"
+    deferred = "deferred"
+    awaiting_human = "awaiting_human"
+    awaiting_client = "awaiting_client"
+    answered = "answered"
+    closed = "closed"
+    noise = "noise"
+    error = "error"
+
+
 class Actor(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

@@ -11,6 +11,7 @@ from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
 from app.contracts.registry import deref
 from app.llm.base import LLMProfile
 from app.llm.mock import MockProvider
+from app.search.cases import entity_filter
 
 router = APIRouter(tags=["engine"])
 
@@ -26,6 +27,7 @@ RUN_SQL = (
 @router.get("/api/agent/runs", summary="Запуски агента (живая трассировка)")
 async def get_agent_runs(
     request: Request,
+    q: str | None = Query(None, max_length=200),
     run_id: str = Query(default="current"),
     kind: str | None = None,
     signal_id: int | None = None,
@@ -37,6 +39,9 @@ async def get_agent_runs(
         rid = await resolve_run_id(conn, run_id)
         where: list[str] = ["true"]
         args: list[Any] = []
+        predicate, values = await entity_filter(conn, q, "agent")
+        where.append(predicate)
+        args.extend(values)
         if rid is not None:
             where.append("ar.sim_run_id = %s")
             args.append(rid)

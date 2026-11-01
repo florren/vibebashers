@@ -429,7 +429,7 @@ class ComplianceService:
         )
         alert = {
             "alert_id": alert_id,
-            "kind": kind,
+            "kind": "counter" if kind == "threshold" else kind,
             "incident_id": s.incident_id,
             "channels": ["ws"],
             "summary_ru": f"{'Немедленный алерт' if kind == 'immediate' else 'Порог срабатываний'}: {(trigger or {}).get('pattern_code', '—')} ({s.trigger_count}/{s.alert_threshold})",
@@ -484,12 +484,25 @@ class ComplianceService:
     ) -> dict[str, Any] | None:
         row = await (
             await self.conn.execute(
-                "update compliance_alerts set acknowledged_at = now(), acknowledged_by = %s, decision = %s where id = %s returning session_id, incident_id",
+                "update compliance_alerts set acknowledged_at = now(), acknowledged_by = %s, decision = %s where id = %s and acknowledged_at is null returning session_id, incident_id",
                 (by, decision, alert_id),
             )
         ).fetchone()
         if not row:
-            return None
+            existing = await (
+                await self.conn.execute(
+                    "select session_id,incident_id,decision from compliance_alerts where id=%s", (alert_id,)
+                )
+            ).fetchone()
+            if not existing:
+                return None
+            return {
+                "alert_id": alert_id,
+                "session_id": taxonomy._c(existing, 0),
+                "incident_id": taxonomy._c(existing, 1),
+                "decision": taxonomy._c(existing, 2),
+                "deduplicated": True,
+            }
         session_id, incident_id = int(taxonomy._c(row, 0)), taxonomy._c(row, 1)
         if incident_id:
             new_status = {
@@ -511,6 +524,18 @@ class ComplianceService:
                     self.sim_time,
                 ),
             )
+        await self.conn.execute(
+            "update human_decisions set decision=%s,decided_by=%s,comment=%s,decided_sim=%s,decided_at=now(),use_as_fewshot=case when %s then false else use_as_fewshot end "
+            "where id=(select human_decision_id from compliance_alerts where id=%s) and decision is null",
+            (
+                "reject" if decision == "false_positive" else "accept",
+                by,
+                comment,
+                self.sim_time,
+                by.startswith("demo-agent:"),
+                alert_id,
+            ),
+        )
         s = await self.get_session(session_id)
         if s:
             await self._emit(

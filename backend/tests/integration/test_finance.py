@@ -86,6 +86,36 @@ def test_finance_run_slice(seeded: str, conn: psycopg.Connection[Any], monkeypat
         assert res["next_offset"] == 1 and len(res["items"]) == 1
         assert res["series"][-1]["saved_rub"] == res["total_saved_rub"]
         assert res["series"][-1]["net_rub"] == res["net_effect_rub"]
+        product2 = conn.execute(
+            "select code from products where code<>%s order by code limit 1", (product,)
+        ).fetchone()[0]
+        conn.execute("update incidents set product_code=%s where id=%s", (product2, mid))
+        filtered = client.get(
+            url,
+            params=[
+                ("period", "day"),
+                ("product_mode", "include"),
+                ("product_codes", product2),
+                ("product_codes", product2),
+            ],
+        ).json()
+        assert filtered["incidents_resolved"] == 1 and filtered["items"][0]["incident_id"] == mid
+        assert filtered["total_saved_rub"] == 3240 and filtered["refund_rub"] == 0
+        assert filtered["scenario_fine_rub"] == 50000
+        assert (
+            filtered["series"][-1]["saved_rub"] == 3240
+            and filtered["top_product_saved"] == filtered["items"][0]["product_name"]
+        )
+        excluded = client.get(
+            url, params={"period": "day", "product_mode": "exclude", "product_codes": product2}
+        ).json()
+        assert excluded["incidents_resolved"] == 2 and excluded["total_saved_rub"] == 366.77
+        assert excluded["refund_rub"] == 450 and excluded["scenario_fine_rub"] == 0
+        empty = client.get(url, params={"product_mode": "include"}).json()
+        assert empty["incidents_resolved"] == 0 and empty["series"] == [] and empty["total_saved_rub"] == 0
+        assert client.get(url, params={"product_mode": "exclude"}).json()["incidents_resolved"] == 4
+        assert client.get(url, params={"product_mode": "all", "product_codes": "unknown-product"}).status_code == 422
+
         second = client.get(url, params={"period": "day", "limit": 1, "offset": 1}).json()
         assert second["total_saved_rub"] == res["total_saved_rub"]
         assert second["items"][0]["incident_id"] != res["items"][0]["incident_id"]

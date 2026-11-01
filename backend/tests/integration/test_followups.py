@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import datetime as dt
+
 import psycopg
 import pytest
 
-from app.agent.graph import wake_due_followups
+from app.agent.graph import wake_due_followups, wake_followups_for_incident
 from app.agent.runner import AgentService
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
-from tests.helpers import advance_sim, dsn, mock_chain, new_run, run_agent_on
+from tests.helpers import advance_sim, dsn, mock_chain, new_run, run_agent_on, sim_now
 
 pytestmark = pytest.mark.integration
 
@@ -18,6 +20,40 @@ PROFILE = LLMProfile(code="mock", provider="mock", model="mock-1", role="main")
 FRAUD_TEXT = (
     "Вижу подозрительную операцию на 4 500 руб. в магазине, которую я не совершал. Похоже на мошенников. Что делать?"
 )
+
+
+async def test_incident_virtual_time_does_not_wake_other_client(seeded):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid = await new_run(conn, "independent clocks")
+        mass = (
+            await (
+                await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+            ).fetchone()
+        )[0]
+        premium = (
+            await (
+                await conn.execute("select id from clients where segment_code='premium' order by id limit 1")
+            ).fetchone()
+        )[0]
+        one, state = await run_agent_on(
+            conn, "Не открывается вклад в мобильном приложении, ошибка 503", client_id=mass, run_id=rid
+        )
+        two, _ = await run_agent_on(conn, FRAUD_TEXT, client_id=premium, run_id=rid, origin="sim")
+        iid = (
+            await (await conn.execute("select incident_id from incident_signals where signal_id=%s", (one,))).fetchone()
+        )[0]
+        before = await sim_now(conn)
+        other = await (
+            await conn.execute("select id,status from followups where signal_id=%s and status='scheduled'", (two,))
+        ).fetchone()
+        assert other
+        await wake_followups_for_incident(
+            conn, incident_id=iid, sim_time=before + dt.timedelta(days=7), chain=mock_chain(), profile=PROFILE
+        )
+        assert (await (await conn.execute("select status from followups where id=%s", (other[0],))).fetchone())[
+            0
+        ] == "scheduled"
+        assert await sim_now(conn) == before
 
 
 @pytest.mark.asyncio

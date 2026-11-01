@@ -605,6 +605,20 @@ class TraceEventKind(StrEnum):
     compliance_alert = "compliance_alert"
 
 
+class SignalStatus(StrEnum):
+    new = "new"
+    processing = "processing"
+    classified = "classified"
+    linked = "linked"
+    deferred = "deferred"
+    awaiting_human = "awaiting_human"
+    awaiting_client = "awaiting_client"
+    answered = "answered"
+    closed = "closed"
+    noise = "noise"
+    error = "error"
+
+
 class Kind(StrEnum):
     reasoning = "reasoning"
     content = "content"
@@ -1018,6 +1032,7 @@ class Name(StrEnum):
     notify_customer = "notify_customer"
     escalate_to_manager = "escalate_to_manager"
     request_clarification = "request_clarification"
+    apply_operator_feedback = "apply_operator_feedback"
 
 
 class Schema_6(BaseModel):

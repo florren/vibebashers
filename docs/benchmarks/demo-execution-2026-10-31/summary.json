@@ -1,0 +1,56 @@
+{
+  "checked_at": "2026-10-31",
+  "live_scenario": "deposit_promo_rate",
+  "elapsed_seconds": 37.23,
+  "incident_status": "closed",
+  "sla_breached": false,
+  "team_artifacts": {
+    "count": 5,
+    "source": "live",
+    "model": "GigaChat-3-Pro:32.4.30.3"
+  },
+  "client_notifications": {
+    "ack_received": 2,
+    "resolved": 2,
+    "gift_offer": 2
+  },
+  "normalization_fallback_observed": true,
+  "targeted_tests": {
+    "passed": 30,
+    "new_demo_coverage_percent": 88
+  },
+  "frontend_tests": {
+    "passed": 135,
+    "files": 25
+  },
+  "browser": {
+    "engine": "Chrome",
+    "javascript_errors": 0,
+    "languages": [
+      "ru",
+      "en"
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ]
+  },
+  "catalog_upgrade_without_seed": true,
+  "full_local_make_test": {
+    "unit_passed": 658,
+    "unit_skipped": 18,
+    "integration_passed": 153,
+    "integration_skipped": 2,
+    "scenario_passed": 42,
+    "scenario_skipped": 2
+  },
+  "final_unit_tests": {
+    "passed": 660,
+    "skipped": 18
+  },
+  "hard_case_reports": {
+    "deadlines": 3,
+    "missing": 0
+  },
+  "manual_and_demo_compliance_reply": true
+}

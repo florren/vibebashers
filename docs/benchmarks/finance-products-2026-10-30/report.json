@@ -1,0 +1,234 @@
+[
+  {
+    "lang": "ru",
+    "theme": "light",
+    "run_id": 4,
+    "errors": [],
+    "overflow": false,
+    "checks": [
+      {
+        "mode": "include",
+        "codes": [],
+        "count": 0,
+        "saved": 0,
+        "refund": 0,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "include",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 20.63,
+        "refund": 10,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 22.92,
+        "refund": 450,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "all",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      }
+    ]
+  },
+  {
+    "lang": "ru",
+    "theme": "dark",
+    "run_id": 4,
+    "errors": [],
+    "overflow": false,
+    "checks": [
+      {
+        "mode": "include",
+        "codes": [],
+        "count": 0,
+        "saved": 0,
+        "refund": 0,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "include",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 20.63,
+        "refund": 10,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 22.92,
+        "refund": 450,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "all",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      }
+    ]
+  },
+  {
+    "lang": "en",
+    "theme": "light",
+    "run_id": 4,
+    "errors": [],
+    "overflow": false,
+    "checks": [
+      {
+        "mode": "include",
+        "codes": [],
+        "count": 0,
+        "saved": 0,
+        "refund": 0,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "include",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 20.63,
+        "refund": 10,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 22.92,
+        "refund": 450,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "all",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      }
+    ]
+  },
+  {
+    "lang": "en",
+    "theme": "dark",
+    "run_id": 4,
+    "errors": [],
+    "overflow": false,
+    "checks": [
+      {
+        "mode": "include",
+        "codes": [],
+        "count": 0,
+        "saved": 0,
+        "refund": 0,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "include",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 20.63,
+        "refund": 10,
+        "demo_risk": 0,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [
+          "deposit"
+        ],
+        "count": 1,
+        "saved": 22.92,
+        "refund": 450,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "exclude",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      },
+      {
+        "mode": "all",
+        "codes": [],
+        "count": 2,
+        "saved": 43.55,
+        "refund": 460,
+        "demo_risk": 194.85,
+        "observed_risk": null
+      }
+    ]
+  }
+]

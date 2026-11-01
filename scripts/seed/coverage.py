@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 import psycopg
+
 from scripts.seed.common import log, set_setting
 
 
-def compute_coverage(cur: psycopg.Cursor[Any], run_id: int) -> dict[str, Any]:
+def compute_coverage(cur: psycopg.Cursor[Any], run_id: int, *, persist: bool = True) -> dict[str, Any]:
     types = [r[0] for r in cur.execute("select code from signal_types").fetchall()]
     products = [r[0] for r in cur.execute("select code from products").fetchall()]
     channels = [r[0] for r in cur.execute("select code from channels").fetchall()]
@@ -23,7 +24,8 @@ def compute_coverage(cur: psycopg.Cursor[Any], run_id: int) -> dict[str, Any]:
     sla_have = {
         (r[0], r[1]): int(r[2])
         for r in cur.execute(
-            "select complexity, criticality, count(*) from incidents where run_id = %s group by 1, 2", (run_id,)
+            "select complexity, criticality, count(*) from incidents where run_id = %s group by 1, 2",
+            (run_id,),
         ).fetchall()
     }
     sla_cells = {
@@ -32,7 +34,8 @@ def compute_coverage(cur: psycopg.Cursor[Any], run_id: int) -> dict[str, Any]:
     statuses = {
         r[0]: int(r[1])
         for r in cur.execute(
-            "select status, count(*) from incidents where run_id = %s group by 1", (run_id,)
+            "select status, count(*) from incidents where run_id = %s group by 1",
+            (run_id,),
         ).fetchall()
     }
     styles = {
@@ -54,7 +57,8 @@ def compute_coverage(cur: psycopg.Cursor[Any], run_id: int) -> dict[str, Any]:
         "hard_text_share": round(sum(v for k, v in styles.items() if k != "plain") / total, 3),
         "styles": styles,
     }
-    set_setting(cur, "coverage", cov)
+    if persist:
+        set_setting(cur, "coverage", cov)
     log.info(
         "coverage",
         covered=cov["signal_combos_covered"],

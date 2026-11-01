@@ -1,0 +1,29 @@
+{
+  "before": {
+    "running": false,
+    "run_id": 2,
+    "sim_time": "2026-11-09T06:15:30+00:00",
+    "signals": 802,
+    "events": 38,
+    "operations": 2210,
+    "polling": 0
+  },
+  "resumed_15s": {
+    "running": true,
+    "run_id": 2,
+    "sim_time": "2026-11-09T06:31:00+00:00",
+    "signals": 802,
+    "events": 69,
+    "operations": 2238,
+    "polling": 0
+  },
+  "paused": {
+    "running": false,
+    "run_id": 2,
+    "sim_time": "2026-11-09T06:31:00+00:00",
+    "signals": 802,
+    "events": 69,
+    "operations": 2238,
+    "polling": 0
+  }
+}

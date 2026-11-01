@@ -81,7 +81,7 @@ export function TicketsTab({ runId }: { runId: number | undefined }) {
           {tickets.isLoading && <SkeletonRows n={8} />}
           {!tickets.isLoading && (tickets.data?.items ?? []).length === 0 && <Empty title={t('tickets.empty')} hint={t('tickets.emptyHint')} />}
           {(tickets.data?.items ?? []).length > 0 && (
-            <table className="card w-full text-sm">
+            <div className="overflow-x-auto"><table className="card w-full text-sm">
               <thead className="text-left text-[11px] uppercase tracking-wide text-muted">
                 <tr className="border-b border-line">
                   <th className="px-3 py-1.5 font-medium">{t('tickets.col.ticket')}</th>
@@ -98,7 +98,7 @@ export function TicketsTab({ runId }: { runId: number | undefined }) {
                   <TicketRow key={tk.incident_id} tk={tk} teamName={teamName} onOpen={() => setTicketId(tk.incident_id ?? null)} />
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </>
       )}

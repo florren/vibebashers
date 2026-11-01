@@ -1,0 +1,23 @@
+id: demo20_15_refinancing
+number: 28
+title_ru: 'ТЗ 15: Отказ в рефинансировании'
+title_en: 'Brief 15: Refinancing declined'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Получил отказ в рефинансировании кредита. Прошу объяснить причину и рассмотреть
+    допустимые альтернативы.
+expected: {}
+demo_evidence:
+  observed: Синтетический скоринг отказал в рефинансировании.
+  action: Проверить причину и допустимую альтернативу без автоматического кредитного
+    решения.
+  verification: Проверено разъяснение условий повторного рассмотрения; внешняя кредитная
+    карта не закрывается.
+  source: synthetic_fixture

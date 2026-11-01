@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import datetime as dt
 from typing import Any
 
 import psycopg
 
 from app.db.session import psycopg_dsn
+from app.demo.settings import configuration, ensure, save
 from app.logging import get_logger
 from app.realtime.hub import hub
 from app.sim import baseline as baseline_svc
@@ -19,6 +21,8 @@ from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
 from app.sim.rng import SimRng
+from app.sim.sla import SlaEngine
+from app.sim.teams import TeamEmulator
 
 log = get_logger(__name__)
 REAL_TICK_S = 0.5
@@ -27,6 +31,7 @@ MAX_BATCH_MIN = 60.0  # за один тик генерируем не боль�
 
 class Simulator:
     def __init__(self, seed: int = 42, dsn: str | None = None) -> None:
+        self.full_execution = False
         self.seed = seed
         self.dsn = dsn
         self.clock = SimClock(sim_time=dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK))
@@ -81,19 +86,18 @@ class Simulator:
     async def ensure_live_run(self) -> int:
         """Живой или уже текущий запуск без старта часов и генераторов (ТЗ 4.7).
 
-        Пустой self.run_id заполняется id и статусом строки, чтобы последующий persist не затёр указатель.
-        Уже заданный run_id в памяти не меняется. clock.running, цикл и step не вызываются.
+        Указатель в памяти синхронизируется с БД, чтобы persist не затёр новый live-run.
+        Существующие запуски не останавливаются; clock.running, цикл и step не вызываются.
         """
-        conn = await self.connect()
-        run_id = await run_svc.ensure_live_run(conn)
-        held = self.run_id
-        if held is None:
-            row = await run_svc.get_run(conn, run_id)
-            self.run_id = run_id
-            self.run_status = row["status"] if row else None
-            held = run_id
-        await conn.commit()
-        return held
+        async with self._lock:
+            conn = await self.connect()
+            run_id = await run_svc.ensure_live_run(conn)
+            if self.run_id != run_id:
+                row = await run_svc.get_run(conn, run_id)
+                self.run_id = run_id
+                self.run_status = row["status"] if row else None
+            await conn.commit()
+            return run_id
 
     async def _ensure_world(self) -> World:
         conn = await self.connect()
@@ -140,6 +144,12 @@ class Simulator:
             world = await self._ensure_world()
             conn = await self.connect()
             t0 = self.clock.sim_time
+            day_before = self.clock.day_no
+            rng_before = self.rng.dump_state()
+            stats_before = dict(self.stats)
+            pending_before = copy.deepcopy(world.pending)
+            faults_before = copy.deepcopy(world.active_faults)
+            text_rng_before = world.textgen.rnd.getstate()
             minutes = min(minutes, MAX_BATCH_MIN)
             try:
                 self.stats["faults"] += await world.gen_faults(t0, minutes)
@@ -149,11 +159,28 @@ class Simulator:
                 if self.clock.sim_time.astimezone(MSK).date() != t0.astimezone(MSK).date():
                     self.clock.day_no += 1
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes)
-                await world.team_emulator.tick(self.clock.sim_time, world)
+                execution = await configuration(conn, self.run_id) if self.run_id else {}
+                if not execution.get("enabled"):
+                    await world.team_emulator.tick(self.clock.sim_time, world)
                 await world.sla_engine.tick(t0, self.clock.sim_time)
                 self.stats["ticks"] += 1
                 await self.persist()
                 await conn.commit()
+            except asyncio.CancelledError:
+                # Пауза/стоп отменяют незавершённый тик целиком, включая RNG и кеш World.
+                await conn.rollback()
+                self.clock.sim_time = t0
+                self.clock.day_no = day_before
+                self.rng.load_state(rng_before)
+                self.stats = stats_before
+                world.pending = pending_before
+                world.active_faults = faults_before
+                world.textgen.rnd.setstate(text_rng_before)
+                world.team_emulator = TeamEmulator(self.rng, conn, world.bus, world.run_id)
+                world.sla_engine = SlaEngine(conn, world.bus, world.run_id)
+                await world.team_emulator.load()
+                await world.sla_engine.load()
+                raise
             except Exception:
                 await conn.rollback()
                 log.exception("sim_step_failed")
@@ -181,6 +208,26 @@ class Simulator:
     # --- управление ----------------------------------------------------------------------------------------------------
     async def control(self, action: str, **kw: Any) -> dict[str, Any]:
         conn = await self.connect()
+        execution = await configuration(conn, self.run_id) if self.run_id else {}
+        if (
+            self.run_id is not None
+            and execution.get("mode") == "demo"
+            and (execution.get("enabled") or (execution.get("status") == "stopped" and action == "resume"))
+            and action in ("start", "resume")
+            and not kw.get("label")
+        ):
+            async with self._lock:
+                execution.update(status="running", enabled=True)
+                await save(conn, self.run_id, execution)
+                self.clock.running = True
+                self.run_status = "running"
+                await run_svc.set_run_status(conn, self.run_id, "running")
+                await self.persist()
+                await conn.commit()
+            await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+            return self.state_dict()
+        if execution.get("mode") == "demo" and execution.get("enabled") and action in ("step", "jump_to", "reset_day"):
+            raise ValueError("Изолированный сценарий использует событийное время; доступны запуск, пауза и остановка")
         if action == "start":
             if self.run_status in ("stopped", "completed", "archived", None) or self.run_id is None or kw.get("label"):
                 async with self._lock:
@@ -196,13 +243,22 @@ class Simulator:
                     self.run_status = "running"
                     self.world = None
                     await conn.commit()
-            elif self.run_status in ("paused", "interrupted"):
+            elif self.run_status in ("paused", "interrupted", "stopped"):
                 await run_svc.set_run_status(conn, self.run_id, "running")
                 self.run_status = "running"
                 await conn.commit()
-            self._start_loop()
+            if kw.get("start_paused"):
+                self.clock.running = False
+                if self.run_id:
+                    await run_svc.set_run_status(conn, self.run_id, "paused")
+                self.run_status = "paused"
+            else:
+                if self.full_execution and self.run_id:
+                    await ensure(conn, self.run_id, running=True)
+                    await conn.commit()
+                self._start_loop()
         elif action == "resume":
-            if self.run_id and self.run_status in ("paused", "interrupted"):
+            if self.run_id and self.run_status in ("paused", "interrupted", "stopped"):
                 await run_svc.set_run_status(conn, self.run_id, "running")
                 self.run_status = "running"
                 await conn.commit()
@@ -239,6 +295,19 @@ class Simulator:
             await self.step((target - self.clock.sim_time).total_seconds() / 60)
         else:
             raise ValueError(f"неизвестное действие: {action}")
+        if self.run_id:
+            async with self._lock:
+                execution = await configuration(conn, self.run_id)
+                if not execution and self.full_execution and action in ("start", "resume"):
+                    execution = await ensure(conn, self.run_id, running=True)
+                if execution:
+                    if action in ("start", "resume"):
+                        execution.update(enabled=True, status="running")
+                    elif action == "pause" and execution.get("enabled"):
+                        execution["status"] = "paused"
+                    elif action == "stop":
+                        execution.update(enabled=False, status="stopped")
+                    await save(conn, self.run_id, execution)
         await self.persist()
         await conn.commit()
         await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)

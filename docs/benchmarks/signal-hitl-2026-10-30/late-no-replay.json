@@ -1,0 +1,16 @@
+{
+  "before": {
+    "steps": 11,
+    "ledger": 0,
+    "incidents": 0,
+    "outcome": "deferred"
+  },
+  "after": {
+    "steps": 11,
+    "ledger": 0,
+    "incidents": 0,
+    "outcome": "deferred"
+  },
+  "same_feedback_id": true,
+  "feedback_count": 1
+}

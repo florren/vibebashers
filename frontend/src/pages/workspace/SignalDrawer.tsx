@@ -30,6 +30,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
       {q.isError && <ErrorBox error={q.error} />}
       {s && (
         <div className="space-y-3 p-4">
+          <Link className="btn btn-sm" to={`/?tab=hitl&q=${encodeURIComponent(s.public_id ?? '')}`} onClick={onClose}>{t('continuity.openHitl')}</Link>
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge tone={signalStatusTone(s.status)}>{tEnum('signal.status', s.status)}</Badge>
             <Badge>{tEnum('channel', s.channel_code)}</Badge>

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.2
+  version: 1.5.11
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -84,6 +84,65 @@ tags:
     description: "[ЕТЗ] Справочник и динамика сети ВСП (ТЗ 25.3)"
 
 paths:
+  /api/demo/execution:
+    get:
+      tags:
+      - demo
+      summary: Текущий изолированный demo-запуск
+      responses:
+        '200':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
+    post:
+      tags:
+      - demo
+      summary: Запуск эмуляции сотрудников и команд
+      responses:
+        '202':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoExecutionRequest'
+    delete:
+      tags:
+      - demo
+      summary: Остановка demo-исполнения с сохранением истории
+      responses:
+        '200':
+          description: Состояние demo-исполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoExecutionState'
+  /api/demo/incidents/{id}/recover:
+    post:
+      tags: [demo]
+      summary: Продолжить неудачную demo-попытку в том же инциденте
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1}
+      responses:
+        '202':
+          description: Продолжение зарегистрировано; повтор идемпотентен
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DemoExecutionState'}
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
   /api/health:
     get:
       tags: [health]
@@ -595,12 +654,13 @@ paths:
       summary: Лента сигналов с фильтрами
       parameters:
         - { $ref: "#/components/parameters/RunId" }
-        - { name: q, in: query, schema: { type: string } }
-        - { name: channel, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
-        - { name: signal_type, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
-        - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
-        - { name: segment, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
-        - { name: product, in: query, schema: { type: array, items: { type: string } }, style: form, explode: false }
+        - { name: q, in: query, schema: { type: string, maxLength: 200 }, description: "Текст или код сущности, включая связанные SIG/INC. Все статусы доступны без status-фильтра; run_id=all ищет во всех запусках." }
+        - { name: tag, in: query, schema: { type: string, maxLength: 100 }, description: "Тег источника, например ui_pers_demo" }
+        - { name: channel, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: signal_type, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: status, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: segment, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: product, in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
         - { name: region_code, in: query, schema: { type: string } }
         - { name: city_id, in: query, schema: { type: integer } }
         - { name: criticality, in: query, schema: { type: string, enum: [low, medium, high] } }
@@ -771,7 +831,12 @@ paths:
     get:
       tags: [hitl]
       summary: Очередь «Требует решения»
-      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }]
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { name: run_id, in: query, schema: { type: string, default: all }, description: "all / current / id; default all сохраняет доступ к прошлым запросам" }
+        - { name: q, in: query, schema: { type: string, maxLength: 200 }, description: "Текст или код любой сущности реестра. Поиск включает уже решённые запросы и связанные SIG/INC." }
+        - { name: include_decided, in: query, schema: { type: boolean, default: false }, description: "Без поиска показываются открытые и автоматически продолженные запросы; true добавляет обработанные человеком." }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlList" } } } }
   /api/hitl/{id}:
@@ -783,7 +848,7 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
     post:
       tags: [hitl]
-      summary: Решение человека — возвращается в граф агента
+      summary: Решение или подтверждение запроса; продолжение только для активного wait_human
       requestBody:
         required: true
         content:
@@ -798,8 +863,40 @@ paths:
                 delegate_to: { type: string, description: роль или команда }
                 use_as_fewshot: { type: boolean, default: true }
       responses:
-        "200": { description: "Принято, граф продолжен", content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
+        "200": { description: "Принято; граф продолжен только для активного wait_human", content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
         "409": { $ref: "#/components/responses/Problem", description: Уже решено }
+
+  /api/hitl/{id}/feedback:
+    parameters: [{ $ref: "#/components/parameters/IdPath" }]
+    get:
+      tags: [hitl]
+      summary: История информации оператора, доступная после продолжения процесса
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - { $ref: "#/components/parameters/Cursor" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlFeedbackList" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [hitl]
+      summary: Сохранить дополнительную информацию без повторного выполнения графа или денег
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [comment, idempotency_key]
+              properties:
+                comment: { type: string, minLength: 1, maxLength: 4000 }
+                recorded_by: { type: string, minLength: 1, maxLength: 120, default: operator }
+                idempotency_key: { type: string, minLength: 1, maxLength: 120 }
+      responses:
+        "201": { description: "Запись сохранена; точный повтор ключа возвращает ту же запись", content: { application/json: { schema: { $ref: "#/components/schemas/HitlFeedback" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
 
   # ---------------------------------------------------------------- tasks
   /api/tasks:
@@ -886,6 +983,20 @@ paths:
         - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d, run], default: run } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DashboardMetrics" } } } }
+  /api/metrics/economics/preview:
+    get:
+      tags: [metrics]
+      summary: Калькулятор потерь без записи в БД
+      parameters:
+        - { name: affected, in: query, schema: { type: integer, default: 12, minimum: 0, maximum: 100000000 } }
+        - { name: product, in: query, schema: { type: string } }
+        - { name: system, in: query, schema: { type: string } }
+        - { name: segment, in: query, schema: { type: string } }
+        - { name: detractor_share, in: query, schema: { type: number, default: 0.1, minimum: 0, maximum: 1 } }
+        - { name: no_return_share, in: query, schema: { type: number, default: 0.5, minimum: 0, maximum: 1 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+
   /api/metrics/economics:
     get:
       tags: [metrics]
@@ -938,6 +1049,7 @@ paths:
       tags: [engine]
       summary: Запуски агента (живая трассировка)
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - { $ref: "#/components/parameters/RunId" }
         - { name: kind, in: query, schema: { type: string, enum: [agent, client_twin, team_emulator, bench, compare] } }
         - { name: signal_id, in: query, schema: { type: integer } }
@@ -1549,6 +1661,7 @@ paths:
       tags: [compliance]
       summary: Лента алертов для устройства руководителя (/manager)
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - $ref: "#/components/parameters/RunId"
         - { name: branch_code, in: query, schema: { type: string } }
         - { name: unacknowledged, in: query, schema: { type: boolean } }
@@ -1803,6 +1916,7 @@ paths:
       tags: [ingest]
       summary: "[ДТЗ FR-1.1] Список импортированных транскриптов"
       parameters:
+        - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
         - { $ref: "#/components/parameters/RunId" }
         - { name: kind, in: query, schema: { $ref: "#/components/schemas/TranscriptKind" } }
         - { name: status, in: query, schema: { type: string, enum: [received, analyzing, done, failed] } }
@@ -2268,6 +2382,17 @@ paths:
       summary: Эффект одного запуска и сценарные варианты; периоды относительно sim_state.sim_time,
         сутки UTC
       parameters:
+      - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
+      - name: product_mode
+        in: query
+        description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.
+        schema: { type: string, enum: [all, include, exclude], default: all }
+      - name: product_codes
+        in: query
+        description: Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр.
+        style: form
+        explode: true
+        schema: { type: array, maxItems: 100, items: { type: string } }
       - name: run_id
         in: query
         schema:
@@ -2378,6 +2503,137 @@ paths:
         '422':
           description: Некорректные параметры
 
+  /api/v1/finance/impact/assessment:
+    get:
+      tags:
+      - finance
+      summary: 'T-265: демо и рабочий контур; первый кейс клиента в запуске, последняя
+        версия сделки'
+      parameters:
+      - { name: q, in: query, description: "Код SIG/INC или связанной сущности; фильтрация до пагинации", schema: { type: string, maxLength: 200 } }
+      - name: product_mode
+        in: query
+        description: all — все продукты, включая кейсы без продукта; include — только выбранные (пусто значит ни одного); exclude — все, кроме выбранных (пусто значит все). Дедупликация клиента/сделки выполняется до фильтра.
+        schema: { type: string, enum: [all, include, exclude], default: all }
+      - name: product_codes
+        in: query
+        description: Коды из /api/refs/products; неизвестные коды дают 422. Повторяющийся query-параметр.
+        style: form
+        explode: true
+        schema: { type: array, maxItems: 100, items: { type: string } }
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - live
+          - day
+          - week
+          - month
+          - custom
+          default: live
+      - name: start_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      - name: end_date
+        in: query
+        schema:
+          type: string
+          format: date-time
+        description: Граница симуляционного времени с часовым поясом, [start_date, end_date).
+          Обе границы обязательны вместе; максимум 366 дней.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceAssessment'
+        '404':
+          description: Запуск не найден
+        '422':
+          description: Ошибка параметров
+  /api/v1/finance/impact/evidence:
+    post:
+      tags:
+      - finance
+      summary: 'T-265: добавить версию декларации вмешательства; идемпотентный ключ,
+        без денежных проводок'
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+        description: 'Один запуск: current или положительный id. all запрещён. Без текущего
+          запуска возвращается пустой срез.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceEvidenceBody'
+      responses:
+        '201':
+          description: Записано или точный повтор; новая версия сделки отзывает прежнюю
+            оценку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceEvidenceResult'
+        '404':
+          description: Алерт вне запуска
+        '409':
+          description: Нет политики/запуска или конфликт ключа
+        '422':
+          description: Некорректное доказательство
+
+  /api/personal/session:
+    get:
+      tags: [personal]
+      summary: Анонимная сессия и справочники отдельного чата
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PersonalSession" } } } }
+  /api/personal/messages:
+    get:
+      tags: [personal]
+      summary: Только собственная история чата (HttpOnly session cookie)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PersonalHistory" } } } }
+    post:
+      tags: [personal]
+      summary: Сообщение анонимного посетителя с тегом ui_pers_demo
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: "#/components/schemas/PersonalMessageBody" } }
+      responses:
+        "202": { description: Принято штатным normalizer, content: { application/json: { schema: { type: object, required: [accepted, public_id], properties: { accepted: { type: boolean }, public_id: { type: string } } } } } }
+        "429": { description: Пассивная защита; Retry-After позволяет дождаться отправки без CAPTCHA }
+  /api/personal/reset:
+    post:
+      tags: [personal]
+      summary: Забыть анонимную сессию в этом браузере
+      responses:
+        "204": { description: Cookie удалена; история остаётся в обработке }
+  /api/personal/health:
+    get:
+      tags: [personal]
+      summary: Готовность публичного приложения
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { status: { type: string } } } } } }
+
 components:
   parameters:
     IdPath: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
@@ -2410,11 +2666,95 @@ components:
               instance: { type: string }
               errors: { type: array, items: { type: object, properties: { loc: { type: array, items: { type: string } }, msg: { type: string } } } }
   schemas:
+    DemoExecutionRequest:
+      type: object
+      additionalProperties: false
+      allOf:
+      - if:
+          required: [mode]
+          properties:
+            mode:
+              const: simulation
+        else:
+          required: [scenario_id]
+          properties:
+            scenario_id:
+              type: string
+              minLength: 1
+      properties:
+        scenario_id:
+          type:
+          - string
+          - 'null'
+          description: Обязателен при mode=demo.
+        mode:
+          type: string
+          enum: [demo, simulation]
+          default: demo
+          description: Изолированный сценарий либо профиль общей симуляции и ручных входов.
+        team_outcome:
+          type: string
+          enum:
+          - on_time
+          - late
+          - no_work
+          - failed
+          - recovered
+          default: on_time
+        emulate_humans:
+          type: boolean
+          default: true
+        auto_advance:
+          type: boolean
+          default: true
+    DemoExecutionState:
+      type: object
+      required:
+      - run_id
+      - subject_ref
+      - configuration
+      - incidents
+      properties:
+        run_id:
+          type:
+          - integer
+          - 'null'
+        subject_ref:
+          type: [string, "null"]
+        configuration:
+          type: object
+          additionalProperties: true
+        incidents:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - public_id
+            - status
+            - sla_breached
+            - resolution_summary
+            properties:
+              id:
+                type: integer
+              public_id:
+                type: string
+              status:
+                type: string
+              sla_breached:
+                type: boolean
+              can_recover:
+                type: boolean
+                description: Доступно явное продолжение неудачной ручной demo-попытки.
+              resolution_summary:
+                type:
+                - string
+                - 'null'
     LlmProvider: { type: string, enum: [gigachat, openai_compatible, mock] }
     Complexity: { type: string, enum: [easy, medium, hard] }
     Criticality: { type: string, enum: [low, medium, high] }
     IncidentStatus: { type: string, enum: [new, classified, routed, in_progress, fix_proposed, fix_deployed, verifying, resolved, closed, awaiting_human, awaiting_client, escalated, duplicate, rejected] }
-    SignalStatus: { type: string, enum: [new, processing, classified, linked, deferred, awaiting_human, awaiting_client, answered, closed, noise, error] }
+    SignalStatus: { $ref: "../events/common.schema.json#/$defs/signal_status" }
     OutcomeClass: { type: string, enum: [closed_in_sla_with_gift, closed_in_sla, closed_late, closed_with_regression, open, rejected, churned] }
     ClientState: { type: string, enum: [calm, affected, complaining, waiting, satisfied, asks_again, escalates, churn_intent, retained, churned] }
 
@@ -2694,6 +3034,10 @@ components:
     Signal:
       type: object
       properties:
+        tags: { type: array, items: { type: string } }
+        run_id: { type: integer }
+        run_public_id: { type: string }
+        incident_refs: { type: array, items: { type: string }, description: Коды связанных инцидентов в том же запуске }
         sentiment: { anyOf: [{ $ref: "#/components/schemas/Sentiment" }, { type: "null" }], description: "[ДТЗ]" }
         geo: { anyOf: [{ $ref: "#/components/schemas/Geo" }, { type: "null" }], description: "[ДТЗ]" }
         id: { type: integer }
@@ -2896,11 +3240,28 @@ components:
       type: object
       properties:
         id: { type: integer }
-        signal: { $ref: "#/components/schemas/Signal" }
+        run_public_id: { type: string }
+        public_id: { type: string }
+        agent_run_id: { type: [integer, "null"] }
+        incident_id: { type: [integer, "null"] }
+        task_id: { type: [integer, "null"] }
+        comment: { type: [string, "null"] }
+        decided_sim: { type: [string, "null"], format: date-time }
+        sim_run_id: { type: integer }
+        signal: { anyOf: [{ $ref: "#/components/schemas/Signal" }, { type: "null" }] }
+        process_outcome: { type: [string, "null"] }
+        can_resume: { type: boolean, description: "Только незавершённый wait_human допускает продолжение графа" }
+        automatic_decision: { type: boolean }
+        feedback_count: { type: integer }
+        related_incidents: { type: array, items: { $ref: "#/components/schemas/IncidentBrief" } }
+        escalations: { type: array, items: { type: object, required: [kind, ref], properties: { kind: { type: string }, ref: { type: string } } } }
         incident: { anyOf: [{ $ref: "#/components/schemas/IncidentBrief" }, { type: "null" }] }
         task: { anyOf: [{ $ref: "#/components/schemas/Task" }, { type: "null" }] }
         reason: { type: string }
-        agent_proposal: { $ref: "../events/agent/decision.schema.json" }
+        agent_proposal:
+          anyOf:
+            - { $ref: "../events/agent/decision.schema.json" }
+            - { type: object, required: [kind], properties: { kind: { type: string, enum: [escalation] }, escalation_id: { type: integer }, public_id: { type: string }, severity: { type: string }, to_role: { type: string } } }
         options: { type: array, items: { type: object, properties: { code: { type: string }, label_ru: { type: string }, label_en: { type: string }, description_ru: { type: string } } } }
         recommendation: { type: [string, "null"] }
         context_summary_ru: { type: string }
@@ -2908,7 +3269,38 @@ components:
         waiting_minutes: { type: number }
         decision: { type: [string, "null"] }
         decided_by: { type: [string, "null"] }
-    HitlList: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/HitlItem" } }, next_cursor: { type: [string, "null"] }, total: { type: integer } } }
+    HitlFeedback:
+      type: object
+      required: [id, human_decision_id, idempotency_key, comment, recorded_by, recorded_sim, recorded_at]
+      properties:
+        id: { type: integer }
+        human_decision_id: { type: integer }
+        idempotency_key: { type: string }
+        comment: { type: string }
+        recorded_by: { type: string }
+        recorded_sim: { type: string, format: date-time }
+        recorded_at: { type: string, format: date-time }
+        review_run_ref: { type: [string, "null"] }
+        processing_status: { type: [string, "null"], enum: [pending, applied, failed, null] }
+        agent_run_id: { type: [integer, "null"] }
+        review: { type: [object, "null"], properties: { summary_ru: { type: string }, priority: { type: integer }, next_step: { type: string } } }
+        applied_at: { type: [string, "null"], format: date-time }
+        processing_error: { type: [string, "null"] }
+    HitlFeedbackList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/HitlFeedback" } }
+        next_cursor: { type: [string, "null"] }
+    HitlList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/HitlItem" } }
+        next_cursor: { type: [string, "null"] }
+        total: { type: integer }
+        related_entities: { type: array, maxItems: 100, items: { type: object, required: [kind, ref], properties: { kind: { type: string }, ref: { type: string } } }, description: "Связанная цепочка видна и без HD; только коды, без текста/токенов." }
+        related_entities_truncated: { type: boolean }
+
     Task:
       type: object
       properties:
@@ -3871,6 +4263,7 @@ components:
         scenario_net_rub: { type: number }
         scenario_fine_rub: { type: number }
         scenario_with_fine_net_rub: { type: number }
+        proof: { $ref: '#/components/schemas/FinanceCaseProof' }
     FinancialImpactTotal:
       type: object
       required:
@@ -3975,3 +4368,515 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FinancialImpactCase'
+
+    FinanceFinePolicy:
+      type: object
+      required:
+      - id
+      - scope
+      - currency
+      - amount_rub
+      - unit
+      - basis_ref
+      - business_approval_ref
+      - legal_approval_ref
+      - effective_from_sim
+      - effective_until_sim
+      - additive_to_dcltv
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        currency:
+          type: string
+          enum:
+          - RUB
+        amount_rub:
+          type: number
+        unit:
+          type: string
+          enum:
+          - deal
+        basis_ref:
+          type: string
+        business_approval_ref:
+          type: string
+        legal_approval_ref:
+          type:
+          - string
+          - 'null'
+        effective_from_sim:
+          type: string
+          format: date-time
+        effective_until_sim:
+          type: string
+          format: date-time
+        additive_to_dcltv:
+          type: boolean
+    FinanceCalibration:
+      type: object
+      required:
+      - id
+      - scope
+      - data_kind
+      - model
+      - prompt_version
+      - horizon_days
+      - cutoff_sim
+      - business_approval_ref
+      - score_pipeline
+      - dataset_sha256
+      - artifact_sha256
+      - train_n
+      - metrics
+      - bins
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        data_kind:
+          type: string
+        model:
+          type: string
+        prompt_version:
+          type: string
+        horizon_days:
+          type: integer
+        cutoff_sim:
+          type: string
+          format: date-time
+        business_approval_ref:
+          type: string
+        score_pipeline:
+          type: string
+        dataset_sha256:
+          type: string
+        artifact_sha256:
+          type: string
+        train_n:
+          type: integer
+        metrics:
+          type: object
+          required:
+          - raw_brier
+          - calibrated_brier
+          - ece
+          - validation_n
+          properties:
+            raw_brier:
+              type: number
+            calibrated_brier:
+              type: number
+            ece:
+              type: number
+            validation_n:
+              type: integer
+        bins:
+          type: array
+          items:
+            type: object
+            required:
+            - lower
+            - upper
+            - n
+            - churned
+            - probability
+            properties:
+              lower:
+                type: number
+              upper:
+                type: number
+              n:
+                type: integer
+              churned:
+                type: integer
+              probability:
+                type: number
+    FinanceRisk:
+      type: object
+      required:
+      - scope
+      - status
+      - probability
+      - reason
+      - raw_score
+      - model
+      - prompt_version
+      - score_pipeline
+      - predicted_sim
+      - horizon_days
+      - calibration_id
+      - dataset_sha256
+      - artifact_sha256
+      - agent_run_id
+      - step_id
+      - graph_version
+      properties:
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        status:
+          type: string
+          enum:
+          - calibrated
+          - unknown
+        probability:
+          type:
+          - number
+          - 'null'
+        reason:
+          type: string
+        raw_score:
+          type:
+          - number
+          - 'null'
+        model:
+          type:
+          - string
+          - 'null'
+        prompt_version:
+          type:
+          - string
+          - 'null'
+        score_pipeline:
+          type:
+          - string
+          - 'null'
+        predicted_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        horizon_days:
+          type: integer
+        calibration_id:
+          type:
+          - string
+          - 'null'
+        dataset_sha256:
+          type:
+          - string
+          - 'null'
+        artifact_sha256:
+          type:
+          - string
+          - 'null'
+        agent_run_id:
+          type:
+          - integer
+          - 'null'
+        step_id:
+          type:
+          - integer
+          - 'null'
+        graph_version:
+          type:
+          - string
+          - 'null'
+    FinanceEvidenceRecord:
+      type: object
+      required:
+      - id
+      - scope
+      - deal_ref
+      - intervention_sim
+      - deal_closed_sim
+      - outcome
+      - evidence_ref
+      - recorded_by
+      - policy
+      - policy_sha256
+      - recorded_at
+      properties:
+        id:
+          type: integer
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        deal_ref:
+          type: string
+        intervention_sim:
+          type: string
+          format: date-time
+        deal_closed_sim:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum:
+          - prevented
+          - completed
+          - unknown
+        evidence_ref:
+          type: string
+        recorded_by:
+          type: string
+        policy:
+          $ref: '#/components/schemas/FinanceFinePolicy'
+        policy_sha256:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+    FinanceCaseProof:
+      type: object
+      required:
+      - risks
+      - alerts
+      - records
+      - policies
+      properties:
+        risks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinanceRisk'
+        alerts:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - decision
+            - session_ref
+            properties:
+              id:
+                type: integer
+              decision:
+                type:
+                - string
+                - 'null'
+              session_ref:
+                type: string
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinanceEvidenceRecord'
+        policies:
+          type: object
+          required:
+          - demo
+          - observed
+          properties:
+            demo:
+              anyOf:
+              - $ref: '#/components/schemas/FinanceFinePolicy'
+              - type: 'null'
+            observed:
+              anyOf:
+              - $ref: '#/components/schemas/FinanceFinePolicy'
+              - type: 'null'
+    FinanceAssessment:
+      type: object
+      required:
+      - run_id
+      - start_date
+      - end_date
+      - horizon_days
+      - contours
+      properties:
+        run_id:
+          type:
+          - integer
+          - 'null'
+        start_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        end_date:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        horizon_days:
+          type: integer
+        contours:
+          type: array
+          items:
+            type: object
+            required:
+            - scope
+            - known_risk_rub
+            - risk_total_rub
+            - net_rub
+            - refund_rub
+            - fine_rub
+            - combined_net_rub
+            - known_clients
+            - unknown_clients
+            - duplicate_cases
+            - unidentified_cases
+            - qualified_deals
+            - excluded_deals
+            - reasons
+            - calibration
+            - fine_policy
+            - case_count
+            properties:
+              scope:
+                type: string
+                enum:
+                - demo
+                - observed
+              known_risk_rub:
+                type: number
+              risk_total_rub:
+                type:
+                - number
+                - 'null'
+              net_rub:
+                type:
+                - number
+                - 'null'
+              refund_rub:
+                type: number
+              fine_rub:
+                type:
+                - number
+                - 'null'
+              combined_net_rub:
+                type:
+                - number
+                - 'null'
+              known_clients:
+                type: integer
+              unknown_clients:
+                type: integer
+              duplicate_cases:
+                type: integer
+              unidentified_cases:
+                type: integer
+              qualified_deals:
+                type: integer
+              excluded_deals:
+                type: integer
+              reasons:
+                type: object
+                additionalProperties:
+                  type: integer
+              calibration:
+                anyOf:
+                - $ref: '#/components/schemas/FinanceCalibration'
+                - type: 'null'
+              fine_policy:
+                anyOf:
+                - $ref: '#/components/schemas/FinanceFinePolicy'
+                - type: 'null'
+              case_count:
+                type: integer
+    FinanceEvidenceBody:
+      type: object
+      required:
+      - scope
+      - incident_id
+      - alert_id
+      - policy_id
+      - deal_ref
+      - idempotency_key
+      - intervention_sim
+      - deal_closed_sim
+      - outcome
+      - evidence_ref
+      - recorded_by
+      properties:
+        scope:
+          type: string
+          enum:
+          - demo
+          - observed
+        incident_id:
+          type: integer
+          minimum: 1
+        alert_id:
+          type: integer
+          minimum: 1
+        policy_id:
+          type: string
+          minLength: 1
+          maxLength: 120
+        deal_ref:
+          type: string
+          minLength: 1
+          maxLength: 120
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 120
+        intervention_sim:
+          type: string
+          format: date-time
+        deal_closed_sim:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum:
+          - prevented
+          - completed
+          - unknown
+        evidence_ref:
+          type: string
+          minLength: 1
+          maxLength: 500
+        recorded_by:
+          type: string
+          minLength: 1
+          maxLength: 120
+      additionalProperties: false
+    FinanceEvidenceResult:
+      type: object
+      required:
+      - id
+      - run_id
+      - replayed
+      properties:
+        id:
+          type: integer
+        run_id:
+          type: integer
+        replayed:
+          type: boolean
+
+    PersonalSession:
+      type: object
+      required: [form_token, products, regions, cities, tag, minimum_form_ms]
+      properties:
+        display_name: { type: string, maxLength: 120, description: Неподтверждённое обращение посетителя из последнего сообщения собственной сессии }
+        form_token: { type: string }
+        tag: { type: string, const: ui_pers_demo }
+        minimum_form_ms: { type: integer }
+        products: { type: array, items: { type: object, required: [code, name_ru, name_en], properties: { code: { type: string }, name_ru: { type: string }, name_en: { type: string } } } }
+        regions: { type: array, items: { type: object, required: [code, name_ru], properties: { code: { type: string }, name_ru: { type: string } } } }
+        cities: { type: array, items: { type: object, required: [id, name_ru, region_code], properties: { id: { type: integer }, name_ru: { type: string }, region_code: { type: string } } } }
+    PersonalMessageBody:
+      type: object
+      additionalProperties: false
+      required: [request_id, form_token, text]
+      properties:
+        request_id: { type: string, format: uuid }
+        form_token: { type: string, minLength: 64, maxLength: 64 }
+        text: { type: string, minLength: 1, maxLength: 4000 }
+        display_name: { type: [string, "null"], maxLength: 120, pattern: '^[^\x00-\x1f\x7f-\x9f]*$', description: Необязательное имя или псевдоним; null сохраняет предыдущее обращение, пустая строка убирает его }
+        product_code: { type: [string, "null"], maxLength: 100 }
+        region_code: { type: [string, "null"], maxLength: 10 }
+        city_id: { type: [integer, "null"] }
+        website: { type: string, maxLength: 200, default: "" }
+        voice: { type: boolean, default: false }
+    PersonalHistory:
+      type: object
+      required: [messages, answers]
+      properties:
+        messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, display_name: { type: string, maxLength: 120 }, status: { type: string }, received_at: { type: string, format: date-time } } } }
+        answers: { type: array, items: { type: object, required: [id, text, at], properties: { id: { type: integer }, text: { type: string }, at: { type: string, format: date-time } } } }

@@ -1,0 +1,22 @@
+id: demo20_08_cashback
+number: 21
+title_ru: 'ТЗ 08: Не начислен кэшбек'
+title_en: 'Brief 08: Missing cashback'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Обещанный кэшбек за покупки не начислили. Проверьте условия акции и правильность
+    расчёта.
+expected: {}
+demo_evidence:
+  observed: Синтетический расчёт программы лояльности не включил ожидаемое начисление.
+  action: Проверить условия акции и расчёт кэшбека.
+  verification: Повторный тест расчёта программы лояльности выполнен в эмуляции. Фактическое начисление
+    кэшбека не выполнялось.
+  source: synthetic_fixture

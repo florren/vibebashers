@@ -1,0 +1,149 @@
+{
+  "audit": {
+    "run_id": null,
+    "limit": 200,
+    "incompatible_links_total": 16,
+    "orphan_followups_total": 1,
+    "truncated": false,
+    "incompatible_links": [
+      {
+        "signal": "SIG-035543",
+        "incident": "INC-000164",
+        "signal_product": "debit_card",
+        "incident_product": "deposit",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-035638",
+        "incident": "INC-000164",
+        "signal_product": "debit_card",
+        "incident_product": "deposit",
+        "signal_error": "APP-CRASH-PAY",
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-035742",
+        "incident": "INC-000164",
+        "signal_product": "credit",
+        "incident_product": "deposit",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-035876",
+        "incident": "INC-000176",
+        "signal_product": "debit_card",
+        "incident_product": "deposit",
+        "signal_error": "APP-CRASH-PAY",
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-035920",
+        "incident": "INC-000176",
+        "signal_product": "debit_card",
+        "incident_product": "deposit",
+        "signal_error": "APP-CRASH-PAY",
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-036465",
+        "incident": "INC-000167",
+        "signal_product": "debit_card",
+        "incident_product": "credit",
+        "signal_error": null,
+        "incident_error": null
+      },
+      {
+        "signal": "SIG-036795",
+        "incident": "INC-000214",
+        "signal_product": "credit_card",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "PROC-QR-FEE-CHARGED"
+      },
+      {
+        "signal": "SIG-036898",
+        "incident": "INC-000220",
+        "signal_product": "deposit",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-036904",
+        "incident": "INC-000220",
+        "signal_product": "credit_card",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-036927",
+        "incident": "INC-000220",
+        "signal_product": "credit",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-036947",
+        "incident": "INC-000220",
+        "signal_product": "credit",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-036959",
+        "incident": "INC-000219",
+        "signal_product": "debit_card",
+        "incident_product": "credit_card",
+        "signal_error": null,
+        "incident_error": "NOTIF-DELAY"
+      },
+      {
+        "signal": "SIG-037026",
+        "incident": "INC-000220",
+        "signal_product": "deposit",
+        "incident_product": "debit_card",
+        "signal_error": "APP-CRASH-PAY",
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-037055",
+        "incident": "INC-000220",
+        "signal_product": "deposit",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-037061",
+        "incident": "INC-000220",
+        "signal_product": "deposit",
+        "incident_product": "debit_card",
+        "signal_error": null,
+        "incident_error": "APP-CRASH-PAY"
+      },
+      {
+        "signal": "SIG-037063",
+        "incident": "INC-000219",
+        "signal_product": "debit_card",
+        "incident_product": "credit_card",
+        "signal_error": null,
+        "incident_error": "NOTIF-DELAY"
+      }
+    ],
+    "orphan_followups": [
+      {
+        "signal": "SIG-092812",
+        "followup_id": 471,
+        "reason": "awaiting_team",
+        "status": "deferred",
+        "human_decision": "reject"
+      }
+    ]
+  },
+  "applied": false
+}

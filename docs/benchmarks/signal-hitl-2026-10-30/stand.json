@@ -1,0 +1,81 @@
+{
+  "case": {
+    "signal": "SIG-088489",
+    "status": "deferred",
+    "run": "SR-0009",
+    "incident_refs": [
+      "INC-000826"
+    ],
+    "hd": "HD-001351",
+    "decision": null,
+    "decided_by": null,
+    "can_resume": false,
+    "process_outcome": "deferred",
+    "reason": "repeat_negative"
+  },
+  "search": [
+    {
+      "code": "SIG-088489",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 76
+    },
+    {
+      "code": "INC-000826",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 60
+    },
+    {
+      "code": "HD-001351",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 60
+    },
+    {
+      "code": "AR-001549",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 59
+    },
+    {
+      "code": "ESC-000085",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 60
+    },
+    {
+      "code": "NTF-001479",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 61
+    },
+    {
+      "code": "FUP-000343",
+      "hd_found": true,
+      "related_incident_found": true,
+      "ms": 60
+    }
+  ],
+  "health": "ok",
+  "global_llm_mode": "live",
+  "sim": {
+    "sim_time": "2026-11-10T12:52:30+00:00",
+    "day_no": 1,
+    "phase": "day",
+    "speed": 60.0,
+    "running": false,
+    "seed": 42,
+    "is_working_day": true,
+    "current_run_id": 11,
+    "current_run_status": "paused",
+    "baseline_available": true,
+    "stats": {
+      "ticks": 0,
+      "ops": 0,
+      "faults": 0,
+      "client_errors": 0,
+      "signals": 0
+    }
+  }
+}

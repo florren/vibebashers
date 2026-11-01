@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import importlib
 import pkgutil
 from collections.abc import AsyncIterator
@@ -25,6 +26,7 @@ from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
+from app.llm.gigachat import GigaChatProvider
 from app.llm.openai_compat import OpenAICompatProvider, openrouter_deactivation_plan
 from app.llm.roles import refresh as refresh_roles
 from app.logging import configure_logging, get_logger
@@ -82,6 +84,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.llm_profile = default_profile(s)
     if not s.is_test:
         await refresh_roles(app, s)
+        for provider in app.state.llm_chain.providers:
+            if isinstance(provider, GigaChatProvider):
+                await provider.prepare(list(app.state.llm_chain.role_profiles.values()))
     if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
         await _sync_openrouter_models(app.state.llm_chain)
     log.info(
@@ -108,13 +113,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
         app.state.twins.start()
         sim = Simulator(seed=s.sim_seed)
+        sim.full_execution = True
         try:
             await sim.load_state()
             app.state.sim = sim
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
+    demo_task = public_task = None
+    if not s.is_test:
+        from app.demo.execution import public_worker
+        from app.demo.execution import worker as demo_worker
+
+        demo_task = asyncio.create_task(demo_worker(app), name="demo-execution")
+        public_task = asyncio.create_task(public_worker(app), name="public-execution")
     yield
+    for execution_task in (demo_task, public_task):
+        if execution_task:
+            execution_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await execution_task
     await app.state.bench.stop()
     if app.state.twins is not None:
         await app.state.twins.stop()
@@ -128,6 +146,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if app.state.sim is not None:
         await app.state.sim.shutdown()
     await bridge.stop()
+    for provider in app.state.llm_chain.providers:
+        if isinstance(provider, GigaChatProvider):
+            await provider.aclose()
 
 
 def include_api_routers(app: FastAPI) -> list[str]:

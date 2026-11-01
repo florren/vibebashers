@@ -1,3 +1,4 @@
+import { EntityFilter } from '@/shared/components/EntityFilter'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { BellRing, Check, ShieldAlert, X } from 'lucide-react'
@@ -11,15 +12,16 @@ import { Badge, Empty, ErrorBox, SkeletonRows } from '@/shared/ui'
 
 /** Экран /manager (B17/T-187): карточки алертов комплаенса на «устройстве руководителя», решение в один клик. */
 export function ManagerPage() {
+  const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const [branch, setBranch] = useState('')
   const [onlyOpen, setOnlyOpen] = useState(true)
-  const q = useComplianceAlerts({ run_id: 'all', branch_code: branch || undefined, unacknowledged: onlyOpen || undefined, limit: 100 })
+  const q = useComplianceAlerts({ q: entityQuery || undefined, run_id: 'all', branch_code: branch || undefined, unacknowledged: onlyOpen || undefined, limit: 100 })
   const ack = useAckAlert()
   const items = q.data ?? []
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-3">
+      <div className="manager-toolbar flex h-12 shrink-0 items-center gap-3 border-b border-line px-3">
         <ShieldAlert size={18} className="text-brand" />
         <div className="min-w-0">
           <div className="text-sm font-semibold">{t('manager.title')}</div>
@@ -36,6 +38,7 @@ export function ManagerPage() {
           <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> {t('manager.onlyOpen')}
         </label>
       </div>
+      <div className="p-3"><EntityFilter onChange={setEntityQuery} /></div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {q.isPending && <SkeletonRows />}
         {q.isError && <ErrorBox error={q.error} />}

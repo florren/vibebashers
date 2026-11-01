@@ -7,7 +7,7 @@ import { micSupported, startMic, type MicHandle } from './mic'
 import { startWebSpeech, webSpeechSupported } from './webSpeech'
 
 /** «Надиктовать» (T-206): офлайн — пишем PCM16 и отправляем в POST /api/stt/transcribe (Vosk); иначе — Web Speech API браузера. */
-export function VoiceInput({ onText, onInterim, className }: { onText: (text: string) => void; onInterim?: (text: string) => void; className?: string }) {
+export function VoiceInput({ onText, onInterim, className, serverOnly = false, maxSeconds = 120 }: { onText: (text: string) => void; onInterim?: (text: string) => void; className?: string; serverOnly?: boolean; maxSeconds?: number }) {
   const { t } = useTranslation()
   const prov = useSttProviders()
   const [rec, setRec] = useState(false)
@@ -15,9 +15,15 @@ export function VoiceInput({ onText, onInterim, className }: { onText: (text: st
   const [err, setErr] = useState<string | null>(null)
   const micRef = useRef<MicHandle | null>(null)
   const chunks = useRef<ArrayBuffer[]>([])
+  const stopRef = useRef<(() => Promise<void>) | null>(null)
+  useEffect(() => {
+    if (!rec) return
+    const timer = window.setTimeout(() => { void stopRef.current?.() }, maxSeconds * 1000)
+    return () => window.clearTimeout(timer)
+  }, [rec, maxSeconds])
   const speechRef = useRef<{ stop: () => void } | null>(null)
   const serverOk = (prov.data ?? []).some((p) => p.available && p.code !== 'browser') && micSupported()
-  const mode: 'server' | 'browser' | null = serverOk ? 'server' : webSpeechSupported() ? 'browser' : null
+  const mode: 'server' | 'browser' | null = serverOk ? 'server' : !serverOnly && webSpeechSupported() ? 'browser' : null
 
   useEffect(() => () => {
     micRef.current?.stop()
@@ -51,13 +57,15 @@ export function VoiceInput({ onText, onInterim, className }: { onText: (text: st
     }
     micRef.current?.stop()
     micRef.current = null
-    const total = chunks.current.reduce((a, b) => a + b.byteLength, 0)
+    const total = Math.min(chunks.current.reduce((a, b) => a + b.byteLength, 0), Math.floor(maxSeconds * 16000) * 2)
     if (!total) return
     const buf = new Uint8Array(total)
     let off = 0
     for (const c of chunks.current) {
-      buf.set(new Uint8Array(c), off)
-      off += c.byteLength
+      const part = new Uint8Array(c).subarray(0, total - off)
+      buf.set(part, off)
+      off += part.byteLength
+      if (off === total) break
     }
     setBusy(true)
     try {
@@ -72,6 +80,7 @@ export function VoiceInput({ onText, onInterim, className }: { onText: (text: st
       setBusy(false)
     }
   }
+  stopRef.current = stop
   return (
     <span className={clsx('inline-flex items-center gap-1', className)}>
       <button

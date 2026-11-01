@@ -21,7 +21,7 @@
 
 ## Зависимости
 - Зависит от: [T-002](T-002-docker-compose-i-dockerfile-y-postgres-backend-f.md), [T-005](T-005-primenenie-schema-sql-sqlalchemy-modeli-sessii.md), [T-016](T-016-generator-klientov-profili-lite-demo-stress.md)
-- Блокирует: [T-151](T-151-readme-i-demo-skript.md), [T-197](T-197-install-sh-i-compose-flagi-no-stt-stt-model-reco.md)
+- Блокирует: [T-151](T-151-readme-i-demo-skript.md), [T-197](T-197-install-sh-i-compose-flagi-no-stt-stt-model-reco.md), [T-270](T-270-bezopasnyj-povtornyj-seed-i-pg-dump-v-docker.md)
 
 ## Что сделать
 1. Флаги: --profile lite|demo|stress, --offline, --reset, --seed N, --no-mailpit, --with-tgbot, --help; идемпотентность.

@@ -1,0 +1,18 @@
+{
+  "base": "https://royal-penguin-6552.a.tuna.free",
+  "tunaFirstVisitWarning": true,
+  "signal": "SIG-101204",
+  "answers": 1,
+  "replyMs": 43426,
+  "secureCookie": true,
+  "httpOnly": true,
+  "sameSite": "Strict",
+  "managementPathsBlocked": true,
+  "requests": [
+    "/api/stt/providers",
+    "/api/personal/session",
+    "/api/personal/messages"
+  ],
+  "httpErrors": [],
+  "errors": []
+}

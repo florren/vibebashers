@@ -1,3 +1,4 @@
+import { IncidentEconomics } from './IncidentEconomics'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ArrowLeft, Cpu } from 'lucide-react'
@@ -41,14 +42,15 @@ export function IncidentPage() {
   if (!inc) return <Empty title={t('incident.notFound')} />
 
   return (
-    <div className="flex h-full">
+    <div className="page-split flex h-full">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="border-b border-line bg-surface px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <Link to="/?tab=incidents" className="btn btn-ghost btn-sm">
               <ArrowLeft size={14} /> {t('common.back')}
             </Link>
             <IdLink kind="incident" value={inc.public_id} />
+            <Link className="btn btn-sm" to={`/?tab=hitl&q=${encodeURIComponent(inc.public_id ?? '')}`}>{t('continuity.openHitl')}</Link>
             <JourneyLink reference={inc.public_id ?? `INC-${String(id).padStart(6, '0')}`} />
             <Badge tone={incidentStatusTone(inc.status)}>{tEnum('incident.status', inc.status)}</Badge>
             <Badge tone={criticalityTone(inc.criticality)}>
@@ -186,10 +188,10 @@ export function IncidentPage() {
           {tab === 'history' && <History id={id} />}
           {tab === 'signals' && <IncidentSignals id={id} onOpen={setSignalId} seg={seg} />}
           {tab === 'comms' && <Comms id={id} />}
-          {tab === 'economics' && <Empty title={t('common.notImplemented')} hint="Экономика инцидента — пакет B06 (T-079/T-080)." />}
+          {tab === 'economics' && <IncidentEconomics id={id!} />}
         </div>
       </div>
-      <aside className="hidden w-[380px] shrink-0 border-l border-line xl:block">
+      <aside className="mobile-secondary hidden w-[380px] shrink-0 border-l border-line xl:block">
         <LogPanel runId={runId} />
       </aside>
       <SignalDrawer id={signalId} onClose={() => setSignalId(null)} />

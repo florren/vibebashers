@@ -18,6 +18,12 @@ import orjson
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
+from app.agent.customer_messages import (
+    customer_outcome,
+    emulated_team_pending,
+    gratitude_text,
+    has_emulated_verification,
+)
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
 from app.agent.state import AgentState
@@ -27,7 +33,8 @@ from app.agent.tools import router_tools
 from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
 from app.contracts.registry import deref, validate
-from app.i18n import communication_lang
+from app.economics.calibration import PIPELINE as SCORE_PIPELINE
+from app.i18n import communication_lang, declined_action_text
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -352,10 +359,17 @@ async def _llm(
     fallback_profile: LLMProfile | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Вызов цепочки: system = system.md + промпт задачи (с контекстом), user = текст сигнала. Возвращает (obj, meta)."""
+    requested_profile = profile or deps.profile
+    # Старые кассеты записаны на v1: явный offline-показ сохраняет исходный ключ запроса.
+    live_prompt = requested_profile.provider not in ("mock", "replay") and any(
+        name in ("gigachat", "openai_compatible") for name in deps.chain.names
+    )
     prompt = (
         load_prompt("system").body
         + "\n\n"
-        + load_prompt(task).render(**{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()})
+        + load_prompt(task, "v2" if live_prompt and task in ("classify", "normalize") else "v1").render(
+            **{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()}
+        )
     )
     messages: list[Message] = [{"role": "system", "content": prompt}, {"role": "user", "content": user_text}]
     schema = deref(schema_name)
@@ -519,7 +533,7 @@ async def normalize(state: AgentState, deps: Deps) -> AgentState:
             {"hints": hints, "channel": sig.get("channel"), "text": text},
             text,
             profile=deps.fast_profile or deps.profile,
-            context="fast_path",
+            context="normalization",
             fallback_profile=deps.profile
             if deps.fast_profile and deps.profile.provider not in ("mock", "replay")
             else None,
@@ -702,6 +716,15 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     else:
         ctx["products"], ctx["operations"] = [], []
     hint_product = state["normalization"].get("entities", {}).get("product")
+    if sig.get("channel_subtype") == "ui_pers_demo":
+        form_product = (sig.get("meta") or {}).get("product_code")
+        ctx["form_context"] = {
+            "product_code": form_product,
+            "visitor_name": (sig.get("meta") or {}).get("visitor_name") or None,
+            "region_code": (sig.get("geo") or {}).get("region_code"),
+            "city_id": (sig.get("geo") or {}).get("city_id"),
+        }
+        hint_product = hint_product or form_product
     if hint_product:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
@@ -738,6 +761,17 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         "nearby_faults": [f["error_code"] for f in nearby][:3],
     }
     ctx["source"] = {"operation_id": sig.get("source_operation_id"), "fault_id": sig.get("source_fault_id")}
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(deps.ctx.conn, sig["id"], deps.ctx.run_id)
+    if feedback:
+        ctx["operator_feedback"] = feedback
+    if sig.get("channel_subtype") == "ui_pers_demo":
+        rows = await deps.ctx.fetchall(
+            "select s.text,(select jsonb_agg(n.body order by n.id) from notifications n where n.signal_id=s.id and n.recipient_type='client') from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=(select session_id from personal_chat_messages where signal_id=%s) and m.signal_id<%s order by m.id desc limit 20",
+            (sig["id"], sig["id"]),
+        )
+        ctx["conversation"] = [{"user": r[0], "agent": r[1] or []} for r in reversed(rows)]
     state["context"].update(ctx)
     state["current_node"] = "check_rules"
     await deps.record_step(
@@ -933,6 +967,9 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         {
             "instant": {k: inst.get(k) for k in ("rule_codes", "confidence", "actions")},
             "classification_type": cls.get("signal_type"),
+            "churn_risk": cls.get("churn_risk"),
+            "score_pipeline": SCORE_PIPELINE,
+            "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
         },
         prompt=meta.get("prompt"),
         raw=meta.get("raw"),
@@ -1072,6 +1109,27 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
     if incident_id is None:
         row = await deps.ctx.fetchone("select incident_id from agent_runs where id = %s", (deps.ctx.agent_run_id,))
         incident_id = int(row[0]) if row and row[0] else None
+    if incident_id and await emulated_team_pending(deps.ctx, int(incident_id)):
+        # Общий fault может быть устранён до проверки конкретного клиентского сценария.
+        # Ожидание команды не является неудачной проверкой и не расходует reopen cap.
+        pending = await deps.ctx.fetchone(
+            "select id from followups where agent_run_id=%s and status='scheduled' limit 1",
+            (deps.ctx.agent_run_id,),
+        )
+        if not pending:
+            await wt.schedule_followup(
+                deps.ctx, int(sig["id"]), int(incident_id), 4.0, "verify_fix", {"incident_id": incident_id}
+            )
+        state["verified"] = False
+        state["current_node"] = "followup_monitor"
+        await deps.record_step(
+            "verify",
+            "ok",
+            {"incident_id": incident_id},
+            {"ok": False, "pending_team_verification": True, "reopened": False},
+            reasoning="Ожидается проверка клиентского сценария командой после релиза.",
+        )
+        return state
     evidence: list[str] = []
     ok = False
     reopened = False
@@ -1274,6 +1332,11 @@ def _text_matches_error(text: str, error_code: str) -> bool:
     if not words:
         return True  # неизвестный код — доверяем контексту
     t = text.lower()
+    if error_code == "APP-CRASH-PAY":
+        return error_code.lower() in t or (
+            any(w in t for w in ("платеж", "платёж", "оплат", "payment"))
+            and any(w in t for w in ("вылет", "падает", "закрыва", "завис", "crash", "freez"))
+        )
     return any(w in t for w in words)
 
 
@@ -1306,6 +1369,11 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         if stype != "tech_fault":
             notes.append(f"активный сбой {hints['error_code']} на пути операции клиента → tech_fault (модель: {stype})")
         stype, c["system"], c["error_code"] = "tech_fault", hints.get("system") or c.get("system"), hints["error_code"]
+    if c.get("error_code") == "APP-CRASH-PAY" and not _text_matches_error(
+        state["signal"].get("text") or "", "APP-CRASH-PAY"
+    ):
+        notes.append("APP-CRASH-PAY исключён: обращение не описывает падение при платеже")
+        c["error_code"] = None
     c["signal_type"] = stype
     # продукт ↔ система
     product = (
@@ -1503,6 +1571,12 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         status = "error"
         state["errors"].append(f"classify: {exc}")
     c, notes = _postcheck_classification(obj, state, deps)
+    if c.get("error_code") and not await deps.ctx.fetchone(
+        "select code from error_codes where code=%s", (c["error_code"],)
+    ):
+        # Гипотеза модели не создаёт новый код справочника и не должна ломать FK инцидента.
+        notes.append(f"неизвестный код ошибки {c['error_code']} исключён: в справочнике отсутствует")
+        c["error_code"] = None
     c.setdefault("tone", "neutral")
     c.setdefault("churn_risk", 0)
     c = prune(c, deref("agent/classification"))
@@ -1558,7 +1632,12 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         "classify",
         status,
         {"normalization": state["normalization"], "hints": state["context"].get("hints")},
-        {**c, "postcheck_notes": notes},
+        {
+            **c,
+            "postcheck_notes": notes,
+            "score_pipeline": SCORE_PIPELINE,
+            "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
+        },
         prompt=meta.get("prompt"),
         raw=meta.get("raw"),
         reasoning=(c.get("rationale_ru") or "") + ((" Пост-проверки: " + "; ".join(notes) + ".") if notes else ""),
@@ -1575,6 +1654,9 @@ def _context_for_prompt(state: AgentState) -> dict[str, Any]:
         "client": {k: client.get(k) for k in ("segment", "psychotype", "city", "region_code", "state", "churn_risk")}
         if client
         else None,
+        **({"operator_feedback": ctx["operator_feedback"]} if ctx.get("operator_feedback") else {}),
+        **({"conversation": ctx["conversation"]} if ctx.get("conversation") else {}),
+        **({"form_context": ctx["form_context"]} if ctx.get("form_context") else {}),
         "identification": ctx.get("identification"),
         "products": [{k: p.get(k) for k in ("product", "status", "card_last4")} for p in ctx.get("products") or []],
         "operations": [
@@ -1649,6 +1731,50 @@ def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
     )
 
 
+def matching_incident(
+    related: list[dict[str, Any]], classification: dict[str, Any], incident_type: str, text: str = ""
+) -> dict[str, Any] | None:
+    """Общий клиент/тип не доказывают общую проблему; разные коды ошибки не склеиваем."""
+    code = classification.get("error_code")
+    words = set(re.findall(r"[а-яёa-z]{6,}", str(classification.get("summary_ru") or "").lower())) - {
+        "техническая",
+        "проблема",
+        "клиента",
+        "обращение",
+        "ошибка",
+    }
+    # Резервная модель может дать общий заголовок. Сравниваем также исходные сообщения.
+    ignored = {"ошибк", "мобил", "прило", "повто", "прошу", "сообщ", "резул", "оконч", "после"}
+
+    def problem_words(value: str) -> set[str]:
+        return {w[:5] for w in re.findall(r"[а-яёa-z]{4,}|\d{3,}", value.lower())} - ignored
+
+    original = problem_words(text)
+    for incident in related:
+        if code:
+            if incident.get("error_code") == code:
+                return incident
+            continue
+        same_context = (
+            incident.get("incident_type") == incident_type
+            and classification.get("system")
+            and incident.get("system") == classification["system"]
+            and classification.get("product")
+            and incident.get("product") == classification["product"]
+        )
+        summary_match = len(words & set(re.findall(r"[а-яёa-z]{6,}", str(incident.get("title") or "").lower()))) >= 2
+        source = problem_words(str(incident.get("source_text") or ""))
+        numbers, source_numbers = {w for w in original if w.isdigit()}, {w for w in source if w.isdigit()}
+        source_match = len(original & source) >= 3 and (not numbers or not source_numbers or numbers == source_numbers)
+        if (
+            same_context
+            and (not numbers or not source_numbers or numbers == source_numbers)
+            and ((incident.get("is_clients") and summary_match) or source_match)
+        ):
+            return incident
+    return None
+
+
 def _decision_rationale(llm: str | None, cls: str | None, own: str) -> str:
     """Обоснование решения: если модель вернула то же, что в классификации (mock), берём своё резюме маршрута/SLA."""
     llm = (llm or "").strip()
@@ -1671,6 +1797,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         state.get("client") or {},
         state["context"],
     )
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(deps.ctx.conn, sig["id"], deps.ctx.run_id)
+    if feedback:
+        ctx["operator_feedback"] = feedback
     text = sig.get("text") or ""
     stype = c["signal_type"]
     flags = list(c.get("flags") or [])
@@ -1733,15 +1864,52 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     ):
         incident_type = "tech_fault"
     prio = slam.priority(crit, int(c.get("churn_risk") or 0), segment, flags)
+    from app.agent.operator_feedback import planned_priority
+
+    prio = planned_priority(ctx, prio)
     sla_full = slam.sla_for(complexity, crit, deps.ctx.sim_time, deps.sla_matrix)
     # инцидент: создать / связать / не нужен
-    related = ctx.get("related_incidents") or []
-    link = next((i for i in related if i.get("same_error") and i.get("error_code")), None) or next(
-        (i for i in related if i.get("is_clients") and i.get("incident_type") == incident_type), None
+    # После классификации известна проблема самого сообщения, а не только старых операций клиента.
+    related = await rt.find_related_incidents(
+        deps.ctx,
+        (client or {}).get("client_id"),
+        c.get("error_code"),
+        c.get("system"),
+        c.get("product"),
+        (client or {}).get("region_code"),
+        hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
     )
+    ctx["related_incidents"] = related
+    link = matching_incident(related, c, incident_type, sig.get("text") or "")
     unidentified = not state.get("client")
     anonymous_request = unidentified and stype != "gratitude"
-    if stype in NO_INCIDENT_TYPES and "churn_intent" not in flags and not fee_rule and not anonymous_request:
+    demo_team_task = False
+    if stype == "info_request" and (
+        sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo"
+    ):
+        # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
+        demo_team_task = bool(
+            await deps.ctx.fetchone(
+                "select id from sim_runs where id=%s and kind<>'baseline' "
+                "and settings_snapshot->'demo_execution'->>'enabled'='true'",
+                (deps.ctx.run_id,),
+            )
+        )
+        if demo_team_task:
+            checks.append(
+                {
+                    "rule": "demo_team_task",
+                    "passed": True,
+                    "note": "Запрос передаётся demo-команде для итогового ответа",
+                }
+            )
+    if (
+        stype in NO_INCIDENT_TYPES
+        and "churn_intent" not in flags
+        and not fee_rule
+        and not anonymous_request
+        and not demo_team_task
+    ):
         incident_action, link_id = "none", None
     elif link:
         incident_action, link_id = "link_existing", int(link["incident_id"])
@@ -2055,6 +2223,7 @@ def apply_human_decision(state: AgentState, decision: str, modified: dict[str, A
             "client_action": {**state["decision"]["client_action"], "kind": "none"},
             "gift": None,
             "escalation": None,
+            "followup": None,
         }
     state["current_node"] = "act"
     state["outcome"] = None
@@ -2293,6 +2462,24 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             flags_now = list(dict.fromkeys([*(c.get("flags") or []), "mass_impact"]))
             c["flags"] = flags_now
             state["decision"] = d
+    elif d["incident_action"] == "create" and "incident" not in done and client:
+        # Два сигнала могут принять решение до создания первого тикета (например, ожидая HITL).
+        await deps.ctx.conn.execute(
+            "select pg_advisory_xact_lock(hashtext(%s))",
+            (f"incident:{deps.ctx.run_id}:context:{c.get('system')}:{c.get('product')}",),
+        )
+        related = await rt.find_related_incidents(
+            deps.ctx,
+            client["client_id"],
+            None,
+            c.get("system"),
+            c.get("product"),
+            client.get("region_code"),
+            hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
+        )
+        incident_match = matching_incident(related, c, c.get("signal_type") or "tech_fault", sig.get("text") or "")
+        if incident_match:
+            d["incident_action"], d["link_incident_id"] = "link_existing", int(incident_match["incident_id"])
     spec = _act_spec(d, c, sig, client, sla_full, state)
     link_id = (
         int(d["link_incident_id"])
@@ -2361,6 +2548,10 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             "update human_decisions set incident_id = %s where agent_run_id = %s and incident_id is null",
             (incident_id, deps.ctx.agent_run_id),
         )
+    if incident_id and human in ("accept", "modify") and router_action in ("route", "escalate"):
+        resumed = await wt.resume_approved_incident(deps.ctx, incident_id)
+        if resumed["resumed"]:
+            mark("human_handoff", incident_id=incident_id)
     # --- Mock-АБС: возврат ошибочной комиссии (ТЗ 9.2–9.3, 21.4): автономно в лимите или после решения человека
     fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
     refund_check = next((pc for pc in (d.get("policy_checks") or []) if pc.get("rule") == "refund_autonomy"), None)
@@ -2433,6 +2624,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         lang = "ru"
     if (refund_total or refund_dup) and ca["kind"] != "none":
         ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup, lang)}
+    if c["signal_type"] == "gratitude" and state.get("llm_source") == "mock":
+        ca = {**ca, "text_ru": gratitude_text(lang)}
     human_mod = (state.get("human") or {}).get("modified") or {}
     if human == "modify" and isinstance(human_mod.get("gift"), dict) and d.get("gift"):
         gift = d["gift"]
@@ -2607,7 +2800,12 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             requires_hitl=True,
         )
         mark("delegate_task", task_id=t.get("task_id"))
-    if d.get("followup") and "followup" not in done and d.get("router_action") != "request_clarification":
+    if (
+        d.get("followup")
+        and "followup" not in done
+        and d.get("router_action") != "request_clarification"
+        and (incident_id is not None or d["followup"]["reason"] not in ("awaiting_team", "verify_fix", "report_due"))
+    ):
         f = await wt.schedule_followup(
             deps.ctx,
             sig["id"],
@@ -2697,8 +2895,22 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
     if incident_id:
         ca = d.get("client_action") or {}
         channel = str(ca.get("channel") or sig.get("channel") or "chat")
-        variables = {"name": mask_name(client.get("name")), "resolution": d.get("title_ru") or ""}
+        resolution_row = await deps.ctx.fetchone(
+            "select resolution_summary,sla_breached from incidents where id=%s and run_id=%s",
+            (incident_id, deps.ctx.run_id),
+        )
+        resolution = str((resolution_row[0] if resolution_row else None) or d.get("title_ru") or "")
+        variables = {"name": mask_name(client.get("name")), "resolution": resolution}
         _subject, body = await wt.render_template(deps.ctx, "resolved", channel, client.get("segment"), variables, lang)
+        if await has_emulated_verification(deps.ctx, int(incident_id)):
+            body = await customer_outcome(
+                deps.ctx,
+                int(incident_id),
+                client.get("client_id"),
+                lang,
+                resolved=True,
+                late=bool(resolution_row and resolution_row[1]),
+            )
         if body and pol.forbidden_phrases(body):
             body = _short_ack(lang)
         if body:
@@ -2718,13 +2930,27 @@ async def close(state: AgentState, deps: Deps) -> AgentState:
         await wt.close_incident(
             deps.ctx,
             int(incident_id),
-            str(d.get("title_ru") or "обращение закрыто")[:500],
-            "closed_in_sla",
+            resolution[:2000] or "обращение закрыто",
+            "closed_late" if resolution_row and resolution_row[1] else "closed_in_sla",
         )
         await deps.ctx.conn.execute(
             "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
         )
     elif not incident_id:
+        if (state.get("human") or {}).get("status") == "reject":
+            await wt.notify_client(
+                deps.ctx,
+                client.get("client_id"),
+                int(sig["id"]),
+                None,
+                str(sig.get("channel") or "chat"),
+                "final_no_action_131",
+                {},
+                text_override=declined_action_text(lang),
+                segment=client.get("segment"),
+                consents=client.get("consents"),
+                lang=lang,
+            )
         await deps.ctx.conn.execute(
             "update signals set status = 'closed', updated_at = now() where id = %s", (sig["id"],)
         )

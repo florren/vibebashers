@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // Dev: прокси /api и /ws на backend (:8000). Prod: dist раздаёт backend (FastAPI StaticFiles) или nginx.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
@@ -14,6 +14,6 @@ export default defineConfig({
       '/ws': { target: (process.env.VITE_API_TARGET ?? 'http://localhost:8000').replace('http', 'ws'), ws: true },
     },
   },
-  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 900 },
+  build: { outDir: mode === 'personal' ? 'dist-personal' : 'dist', sourcemap: false, chunkSizeWarningLimit: 900, ...(mode === 'personal' ? { rollupOptions: { input: 'personal.html' } } : {}) },
   test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test/setup.ts'], css: false, exclude: ['e2e/**', 'node_modules/**', 'dist/**'] },
-})
+}))

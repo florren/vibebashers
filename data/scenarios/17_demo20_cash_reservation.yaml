@@ -1,0 +1,21 @@
+id: demo20_04_cash_reservation
+number: 17
+title_ru: 'ТЗ 04: Нет наличных в кассе'
+title_en: 'Brief 04: Cash unavailable'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Заказал выдачу вклада 3000000 рублей, но в отделении нет наличных. Нужен согласованный
+    способ получения денег.
+expected: {}
+demo_evidence:
+  observed: Предзаказ наличных не обеспечен доставкой в отделение.
+  action: Согласовать получение наличных в другом отделении.
+  verification: Проверен альтернативный маршрут получения наличных в эмуляции.
+  source: synthetic_fixture

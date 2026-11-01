@@ -221,7 +221,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   const firstReply = received && replied ? Math.round((Date.parse(replied) - Date.parse(received)) / 1000) : null
   const source = [...new Set(traceEvents.flatMap((e) => (e.badges.llm_source ? [e.badges.llm_source] : [])))].join(' + ')
   return (
-    <main className="min-h-0 flex-1 overflow-auto p-4 lg:p-5">
+    <main className="journey-content min-h-0 flex-1 overflow-auto p-4 lg:p-5">
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{t('journeyUi.title')}</h1>

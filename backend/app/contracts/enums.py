@@ -474,4 +474,18 @@ class TraceEventKind(StrEnum):
     COMPLIANCE_ALERT = "compliance_alert"
 
 
-ALL_ENUMS = {"segment": Segment, "product": Product, "system": System, "team": Team, "channel": Channel, "product_line": ProductLine, "branch_type": BranchType, "branch_status": BranchStatus, "signal_type": SignalType, "flag": Flag, "complexity": Complexity, "criticality": Criticality, "psychotype": Psychotype, "client_state": ClientState, "incident_status": IncidentStatus, "tone": Tone, "incident_type": IncidentType, "signal_origin": SignalOrigin, "sim_run_kind": SimRunKind, "intent": Intent, "payment_method": PaymentMethod, "ledger_kind": LedgerKind, "rule_action": RuleAction, "misselling_pattern": MissellingPattern, "speaker": Speaker, "diarization_mode": DiarizationMode, "stt_provider": SttProvider, "audio_source": AudioSource, "trigger_status": TriggerStatus, "llm_source": LlmSource, "platform": Platform, "sentiment": Sentiment, "severity": Severity, "router_action": RouterAction, "routing_status": RoutingStatus, "escalation_role": EscalationRole, "escalation_status": EscalationStatus, "violation_family": ViolationFamily, "alert_policy": AlertPolicy, "pacing": Pacing, "transcript_kind": TranscriptKind, "ingest_source_kind": IngestSourceKind, "geo_source": GeoSource, "zone": Zone, "trace_phase": TracePhase, "trace_actor": TraceActor, "journey_stage": JourneyStage, "journey_message_kind": JourneyMessageKind, "search_mode": SearchMode, "trace_event_kind": TraceEventKind}
+class SignalStatus(StrEnum):
+    NEW = "new"
+    PROCESSING = "processing"
+    CLASSIFIED = "classified"
+    LINKED = "linked"
+    DEFERRED = "deferred"
+    AWAITING_HUMAN = "awaiting_human"
+    AWAITING_CLIENT = "awaiting_client"
+    ANSWERED = "answered"
+    CLOSED = "closed"
+    NOISE = "noise"
+    ERROR = "error"
+
+
+ALL_ENUMS = {"segment": Segment, "product": Product, "system": System, "team": Team, "channel": Channel, "product_line": ProductLine, "branch_type": BranchType, "branch_status": BranchStatus, "signal_type": SignalType, "flag": Flag, "complexity": Complexity, "criticality": Criticality, "psychotype": Psychotype, "client_state": ClientState, "incident_status": IncidentStatus, "tone": Tone, "incident_type": IncidentType, "signal_origin": SignalOrigin, "sim_run_kind": SimRunKind, "intent": Intent, "payment_method": PaymentMethod, "ledger_kind": LedgerKind, "rule_action": RuleAction, "misselling_pattern": MissellingPattern, "speaker": Speaker, "diarization_mode": DiarizationMode, "stt_provider": SttProvider, "audio_source": AudioSource, "trigger_status": TriggerStatus, "llm_source": LlmSource, "platform": Platform, "sentiment": Sentiment, "severity": Severity, "router_action": RouterAction, "routing_status": RoutingStatus, "escalation_role": EscalationRole, "escalation_status": EscalationStatus, "violation_family": ViolationFamily, "alert_policy": AlertPolicy, "pacing": Pacing, "transcript_kind": TranscriptKind, "ingest_source_kind": IngestSourceKind, "geo_source": GeoSource, "zone": Zone, "trace_phase": TracePhase, "trace_actor": TraceActor, "journey_stage": JourneyStage, "journey_message_kind": JourneyMessageKind, "search_mode": SearchMode, "trace_event_kind": TraceEventKind, "signal_status": SignalStatus}

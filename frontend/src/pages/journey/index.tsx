@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/shared/routes'
+import { DemoExecution } from './DemoExecution'
+import { SignalPicker } from './SignalPicker'
 import { LiveJourney } from './LiveJourney'
 import { RecordedJourney } from './RecordedJourney'
 import type { JourneyMode } from './playback'
@@ -16,7 +18,7 @@ export function JourneyPage() {
   const [subject, setSubject] = useState<string>()
   const reference = ref ?? subject
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="journey-page flex h-full min-h-0 flex-col">
       <nav aria-label={t('journeyModes.modes')} className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-2">
         {(['follow', 'replay', 'presenter'] as const).map((m) => (
           <Link
@@ -44,6 +46,8 @@ export function JourneyPage() {
           </label>
         )}
       </nav>
+      <DemoExecution onStarted={reference => nav(ROUTES.journeyObject(reference))} />
+      <SignalPicker onSelect={reference => nav(`${ROUTES.journeyObject(reference)}${mode === 'follow' ? '' : `?mode=${mode}`}`)} />
       {mode === 'follow' ? (
         <LiveJourney onSubject={setSubject} />
       ) : reference ? (

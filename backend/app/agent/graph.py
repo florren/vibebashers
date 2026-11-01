@@ -17,6 +17,7 @@ from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
 from app.agent.tools import write as wt
 from app.agent.tools.base import ToolContext
+from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.logging import get_logger
@@ -335,6 +336,27 @@ async def process_signal(
     return await run_graph(state, deps, conn)
 
 
+async def _restore_recording_state(conn: psycopg.AsyncConnection[Any], deps: Deps) -> None:
+    """Продолжение графа учитывает уже записанные шаги, даже если итог AR устарел."""
+    row = await (
+        await conn.execute(
+            "select coalesce(sum(st.prompt_tokens),0), coalesce(sum(st.completion_tokens),0), "
+            "coalesce(sum(st.latency_ms),0), ar.cost_estimate, coalesce(max(st.seq),0), "
+            "coalesce(sum(octet_length(coalesce(st.prompt,'')) + octet_length(coalesce(st.response_raw,'')) + "
+            "octet_length(coalesce(st.reasoning,'')) + octet_length(coalesce(st.output::text,'')) + "
+            "octet_length(coalesce(st.tool_calls::text,''))),0) "
+            "from agent_runs ar left join agent_steps st on st.run_id=ar.id "
+            "where ar.id=%s group by ar.id,ar.cost_estimate",
+            (deps.ctx.agent_run_id,),
+        )
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Запуск агента отсутствует при восстановлении статистики")
+    deps.tokens.update(prompt=int(row[0]), completion=int(row[1]), latency_ms=int(row[2]), cost=float(row[3] or 0))
+    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(row[4]))]
+    deps.text_bytes_used = int(row[5])
+
+
 async def resume_after_followup(
     conn: psycopg.AsyncConnection[Any],
     *,
@@ -356,16 +378,21 @@ async def resume_after_followup(
     ).fetchone()
     if not row or row[7] is None:
         return None
-    agent_run_id, signal_id, incident_id, reason, payload, _fstatus, run_id, checkpoint, nsteps = row
+    agent_run_id, signal_id, incident_id, reason, payload, _fstatus, run_id, checkpoint, _nsteps = row
     reason = str(reason)
     if reason == "escalation_check":
         return None
     state: AgentState = orjson.loads(dumps(checkpoint))
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(conn, int(state["signal"]["id"]), int(run_id))
+    if feedback:
+        state.setdefault("context", {})["operator_feedback"] = feedback
     sim_time = sim_time or dt.datetime.now(dt.UTC)
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
     )
-    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
+    await _restore_recording_state(conn, deps)
     sig = await _load_signal(conn, int(signal_id))
     if sig:
         state["signal"] = sig
@@ -482,14 +509,17 @@ async def wake_due_followups(
     sim_time: dt.datetime,
     chain: ProviderChain,
     profile: LLMProfile,
+    incident_id: int | None = None,
 ) -> int:
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
         await conn.execute(
-            "with due as (select id from followups where status = 'scheduled' and wake_sim <= %s "
-            "and agent_run_id is not null and signal_id is not null for update skip locked) "
+            "with due as (select f.id from followups f join signals s on s.id=f.signal_id "
+            "where f.status = 'scheduled' and f.wake_sim <= %s and f.agent_run_id is not null "
+            "and (%s::bigint is null or (f.incident_id=%s and f.reason is distinct from 'awaiting_client')) "
+            f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
             "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
-            (sim_time,),
+            (sim_time, incident_id, incident_id),
         )
     ).fetchall()
     resumed = 0
@@ -511,11 +541,12 @@ async def wake_followups_for_incident(
 ) -> int:
     await conn.execute(
         "update followups set wake_sim = %s where incident_id = %s and status = 'scheduled' "
-        "and reason is distinct from 'awaiting_client'",
+        "and reason is distinct from 'awaiting_client' "
+        f"and not exists(select 1 from signals s where s.id=followups.signal_id and {LEGACY_MOCK_SQL})",
         (sim_time, incident_id),
     )
     await conn.commit()
-    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile)
+    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile, incident_id=incident_id)
 
 
 async def expire_hitl(
@@ -533,7 +564,8 @@ async def expire_hitl(
     rows = await (
         await conn.execute(
             "select hd.id, hd.agent_run_id, hd.signal_id, hd.incident_id, ar.sim_run_id from human_decisions hd "
-            "join agent_runs ar on ar.id = hd.agent_run_id where hd.decision is null and hd.requested_sim <= %s",
+            "join agent_runs ar on ar.id = hd.agent_run_id left join signals s on s.id=hd.signal_id "
+            f"where hd.decision is null and hd.requested_sim <= %s and not {LEGACY_MOCK_SQL}",
             (cutoff,),
         )
     ).fetchall()
@@ -556,12 +588,16 @@ async def expire_hitl(
             )
             await conn.commit()
             continue
-        await conn.execute(
-            "update human_decisions set decision = 'modify', modified_proposal = %s::jsonb, decided_by = 'timeout', "
-            "decided_sim = %s, decided_at = now(), use_as_fewshot = false where id = %s and decision is null",
-            (timeout_proposal, sim_time, hid),
-        )
+        updated = await (
+            await conn.execute(
+                "update human_decisions set decision = 'modify', modified_proposal = %s::jsonb, decided_by = 'timeout', "
+                "decided_sim = %s, decided_at = now(), use_as_fewshot = false where id = %s and decision is null returning id",
+                (timeout_proposal, sim_time, hid),
+            )
+        ).fetchone()
         await conn.commit()
+        if not updated:
+            continue
         await resume_after_human(conn, human_decision_id=int(hid), chain=chain, profile=profile, sim_time=sim_time)
 
 
@@ -582,23 +618,25 @@ async def resume_after_human(
     ).fetchone()
     if not row or not row[4]:
         return None
-    agent_run_id, decision, modified, run_id, checkpoint, nsteps = row
+    agent_run_id, decision, modified, run_id, checkpoint, _nsteps = row
     state: AgentState = orjson.loads(dumps(checkpoint))
+    from app.agent.operator_feedback import feedback_context
+
+    feedback = await feedback_context(conn, int(state["signal"]["id"]), int(run_id))
+    if feedback:
+        state.setdefault("context", {})["operator_feedback"] = feedback
     sim_time = sim_time or dt.datetime.now(dt.UTC)
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(run_id), agent_run_id=int(agent_run_id), sim_time=sim_time
     )
-    budget_row = await (
-        await conn.execute(
-            "select coalesce(sum(octet_length(coalesce(prompt,'')) + octet_length(coalesce(response_raw,'')) + "
-            "octet_length(coalesce(reasoning,'')) + octet_length(coalesce(output::text,'')) + "
-            "octet_length(coalesce(tool_calls::text,''))), 0) from agent_steps where run_id = %s",
-            (agent_run_id,),
-        )
-    ).fetchone()
-    deps.text_bytes_used = int(budget_row[0]) if budget_row else 0
-    deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(nsteps))]
+    await _restore_recording_state(conn, deps)
     state = nodes.apply_human_decision(state, str(decision), dict(modified or {}))
+    if decision == "accept":
+        from app.agent.operator_feedback import planned_priority
+
+        d = state.get("decision") or {}
+        if isinstance(d.get("priority"), int):
+            d["priority"] = planned_priority(state.get("context") or {}, d["priority"])
     await deps.record_step(
         "wait_human",
         "ok",

@@ -1,0 +1,60 @@
+{
+  "id": "demo-mock-7d-v1",
+  "scope": "demo",
+  "data_kind": "synthetic_controls",
+  "model": "mock:mock-rules-v1",
+  "prompt_version": "v1.1",
+  "horizon_days": 7,
+  "cutoff_sim": "2026-10-08T00:00:00Z",
+  "business_approval_ref": "prototype-demo-request-2026-10-29",
+  "generator": "gen_churn_demo-v1-seed265",
+  "population": "synthetic_retail",
+  "schema_version": 1,
+  "score_pipeline": "agent-score-v1",
+  "dataset_sha256": "e026ad8915f7fbc4a75a5531c2d0688a7e07f06c9237a0c2e1ef583d076ca251",
+  "train_n": 1000,
+  "metrics": {
+    "raw_brier": 0.20343940000000008,
+    "calibrated_brier": 0.16831500000000146,
+    "ece": 0.023000000000000007,
+    "validation_n": 1000
+  },
+  "bins": [
+    {
+      "lower": 0,
+      "upper": 20,
+      "n": 200,
+      "churned": 12,
+      "probability": 0.06
+    },
+    {
+      "lower": 20,
+      "upper": 40,
+      "n": 200,
+      "churned": 22,
+      "probability": 0.11
+    },
+    {
+      "lower": 40,
+      "upper": 60,
+      "n": 200,
+      "churned": 74,
+      "probability": 0.37
+    },
+    {
+      "lower": 60,
+      "upper": 80,
+      "n": 200,
+      "churned": 85,
+      "probability": 0.425
+    },
+    {
+      "lower": 80,
+      "upper": 100,
+      "n": 200,
+      "churned": 134,
+      "probability": 0.67
+    }
+  ],
+  "artifact_sha256": "9e066f6a9768278989a70db2e94b7286628650e5e4c5eb66f061327eec6e2c62"
+}

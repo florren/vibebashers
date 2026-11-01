@@ -1737,3 +1737,105 @@ DROP TRIGGER IF EXISTS csi_visits_agg_activity ON csi_visits_agg;
 CREATE TRIGGER csi_visits_agg_activity AFTER INSERT OR UPDATE OR DELETE ON csi_visits_agg FOR EACH ROW EXECUTE FUNCTION log_db_activity();
 DROP TRIGGER IF EXISTS branch_network_history_activity ON branch_network_history;
 CREATE TRIGGER branch_network_history_activity AFTER INSERT OR UPDATE OR DELETE ON branch_network_history FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+
+-- T-265: доказательства финансового эффекта, миграция 0008.
+-- T-265: неизменяемые версии доказательств; сумма и основания берутся из согласованной политики.
+CREATE TABLE IF NOT EXISTS financial_evidence (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  incident_id bigint NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  alert_id bigint NOT NULL REFERENCES compliance_alerts(id),
+  scope text NOT NULL CHECK (scope IN ('demo','observed')),
+  deal_ref text NOT NULL CHECK (length(deal_ref) BETWEEN 1 AND 120),
+  idempotency_key text NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 120),
+  payload_sha256 text NOT NULL CHECK (payload_sha256 ~ '^[0-9a-f]{64}$'),
+  intervention_sim timestamptz NOT NULL,
+  deal_closed_sim timestamptz NOT NULL,
+  outcome text NOT NULL CHECK (outcome IN ('prevented','completed','unknown')),
+  evidence_ref text NOT NULL CHECK (length(evidence_ref) BETWEEN 1 AND 500),
+  recorded_by text NOT NULL CHECK (length(recorded_by) BETWEEN 1 AND 120),
+  policy jsonb NOT NULL,
+  policy_sha256 text NOT NULL CHECK (policy_sha256 ~ '^[0-9a-f]{64}$'),
+  recorded_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (run_id, scope, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS financial_evidence_deal_idx ON financial_evidence (run_id, scope, deal_ref, id DESC);
+CREATE INDEX IF NOT EXISTS financial_evidence_incident_idx ON financial_evidence (incident_id, scope, id DESC);
+CREATE OR REPLACE FUNCTION reject_financial_evidence_update() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'financial_evidence is append-only; add a new version';
+END $$;
+DROP TRIGGER IF EXISTS financial_evidence_immutable ON financial_evidence;
+CREATE TRIGGER financial_evidence_immutable BEFORE UPDATE ON financial_evidence
+FOR EACH ROW EXECUTE FUNCTION reject_financial_evidence_update();
+DROP TRIGGER IF EXISTS financial_evidence_activity ON financial_evidence;
+CREATE TRIGGER financial_evidence_activity AFTER INSERT ON financial_evidence
+FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+
+-- T-267: неизменяемая информация оператора, доступная после продолжения процесса.
+CREATE TABLE IF NOT EXISTS hitl_feedback (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  human_decision_id bigint NOT NULL REFERENCES human_decisions(id) ON DELETE CASCADE,
+  idempotency_key text NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 120),
+  comment text NOT NULL CHECK (length(btrim(comment)) BETWEEN 1 AND 4000),
+  recorded_by text NOT NULL CHECK (length(btrim(recorded_by)) BETWEEN 1 AND 120),
+  recorded_sim timestamptz NOT NULL,
+  recorded_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (human_decision_id,idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS hitl_feedback_history_idx ON hitl_feedback (human_decision_id,id DESC);
+CREATE OR REPLACE FUNCTION reject_hitl_feedback_update() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'hitl_feedback is append-only; add a new record';
+END $$;
+DROP TRIGGER IF EXISTS hitl_feedback_immutable ON hitl_feedback;
+CREATE TRIGGER hitl_feedback_immutable BEFORE UPDATE ON hitl_feedback
+FOR EACH ROW EXECUTE FUNCTION reject_hitl_feedback_update();
+DROP TRIGGER IF EXISTS hitl_feedback_activity ON hitl_feedback;
+CREATE TRIGGER hitl_feedback_activity AFTER INSERT ON hitl_feedback
+FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+
+-- T-268/T-269: обработка дополнений операторов и изолированный анонимный чат.
+ALTER TABLE agent_runs DROP CONSTRAINT IF EXISTS agent_runs_kind_check;
+ALTER TABLE agent_runs ADD CONSTRAINT agent_runs_kind_check CHECK (kind IN
+ ('agent','client_twin','team_emulator','bench','compare','compliance_detector','speaker_attribution','operator_review'));
+CREATE TABLE IF NOT EXISTS hitl_feedback_processing (
+ feedback_id bigint PRIMARY KEY REFERENCES hitl_feedback(id) ON DELETE CASCADE,
+ status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','applied','failed')),
+ attempts integer NOT NULL DEFAULT 0,
+ retry_at timestamptz NOT NULL DEFAULT now(),
+ agent_run_id bigint REFERENCES agent_runs(id),
+ review jsonb,
+ applied_at timestamptz,
+ error text
+);
+CREATE INDEX IF NOT EXISTS hitl_feedback_pending_idx ON hitl_feedback_processing(status,retry_at);
+INSERT INTO hitl_feedback_processing(feedback_id) SELECT id FROM hitl_feedback ON CONFLICT DO NOTHING;
+CREATE OR REPLACE FUNCTION queue_operator_feedback() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ INSERT INTO hitl_feedback_processing(feedback_id) VALUES (NEW.id) ON CONFLICT DO NOTHING;
+ PERFORM pg_notify('operator_feedback', NEW.id::text);
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS hitl_feedback_queue ON hitl_feedback;
+CREATE TRIGGER hitl_feedback_queue AFTER INSERT ON hitl_feedback FOR EACH ROW EXECUTE FUNCTION queue_operator_feedback();
+CREATE TABLE IF NOT EXISTS personal_chat_sessions (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ token_hash text NOT NULL UNIQUE,
+ run_id bigint REFERENCES sim_runs(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ last_message_at timestamptz
+);
+CREATE TABLE IF NOT EXISTS personal_chat_messages (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ session_id bigint NOT NULL REFERENCES personal_chat_sessions(id) ON DELETE CASCADE,
+ request_id uuid NOT NULL,
+ request_hash text NOT NULL CHECK(length(request_hash)=64),
+ signal_id bigint NOT NULL UNIQUE REFERENCES signals(id) ON DELETE CASCADE,
+ created_at timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(session_id,request_id)
+);
+CREATE INDEX IF NOT EXISTS personal_chat_history_idx ON personal_chat_messages(session_id,id);
+
+CREATE INDEX IF NOT EXISTS personal_chat_rate_idx ON personal_chat_messages(created_at);
+CREATE INDEX IF NOT EXISTS personal_session_rate_idx ON personal_chat_sessions(created_at);

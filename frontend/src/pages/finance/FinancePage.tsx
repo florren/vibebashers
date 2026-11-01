@@ -1,3 +1,5 @@
+import { useMobileLayout } from '@/shared/layout/device-store'
+import { EntityFilter } from '@/shared/components/EntityFilter'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +9,8 @@ import { api, type Schemas } from '@/shared/api/client'
 import { useSimRuns, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
 import { formatMoney as fmtRub } from './money'
+import { EvidencePanel, CaseEvidence } from './EvidencePanel'
+import { ProductFilter, type ProductSelection } from './ProductFilter'
 import { tEnum } from '@/shared/i18n'
 import { ErrorBox, Modal, Skeleton } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
@@ -37,7 +41,8 @@ function AnimatedMoney({ value }: { value: number }) {
 
 function GrowthChart({ series }: { series: Total['series'] }) {
   const el = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const mobile = useMobileLayout()
   useEffect(() => {
     if (!el.current) return
     const textColor = getComputedStyle(el.current).color
@@ -45,10 +50,10 @@ function GrowthChart({ series }: { series: Total['series'] }) {
     chart.setOption({
       color: ['#21A038', '#0098F8'],
       tooltip: { trigger: 'axis', valueFormatter: (v: number) => fmtRub(v) },
-      legend: { data: [t('finance.saved'), t('finance.net')], textStyle: { color: textColor } },
-      grid: { left: 80, right: 20, top: 40, bottom: 36 },
-      xAxis: { type: 'category', data: series.map((p) => fmtSim(p.time)), boundaryGap: false, axisLabel: { color: textColor } },
-      yAxis: { type: 'value', axisLabel: { color: textColor } },
+      legend: { type: 'scroll', data: [t('finance.saved'), t('finance.net')], textStyle: { color: textColor } },
+      grid: { left: mobile ? 62 : 80, right: mobile ? 8 : 20, top: 48, bottom: 36 },
+      xAxis: { type: 'category', data: series.map((p) => mobile ? fmtSim(p.time, 'dd.MM') : fmtSim(p.time)), boundaryGap: false, axisLabel: { color: textColor } },
+      yAxis: { type: 'value', axisLabel: { color: textColor, ...(mobile ? { formatter: (v: number) => new Intl.NumberFormat(i18n.language, { notation: 'compact', maximumFractionDigits: 1 }).format(v) } : {}) } },
       series: [
         { name: t('finance.saved'), type: 'line', step: 'end', data: series.map((p) => p.saved_rub), areaStyle: { opacity: 0.08 } },
         { name: t('finance.net'), type: 'line', step: 'end', data: series.map((p) => p.net_rub) },
@@ -62,12 +67,15 @@ function GrowthChart({ series }: { series: Total['series'] }) {
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-mode', 'data-pack'] })
     return () => { observer.disconnect(); themeObserver.disconnect(); chart.dispose() }
-  }, [series, t])
+  }, [series, t, i18n.language, mobile])
   return <div ref={el} className="h-64 w-full" role="img" aria-label={t('finance.chart')} />
 }
 
 export function FinancePage() {
+  const mobile = useMobileLayout()
+  const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
+  const [products, setProducts] = useState<ProductSelection>({ mode: 'all', codes: [] })
   const [period, setPeriod] = useState<Period>('live')
   const [run, setRun] = useState('current')
   const [start, setStart] = useState('')
@@ -83,11 +91,12 @@ export function FinancePage() {
   const currentRun = live !== null ? live.current_run_id : state.data?.current_run_id
   const selectedRun = run === 'current' ? currentRun : Number(run)
   useEffect(() => { setOffset(0); setIncident(null) }, [selectedRun])
+  useEffect(() => { setOffset(0); setIncident(null) }, [entityQuery])
   const validDates = period !== 'custom' || (!!start && !!end && end > start)
   const query = useQuery({
-    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset],
+    queryKey: ['metrics', 'finance', run, selectedRun ?? null, period, start, end, probability, fine, offset, products, entityQuery],
     queryFn: () => api<Total>('/api/v1/finance/impact/total', { query: {
-      run_id: run, period, probability_percent: probability, fine_per_case_rub: fine, offset,
+      q: entityQuery || undefined, run_id: run, period, product_mode: products.mode, product_codes: products.codes, probability_percent: probability, fine_per_case_rub: fine, offset,
       ...(period === 'custom' ? { start_date: `${start}:00Z`, end_date: `${end}:00Z` } : {}),
     } }),
     enabled: validDates,
@@ -101,7 +110,7 @@ export function FinancePage() {
     enabled: incident !== null,
   })
   const change = () => { setOffset(0); setIncident(null) }
-  return <div className="h-full overflow-auto p-4 md:p-6">
+  return <div className="finance-page h-full overflow-auto p-4 md:p-6">
     <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-2xl font-semibold">{t('finance.title')}</h1><p className="mt-1 text-sm text-muted">{t('finance.subtitle')}</p></div>
@@ -118,7 +127,9 @@ export function FinancePage() {
         </>}
         <span className="ml-auto text-xs text-muted">{t(wsStatus === 'open' ? 'finance.connected' : 'finance.polling')}</span>
       </div>
-      <p className="text-xs text-muted">{t('finance.timeHint')}</p>
+      <EntityFilter onChange={setEntityQuery} />
+      <ProductFilter value={products} onChange={value => { setProducts(value); change() }} />
+      <p className="text-xs text-muted">{t('finance.timeHint')} · <Link className="text-info underline" to="/economics">{t('calculator.title')}</Link></p>
       {!validDates && <p role="status" className="text-warn">{t('finance.invalidDates')}</p>}
       {query.isError && <ErrorBox error={query.error} />}
       {query.isLoading && <Skeleton className="h-36" />}
@@ -148,11 +159,18 @@ export function FinancePage() {
             <p className="mt-2 text-xs text-muted">{t('finance.fineHint', { count: d.fine_cases })}</p>
           </div>
         </section>
+        <EvidencePanel entityQuery={entityQuery} runId={d.run_id} period={period} start={start} end={end} products={products} />
         <section className="card p-4"><h2 className="font-semibold">{t('finance.chart')}</h2>
           {d.series.length ? <GrowthChart series={d.series} /> : <p className="py-10 text-center text-muted">{t('finance.empty')}</p>}
         </section>
         <section className="card overflow-hidden"><h2 className="p-4 font-semibold">{t('finance.ledger')}</h2>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-raised text-left text-xs text-muted"><tr>
+          {mobile ? <ul className="finance-case-list divide-y divide-line">{d.items.map(item => <li key={item.incident_id} className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><button className="btn btn-sm text-info" onClick={() => setIncident(item.public_id)}>{item.public_id}</button><span className="text-xs text-muted">{fmtSim(item.resolved_sim)}</span></div>
+            <p className="text-sm">{item.product_name} · {tEnum('incidentType', item.incident_type)}</p>
+            <p className="text-xs text-muted">{t('finance.client')}: {item.client_public_id ?? '—'} · LTV {fmtRub(item.client_ltv_rub)}</p>
+            <dl className="space-y-2">{([['saved', item.saved_rub], ['refund', item.refund_rub], ['net', item.net_rub]] as const).map(([key, value]) => <div key={key} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-muted">{t(`finance.${key}`)}</dt><dd className="num font-semibold">{item.missing ? '—' : fmtRub(value)}</dd></div>)}</dl>
+            <p className="text-xs">{tEnum('incident.status', item.status)}{(item.stale || item.missing) && <span className="ml-2 text-warn">{t('finance.stale')}</span>}</p>
+          </li>)}</ul> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-raised text-left text-xs text-muted"><tr>
             {['time', 'case', 'product', 'client', 'saved', 'refund', 'net', 'status'].map((k) => <th key={k} className="p-3">{t(`finance.${k}`)}</th>)}
           </tr></thead><tbody className="divide-y divide-line">{d.items.map((item) => <tr key={item.incident_id}>
             <td className="whitespace-nowrap p-3">{fmtSim(item.resolved_sim)}</td>
@@ -160,7 +178,7 @@ export function FinancePage() {
             <td className="p-3">{item.product_name}</td><td className="p-3">{item.client_public_id ?? '—'}<div className="text-xs text-muted">LTV {fmtRub(item.client_ltv_rub)}</div></td>
             <td className="p-3 num text-ok">{item.missing ? '—' : fmtRub(item.saved_rub)}</td><td className="p-3 num">{item.missing ? '—' : fmtRub(item.refund_rub)}</td><td className="p-3 num">{item.missing ? '—' : fmtRub(item.net_rub)}</td>
             <td className="p-3">{tEnum('incident.status', item.status)}{(item.stale || item.missing) && <div className="text-xs text-warn">{t('finance.stale')}</div>}</td>
-          </tr>)}</tbody></table></div>
+          </tr>)}</tbody></table></div>}
           {!d.items.length && <p className="p-6 text-muted">{t('finance.empty')}</p>}
           <div className="flex items-center justify-end gap-3 border-t border-line p-3">
             <button className="btn btn-sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 25))}>{t('finance.previous')}</button>
@@ -202,6 +220,7 @@ function Explanation({ detail: d, probability }: { detail: Detail; probability: 
     <h3 className="font-semibold">{t('finance.fineScenario')}</h3>
     <p className="num">{fmtRub(scenario)} + {fmtRub(d.scenario_fine_rub)} − {fmtRub(d.refund_rub)} = {fmtRub(d.scenario_with_fine_net_rub)}</p>
     <p className="text-xs text-muted">{t('finance.scenarioHint')} {t('finance.fineHint', { count: d.fine_eligible ? 1 : 0 })}</p>
+    <CaseEvidence detail={d} />
     <Link className="btn btn-sm" to={`/incidents/${d.incident_id}`}>{t('finance.openIncident')}</Link>
   </div>
 }

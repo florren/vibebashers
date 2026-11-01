@@ -618,6 +618,22 @@
         "zone_changed",
         "compliance_alert"
       ]
+    },
+    "signal_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "processing",
+        "classified",
+        "linked",
+        "deferred",
+        "awaiting_human",
+        "awaiting_client",
+        "answered",
+        "closed",
+        "noise",
+        "error"
+      ]
     }
   }
 }

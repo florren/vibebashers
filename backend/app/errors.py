@@ -47,7 +47,11 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(HTTPException)
     async def _http(request: Request, exc: HTTPException) -> JSONResponse:
-        return Problem(exc.status_code, str(exc.detail) if exc.detail else "Ошибка").to_response(str(request.url.path))
+        response = Problem(exc.status_code, str(exc.detail) if exc.detail else "Ошибка").to_response(
+            str(request.url.path)
+        )
+        response.headers.update(exc.headers or {})
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
-from app.llm.mock import MockProvider
+from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
 from app.llm.ratelimit import limiter as default_limiter
@@ -19,6 +19,21 @@ from app.logging import get_logger
 from app.replay.store import CassetteStore
 
 log = get_logger(__name__)
+
+
+def provider_messages(messages: list[Message], provider: str) -> list[Message]:
+    """Служебный ответ mock не является предыдущим ответом живой модели."""
+    if provider not in ("gigachat", "openai_compatible"):
+        return messages
+    return [
+        message
+        for message in messages
+        if not (
+            message["role"] == "assistant"
+            and message["content"].strip().startswith(MOCK_HINT_START)
+            and message["content"].strip().endswith(MOCK_HINT_END)
+        )
+    ]
 
 
 @dataclass
@@ -91,18 +106,26 @@ class ProviderChain:
         fallback_profile: LLMProfile | None = None,
     ) -> ChainResult:
         timeout_s = self.timeout_for(context)
-        # Резервная LLM разрешена только для живого профиля и другой модели.
-        backup = None
-        if (
-            fallback_profile is not None
-            and profile.provider not in ("mock", "replay")
-            and fallback_profile.provider not in ("mock", "replay")
-            and (profile.provider, profile.model, profile.base_url)
-            != (fallback_profile.provider, fallback_profile.model, fallback_profile.base_url)
-        ):
-            backup = next((p for p in self.providers if p.name == fallback_profile.provider), None)
-        deadline = time.perf_counter() + timeout_s if backup is not None else None
-        backup_used = False
+        # Используем только настроенные живые профили; роль twin остаётся без изменений.
+        backups: list[tuple[Provider, LLMProfile]] = []
+        profiles: list[LLMProfile] = []
+        if context == "normalization" and profile.provider == "gigachat" and profile.model == "GigaChat-3-Lightning":
+            profiles.extend(
+                p for p in self.role_profiles.values() if p.provider == "gigachat" and p.model == "GigaChat-3-Pro"
+            )
+        if fallback_profile is not None:
+            profiles.append(fallback_profile)
+        seen = {(profile.provider, profile.model, profile.base_url)}
+        for reserved in profiles:
+            identity = (reserved.provider, reserved.model, reserved.base_url)
+            if profile.provider in ("mock", "replay") or reserved.provider in ("mock", "replay") or identity in seen:
+                continue
+            provider = next((p for p in self.providers if p.name == reserved.provider), None)
+            if provider is not None:
+                backups.append((provider, reserved))
+                seen.add(identity)
+        deadline = time.perf_counter() + timeout_s if backups else None
+        backup_index = 0
         failed_usage = Usage(request_count=0)
         attempts: list[Attempt] = []
         last_error: ProviderError | None = None
@@ -115,6 +138,11 @@ class ProviderChain:
                 if candidate.name not in ("mock", "replay") and remaining <= 0:
                     continue
                 budget = remaining if candidate.name not in ("mock", "replay") else timeout_s
+                if context == "normalization" and backups and candidate.name == profile.provider:
+                    # Для Lightning → Pro → Ultra сохраняем 4/3/3 с; неиспользованное
+                    # время получает следующая модель. Две модели сохраняют 5/5 с.
+                    reserve = timeout_s * (0.3 if len(backups) > 1 else 0.5)
+                    budget = max(0.0, budget - reserve * (len(backups) - backup_index))
                 t0 = time.perf_counter()
                 try:
 
@@ -123,7 +151,9 @@ class ProviderChain:
                     ) -> tuple[dict[str, Any], Usage, str]:
                         if provider.name not in ("mock", "replay"):
                             await self.limiter.acquire(requested.code, requested.rpm_limit, requested.rpd_limit)
-                        return await provider.complete_structured(messages, schema, requested, timeout_s=limit)
+                        return await provider.complete_structured(
+                            provider_messages(messages, provider.name), schema, requested, timeout_s=limit
+                        )
 
                     obj, usage, raw = await asyncio.wait_for(invoke(candidate, selected, budget), timeout=budget)
                 except TimeoutError:
@@ -133,6 +163,13 @@ class ProviderChain:
                         Attempt(candidate.name, False, ms, f"timeout {budget:.1f}s ({context})", selected.model)
                     )
                     log.warning("llm_timeout", provider=candidate.name, model=selected.model, context=context, ms=ms)
+                    if (
+                        context == "normalization"
+                        and backup_index < len(backups)
+                        and candidate.name == profile.provider
+                    ):
+                        requests.append(backups[backup_index])
+                        backup_index += 1
                     continue
                 except ProviderError as exc:
                     last_error = exc
@@ -150,16 +187,17 @@ class ProviderChain:
                         "llm_provider_error", provider=candidate.name, model=selected.model, kind=exc.kind, ms=ms
                     )
                     # Ошибка формата/доступности быстрой модели не должна сразу вести к mock.
-                    # При auth/quota/429 сохраняем штатный failover без дополнительной попытки основной моделью.
+                    # При auth/quota/429 сохраняем штатный failover без дополнительных попыток другими моделями.
                     if (
-                        backup is not None
-                        and fallback_profile is not None
-                        and not backup_used
+                        backup_index < len(backups)
                         and candidate.name == profile.provider
-                        and exc.kind in ("bad_output", "unavailable")
+                        and (
+                            exc.kind in ("bad_output", "unavailable")
+                            or (context == "normalization" and exc.kind == "timeout")
+                        )
                     ):
-                        requests.append((backup, fallback_profile))
-                        backup_used = True
+                        requests.append(backups[backup_index])
+                        backup_index += 1
                     continue
                 except Exception as exc:  # любая иная ошибка — тоже failover, с полным логом
                     last_error = ProviderError("unavailable", type(exc).__name__)
@@ -216,7 +254,7 @@ class ProviderChain:
                 continue
             started = False
             try:
-                async for chunk in prov.stream(messages, profile, timeout_s=timeout_s):
+                async for chunk in prov.stream(provider_messages(messages, prov.name), profile, timeout_s=timeout_s):
                     started = True
                     yield chunk
                 return

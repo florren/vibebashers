@@ -8,10 +8,13 @@ from typing import Any, Literal
 from fastapi import APIRouter, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
-from app.api.common import db, fetch_one, resolve_run_id
-from app.economics import impact
+from app.api.common import db, fetch_all, fetch_one, resolve_run_id
+from app.economics import evidence, impact
 from app.errors import Problem
+from app.search.cases import entity_filter
 
 router = APIRouter(tags=["finance"])
 
@@ -27,9 +30,21 @@ async def selected_run(conn: Any, run_id: str) -> int | None:
     return rid
 
 
+async def selected_products(conn: Any, codes: list[str] | None) -> tuple[str, ...]:
+    selected = tuple(sorted(set(codes or [])))
+    if selected:
+        known = await fetch_all(conn, "select code from products where code = any(%s)", (list(selected),))
+        if set(selected) != {row["code"] for row in known}:
+            raise Problem(422, "Неизвестный код продукта")
+    return selected
+
+
 @router.get("/api/v1/finance/impact/total", summary="Эффект запуска и отдельные сценарные оценки")
 async def get_impact_total(
+    q: str | None = Query(None, max_length=200),
     period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
+    product_mode: impact.ProductMode = Query("all"),
+    product_codes: list[str] | None = Query(None, max_length=100),
     run_id: str = Query("current"),
     start_date: dt.datetime | None = Query(None),
     end_date: dt.datetime | None = Query(None),
@@ -44,6 +59,7 @@ async def get_impact_total(
         async with conn.transaction():
             await conn.execute("set transaction isolation level repeatable read, read only")
             rid = await selected_run(conn, run_id)
+            products = await selected_products(conn, product_codes)
             state = await fetch_one(conn, "select sim_time from sim_state where id = 1")
             now = state["sim_time"] if state else dt.datetime.now(dt.UTC)
             start, end = impact.bounds(period, now, start_date, end_date)
@@ -57,6 +73,9 @@ async def get_impact_total(
                 fine=fine_per_case_rub,
                 offset=offset,
                 limit=limit,
+                product_codes=products,
+                product_mode=product_mode,
+                case_filter=await entity_filter(conn, q, "incident"),
             )
     return JSONResponse(jsonable_encoder(res))
 
@@ -70,5 +89,76 @@ async def get_impact_incident(
 ) -> Any:
     async with db() as conn:
         rid = await selected_run(conn, run_id)
-        res = await impact.detail(conn, incident_id, rid, probability_percent, fine_per_case_rub)
+        async with conn.transaction():
+            await conn.execute("set transaction isolation level repeatable read, read only")
+            res = await impact.detail(conn, incident_id, rid, probability_percent, fine_per_case_rub)
+            res["proof"] = await evidence.case_proof(conn, res["incident_id"], int(res["run_id"]))
     return JSONResponse(jsonable_encoder(res))
+
+
+@router.get(
+    "/api/v1/finance/impact/assessment", summary="Демо и рабочая калибровка, уникальные клиенты и основания штрафов"
+)
+async def get_impact_assessment(
+    q: str | None = Query(None, max_length=200),
+    run_id: str = Query("current"),
+    period: Literal["live", "day", "week", "month", "custom"] = Query("live"),
+    product_mode: impact.ProductMode = Query("all"),
+    product_codes: list[str] | None = Query(None, max_length=100),
+    start_date: dt.datetime | None = Query(None),
+    end_date: dt.datetime | None = Query(None),
+) -> Any:
+    if period == "custom" and (start_date is None or end_date is None):
+        raise Problem(422, "Для произвольного периода нужны обе границы")
+    async with db() as conn:
+        async with conn.transaction():
+            await conn.execute("set transaction isolation level repeatable read, read only")
+            rid = await selected_run(conn, run_id)
+            products = await selected_products(conn, product_codes)
+            state = await fetch_one(conn, "select sim_time from sim_state where id=1")
+            start, end = impact.bounds(
+                period, state["sim_time"] if state else dt.datetime.now(dt.UTC), start_date, end_date
+            )
+            result = await evidence.assessment(
+                conn, rid, start, end, products, product_mode, await entity_filter(conn, q, "incident")
+            )
+    return JSONResponse(jsonable_encoder(result))
+
+
+class FinanceEvidenceBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scope: Literal["demo", "observed"]
+    incident_id: int = Field(gt=0)
+    alert_id: int = Field(gt=0)
+    policy_id: str = Field(min_length=1, max_length=120)
+    deal_ref: str = Field(min_length=1, max_length=120)
+    idempotency_key: str = Field(min_length=1, max_length=120)
+    intervention_sim: dt.datetime
+    deal_closed_sim: dt.datetime
+    outcome: Literal["prevented", "completed", "unknown"]
+    evidence_ref: str = Field(min_length=1, max_length=500)
+    recorded_by: str = Field(min_length=1, max_length=120)
+
+    @field_validator("intervention_sim", "deal_closed_sim")
+    @classmethod
+    def aware_time(cls, value: dt.datetime) -> dt.datetime:
+        if value.utcoffset() is None:
+            raise PydanticCustomError("timezone_aware", "Нужен часовой пояс")
+        return value.astimezone(dt.UTC)
+
+    @field_validator("policy_id", "deal_ref", "idempotency_key", "evidence_ref", "recorded_by")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise PydanticCustomError("nonblank", "Значение не может быть пустым")
+        return value.strip()
+
+
+@router.post(
+    "/api/v1/finance/impact/evidence", status_code=201, summary="Неизменяемая версия подтверждения вмешательства"
+)
+async def post_impact_evidence(body: FinanceEvidenceBody, run_id: str = Query("current")) -> Any:
+    async with db() as conn:
+        rid = await selected_run(conn, run_id)
+        result = await evidence.add_evidence(conn, rid, body.model_dump(mode="json"))
+    return JSONResponse(jsonable_encoder(result), status_code=201)

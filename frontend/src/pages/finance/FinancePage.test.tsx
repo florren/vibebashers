@@ -1,3 +1,4 @@
+import { useDeviceMode } from '@/shared/layout/device-store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within, cleanup } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -7,9 +8,11 @@ import { api } from '@/shared/api/client'
 import { useWs } from '@/shared/ws/client'
 import { FinancePage } from './FinancePage'
 
+vi.mock('./EvidencePanel', () => ({ EvidencePanel: () => null, CaseEvidence: () => null }))
 vi.mock('echarts', () => ({ init: () => ({ setOption: vi.fn(), dispose: vi.fn(), resize: vi.fn() }) }))
 vi.mock('@/shared/api/client', async (original) => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn() }))
 vi.mock('@/shared/api/hooks', () => ({
+  useRefs: () => ({ data: [{ code: 'debit_card', name_ru: 'Дебетовые карты' }, { code: 'deposit', name_ru: 'Вклады' }] }),
   useSimRuns: () => ({ data: { items: [{ id: 7, label: 'Run 7', status: 'running' }] } }),
   useSimState: () => ({ data: { current_run_id: 7 }, isSuccess: true }),
 }))
@@ -24,6 +27,7 @@ const total = {
 const detail = { ...total.items[0], calculation: { formula_ru: '1 × 100 % × 100 % × 458,46 = 458,46 ₽', potential_loss_rub: 458.46, retention_factor: 0.8, retention_source: 'manual' }, scenario_base_rub: 458.46, fine_eligible: false, scenario_saved_rub: 458.46, scenario_net_rub: 8.46, scenario_fine_rub: 0, scenario_with_fine_net_rub: 8.46 }
 
 beforeEach(() => {
+  useDeviceMode.getState().setMode('auto')
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
   useWs.setState({ sim: null, status: 'open' })
   vi.mocked(api).mockImplementation(async (path) => path.includes('/incident/') ? detail : total as never)
@@ -91,4 +95,38 @@ it('показывает неполноту расчётов и требует �
   fireEvent.click(screen.getByRole('button', { name: 'Выбрать даты' }))
   expect(screen.getByRole('status')).toHaveTextContent('Укажите начало и конец периода')
   expect(screen.queryByText('1 · Действующая модель dCLTV')).not.toBeInTheDocument()
+})
+
+
+it('фильтрует продукты, выбирает все и переключает исключения', async () => {
+  mount()
+  await screen.findByText('1 · Действующая модель dCLTV')
+  fireEvent.click(screen.getByText('Продукты · Все продукты'))
+  expect(screen.getByRole('checkbox', { name: 'Вклады' })).toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Снять выделение' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'include', product_codes: [] }) })))
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Вклады' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'include', product_codes: ['deposit'] }) })))
+  fireEvent.change(screen.getByLabelText('Режим выбора'), { target: { value: 'exclude' } })
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'exclude', product_codes: ['deposit'] }) })))
+  fireEvent.click(screen.getByRole('button', { name: 'Все продукты' }))
+  expect(screen.getByRole('checkbox', { name: 'Вклады' })).toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Дебетовые карты' })).toBeChecked()
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/total', expect.objectContaining({ query: expect.objectContaining({ product_mode: 'all', product_codes: [] }) })))
+})
+
+
+it('на смартфоне показывает все суммы карточкой и открывает ту же детализацию', async () => {
+  useDeviceMode.getState().setMode('mobile')
+  mount()
+  const incident = await screen.findByRole('button', { name: 'INC-000001' })
+  const card = incident.closest('li')!
+  expect(within(card).getByText(/366,77\s₽/)).toBeInTheDocument()
+  expect(within(card).getByText(/450,00\s₽/)).toBeInTheDocument()
+  expect(within(card).getByText(/-83,23\s₽/)).toBeInTheDocument()
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  fireEvent.click(incident)
+  const modal = await screen.findByRole('dialog')
+  await within(modal).findByText('1 × 100 % × 100 % × 458,46 = 458,46 ₽')
+  expect(api).toHaveBeenCalledWith('/api/v1/finance/impact/incident/INC-000001', expect.objectContaining({ query: expect.objectContaining({ run_id: 7 }) }))
 })

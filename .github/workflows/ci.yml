@@ -28,7 +28,12 @@ jobs:
               pglast.parse_sql(pathlib.Path(f).read_text()); print("parse ok", f)
           PY
       - name: Дрейф OpenAPI ↔ код (когда появится backend)
-        run: test -f scripts/check_openapi_drift.py && test -d backend/app && (uv venv .venv2 && . .venv2/bin/activate && uv pip install pyyaml && python scripts/check_openapi_drift.py) || echo "backend ещё нет — пропуск"
+        run: |
+          set -euo pipefail
+          if [ -f scripts/check_openapi_drift.py ] && [ -d backend/app ]; then
+            (cd backend; uv sync --frozen)
+            backend/.venv/bin/python scripts/check_openapi_drift.py
+          else echo "backend ещё нет — пропуск"; fi
 
   db:
     name: db
@@ -51,15 +56,15 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
       - name: schema.sql на чистой БД
         run: psql -v ON_ERROR_STOP=1 -q -f contracts/db/schema.sql
-      - name: Миграции 0002–0007 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
+      - name: Миграции 0002–0010 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
         run: |
-          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql contracts/db/migrations/0004_trace_search.sql contracts/db/migrations/0005_product_csi_branches.sql contracts/db/migrations/0006_product_routing.sql contracts/db/migrations/0007_csi_audit.sql; do
+          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql contracts/db/migrations/0004_trace_search.sql contracts/db/migrations/0005_product_csi_branches.sql contracts/db/migrations/0006_product_routing.sql contracts/db/migrations/0007_csi_audit.sql contracts/db/migrations/0008_financial_evidence.sql contracts/db/migrations/0009_hitl_feedback.sql contracts/db/migrations/0010_operator_personal_chat.sql; do
             psql -v ON_ERROR_STOP=1 -q -f "$f"; psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
       - name: Инварианты схемы
         run: |
           psql -v ON_ERROR_STOP=1 -At -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" | tee /tmp/tables
-          test "$(cat /tmp/tables)" -ge 79 || (echo "::error::ожидалось ≥ 79 таблиц"; exit 1)
+          test "$(cat /tmp/tables)" -ge 84 || (echo "::error::ожидалось ≥ 84 таблиц"; exit 1)
           psql -v ON_ERROR_STOP=1 -q -c "select * from v_tickets limit 0; select * from v_map_zones limit 0; select * from v_feed_latency limit 0; select * from v_signal_normalized limit 0; select * from v_cabinet_kpi limit 0;"
       - name: Alembic (когда появится backend)
         run: |
@@ -100,7 +105,7 @@ jobs:
   tests:
     name: tests
     needs: [contracts, db]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -116,17 +121,36 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - name: PostgreSQL 16 dump/restore tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
       - name: Backend lint + tests
         run: |
+          set -euo pipefail
           if [ -f backend/pyproject.toml ]; then
-            cd backend && uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest -q
-            cd .. && backend/.venv/bin/python scripts/check_openapi_drift.py
+            cd backend
+            uv sync --frozen
+            uv run ruff check .
+            uv run ruff format --check .
+            uv run mypy app
+            uv run pytest -q
+            cd ..
+            backend/.venv/bin/python scripts/check_openapi_drift.py
           else echo "backend ещё нет — пропуск"; fi
       - name: Frontend lint + tests + build
         run: |
+          set -euo pipefail
           if [ -f frontend/package.json ]; then
-            cd frontend && npm ci && npm run lint && npx tsc --noEmit && npm test -- --run && npm run build
-            npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
+            cd frontend
+            npm ci
+            npm run lint
+            npx tsc --noEmit
+            npm test -- --run
+            npm run build
+            npm run -s gen:types
+            git diff --exit-code -- src/shared/api/types.ts
           else echo "frontend ещё нет — пропуск"; fi
       - name: Local font assets after frontend build
         run: cd backend && uv run pytest -q tests/integration/test_no_cdn.py

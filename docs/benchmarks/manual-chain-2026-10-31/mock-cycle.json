@@ -1,0 +1,96 @@
+{
+  "provider": "mock",
+  "elapsed_seconds": 16.27,
+  "sim_time_unchanged": true,
+  "signals": [
+    {
+      "public_id": "SIG-000001",
+      "status": "closed",
+      "incident_id": 1
+    },
+    {
+      "public_id": "SIG-000002",
+      "status": "closed",
+      "incident_id": 1
+    }
+  ],
+  "agent_runs": [
+    {
+      "id": 1,
+      "kind": "agent",
+      "signal_id": 1,
+      "incident_id": 1,
+      "outcome": "deferred"
+    },
+    {
+      "id": 2,
+      "kind": "agent",
+      "signal_id": 2,
+      "incident_id": 1,
+      "outcome": "deferred"
+    },
+    {
+      "id": 10,
+      "kind": "team_emulator",
+      "signal_id": 1,
+      "incident_id": 1,
+      "outcome": "completed"
+    },
+    {
+      "id": 11,
+      "kind": "team_emulator",
+      "signal_id": 2,
+      "incident_id": 1,
+      "outcome": "completed"
+    }
+  ],
+  "team_events": [
+    {
+      "event_type": "team.close",
+      "sim_time": "2026-11-12 14:45:00+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.verify",
+      "sim_time": "2026-11-12 11:10:30+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.release",
+      "sim_time": "2026-11-12 07:36:00+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.progress_report",
+      "sim_time": "2026-11-10 09:30:45+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.fix_decision",
+      "sim_time": "2026-11-09 13:09:00+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.rca",
+      "sim_time": "2026-11-09 09:34:30+00:00",
+      "incident_id": 1
+    },
+    {
+      "event_type": "team.take",
+      "sim_time": "2026-11-09 06:00:00+00:00",
+      "incident_id": 1
+    }
+  ],
+  "final_notifications": [
+    {
+      "signal_id": 1,
+      "template_code": "resolved",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Техническая проблема». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    },
+    {
+      "signal_id": 2,
+      "template_code": "resolved",
+      "body": "Демонстрационная проверка завершена. На стенде проверен согласованный маршрут решения обращения «Техническая проблема». Внешние действия и движение денег не выполнялись. Обращение закрыто."
+    }
+  ]
+}

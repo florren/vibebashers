@@ -1,3 +1,4 @@
+import { EntityFilter } from '@/shared/components/EntityFilter'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { FileUp, FolderInput, Mic, Send } from 'lucide-react'
@@ -15,6 +16,7 @@ type Tab = 'turns' | 'report' | 'stats'
 
 /** Экран /compliance (B07/B17): транскрипты → реплики с подсветкой находок → отчёт → отправка руководителю. */
 export function CompliancePage() {
+  const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const [sp, setSp] = useSearchParams()
   const selected = sp.get('id') ? Number(sp.get('id')) : null
@@ -26,7 +28,7 @@ export function CompliancePage() {
       },
       { replace: true },
     )
-  const list = useTranscripts({ run_id: 'all', limit: 100 })
+  const list = useTranscripts({ q: entityQuery || undefined, run_id: 'all', limit: 100 })
   const detail = useTranscript(selected)
   const [tab, setTab] = useState<Tab>('report')
   const upload = useUploadTranscripts()
@@ -36,7 +38,7 @@ export function CompliancePage() {
   const [live, setLive] = useState(false)
 
   return (
-    <div className="flex h-full">
+    <div className="page-split flex h-full">
       <aside className="flex w-96 shrink-0 flex-col border-r border-line">
         <div className="flex h-10 shrink-0 items-center gap-1 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('compliance.transcripts')}</span>
@@ -63,6 +65,7 @@ export function CompliancePage() {
             }}
           />
         </div>
+        <div className="p-2"><EntityFilter onChange={setEntityQuery} /></div>
         {imp.data && (
           <div className="border-b border-line bg-raised px-3 py-1.5 text-[11px] text-muted">
             {t('compliance.imported', { found: imp.data.files_found, accepted: imp.data.accepted, duplicates: imp.data.duplicates, rejected: imp.data.rejected })}

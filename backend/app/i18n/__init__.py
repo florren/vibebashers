@@ -16,3 +16,10 @@ def communication_lang(text: str) -> str:
     if _LATIN.search(sample):
         return "en"
     return "ru"
+
+
+def declined_action_text(lang: str) -> str:
+    """Итог отказа от автоматических действий без заявления об устранении проблемы."""
+    if lang == "en":
+        return "We have reviewed your request. Unfortunately, we could not approve the requested action based on the information available. We are sorry. Please reply with any additional details so we can continue reviewing your case."
+    return "Мы рассмотрели ваше обращение. К сожалению, по результатам проверки согласовать запрошенное действие не удалось. Приносим извинения. Если у вас есть дополнительные сведения, ответьте на это сообщение — продолжим разбор."

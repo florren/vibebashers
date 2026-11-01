@@ -1,0 +1,21 @@
+id: demo20_01_branch_queue
+number: 14
+title_ru: 'ТЗ 01: Очередь в офисе'
+title_en: 'Brief 01: Branch queue'
+kind: realtime
+description_ru: Синтетический вход из 20 сценариев ТЗ. Результат и сроки задаются
+  профилем demo-команды; реальные внешние API не вызываются.
+duration_sim_hours: 0
+inject:
+- channel: chat
+  client:
+    segment: mass
+    _reuse: true
+  text: Ожидаю в очереди отделения уже 38 минут при нормативе 15. Не могу провести
+    операцию. Прошу помочь и сообщить итог.
+expected: {}
+demo_evidence:
+  observed: Синтетическое ожидание талона 38 минут при нормативе 15; часть окон недоступна.
+  action: Согласовать обслуживание в очереди и альтернативный маршрут.
+  verification: Проверено получение клиентом согласованного маршрута обслуживания.
+  source: synthetic_fixture

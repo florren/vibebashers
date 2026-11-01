@@ -22,6 +22,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 MAX_RESULT_BYTES = 4096
 SIDE_EFFECT_TOOLS = {
+    "apply_operator_feedback",
     "create_incident",
     "link_signal_to_incident",
     "update_incident",

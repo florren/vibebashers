@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "signal": "SIG-000806",
+      "incident_id": 156,
+      "initial_outcome": "no_work",
+      "trigger": "timer",
+      "first_result_seconds": 13.04,
+      "final_seconds": 54.08,
+      "recovery_after_negative_seconds": 30.31,
+      "one_recovery_attempt": true,
+      "same_incident": true,
+      "original_graph_completed": true,
+      "cursor_unchanged_by_recovery": true,
+      "negative_body": "Приносим извинения: проблему пока не удалось устранить. Нам потребуется больше времени для её решения. Мы продолжаем работу и вернёмся к вам с результатом. Ваше обращение остаётся открытым.",
+      "final_body": "Проблема по вашему обращению устранена. Простите, что решение заняло больше времени, чем мы обещали. Если вам потребуется помощь, ответьте на это сообщение."
+    },
+    {
+      "signal": "SIG-000807",
+      "incident_id": 157,
+      "initial_outcome": "failed",
+      "trigger": "repeat",
+      "first_result_seconds": 25.03,
+      "final_seconds": 50.07,
+      "recovery_after_negative_seconds": 14.71,
+      "one_recovery_attempt": true,
+      "same_incident": true,
+      "original_graph_completed": true,
+      "cursor_unchanged_by_recovery": true,
+      "negative_body": "Приносим извинения: проблему пока не удалось устранить. Нам потребуется больше времени для её решения. Мы продолжаем работу и вернёмся к вам с результатом. Ваше обращение остаётся открытым.",
+      "final_body": "Проблема по вашему обращению устранена. Простите, что решение заняло больше времени, чем мы обещали. Если вам потребуется помощь, ответьте на это сообщение."
+    }
+  ],
+  "real_http_workers": true,
+  "bank_clock_and_pointer_unchanged": true,
+  "under_180_seconds": true
+}

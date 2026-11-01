@@ -44,3 +44,8 @@ data/baseline/*.dump
 # Сопутствующие файлы локальных baseline-снимков (T-040)
 data/baseline/*.dump.sha256
 data/baseline/*.meta.json
+
+frontend/dist-personal
+
+# Локальное происхождение конвертированного baseline (#108)
+data/baseline/*.dump.provenance.json

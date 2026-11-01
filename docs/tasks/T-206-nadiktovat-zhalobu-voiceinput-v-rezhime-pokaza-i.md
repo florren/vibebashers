@@ -22,7 +22,7 @@
 
 ## Зависимости
 - Зависит от: [T-182](T-182-zahvat-audio-v-brauzere-getusermedia-audioworkle.md), [T-067](T-067-zhyuri-rezhim-ruchnoj-vvod-signala-i-sravnenie-s.md), [T-119](T-119-lending-potencialnogo-klienta-antibot-proverka-q.md)
-- Блокирует: —
+- Блокирует: [T-269](T-269-izolirovannyj-anonimnyj-chat-9999-i-tunnel-tuna.md)
 
 ## Что сделать
 1. Кнопка «Надиктовать» в модале «Ввести сообщение клиента» и на /claim: одноканальная сессия VoiceInput без ролей/детектора; партиалы в поле, финализация после паузы 1,5 с; подпись «распознано офлайн-движком, проверьте текст»; скрыта без HTTPS/микрофона.
