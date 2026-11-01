@@ -139,3 +139,10 @@ fault.regression. Кандидаты не являются доказатель�
 не расширяет контракт; отрицательная регрессия фиксирует явный отказ для
 невалидной пары. Требуется отдельный contract review перед использованием
 long-prefix кода в fault.*; проверка всех 25 fault codes здесь не заявляется.
+
+Исторические fault.started/resolved/regression одного fault имеют общий UUID5
+correlation_id. Namespace CX Pulse зафиксирован как
+3ec0009e-e99f-5ec3-82a8-95d3ebbb9aee; имя — seed-history/run_id/fault_id.
+Повтор с тем же seed/ID после очистки даёт те же business payload/time/correlation;
+другие fault/run не смешиваются. DB real_time и generated event IDs не выдаются
+за детерминированные временные значения.

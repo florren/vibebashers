@@ -166,6 +166,11 @@ def test_actual_regression_bindings_are_valid_and_idempotent(history, conn):
         "select payload from sim_events where run_id=%s and event_type='fault.regression'", (run_id,)
     ).fetchall()
     assert len(rows) == len(bindings)
+    family = conn.execute(
+        "select payload->>'fault_id',count(distinct correlation_id) from sim_events where run_id=%s and event_type like 'fault.%%' group by payload->>'fault_id'",
+        (run_id,),
+    ).fetchall()
+    assert len(family) == len(state["fault_ids"]) and all(count == 1 for _, count in family)
     for (payload,) in rows:
         assert validate(payload, "sim/fault_regression") == []
         assert payload["delay_min"] == 120
@@ -314,3 +319,34 @@ async def test_context_reads_baseline_and_current_but_not_foreign_run_kinds(hist
         sum(row["level"] == "ERROR" and row["message"].startswith("health_probe failed") for row in result["logs"]) >= 3
     )
     assert not any(message.startswith("FOREIGN_") for message in messages)
+
+
+def test_fault_family_correlation_repeats_after_clearing_same_seed_and_ids(history, conn):
+    faults, original_run, now, _ = history
+    original = snapshot(conn, original_run)
+    rid = conn.execute(
+        "insert into sim_runs(kind,label,seed,started_sim) values('baseline','correlation repeat',42,%s) returning id",
+        (now,),
+    ).fetchone()[0]
+    with conn.cursor() as cur:
+        first = faults.seed_faults(cur, random.Random(42), rid, now)
+        before = conn.execute(
+            "select event_type,payload,sim_time,correlation_id from sim_events where run_id=%s order by event_type,payload->>'fault_id'",
+            (rid,),
+        ).fetchall()
+        assert len({row[3] for row in before}) == len(first["fault_ids"])
+        # Только собственная isolated fixture: возвращаем те же generated fault IDs после очистки.
+        for table in ("system_logs", "sim_events", "faults"):
+            conn.execute(f"delete from {table} where run_id=%s", (rid,))
+        conn.execute("delete from settings where key=%s", (f"seed_fault_history:{rid}",))
+        conn.execute("select setval(pg_get_serial_sequence('faults','id'),%s,false)", (min(first["fault_ids"]),))
+        second = faults.seed_faults(cur, random.Random(42), rid, now)
+        assert second == first
+        assert (
+            conn.execute(
+                "select event_type,payload,sim_time,correlation_id from sim_events where run_id=%s order by event_type,payload->>'fault_id'",
+                (rid,),
+            ).fetchall()
+            == before
+        )
+    assert snapshot(conn, original_run) == original

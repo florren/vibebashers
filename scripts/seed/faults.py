@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import random
 import sys
+import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +21,14 @@ for candidate in (ROOT / "backend", Path("/app")):
 from app.contracts.registry import validate  # noqa: E402
 
 from scripts.seed.common import PROFILES, J, get_setting, load_yaml, log, set_setting  # noqa: E402
+
+
+# Стабильный namespace исторических сбоев CX Pulse; смена разорвёт correlation при повторе.
+FAULT_HISTORY_NAMESPACE = uuid.UUID("3ec0009e-e99f-5ec3-82a8-95d3ebbb9aee")
+
+
+def fault_correlation(run_id: int, fault_id: int) -> uuid.UUID:
+    return uuid.uuid5(FAULT_HISTORY_NAMESPACE, f"seed-history/{run_id}/{fault_id}")
 
 
 @dataclass(frozen=True)
@@ -85,8 +94,8 @@ def _event(cur: Any, run_id: int, kind: str, payload: dict[str, Any], when: dt.d
     if errors:
         raise ValueError(f"невалидное событие {kind}: {errors[:2]}")
     cur.execute(
-        "insert into sim_events(run_id,event_type,payload,sim_time) values(%s,%s,%s,%s)",
-        (run_id, kind, J(payload), when),
+        "insert into sim_events(run_id,event_type,payload,sim_time,correlation_id) values(%s,%s,%s,%s,%s)",
+        (run_id, kind, J(payload), when, fault_correlation(run_id, payload["fault_id"])),
     )
 
 

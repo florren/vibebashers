@@ -66,3 +66,11 @@ def test_catalog_contract_gap_is_rejected_before_any_fault_generation(faults):
         faults.plan_faults(random.Random(42), NOW, [(row["code"], row["system"])], [])
     configured = load_yaml("op_paths.yaml")["failure_codes"]
     assert "AF-FALSE-BLOCK" in configured and "ANTIFRAUD-FALSE-BLOCK" not in configured
+
+
+def test_project_namespace_and_fault_family_correlation_are_stable(faults):
+    assert str(faults.FAULT_HISTORY_NAMESPACE) == "3ec0009e-e99f-5ec3-82a8-95d3ebbb9aee"
+    value = faults.fault_correlation(7, 8)
+    assert value == faults.fault_correlation(7, 8)
+    assert value.version == 5
+    assert len({value, faults.fault_correlation(7, 9), faults.fault_correlation(8, 8)}) == 3
