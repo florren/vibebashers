@@ -18,6 +18,27 @@ routing_rules:
   - {priority: 22, match: {error_code: PROMO-RATE-MISMATCH},                  team_codes: [team_promo, team_deposits],      notes_ru: "промо-ставка"}
   - {priority: 23, match: {error_code: DEP-TIMEOUT-503},                      team_codes: [team_deposits, team_cx],         notes_ru: "сценарий 1: сбой открытия вклада"}
   - {priority: 24, match: {error_code: NOTIF-DELAY},                          team_codes: [team_notifications],             notes_ru: "уведомления"}
+# Разные error_code не пересекаются: общий приоритет 25 после специальных правил и до общих маршрутов.
+  - {"priority": 25, "match": {"error_code": "APP-LOGIN-FAIL"}, "team_codes": ["team_front"], "notes_ru": "Код ошибки направляется владельцу системы mobile_app"}
+  - {"priority": 25, "match": {"error_code": "APP-CRASH-PAY"}, "team_codes": ["team_front"], "notes_ru": "Код ошибки направляется владельцу системы mobile_app"}
+  - {"priority": 25, "match": {"error_code": "WEB-SESSION-DROP"}, "team_codes": ["team_front"], "notes_ru": "Код ошибки направляется владельцу системы web_bank"}
+  - {"priority": 25, "match": {"error_code": "CC-QUEUE-OVERFLOW"}, "team_codes": ["team_contact_center"], "notes_ru": "Код ошибки направляется владельцу системы contact_center"}
+  - {"priority": 25, "match": {"error_code": "AF-FALSE-BLOCK"}, "team_codes": ["team_antifraud"], "notes_ru": "Код ошибки направляется владельцу системы antifraud"}
+  - {"priority": 25, "match": {"error_code": "LEND-PAYMENT-NOT-POSTED"}, "team_codes": ["team_lending"], "notes_ru": "Код ошибки направляется владельцу системы sub_lending"}
+  - {"priority": 25, "match": {"error_code": "CC-GRACE-MISCALC"}, "team_codes": ["team_lending"], "notes_ru": "Код ошибки направляется владельцу системы sub_lending"}
+  - {"priority": 25, "match": {"error_code": "ABS-POSTING-LAG"}, "team_codes": ["team_processing"], "notes_ru": "Код ошибки направляется владельцу системы core_abs"}
+  - {"priority": 25, "match": {"error_code": "DEBIT-CASHBACK-MISS"}, "team_codes": ["team_debit"], "notes_ru": "Код ошибки направляется владельцу системы sub_debit"}
+  - {"priority": 25, "match": {"error_code": "PROMO-CODE-REJECTED"}, "team_codes": ["team_promo"], "notes_ru": "Код ошибки направляется владельцу системы promo_engine"}
+  - {"priority": 25, "match": {"error_code": "SL-INGEST-LAG"}, "team_codes": ["team_cx"], "notes_ru": "Код ошибки направляется владельцу системы social_listening"}
+  - {"priority": 25, "match": {"error_code": "CARD-ISSUE-STUCK"}, "team_codes": ["team_debit"], "notes_ru": "Код ошибки направляется владельцу системы sub_debit"}
+  - {"priority": 25, "match": {"error_code": "LIMIT-CALC-ERR"}, "team_codes": ["team_lending"], "notes_ru": "Код ошибки направляется владельцу системы sub_lending"}
+  - {"priority": 25, "match": {"error_code": "ANTIFRAUD-FALSE-BLOCK"}, "team_codes": ["team_antifraud"], "notes_ru": "Код ошибки направляется владельцу системы antifraud"}
+  - {"priority": 25, "match": {"error_code": "DEP-INTEREST-MISCALC"}, "team_codes": ["team_deposits"], "notes_ru": "Код ошибки направляется владельцу системы sub_deposits"}
+  - {"priority": 25, "match": {"error_code": "LEND-SCHEDULE-MISMATCH"}, "team_codes": ["team_lending"], "notes_ru": "Код ошибки направляется владельцу системы sub_lending"}
+  - {"priority": 25, "match": {"error_code": "PROC-REVERSAL-STUCK"}, "team_codes": ["team_processing"], "notes_ru": "Код ошибки направляется владельцу системы processing"}
+  - {"priority": 25, "match": {"error_code": "ABS-BALANCE-MISMATCH"}, "team_codes": ["team_processing"], "notes_ru": "Код ошибки направляется владельцу системы core_abs"}
+  - {"priority": 25, "match": {"error_code": "PROMO-ELIGIBILITY-FAIL"}, "team_codes": ["team_promo"], "notes_ru": "Код ошибки направляется владельцу системы promo_engine"}
+  - {"priority": 25, "match": {"error_code": "NOTIF-OTP-MISSING"}, "team_codes": ["team_notifications"], "notes_ru": "Код ошибки направляется владельцу системы notification_gw"}
   - {priority: 30, match: {signal_type: tech_fault, system: mobile_app},      team_codes: [team_front],                     notes_ru: "приложение"}
   - {priority: 31, match: {signal_type: tech_fault, system: web_bank},        team_codes: [team_front],                     notes_ru: "сайт"}
   - {priority: 32, match: {signal_type: tech_fault, product: deposit},        team_codes: [team_deposits],                  notes_ru: ""}
