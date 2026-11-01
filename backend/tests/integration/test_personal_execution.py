@@ -1,7 +1,9 @@
 """Публичный origin проходит ту же цепочку при паузе, включая опоздание и раздельные проблемы."""
 
 import asyncio
+import datetime as dt
 import uuid
+from functools import partial
 
 import psycopg
 import pytest
@@ -37,9 +39,12 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offse
                 await conn.execute("update sim_state set current_run_id=null where id=1")
         if not empty_pointer:
             await post_demo_execution(request, DemoExecutionBody(mode="simulation", team_outcome="failed"))
-        from app.demo.public import OUTCOMES, public_context
+        from app.demo.public import OUTCOMES, public_context, recover_public_cases
         from app.demo.settings import configuration, save
 
+        monkeypatch.setattr(
+            "app.demo.public.recover_public_cases", partial(recover_public_cases, now=dt.datetime.now(dt.UTC))
+        )
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             public_rid, _ = await public_context(conn)
             cfg = await configuration(conn, public_rid)
@@ -161,11 +166,12 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offse
 @pytest.mark.parametrize("initial", ["no_work", "failed"])
 @pytest.mark.parametrize("trigger", ["timer", "repeat"])
 async def test_public_recovery_is_a_second_scenario_for_same_incident(seeded, monkeypatch, initial, trigger):
-    import datetime as dt
-
     from app.demo.public import OUTCOMES, public_context, recover_public_cases
     from app.demo.settings import configuration, save
 
+    monkeypatch.setattr(
+        "app.demo.public.recover_public_cases", partial(recover_public_cases, now=dt.datetime.now(dt.UTC))
+    )
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     app = create_app()
