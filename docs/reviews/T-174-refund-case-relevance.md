@@ -1,0 +1,29 @@
+# T-174 follow-up — финансовое review связи возврата с текущим claim
+
+Подготовлено для обязательного human review до merge. Ветка stacked поверх проверенного money-parser `0cbee24`; main/T-017 и replay cassettes не редактировались.
+
+## Подтверждённый дефект
+
+BRD FR1.4 требует найти событие, вызвавшее негатив; ТЗ21.4 п1 — отбор операции по продукту/сумме. Прежний check_rules рассматривал все recent operations клиента: чужая QR-комиссия создавала matched и меняла не только fast path, но classification/decide/act. Жалоба на открытие вклада могла завершиться возвратом комиссии по карте, закрытием fee_refund и выдачей подарка.
+
+На собственной synthetic БД controlled negative test временно восстановил только прежний all-recent-ops selection (одноразовый plugin вне репозитория). Неизменённый deposit regression ожидаемо упал: AR completed, refund54.72, issued gift1000. Логи/evidence: `/tmp/refund-scope-beforefix.log`, `/tmp/refund-scope-beforefix-evidence.json`. При новом guard тот же scenario проходит без refund/issued gift/закрытия deposit claim.
+
+## Конкретный scope diff
+
+- Полный CRM context operations сохраняется. Failed-operation hints ограничиваются совместимыми product/operation_hint текущего обращения.
+- Агент передаёт движку per-rule refund candidates; остальные action types продолжают читать весь прежний context. Unrelated refund rule получает not_matched, а не ложное matched с последующей попыткой заблокировать только fast path.
+- Mapping/markers/intents/products/methods — валидируемые `case_scope` и `refund_case_context` в `data/rules.yaml`, не hardcoded PROC-коды в узле. Pydantic проверяет enum из contracts, лишние поля и regex; trace check_rules.input содержит fingerprint metadata и причины отбора. Общие financial лимиты/числа condition не изменены.
+- Нужна явная тема денежного правила: QR-fee отдельно от unrecognised principal/fraud и от двойного списания. Refund_request сам по себе не разрешает возврат QR-комиссии. Product/method должны совпасть; сумма может обозначать payment ИЛИ fee. Unknown rule без metadata, отрицание, известные competing/fraud topics и несколько неразличимых кандидатов не дают financial matched; остаётся обычный граф.
+- Metadata реализует ограниченный консервативный lexical scope, не универсальную NLP-классификацию. Положительные case по умолчанию — debit-card QR fee; неизвестные формулировки/новые финансовые rule codes требуют case_scope в данных и review. Изменение data metadata требует перезапуска процесса (как другие кэшируемые каталоги); fingerprint позволяет различать policy snapshots.
+
+## Proactive и массовость
+
+ТЗ21.4 п6 допускает отдельный scan/HITL cohort и проактивные сообщения; это не разрешает считать чужую жалобу решённой. `find_affected_clients` не ограничивается текущим claim. Отдельный explicit proactive fee case возвращает свою комиссию и не закрывает pending deposit incident того же клиента.
+
+Дополнительная threshold regression выявила существующий mass-HITL bypass ordinary decide/act после отказа fast path: при50 pending сначала возвращалась своя fee, scan видел49 и терял массовый proposal. Enforcement существующей policy подготовляется отдельным commit/разделом, threshold и права оператора менять нельзя.
+
+## Проверки перед полным набором
+
+81 targeted unit, 15 graph/ledger/customer/scenario integration прошли. Проверены deposit, gratitude, noise, QR technical claim, unknown principal и typed fraud с реально присутствующей recent QR fee; no matched refund/no ledger refund/no issued gift. Positive decimal QR возвращает только выбранную операцию54.72, другая90 не возвращается. Ambiguous2 candidates не выбираются автоматически. Explicit proactive не меняет pending deposit; mass scan сохраняет других affected клиентов без автоматических возвратов им. Существующие customer_messages/scenario8 assertions не менялись.
+
+Контракты/DSL не менялись: существующий runtime all/eq и public condition-schema scope/when имеют legacy расхождение, новая metadata находится вне condition и не выдумывает расширение DSL. Реальных LLM/Telegram/email вызовов нет; все DB тесты — `cx_refund_relevance_revision` на scratch PostgreSQL16.

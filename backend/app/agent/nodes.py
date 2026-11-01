@@ -26,6 +26,9 @@ from app.agent.customer_messages import (
 )
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
+from app.agent.refund_scope import case_operations, refund_candidates
+from app.agent.refund_scope import catalog as refund_scope_catalog
+from app.agent.refund_scope import catalog_fingerprint as refund_scope_fingerprint
 from app.agent.state import AgentState
 from app.agent.tools import abs as abs_tools
 from app.agent.tools import read as rt
@@ -727,7 +730,8 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
     ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
-    failed = [op for op in ctx["operations"] if op["status"] == "failed" or op.get("error_code")]
+    scoped_operations = case_operations(ctx["operations"], state["normalization"])
+    failed = [op for op in scoped_operations if op["status"] == "failed" or op.get("error_code")]
     active = ctx["system_logs"]["active_faults"]
     # error_code/система — только по фактам клиента (его неуспешные операции); активные сбои без операции — лишь подсказка
     error_code = failed[0]["error_code"] if failed else None
@@ -793,12 +797,17 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
 
 async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     ops = state["context"].get("operations") or []
+    scopes = {
+        code: refund_candidates(ops, state.get("normalization") or {}, state["signal"].get("text") or "", code)
+        for code in refund_scope_catalog()[1]
+    }
     matched = await check_rules(
         deps.ctx.conn,
         run_id=deps.ctx.run_id,
         signal_id=state["signal"]["id"],
         agent_run_id=deps.ctx.agent_run_id,
         operations=ops,
+        refund_operations={cause: scope[0] for cause, scope in scopes.items()},
     )
     state["context"]["rules_matched"] = matched
     fee_rule = next((r for r in matched if r.get("action") == "refund_fee"), None)
@@ -826,7 +835,12 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     await deps.record_step(
         "check_rules",
         "ok",
-        {"operations": len(ops)},
+        {
+            "operations": len(ops),
+            "refund_scope_hash": refund_scope_fingerprint(),
+            "refund_candidates": {cause: len(scope[0]) for cause, scope in scopes.items()},
+            "refund_scope": {cause: scope[1] for cause, scope in scopes.items()},
+        },
         {"matched": matched, "fast_path": state["context"]["fast_path"]},
         reasoning=(
             f"Сработали правила: {', '.join(m['rule_code'] for m in matched)}. "
