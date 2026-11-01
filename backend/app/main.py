@@ -120,16 +120,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
-    demo_task = None
+    demo_task = public_task = None
     if not s.is_test:
+        from app.demo.execution import public_worker
         from app.demo.execution import worker as demo_worker
 
         demo_task = asyncio.create_task(demo_worker(app), name="demo-execution")
+        public_task = asyncio.create_task(public_worker(app), name="public-execution")
     yield
-    if demo_task:
-        demo_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await demo_task
+    for execution_task in (demo_task, public_task):
+        if execution_task:
+            execution_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await execution_task
     await app.state.bench.stop()
     if app.state.twins is not None:
         await app.state.twins.stop()

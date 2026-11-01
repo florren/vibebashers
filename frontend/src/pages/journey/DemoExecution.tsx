@@ -25,6 +25,10 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
     mutationFn: () => api<State>('/api/demo/execution', { method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: outcome, emulate_humans: humans, auto_advance: fastManual } satisfies Options) }),
     onSuccess: (data) => { qc.setQueryData(['demo-execution'], data); setEdited(false); void qc.invalidateQueries({ queryKey: ['demo-execution'] }) },
   })
+  const recover = useMutation({
+    mutationFn: (id: number) => api<State>(`/api/demo/incidents/${id}/recover`, { method: 'POST' }),
+    onSuccess: data => { qc.setQueryData(['demo-execution'], data); void qc.invalidateQueries({ queryKey: ['demo-execution'] }) },
+  })
   const config = state.data?.configuration
   useEffect(() => {
     if (!edited && config?.mode === 'simulation') {
@@ -61,8 +65,11 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
     {unapplied && <p role="status" className="my-2 rounded border border-line px-3 py-2 text-xs">{t('demoExecution.draftHint')}</p>}
     {state.data?.run_id && Boolean(config?.mode) && <p role="status" className="my-2 text-xs">{t(config?.mode === 'simulation' ? 'demoExecution.simulation' : 'demoExecution.demo')} · SR-{state.data.run_id} · {t(`demoExecution.outcomes.${String(config?.team_outcome)}`)}</p>}
     <p className="my-2 text-xs text-muted">{t('demoExecution.controlsHelp')}</p>
+    <p className="my-2 text-xs text-muted">{t('demoExecution.publicHint')}</p>
     {config?.mode === 'simulation' && config.auto_advance === true && <p className="my-2 text-xs text-muted">{t('demoExecution.fastHint')}</p>}
     {config?.status === 'paused' && !(config?.mode === 'simulation' && config.auto_advance === true) && <p className="mt-2 text-xs text-muted">{t('demoExecution.pausedHint')}</p>}
+    {(state.data?.incidents ?? []).filter(i => i.can_recover).map(i => <button key={i.id} className="btn btn-sm mr-2" disabled={recover.isPending} onClick={() => recover.mutate(i.id)}>{t('demoExecution.recoverIncident', { ref: i.public_id })}</button>)}
+    {recover.isError && <ErrorBox error={recover.error} />}
     {apply.isError && <ErrorBox error={apply.error} />}
     {Boolean(config?.error) && <p role="alert">{t('demoExecution.error')}: {String(config?.error)}</p>}
     {change.isError && <ErrorBox error={change.error} />}

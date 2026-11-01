@@ -174,7 +174,7 @@ class TeamEmulator:
             key = (incident_id, str(action), (payload or {}).get("report_day"))
             self.done.add(key)
             plan_blob = (payload or {}).get("plan")
-            if plan_blob and incident_id not in self.plans:
+            if plan_blob:
                 self.plans[incident_id] = _plan_from_blob(incident_id, plan_blob)
             if str(action) == "release":
                 release_by_incident[incident_id] = (int(action_id), _parse_ts(action_sim))
@@ -250,6 +250,7 @@ class TeamEmulator:
                 evidence = {}
         incident_ctx = {
             "demo_evidence": evidence,
+            "outcome": plan.outcome,
             "title": title,
             "system": system_code,
             "product": product_code,
@@ -568,11 +569,11 @@ class TeamEmulator:
 
     async def _artifact_body(self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]) -> str:
         self.artifact_meta = {}
-        if self.demo_outcome and self.llm:
+        outcome = incident_ctx.get("outcome", self.demo_outcome)
+        if outcome and self.llm:
             from app.demo.roles import respond
 
             evidence = incident_ctx.get("demo_evidence", self.demo_context)
-            outcome = self.demo_outcome
             success = outcome in ("on_time", "late", "recovered")
             facts = {
                 "role": "product_team",

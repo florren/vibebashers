@@ -200,6 +200,54 @@ async def test_manual_team_outcomes_without_global_sla_tick(seeded, monkeypatch,
                     )
                 ).fetchone()
             )[0] == 1
+        if outcome in ("failed", "no_work"):
+            from app.api.demo_execution import post_demo_recovery
+
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                old_actions = await (
+                    await conn.execute("select id from team_actions where incident_id=%s order by id", (iid,))
+                ).fetchall()
+                cfg = await configuration(conn, rid)
+                cfg.update(auto_advance=False, enabled=False, status="stopped")
+                await save(conn, rid, cfg)
+            sim.run_status = "stopped"
+            await post_demo_recovery(request, iid)
+            await post_demo_recovery(request, iid)
+            for _ in range(12):
+                await cycle(app)
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                assert (await (await conn.execute("select status from incidents where id=%s", (iid,))).fetchone())[
+                    0
+                ] == "closed"
+                assert (
+                    await (
+                        await conn.execute("select outcome from agent_runs where id=%s", (result["agent_run_id"],))
+                    ).fetchone()
+                )[0] == "completed"
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from incident_signals where signal_id=%s", (result["signal_id"],)
+                        )
+                    ).fetchone()
+                )[0] == 1
+                assert (
+                    await (
+                        await conn.execute(
+                            "select id from team_actions where incident_id=%s order by id limit %s",
+                            (iid, len(old_actions)),
+                        )
+                    ).fetchall()
+                ) == old_actions
+                assert (
+                    await (
+                        await conn.execute(
+                            "select template_code from notifications where signal_id=%s and template_code in ('resolved','demo_unresolved') order by id",
+                            (result["signal_id"],),
+                        )
+                    ).fetchall()
+                ) == [("demo_unresolved",), ("resolved",)]
+            await post_demo_recovery(request, iid)
         assert not sim.clock.running and sim.clock.sim_time == before
     finally:
         await svc.stop()

@@ -36,7 +36,7 @@ log = get_logger(__name__)
 
 def manual_active(config: dict[str, Any]) -> bool:
     """Ошибка фонового исполнения не отменяет отдельно включённые ручные цепочки."""
-    return bool(
+    return bool(config.get("recovery_incidents")) or bool(
         config.get("mode") == "simulation"
         and config.get("auto_advance")
         and config.get("status") not in ("stopped", "finished")
@@ -46,6 +46,8 @@ def manual_active(config: dict[str, Any]) -> bool:
 
 async def execution_active(app: Any, conn: Any, run_id: int, *, manual_only: bool = False) -> bool:
     config = await configuration(conn, run_id)
+    if config.get("public_demo") and manual_only:
+        return True
     return bool(
         app.state.sim.run_id == run_id
         and (
@@ -56,10 +58,22 @@ async def execution_active(app: Any, conn: Any, run_id: int, *, manual_only: boo
     )
 
 
+def execution_lock(app: Any, *, public_demo: bool) -> Any:
+    """Длительная работа Journey не занимает очередь публичного показа."""
+    if not public_demo:
+        return app.state.sim._lock
+    lock = getattr(app.state, "public_execution_lock", None)
+    if lock is None:
+        lock = app.state.public_execution_lock = asyncio.Lock()
+    return lock
+
+
 async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual_only: bool = False) -> bool:
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
     request = Request({"type": "http", "app": app, "headers": []})
+    request.state.demo_sim_time = at
+    public_demo = bool((await configuration(conn, run_id)).get("public_demo"))
     cur = await conn.execute(
         "select h.id,h.reason,h.agent_proposal,h.decision from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
         "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms "
@@ -88,8 +102,8 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             "Демонстрационный оператор рассмотрел предложение агента и согласовал исполнение в пределах действующих правил.",
         )
         decision = obj["decision"] if obj["decision"] in ("accept", "reject") else "reject"
-        async with app.state.sim._lock:
-            if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id, manual_only=manual_only):
+        async with execution_lock(app, public_demo=public_demo):
+            if not await execution_active(app, conn, run_id, manual_only=manual_only):
                 return False
             try:
                 await post_hitl_id(
@@ -128,7 +142,7 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             "Демонстрационный руководитель подтвердил разбор нарушения и поручил устранить проблему клиента.",
             "open_incident",
         )
-        if app.state.sim.run_id != run_id or not await execution_active(app, conn, run_id, manual_only=manual_only):
+        if not await execution_active(app, conn, run_id, manual_only=manual_only):
             return False
         # Не разрешаем модели отбрасывать подтверждённое нарушение без доказательств.
         async with app.state.sim._lock, conn.transaction():
@@ -307,7 +321,8 @@ async def notify_results(
 async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) -> None:
     """Событийное время ручных цепочек хранится в профиле; часы фонового банка не двигаются."""
     sim, svc = app.state.sim, app.state.agent
-    if config.get("emulate_humans") and await employees(app, conn, rid, sim.clock.sim_time, manual_only=True):
+    base_time = dt.datetime.fromisoformat(config["base_time"]) if config.get("public_demo") else sim.clock.sim_time
+    if config.get("emulate_humans") and await employees(app, conn, rid, base_time, manual_only=True):
         return
     # Ожидание одного клиента/оператора не блокирует другие независимые инциденты.
     rows = await (
@@ -322,10 +337,12 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
         )
     ).fetchall()
     ids = [int(row[0]) for row in rows]
+    if not manual_active({**config, "recovery_incidents": []}):
+        ids = [iid for iid in ids if iid in config.get("recovery_incidents", [])]
     if not ids:
         return
     await conn.commit()
-    async with sim._lock:
+    async with execution_lock(app, public_demo=bool(config.get("public_demo"))):
         if not await execution_active(app, conn, rid, manual_only=True):
             return
         emulator = TeamEmulator(
@@ -338,12 +355,16 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
             incident_ids=ids,
         )
         await emulator.load()
+        outcomes: dict[int, str] = {}
+        if config.get("public_demo"):
+            from app.demo.public import assign_outcomes
+
+            outcomes = await assign_outcomes(conn, rid, ids)
         times = dict(config.get("manual_times") or {})
         for iid in ids:
-            at = max(
-                sim.clock.sim_time, dt.datetime.fromisoformat(times.get(str(iid)) or sim.clock.sim_time.isoformat())
-            )
+            at = max(base_time, dt.datetime.fromisoformat(times.get(str(iid)) or base_time.isoformat()))
             emulator.incident_ids = [iid]
+            emulator.demo_outcome = outcomes.get(iid, config["team_outcome"])
             await emulator.tick(at, SimpleNamespace(active_faults=[]))
             await notify_results(conn, app, rid, at, incident_ids=[iid])
             plan = emulator.plans.get(iid)
@@ -359,6 +380,15 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
             times[str(iid)] = (min(future) if future else at).isoformat()
         config = await configuration(conn, rid)
         config["manual_times"] = times
+        if config.get("recovery_incidents"):
+            closed = await (
+                await conn.execute(
+                    "select id from incidents where id=any(%s) and status='closed'", (config["recovery_incidents"],)
+                )
+            ).fetchall()
+            config["recovery_incidents"] = [
+                iid for iid in config["recovery_incidents"] if iid not in {r[0] for r in closed}
+            ]
         await save(conn, rid, config)
 
 
@@ -392,7 +422,7 @@ async def cycle(app: Any) -> None:
     svc = app.state.agent
     if sim is None or svc is None or not svc.enabled:
         return
-    # Публичный процесс создаёт live-run в БД; операторский процесс подхватывает его без старта часов.
+    # Живые входы других процессов могут создать текущий live-run без старта часов.
     if not sim.clock.running:
         async with sim._lock:
             async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as lookup:
@@ -403,11 +433,13 @@ async def cycle(app: Any) -> None:
                 ).fetchone()
             if row and sim.run_id != row[0]:
                 sim.run_id, sim.run_status, sim.world = int(row[0]), row[1], None
-    if sim.run_id is None or sim.run_status not in ("running", "paused"):
+    if sim.run_id is None:
         return
     rid = sim.run_id
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
         config = await configuration(conn, rid)
+        if sim.run_status not in ("running", "paused") and not config.get("recovery_incidents"):
+            return
         if not config and getattr(sim, "full_execution", False):
             config = await ensure(conn, rid, running=sim.clock.running)
         await conn.commit()
@@ -436,7 +468,8 @@ async def cycle(app: Any) -> None:
         ).fetchone()
         await conn.commit()
         pending = pending_row[0] if pending_row else 0
-        if config.get("mode") == "demo" and (pending or svc._inflight):
+        # pending ограничен этим запуском; публичные графы другого запуска не тормозят Journey.
+        if config.get("mode") == "demo" and pending:
             return
         failed = await (
             await conn.execute(
@@ -506,6 +539,46 @@ async def cycle(app: Any) -> None:
             await conn.commit()
             sim.clock.sim_time = next_time
         await sim._publish_tick()
+
+
+async def public_cycle(app: Any) -> None:
+    svc = app.state.agent
+    if svc is None or not svc.enabled:
+        return
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+        rows = await (
+            await conn.execute(
+                "select id from sim_runs where settings_snapshot->>'created_by'='public_demo' and status='paused' order by id"
+            )
+        ).fetchall()
+        for (rid,) in rows:
+            try:
+                await manual_cycle(app, conn, int(rid), await configuration(conn, int(rid)))
+                await conn.commit()
+                from app.demo.public import recover_public_cases
+
+                await recover_public_cases(app, conn, int(rid))
+                await conn.commit()
+                await complete_manual_followups(app, conn, int(rid))
+                await conn.commit()
+            except Exception as exc:
+                await conn.rollback()
+                log.exception("public_execution_failed", run_id=rid, error_type=type(exc).__name__)
+                config = await configuration(conn, int(rid))
+                config["error"] = type(exc).__name__
+                await save(conn, int(rid), config)
+                await conn.commit()
+
+
+async def public_worker(app: Any) -> None:
+    while True:
+        try:
+            await public_cycle(app)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.exception("public_execution_failed", error_type=type(exc).__name__)
+        await asyncio.sleep(2)
 
 
 async def worker(app: Any) -> None:

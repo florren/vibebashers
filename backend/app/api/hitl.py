@@ -140,7 +140,9 @@ async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any
             if not resume and body.decision not in ("accept", "reject"):
                 raise HTTPException(409, "Процесс уже продолжается; используйте журнал информации оператора")
             st = await fetch_one(conn, "select sim_time from sim_state where id=1")
-            sim_time = st["sim_time"] if st else dt.datetime.now(dt.UTC)
+            sim_time = getattr(request.state, "demo_sim_time", None) or (
+                st["sim_time"] if st else dt.datetime.now(dt.UTC)
+            )
             modified = (
                 body.modified_proposal
                 if body.decision == "modify"

@@ -53,10 +53,19 @@ async def get_demo_execution(request: Request) -> Any:
             subject_ref = row[0] if row else None
         if rid and config:
             incidents = [
-                dict(zip(("id", "public_id", "status", "sla_breached", "resolution_summary"), r, strict=True))
+                dict(
+                    zip(
+                        ("id", "public_id", "status", "sla_breached", "resolution_summary", "can_recover"),
+                        r,
+                        strict=True,
+                    )
+                )
                 for r in await (
                     await conn.execute(
-                        "select id,public_id,status,sla_breached,resolution_summary from incidents where run_id=%s order by id",
+                        "select i.id,i.public_id,i.status,i.sla_breached,i.resolution_summary, "
+                        "coalesce((i.status='escalated' and (select ta.payload->>'outcome' from team_actions ta where ta.incident_id=i.id order by ta.action_sim desc,ta.id desc limit 1) in ('failed','no_work') "
+                        "and exists(select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id and s.origin='jury')),false) as can_recover "
+                        "from incidents i where i.run_id=%s order by i.id",
                         (rid,),
                     )
                 ).fetchall()
@@ -144,4 +153,20 @@ async def stop_demo(request: Request) -> Any:
     sim = getattr(request.app.state, "sim", None)
     if sim and sim.run_id:
         await sim.control("stop")
+    return await get_demo_execution(request)
+
+
+@router.post(
+    "/api/demo/incidents/{id}/recover", status_code=202, summary="Продолжить неудачную demo-попытку в том же инциденте"
+)
+async def post_demo_recovery(request: Request, id: int) -> Any:
+    from app.demo.recovery import recover_incident
+
+    agent_service(request)
+    sim = getattr(request.app.state, "sim", None)
+    if sim is None:
+        raise HTTPException(503, "симулятор недоступен")
+    async with sim._lock:
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+            await recover_incident(request.app, conn, id)
     return await get_demo_execution(request)
