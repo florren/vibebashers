@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
+from app.agent.comparison import compare_classifications, guard_jury_rate
 from app.agent.graph import GRAPH_SPEC
 from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
-from app.contracts.registry import deref
 from app.llm.base import LLMProfile
+from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
 from app.search.cases import entity_filter
 from app.trace.privacy import mask
@@ -108,37 +110,50 @@ def classification_diff(llm: dict[str, Any], mock: dict[str, Any]) -> list[dict[
     return diff
 
 
+class CompareBody(BaseModel):
+    text: str = Field(min_length=3, max_length=5000)
+    channel_code: str
+    client_id: int | None = None
+    llm_profile_id: int | None = None
+
+
 @router.post(
     "/api/agent/compare", summary="Панель «ИИ против правил» — один текст через LLM-профиль и mock параллельно"
 )
-async def post_agent_compare(request: Request) -> Any:
-    body = await request.json()
-    text = str(body.get("text") or "").strip()
+async def post_agent_compare(request: Request, body: CompareBody) -> Any:
+    text = body.text.strip()
     if len(text) < 3:
         raise HTTPException(status_code=422, detail="text слишком короткий")
-    schema = deref("agent/classification")
+    guard_jury_rate(request)
     profile = LLMProfile(code="compare", provider="mock", model="mock-rules-v1")
-    mock_obj, _, _ = await MockProvider().complete_structured(
-        [{"role": "user", "content": text}], schema, profile, timeout_s=5
-    )
-    chain = getattr(request.app.state, "llm_chain", None)
+    chain = getattr(request.app.state, "llm_chain", None) or ProviderChain([MockProvider()])
     llm_profile = getattr(request.app.state, "llm_profile", None) or profile
-    llm_obj = dict(mock_obj)
-    llm_run_id = None
-    if chain is not None:
-        try:
-            result = await chain.complete_structured(
-                [{"role": "user", "content": text}], schema, llm_profile, context="default"
-            )
-            llm_obj = dict(result.obj or {})
-        except Exception as exc:  # noqa: BLE001 — панель показывает mock, если живая модель недоступна
-            llm_obj = {**mock_obj, "error": str(exc)[:200]}
+    if body.llm_profile_id is not None or body.client_id is not None:
+        async with db() as conn:
+            if body.client_id is not None and not await fetch_one(
+                conn, "select id from clients where id=%s", (body.client_id,)
+            ):
+                raise HTTPException(422, "Клиент не найден")
+            if body.llm_profile_id is not None:
+                saved = await fetch_one(
+                    conn, "select * from llm_profiles where id=%s and is_active", (body.llm_profile_id,)
+                )
+                if saved is None:
+                    raise HTTPException(422, "Профиль отсутствует или неактивен")
+                values = {key: saved[key] for key in LLMProfile.__dataclass_fields__ if key in saved}
+                for key in ("temperature", "price_in_per_1m", "price_out_per_1m"):
+                    if key in values:
+                        values[key] = float(values[key])
+                llm_profile = LLMProfile(**values)
+    (llm_obj, llm_run_id), (mock_obj, mock_run_id) = await compare_classifications(
+        text, body.channel_code, body.client_id, llm_profile, chain
+    )
     return {
         "llm": llm_obj,
         "mock": mock_obj,
         "diff": classification_diff(llm_obj, mock_obj),
         "llm_run_id": llm_run_id,
-        "mock_run_id": None,
+        "mock_run_id": mock_run_id,
     }
 
 

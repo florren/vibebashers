@@ -8,7 +8,7 @@
 | Волна | 5 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `review` |
 
 ## Цель
 Подтверждение открытости стека и данных (требование заказчика).
@@ -36,4 +36,8 @@ make licenses-check
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-152-licenses`: строгий SPDX gate и генерируемый THIRD_PARTY_LICENSES.md для 89 Python/437 npm distributions, runtime/dev/platform-only. Версии и metadata закреплены; platform-only wheel получены без установки из официального PyPI и сверены SHA256 с uv.lock. Непроверенные identifiers/WITH, отсутствующие metadata и дрейф inventory приводят к ошибке. Legacy notices адресно проверены по версии и hash; LGPL не смешивается с GPL. Дополнительных dependencies нет.
+
+Обнаруженный GPL-3.0-or-later dev-пакет pglast 8.7 удалён с согласования основного агента; остальные версии lock не менялись. SQL проверяется настоящим PostgreSQL16 в db job: schema и динамический полный список migrations/*.sql, повторное применение. mirror.yml не менялся. Ручные notices шрифтов, карты, Vosk и TLS описаны в docs/LICENSES.md.
+
+Проверки: 25 адресных regression-тестов passed; полный unit suite собственного worktree — 758 passed / 18 skipped; make licenses-check — 526 distributions, success; contracts_check — success. ruff check/format backend app/tests и новых scripts — success; git diff --check, owners L1 и YAML workflow parse — success. Полный make lint/make test, PostgreSQL CI и merge выполняет основной агент после интеграции; карточка не объявлена done до этих проверок.
