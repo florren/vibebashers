@@ -90,6 +90,7 @@ def main() -> int:
         layer = layer_from_card(card)
 
     changed = set(filter(None, git("diff", "--name-only", f"{a.base}...HEAD").splitlines()))
+    changed |= set(filter(None, git("diff", "--cached", "--name-only").splitlines()))
     changed |= set(filter(None, git("diff", "--name-only").splitlines()))
     changed |= set(filter(None, git("ls-files", "--others", "--exclude-standard").splitlines()))
 

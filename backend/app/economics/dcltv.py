@@ -360,10 +360,16 @@ async def recompute(
 
 
 async def summary(
-    conn: psycopg.AsyncConnection[Any], *, run_id: int | None, group_by: str = "product", window: str = "run"
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    run_id: int | None,
+    group_by: str = "product",
+    window: str = "run",
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """EconomicsSummary: суммы потерь по инцидентам запуска (или всем) с группировкой product|region|segment|team|type."""
-    await recompute(conn, run_id=run_id)
+    if refresh:
+        await recompute(conn, run_id=run_id)
     col = {
         "product": "coalesce(i.product_code, '—')",
         "region": "coalesce(i.region_code, '—')",

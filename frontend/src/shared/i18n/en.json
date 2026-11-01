@@ -12,9 +12,39 @@
     "moreMetrics": "4 more metrics",
     "lessMetrics": "Show fewer metrics"
   },
-  "calculator": {"title": "Loss calculator", "assumptions": "Assumptions", "preset": "Example: 12 clients, deposit, VIP", "product": "Product", "system": "System", "segment": "Segment"},
-  "incidentEconomics": {"affected": "Affected clients", "rate": "dCLTV rate", "premium": "Premium addon", "detractors": "Detractor share", "noReturn": "No-return share", "retention": "Retention factor", "potential": "Potential loss", "prevented": "Prevented loss", "realized": "Realized loss", "refund": "Customer refund", "net": "Net effect", "outcome": "Outcome", "source": {"manual": "Manual factor", "simulated": "Simulation factor"}, "approval": "Misselling case cost requires approval.", "estimate": "Model estimate, not confirmed bank income"},
-  "entityFilter": {"label": "Search by entity code", "placeholder": "SIG / INC / TR / AR / CL / HD / ESC…", "signals": "Choose a signal for the graph"},
+  "calculator": {
+    "title": "Loss calculator",
+    "assumptions": "Assumptions",
+    "preset": "Example: 12 clients, deposit, VIP",
+    "product": "Product",
+    "system": "System",
+    "segment": "Segment"
+  },
+  "incidentEconomics": {
+    "affected": "Affected clients",
+    "rate": "dCLTV rate",
+    "premium": "Premium addon",
+    "detractors": "Detractor share",
+    "noReturn": "No-return share",
+    "retention": "Retention factor",
+    "potential": "Potential loss",
+    "prevented": "Prevented loss",
+    "realized": "Realized loss",
+    "refund": "Customer refund",
+    "net": "Net effect",
+    "outcome": "Outcome",
+    "source": {
+      "manual": "Manual factor",
+      "simulated": "Simulation factor"
+    },
+    "approval": "Misselling case cost requires approval.",
+    "estimate": "Model estimate, not confirmed bank income"
+  },
+  "entityFilter": {
+    "label": "Search by entity code",
+    "placeholder": "SIG / INC / TR / AR / CL / HD / ESC…",
+    "signals": "Choose a signal for the graph"
+  },
   "app": {
     "title": "CX Pulse Control",
     "subtitle": "customer experience control center"

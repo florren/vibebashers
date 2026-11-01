@@ -69,12 +69,24 @@ test('лента сигналов → drawer → карточка инциден
   await expect(page.getByRole('tab', { name: 'Шаги' })).toBeVisible()
 })
 
-test('тёмная тема переключается и сохраняется', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: /тема/i }).click()
-  await expect(page.locator('html')).toHaveClass(/dark/)
-  await page.reload()
-  await expect(page.locator('html')).toHaveClass(/dark/)
+test('тёмная тема переключается и сохраняется', async ({ page, request }) => {
+  const previous = (await (await request.get('/api/settings')).json()).ui ?? null
+  try {
+    await page.goto('/')
+    const mode = page.getByRole('combobox', { name: 'Режим', exact: true })
+    await mode.selectOption('light')
+    await expect(page.locator('html')).toHaveAttribute('data-mode', 'light')
+    await mode.selectOption('dark')
+    await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark')
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect.poll(async () => (await (await request.get('/api/settings')).json()).ui?.mode).toBe('dark')
+    await page.reload()
+    await expect(page.locator('html')).toHaveAttribute('data-mode', 'dark')
+    await expect(page.locator('html')).toHaveClass(/dark/)
+  } finally {
+    await request.patch('/api/settings', { data: { ui: null } })
+    if (previous !== null) await request.patch('/api/settings', { data: { ui: previous } })
+  }
 })
 
 test('мобильная ширина не ломает шапку', async ({ page }) => {
