@@ -254,6 +254,8 @@ class OpenAICompatProvider:
                 "stream": False,
                 "extra_headers": {} if self.api_key else {"Authorization": omit},
             }
+            if "max_output_tokens" in profile.extra:
+                payload["max_tokens"] = int(profile.extra["max_output_tokens"])
             if use_json_schema:
                 payload["response_format"] = {
                     "type": "json_schema",
