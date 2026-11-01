@@ -116,3 +116,8 @@ html[data-device='mobile'] .app-content label { min-width: 0; max-width: 100%; }
 
 html[data-device='mobile'] .manager-toolbar { display: grid; grid-template-columns: 24px minmax(0, 1fr); height: auto; gap: 8px; padding-block: 12px; }
 html[data-device='mobile'] .manager-toolbar :is(.input, label) { grid-column: 1 / -1; width: 100%; margin: 0; white-space: normal; }
+
+/* В вертикальном мобильном потоке нет фиксированной высоты рабочей области. */
+html[data-device='mobile'] .map-layout { height: auto; grid-auto-rows: auto; }
+html[data-device='mobile'] .map-panel { height: auto; }
+html[data-device='mobile'] .map-canvas { flex: none; height: auto; aspect-ratio: 16 / 9; }
