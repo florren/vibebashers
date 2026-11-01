@@ -44,7 +44,11 @@ for (const width of [320, 390, 430]) for (const lang of ['ru', 'en']) for (const
         }
       }
       expect(mutations).toEqual([])
-    } finally { await context.close() }
+    } finally {
+      // Незавершённый route.fetch должен закончиться до уничтожения browser context.
+      try { await context.unrouteAll({ behavior: 'wait' }) }
+      finally { await context.close() }
+    }
   })
 }
 
