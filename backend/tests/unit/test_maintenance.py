@@ -211,3 +211,24 @@ async def test_http_get_health_and_ws_audio_block_but_existing_metadata_is_db_fr
     assert calls == ["/api/sim/baseline"]
     await gate({"type": "websocket", "path": "/ws/audio/1"}, receive, send)
     assert messages[-1] == {"type": "websocket.close", "code": 1013}
+
+
+async def test_existing_readonly_stream_ws_keeps_progress_admission():
+    c = MaintenanceCoordinator()
+    c.phase = "restoring"
+    called = []
+
+    async def app(scope, receive, send):
+        called.append(scope["path"])
+        await send({"type": "websocket.accept"})
+
+    messages = []
+
+    async def receive():
+        return {"type": "websocket.connect"}
+
+    async def send(message):
+        messages.append(message)
+
+    await MaintenanceMiddleware(app, coordinator=c)({"type": "websocket", "path": "/ws/stream"}, receive, send)
+    assert called == ["/ws/stream"] and messages == [{"type": "websocket.accept"}]

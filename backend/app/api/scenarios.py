@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any, Literal
 
 import psycopg
@@ -21,6 +20,7 @@ from app.llm.run_profiles import validate_main_profile
 from app.sim import runs as run_svc
 from app.sim import scenarios as sc
 from app.sim.engine import Simulator
+from app.sim.maintenance import spawn_writer
 
 router = APIRouter(tags=["scenarios"])
 
@@ -108,6 +108,6 @@ async def run_scenario(
     for item in injected:
         svc.submit(item["signal_id"], sim.clock.sim_time)
     if transcript:
-        asyncio.create_task(analyze_in_background(request, transcript["transcript_id"], pacing_delay_s=1.0))
+        spawn_writer(analyze_in_background(request, transcript["transcript_id"], pacing_delay_s=1.0), kind="transcript")
     client_id = next((i["client_id"] for i in injected if i["client_id"]), None) or (transcript or {}).get("client_id")
     return {"run": run, "client_id": client_id, "transcript_id": (transcript or {}).get("transcript_id")}

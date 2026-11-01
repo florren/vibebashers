@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -13,6 +12,7 @@ from app.api._compliance_support import run_context
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
 from app.search.cases import case_search
+from app.sim.maintenance import spawn_writer
 from app.trace.store import allowed_run
 
 router = APIRouter(tags=["signals"])
@@ -117,7 +117,7 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     comparison_id = None
     if body.compare_with_mock:
         async with mock_comparison(int(res["signal_id"])) as comparison:
-            compare_task = asyncio.create_task(comparison.run())
+            compare_task = spawn_writer(comparison.run(), kind="comparison")
             try:
                 await svc.submit(int(res["signal_id"]))
             finally:

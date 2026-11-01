@@ -211,6 +211,10 @@ class MaintenanceCoordinator:
             await completion(self._job, propagate_cancel=False)
 
 
+def current() -> MaintenanceCoordinator | None:
+    return _BOUND.get()
+
+
 @contextlib.asynccontextmanager
 async def writer_lease(kind: str) -> AsyncIterator[None]:
     coordinator = _BOUND.get()
@@ -221,8 +225,8 @@ async def writer_lease(kind: str) -> AsyncIterator[None]:
             yield
 
 
-def writer(kind: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
-    def decorate(fn: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+def writer(kind: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Coroutine[Any, Any, R]]]:
+    def decorate(fn: Callable[P, Awaitable[R]]) -> Callable[P, Coroutine[Any, Any, R]]:
         @functools.wraps(fn)
         async def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
             async with writer_lease(kind):
@@ -259,7 +263,7 @@ class MaintenanceMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         path, kind = scope.get("path", ""), scope["type"]
-        guarded = (kind == "http" and path.startswith("/api/")) or (kind == "websocket" and path != "/ws")
+        guarded = (kind == "http" and path.startswith("/api/")) or (kind == "websocket" and path != "/ws/stream")
         metadata = kind == "http" and scope.get("method") == "GET" and path == "/api/sim/baseline"
         recovery = kind == "http" and scope.get("method") == "POST" and path == "/api/sim/baseline/restore"
         with self.coordinator.bind():

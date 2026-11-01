@@ -72,6 +72,7 @@ async def test_missing_repair_script_fails_before_restore(tmp_path, monkeypatch)
 def test_csi_failure_does_not_start_a_run(tmp_path, monkeypatch):
     monkeypatch.setattr(baseline, "baseline_dir", lambda: tmp_path)
     _write_snapshot(tmp_path)
+    monkeypatch.setattr(baseline, "preflight_restore", AsyncMock())
     failed = AsyncMock(side_effect=baseline.BaselineToolingError("Автоматический CSI-ремонт не завершён"))
     monkeypatch.setattr(baseline, "restore", failed)
     with TestClient(create_app()) as client:

@@ -34,6 +34,7 @@ from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
 from app.sim.engine import Simulator
+from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
 from app.sim.twins import TwinService
 from app.stt import audio_ws
 
@@ -76,6 +77,82 @@ async def _abs_backfill() -> None:
         log.info("abs_backfill", **done)
 
 
+async def _start_runtime(app: FastAPI, components: set[str]) -> None:
+    """Создаёт только runtime-компоненты, которыми владеет lifespan."""
+    with app.state.maintenance.bind():
+        if "agent" in components:
+            app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
+            app.state.agent.enabled = getattr(app.state, "maintenance_agent_enabled", True)
+            app.state.agent.start()
+        if "twins" in components:
+            app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
+            app.state.twins.start()
+        if "poll" in components:
+            from app.ingest.sources import polling_worker
+
+            app.state.poll_stop = asyncio.Event()
+            app.state.ingest_poll = start_daemon(lambda: polling_worker(app.state.poll_stop), name="ingest-poll")
+        if "demo" in components:
+            from app.demo.execution import worker
+
+            app.state.demo_task = start_daemon(lambda: worker(app), name="demo-execution")
+        if "public" in components:
+            from app.demo.execution import public_worker
+
+            app.state.public_task = start_daemon(lambda: public_worker(app), name="public-execution")
+    app.state.runtime_components = components
+
+
+async def _park_runtime(app: FastAPI) -> None:
+    """Вызывается после drain; активные seed/audio до этого отклоняют restore."""
+    components = set(getattr(app.state, "runtime_components", set()))
+    if not hasattr(app.state, "maintenance_saved_components"):
+        app.state.maintenance_saved_components = components
+        app.state.maintenance_agent_enabled = getattr(getattr(app.state, "agent", None), "enabled", True)
+    sim = getattr(app.state, "sim", None)
+    if sim is not None and hasattr(sim, "shutdown"):
+        if sim.clock.running:
+            await sim.control("pause")
+        await sim.shutdown()
+    for name in ("demo_task", "public_task"):
+        task = getattr(app.state, name, None)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            setattr(app.state, name, None)
+    bench = getattr(app.state, "bench", None)
+    if bench is not None:
+        await bench.stop()
+    if "twins" in components and app.state.twins is not None:
+        await app.state.twins.stop()
+        app.state.twins = None
+    if "poll" in components:
+        app.state.poll_stop.set()
+        task = getattr(app.state, "ingest_poll", None)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        app.state.ingest_poll = None
+    if "agent" in components and app.state.agent is not None:
+        await app.state.agent.stop()
+        app.state.agent = None
+    from app.db.session import get_engine
+
+    await get_engine().dispose()
+    app.state.runtime_components = set()
+
+
+async def _resume_runtime(app: FastAPI) -> None:
+    components = set(getattr(app.state, "maintenance_saved_components", set()))
+    # Завершённые benchmark записи/ключи не должны ссылаться на переиспользованные ID.
+    app.state.bench = BenchService()
+    await _start_runtime(app, components)
+    if hasattr(app.state, "maintenance_saved_components"):
+        del app.state.maintenance_saved_components
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     s = get_settings()
@@ -101,17 +178,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.sim = None
     app.state.agent = None
     app.state.twins = None
-    poll_stop: asyncio.Event | None = None
+    app.state.runtime_components = set()
     if not s.is_test:
-        from app.ingest.sources import polling_worker
-
-        poll_stop = asyncio.Event()
-        app.state.ingest_poll = asyncio.create_task(polling_worker(poll_stop))
         bridge.start()
-        app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
-        app.state.agent.start()
-        app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
-        app.state.twins.start()
         sim = Simulator(seed=s.sim_seed)
         sim.full_execution = True
         try:
@@ -120,31 +189,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
-    demo_task = public_task = None
     if not s.is_test:
-        from app.demo.execution import public_worker
-        from app.demo.execution import worker as demo_worker
-
-        demo_task = asyncio.create_task(demo_worker(app), name="demo-execution")
-        public_task = asyncio.create_task(public_worker(app), name="public-execution")
+        await _start_runtime(app, {"agent", "twins", "poll", "demo", "public"})
     yield
-    for execution_task in (demo_task, public_task):
-        if execution_task:
-            execution_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await execution_task
-    await app.state.bench.stop()
-    if app.state.twins is not None:
-        await app.state.twins.stop()
-    if poll_stop is not None:
-        poll_stop.set()
-        task = getattr(app.state, "ingest_poll", None)
-        if task is not None:
-            await task
-    if app.state.agent is not None:
-        await app.state.agent.stop()
-    if app.state.sim is not None:
-        await app.state.sim.shutdown()
+    try:
+        await app.state.maintenance.join_restore()
+    except Exception as exc:
+        log.warning("restore_failed_at_shutdown", error_type=type(exc).__name__)
+    await _park_runtime(app)
     await bridge.stop()
     for provider in app.state.llm_chain.providers:
         if isinstance(provider, GigaChatProvider):
@@ -173,6 +225,10 @@ def create_app() -> FastAPI:
         docs_url="/docs" if s.app_env != "prod" else None,
         openapi_url="/openapi.json",
     )
+    app.state.maintenance = MaintenanceCoordinator()
+    app.state.maintenance_park = lambda: _park_runtime(app)
+    app.state.maintenance_resume = lambda: _resume_runtime(app)
+    app.add_middleware(MaintenanceMiddleware, coordinator=app.state.maintenance)
     app.add_middleware(
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )

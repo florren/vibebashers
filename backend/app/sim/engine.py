@@ -20,6 +20,7 @@ from app.sim import runs as run_svc
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
+from app.sim.maintenance import start_daemon, writer
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
@@ -133,6 +134,7 @@ class Simulator:
         )
 
     # --- один шаг сим-времени ---------------------------------------------------------------------------------------
+    @writer("sim-step")
     async def step(self, minutes: float) -> None:
         """Продвинуть сим-время на minutes; крупные шаги режутся на блоки ≤ MAX_BATCH_MIN (быстрый прогон генераторов)."""
         while minutes > 1e-9:
@@ -328,7 +330,7 @@ class Simulator:
     def _start_loop(self) -> None:
         self.clock.running = True
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(self._loop(), name="sim-loop")
+            self._task = start_daemon(self._loop, name="sim-loop")
 
     async def _stop_loop(self) -> None:
         self.clock.running = False
