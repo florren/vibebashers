@@ -45,3 +45,7 @@ pytest backend/tests/unit/test_transcript_parser.py backend/tests/integration/te
 
 ## Отчёт субагента
 - Реализовано в `feat/B07-compliance`: `backend/app/compliance/txt_parser.py` (TXT «[чч:мм:сс] Роль: …», метаданные `# key: value; …`, многострочные реплики, алиасы ролей), `transcripts.py::create_transcript/load_file` (валидация по `ingest/transcript`, резолв отделения/сотрудника, событие `ingest.transcript_received`). API: `GET/POST /api/ingest/transcripts` (JSON или multipart JSON/TXT), `POST …/import` (data/import/transcripts, дедуп по имени файла), `GET …/{id}` (реплики с находками), `POST …/{id}/analyze`. Тесты `tests/compliance/test_pure.py`.
+
+Дополнение по ревизии 01.11.2026, ветка `codex/cli-workflow-completion`: `make import-transcripts CX_BASE_URL=…` теперь вызывает серверный импорт через существующий API вместо успешной заглушки. CLI выводит accepted/duplicates/rejected; код 1 при rejected, 2 при HTTP/некорректном ответе. Успешный приём отделён от завершения фонового анализа. Регрессии с MockTransport проверяют путь, повторный импорт, частичный отказ и некорректный ответ. Контракты и API не менялись.
+
+PR ревизии: https://github.com/florren/vibebashers/pull/150; общий журнал проверок — дополнение T-141 и описание PR.

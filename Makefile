@@ -1,5 +1,5 @@
 # CX Pulse Control — цели зафиксированы в AGENTS.md §4. Python-окружение: uv (backend/.venv).
-.PHONY: dev dev-front install-front build-front lint-front test test-scenarios e2e test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
+.PHONY: dev dev-front install-front build-front lint-front test test-front test-compliance test-scenarios e2e test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
         scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts import-csi migrate seed install-backend
 
 UV ?= uv
@@ -22,7 +22,7 @@ build-front:                ## сборка фронта в frontend/dist (backe
 	cd frontend && npm run build
 
 lint-front:                 ## eslint + tsc + vitest фронта
-	cd frontend && npm run lint && npx tsc --noEmit && npm test -- --run
+	cd frontend && npm run lint && npm run typecheck && npm test -- --run
 
 migrate:                    ## alembic upgrade head (DATABASE_URL из .env/окружения)
 	cd backend && .venv/bin/alembic upgrade head
@@ -30,7 +30,13 @@ migrate:                    ## alembic upgrade head (DATABASE_URL из .env/ок
 seed:                       ## сид по профилю PROFILE=lite|demo|stress (E2, T-011…T-016)
 	$(PY) scripts/seed/run.py --profile $(or $(PROFILE),lite)
 
-test: contracts-check test-unit test-integration test-scenarios   ## все проверки
+test: contracts-check test-unit test-integration test-scenarios test-compliance test-front   ## все backend- и frontend-тесты
+
+test-front:
+	cd frontend && npm test -- --run
+
+test-compliance:             ## тесты корпуса и детектора (нужна DATABASE_URL_TEST)
+	cd backend && .venv/bin/pytest -q tests/compliance
 
 test-unit:
 	cd backend && .venv/bin/pytest -q tests/unit
@@ -38,7 +44,7 @@ test-unit:
 test-integration:           ## нужна DATABASE_URL_TEST; без неё — skip
 	cd backend && .venv/bin/pytest -q tests/integration
 
-lint:
+lint: lint-front
 	cd backend && .venv/bin/ruff check app tests && .venv/bin/ruff format --check app tests && .venv/bin/mypy app
 	$(PY) scripts/check_openapi_drift.py
 
@@ -89,11 +95,14 @@ cassettes-record:           ## запись кассет replay для SCENARIO=
 	@test -n "$(SCENARIO)" || (echo "укажите SCENARIO=id сценария" >&2; exit 1)
 	$(PY) scripts/cassettes_record.py $(SCENARIO)
 
-stt-bench demo-offline:
-	@echo "цель $@ реализуется в E16/E17 (T-181, T-194, T-197) — см. AGENTS.md раздел 4"
+stt-bench:                  ## локальный Vosk: WER и время распознавания WAV (FILE=…, REF=…)
+	$(PY) scripts/stt_bench.py $(if $(FILE),--file "$(FILE)") $(if $(REF),--reference "$(REF)")
 
-import-transcripts:
-	@echo "цель $@ реализуется в E18 (T-208) — POST /api/ingest/transcripts/import"
+demo-offline:               ## установка replay/mock + Vosk без сброса существующих данных
+	./install.sh --offline
+
+import-transcripts:        ## импорт каталога транскриптов на сервере (CX_BASE_URL=…)
+	$(PY) scripts/import_transcripts.py --base "$(or $(CX_BASE_URL),http://localhost:8000)"
 
 import-csi:                 ## ручной CSI JSON/XLSX через API (FILE=…, CX_BASE_URL=…)
 	$(PY) scripts/import_csi.py $(or $(FILE),data/import/csi) --base $(or $(CX_BASE_URL),http://localhost:8000)
