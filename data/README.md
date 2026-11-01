@@ -108,7 +108,8 @@ health probes и FATAL-circuit breaker в каждом окне, INFO-восст
 реальные failed requests имеют affected_operation_id и свой timestamp.
 Health probes не выдают себя за клиентские операции. В сообщениях нет имён,
 телефонов, карт, контактов или клиентских идентификаторов. `get_system_logs`
-читает контрактные ERROR/FATAL только текущего run. В `sim_events` сохраняются
+читает контрактные ERROR/FATAL из baseline и текущего run; другие free/scenario/live
+запуски исключены по AGENTS §6.13. В `sim_events` сохраняются
 валидированные fault.started/fault.resolved; startup worker не запускается.
 
 Идемпотентность защищена transaction/advisory lock и

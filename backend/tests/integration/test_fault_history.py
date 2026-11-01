@@ -265,3 +265,52 @@ def test_fault_seed_only_links_operations_and_rejects_broken_marker(history, con
         assert conn.execute("select count(*) from faults where run_id=%s", (rid,)).fetchone()[0] == len(
             state["fault_ids"]
         )
+
+
+async def test_context_reads_baseline_and_current_but_not_foreign_run_kinds(history, conn, seeded):
+    _, baseline_id, _, _ = history
+    baseline_fault, system, code, start, end = conn.execute(
+        "select id,system_code,error_code,started_sim,resolved_sim from faults where run_id=%s order by id limit 1",
+        (baseline_id,),
+    ).fetchone()
+    current_id = conn.execute(
+        "insert into sim_runs(kind,label,seed,started_sim) values('free','current context',42,%s) returning id",
+        (start,),
+    ).fetchone()[0]
+    own_fault = conn.execute(
+        "insert into faults(run_id,system_code,error_code,started_sim,resolved_sim) values(%s,%s,%s,%s,%s) returning id",
+        (current_id, system, code, start, end),
+    ).fetchone()[0]
+    conn.execute(
+        "insert into system_logs(run_id,system_code,level,component,message,logged_sim) values(%s,%s,'ERROR','test','CURRENT_ALLOWED',%s)",
+        (current_id, system, start),
+    )
+    foreign_faults = []
+    for kind in ("free", "scenario", "live"):
+        foreign = conn.execute(
+            "insert into sim_runs(kind,label,seed,started_sim) values(%s,'foreign context',42,%s) returning id",
+            (kind, start),
+        ).fetchone()[0]
+        fid = conn.execute(
+            "insert into faults(run_id,system_code,error_code,started_sim,resolved_sim) values(%s,%s,%s,%s,%s) returning id",
+            (foreign, system, code, start, end),
+        ).fetchone()[0]
+        foreign_faults.append(fid)
+        conn.execute(
+            "insert into system_logs(run_id,system_code,level,component,message,logged_sim) values(%s,%s,'ERROR','test',%s,%s)",
+            (foreign, system, f"FOREIGN_{kind.upper()}", start),
+        )
+    async with await psycopg.AsyncConnection.connect(
+        seeded.replace("postgresql+psycopg://", "postgresql://")
+    ) as async_conn:
+        ctx = ToolContext(async_conn, run_id=current_id, agent_run_id=0, sim_time=start + (end - start) / 2)
+        result = await get_system_logs(ctx, [system], limit=1000)
+    ids = {row["fault_id"] for row in result["active_faults"]}
+    assert {baseline_fault, own_fault} <= ids
+    assert not ids.intersection(foreign_faults)
+    messages = {row["message"] for row in result["logs"]}
+    assert "CURRENT_ALLOWED" in messages
+    assert (
+        sum(row["level"] == "ERROR" and row["message"].startswith("health_probe failed") for row in result["logs"]) >= 3
+    )
+    assert not any(message.startswith("FOREIGN_") for message in messages)
