@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import datetime as dt
 import tempfile
 from collections.abc import Iterator
@@ -20,6 +19,8 @@ from app.sim import baseline as baseline_svc
 from app.sim import run_lifecycle, run_summary
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
+from app.sim.maintenance import MaintenanceCoordinator
+from app.sim.maintenance_control import ControlError
 
 router = APIRouter(tags=["sim"])
 
@@ -157,23 +158,37 @@ async def _ensure_dump_allowed(request: Request) -> Simulator:
 
 
 async def _restore_baseline(request: Request) -> str:
-    sim = _sim(request)
-    if sim.clock.running:
-        await sim.control("pause")
-    conn = await sim.connect()
-    try:
-        job_id = await baseline_svc.restore(conn, pause=sim.clock.running or sim.run_status == "paused")
-    except baseline_svc.BaselineUnavailableError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except baseline_svc.BaselineToolingError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    finally:
-        if sim.conn and not sim.conn.closed:
-            with contextlib.suppress(Exception):
+    coordinator: MaintenanceCoordinator = request.app.state.maintenance
+
+    async def preflight() -> None:
+        async with await _conn() as conn:
+            await baseline_svc.preflight_restore(conn)
+
+    async def action(job_id: str) -> str:
+        sim = _sim(request)
+        if sim.clock.running:
+            await sim.control("pause")
+        conn = await sim.connect()
+        try:
+            result = await baseline_svc.restore(
+                conn, pause=sim.clock.running or sim.run_status == "paused", job_id=job_id
+            )
+        finally:
+            if sim.conn and not sim.conn.closed:
                 await sim.conn.close()
-        sim.conn = None
-    await sim.reload_after_restore()
-    return job_id
+            sim.conn = None
+        await sim.reload_after_restore()
+        return result
+
+    try:
+        return await coordinator.restore(
+            action,
+            preflight=preflight,
+            park=request.app.state.maintenance_park,
+            resume=request.app.state.maintenance_resume,
+        )
+    except (baseline_svc.BaselineUnavailableError, baseline_svc.BaselineToolingError, ControlError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post(

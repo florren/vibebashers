@@ -28,6 +28,7 @@ from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim import scenarios
 from app.sim.events import EventBus
+from app.sim.maintenance import MaintenanceBusy, writer, writer_lease
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
@@ -421,6 +422,7 @@ async def complete_manual_followups(app: Any, conn: Any, rid: int) -> None:
         )
 
 
+@writer("demo")
 async def cycle(app: Any) -> None:
     sim = app.state.sim
     svc = app.state.agent
@@ -546,6 +548,7 @@ async def cycle(app: Any) -> None:
         await sim._publish_tick()
 
 
+@writer("demo")
 async def public_cycle(app: Any) -> None:
     svc = app.state.agent
     if svc is None or not svc.enabled:
@@ -581,6 +584,8 @@ async def public_worker(app: Any) -> None:
             await public_cycle(app)
         except asyncio.CancelledError:
             raise
+        except MaintenanceBusy:
+            pass
         except Exception as exc:
             log.exception("public_execution_failed", error_type=type(exc).__name__)
         await asyncio.sleep(2)
@@ -589,15 +594,19 @@ async def public_worker(app: Any) -> None:
 async def worker(app: Any) -> None:
     while True:
         try:
-            await cycle(app)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            log.exception("demo_execution_failed", error_type=type(exc).__name__)
-            sim = app.state.sim
-            if sim is not None and sim.run_id:
-                async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
-                    config = await configuration(conn, sim.run_id)
-                    config.update(enabled=False, status="error", error=type(exc).__name__)
-                    await save(conn, sim.run_id, config)
+            async with writer_lease("demo-cycle"):
+                try:
+                    await cycle(app)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    log.exception("demo_execution_failed", error_type=type(exc).__name__)
+                    sim = app.state.sim
+                    if sim is not None and sim.run_id:
+                        async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+                            config = await configuration(conn, sim.run_id)
+                            config.update(enabled=False, status="error", error=type(exc).__name__)
+                            await save(conn, sim.run_id, config)
+        except MaintenanceBusy:
+            pass
         await asyncio.sleep(2)
