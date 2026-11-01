@@ -84,3 +84,18 @@ network/.env прошёл, рабочая ветка чистая перед о�
 вместо него проверена полная pytest collection через четыре изолированных shards
 и отдельно frontend suite; CI повторит это на чистых runners.
 Подробности эксплуатации — `docs/CI.md`.
+
+
+CI follow-up PR #155: run 41343187290 выявил race между незавершённым
+`route.fetch('/api/settings')` и ручным `context.close()` в map-layout.
+Layout assertions были корректны. Interception карты перенесён на context,
+cleanup всегда снимает routes через `unrouteAll({behavior: 'wait'})`, проверяет
+нулевое число активных callbacks и только затем закрывает context. Такой же
+drain применён к mobile route.fetch. Ошибки не подавляются, retries и пороги
+не менялись. API проверен по установленным Playwright types.
+
+Проверка follow-up на одном изолированном real-image candidate: 100/100 map
+cases (20 × 5 повторов) за 40.4s; затем полный suite 58/58 за 2.3min.
+E2E TypeScript и collection 58 cases проходят; cleanup project/volumes/network/
+.env завершился успешно. Логи `/tmp/t145-map-repeat100.log` и
+`/tmp/t145-lifecycle-image58.log`. Parent выполняет push и повтор GitHub CI.

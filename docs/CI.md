@@ -27,7 +27,11 @@ serial settings phase (один worker, зависит от read-only). Новы
 попадают в serial phase.
 Рабочий `:latest` не используется. Existing `.env`, включая dangling symlink,
 отклоняется; helper удаляет только созданный им inode. `finally` удаляет только
-ресурсы собственного Compose project. Не запускать helper в рабочем checkout
+ресурсы собственного Compose project. Для ручных browser contexts сначала
+выполняется `context.unrouteAll({behavior: 'wait'})`, затем `context.close()`:
+`route.fetch()`/`fulfill()` обязаны завершиться до уничтожения context. Такой drain
+относится к `context.route`; page-level routes нужно снимать через `page.unrouteAll`.
+Ошибки handlers не подавляются. Не запускать helper в рабочем checkout
 стенда: используйте отдельный checkout без `.env`.
 
 Ежедневно в 02:17 UTC и через workflow_dispatch тот же полный backend suite
