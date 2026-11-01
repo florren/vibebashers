@@ -8,9 +8,11 @@ import asyncio
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
+from app.llm.budget import load_openrouter_budget
 from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
@@ -301,6 +303,7 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
                     settings.local_llm_base_url or settings.openrouter_base_url,
                     transport=transport,
                     budget_usd=float(settings.openrouter_budget_usd),
+                    budget_loader=partial(load_openrouter_budget, float(settings.openrouter_budget_usd)),
                     http_referer=f"http://localhost:{settings.app_port}",
                 )
             )

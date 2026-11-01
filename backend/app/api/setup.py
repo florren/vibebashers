@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal
 
@@ -31,6 +32,7 @@ from app.api.settings import (
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Message
+from app.llm.budget import load_openrouter_budget
 from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, suggest_replacement
 from app.logging import get_logger
 
@@ -287,6 +289,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 key,
                 base,
                 budget_usd=s.openrouter_budget_usd,
+                budget_loader=partial(load_openrouter_budget, s.openrouter_budget_usd),
                 http_referer=f"http://localhost:{s.app_port}",
             )
             if is_openrouter(base):

@@ -21,6 +21,7 @@ from app.bench import runner
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Provider, ProviderError
+from app.llm.budget import load_openrouter_budget
 from app.llm.failover import ProviderChain
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
@@ -241,7 +242,10 @@ class BenchService:
                 self.keys[selected_key].tokens_limit = chosen.get("tokens_limit")
             providers.append(
                 OpenAICompatProvider(
-                    secret, profile.base_url or settings.openrouter_base_url, budget_usd=settings.openrouter_budget_usd
+                    secret,
+                    profile.base_url or settings.openrouter_base_url,
+                    budget_usd=settings.openrouter_budget_usd,
+                    budget_loader=partial(load_openrouter_budget, settings.openrouter_budget_usd),
                 )
             )
         else:

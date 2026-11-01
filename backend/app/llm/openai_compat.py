@@ -8,8 +8,9 @@ OpenRouter /key остаётся служебным HTTP endpoint вне Chat Co
 from __future__ import annotations
 
 import json
+import math
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any, cast
 from urllib.parse import urlsplit
 
@@ -19,6 +20,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
+from app.llm.budget import budget_value
 from app.llm.gigachat import JSON_INSTRUCTION, schema_for_model
 from app.logging import get_logger
 
@@ -73,7 +75,11 @@ def parse_key_payload(body: dict[str, Any]) -> dict[str, Any]:
         "limit_remaining": remaining,
         "is_free_tier": data.get("is_free_tier"),
         "balance_usd": remaining,
-        "rpd_limit": 50 if is_free else 1000,
+        "rpd_limit": (
+            data["free_model_daily_requests"].get("limit")
+            if isinstance(data.get("free_model_daily_requests"), dict)
+            else (50 if is_free else 1000)
+        ),
     }
 
 
@@ -82,8 +88,8 @@ def is_openrouter(base_url: str) -> bool:
 
 
 def _skips_budget_check(model: str) -> bool:
-    """Три id по умолчанию и любой :free не ходят в GET /key перед chat/completions."""
-    return model in DEFAULT_MODEL_IDS or model.endswith(":free")
+    """Только явный :free гарантирует, что имя модели не обходит бюджет платного API."""
+    return model.endswith(":free")
 
 
 async def _empty_key() -> str:
@@ -102,11 +108,13 @@ class OpenAICompatProvider:
         app_title: str = "CX Pulse Control",
         budget_usd: float = 10.0,
         http_referer: str | None = None,
+        budget_loader: Callable[[], Awaitable[float]] | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.app_title = app_title
         self.budget_usd = budget_usd
+        self.budget_loader = budget_loader
         self.http_referer = http_referer
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
         self._sdk = AsyncOpenAI(
@@ -149,7 +157,10 @@ class OpenAICompatProvider:
             raise ProviderError("quota", f"key: {e}") from e
         if r.status_code >= 400:
             raise ProviderError("quota", f"key {r.status_code}", status=r.status_code)
-        body = r.json()
+        try:
+            body = r.json()
+        except ValueError as exc:
+            raise ProviderError("quota", "key: некорректный JSON") from exc
         if not isinstance(body, dict):
             raise ProviderError("quota", "key: не объект")
         return parse_key_payload(body)
@@ -159,10 +170,35 @@ class OpenAICompatProvider:
             raise ProviderError("miss", "профиль не openai_compatible")
         if not is_openrouter(base_url) or _skips_budget_check(profile.model):
             return
+        budget = budget_value(await self.budget_loader() if self.budget_loader else self.budget_usd)
+        if budget == 0:
+            raise ProviderError("quota", "бюджет платных моделей OpenRouter исчерпан")
         info = await self.fetch_key(base_url=base_url)
         usage = info.get("usage")
-        if isinstance(usage, (int, float)) and not isinstance(usage, bool) and float(usage) >= float(self.budget_usd):
+        if isinstance(usage, bool) or not isinstance(usage, (int, float)) or not math.isfinite(usage) or usage < 0:
+            raise ProviderError("quota", "расход OpenRouter неизвестен: платный вызов запрещён")
+        remaining = info.get("limit_remaining")
+        if remaining is not None:
+            if (
+                isinstance(remaining, bool)
+                or not isinstance(remaining, (int, float))
+                or not math.isfinite(remaining)
+                or remaining <= 0
+            ):
+                raise ProviderError("quota", "остаток лимита ключа OpenRouter неизвестен или исчерпан")
+        if float(usage) >= budget:
             raise ProviderError("quota", "расход OpenRouter достиг бюджета")
+
+    @staticmethod
+    def _paid(profile: LLMProfile, base_url: str) -> bool:
+        return is_openrouter(base_url) and not _skips_budget_check(profile.model)
+
+    @staticmethod
+    def _usage_known(usage: Any) -> bool:
+        return all(
+            isinstance(value, int) and not isinstance(value, bool) and value >= 0
+            for value in (usage.prompt_tokens, usage.completion_tokens)
+        )
 
     def _chat_client(self, base_url: str, timeout_s: float) -> AsyncOpenAI:
         headers: dict[str, Any] = self._headers(base_url)
@@ -197,7 +233,8 @@ class OpenAICompatProvider:
     ) -> tuple[dict[str, Any], Usage, str]:
         t0 = time.perf_counter()
         base_url = (profile.base_url or self.base_url).rstrip("/")
-        await self._before_chat(profile, base_url)
+        if profile.provider != "openai_compatible":
+            raise ProviderError("miss", "профиль не openai_compatible")
         use_json_schema = bool(profile.extra.get("json_schema", True))
         msgs: list[dict[str, str]] = [
             {
@@ -225,6 +262,12 @@ class OpenAICompatProvider:
             else:
                 payload["response_format"] = {"type": "json_object"}
             try:
+                try:
+                    await self._before_chat(profile, base_url)
+                except ProviderError as exc:
+                    if usage.request_count:
+                        exc.usage = usage
+                    raise
                 usage.request_count += 1
                 result = await self._chat_client(base_url, timeout_s).chat.completions.create(**payload)
             except APIError as exc:
@@ -234,6 +277,8 @@ class OpenAICompatProvider:
                     log.info("openai_compat_no_json_schema", model=profile.model)
                     continue
                 raise error from exc
+            if self._paid(profile, base_url) and (result.usage is None or not self._usage_known(result.usage)):
+                raise ProviderError("bad_output", "расход платного ответа неизвестен: usage отсутствует")
             if result.usage is not None:
                 usage.prompt_tokens += result.usage.prompt_tokens or 0
                 usage.completion_tokens += result.usage.completion_tokens or 0
@@ -261,7 +306,7 @@ class OpenAICompatProvider:
                     + ". Верни исправленный JSON целиком.",
                 },
             ]
-        raise ProviderError("bad_output", f"ответ не соответствует схеме после 2 попыток: {raw[:200]!r}")
+        raise ProviderError("bad_output", "ответ не соответствует схеме после 2 попыток", usage=usage)
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         base_url = (profile.base_url or self.base_url).rstrip("/")
@@ -273,11 +318,16 @@ class OpenAICompatProvider:
                 temperature=profile.temperature,
                 stream=True,
                 extra_headers={} if self.api_key else {"Authorization": omit},
+                stream_options={"include_usage": True} if self._paid(profile, base_url) else {},
             )
+            usage_seen = False
             async with response:
                 async for chunk in response:
+                    usage_seen = usage_seen or (chunk.usage is not None and self._usage_known(chunk.usage))
                     if chunk.choices and chunk.choices[0].delta.content:
                         yield chunk.choices[0].delta.content
+            if self._paid(profile, base_url) and not usage_seen:
+                raise ProviderError("bad_output", "расход платного stream неизвестен: usage отсутствует")
         except APIError as exc:
             raise self._provider_error(exc) from exc
 
