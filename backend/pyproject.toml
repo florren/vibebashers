@@ -34,7 +34,6 @@ dev = [
   "sqlacodegen>=3.0.0",
   "types-PyYAML",
   "openapi-spec-validator>=0.7",
-  "pglast>=6",
 ]
 
 [build-system]
