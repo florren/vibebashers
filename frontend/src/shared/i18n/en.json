@@ -1923,6 +1923,39 @@
   },
   "tracking": {
     "language": "Language",
-    "voiceCheck": "Transcribed offline. Check the text before sending."
+    "title": "Your request",
+    "privateLink": "This private link opens your request history. Save it and do not share it with others.",
+    "history": "Request progress",
+    "messages": "Messages from the bank",
+    "noMessages": "No messages yet. Updates will appear here when the bank replies.",
+    "loading": "Loading your request…",
+    "notFound": "Request not found",
+    "checkLink": "Check that you copied the entire link.",
+    "newClaim": "Create a request",
+    "loadError": "Could not refresh the history. Previously loaded information remains visible.",
+    "retry": "Try again",
+    "appendTitle": "Add information to your request",
+    "reply": "Your reply",
+    "send": "Send update",
+    "sending": "Sending…",
+    "appended": "Your update was received and passed on for processing.",
+    "appendError": "Could not send your update. Your text is saved — please try again.",
+    "newMessage": "A new message from the bank has arrived.",
+    "refreshHint": "The history refreshes every 10 seconds.",
+    "done": "completed",
+    "pending": "pending",
+    "voiceCheck": "Transcribed offline. Check the text before sending.",
+    "steps": {
+      "received": "Request received",
+      "agent_started": "The assistant is reviewing your request",
+      "classified": "The issue has been identified",
+      "incident_created": "The request was passed to specialists",
+      "team_working": "Specialists are working on a solution",
+      "progress_update": "An interim update was received",
+      "clarification_needed": "Your clarification is needed",
+      "answered": "The bank replied",
+      "resolved": "A solution is ready",
+      "closed": "Request closed"
+    }
   }
 }

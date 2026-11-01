@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test('public landing sends a claim and exposes its private tracking link', async ({ page }) => {
+test('public landing sends a claim and opens its private tracking page', async ({ page }) => {
   const token = 'a'.repeat(32)
   await page.goto('/landing')
   await expect(page.getByRole('button', { name: 'Отправить', exact: true })).toBeDisabled()
@@ -36,7 +36,9 @@ test('public landing sends a claim and exposes its private tracking link', async
   await page.getByLabel('Проверка', { exact: true }).fill('5')
   await page.getByRole('button', { name: 'Отправить', exact: true }).click()
   await expect(page.getByText('SIG-000123')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Открыть трекинг' })).toHaveAttribute('href', `/track/${token}`)
+  await page.getByRole('link', { name: 'Открыть трекинг' }).click()
+  await expect(page).toHaveURL(new RegExp(`/track/${token}$`))
+  await expect(page.getByText('SIG-000123')).toBeVisible()
 })
 
 for (const lang of ['ru', 'en']) {
