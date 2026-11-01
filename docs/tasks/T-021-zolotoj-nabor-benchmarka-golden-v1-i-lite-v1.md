@@ -70,3 +70,5 @@ stdlib trace 90% строк (без добавления coverage dependency). D
 включают actual CLI plan/apply/retry, историю, rollback и ambiguous runner.
 Полный monolithic make test и remote CI остаются финальным gate основного агента;
 поэтому третий критерий и общий статус пока не отмечены done.
+
+Remote CI:contracts/db подтвердили текущий corpus; owners потребовал явную cross-layer метку для уже согласованных межслойных правок. Заголовок PR #163 дополнен меткой, проверки не менялись; повторный CI обязателен.
