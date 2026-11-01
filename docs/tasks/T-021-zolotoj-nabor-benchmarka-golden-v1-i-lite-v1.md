@@ -63,9 +63,9 @@ transaction+dataset locks, archival legacy code/provenance, новые canonical
 Проверки DB выполняются исключительно в собственной scratch cx_t021_golden,
 не в primary/prod; реальных LLM/внешних вызовов и новых dependencies нет.
 
-Локальная проверка: backend unit 800 passed/18 skipped; frontend 144 passed,
-eslint/tsc, backend ruff/format 322 files и mypy 243 files green. Структурный --check,
-contracts 44 schemas/161 paths и drift 191/191 green. Новый backend validator:
+Локальная проверка: backend unit 825 passed/18 skipped после merge main 4a01734; frontend 144 passed,
+eslint/tsc, backend ruff/format 323 files и mypy 243 files green. Структурный --check,
+contracts 44 schemas/161 paths и drift 191/191 green; license gate 526 distributions green. Новый backend validator:
 stdlib trace 90% строк (без добавления coverage dependency). DB acceptance 16 tests
 включают actual CLI plan/apply/retry, историю, rollback и ambiguous runner.
 Полный monolithic make test и remote CI остаются финальным gate основного агента;
