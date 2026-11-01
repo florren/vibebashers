@@ -45,3 +45,5 @@ bash scripts/dev/kill_and_resume.sh
 
 ## Отчёт субагента
 Ветка codex/T-041-resume, локальный checkpoint без PR/merge. StateGraph/Transactional PostgresSaver и0012 вschema langgraph; generatedrun_idFK и ARstatus. Строгийresume currentpaused/interrupted, sameRNG/time, recoverysameAR иretry, gracefulpause/drain.6PGactualrecoverypassed, послеnamespacedFK/lifecycle16PGpassed86.31s; Alembiccheck безdrift, licenses548green. Последниеизменениятребуютполногоregression/killupproof/coverage/contract+moneyreview; done не заявлен. Подробный review/rollback/compatibility: docs/reviews/T-041-durable-recovery.md.
+
+Process checkpoint: настоящий SIGKILL собственного mock ASGI процесса и два restart (interrupted→resume, gracefulpaused→resume)1passed10.69s. SameAR/refund1/normalization1/sim_timepersisted/resumed_count+1; fullunit877/18skip и19startup/coreunitgreen. Dockerproductionнеостанавливался, liveLLMневызывался. Полныйcomposed/coverage/reviewвсёещёнужны.

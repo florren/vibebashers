@@ -122,7 +122,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.sim.before_resume = app.state.agent.validate_recovery
         app.state.sim.after_resume = app.state.agent.recover_run
     if app.state.agent is not None:
-        app.state.agent.start()
+        if app.state.sim is not None:
+            await app.state.agent._recover()
+            app.state.agent.start(recover=False)
+        else:
+            app.state.agent.start()
     if app.state.twins is not None:
         app.state.twins.start()
     demo_task = public_task = None
@@ -138,7 +142,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             execution_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await execution_task
-    if app.state.sim is not None:
+    if app.state.sim is not None and (app.state.sim.clock.running or app.state.sim.run_status == "running"):
         await app.state.sim.control("pause")
     await app.state.bench.stop()
     if app.state.twins is not None:

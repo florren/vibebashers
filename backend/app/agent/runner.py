@@ -35,6 +35,7 @@ class AgentService:
         self.chain, self.profile, self.dsn = chain, profile, dsn
         self.sem = asyncio.Semaphore(concurrency)
         self.personal_sem = asyncio.Semaphore(2)
+        self._recover_on_start = True
         self._task: asyncio.Task[None] | None = None
         self._feedback_task: asyncio.Task[None] | None = None
         self._personal_task: asyncio.Task[None] | None = None
@@ -45,7 +46,8 @@ class AgentService:
         self.enabled = True
         self.started_at = dt.datetime.now(dt.UTC)
 
-    def start(self) -> None:
+    def start(self, *, recover: bool = True) -> None:
+        self._recover_on_start = recover
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop(), name="agent-listener")
         if self._feedback_task is None or self._feedback_task.done():
@@ -198,10 +200,11 @@ class AgentService:
                 raise
 
     async def _loop(self) -> None:
-        try:
-            await self._recover()
-        except Exception as exc:
-            log.error("agent_startup_recovery_failed", error_type=type(exc).__name__)
+        if self._recover_on_start:
+            try:
+                await self._recover()
+            except Exception as exc:
+                log.error("agent_startup_recovery_failed", error_type=type(exc).__name__)
         while True:
             conn: psycopg.AsyncConnection[Any] | None = None
             try:
