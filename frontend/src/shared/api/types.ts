@@ -2100,7 +2100,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Общий лимит жюри: не более 10 запросов в минуту; Retry-After содержит задержку в секундах */
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
                 429: components["responses"]["Problem"];
             };
         };
@@ -3507,7 +3507,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Общий лимит жюри: не более 10 запросов в минуту; Retry-After содержит задержку в секундах */
+                /** @description Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах */
                 429: components["responses"]["Problem"];
             };
         };

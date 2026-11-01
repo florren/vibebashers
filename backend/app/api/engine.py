@@ -109,7 +109,7 @@ def classification_diff(llm: dict[str, Any], mock: dict[str, Any]) -> list[dict[
 
 
 class CompareBody(BaseModel):
-    text: str = Field(min_length=3, max_length=4000)
+    text: str = Field(min_length=3, max_length=5000)
     channel_code: str
     client_id: int | None = None
     llm_profile_id: int | None = None

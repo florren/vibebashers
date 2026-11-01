@@ -45,9 +45,9 @@ class JuryRateLimit:
     def check(self, now: float) -> None:
         while self.hits and self.hits[0] <= now - 60:
             self.hits.popleft()
-        if len(self.hits) >= 10:
+        if len(self.hits) >= 20:
             retry = max(1, math.ceil(self.hits[0] + 60 - now))
-            raise HTTPException(429, "Не больше 10 запросов жюри в минуту", headers={"Retry-After": str(retry)})
+            raise HTTPException(429, "Не больше 20 запросов жюри в минуту", headers={"Retry-After": str(retry)})
         self.hits.append(now)
 
 

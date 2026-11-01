@@ -92,7 +92,7 @@ class SignalCreate(BaseModel):
     channel_subtype: str | None = None
     client_id: int | None = None
     external_contact: dict[str, Any] | None = None
-    text: str = Field(min_length=3, max_length=4000)
+    text: str = Field(min_length=3, max_length=5000)
     compare_with_mock: bool = True
     voice_meta: dict[str, Any] | None = None
     external_id: str | None = None

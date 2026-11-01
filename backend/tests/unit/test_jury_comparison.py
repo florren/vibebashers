@@ -8,15 +8,18 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.agent import comparison
 from app.agent.tools.base import ToolContext, ToolError, tool
+from app.api.engine import CompareBody
+from app.api.signals import SignalCreate
 from app.main import create_app
 
 
 def test_jury_limit_sliding_window_and_retry_after():
     limiter = comparison.JuryRateLimit()
-    for _ in range(10):
+    for _ in range(20):
         limiter.check(0)
     with pytest.raises(HTTPException) as error:
         limiter.check(0.5)
@@ -26,8 +29,22 @@ def test_jury_limit_sliding_window_and_retry_after():
     assert list(limiter.hits) == [60]
 
 
+@pytest.mark.parametrize("body_type", [CompareBody, SignalCreate])
+@pytest.mark.parametrize("size", [3, 4001, 5000])
+def test_manual_input_accepts_approved_boundaries(body_type, size):
+    body = body_type(text="а" * size, channel_code="chat")
+    assert len(body.text) == size
+
+
+@pytest.mark.parametrize("body_type", [CompareBody, SignalCreate])
+@pytest.mark.parametrize("size", [2, 5001])
+def test_manual_input_rejects_outside_approved_boundaries(body_type, size):
+    with pytest.raises(ValidationError):
+        body_type(text="а" * size, channel_code="chat")
+
+
 @pytest.mark.parametrize("path", ["/api/signals", "/api/agent/compare"])
-@pytest.mark.parametrize("text", ["а", "а" * 4001])
+@pytest.mark.parametrize("text", ["а", "а" * 5001])
 def test_text_limit_before_processing(path, text):
     with TestClient(create_app()) as client:
         response = client.post(path, json={"text": text, "channel_code": "chat"})
@@ -40,7 +57,7 @@ def test_both_endpoints_share_jury_budget(monkeypatch):
 
     monkeypatch.setattr("app.api.engine.compare_classifications", fake)
     with TestClient(create_app()) as client:
-        for _ in range(10):
+        for _ in range(20):
             response = client.post("/api/agent/compare", json={"text": "Сколько стоит карта?", "channel_code": "chat"})
             assert response.status_code == 200
             assert response.json()["llm_run_id"] == 1
