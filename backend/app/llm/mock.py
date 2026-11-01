@@ -14,6 +14,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+from app.amounts import ruble_amount_hint
 from app.contracts.registry import validate_schema
 from app.i18n import communication_lang
 from app.llm.base import LLMProfile, Message, Usage
@@ -317,7 +318,7 @@ def analyze(text: str) -> dict[str, Any]:
         flags.append("passive_aggression")
     if _has(t, ("опять", "снова", "в третий раз", "второй раз", "уже писал")):
         flags.append("repeat")
-    amount = re.search(r"(\d[\d\s]{1,9})\s*(?:₽|руб|р\.)", t)
+    amount = ruble_amount_hint(t)
     product = next((p for p, ws in PRODUCT_WORDS.items() if _has(t, ws)), None)
     system = next((s for s, ws in SYSTEM_WORDS.items() if _has(t, ws)), None)
     criticality = (
@@ -369,7 +370,7 @@ def analyze(text: str) -> dict[str, Any]:
         "tone": tone,
         "product": product,
         "system": system,
-        "amount_rub": float(amount.group(1).replace(" ", "")) if amount else None,
+        "amount_rub": amount,
         "churn": "churn_threat" in intents,
         "team": TEAM_BY_TYPE[stype]
         if stype != "tariff_terms"

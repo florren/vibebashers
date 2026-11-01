@@ -128,3 +128,117 @@ async def test_recover_wakes_overdue_followup(seeded: str) -> None:
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         st = await (await conn.execute("select status from followups where signal_id = %s", (signal_id,))).fetchone()
         assert st and st[0] == "fired"
+
+
+@pytest.mark.asyncio
+async def test_public_reply_wakes_only_its_parent_without_advancing_clock(seeded: str, monkeypatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import create_app
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    token = "isolated_tracking_capability_123456789"
+    try:
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            rid = await new_run(conn, "public reply paused clock")
+            premium = (
+                await (
+                    await conn.execute("select id from clients where segment_code='premium' order by id limit 1")
+                ).fetchone()
+            )[0]
+            parent, _ = await run_agent_on(conn, FRAUD_TEXT, client_id=premium, run_id=rid, origin="sim")
+            other_client = (
+                await (
+                    await conn.execute(
+                        "select id from clients where segment_code='premium' and id<>%s order by id limit 1", (premium,)
+                    )
+                ).fetchone()
+            )[0]
+            other, _ = await run_agent_on(
+                conn, FRAUD_TEXT + " Ещё одна операция.", client_id=other_client, run_id=rid, origin="sim"
+            )
+            assert (
+                await (
+                    await conn.execute(
+                        "select count(*) from followups where signal_id=%s and reason='awaiting_client' and status='scheduled'",
+                        (other,),
+                    )
+                ).fetchone()
+            )[0] >= 1
+            await conn.execute("update signals set tracking_token=%s where id=%s", (token, parent))
+            before = await sim_now(conn)
+            pending = await (
+                await conn.execute(
+                    "select id from followups where signal_id=%s and reason='awaiting_client' and status='scheduled'",
+                    (parent,),
+                )
+            ).fetchone()
+            assert pending
+            await conn.commit()
+        with TestClient(create_app()) as client:
+            viewed = client.get(f"/api/public/track/{token}")
+            assert viewed.status_code == 200 and viewed.json()["can_append"]
+            assert viewed.json()["question_from_agent"]
+            assert (
+                client.post(
+                    f"/api/public/track/{token}", json={"text": "Операция была вчера в 10:00, карту уже заблокировал"}
+                ).status_code
+                == 202
+            )
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            child_row = await (
+                await conn.execute("select id,run_id from signals where parent_signal_id=%s", (parent,))
+            ).fetchone()
+            assert child_row and child_row[1] == rid
+            child = child_row[0]
+        svc = AgentService(mock_chain(), PROFILE, dsn=dsn(seeded), concurrency=1)
+        task = svc.submit_client_reply(parent, child, before)
+        assert svc.submit_client_reply(parent, child, before) is task
+        await task
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            # Краткий ответ требует HITL: parent не продолжается до штатного одобрения.
+            assert (await (await conn.execute("select status from signals where id=%s", (child,))).fetchone())[
+                0
+            ] == "awaiting_human"
+            assert (await (await conn.execute("select status from followups where id=%s", (pending[0],))).fetchone())[
+                0
+            ] == "scheduled"
+            decision = (
+                await (
+                    await conn.execute(
+                        "select id from human_decisions where signal_id=%s and decision is null", (child,)
+                    )
+                ).fetchone()
+            )[0]
+            await conn.execute(
+                "update human_decisions set decision='accept',decided_by='test',decided_at=now() where id=%s",
+                (decision,),
+            )
+            await conn.commit()
+            from app.agent.graph import resume_after_human
+
+            approved = await resume_after_human(
+                conn, human_decision_id=decision, chain=mock_chain(), profile=PROFILE, sim_time=before
+            )
+            assert approved and approved["outcome"] != "awaiting_human"
+        await svc.submit_client_reply(parent, child, before)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            assert (await (await conn.execute("select status from followups where id=%s", (pending[0],))).fetchone())[
+                0
+            ] == "fired"
+            assert (await (await conn.execute("select status from signals where id=%s", (parent,))).fetchone())[
+                0
+            ] not in ("awaiting_client", "error")
+            assert (
+                await (
+                    await conn.execute(
+                        "select count(*) from followups where signal_id=%s and reason='awaiting_client' and status='scheduled'",
+                        (other,),
+                    )
+                ).fetchone()
+            )[0] >= 1
+            assert await sim_now(conn) == before
+    finally:
+        get_settings.cache_clear()

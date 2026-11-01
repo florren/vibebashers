@@ -3,14 +3,29 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 
 import structlog
 
 
+class PublicTokenFilter(logging.Filter):
+    """Uvicorn пишет access log вне HTTP middleware: скрываем секретные ссылки и здесь."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple) and len(record.args) == 5:
+            args = list(record.args)
+            args[2] = re.sub(r"((?:/api/public)?/track/)[^?\s]+(?:\?[^\s]*)?", r"\1{token}", str(args[2]))
+            record.args = tuple(args)
+        return True
+
+
 def configure_logging(env: str = "dev", jsonl_path: Path | None = None, jsonl_level: str = "info") -> None:
     """Консоль (dev — читаемо, prod — JSON) плюс JSONL-файл для разбора людьми и агентами (docs/REPORTS.md)."""
+    access_logger = logging.getLogger("uvicorn.access")
+    if not any(isinstance(item, PublicTokenFilter) for item in access_logger.filters):
+        access_logger.addFilter(PublicTokenFilter())
     processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
