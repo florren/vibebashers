@@ -104,3 +104,18 @@ async def test_cli_uses_sdk_three_fixed_models_and_never_reports_key_or_raw(monk
     assert [item["model"] for item in report["models"]] == list(DEFAULT_MODEL_IDS)
     assert "synthetic-secret-key" not in json.dumps(report) and "choices" not in json.dumps(report)
     assert len(seen) == 4
+
+
+async def test_transport_blocks_credential_echo_in_validation_retry():
+    inner = AsyncMock()
+    transport = live_smoke.BoundedTransport(inner)
+    req = request(
+        messages=[
+            {"role": "user", "content": live_smoke.FIXED_TEXT},
+            {"role": "assistant", "content": "echo-secret-value"},
+        ]
+    )
+    req.headers["Authorization"] = "Bearer echo-secret-value"
+    with pytest.raises(httpx.RequestError, match="Credential"):
+        await transport.handle_async_request(req)
+    inner.handle_async_request.assert_not_awaited()

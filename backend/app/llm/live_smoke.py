@@ -48,6 +48,9 @@ class BoundedTransport(httpx.AsyncBaseTransport):
         if not allowed or self.requests >= MAX_REQUESTS:
             raise httpx.RequestError("Запрос запрещён ограничениями synthetic smoke", request=request)
         if request.method == "POST":
+            credential = request.headers.get("Authorization", "").removeprefix("Bearer ")
+            if credential and credential in request.content.decode():
+                raise httpx.RequestError("Credential не может попадать в synthetic prompt", request=request)
             payload = json.loads(request.content)
             if (
                 payload.get("model") not in DEFAULT_MODEL_IDS

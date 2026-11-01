@@ -313,7 +313,7 @@ class OpenAICompatProvider:
                 usage.latency_ms = int((time.perf_counter() - t0) * 1000)
                 usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
                 return obj, usage, raw
-            log.warning("openai_compat_bad_output", attempt=attempt, errors=errors[:3])
+            log.warning("openai_compat_bad_output", attempt=attempt, error_count=len(errors))
             attempt += 1
             usage.json_valid_first_try = False
             usage.structured_retries = min(attempt, 1)
