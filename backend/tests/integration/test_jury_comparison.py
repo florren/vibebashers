@@ -171,7 +171,7 @@ def test_standalone_compare_persists_both_results_without_signal(configured):
         assert rows == [("compare", "completed", None), ("compare", "completed", None)]
 
 
-@pytest.mark.parametrize("mode", ["mock", "replay", "fallback"])
+@pytest.mark.parametrize("mode", ["mock", "replay", "fallback", "missing_model"])
 def test_standalone_trace_records_actual_provider_and_model(configured, mode):
     """Настоящие Mock/Replay adapters; cassette transport только test-only, без live calls."""
     from app.contracts.registry import deref
@@ -188,7 +188,7 @@ def test_standalone_trace_records_actual_provider_and_model(configured, mode):
         def get(self, *args):
             return {
                 "response": obj,
-                "model": "recorded-test-model",
+                "model": "" if mode == "missing_model" else "recorded-test-model",
                 "usage": {"prompt_tokens": 10, "completion_tokens": 5},
             }
 
@@ -201,7 +201,7 @@ def test_standalone_trace_records_actual_provider_and_model(configured, mode):
     profile = LLMProfile(code="requested", provider="gigachat", model="requested-test-model")
     if mode == "mock":
         chain, profile = mock_chain(), MOCK_PROFILE
-    elif mode == "replay":
+    elif mode in ("replay", "missing_model"):
         chain = ProviderChain([ReplayProvider(TestCassetteTransport())])
     else:
         chain = ProviderChain([UnavailableTransport(), MockProvider()])
@@ -216,8 +216,12 @@ def test_standalone_trace_records_actual_provider_and_model(configured, mode):
         mock_trace = client.get(f"/api/agent/runs/{data['mock_run_id']}")
         assert main_trace.status_code == mock_trace.status_code == 200
     step = main_trace.json()["steps"][0]
-    assert step["model"] == ("replay:recorded-test-model" if mode == "replay" else "mock:mock-rules-v1")
+    expected = {"replay": "replay:recorded-test-model", "missing_model": "replay:unknown"}.get(
+        mode, "mock:mock-rules-v1"
+    )
+    assert step["model"] == expected
     assert step["status"] == ("fallback" if mode == "fallback" else "ok")
     assert mock_trace.json()["steps"][0]["model"] == "mock:mock-rules-v1"
+    assert mock_trace.json()["steps"][0]["status"] == "ok"
     with psycopg.connect(dsn(configured)) as conn:
         assert conn.execute("select count(*) from signals").fetchone()[0] == before
