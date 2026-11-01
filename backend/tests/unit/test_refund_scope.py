@@ -42,6 +42,7 @@ def test_current_qr_fee_claim_matches_payment_or_fee(amount):
         {"operation_hint": "deposit"},
         {"operation_hint": "login"},
         {"amount_rub": 450},
+        {"amount_rub": 3200},
         {"amount_rub": float("nan")},
         {"amount_rub": -1},
     ],
