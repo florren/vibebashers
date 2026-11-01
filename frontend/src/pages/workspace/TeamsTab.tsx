@@ -15,7 +15,7 @@ export function TeamsTab() {
       {q.isLoading && <SkeletonRows n={6} />}
       {!q.isLoading && rows.length === 0 && <Empty title={t('common.empty')} />}
       {rows.length > 0 && (
-        <table className="card w-full text-sm">
+        <div className="overflow-x-auto"><table className="card w-full text-sm">
           <thead className="text-left text-[11px] uppercase tracking-wide text-muted">
             <tr className="border-b border-line">
               <th className="px-3 py-1.5 font-medium">{t('teams.col.team')}</th>
@@ -59,7 +59,7 @@ export function TeamsTab() {
               )
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
       <p className="mt-2 text-xs text-muted">{t('teams.hint')}</p>
     </div>

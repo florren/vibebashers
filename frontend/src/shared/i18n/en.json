@@ -1,4 +1,17 @@
 {
+  "device": {
+    "label": "Display",
+    "auto": "Auto",
+    "mobile": "Phone",
+    "desktop": "Computer",
+    "openMenu": "Open menu",
+    "menu": "Menu and settings",
+    "navigation": "App sections",
+    "filters": "Search and filters",
+    "filtersActive": "active",
+    "moreMetrics": "4 more metrics",
+    "lessMetrics": "Show fewer metrics"
+  },
   "calculator": {"title": "Loss calculator", "assumptions": "Assumptions", "preset": "Example: 12 clients, deposit, VIP", "product": "Product", "system": "System", "segment": "Segment"},
   "incidentEconomics": {"affected": "Affected clients", "rate": "dCLTV rate", "premium": "Premium addon", "detractors": "Detractor share", "noReturn": "No-return share", "retention": "Retention factor", "potential": "Potential loss", "prevented": "Prevented loss", "realized": "Realized loss", "refund": "Customer refund", "net": "Net effect", "outcome": "Outcome", "source": {"manual": "Manual factor", "simulated": "Simulation factor"}, "approval": "Misselling case cost requires approval.", "estimate": "Model estimate, not confirmed bank income"},
   "entityFilter": {"label": "Search by entity code", "placeholder": "SIG / INC / TR / AR / CL / HD / ESC…", "signals": "Choose a signal for the graph"},

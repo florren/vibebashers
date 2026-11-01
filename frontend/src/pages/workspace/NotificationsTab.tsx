@@ -20,7 +20,7 @@ export function NotificationsTab({ runId }: { runId: number | undefined }) {
     <div className="p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted">{t('notif.subtitle')}</div>
-        <div className="flex overflow-hidden rounded border border-line text-xs">
+        <div className="flex flex-wrap overflow-hidden rounded border border-line text-xs">
           {TYPES.map((x) => (
             <button key={x} type="button" className={clsx('px-2 py-0.5', type === x ? 'bg-brand-strong text-on-brand' : 'text-muted hover:text-ink')} onClick={() => setType(x)}>
               {t(`notif.type.${x}`)}
@@ -45,7 +45,7 @@ function Row({ n, open, onToggle }: { n: NotificationItem; open: boolean; onTogg
   const who = n.recipient_type === 'client' ? (n.client_name ?? (n.client_id ? `#${n.client_id}` : t('notif.unknownClient'))) : n.recipient_type === 'team' ? (n.team_code ?? t('notif.type.team')) : t(`notif.type.${n.recipient_type ?? 'cx'}`)
   return (
     <li className="cursor-pointer px-3 py-2 hover:bg-raised" onClick={onToggle}>
-      <div className="flex items-center gap-2 text-sm">
+      <div className="notification-row flex items-center gap-2 text-sm">
         <span className="num w-20 shrink-0 text-xs text-muted">{fmtSim(n.sent_sim)}</span>
         <Badge tone={n.recipient_type === 'client' ? 'info' : n.recipient_type === 'public' ? 'warn' : 'neutral'}>{t(`notif.type.${n.recipient_type ?? 'cx'}`)}</Badge>
         <span className="w-40 shrink-0 truncate font-medium">{who}</span>

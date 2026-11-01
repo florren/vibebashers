@@ -1,15 +1,17 @@
 import { GlobalSearch } from '@/shared/components/GlobalSearch'
 import { clsx } from 'clsx'
-import { Activity, Gauge, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Activity, Gauge, Menu, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LONG_PRESS_MS, useDemoMenu } from './DemoMenu'
 import { useSimControl, useSimState } from '@/shared/api/hooks'
 import { fmtSim } from '@/shared/lib/format'
 import { ThemeSelector } from '@/shared/theme'
 import { useWs } from '@/shared/ws/client'
-import { Badge } from '@/shared/ui'
+import { DeviceSelector } from '@/shared/layout/device'
+import { useMobileLayout } from '@/shared/layout/device-store'
+import { Badge, Drawer } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
 
 const SPEEDS = [1, 10, 60, 120, 300]
@@ -26,6 +28,16 @@ export function Header() {
   const sim = live ?? q.data ?? null
   const ctl = useSimControl()
   const [jury, setJury] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const mobile = useMobileLayout()
+  const location = useLocation()
+  useEffect(() => setMenu(false), [mobile])
+  const links: [string, string][] = [
+    ['/', t('nav.workspace')], ['/journey', t('journeyUi.title')], ['/finance', t('finance.title')],
+    ['/engine', t('nav.engine')], ['/compliance', t('nav.compliance')], ['/manager', t('nav.manager')],
+    ['/feed', t('nav.feed')], ['/trace', t('traceUi.title')], ['/claim', t('nav.claim')], ['/setup', t('nav.settings')],
+  ]
+  const title = links.find(([path]) => path !== '/' && location.pathname.startsWith(path))?.[1] ?? t('nav.workspace')
 
   const running = !!sim?.running
   const runStatus = sim?.current_run_status ?? null
@@ -50,8 +62,45 @@ export function Header() {
     if (!longTriggered.current) navigate('/')
   }
 
+  if (mobile) return <>
+    <header className="mobile-header shrink-0 border-b border-line bg-surface">
+      <div className="flex min-h-14 items-center gap-2 px-3 py-2">
+        <button type="button" className="btn btn-primary mobile-icon" aria-label={t('app.title')} onPointerDown={onLogoDown} onPointerUp={onLogoUp} onPointerLeave={clearPress} onPointerCancel={clearPress}><Activity size={20} /></button>
+        <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
+        <GlobalSearch compact />
+        <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
+      </div>
+      <div className="flex items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
+        <span className="num font-mono">{fmtSim(sim?.sim_time, 'dd.MM HH:mm')}</span>
+        <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{t(`sim.status.${runStatus ?? 'none'}`)}</span>
+      </div>
+    </header>
+    <Drawer open={menu} onClose={() => setMenu(false)} title={t('device.menu')} width="w-[360px]">
+      <nav className="mobile-nav grid grid-cols-2 gap-2 p-3" aria-label={t('device.navigation')}>
+        {links.map(([path, label]) => <NavLink key={path} to={path} end={path === '/'} onClick={() => setMenu(false)} className={({ isActive }) => clsx('flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm', isActive ? 'border-brand bg-brand-soft font-semibold' : 'border-line')}>{label}</NavLink>)}
+      </nav>
+      <div className="space-y-4 border-t border-line p-4">
+        <DeviceSelector />
+        <ThemeSelector className="grid gap-2" />
+        <div className="flex flex-wrap gap-2">
+          <button className="btn" onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'ru' : 'en')}>{i18n.language === 'en' ? 'RU' : 'EN'}</button>
+          <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t('common.jury')}</button>
+        </div>
+        <section className="space-y-2" aria-label={t('sim.clock')}>
+          <p className="text-xs text-muted">{t('sim.clock')} · {fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn" disabled={ctl.isPending} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
+            <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
+          </div>
+          <label className="flex items-center gap-2 text-sm">{t('sim.speed')}<select className="input" value={sim?.speed ?? 1} disabled={ctl.isPending} onChange={e => ctl.mutate({ action: 'set_speed', speed: Number(e.target.value) })}>{[...new Set([...SPEEDS, sim?.speed ?? 1])].sort((a,b) => a-b).map(speed => <option key={speed} value={speed}>{t('sim.speedX', { n: speed })}</option>)}</select></label>
+        </section>
+      </div>
+    </Drawer>
+    <JuryModal open={jury} onClose={() => setJury(false)} />
+  </>
+
   return (
-    <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-line bg-surface px-3">
+    <header className="desktop-header flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-line bg-surface px-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -147,6 +196,7 @@ export function Header() {
         {i18n.language === 'en' ? 'RU' : 'EN'}
       </button>
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
+      <DeviceSelector />
       <JuryModal open={jury} onClose={() => setJury(false)} />
     </header>
   )

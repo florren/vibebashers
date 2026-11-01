@@ -18,7 +18,7 @@ export function JourneyPage() {
   const [subject, setSubject] = useState<string>()
   const reference = ref ?? subject
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="journey-page flex h-full min-h-0 flex-col">
       <nav aria-label={t('journeyModes.modes')} className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-2">
         {(['follow', 'replay', 'presenter'] as const).map((m) => (
           <Link

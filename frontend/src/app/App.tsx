@@ -1,3 +1,4 @@
+import { DeviceLayoutRuntime } from '@/shared/layout/device'
 import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
@@ -22,6 +23,7 @@ export function App() {
   useEffect(() => connectWs(qc), [qc])
   return (
     <QueryClientProvider client={qc}>
+      <DeviceLayoutRuntime />
       <ThemeRuntime />
       <BrowserRouter>
         <Routes>

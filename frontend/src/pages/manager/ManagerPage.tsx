@@ -21,7 +21,7 @@ export function ManagerPage() {
   const items = q.data ?? []
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-3">
+      <div className="manager-toolbar flex h-12 shrink-0 items-center gap-3 border-b border-line px-3">
         <ShieldAlert size={18} className="text-brand" />
         <div className="min-w-0">
           <div className="text-sm font-semibold">{t('manager.title')}</div>

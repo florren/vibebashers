@@ -42,10 +42,10 @@ export function IncidentPage() {
   if (!inc) return <Empty title={t('incident.notFound')} />
 
   return (
-    <div className="flex h-full">
+    <div className="page-split flex h-full">
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="border-b border-line bg-surface px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <Link to="/?tab=incidents" className="btn btn-ghost btn-sm">
               <ArrowLeft size={14} /> {t('common.back')}
             </Link>
@@ -191,7 +191,7 @@ export function IncidentPage() {
           {tab === 'economics' && <IncidentEconomics id={id!} />}
         </div>
       </div>
-      <aside className="hidden w-[380px] shrink-0 border-l border-line xl:block">
+      <aside className="mobile-secondary hidden w-[380px] shrink-0 border-l border-line xl:block">
         <LogPanel runId={runId} />
       </aside>
       <SignalDrawer id={signalId} onClose={() => setSignalId(null)} />

@@ -34,7 +34,7 @@ export function EnginePage() {
   const selectedRun = useAgentRun(runId)
 
   return (
-    <div className="flex h-full">
+    <div className="page-split flex h-full">
       <aside className="flex w-80 shrink-0 flex-col border-r border-line">
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('engine.runs')}</span>

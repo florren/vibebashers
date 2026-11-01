@@ -1,0 +1,118 @@
+/* Режим устройства отделён от цветовой темы и плотности. Все цвета — существующие токены. */
+html[data-device-preference='desktop'] .app-shell { min-width: 1100px; }
+html[data-device='desktop'] .filter-summary { display: none; }
+.mobile-icon { width: 44px; height: 44px; padding: 0; justify-content: center; flex-shrink: 0; }
+
+html[data-device='mobile'], html[data-device='mobile'] body, html[data-device='mobile'] #root {
+  height: auto;
+  min-height: 100dvh;
+}
+html[data-device='mobile'] .app-shell {
+  height: auto;
+  min-height: 100dvh;
+  min-width: 0;
+  width: 100%;
+}
+html[data-device-preference='mobile'] .app-shell { max-width: 480px; margin-inline: auto; }
+html[data-device='mobile'] .app-content {
+  min-width: 0;
+  flex: 1 0 auto;
+}
+html[data-device='mobile'] .app-content > * { height: auto; min-width: 0; }
+html[data-device='mobile'] .app-content :where(section, article, main, aside, .card, .grid > *) { min-width: 0; max-width: 100%; }
+html[data-device='mobile'] .app-content :where(p, h1, h2, h3, dd, .num, label) { overflow-wrap: anywhere; }
+html[data-device='mobile'] .app-content :where(.truncate, .line-clamp-1, .line-clamp-2) {
+  overflow: visible; white-space: normal; text-overflow: clip; -webkit-line-clamp: unset; display: block;
+}
+html[data-device='mobile'] .app-content .grid { grid-template-columns: minmax(0, 1fr); }
+html[data-device='mobile'] .app-content .kpi-strip, html[data-device='mobile'] .app-content .feed-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html[data-device='mobile'] .kpi-strip { gap: 8px; padding: 12px; }
+html[data-device='mobile'] .kpi-card { display: flex; flex-direction: column; justify-content: space-between; gap: 6px; padding: 12px; }
+html[data-device='mobile'] .kpi-label { font-size: 12px; line-height: 1.4; text-transform: none; letter-spacing: normal; }
+html[data-device='mobile'] .kpi-card .num { font-size: 23px; line-height: 1.15; }
+html[data-device='mobile'] .kpi-toggle { grid-column: 1 / -1; }
+html[data-device='mobile'] .workspace-body,
+html[data-device='mobile'] .signals-feed,
+html[data-device='mobile'] .signals-list,
+html[data-device='mobile'] .journey-page,
+html[data-device='mobile'] .journey-content {
+  height: auto; overflow: visible; flex: 1 0 auto;
+}
+html[data-device='mobile'] .signals-feed { flex-direction: column; }
+html[data-device='mobile'] .signal-filters { width: 100%; max-height: none; overflow: visible; padding: 8px 12px; }
+html[data-device='mobile'] .filter-summary { padding-block: 12px; min-height: 44px; font-size: 14px; }
+html[data-device='mobile'] .responsive-filters[open] > :not(summary) { margin-top: 12px; }
+html[data-device='mobile'] .signals-list > ul { padding: 12px; }
+html[data-device='mobile'] .signals-list > ul > li { margin-bottom: 12px; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); }
+html[data-device='mobile'] .signal-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 12px; gap: 8px; }
+html[data-device='mobile'] .signal-row > :first-child { width: auto; grid-column: 1; grid-row: 1; }
+html[data-device='mobile'] .signal-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+html[data-device='mobile'] .signal-row > :last-child { grid-column: 2; grid-row: 1; }
+html[data-device='mobile'] .signal-row .text-\[13px\] { font-size: 15px; line-height: 1.55; }
+html[data-device='mobile'] .app-content [role='tablist'] { width: 100%; min-width: 0; }
+html[data-device='mobile'] .app-content [role='tab'] { height: 44px; }
+html[data-device='mobile'] .page-split { flex-direction: column; }
+html[data-device='mobile'] .page-split > aside { width: 100%; max-height: 320px; overflow: auto; border-right: 0; border-bottom: 1px solid rgb(var(--line)); }
+html[data-device='mobile'] .page-split > .mobile-secondary { display: block; max-height: none; height: auto; }
+html[data-device='mobile'] .page-split > :not(aside) { width: 100%; height: auto; overflow: visible; flex: 1 0 auto; }
+html[data-device='mobile'] .journey-content { padding: 12px; }
+html[data-device='mobile'] .journey-content h1 { font-size: 22px; }
+html[data-device='mobile'] .journey-content .max-h-80 { max-height: none; }
+html[data-device='mobile'] .journey-page > nav { flex-wrap: wrap; padding: 8px 12px; }
+html[data-device='mobile'] .journey-page > nav label { margin-left: 0; width: 100%; padding-block: 6px; }
+html[data-device='mobile'] .journey-page details { padding-inline: 12px; }
+html[data-device='mobile'] .journey-page details summary { padding-block: 8px; line-height: 1.5; }
+html[data-device='mobile'] .finance-page { padding: 12px; }
+html[data-device='mobile'] .finance-page :where(.text-4xl, .text-5xl) { font-size: 32px; }
+html[data-device='mobile'] .finance-page label { flex-wrap: wrap; }
+html[data-device='mobile'] .finance-page section { max-width: 100%; }
+html[data-device='mobile'] .finance-case-list dd { margin: 0; }
+html[data-device='mobile'] .app-content .kv-row { flex-wrap: wrap; }
+html[data-device='mobile'] .app-content .kv-row > :last-child { text-align: left; }
+html[data-device='mobile'] .app-content pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+html[data-device='mobile'] .app-content table { min-width: 560px; }
+html[data-device='mobile'] :where(.app-shell, [role='dialog']) .btn,
+html[data-device='mobile'] :where(.app-shell, [role='dialog']) .chip { min-height: 44px; height: auto; padding-block: 8px; white-space: normal; }
+html[data-device='mobile'] :where(.app-shell, [role='dialog']) .input { min-height: 44px; height: auto; font-size: 16px; max-width: 100%; }
+html[data-device='mobile'] [role='dialog'] { max-width: 100vw; }
+html[data-device='mobile'] [role='dialog'] > .fade-in { padding-bottom: env(safe-area-inset-bottom); }
+html[data-device='mobile'] .device-selector { flex-wrap: wrap; }
+html[data-device='mobile'] .device-selector select { flex: 1; }
+html[data-device='mobile'] .mobile-nav a { min-width: 0; overflow-wrap: anywhere; }
+html[data-device='mobile'] .trace-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+html[data-device='mobile'] .trace-columns { display: block; }
+html[data-device='mobile'] .trace-columns > section { display: none; border: 0; }
+html[data-device='mobile'] .trace-columns[data-tab='before'] > .trace-before,
+html[data-device='mobile'] .trace-columns[data-tab='subject'] > .trace-subject,
+html[data-device='mobile'] .trace-columns[data-tab='after'] > .trace-after { display: block; }
+
+html[data-device='mobile'] .app-content select { min-width: 0; width: 100%; }
+html[data-device='mobile'] .journey-page details label { max-width: 100%; min-width: 0; }
+html[data-device-preference='mobile'] .personal-shell { max-width: 480px; margin-inline: auto; }
+html[data-device='mobile'] .personal-shell main { grid-template-columns: minmax(0, 1fr); }
+html[data-device='mobile'] .personal-shell .btn,
+html[data-device='mobile'] .personal-shell .input { min-height: 44px; font-size: 16px; }
+html[data-device='mobile'] .personal-shell section { height: auto; }
+
+html[data-device='mobile'] .notification-row { flex-wrap: wrap; align-items: flex-start; }
+html[data-device='mobile'] .notification-row > .flex-1 { flex-basis: 100%; order: 1; overflow-wrap: anywhere; }
+html[data-device='mobile'] .notification-row .w-40 { width: auto; max-width: 100%; }
+html[data-device='mobile'] .notification-row .num { width: auto; }
+
+html[data-device='mobile'] .incident-filters { height: auto; flex-wrap: wrap; padding-block: 8px; }
+html[data-device='mobile'] .incident-board { flex-direction: column; }
+html[data-device='mobile'] .incident-board > div { width: 100%; }
+
+html[data-device='mobile'] [role='dialog'] :where(p, pre, dd, label, h2, h3) { overflow-wrap: anywhere; }
+html[data-device='mobile'] [role='dialog'] :where(.truncate, .line-clamp-2) { white-space: normal; overflow: visible; text-overflow: clip; -webkit-line-clamp: unset; }
+html[data-device='mobile'] [role='dialog'] .grid:not(.mobile-nav) { grid-template-columns: minmax(0, 1fr); }
+html[data-device='mobile'] [role='dialog'] .kv-row { flex-wrap: wrap; }
+html[data-device='mobile'] [role='dialog'] .kv-row > :last-child { text-align: left; }
+html[data-device='mobile'] [role='dialog'] header { height: auto; min-height: 44px; gap: 8px; padding-block: 4px; }
+
+html[data-device='mobile'] .mobile-header .btn { min-width: 44px; }
+
+html[data-device='mobile'] .app-content label { min-width: 0; max-width: 100%; }
+
+html[data-device='mobile'] .manager-toolbar { display: grid; grid-template-columns: 24px minmax(0, 1fr); height: auto; gap: 8px; padding-block: 12px; }
+html[data-device='mobile'] .manager-toolbar :is(.input, label) { grid-column: 1 / -1; width: 100%; margin: 0; white-space: normal; }

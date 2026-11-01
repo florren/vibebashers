@@ -38,7 +38,7 @@ export function CompliancePage() {
   const [live, setLive] = useState(false)
 
   return (
-    <div className="flex h-full">
+    <div className="page-split flex h-full">
       <aside className="flex w-96 shrink-0 flex-col border-r border-line">
         <div className="flex h-10 shrink-0 items-center gap-1 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('compliance.transcripts')}</span>

@@ -1,3 +1,4 @@
+import { useMobileLayout } from '@/shared/layout/device-store'
 import { EntityFilter } from '@/shared/components/EntityFilter'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -40,7 +41,8 @@ function AnimatedMoney({ value }: { value: number }) {
 
 function GrowthChart({ series }: { series: Total['series'] }) {
   const el = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const mobile = useMobileLayout()
   useEffect(() => {
     if (!el.current) return
     const textColor = getComputedStyle(el.current).color
@@ -48,10 +50,10 @@ function GrowthChart({ series }: { series: Total['series'] }) {
     chart.setOption({
       color: ['#21A038', '#0098F8'],
       tooltip: { trigger: 'axis', valueFormatter: (v: number) => fmtRub(v) },
-      legend: { data: [t('finance.saved'), t('finance.net')], textStyle: { color: textColor } },
-      grid: { left: 80, right: 20, top: 40, bottom: 36 },
-      xAxis: { type: 'category', data: series.map((p) => fmtSim(p.time)), boundaryGap: false, axisLabel: { color: textColor } },
-      yAxis: { type: 'value', axisLabel: { color: textColor } },
+      legend: { type: 'scroll', data: [t('finance.saved'), t('finance.net')], textStyle: { color: textColor } },
+      grid: { left: mobile ? 62 : 80, right: mobile ? 8 : 20, top: 48, bottom: 36 },
+      xAxis: { type: 'category', data: series.map((p) => mobile ? fmtSim(p.time, 'dd.MM') : fmtSim(p.time)), boundaryGap: false, axisLabel: { color: textColor } },
+      yAxis: { type: 'value', axisLabel: { color: textColor, ...(mobile ? { formatter: (v: number) => new Intl.NumberFormat(i18n.language, { notation: 'compact', maximumFractionDigits: 1 }).format(v) } : {}) } },
       series: [
         { name: t('finance.saved'), type: 'line', step: 'end', data: series.map((p) => p.saved_rub), areaStyle: { opacity: 0.08 } },
         { name: t('finance.net'), type: 'line', step: 'end', data: series.map((p) => p.net_rub) },
@@ -65,11 +67,12 @@ function GrowthChart({ series }: { series: Total['series'] }) {
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-mode', 'data-pack'] })
     return () => { observer.disconnect(); themeObserver.disconnect(); chart.dispose() }
-  }, [series, t])
+  }, [series, t, i18n.language, mobile])
   return <div ref={el} className="h-64 w-full" role="img" aria-label={t('finance.chart')} />
 }
 
 export function FinancePage() {
+  const mobile = useMobileLayout()
   const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const [products, setProducts] = useState<ProductSelection>({ mode: 'all', codes: [] })
@@ -107,7 +110,7 @@ export function FinancePage() {
     enabled: incident !== null,
   })
   const change = () => { setOffset(0); setIncident(null) }
-  return <div className="h-full overflow-auto p-4 md:p-6">
+  return <div className="finance-page h-full overflow-auto p-4 md:p-6">
     <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-2xl font-semibold">{t('finance.title')}</h1><p className="mt-1 text-sm text-muted">{t('finance.subtitle')}</p></div>
@@ -161,7 +164,13 @@ export function FinancePage() {
           {d.series.length ? <GrowthChart series={d.series} /> : <p className="py-10 text-center text-muted">{t('finance.empty')}</p>}
         </section>
         <section className="card overflow-hidden"><h2 className="p-4 font-semibold">{t('finance.ledger')}</h2>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-raised text-left text-xs text-muted"><tr>
+          {mobile ? <ul className="finance-case-list divide-y divide-line">{d.items.map(item => <li key={item.incident_id} className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><button className="btn btn-sm text-info" onClick={() => setIncident(item.public_id)}>{item.public_id}</button><span className="text-xs text-muted">{fmtSim(item.resolved_sim)}</span></div>
+            <p className="text-sm">{item.product_name} · {tEnum('incidentType', item.incident_type)}</p>
+            <p className="text-xs text-muted">{t('finance.client')}: {item.client_public_id ?? '—'} · LTV {fmtRub(item.client_ltv_rub)}</p>
+            <dl className="space-y-2">{([['saved', item.saved_rub], ['refund', item.refund_rub], ['net', item.net_rub]] as const).map(([key, value]) => <div key={key} className="flex flex-wrap justify-between gap-2 text-sm"><dt className="text-muted">{t(`finance.${key}`)}</dt><dd className="num font-semibold">{item.missing ? '—' : fmtRub(value)}</dd></div>)}</dl>
+            <p className="text-xs">{tEnum('incident.status', item.status)}{(item.stale || item.missing) && <span className="ml-2 text-warn">{t('finance.stale')}</span>}</p>
+          </li>)}</ul> : <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-raised text-left text-xs text-muted"><tr>
             {['time', 'case', 'product', 'client', 'saved', 'refund', 'net', 'status'].map((k) => <th key={k} className="p-3">{t(`finance.${k}`)}</th>)}
           </tr></thead><tbody className="divide-y divide-line">{d.items.map((item) => <tr key={item.incident_id}>
             <td className="whitespace-nowrap p-3">{fmtSim(item.resolved_sim)}</td>
@@ -169,7 +178,7 @@ export function FinancePage() {
             <td className="p-3">{item.product_name}</td><td className="p-3">{item.client_public_id ?? '—'}<div className="text-xs text-muted">LTV {fmtRub(item.client_ltv_rub)}</div></td>
             <td className="p-3 num text-ok">{item.missing ? '—' : fmtRub(item.saved_rub)}</td><td className="p-3 num">{item.missing ? '—' : fmtRub(item.refund_rub)}</td><td className="p-3 num">{item.missing ? '—' : fmtRub(item.net_rub)}</td>
             <td className="p-3">{tEnum('incident.status', item.status)}{(item.stale || item.missing) && <div className="text-xs text-warn">{t('finance.stale')}</div>}</td>
-          </tr>)}</tbody></table></div>
+          </tr>)}</tbody></table></div>}
           {!d.items.length && <p className="p-6 text-muted">{t('finance.empty')}</p>}
           <div className="flex items-center justify-end gap-3 border-t border-line p-3">
             <button className="btn btn-sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 25))}>{t('finance.previous')}</button>

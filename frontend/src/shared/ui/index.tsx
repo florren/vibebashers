@@ -1,6 +1,7 @@
 import { clsx } from 'clsx'
+import { useDialogFocus } from '@/shared/layout/useDialogFocus'
 import { X } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/shared/api/client'
 
@@ -78,7 +79,7 @@ export function Section({ title, children, right, className }: { title: ReactNod
 
 export function KV({ k, v, mono }: { k: ReactNode; v: ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1 text-sm">
+    <div className="kv-row flex items-baseline justify-between gap-3 py-1 text-sm">
       <span className="shrink-0 text-muted">{k}</span>
       <span className={clsx('min-w-0 truncate text-right', mono && 'font-mono text-xs')}>{v ?? '—'}</span>
     </div>
@@ -98,20 +99,16 @@ export function Drawer({
   children: ReactNode
   width?: string
 }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    addEventListener('keydown', onKey)
-    return () => removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useDialogFocus(open, onClose)
+  const { t } = useTranslation()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal>
-      <button className="absolute inset-0 bg-black/30" aria-label="close" onClick={onClose} />
-      <aside className={clsx('fade-in relative flex h-full max-w-full flex-col border-l border-line bg-surface shadow-2xl', width)}>
+      <button className="absolute inset-0 bg-black/30" aria-label={t('common.close')} onClick={onClose} />
+      <aside ref={panel} className={clsx('fade-in relative flex h-full max-w-full flex-col border-l border-line bg-surface shadow-2xl', width)}>
         <header className="flex h-11 shrink-0 items-center justify-between border-b border-line px-4">
           <div className="min-w-0 truncate text-sm font-semibold">{title}</div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="close">
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label={t('common.close')}>
             <X size={14} />
           </button>
         </header>
@@ -134,20 +131,16 @@ export function Modal({
   children: ReactNode
   width?: string
 }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    addEventListener('keydown', onKey)
-    return () => removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  const panel = useDialogFocus(open, onClose)
+  const { t } = useTranslation()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-6 pt-[8vh]" role="dialog" aria-modal>
-      <button className="fixed inset-0 bg-black/30" aria-label="close" onClick={onClose} />
-      <div className={clsx('fade-in relative w-full rounded-xl border border-line bg-surface shadow-2xl', width)}>
+      <button className="fixed inset-0 bg-black/30" aria-label={t('common.close')} onClick={onClose} />
+      <div ref={panel} className={clsx('fade-in relative w-full rounded-xl border border-line bg-surface shadow-2xl', width)}>
         <header className="flex h-11 items-center justify-between border-b border-line px-4">
           <div className="text-sm font-semibold">{title}</div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="close">
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label={t('common.close')}>
             <X size={14} />
           </button>
         </header>

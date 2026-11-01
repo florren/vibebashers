@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react'
 import { JourneyLink } from './JourneyLink'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -6,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/shared/routes'
 import { searchObjects } from '@/shared/api/trace'
 
-export function GlobalSearch({ inline = false }: { inline?: boolean }) {
+export function GlobalSearch({ inline = false, compact = false }: { inline?: boolean; compact?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(inline)
@@ -34,14 +35,14 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
         e.preventDefault()
         setOpen(true)
       }
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && open && !e.defaultPrevented) {
         setOpen(false)
         trigger.current?.focus()
       }
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [inline])
+  }, [inline, open])
   useEffect(() => {
     if (open) field.current?.focus()
   }, [open])
@@ -161,8 +162,8 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   if (inline) return content
   return (
     <>
-      <button ref={trigger} type="button" className="btn btn-sm shrink-0" onClick={() => setOpen(true)}>
-        {t('traceUi.search')} <kbd>Ctrl+K</kbd>
+      <button ref={trigger} type="button" className="btn btn-sm shrink-0" aria-label={compact ? t('traceUi.search') : undefined} onClick={() => setOpen(true)}>
+        {compact ? <Search size={19} /> : <>{t('traceUi.search')} <kbd>Ctrl+K</kbd></>}
       </button>
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-start bg-black/40 pt-[10vh]" onClick={close}>
