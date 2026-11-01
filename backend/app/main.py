@@ -35,6 +35,8 @@ from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
+from app.sim.maintenance_control import ControlError, MaintenanceControl
+from app.sim.maintenance_db import DatabaseBoundary
 from app.sim.twins import TwinService
 from app.stt import audio_ws
 
@@ -145,6 +147,12 @@ async def _park_runtime(app: FastAPI) -> None:
 
 
 async def _resume_runtime(app: FastAPI) -> None:
+    if getattr(app.state, "maintenance_startup_recovery", False):
+        await _prepare_runtime_profiles(app)
+        if not get_settings().is_test:
+            await _abs_backfill()
+            bridge.start()
+        app.state.maintenance_startup_recovery = False
     components = set(getattr(app.state, "maintenance_saved_components", set()))
     # Завершённые benchmark записи/ключи не должны ссылаться на переиспользованные ID.
     app.state.bench = BenchService()
@@ -153,12 +161,31 @@ async def _resume_runtime(app: FastAPI) -> None:
         del app.state.maintenance_saved_components
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def _initialize_maintenance(app: FastAPI) -> bool:
+    coordinator = app.state.maintenance
+    control = coordinator.control
+    if control is None:
+        return False
+    try:
+        if control.read() is None:
+            # Bootstrap не пересоздаёт уже существующий failed/corrupt marker.
+            await coordinator.boundary.acquire()
+            try:
+                control.initialize_missing()
+            finally:
+                await coordinator.boundary.release()
+        control.require_idle()
+        return False
+    except ControlError:
+        coordinator.phase = "failed"
+        coordinator.failure = "IncompleteMaintenance"
+        coordinator._ready.clear()
+        log.error("baseline_maintenance_recovery_required")
+        return True
+
+
+async def _prepare_runtime_profiles(app: FastAPI) -> None:
     s = get_settings()
-    configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
-    app.state.llm_chain = build_chain(s)
-    app.state.llm_profile = default_profile(s)
     if not s.is_test:
         await refresh_roles(app, s)
         for provider in app.state.llm_chain.providers:
@@ -166,6 +193,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 await provider.prepare(list(app.state.llm_chain.role_profiles.values()))
     if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
         await _sync_openrouter_models(app.state.llm_chain)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    s = get_settings()
+    configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
+    recovering = await _initialize_maintenance(app)
+    app.state.llm_chain = build_chain(s)
+    app.state.llm_profile = default_profile(s)
+    if not recovering:
+        await _prepare_runtime_profiles(app)
     log.info(
         "startup",
         env=s.app_env,
@@ -179,7 +217,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.agent = None
     app.state.twins = None
     app.state.runtime_components = set()
-    if not s.is_test:
+    if recovering:
+        app.state.sim = Simulator(seed=s.sim_seed)
+        app.state.sim.full_execution = True
+        app.state.maintenance_saved_components = (
+            {"agent", "twins", "poll", "demo", "public"} if not s.is_test else set()
+        )
+        app.state.maintenance_startup_recovery = True
+    if not s.is_test and not recovering:
         bridge.start()
         sim = Simulator(seed=s.sim_seed)
         sim.full_execution = True
@@ -189,7 +234,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
-    if not s.is_test:
+    if not s.is_test and not recovering:
         await _start_runtime(app, {"agent", "twins", "poll", "demo", "public"})
     yield
     try:
@@ -197,6 +242,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         log.warning("restore_failed_at_shutdown", error_type=type(exc).__name__)
     await _park_runtime(app)
+    if app.state.maintenance.boundary is not None:
+        await app.state.maintenance.boundary.release()
     await bridge.stop()
     for provider in app.state.llm_chain.providers:
         if isinstance(provider, GigaChatProvider):
@@ -225,7 +272,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if s.app_env != "prod" else None,
         openapi_url="/openapi.json",
     )
-    app.state.maintenance = MaintenanceCoordinator()
+    app.state.maintenance = MaintenanceCoordinator(boundary=DatabaseBoundary(), control=MaintenanceControl())
     app.state.maintenance_park = lambda: _park_runtime(app)
     app.state.maintenance_resume = lambda: _resume_runtime(app)
     app.add_middleware(MaintenanceMiddleware, coordinator=app.state.maintenance)

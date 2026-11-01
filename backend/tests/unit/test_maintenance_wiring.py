@@ -32,6 +32,8 @@ class Connection:
 @pytest.fixture
 def wired(monkeypatch):
     app = create_app()
+    app.state.maintenance.boundary = None
+    app.state.maintenance.control = None
     connection = Connection()
     sim = SimpleNamespace(
         clock=SimpleNamespace(running=False),

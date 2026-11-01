@@ -41,6 +41,8 @@ def _problem_text(res: Any) -> str:
 
 
 def _attach_mock_sim(client: TestClient) -> MagicMock:
+    client.app.state.maintenance.boundary = None
+    client.app.state.maintenance.control = None
     sim = MagicMock()
     sim.clock.running = False
     sim.run_status = "completed"

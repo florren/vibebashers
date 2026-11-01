@@ -9,11 +9,15 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, Protocol, TypeVar
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.errors import Problem
+from app.logging import get_logger
+from app.sim.maintenance_control import ControlError, MaintenanceControl
+
+log = get_logger(__name__)
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -49,8 +53,21 @@ async def completion[R](task: asyncio.Task[R], *, propagate_cancel: bool) -> R:
     return task.result()
 
 
+class RestoreBoundary(Protocol):
+    async def acquire(self) -> None: ...
+    async def release(self) -> None: ...
+
+
 class MaintenanceCoordinator:
-    def __init__(self, *, drain_timeout: float = 30) -> None:
+    def __init__(
+        self,
+        *,
+        drain_timeout: float = 30,
+        boundary: RestoreBoundary | None = None,
+        control: MaintenanceControl | None = None,
+    ) -> None:
+        self.boundary = boundary
+        self.control = control
         self.drain_timeout = drain_timeout
         self.phase = "ready"
         self.epoch = 0
@@ -173,21 +190,33 @@ class MaintenanceCoordinator:
             self._owner = asyncio.current_task()
             try:
                 with self.bind():
+                    if self.control is not None:
+                        self.control.write("draining", job_id)
                     await self._drain(initiator)
+                    if self.boundary is not None:
+                        await self.boundary.acquire()
                     if preflight is not None:
                         await preflight()
                     effects = True
+                    if self.control is not None:
+                        self.control.write("restoring", job_id)
                     if park is not None:
                         await park()
                     self.phase = "restoring"
                     self._changed.set()
                     result = await action(job_id)
                     self.phase = "reloading"
+                    if self.control is not None:
+                        self.control.write("reloading", job_id)
                     if resume is not None:
                         await resume()
                     self.epoch += 1
                     if initiator is not None and initiator in self._records:
                         self._records[initiator].epoch = self.epoch
+                    if self.boundary is not None:
+                        await self.boundary.release()
+                    if self.control is not None:
+                        self.control.write("idle")
                     self.failure = None
                     self.phase = "ready"
                     self._ready.set()
@@ -196,6 +225,22 @@ class MaintenanceCoordinator:
             except BaseException as exc:
                 self.failure = type(exc).__name__
                 self.phase = "failed" if effects else previous
+                if not effects and self.boundary is not None:
+                    try:
+                        await self.boundary.release()
+                    except BaseException:
+                        self.phase = "failed"
+                        self._changed.set()
+                        raise
+                if self.control is not None:
+                    try:
+                        self.control.write(
+                            "idle" if self.phase == "ready" else "failed", None if self.phase == "ready" else job_id
+                        )
+                    except ControlError:
+                        self.phase = "failed"
+                        log.error("baseline_maintenance_control_failed", job_id=job_id)
+                log.warning("baseline_maintenance_failed", error_type=self.failure, phase=self.phase, job_id=job_id)
                 if self.phase == "ready":
                     self._ready.set()
                 self._changed.set()

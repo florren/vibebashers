@@ -20,6 +20,7 @@ from app.sim import run_lifecycle, run_summary
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator
+from app.sim.maintenance_control import ControlError
 
 router = APIRouter(tags=["sim"])
 
@@ -186,7 +187,7 @@ async def _restore_baseline(request: Request) -> str:
             park=request.app.state.maintenance_park,
             resume=request.app.state.maintenance_resume,
         )
-    except (baseline_svc.BaselineUnavailableError, baseline_svc.BaselineToolingError) as exc:
+    except (baseline_svc.BaselineUnavailableError, baseline_svc.BaselineToolingError, ControlError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
