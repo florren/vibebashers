@@ -26,3 +26,5 @@ Parser defect подтверждён независимо, но не объяв�
 137 targeted unit tests parser/Mock/normalize и существующих normalization suites — успешно. Отдельная scratch PostgreSQL16 integration fixture задаёт явное sim-time/операцию в окне, payment `Decimal('5472.45')` и fee `Decimal('54.72')`. Граф завершился; normalization hint 5472.45, существующее правило разрешило fast path, fee/refund ledger оба точно 54.72, human_decisions не созданы. Это проверка сохранности существующей policy, не её расширение. Полный lint/test успешен — точные результаты в отчёте карточки; финальный unit suite 782 passed/18 skipped, decimal graph/ledger regression повторён на окончательном коде (1 passed).
 
 Внешние LLM/Telegram/email не вызывались. БД только отдельная `cx_money_normalization_revision` на согласованном scratch сервере; чужие БД не изменялись.
+
+02.11.2026: техлид подтвердил конкретный финансовый input diff PR #161 в чате. Финальные правила/лимиты не менялись; merge допускается после зелёного CI актуального состава. Для межслойных файлов PR помечен cross-layer согласно ранее выданному разрешению.
