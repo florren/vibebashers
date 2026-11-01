@@ -146,6 +146,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if app.state.sim is not None:
         await app.state.sim.shutdown()
     await bridge.stop()
+    for provider in app.state.llm_chain.providers:
+        if isinstance(provider, GigaChatProvider):
+            await provider.aclose()
 
 
 def include_api_routers(app: FastAPI) -> list[str]:

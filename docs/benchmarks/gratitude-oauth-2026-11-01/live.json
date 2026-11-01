@@ -1,0 +1,28 @@
+{
+  "signal": "SIG-000811",
+  "parent": "SIG-000809",
+  "type": "gratitude",
+  "outcome": "completed",
+  "body": "Спасибо за тёплые слова! Рады, что помогли разобраться с условиями вклада и приложением. Если появятся вопросы — мы на связи.",
+  "proactive_oauth_requests": 2,
+  "oauth_during_graph": 0,
+  "seconds": 6.28,
+  "llm_calls": [
+    {
+      "source": "live",
+      "model": "GigaChat-3-Lightning:32.4.16.3"
+    },
+    {
+      "source": "live",
+      "model": "GigaChat-3-Ultra:32.9.16.9"
+    },
+    {
+      "source": "live",
+      "model": "GigaChat-3-Ultra:32.9.16.9"
+    }
+  ],
+  "all_llm_calls_live": true,
+  "no_new_incident": true,
+  "historical_fallback_46_preserved": true,
+  "clock_unchanged": true
+}
