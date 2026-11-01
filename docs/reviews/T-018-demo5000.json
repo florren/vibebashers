@@ -2,7 +2,7 @@
   "profile": "demo",
   "clients_requested": 5000,
   "seed_exit_code": 0,
-  "wall_seconds": 20.947,
+  "wall_seconds": 21.799,
   "environment": "shared local PostgreSQL16 testcontainer; synthetic data/mock-only; concurrent other agent tests possible",
   "clients": 5000,
   "operations": 600000,
@@ -24,6 +24,6 @@
     "fault.started": 41
   },
   "regression_candidates": 5,
-  "source_code_head": "09021e16e230ec1ac0b4babf12ed03cbd3755540",
+  "source_code_head": "cd0b9a4b6c5d0f3b963678bbf09af1d61ae2a8c8",
   "date": "2026-11-02"
 }
