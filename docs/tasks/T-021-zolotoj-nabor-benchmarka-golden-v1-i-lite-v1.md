@@ -30,8 +30,8 @@
 4. Загрузчик scripts/seed/bench.py.
 
 ## Критерии приёмки
-- [ ] Наборы валидны по JSON, загружаются; у каждого кейса полный gold.
-- [ ] Разметка согласована ≥ 95 % при перекрёстной проверке.
+- [x] Наборы валидны по JSON, загружаются; у каждого кейса полный gold.
+- [x] Разметка согласована ≥ 95 % при перекрёстной проверке.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -40,19 +40,33 @@ python scripts/seed/bench.py --check
 ```
 
 ## Отчёт субагента
-WIP `codex/T-021-golden-datasets`: подготовлен candidate v2 200/40 и строгий
-canonical loader. Источники на момент разметки — f594c43; independent review
-всех200cases выполняет основной агент. Frozen golden SHA256
-4a703aa454566817f6942f55bc9cd09129c5526855052b41da1ae032d6240bb9,
-lite SHA25638d29696905378db7ed2f8d0646ddeb712e94b779a48aa9e237b76e70157bbc7.
-Initial v1 отозван после замечаний, его partial review не считается agreement.
-V2 frozen copy находится в /tmp/t021-review-candidate-v2; её не меняем до полного
-review. Найдены stale routes после merge T014 в main; следующим шагом merge main
-в эту ветку и точечный v3 с source SHA, неизменными texts и повторной независимой
-проверкой изменённых labels. ≥95% и done пока не заявлены.
+Реализован reviewed corpus v4: golden 200/lite 40, все 8 gold fields, по 20 кейсов
+на 10 типов и 16–17 на 12 каналов;64/200 (32%) содержательно сложных текстов.
+Lite — exact strict subset, по 4 кейса на тип. Независимый полный case-level
+pass: 197/200 = 98.5%; три замечания исправлены и отдельно приняты, затем отдельно
+подтверждена единственная provenance-правка human_reason→needs_human.
+Исходное согласие не пересчитывается в 100%. Полный отчёт и SHA находятся в
+[review](../reviews/README-T-021.md), deployable копия — data/golden/review_v1.json.
+Источник routing/policies — main 3c1c12c; финансовые/HITL правила не менялись.
 
-Код в разработке: единая validation канонических JSONL, exact legacy mirrors,
-строгий lite subset, tags через file/DB runner, ambiguous вне accuracy/critical
-recall. Структурная проверка --check проходит; полноценные regression/unit/DB
-проверки и стратегия versioned upgrade непустых старых DB datasets ещё в работе.
-Исторические bench_cases/results не будут перезаписаны или удалены молча.
+Общий loader проверяет строгий JSON, контрактные enum, полный gold, bool/flags,
+баланс, hard coverage, subset, compatibility mirrors и целостность независимого
+review. Legacy partial-gold наборы других семейств сохранены. Ambiguous tags
+проходят file/DB runner и exports, исключаются из accuracy/critical recall,
+сохраняются в latency/cost/JSON/stability; в lite запрещены.
+
+Обычный seed идемпотентен и явно отказывается заменять несовпадающий старый
+набор. Поддержан отдельный read-only --plan и явный --apply --plan-sha:
+transaction+dataset locks, archival legacy code/provenance, новые canonical IDs,
+старые cases/results/IDs неизменны. Active bench/collision/stale plan дают abort;
+обе семьи атомарны. Операторский путь и recovery — data/golden/README.md.
+Проверки DB выполняются исключительно в собственной scratch cx_t021_golden,
+не в primary/prod; реальных LLM/внешних вызовов и новых dependencies нет.
+
+Локальная проверка: backend unit 800 passed/18 skipped; frontend 144 passed,
+eslint/tsc, backend ruff/format 322 files и mypy 243 files green. Структурный --check,
+contracts 44 schemas/161 paths и drift 191/191 green. Новый backend validator:
+stdlib trace 90% строк (без добавления coverage dependency). DB acceptance 16 tests
+включают actual CLI plan/apply/retry, историю, rollback и ambiguous runner.
+Полный monolithic make test и remote CI остаются финальным gate основного агента;
+поэтому третий критерий и общий статус пока не отмечены done.

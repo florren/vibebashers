@@ -105,6 +105,9 @@ def dataset_code_by_id(dataset_id: int) -> str:
 
 
 def load_dataset(code: str) -> list[BenchCase]:
+    if code in dataset_sources.CLASSIFICATION_CODES:
+        dataset_sources.check_canonical()
+        dataset_sources.validate_review()
     rows = dataset_sources.load_rows(code)
     return [
         BenchCase(i, str(row.get("id") or f"case-{i}"), row["channel"], row["text"], row["gold"], row.get("tags", []))

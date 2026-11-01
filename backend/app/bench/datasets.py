@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -10,6 +12,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[3]
 GOLDEN_DIR = ROOT / "data/golden"
 BENCH_DIR = ROOT / "data/bench"
+REVIEW_FILE = GOLDEN_DIR / "review_v1.json"
 CLASSIFICATION_CODES = frozenset({"golden_v1", "lite_v1"})
 GOLD_FIELDS = ("signal_type", "product", "system", "criticality", "complexity", "team", "flags", "needs_hitl")
 HARD_TAGS = frozenset({"sarcasm", "multi_topic", "implicit_product"})
@@ -26,6 +29,19 @@ def dataset_path(code: str) -> Path:
     raise FileNotFoundError(f"набор {code!r} не найден")
 
 
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    row: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in row:
+            raise ValueError("повторяющийся JSON key")
+        row[key] = value
+    return row
+
+
+def _invalid_constant(value: str) -> None:
+    raise ValueError("non-finite JSON number")
+
+
 def read_rows(path: Path, *, complete_gold: bool = False) -> list[dict[str, Any]]:
     """Не подменяет повреждённые строки пустыми данными и не печатает исходные тексты."""
     definitions = json.loads((ROOT / "contracts/events/common.schema.json").read_text())["$defs"]
@@ -35,8 +51,8 @@ def read_rows(path: Path, *, complete_gold: bool = False) -> list[dict[str, Any]
         if not line.strip():
             continue
         try:
-            row = json.loads(line)
-        except json.JSONDecodeError as exc:
+            row = json.loads(line, object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
+        except ValueError as exc:
             raise ValueError(f"{path.name}:{line_number}: неверный JSON") from exc
         prefix = f"{path.name}:{line_number}"
         if not isinstance(row, dict) or not isinstance(row.get("text"), str) or not row["text"].strip():
@@ -129,4 +145,92 @@ def check_canonical() -> dict[str, int]:
         mirror = BENCH_DIR / f"{code}.jsonl"
         if read_rows(mirror, complete_gold=True) != rows:
             raise ValueError(f"legacy mirror {mirror.name} расходится с canonical")
+    documented = ROOT / "docs/reviews/T-021-independent-review.json"
+    if documented.exists() and documented.read_bytes() != (GOLDEN_DIR / "review_v1.json").read_bytes():
+        raise ValueError("review artifact в документации расходится с deployable data")
     return {"golden_v1": len(golden), "lite_v1": len(lite)}
+
+
+def validate_review() -> dict[str, Any]:
+    """Проверяет actual case-level review; исправления не превращают raw98.5% в100%."""
+    manifest = json.loads((GOLDEN_DIR / "manifest_v1.json").read_text())
+    report = json.loads(REVIEW_FILE.read_text())
+    if set(manifest["files"]) != {"golden_v1.jsonl", "lite_v1.jsonl"}:
+        raise ValueError("неполный manifest корпуса")
+    for name, expected in manifest["files"].items():
+        if (
+            name not in {"golden_v1.jsonl", "lite_v1.jsonl"}
+            or hashlib.sha256((GOLDEN_DIR / name).read_bytes()).hexdigest() != expected
+        ):
+            raise ValueError("review manifest не соответствует текущим JSONL")
+    rows = load_rows("golden_v1")
+    by_id = {row["id"]: row for row in rows}
+    decisions = report["decisions"]
+    if len(decisions) != len(rows) or {row["id"] for row in decisions} != set(by_id):
+        raise ValueError("independent review не покрывает все кейсы")
+    if (
+        not isinstance(report.get("reviewer"), str)
+        or not report["reviewer"].strip()
+        or report["reviewer"] == manifest["author"]
+    ):
+        raise ValueError("нужен независимый reviewer")
+    if any(
+        set(row["reviewed_fields"]) != set(GOLD_FIELDS)
+        or len(row["reviewed_fields"]) != len(GOLD_FIELDS)
+        or row["verdict"] not in {"agreed", "disputed"}
+        for row in decisions
+    ):
+        raise ValueError("неполный case-level review")
+    agreed = sum(row["verdict"] == "agreed" for row in decisions)
+    percent = agreed * 100 / len(rows)
+    if (
+        report["cases_total"] != len(rows)
+        or report["agreed_cases"] != agreed
+        or report["disputed_cases"] != len(rows) - agreed
+        or report["case_agreement_pct"] != percent
+        or percent < 95
+        or not isinstance(report["required_agreement_pct"], (int, float))
+        or not math.isfinite(report["required_agreement_pct"])
+        or report["required_agreement_pct"] < 95
+        or percent < report["required_agreement_pct"]
+    ):
+        raise ValueError("agreement ниже95% либо итог не соответствует per-case decisions")
+    follow_up = report["follow_up"]
+    provenance = report["provenance_follow_up"]
+    if (
+        report["corpus_review_approved"] is not True
+        or provenance["approved"] is not True
+        or provenance["golden_sha256"] != manifest["files"]["golden_v1.jsonl"]
+        or provenance["lite_sha256"] != manifest["files"]["lite_v1.jsonl"]
+    ):
+        raise ValueError("provenance delta не прошёл независимое подтверждение")
+    if set(manifest["label_review_files"]) != {"golden_v1.jsonl", "lite_v1.jsonl"}:
+        raise ValueError("неполный manifest label review")
+    for name, expected in manifest["label_review_files"].items():
+        label_version = (
+            (GOLDEN_DIR / name).read_bytes().replace(b"policies.py:needs_human", b"policies.py:human_reason")
+        )
+        if hashlib.sha256(label_version).hexdigest() != expected:
+            raise ValueError("v4 содержит изменения помимо approved annotation source")
+    if (
+        follow_up["candidate_sha256"] != manifest["label_review_files"]["golden_v1.jsonl"]
+        or report["candidate_sha256"] != manifest["previous_golden_sha256"]
+        or report["review_scope_main"] != manifest["source_revision"]
+    ):
+        raise ValueError("review подписан для другой версии корпуса/источников")
+    disputed = {row["id"]: row for row in decisions if row["verdict"] == "disputed"}
+    edits = {row["id"]: row for row in follow_up["delta_verified"]}
+    if (
+        len(edits) != len(follow_up["delta_verified"])
+        or set(edits) != set(disputed)
+        or follow_up["result"] != "approved_after_exact_delta_review"
+        or follow_up["all_known_findings_resolved"] is not True
+        or follow_up["raw_v2_agreement_pct_unchanged"] != percent
+    ):
+        raise ValueError("не все замечания независимо закрыты")
+    for id_, decision in disputed.items():
+        proposed = {issue["field"]: issue["proposed"] for issue in decision["issues"]}
+        actual_edits = {field: after for field, before, after in edits[id_]["edits"]}
+        if proposed != actual_edits or any(by_id[id_]["gold"][field] != value for field, value in proposed.items()):
+            raise ValueError("финальный gold расходится с reviewed delta")
+    return {"cases": len(rows), "raw_case_agreement_pct": percent, "reviewer": report["reviewer"]}

@@ -361,10 +361,11 @@ def seed_bench(cur: psycopg.Cursor[Any]) -> None:
         "red_phrases_v1": "Красные фразы сотрудника: мисселлинг и conduct (ДТЗ FR-4.2)",
         "golden_v1": "Golden-набор классификации: тип × продукт × канал",
     }
-    from app.bench.datasets import CLASSIFICATION_CODES, check_canonical, load_rows
+    from app.bench.datasets import CLASSIFICATION_CODES, check_canonical, load_rows, validate_review
     from scripts.seed.bench import seed_dataset
 
     check_canonical()
+    validate_review()
     for f in sorted((DATA / "bench").glob("*.jsonl")):
         code = f.stem
         if code in CLASSIFICATION_CODES:
