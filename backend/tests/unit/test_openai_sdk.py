@@ -171,3 +171,53 @@ async def test_startup_missing_default_model_deactivates_profile_without_stoppin
         assert "is_active = false" in conn.execute.await_args.args[0]
     finally:
         await provider.aclose()
+
+
+@pytest.mark.parametrize("local_key", [None, "local-specific"])
+async def test_chain_routes_endpoint_credentials_without_forwarding_openrouter_secret(local_key, tmp_path):
+    from app.config import Settings
+    from app.llm.failover import build_chain, profile_by_code
+
+    settings = Settings(
+        _env_file=None,
+        llm_chain="openai_compat",
+        openrouter_api_key="or-specific",
+        local_llm_base_url="http://local.test/v1",
+        local_llm_api_key=local_key,
+        cassettes_dir=str(tmp_path),
+    )
+    seen = []
+
+    def handler(req):
+        seen.append((req.url.host, req.headers.get("Authorization")))
+        return response('{"ok":true}')
+
+    chain = build_chain(settings, transport=httpx.MockTransport(handler))
+    provider = chain.providers[0]
+    try:
+        await provider.complete_structured(MESSAGES, SCHEMA, profile_by_code(settings, "local_openai"), timeout_s=1)
+        await provider.complete_structured(MESSAGES, SCHEMA, profile_by_code(settings, "or_gpt_oss_120b"), timeout_s=1)
+        assert seen == [
+            ("local.test", f"Bearer {local_key}" if local_key else None),
+            ("openrouter.ai", "Bearer or-specific"),
+        ]
+    finally:
+        await provider.aclose()
+
+
+async def test_benchmark_local_profile_resolves_env_without_openrouter_key(monkeypatch):
+    from app.bench import service
+    from app.config import Settings
+
+    settings = Settings(_env_file=None, openrouter_api_key="or-private", local_llm_base_url="http://local.test/v1")
+    monkeypatch.setattr(service, "get_settings", lambda: settings)
+    profile = LLMProfile(
+        code="local_openai", provider="openai_compatible", model="local", base_url="", extra={"local": True}
+    )
+    _chain, providers, selected = service.BenchService().chain(profile, [])
+    try:
+        assert selected is None
+        assert providers[0].base_url == "http://local.test/v1"
+        assert providers[0].api_key is None
+    finally:
+        await providers[0].aclose()

@@ -109,8 +109,10 @@ class OpenAICompatProvider:
         budget_usd: float = 10.0,
         http_referer: str | None = None,
         budget_loader: Callable[[], Awaitable[float]] | None = None,
+        endpoint_keys: dict[str, str | None] | None = None,
     ) -> None:
         self.api_key = api_key
+        self.endpoint_keys = endpoint_keys
         self.base_url = base_url.rstrip("/")
         self.app_title = app_title
         self.budget_usd = budget_usd
@@ -129,13 +131,21 @@ class OpenAICompatProvider:
     async def aclose(self) -> None:
         await self._sdk.close()
 
+    def _key(self, base_url: str) -> str | None:
+        if self.endpoint_keys is None:
+            return self.api_key
+        if base_url.rstrip("/") not in self.endpoint_keys:
+            raise ProviderError("miss", "endpoint профиля не настроен в LLM-цепочке")
+        return self.endpoint_keys[base_url.rstrip("/")]
+
     def _headers(self, base_url: str | None = None) -> dict[str, str]:
         h = {"Content-Type": "application/json", "X-Title": self.app_title}
         url = base_url or self.base_url
         if is_openrouter(url) and self.http_referer:
             h["HTTP-Referer"] = self.http_referer
-        if self.api_key:
-            h["Authorization"] = f"Bearer {self.api_key}"
+        key = self._key(url)
+        if key:
+            h["Authorization"] = f"Bearer {key}"
         return h
 
     async def list_models(self, timeout_s: float = 10.0) -> list[str]:
@@ -202,9 +212,12 @@ class OpenAICompatProvider:
 
     def _chat_client(self, base_url: str, timeout_s: float) -> AsyncOpenAI:
         headers: dict[str, Any] = self._headers(base_url)
-        if not self.api_key:
+        key = self._key(base_url)
+        if not key:
             headers["Authorization"] = omit
-        return self._sdk.with_options(base_url=base_url, timeout=timeout_s, default_headers=headers)
+        return self._sdk.with_options(
+            base_url=base_url, timeout=timeout_s, default_headers=headers, api_key=key or _empty_key
+        )
 
     @staticmethod
     def _provider_error(exc: APIError) -> ProviderError:
@@ -235,6 +248,7 @@ class OpenAICompatProvider:
         base_url = (profile.base_url or self.base_url).rstrip("/")
         if profile.provider != "openai_compatible":
             raise ProviderError("miss", "профиль не openai_compatible")
+        self._key(base_url)  # Не пересылаем credential другого endpoint на URL профиля.
         use_json_schema = bool(profile.extra.get("json_schema", True))
         msgs: list[dict[str, str]] = [
             {
@@ -253,7 +267,7 @@ class OpenAICompatProvider:
                 "messages": msgs,
                 "temperature": profile.temperature,
                 "stream": False,
-                "extra_headers": {} if self.api_key else {"Authorization": omit},
+                "extra_headers": {} if self._key(base_url) else {"Authorization": omit},
             }
             if "max_output_tokens" in profile.extra:
                 payload["max_tokens"] = int(profile.extra["max_output_tokens"])
@@ -323,7 +337,7 @@ class OpenAICompatProvider:
                 messages=cast(list[ChatCompletionMessageParam], messages),
                 temperature=profile.temperature,
                 stream=True,
-                extra_headers={} if self.api_key else {"Authorization": omit},
+                extra_headers={} if self._key(base_url) else {"Authorization": omit},
                 stream_options={"include_usage": True} if self._paid(profile, base_url) else {},
             )
             usage_seen = False
