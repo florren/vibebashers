@@ -43,7 +43,8 @@ async def _ingest_and_run(dsn: str, body: dict[str, Any]) -> tuple[int, dict[str
 def _client(conn: psycopg.Connection, segment: str, with_qr_fee: bool = False) -> int:
     if with_qr_fee:
         row = conn.execute(
-            "select o.client_id from operations o join clients c on c.id = o.client_id where o.error_code = 'PROC-QR-FEE-CHARGED' and c.segment_code <> 'ultra_vip' order by o.started_sim desc limit 1"
+            "select o.client_id from operations o join clients c on c.id = o.client_id where o.error_code = 'PROC-QR-FEE-CHARGED' and c.segment_code = %s and o.started_sim between (select sim_time-interval '72 hours' from sim_state where id=1) and (select sim_time from sim_state where id=1) order by (select count(*) from signals s where s.client_id=c.id),o.started_sim desc limit 1",
+            (segment,),
         ).fetchone()
         if row:
             return int(row[0])
@@ -56,13 +57,18 @@ def _client(conn: psycopg.Connection, segment: str, with_qr_fee: bool = False) -
 
 def test_full_pass_creates_incident_and_notifications(seeded: str, conn: psycopg.Connection) -> None:
     cid = _client(conn, "mass", with_qr_fee=True)
+    operation = conn.execute(
+        "select amount_rub,fee_amount from operations where client_id=%s and error_code='PROC-QR-FEE-CHARGED' order by started_sim desc limit 1",
+        (cid,),
+    ).fetchone()
+    assert operation is not None and 0 < operation[1] <= 5000
     signal_id, state = asyncio.run(
         _ingest_and_run(
             _dsn(seeded),
             {
                 "channel_code": "chat",
                 "client_id": cid,
-                "text": "Оплатил по QR 3 200 рублей, а с карты списали комиссию 138 руб. СБП же бесплатно! Верните комиссию.",
+                "text": f"Оплатил по QR {operation[0]} рублей, а с карты списали комиссию {operation[1]} руб. СБП же бесплатно! Верните комиссию.",
             },
         )
     )
