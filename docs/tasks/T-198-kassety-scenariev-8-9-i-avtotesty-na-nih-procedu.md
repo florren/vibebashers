@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `done` |
+| Статус | `in_progress` |
 
 ## Цель
 Детерминированные кассеты для ключевых демо-сценариев и CI; регламент обновления (ТЗ 5.4, 15 SA-Cassettes).
@@ -48,3 +48,8 @@ make cassettes-record SCENARIO=qr_fee_public_review
 - **Сделано:** `CassetteStore.summaries` / `cassette_asset` / `upsert_demo_asset`; `ProviderChain.scenario_id` + `prompt_version`; `live_recording_possible`; `scripts/cassettes_record.py`; `make cassettes-record`; unit/integration тесты пакета
 
 Сверка 27.10.2026 (T-261): статус `todo` → `done` — PR #31 «кассеты сценариев 8–9 и stale (T-198)» слит; живая запись кассет на репетиции выполняется по процедуре `make cassettes-record` перед показом (не блокирует карточку).
+
+
+## Ревизия schema freshness и bounded записи, 2026-11-02
+
+Карточка переоткрыта: T014 prefix9 меняет actual instant_decision schema/hash, поэтому старый реальный response нельзя rekeyed под новый request. Подготовлен отдельный `python -m app.replay.bounded_record --dry-run`; фиксированный synthetic replay_bank_v1/v1.1, одна модель GigaChat-3-Pro, не более1OAuth+2inference=3HTTP,16000 input chars/1024 output tokens на запрос. Новый ответ — только в отдельный staging, старые кассеты неизменны; unknown cost/usage не считаются0. Подробный human egress plan: `docs/reviews/T-198-bounded-record.md`. Targeted unit68 passed; live не разрешён/не выполнялся. Нужны concrete contract review и отдельное разрешение bounded запуска; DoD обновлённой live-кассеты пока не закрыт.
