@@ -1,0 +1,2 @@
+# Shell scripts run inside Linux containers: always check out with LF, even on Windows.
+*.sh text eol=lf
