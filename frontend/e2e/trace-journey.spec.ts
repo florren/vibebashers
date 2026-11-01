@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { mkdir } from 'node:fs/promises'
 
 const event = {
   id: 'EVT-refund-1',
@@ -62,7 +61,9 @@ const journey = {
 
 for (const theme of ['light', 'dark'])
   for (const lang of ['ru', 'en']) {
-    test(`trace and journey ${theme} ${lang}`, async ({ page }) => {
+    test(`trace and journey ${theme} ${lang}`, async ({ page }, testInfo) => {
+      const errors: string[] = []
+      page.on('pageerror', error => errors.push(error.message))
       await page.addInitScript(
         ({ theme, lang }) => {
           localStorage.setItem('cx.ui.mode', theme)
@@ -101,6 +102,7 @@ for (const theme of ['light', 'dark'])
                     : {}
           const extra: Record<string, unknown> = {
             '/api/clients': [],
+            '/api/scenarios': [],
             '/api/signals/123': { id: 123, client: { id: 1 }, agent_runs: [{ id: 1, kind: 'agent' }], incidents: [{ id: 1 }] },
             '/api/clients/1/360': { id: 1, display_name: 'Клиент демо', clv_estimate_rub: 120000 },
             '/api/agent/graph': { nodes: [{ id: 'act', kind: 'tool' }], edges: [] },
@@ -113,8 +115,7 @@ for (const theme of ['light', 'dark'])
       await page.goto('/trace/signal/SIG-000123')
       await expect(page.getByText('Лишняя комиссия за QR-оплату')).toBeVisible()
       await expect(page.getByRole('heading', { name: lang === 'ru' ? 'Итоговое решение' : 'Final decision', exact: false })).toBeVisible()
-      await mkdir('../docs/screenshots/trace-journey', { recursive: true })
-      await page.screenshot({ path: `../docs/screenshots/trace-journey/trace-${theme}-${lang}.png`, fullPage: false })
+      await page.screenshot({ path: testInfo.outputPath('trace.png'), fullPage: false })
       await page.getByRole('button', { name: /Комиссия возвращена/ }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
       await page.getByRole('button', { name: lang === 'ru' ? 'Закрыть' : 'Close' }).click()
@@ -132,7 +133,8 @@ for (const theme of ['light', 'dark'])
       await page.getByRole('button', { name: /Комиссия возвращена/ }).click()
       await expect(page.getByRole('group', { name: lang === 'ru' ? 'Граф' : 'Graph', exact: true }).getByRole('button')).toHaveAttribute('aria-pressed', 'true')
       await expect(page.getByText('Комиссия возвращена', { exact: true }).first()).toBeVisible()
-      await page.screenshot({ path: `../docs/screenshots/trace-journey/journey-${theme}-${lang}.png`, fullPage: false })
+      await page.screenshot({ path: testInfo.outputPath('journey.png'), fullPage: false })
+      expect(errors).toEqual([])
       await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/trace/signal/SIG-000123')
       await page.getByRole('tab', { name: lang === 'ru' ? 'ПОСЛЕ' : 'AFTER' }).click()
