@@ -7,6 +7,7 @@ for (const scenario of [1, 8, 11] as const) {
     await page.route('**/api/**', async (route) => {
       const req = route.request(),
         path = new URL(req.url()).pathname
+      if (!path.startsWith('/api/')) { await route.continue(); return }
       if (req.method() !== 'GET') {
         writes.push(path)
         await route.abort()
@@ -15,7 +16,7 @@ for (const scenario of [1, 8, 11] as const) {
       await route.fulfill({
         json: path.startsWith('/api/journey/')
           ? recording(scenario)
-          : path.startsWith('/api/refs/')
+          : (path.startsWith('/api/refs/') || path === '/api/scenarios')
             ? []
             : path === '/api/sim/state'
               ? { running: false, current_run_status: 'none' }
@@ -59,6 +60,7 @@ test('Следить получает первый сигнал жюри до з
   await page.route('**/api/**', async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname
+    if (!path.startsWith('/api/')) { await route.continue(); return }
     if (path === '/api/signals' && req.method() === 'POST') {
       accepted = true
       publish?.()
@@ -73,6 +75,8 @@ test('Следить получает первый сигнал жюри до з
     const values: Record<string, unknown> = {
       '/api/signals/1': { id: 1, agent_runs: [], incidents: [] },
       '/api/clients': [],
+      '/api/scenarios': [],
+      '/api/stt/providers': [],
       '/api/sim/state': { running: false, current_run_status: 'none' },
       '/api/refs/channels': [{ code: 'chat', name_ru: 'Чат' }],
     }

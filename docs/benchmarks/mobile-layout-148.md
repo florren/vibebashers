@@ -27,15 +27,19 @@
   все шаги настроек и выбранный прогон агента. Скриншоты ниже сняты с живыми
   демонстрационными данными; числа меняются при работающей симуляции.
 - Команды: `npm run lint`, `npm run typecheck`, `npm test -- --run`,
-  `npm run build`, отдельный strict typecheck `e2e/mobile.spec.ts`,
+  `npm run build`, `npx tsc -p e2e/tsconfig.json --noEmit`,
   `E2E_BASE_URL=http://127.0.0.1:5174 npx playwright test mobile.spec.ts`,
   `make lint test`, `python scripts/contracts_check.py`,
   `python scripts/i18n_check.py`, `python scripts/check_owners.py --base main --allow-cross`.
-  Итоги запусков и CI приведены в PR.
-- Дополнительный общий `npx tsc -p e2e/tsconfig.json --noEmit` воспроизводит две
-  существующие ошибки и на main: implicit any в `journey-modes.spec.ts:54` и
-  неразрешённый alias в `recordings.ts:1`. Новый mobile.spec.ts проходит отдельный
-  strict typecheck; штатный typecheck приложения и сборка проходят.
+  Локальный итог: `make lint test` — 963 passed / 22 skipped, Vitest — 144 passed,
+  мобильные e2e — 14 passed (384 представления), шрифты и прежние Journey e2e —
+  5 passed. Дополнительно проверены 48 сочетаний трёх основных экранов:
+  1024/1440/1920 px и Pixel 5, ru/en × light/dark, пакет ops. Итоги CI — в PR.
+- Старые e2e Journey обновлены без изменения assertions: route-моки ограничены
+  URL `/api/`, чтобы не подменять JS-модули Vite; `/api/scenarios` и `/api/stt/providers` возвращают
+  списки по контракту. До исправления те же четыре падения воспроизводились на
+  прежнем production-стенде. В e2e/tsconfig.json добавлен существующий alias `@/*`,
+  поэтому общий strict typecheck корректно видит типы импортированных фикстур.
 
 Эмуляция использует Chromium с touch/mobile viewport. Проверки на физических
 iPhone/Android и в Safari не выполнялись. API, контракты, расчёты, сценарии
