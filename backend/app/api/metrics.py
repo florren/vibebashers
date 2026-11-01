@@ -69,7 +69,7 @@ async def get_metrics_dashboard(
             from agent_runs ar join signals s on s.id = ar.signal_id
             left join incidents i on i.id = ar.incident_id and i.agent_run_id = ar.id
             left join lateral (select decision from human_decisions h where h.agent_run_id = ar.id order by h.id desc limit 1) hd on true
-            where {ws}
+            where {ws} and ar.kind = 'agent'
             """,
             tuple(args_s),
         )
