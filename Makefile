@@ -1,6 +1,6 @@
 # CX Pulse Control — цели зафиксированы в AGENTS.md §4. Python-окружение: uv (backend/.venv).
 .PHONY: dev dev-front install-front build-front lint-front test test-front test-compliance test-scenarios e2e test-unit test-integration lint fmt sync-contracts contracts-check check-contracts check-owners tasks \
-        scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts import-csi migrate seed install-backend
+        licenses-check scenario bench i18n-check cassettes-record stt-bench demo-offline import-transcripts import-csi migrate seed install-backend
 
 UV ?= uv
 PY := backend/.venv/bin/python
@@ -110,3 +110,6 @@ import-csi:                 ## ручной CSI JSON/XLSX через API (FILE=�
 .PHONY: run-summary
 run-summary:                ## явный пересчёт summary завершённого запуска ID=…
 	$(PY) scripts/run_summary.py --id $(ID)
+
+licenses-check:             ## SPDX gate и свежесть inventory Python/npm, включая dev/platform-only
+	$(PY) scripts/licenses_check.py
