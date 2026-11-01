@@ -100,8 +100,12 @@ async def load_deps(
     run_id: int,
     agent_run_id: int,
     sim_time: dt.datetime,
+    dry_run: bool = False,
+    trace_conn: psycopg.AsyncConnection[Any] | None = None,
 ) -> Deps:
-    ctx = ToolContext(conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time)
+    ctx = ToolContext(
+        conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
+    )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [
         (int(r[0]), dict(r[1] or {}), list(r[2] or []))
