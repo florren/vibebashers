@@ -143,3 +143,31 @@ async def test_setup_accepts_keyless_local_without_forwarding_openrouter_key(mon
     )
     assert result["ok"] is True
     assert seen == [(None, "http://local.test/v1")]
+
+
+async def test_startup_missing_default_model_deactivates_profile_without_stopping(monkeypatch):
+    from app import main
+    from app.llm.openai_compat import DEFAULT_MODEL_IDS, PREFERRED_REPLACEMENT
+
+    conn = AsyncMock()
+    conn.__aenter__.return_value = conn
+    monkeypatch.setattr(main.psycopg.AsyncConnection, "connect", AsyncMock(return_value=conn))
+    provider = OpenAICompatProvider(
+        "test",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(
+            lambda req: httpx.Response(
+                200, json={"data": [{"id": model} for model in [*DEFAULT_MODEL_IDS[1:], PREFERRED_REPLACEMENT]]}
+            )
+        ),
+    )
+    try:
+        await main._sync_openrouter_models(SimpleNamespace(providers=[provider]))
+        conn.commit.assert_awaited_once()
+        assert conn.execute.await_count == 1
+        params = conn.execute.await_args.args[1]
+        assert params[1] == DEFAULT_MODEL_IDS[0]
+        assert params[0].obj == {"suggested_model": PREFERRED_REPLACEMENT}
+        assert "is_active = false" in conn.execute.await_args.args[0]
+    finally:
+        await provider.aclose()

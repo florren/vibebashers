@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Бесплатные модели OpenRouter и любая локальная модель по OpenAI API без изменений кода.
@@ -31,7 +31,7 @@
 
 ## Критерии приёмки
 - [ ] Smoke-тест на трёх моделях по умолчанию возвращает валидный JSON классификации (лог в PR).
-- [ ] Исчезновение модели не ломает запуск — профиль деактивируется с предупреждением.
+- [x] Исчезновение модели не ломает запуск — профиль деактивируется с предупреждением.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -40,12 +40,14 @@ python -m app.llm.smoke --profile or_gpt_oss_120b
 ```
 
 ## Отчёт субагента
-Ветка `feat/T-048-openrouter-chain` (коммит и PR не делались).
+Ветка `codex/T-048-openai-sdk`, база `f594c43`; T-152 license gate интегрирован cherry-pick `7c7d51d` (исходный `c6d0485`). Push/PR/merge исполнитель не выполнял.
 
-Цепочка по умолчанию: `gigachat,openai_compat,replay,mock`. Офлайн без сети остаётся `replay,mock` (`./install.sh --offline` и ручной `LLM_CHAIN=replay,mock` не переписывались). Бюджет платных моделей: `OPENROUTER_BUDGET_USD=10`.
+Gap-ревизия: четыре существующих части уже были реализованы — default model IDs, каталог/план деактивации, GET `/key` с отображением остатка лимита, local profile URL. Найдены и исправлены: обязательный SDK отсутствовал (был httpx chat/SSE), master запрещал keyless local и подставлял OpenRouter secret, json_schema fallback расходовал correcting retry, startup не закрывал OpenAI HTTP client; budget брался только из ENV и пропускал unknown usage.
 
-OpenAI-совместимый провайдер оставлен на httpx; пакет openai SDK не добавлялся (отклонение от формулировки карточки и AGENTS §6.3).
+Реализация: официальный `openai==2.54.0`, `AsyncOpenAI` structured/stream, `base_url` профиля, OpenRouter headers, SDK retries=0; одна correcting validation attempt дополнительно к format fallback; token usage агрегируется. Keyless local не отправляет Authorization и не читает `OPENAI_API_KEY`. SDK errors показывают kind/status без upstream body; shutdown закрывает HTTP client. Host OpenRouter проверяется точно. 530 lock distributions (93 Python, 437 npm) проверены license gate; новые SDK dependencies — разрешённые лицензии.
 
-Чужие файлы (cross-layer разрешён): `backend/app/api/setup.py` (L3), `backend/app/api/settings.py` (L3), `data/llm_profiles.yaml` (L2). Контракты не менялись.
+Отдельный budget-policy commit `e8bea0e` и review `docs/reviews/T-048-budget-policy.md`: settings.llm override, fail-closed при неизвестном/исчерпанном бюджете или расходе, preflight каждого нового платного completion/retry/stream, неизвестный usage не подменяется нулём. `owl-alpha` без :free больше не обходит budget по hardcoded списку. Это preflight по upstream all-time usage; атомарный денежный потолок требует также server-side лимита ключа. Клиентские деньги и HITL не менялись. Контракты не менялись. Policy review до merge остаётся обязательным.
 
-Живой smoke трёх моделей не запускался. Проверки — юнит на `httpx.MockTransport`.
+Реальный smoke не запускался по ограничению текущей ревизии. Для конкретного egress review подготовлен `python -m app.llm.live_smoke --run`: только три заданных ID/HTTPS OpenRouter, до 6 HTTP запросов всего (включая `/key`), max_tokens=128, fixed synthetic text. Границы и отсутствие секретов в отчёте проверены MockTransport; подробности `docs/reviews/T-048-live-smoke.md`. Цены/доступность моделей вживую не подтверждены. Карточка остаётся in_progress до согласования и реального smoke/CI.
+
+Проверки: целевые SDK/budget/chain/CLI/startup — 84 passed. Полный unit suite до последней pure regression: 808 passed, 18 skipped. `make lint` с документированным Node26 `NODE_OPTIONS=--no-experimental-webstorage` — успешно; полный make test выполняется на отдельной PostgreSQL16 scratch БД `cx_openai_revision`, APP_ENV=test, LLM_PROVIDER=mock, собственные venv/PYTHONPATH. Финальные числа будут внесены после завершения. Логи: `/tmp/t048-targeted-final.log`, `/tmp/t048-lint.log`, `/tmp/t048-full-test.log`.
