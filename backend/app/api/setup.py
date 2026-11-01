@@ -31,7 +31,7 @@ from app.api.settings import (
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Message
-from app.llm.openai_compat import OpenAICompatProvider, suggest_replacement
+from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, suggest_replacement
 from app.logging import get_logger
 
 router = APIRouter(tags=["setup"])
@@ -224,19 +224,22 @@ async def _deactivate_openrouter_model(model: str, suggested: str | None) -> Non
 async def post_setup_test_llm(body: TestLlmBody) -> Any:
     s = get_settings()
     key = body.api_key
+    local_compat = (
+        body.provider == "openai_compatible" and bool(body.base_url) and not is_openrouter(body.base_url or "")
+    )
     async with db() as conn:
         if not key and body.api_key_id:
             item = next((k for k in await load_keys(conn) if int(k["id"]) == body.api_key_id), None)
             if not item:
                 raise Problem(404, "Ключ не найден")
             key = key_plain(item)
-        if not key and body.provider != "mock":
+        if not key and body.provider != "mock" and not local_compat:
             stored = [k for k in await load_keys(conn) if k["provider"] == body.provider and k.get("is_active", True)]
             if stored:
                 key = key_plain(stored[0])
     if not key and body.provider == "gigachat":
         key = s.gigachat_auth_key_1 or s.gigachat_auth_key_2
-    if not key and body.provider == "openai_compatible":
+    if not key and body.provider == "openai_compatible" and not local_compat:
         key = s.openrouter_api_key
     profile = LLMProfile(code="setup_test", provider=body.provider, model=body.model, base_url=body.base_url)
     msgs: list[Message] = [
@@ -259,13 +262,14 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 "supports_stream": True,
                 "quota": {},
             }
-        if not key:
+        if not key and not local_compat:
             return {
                 "ok": False,
                 "latency_ms": 0,
                 "error": "Нет API-ключа: передайте api_key, сохраните ключ в /api/settings/llm-keys или задайте .env",
             }
         if body.provider == "gigachat":
+            assert key is not None
             from app.llm.gigachat import GigaChatProvider
             from app.llm.keys import ApiKey, KeyPool
 
@@ -285,7 +289,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 budget_usd=s.openrouter_budget_usd,
                 http_referer=f"http://localhost:{s.app_port}",
             )
-            if "openrouter.ai" in base:
+            if is_openrouter(base):
                 try:
                     info = await prov.fetch_key()
                 except Exception as exc:
@@ -303,7 +307,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                 except Exception as exc:
                     log.warning("setup_openrouter_models_failed", error=str(exc)[:200])
                     available = None
-                if available is not None and body.model not in available:
+                if available and body.model not in available:
                     suggested = suggest_replacement(available)
                     await _deactivate_openrouter_model(body.model, suggested)
                     return {

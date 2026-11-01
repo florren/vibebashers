@@ -20,3 +20,8 @@
 ### Инструменты baseline (T-270)
 
 postgresql-client-16 (pg_dump, pg_restore, libpq) — PostgreSQL License, [официальная лицензия](https://www.postgresql.org/about/licence/). Устанавливается в Docker через подписанный [официальный PGDG](https://www.postgresql.org/download/linux/debian/), Debian bookworm; версия сервера остаётся 16. Python/npm-зависимости не добавлялись.
+
+### OpenAI-compatible SDK (T-048)
+
+- openai 2.54.0 — Apache-2.0, [официальная библиотека](https://github.com/openai/openai-python); версия фиксируется `backend/uv.lock`.
+- distro 1.9.0 — Apache-2.0; jiter 0.18.0 — MIT; транзитивные зависимости SDK, лицензии проверены по metadata установленных wheel. Остальные зависимости уже присутствовали в lock.
