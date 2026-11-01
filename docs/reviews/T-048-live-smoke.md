@@ -17,9 +17,9 @@
 
 ## Фактический результат одобренного запуска, 2026-11-02
 
-Пользователь явно согласовал для PR159 «Политику и ограниченный live smoke». Выполнен ровно один существующий CLI на commit92a235f (runtime CLI/provider/budget byte-identical d0fb457), без изменений настроек и кода. Configuration source — canonical `.env` без вывода; read-only budget scalar settings.llm — из выделенной scratch `cx_openai_revision`. Данные клиентов/операций из БД не читались и не отправлялись.
+Пользователь явно согласовал для PR159 «Политику и ограниченный live smoke». Выполнен ровно один существующий CLI на commit `92a235f` (runtime CLI/provider/budget byte-identical `d0fb457`), без изменений настроек и кода. Configuration source — canonical `.env` без вывода; read-only budget scalar settings.llm — из выделенной scratch `cx_openai_revision`. Данные клиентов/операций из БД не читались и не отправлялись.
 
-Exit1; выполнено5HTTPизмаксимум6;3фиксированныхmodel IDs; max_output_tokens128 на completion. `nvidia/nemotron-3-ultra-550b-a55b:free` — `bad_output`; `openrouter/owl-alpha` — `unavailable`,HTTP404; `openai/gpt-oss-120b:free` — `unavailable`,HTTP404. Schema не ослаблялась. Замен моделей, повторного запуска или обхода budget guard не было.
+Exit code 1; выполнено 5 HTTP-запросов из максимума 6; 3 фиксированных model IDs; max_output_tokens=128 на completion. `nvidia/nemotron-3-ultra-550b-a55b:free` — `bad_output`; `openrouter/owl-alpha` — `unavailable`, HTTP 404; `openai/gpt-oss-120b:free` — `unavailable`, HTTP 404. Schema не ослаблялась. Замен моделей, повторного запуска или обхода budget guard не было.
 
 Actual tokens/actual USD при этих ошибках CLI не сообщил: расход неизвестен и не объявляется нулевым. Дополнительные HTTP-запросы ради учёта расходов не выполнялись. Очищенный машиночитаемый результат: `T-048-live-smoke-result.json`; stdout первоначального запуска — `/tmp/t048-approved-live-smoke.json`, stderr пуст. Ключи/headers/raw model outputs в tracked отчёт не включены.
 
