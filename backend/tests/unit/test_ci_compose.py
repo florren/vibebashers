@@ -1,4 +1,4 @@
-"""CI smoke must never overwrite user state or attach candidate containers to it."""
+"""CI smoke не перезаписывает пользовательские данные и не подключает их к candidate."""
 
 import copy
 import importlib.util

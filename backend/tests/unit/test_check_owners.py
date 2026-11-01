@@ -1,4 +1,4 @@
-"""Layer checks include the index, even when the worktree has no unstaged diff."""
+"""Проверка слоя учитывает index даже при отсутствии unstaged diff."""
 
 import importlib.util
 import subprocess

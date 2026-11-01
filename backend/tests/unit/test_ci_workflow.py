@@ -1,4 +1,4 @@
-"""The protected tests check must reject skipped/failed dependencies explicitly."""
+"""Защищённый tests check явно отвергает skipped/failed prerequisites."""
 
 import json
 import os

@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: Frozen backend dependencies
+      - name: Зафиксированные backend зависимости
         run: cd backend && uv sync --frozen
       - name: psql
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
@@ -111,9 +111,9 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: cd backend && uv sync --frozen
       - run: cd frontend && npm ci
-      - name: Backend lint and types
+      - name: Backend lint и типы
         run: cd backend && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy app
-      - name: Frontend lint and types
+      - name: Frontend lint и типы
         run: cd frontend && npm run lint && npm run typecheck
       - name: Лицензии и i18n
         run: make licenses-check && python3 scripts/i18n_check.py
@@ -138,13 +138,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - name: PostgreSQL 16 dump/restore tools
+      - name: Утилиты PostgreSQL 16 dump/restore
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-16
           echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
       - run: cd backend && uv sync --frozen
-      - name: Full pytest collection, isolated module shard
+      - name: Полная коллекция pytest, изолированный shard модулей
         run: backend/.venv/bin/python scripts/ci_test_shard.py --index ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: always()
@@ -162,7 +162,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: cd frontend && npm ci && npm test -- --run && npm run build && npm run -s gen:types
       - run: git diff --exit-code -- frontend/src/shared/api/types.ts
-      - name: Local font assets after frontend build
+      - name: Локальные шрифты после frontend build
         run: cd backend && uv sync --frozen && uv run --frozen pytest -q tests/integration/test_no_cdn.py
 
   build-images:
@@ -178,7 +178,7 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Export exact candidate image
+      - name: Экспорт собранного candidate image
         run: |
           set -euo pipefail
           docker save cx-pulse-backend:ci | zstd -T0 -3 -o /tmp/candidate.tar.zst
@@ -202,7 +202,7 @@ jobs:
           set -euo pipefail
           zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
-      - name: Real image, isolated Compose, all Playwright tests
+      - name: Настоящий image, изолированный Compose, все Playwright tests
         run: python3 scripts/ci_compose.py
       - uses: actions/upload-artifact@v4
         if: always()
@@ -217,7 +217,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Explicitly propagate failed, cancelled and skipped jobs
+      - name: Явный отказ при failed, cancelled и skipped jobs
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
@@ -236,7 +236,7 @@ jobs:
           PY
       - uses: actions/download-artifact@v4
         with: { pattern: backend-shard-*, path: test-results }
-      - name: Verify four manifests and exact full-suite union
+      - name: Проверка четырёх manifests и точного объединения всего suite
         run: python3 scripts/ci_test_shard.py --verify test-results
 
   nightly:
@@ -254,7 +254,7 @@ jobs:
           set -euo pipefail
           zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
-      - name: Demo seed <=90 seconds, active-simulator API p95 <=300ms, full browser suite
+      - name: Demo seed ≤90 с, API p95 ≤300 мс с активным симулятором, полный browser suite
         run: python3 scripts/ci_compose.py --performance
       - uses: actions/upload-artifact@v4
         if: always()

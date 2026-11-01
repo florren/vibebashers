@@ -45,7 +45,7 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
             else:
                 raise ValueError("bind source не существует")
             mount["source"] = str(destination)
-        # Docker creates nested bind parents as root; prepare them in our copy first.
+        # Docker создаёт родителей вложенных mounts от root; готовим их в своей копии заранее.
         binds = [mount for mount in service.get("volumes", []) if mount["type"] == "bind"]
         for outer in binds:
             for inner in binds:
@@ -71,7 +71,7 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
         service["user"] = f"{os.getuid()}:{os.getgid()}"
         service.setdefault("environment", {}).update(
             {
-                # APP_ENV=test disables simulator/workers; this is a real isolated app.
+                # APP_ENV=test выключает симулятор/workers; здесь проверяется настоящее изолированное приложение.
                 "APP_ENV": "dev",
                 "DATABASE_URL": "postgresql+psycopg://cx:cx@postgres:5432/cx_pulse",
                 "APP_SECRET": shared_secret,
@@ -161,7 +161,7 @@ def performance(base: str, seed_seconds: float) -> dict[str, Any]:
 
 @contextmanager
 def own_env(path: Path):
-    """Exclusive create refuses files and dangling symlinks; never deletes a replacement."""
+    """O_EXCL отклоняет файлы и dangling symlinks; подменённый inode никогда не удаляется."""
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     identity = os.fstat(descriptor)
     try:
