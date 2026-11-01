@@ -1772,5 +1772,9 @@
     "controlsHelp": "Selecting an option does not save settings. “Save processing profile” applies settings to new team plans in the current and future runs without creating a message. Existing plans and past replies are unchanged. “Run a separate scenario” creates a new run with the selected input and switches the current history. If employee emulation is disabled, approvals require manual action.",
     "fastHint": "Fast mode is enabled: manual requests and related incidents advance without waiting for simulated days, even while paused. Background bank clocks and generators remain unchanged. Live LLM calls take time; unresolved issues remain open.",
     "draftHint": "The selected settings have not been applied. Click “Save processing profile” before submitting a manual request."
+  },
+  "tracking": {
+    "language": "Language",
+    "voiceCheck": "Transcribed offline. Check the text before sending."
   }
 }
