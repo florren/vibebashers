@@ -1,3 +1,4 @@
+import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -51,6 +52,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
                       </Badge>
                     }
                   />
+                  <ClientProfileLink id={s.client.id} runId={s.run_id} onOpen={onClose} />
                   <KV k={s.client.city_name ?? '—'} v={<IdLink kind="client" value={s.client.public_id} />} />
                   {s.client.churn_risk !== undefined && <KV k="churn risk" v={<span className="num">{s.client.churn_risk ?? 0}</span>} />}
                 </>
