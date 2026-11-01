@@ -26,7 +26,7 @@ from app.agent.customer_messages import (
 )
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
-from app.agent.refund_scope import case_operations, refund_candidates
+from app.agent.refund_scope import case_operations, refund_candidates, validate_refund_decision
 from app.agent.refund_scope import catalog as refund_scope_catalog
 from app.agent.refund_scope import catalog_fingerprint as refund_scope_fingerprint
 from app.agent.state import AgentState
@@ -995,6 +995,7 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
 
 async def act_instant(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение быстрого пути: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)."""
+    validate_refund_decision(state)
     inst, sig, client = state["instant"], state["signal"], state.get("client")
     c = state["classification"]
     fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
@@ -1115,6 +1116,7 @@ async def act_instant(state: AgentState, deps: Deps) -> AgentState:
 
 async def verify(state: AgentState, deps: Deps) -> AgentState:
     """Проверка устранения: verify_service_delivered; быстрый путь — refund и баланс (ТЗ 21.4)."""
+    validate_refund_decision(state)
     client = state.get("client") or {}
     sig = state["signal"]
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
@@ -1231,6 +1233,7 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
 
 async def gift(state: AgentState, deps: Deps) -> AgentState:
     """Подарок: задача (идемпотентно), автовыдача только при verified и resolved|closed."""
+    validate_refund_decision(state)
     client = state.get("client") or {}
     c = state.get("classification") or {}
     d = state.get("decision") or {}
@@ -2448,6 +2451,7 @@ async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark:
 
 async def act(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение решения через инструменты записи — идемпотентно (повторный вход не дублирует побочные эффекты)."""
+    validate_refund_decision(state)
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]
@@ -2883,6 +2887,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
 
 
 async def close(state: AgentState, deps: Deps) -> AgentState:
+    validate_refund_decision(state)
     sig, client = state["signal"], state.get("client") or {}
     d = state.get("decision") or {}
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)

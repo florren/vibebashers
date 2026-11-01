@@ -201,3 +201,64 @@ async def test_mass_scan_remains_separate_from_individual_case_scope(seeded):
             await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (op,)) == 1
         )
 
+
+
+
+@pytest.mark.parametrize("stale", [True, False])
+async def test_checkpoint_scope_preserves_human_decision_and_normal_approved_refund(seeded, stale):
+    from psycopg.types.json import Jsonb
+
+    from app.agent.graph import resume_after_human
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid, cid, now = await setup(conn)
+        op = await qr(conn, rid, cid, now, "3200", "6000")
+        sid, state = await run(
+            conn, rid, cid, now, "Ошибочно списали комиссию6000руб за QR оплату3200руб. Верните комиссию"
+        )
+        assert state["outcome"] == "awaiting_human"
+        hid = await count(conn, "select id from human_decisions where agent_run_id=%s", (state["agent_run_id"],))
+        if stale:
+            row = await (
+                await conn.execute(
+                    "select id,input from agent_steps where run_id=%s and node='wait_human' order by seq desc limit 1",
+                    (state["agent_run_id"],),
+                )
+            ).fetchone()
+            checkpoint = row[1]
+            checkpoint["signal"]["text"] = "Не открывается вклад в приложении, ошибка503"
+            checkpoint["normalization"]["intents"] = ["complaint"]
+            checkpoint["normalization"]["entities"] = {"product": "deposit", "operation_hint": "deposit"}
+            await conn.execute("update agent_steps set input=%s where id=%s", (Jsonb(checkpoint), row[0]))
+            await conn.execute("update signals set text=%s where id=%s", (checkpoint["signal"]["text"], sid))
+        await conn.execute(
+            "update human_decisions set decision='accept',decided_by='test',decided_at=now() where id=%s", (hid,)
+        )
+        await conn.commit()
+        resumed = await resume_after_human(
+            conn, human_decision_id=hid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+        )
+        assert resumed is not None
+        assert await count(conn, "select decision from human_decisions where id=%s", (hid,)) == "accept"
+        if stale:
+            assert resumed["outcome"] == "failed" and any("stale_refund_scope" in error for error in resumed["errors"])
+            assert (
+                await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (op,))
+                == 0
+            )
+            assert (
+                await count(conn, "select count(*) from incidents where agent_run_id=%s", (state["agent_run_id"],)) == 0
+            )
+            assert await count(conn, "select count(*) from tasks where run_id=%s and payload ? 'issued'", (rid,)) == 0
+        else:
+            assert resumed["outcome"] != "failed", resumed["errors"]
+            assert await count(
+                conn, "select sum(amount) from ledger_entries where operation_id=%s and kind='refund'", (op,)
+            ) == Decimal("6000")
+            await resume_after_human(
+                conn, human_decision_id=hid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+            )
+            assert (
+                await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (op,))
+                == 1
+            )

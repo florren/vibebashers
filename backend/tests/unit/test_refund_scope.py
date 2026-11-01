@@ -127,3 +127,37 @@ def test_invalid_metadata_is_rejected_instead_of_becoming_allow_all():
         scope.CaseScope.model_validate({**data, "topic_patterns": ["["]})
     with pytest.raises(ValidationError):
         scope.CaseScope.model_validate({**data, "operation": {"method": ["qr_sbp"], "invented": True}})
+
+
+@pytest.mark.parametrize("node_name", ["act", "act_instant", "verify", "gift", "close"])
+async def test_legacy_unrelated_refund_scope_fails_before_business_effects(node_name):
+    from types import SimpleNamespace
+
+    from app.agent import nodes
+
+    conn = AsyncMock()
+    deps = SimpleNamespace(ctx=SimpleNamespace(conn=conn))
+    state = {
+        "signal": {"text": "Не открывается вклад, ошибка503"},
+        "normalization": {"intents": ["complaint"], "entities": {"product": "deposit", "operation_hint": "deposit"}},
+        "context": {
+            "operations": [OP],
+            "rules_matched": [{"action": "refund_fee", "rule_code": RULE, "operation_ids": [10]}],
+        },
+    }
+    with pytest.raises(scope.StaleRefundDecision, match="stale_refund_scope"):
+        await getattr(nodes, node_name)(state, deps)
+    conn.execute.assert_not_awaited()
+
+
+def test_current_single_operation_refund_scope_remains_valid():
+    scope.validate_refund_decision(
+        {
+            "signal": {"text": TEXT},
+            "normalization": NORM,
+            "context": {
+                "operations": [OP],
+                "rules_matched": [{"action": "refund_fee", "rule_code": RULE, "operation_ids": [10]}],
+            },
+        }
+    )

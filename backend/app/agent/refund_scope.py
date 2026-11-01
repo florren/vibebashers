@@ -17,6 +17,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.agent.state import AgentState
 from app.contracts.enums import Intent, PaymentMethod, Product
 from app.contracts.registry import deref
 
@@ -152,3 +153,27 @@ def refund_candidates(
     if len(selected) > 1:
         return [], "неоднозначно: несколько операций по теме/сумме обращения"
     return selected, "операция соответствует текущей претензии" if selected else "нет операции по теме/сумме обращения"
+
+
+class StaleRefundDecision(ValueError):
+    """Checkpoint не доказывает право решить текущий claim указанным возвратом."""
+
+
+def validate_refund_decision(state: AgentState) -> None:
+    context = state.get("context") or {}
+    for rule in context.get("rules_matched") or []:
+        if rule.get("action") != "refund_fee":
+            continue
+        candidates, why = refund_candidates(
+            context.get("operations") or [],
+            state.get("normalization") or {},
+            (state.get("signal") or {}).get("text") or "",
+            str(rule.get("rule_code") or ""),
+        )
+        expected_ids = [operation.get("operation_id") for operation in candidates]
+        if not candidates or rule.get("operation_ids") != expected_ids:
+            raise StaleRefundDecision(
+                "stale_refund_scope: "
+                + why
+                + "; требуется актуальная обработка обращения, сохранённое решение человека не переинтерпретируется"
+            )
