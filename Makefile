@@ -106,3 +106,7 @@ import-transcripts:        ## импорт каталога транскрипт
 
 import-csi:                 ## ручной CSI JSON/XLSX через API (FILE=…, CX_BASE_URL=…)
 	$(PY) scripts/import_csi.py $(or $(FILE),data/import/csi) --base $(or $(CX_BASE_URL),http://localhost:8000)
+
+.PHONY: run-summary
+run-summary:                ## явный пересчёт summary завершённого запуска ID=…
+	$(PY) scripts/run_summary.py --id $(ID)
