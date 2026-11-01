@@ -43,35 +43,48 @@ python scripts/seed/faults.py --profile lite --check
 ```
 
 ## Отчёт субагента
-WIP codex/T-018-fault-history от main 4a01734, dependency T-017 e1c6c1
-влит обычным merge ca00d2f. Реализован отдельный scripts/seed/faults.py, вызов
-после operations и до signals; operations.py/clients.py не менялись. Привязка
-только совпавших run/system/code/time/region failed-операций; реальные counts,
-INFO/WARN/ERROR/FATAL и schema-valid started/resolved events. Устранены две
-причины недоступности диагностики get_system_logs: lowercase levels против DDL
-и отсутствие run scope. Тест проверяет реальный инструмент для каждого сбоя.
+Реализовано в codex/T-018-fault-history от main 4a01734 с обычным merge
+T-017 e1c6c1 (ca00d2f). Генератор scripts/seed/faults.py вызывается после
+operations и до signals: 14 последовательных 24-часовых окон, 2–4 сбоя в сутки,
+10–240 минут, регион/вся страна. Меняется только fault_id совпавших failed
+операций (run/system/code/time/region); статусы, ошибки, суммы и даты T-017
+сохранены. operations.py/clients.py, контракты и финансовые/HITL правила не менялись.
 
-10–15% отмечены только как regression candidates. finalize_regressions принимает
-настоящие same-run incident/release bindings, проверяет release другой системы
-за 1–4 часа и атомарно создаёт FK/валидное событие, повтор идемпотентен. До T-020
-исторические реальные regressions отсутствуют; этот критерий не объявлен done.
-Контракты/DDL/финансовые/HITL правила и зависимости не менялись.
+Есть INFO-фон, WARN/ERROR/FATAL и реальные request logs, counts по связанным
+операциям/клиентам, валидные started/resolved events. Инструмент get_system_logs
+исправлен на контрактные uppercase levels и baseline+current scope с исключением
+других free/scenario/live runs. UUID5 namespace фиксирован; события одного fault
+имеют общий correlation, повтор после очистки с тем же seed/ID воспроизводим.
+Идемпотентность/rollback и точный reset-marker prefix проверены на реальном CLI.
 
-Подробная семантика, идемпотентность и граница T-020 — data/README.md.
-Проверки выполняются только в cx_fault_history_revision; исходные данные других
-агентов/основного стенда не затрагиваются. Первый фиксированный полный regression: unit 814 passed/18 skipped,
-integration 223 passed/4 skipped (869.63s), scenarios 41 passed/2 skipped/1 failed
-(replay scenario08: key miss → fallback_mock вместо completed), compliance31passed,
-frontend144passed. Assertions не ослаблены; исследование exact prompt/hash diff
-и отдельные согласованные follow-up baseline+current scope/uuid5 ещё выполняются.
-Ruff/format323, mypy242, contracts44/161, drift191/191, licenses526 green.
-Отдельный negative test и data/README фиксируют T-014 catalog-vs-contract gap
-ANTIFRAUD-FALSE-BLOCK. Модель T-018 использует8 утверждённых T-017 failure_codes,
-а не заявляет проверку всех25 событийных кодов. DoD пока не выполнен.
+**Граница T-020 открыта:** 10–15% — только regression candidates, не реальные
+регрессии. finalize_regressions атомарно проверяет настоящие incident/release
+bindings одного run, другую систему и задержку 1–4 часа, затем заполняет FK и
+создаёт валидное событие; повтор идемпотентен. В seed demo пять кандидатов из 41,
+реальных регрессий пока 0. Поэтому общий статус не отмечен done.
 
-Replay follow-up: root cause — T-017 bank-context drift, не fault logs.
-Общий immutable replay_bank_v1 fixture сохранён с source hash174508…;
-исходные replay08/trace12/13 assertions и отдельный changed-seed honest-miss
-тест прошли:4passed. Кассеты/usage/ответы не менялись, external recording не было.
-Это доказательство относится к старому contract; новый common.schema требует
-отдельного разрешённого record и пока не объявлен совместимым.
+Проверки в отдельной cx_fault_history_revision, без рабочих БД и внешних LLM:
+полный первичный integration 223 passed/4 skipped (869.63s), compliance 31 passed;
+после follow-up полный unit 815 passed/18 skipped (26.42s), повтор затронутых
+integration/agent/trace и ВСЕХ scenarios 70 passed/2 skipped (253.07s).
+Frontend 144 passed, eslint/tsc; ruff/format 324 files, mypy 242 files,
+contracts 44 schemas/161 paths, drift 191/191 и licenses 526 distributions green.
+Stdlib trace: новый faults.py 88%; все 4 изменённые строки get_system_logs
+исполнены реальными DB-проверками (100%). Новых зависимостей нет.
+
+Первичный scenarios выявил честный replay miss из-за T-017 bank-context drift.
+Общий immutable replay_bank_v1 fixture с source hash 174508… сохранён для
+replay08 и trace12/13; отдельный тест проверяет changed-seed→honest miss.
+Исходные completed/replay/ledger/client_lane assertions сохранены; кассеты,
+ответы и usage не менялись. Доказательство относится к старому contract.
+Отдельный T-014 gap ANTIFRAUD-FALSE-BLOCK/regex не скрыт: T-018 использует
+8 утверждённых failure_codes, а не заявляет валидацию всех 25 fault codes.
+Новый common.schema пока не включён и требует отдельного review/нового разрешённого
+реального record; совместимость со stale кассетами не заявляется.
+
+Полный demo5000 (T-017+T-018), включая dump: 20.947s, операций 600000,
+failed 5910, связанных 218, сбоев 41, ERROR logs 341. Это измерение локального
+shared PostgreSQL 16 testcontainer, не обещание времени другого runner.
+[Машинный отчёт](../reviews/T-018-demo5000.json); семантика — data/README.md.
+Финальный required CI/merge выполняет основной агент; T-020 ещё должен завершить
+реальную историческую регрессию. Поэтому общий DoD checkbox оставлен открытым.

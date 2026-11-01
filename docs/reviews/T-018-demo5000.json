@@ -1,0 +1,29 @@
+{
+  "profile": "demo",
+  "clients_requested": 5000,
+  "seed_exit_code": 0,
+  "wall_seconds": 20.947,
+  "environment": "shared local PostgreSQL16 testcontainer; synthetic data/mock-only; concurrent other agent tests possible",
+  "clients": 5000,
+  "operations": 600000,
+  "failed": 5910,
+  "linked_operations": 218,
+  "qr": 102078,
+  "qr_fee": 4073,
+  "faults": 41,
+  "regional_faults": 21,
+  "actual_regressions": 0,
+  "logs_by_level": {
+    "FATAL": 41,
+    "WARN": 41,
+    "ERROR": 341,
+    "INFO": 209
+  },
+  "events_by_type": {
+    "fault.resolved": 41,
+    "fault.started": 41
+  },
+  "regression_candidates": 5,
+  "source_code_head": "09021e16e230ec1ac0b4babf12ed03cbd3755540",
+  "date": "2026-11-02"
+}
