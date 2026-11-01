@@ -1,0 +1,4 @@
+/** Синтетические UI fixtures; реальная цепочка writes проверяется PostgreSQL regression. */
+export const dbCounters = ['signals', 'incidents', 'incident_signals', 'incident_status_history', 'notifications', 'tasks', 'agent_runs', 'agent_steps', 'client_states', 'churn_events', 'incident_economics', 'faults'].map((table, i) => ({ table, rows: i === 0 ? 120 : i + 1, exact: true, last_change_at: '2026-11-09T10:01:00Z' }))
+export const dbActivity = ['notifications', 'incident_status_history', 'incident_signals', 'incidents'].map((table_name, i) => ({ id: 104 - i, run_id: 7, table_name, op: 'INSERT' as const, pk: String(20 - i), summary: { changed_fields: [] }, ts: '2026-11-09T10:01:00Z' }))
+export const dbRows = [{ id: 17, public_id: 'SIG-000017', status: 'closed', external_contact: { contacts: null, password: null }, text: 'Не удалось открыть вклад', run_id: 7 }]
