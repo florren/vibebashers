@@ -245,6 +245,7 @@ class OpenAICompatProvider:
         ]
         usage = Usage(provider=self.name, model=profile.model, request_count=0)
         raw = ""
+        usage_observed = False
         attempt = 0
         while attempt < 2:
             payload: dict[str, Any] = {
@@ -267,12 +268,14 @@ class OpenAICompatProvider:
                 try:
                     await self._before_chat(profile, base_url)
                 except ProviderError as exc:
-                    if usage.request_count:
+                    if usage_observed:
+                        usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
                         exc.usage = usage
                     raise
                 usage.request_count += 1
                 result = await self._chat_client(base_url, timeout_s).chat.completions.create(**payload)
             except APIError as exc:
+                usage_observed = False  # Ошибка upstream не подтверждает нулевой расход.
                 error = self._provider_error(exc)
                 if error.kind == "unavailable" and use_json_schema and error.status == 400:
                     use_json_schema = False  # Смена формата не расходует корректирующую попытку.
@@ -282,6 +285,7 @@ class OpenAICompatProvider:
             if self._paid(profile, base_url) and (result.usage is None or not self._usage_known(result.usage)):
                 raise ProviderError("bad_output", "расход платного ответа неизвестен: usage отсутствует")
             if result.usage is not None:
+                usage_observed = self._usage_known(result.usage)
                 usage.prompt_tokens += result.usage.prompt_tokens or 0
                 usage.completion_tokens += result.usage.completion_tokens or 0
             raw = result.choices[0].message.content if result.choices else ""

@@ -143,3 +143,22 @@ def test_key_payload_uses_reported_daily_limit():
         parse_key_payload({"data": {"free_model_daily_requests": {"limit": 73}, "is_free_tier": True}})["rpd_limit"]
         == 73
     )
+
+
+async def test_format_error_then_budget_rejection_keeps_usage_unknown():
+    paths = []
+
+    def handler(request):
+        paths.append(request.url.path)
+        if request.url.path.endswith("/key"):
+            return httpx.Response(200, json={"data": {"usage": 0 if len(paths) == 1 else 10}})
+        return httpx.Response(400, json={"error": {"message": "format unsupported"}})
+
+    provider = OpenAICompatProvider("test", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(ProviderError, match="достиг бюджета") as error:
+            await provider.complete_structured(MESSAGES, SCHEMA, PROFILE, timeout_s=1)
+        assert error.value.usage is None
+        assert len(paths) == 3
+    finally:
+        await provider.aclose()
