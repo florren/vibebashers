@@ -3583,7 +3583,7 @@ export interface paths {
                             /** @description Точный счётчик; false — оценка pg_stat_user_tables */
                             exact?: boolean;
                             /** Format: date-time */
-                            last_change_at?: string;
+                            last_change_at?: string | null;
                         }[];
                     };
                 };
