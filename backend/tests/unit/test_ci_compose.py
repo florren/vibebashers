@@ -88,6 +88,8 @@ def test_isolation_copies_bind_data_and_scopes_resources(tmp_path, monkeypatch):
     assert backend["image"] == "cx-pulse-backend:ci"
     assert backend["ports"][0]["host_ip"] == "127.0.0.1"
     assert backend["environment"]["LLM_CHAIN"] == "mock"
+    assert backend["environment"]["APP_ENV"] == "dev"
+    assert "@postgres:5432/" in backend["environment"]["DATABASE_URL"]
     copied = Path(backend["volumes"][0]["source"]) / "sentinel"
     copied.write_text("candidate mutation")
     assert (tmp_path / "data" / "sentinel").read_text() == "source"
@@ -124,3 +126,44 @@ def test_unsafe_config_rejected(tmp_path, monkeypatch, violation):
         port = 80
     with pytest.raises(ValueError):
         compose.isolate(config, project, image, port, tmp_path / "candidate")
+
+
+def test_nested_bind_parent_is_created_before_docker(tmp_path, monkeypatch):
+    monkeypatch.setattr(compose, "ROOT", tmp_path)
+    config = candidate_config(tmp_path)
+    env = tmp_path / ".env"
+    env.write_text("APP_SECRET=fixture")
+    config["services"]["backend"]["volumes"].append({"type": "bind", "source": str(env), "target": "/data/env/.env"})
+    config["services"]["backend"]["environment"] = {"APP_SECRET": "fixture"}
+    isolated = compose.isolate(config, "cx-ci-test", "cx-pulse-backend:ci", 18080, tmp_path / "candidate")
+    data = Path(isolated["services"]["backend"]["volumes"][0]["source"])
+    assert (data / "env").is_dir()
+    assert isolated["services"]["personal"]["environment"]["APP_SECRET"] == "fixture"
+
+
+def test_performance_reports_all_threshold_failures(monkeypatch):
+    import io
+    import itertools
+
+    calls = itertools.count()
+
+    def response(*args, **kwargs):
+        return io.BytesIO(b'{"running":true}' if next(calls) == 1 else b"{}")
+
+    clock = itertools.count(step=0.4)
+    monkeypatch.setattr(compose.urllib.request, "urlopen", response)
+    monkeypatch.setattr(compose.time, "perf_counter", lambda: next(clock))
+    report = compose.performance("http://127.0.0.1:18080", 91)
+    assert len(report["violations"]) == 6
+    assert len(report["samples"]) == 5
+    assert all(len(sample["timings_ms"]) == 21 and sample["p95_ms"] > 300 for sample in report["samples"].values())
+
+
+def test_performance_connection_failure_is_reported(monkeypatch):
+    def unavailable(*args, **kwargs):
+        raise OSError("offline")
+
+    monkeypatch.setattr(compose.urllib.request, "urlopen", unavailable)
+    report = compose.performance("http://127.0.0.1:18080", 1)
+    assert report["violations"] == ["simulator start: OSError"]
+    assert report["samples"] == {}

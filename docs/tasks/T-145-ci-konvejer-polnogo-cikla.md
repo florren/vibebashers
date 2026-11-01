@@ -8,7 +8,7 @@
 | Волна | 5 |
 | Слой | `L5` Качество (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Lint → контракты → тесты → сборка → смоук на собранных образах.
@@ -36,4 +36,41 @@ gh workflow view ci (или аналог GitVerse)
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+Ветка `codex/T-145-ci-shards`, база T-152 `c6d0485`; cross-layer согласован
+в рамках общей ревизии. Jobs contracts/db/tests сохранены; tests — `always()`
+aggregate с явным отказом при failed/cancelled/skipped prerequisite. Полный pytest
+разделён по реально собранным модулям между четырьмя отдельными checkout/PG16;
+четыре manifests подтверждают общую revision/collection, exit code и JUnit count.
+Добавлены frozen Python installs, lint/frontend jobs, настоящий Docker build,
+изолированный real-image Playwright smoke, scheduled nightly slow/perf.
+Лицензионный gate T-152 сохранён, mirror.yml не изменён.
+
+Docker helper использует отдельный `:ci` image, случайный project, временные копии
+bind mounts и loopback port; `.env` создаётся исключительно через O_EXCL, чужие
+файлы/симлинки не трогаются. Копии вложенных mount parents создаются до Docker,
+cleanup ограничен своим project. В real-image APP_ENV=dev включает simulator,
+LLM_CHAIN/LLM_PROVIDER принудительно mock, API credentials отсутствуют.
+
+Проверки: full standalone four-shard proof на commit `6f87f62` — 1070 passed,
+24 skipped, wall 526.648s. Shard times 454.37/178.80/521.73/374.40s;
+aggregate union PASS, отсутствие одного manifest намеренно проверено как failure.
+Последующие регрессии helper/workflow/owners — 40 passed; staged cross-layer
+изменение теперь обнаруживается check_owners, разрешение --allow-cross не ослаблено.
+`make lint`, frontend build, E2E TypeScript, contracts, i18n, licenses-check
+(526 distributions) прошли. Модельный split сохраняет все 58 Playwright cases:
+проверенные read-only/mock files parallel4, settings/new files serial1 после них.
+
+Nightly snapshot на отдельном candidate: demo/5000 seed 14.663s,
+simulator.running=true, p95 health6.116/state2.363/signals14.901/map15.291/
+dashboard18.594ms, violations=[]; raw samples сохранены в performance artifact.
+Это не замена длительного T-144 замера WS/CPU/RAM на целевой машине.
+
+Открытая граница: real browser smoke обнаружил map containment overflow
+(1024×768 SVG bottom772.734375, также 1280 ru). Строгие assertions сохранены;
+отдельное исправление делает UI агент. Полный GitHub PR cycle ≤15min требует
+замера run после публикации родительским агентом, локальная wall-time shards
+не доказывает remote latency. Monolithic `make test` повторно не запускался:
+вместо него проверена полная pytest collection через четыре изолированных shards
+и отдельно frontend suite; CI повторит это на чистых runners.
+Подробности эксплуатации — `docs/CI.md`.

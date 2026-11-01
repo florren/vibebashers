@@ -24,7 +24,7 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
     config["name"] = project
     for section in ("volumes", "networks"):
         for row in config.get(section, {}).values():
-            if row.get("external"):
+            if row.get("external") or row.get("driver_opts"):
                 raise ValueError("CI не использует внешние volumes/networks")
             row.pop("name", None)
     for name, service in config["services"].items():
@@ -45,8 +45,25 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
             else:
                 raise ValueError("bind source не существует")
             mount["source"] = str(destination)
+        # Docker creates nested bind parents as root; prepare them in our copy first.
+        binds = [mount for mount in service.get("volumes", []) if mount["type"] == "bind"]
+        for outer in binds:
+            for inner in binds:
+                relative = (
+                    Path(inner["target"]).relative_to(outer["target"])
+                    if Path(inner["target"]).is_relative_to(outer["target"])
+                    else None
+                )
+                if relative is not None and relative.parts:
+                    (Path(outer["source"]) / relative).parent.mkdir(parents=True, exist_ok=True)
         service.pop("container_name", None)
         service["ports"] = []
+    config["services"]["postgres"]["environment"] = {
+        "POSTGRES_USER": "cx",
+        "POSTGRES_PASSWORD": "cx",
+        "POSTGRES_DB": "cx_pulse",
+    }
+    shared_secret = config["services"]["backend"].get("environment", {}).get("APP_SECRET", secrets.token_hex(32))
     for name in ("backend", "personal"):
         service = config["services"][name]
         service["image"] = image
@@ -54,7 +71,10 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
         service["user"] = f"{os.getuid()}:{os.getgid()}"
         service.setdefault("environment", {}).update(
             {
-                "APP_ENV": "test",
+                # APP_ENV=test disables simulator/workers; this is a real isolated app.
+                "APP_ENV": "dev",
+                "DATABASE_URL": "postgresql+psycopg://cx:cx@postgres:5432/cx_pulse",
+                "APP_SECRET": shared_secret,
                 "LLM_PROVIDER": "mock",
                 "LLM_CHAIN": "mock",
                 "LLM_RECORD": "false",
@@ -94,8 +114,6 @@ def performance(base: str, seed_seconds: float) -> dict[str, Any]:
         data=b'{"action":"start"}',
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        response.read()
     report: dict[str, Any] = {
         "seed_seconds": seed_seconds,
         "samples": {},
@@ -104,6 +122,16 @@ def performance(base: str, seed_seconds: float) -> dict[str, Any]:
     }
     if seed_seconds > 90:
         report["violations"].append("demo seed > 90 seconds")
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            response.read()
+        with urllib.request.urlopen(base + "/api/sim/state", timeout=10) as response:
+            report["simulator_state"] = json.load(response)
+        if not report["simulator_state"].get("running"):
+            report["violations"].append("simulator is not running")
+    except (OSError, ValueError) as exc:
+        report["violations"].append(f"simulator start: {type(exc).__name__}")
+        return report
     for path in (
         "/api/health",
         "/api/sim/state",
@@ -114,11 +142,18 @@ def performance(base: str, seed_seconds: float) -> dict[str, Any]:
         timings = []
         for _ in range(21):
             started = time.perf_counter()
-            with urllib.request.urlopen(base + path, timeout=15) as response:
-                response.read()
+            try:
+                with urllib.request.urlopen(base + path, timeout=15) as response:
+                    response.read()
+            except OSError as exc:
+                report["violations"].append(f"API {path}: {type(exc).__name__}")
+                break
             timings.append((time.perf_counter() - started) * 1000)
+        if len(timings) != 21:
+            report["samples"][path] = {"completed_requests": len(timings)}
+            continue
         p95 = sorted(timings)[19]
-        report["samples"][path] = {"p95_ms": p95, "max_ms": max(timings)}
+        report["samples"][path] = {"p95_ms": p95, "max_ms": max(timings), "timings_ms": timings}
         if p95 > 300:
             report["violations"].append(f"API {path}: p95 {p95:.1f} ms > 300 ms")
     return report
@@ -132,7 +167,7 @@ def own_env(path: Path):
     try:
         with os.fdopen(descriptor, "w") as stream:
             stream.write(
-                f"APP_SECRET={secrets.token_hex(32)}\nAPP_ENV=test\nLLM_PROVIDER=mock\nLLM_CHAIN=mock\nLLM_RECORD=false\nSTT_PROVIDER=none\nMAILPIT_ENABLED=false\nTELEGRAM_BOT_TOKEN=\n"
+                f"APP_SECRET={secrets.token_hex(32)}\nAPP_ENV=dev\nLLM_PROVIDER=mock\nLLM_CHAIN=mock\nLLM_RECORD=false\nSTT_PROVIDER=none\nMAILPIT_ENABLED=false\nTELEGRAM_BOT_TOKEN=\n"
             )
         yield
     finally:
@@ -222,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
                 if report["violations"]:
                     raise ValueError("; ".join(report["violations"]))
             subprocess.run(
-                ["npm", "exec", "--", "playwright", "test", "--workers=1"],
+                ["npm", "exec", "--", "playwright", "test"],
                 cwd=ROOT / "frontend",
                 env=environment,
                 check=True,
