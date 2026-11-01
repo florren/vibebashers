@@ -61,3 +61,11 @@ def test_existing_sampling_options_are_preserved():
 def test_invalid_tariff_is_rejected_before_snapshot(value):
     with pytest.raises(ValueError):
         _safe(LLMProfile(code="x", provider="gigachat", model="x", price_in_per_1m=value))
+
+
+def test_legacy_priced_mock_retains_explicit_tariffs_for_every_role():
+    default = LLMProfile(code="priced", provider="mock", model="mock-1", price_in_per_1m=50, price_out_per_1m=120)
+    result = _offline(profiles(), default, check_settings=False)
+    assert {p.provider for p in result.values()} == {"mock"}
+    assert {p.price_in_per_1m for p in result.values()} == {50}
+    assert {p.price_out_per_1m for p in result.values()} == {120}

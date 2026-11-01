@@ -68,4 +68,8 @@ def test_all_scenarios_listed() -> None:
             "duration_sim_hours",
             "last_run_at",
             "last_result",
+            "runnable",
+            "reset_mode_required",
         }
+        assert api["runnable"] is sc.is_runnable(s)
+        assert api["reset_mode_required"] == s.get("reset_mode_required")

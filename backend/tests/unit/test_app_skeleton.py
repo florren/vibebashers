@@ -24,8 +24,16 @@ def test_health_degraded_without_db(monkeypatch) -> None:
 
 
 def test_stub_is_problem_json_501() -> None:
-    with TestClient(create_app()) as c:
-        r = c.delete("/api/sim/runs/1")  # заглушка T-031 (archive/delete); baseline реализован в T-040
+    from app.errors import NotImplementedYet
+
+    app = create_app()
+
+    @app.delete("/api/test-stub")
+    async def stub() -> None:
+        raise NotImplementedYet("T-040")
+
+    with TestClient(app) as c:
+        r = c.delete("/api/test-stub")
     assert r.status_code == 501
     assert r.headers["content-type"].startswith("application/problem+json")
     assert r.json()["card"].startswith("T-")
