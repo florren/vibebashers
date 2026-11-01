@@ -80,7 +80,7 @@ export function DashboardTab() {
                     <Money label={t('dash.econ.realized')} v={e.realized_loss_rub} tone={(e.realized_loss_rub ?? 0) > 0 ? 'danger' : undefined} hint={t('dash.econ.realizedHint')} />
                     <Money label={t('dash.econ.refunds')} v={e.refund_rub} hint={t('dash.econ.refundsHint')} />
                   </div>
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto"><table className="w-full text-sm">
                     <thead className="text-left text-[11px] uppercase tracking-wide text-muted">
                       <tr className="border-y border-line">
                         <th className="px-3 py-1.5 font-medium">{t(`dash.econ.group.${groupBy}`)}</th>
@@ -111,7 +111,7 @@ export function DashboardTab() {
                         )
                       })}
                     </tbody>
-                  </table>
+                  </table></div>
                 </>
               )}
             </Section>

@@ -1,3 +1,5 @@
+import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
+import { DeviceSelector } from '@/shared/layout/device'
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -63,10 +65,10 @@ export function PersonalChat() {
   useEffect(() => { bottom.current?.scrollIntoView?.({ block:'nearest', behavior:'smooth' }) },[lastKey])
   const reset = useMutation({ mutationFn: () => request('/api/personal/reset',{}), onSuccess: () => { qc.removeQueries({queryKey:['personal']}); window.location.reload() } })
   const error = boot.error ?? history.error ?? send.error ?? reset.error
-  return <div className="min-h-full bg-bg text-ink">
+  return <div className="personal-shell min-h-full bg-bg text-ink">
     <header className="border-b border-line bg-panel px-4 py-4"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3"><span className="rounded-xl bg-brand p-2 text-white"><MessageCircle size={23}/></span><div><div className="font-semibold">{t('personal.title')}</div><div className="text-xs text-muted">{t('personal.subtitle')}</div></div></div>
-      <div className="flex flex-wrap items-center gap-2"><ThemeSelector className="flex flex-wrap items-center gap-1"/><button className="btn btn-sm" onClick={() => void i18n.changeLanguage(i18n.language==='ru'?'en':'ru')}>{i18n.language==='ru'?'EN':'RU'}</button></div>
+      <ResponsiveFilters title={t('nav.settings')}><div className="flex flex-wrap items-center gap-2"><ThemeSelector className="flex flex-wrap items-center gap-1"/><DeviceSelector /><button className="btn btn-sm" onClick={() => void i18n.changeLanguage(i18n.language==='ru'?'en':'ru')}>{i18n.language==='ru'?'EN':'RU'}</button></div></ResponsiveFilters>
     </div></header>
     <main className="mx-auto grid grid-cols-1 max-w-6xl gap-5 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
       <aside className="min-w-0 space-y-4"><section className="card space-y-4 p-4">

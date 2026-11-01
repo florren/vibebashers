@@ -1,3 +1,4 @@
+import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
 import { clsx } from 'clsx'
 import { Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -33,8 +34,9 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
   const hasFilters = personalOnly || q || types.length || statuses.length || channels.length
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      <aside className="max-h-[40vh] w-full shrink-0 space-y-4 overflow-y-auto border-b border-line p-3 md:max-h-none md:w-56 md:border-r">
+    <div className="signals-feed flex h-full flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+      <aside className="signal-filters max-h-[40vh] w-full shrink-0 space-y-4 overflow-y-auto border-b border-line p-3 md:max-h-none md:w-56 md:border-r">
+        <ResponsiveFilters active={Boolean(hasFilters)}>
         <label className="relative block">
           <Search size={13} className="pointer-events-none absolute left-2 top-2.5 text-faint" />
           <input className="input w-full pl-7" value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('continuity.signalSearch')} maxLength={200} placeholder={t('continuity.signalSearch')} />
@@ -58,8 +60,9 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
             <X size={12} /> {t('common.reset')}
           </button>
         ) : null}
+        </ResponsiveFilters>
       </aside>
-      <div className="min-w-0 shrink-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
+      <div className="signals-list min-w-0 shrink-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
         {list.isPending && <SkeletonRows n={8} />}
         {list.isError && <ErrorBox error={list.error} />}
         {list.data && items.length === 0 && <Empty title={t('common.empty')} />}
@@ -94,7 +97,7 @@ export function SignalRow({
     <li>
       <button
         onClick={() => s.id !== undefined && onOpen(s.id)}
-        className={clsx('flex w-full items-start gap-3 px-3 text-left transition hover:bg-raised', compact ? 'py-1.5' : 'py-2')}
+        className={clsx('signal-row flex w-full items-start gap-3 px-3 text-left transition hover:bg-raised', compact ? 'py-1.5' : 'py-2')}
       >
         <span className="num w-11 shrink-0 pt-0.5 font-mono text-xs text-muted">{fmtClock(s.received_sim)}</span>
         <span className="min-w-0 flex-1">

@@ -62,7 +62,7 @@ export function TasksTab({ runId }: { runId: number | undefined }) {
       {q.isLoading && <SkeletonRows n={6} />}
       {!q.isLoading && items.length === 0 && <Empty title={t('common.empty')} />}
       {items.length > 0 && (
-        <table className="card w-full text-sm">
+        <div className="overflow-x-auto"><table className="card w-full text-sm">
           <thead className="text-left text-[11px] uppercase tracking-wide text-muted">
             <tr className="border-b border-line">
               <th className="px-3 py-1.5 font-medium">{t('tasks.col.task')}</th>
@@ -148,7 +148,7 @@ export function TasksTab({ runId }: { runId: number | undefined }) {
               )
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
       <ChangeGiftModal task={changing} onClose={() => setChangeId(null)} />
     </div>

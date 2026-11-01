@@ -170,7 +170,7 @@ function StepLlm({ p }: { p: SetupPayload }) {
       <SaveBar pending={save.isPending} error={save.error} ok={save.isSuccess} onSave={() => save.mutate({ llm })} />
 
       <Section title={t('setup.llm.profiles')}>
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto"><table className="w-full text-xs">
           <thead className="text-left text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-1">code</th>
@@ -226,7 +226,7 @@ function StepLlm({ p }: { p: SetupPayload }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         {test.data && (
           <div className={clsx('mx-3 my-2 rounded border px-2 py-1 text-xs', test.data.ok ? 'border-ok/40 bg-ok/10' : 'border-danger/40 bg-danger/10')}>
             {t('setup.llm.testResult', { id: testId ?? '' })}: {test.data.ok ? `OK · ${test.data.latency_ms} мс · ${test.data.model_reported ?? ''}` : test.data.error}
@@ -443,7 +443,7 @@ function StepSla() {
   return (
     <div className="flex flex-col gap-4">
       <Section title={t('setup.sla.matrix')} right={<span className="text-xs text-muted">{t('setup.sla.unit')}</span>}>
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto"><table className="w-full text-xs">
           <thead className="text-[11px] uppercase text-muted">
             <tr>
               <th className="px-3 py-1 text-left">{t('setup.sla.complexity')}</th>
@@ -473,7 +473,7 @@ function StepSla() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
         <p className="px-3 py-2 text-[11px] text-faint">{t('setup.sla.legend')}</p>
         <div className="px-3 pb-3"><SaveBar pending={saveSla.isPending} error={saveSla.error} ok={saveSla.isSuccess} onSave={() => saveSla.mutate(data)} /></div>
       </Section>
@@ -588,7 +588,7 @@ function StepTemplates() {
         <ul className="max-h-96 divide-y divide-line overflow-y-auto">
           {shown.slice(0, 60).map((x) => (
             <li key={x.id ?? `${x.code}-${x.channel_code}-${x.segment_code}`} className="flex flex-col gap-1 px-3 py-2 text-xs">
-              <div className="flex items-center gap-2 text-muted">
+              <div className="flex flex-wrap items-center gap-2 text-muted">
                 <span className="font-mono text-ink">{x.code}</span>
                 <span>{tEnum('channel', x.channel_code)}</span>
                 {x.segment_code && <span>{x.segment_code}</span>}
@@ -755,7 +755,7 @@ function SttCheck() {
   const test = useSttTest()
   return (
     <Section title={t('setup.stt.title')}>
-      <table className="w-full text-xs">
+      <div className="overflow-x-auto"><table className="w-full text-xs">
         <tbody className="divide-y divide-line">
           {(prov.data ?? []).map((p) => (
             <tr key={p.code}>
@@ -776,7 +776,7 @@ function SttCheck() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       {test.error && (
         <div className="px-3 pb-2">
           <ErrorBox error={test.error} compact />

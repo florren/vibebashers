@@ -16,9 +16,9 @@ function DemoModeFooter() {
 
 export function Shell() {
   return (
-    <div className="flex h-full flex-col">
+    <div className="app-shell flex h-full min-w-0 flex-col">
       <Header />
-      <main className="min-h-0 flex-1">
+      <main className="app-content min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>
       <DemoModeFooter />

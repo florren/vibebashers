@@ -66,7 +66,7 @@ function StatsStrip({ s }: { s?: { posts?: number; replied?: number; identified?
     </div>
   )
   return (
-    <div className="grid shrink-0 grid-cols-3 gap-3 border-b border-line px-3 py-2 sm:grid-cols-6">
+    <div className="feed-kpis grid shrink-0 grid-cols-3 gap-3 border-b border-line px-3 py-2 sm:grid-cols-6">
       {cell(t('feed.stats.posts'), String(s?.posts ?? '—'))}
       {cell(t('feed.stats.replied'), String(s?.replied ?? '—'))}
       {cell(t('feed.stats.identified'), String(s?.identified ?? '—'))}
