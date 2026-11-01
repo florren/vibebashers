@@ -53,3 +53,5 @@ Backend дополнение атомарно записывает child signal 
 
 
 Разбиение 01.11.2026: исходный объединённый snapshot `e63ded4` сохранён без переписывания истории. После T-119 эта ветка добавляет только маршрут трекинга, polling/append UI, signal.appended/reply/HITL wakeup, SMTP/env/README и их regression tests. Production-код и tests итогового стека побайтово совпадают с проверенным `e63ded4`; отличаются только отчёты карточек. Самостоятельные проверки stacked ветки: make lint (154 frontend tests, Ruff, mypy, OpenAPI drift), обе production-сборки, 21 backend privacy/SMTP/dispatch/public/followup regression test и 9 Playwright cases прошли. Все исходные end-to-end assertions и тесты полного snapshot сохранены.
+
+Интеграция с main после PR156: пользователь подтвердил конкретное HITL-поведение PR157. Сохранён parent_id helper _submit_public; дублированный трёхаргументный вариант из merge удалён. Целевые backend12passed8.34s, make lint зелёный333format/246mypy/frontend; итоговый CI ожидается. Реальные email/Telegram не отправлялись.
