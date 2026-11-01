@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.11
+  version: 1.5.13
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -950,6 +950,7 @@ paths:
       tags: [clients]
       summary: Клиент 360 — профиль, продукты, операции, сигналы, инциденты, состояние и стиль коммуникации
       parameters:
+        - { $ref: "#/components/parameters/RunId" }
         - { name: ops_hours, in: query, schema: { type: integer, default: 72 } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Client360" } } } }

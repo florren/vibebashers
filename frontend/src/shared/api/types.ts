@@ -2937,6 +2937,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     ops_hours?: number;
                 };
                 header?: never;
