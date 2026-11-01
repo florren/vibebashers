@@ -213,7 +213,7 @@ async def _classification(
                 obj,
                 prompt=prompt,
                 raw=result.raw,
-                model=result.usage.model,
+                model=f"{result.provider}:{result.usage.model or profile.model}",
                 usage=result.usage.as_dict(),
                 latency_ms=result.usage.latency_ms,
             )
