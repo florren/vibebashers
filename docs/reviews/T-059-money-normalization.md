@@ -4,7 +4,7 @@
 
 ## Дефект и конкретный diff
 
-Обе прежние регулярки (`nodes.regex_hints`, `MockProvider.analyze`) разрешали только digits/whitespace перед рублёвым маркером. На `5472.45 рублей` поиск начинал новое совпадение после точки и выдавал `45.0`. Затем Mock normalization перекрывал правильные подсказки своим значением по тому же ошибочному правилу.
+Обе прежние регулярки (`nodes.regex_hints`, `MockProvider.analyze`) разрешали только digits/whitespace перед рублёвым маркером. На `5472.45 рублей` поиск начинал новое совпадение после точки и выдавал `45.0`. Затем Mock normalization перекрывал regex-подсказки своим значением по тому же ошибочному правилу.
 
 Теперь оба пути вызывают `app/amounts.py`. Полный числовой токен разбирается через `Decimal`, без округления и арифметики float. Поддерживаются integer (включая 0 и одну цифру), decimal comma/dot с 1–2 знаками копеек, группы тысяч по 3 цифры с обычным пробелом/NBSP/narrow NBSP/thin space, прежние рублёвые маркеры. Копейки, хвосты некорректной группы/дроби, даты, отрицательные суммы и иные валюты не превращаются в самостоятельный положительный integer.
 
@@ -23,6 +23,6 @@ Parser defect подтверждён независимо, но не объяв�
 
 ## Проверки
 
-135 targeted unit tests parser/Mock/normalize и существующих normalization suites — успешно. Отдельная scratch PostgreSQL16 integration fixture задаёт явное sim-time/операцию в окне, payment `Decimal('5472.45')` и fee `Decimal('54.72')`. Граф завершился; normalization hint 5472.45, существующее правило разрешило fast path, fee/refund ledger оба точно 54.72, human_decisions не созданы. Это проверка сохранности существующей policy, не её расширение. Полный lint/test — результаты в отчёте карточки.
+137 targeted unit tests parser/Mock/normalize и существующих normalization suites — успешно. Отдельная scratch PostgreSQL16 integration fixture задаёт явное sim-time/операцию в окне, payment `Decimal('5472.45')` и fee `Decimal('54.72')`. Граф завершился; normalization hint 5472.45, существующее правило разрешило fast path, fee/refund ledger оба точно 54.72, human_decisions не созданы. Это проверка сохранности существующей policy, не её расширение. Полный lint/test — результаты в отчёте карточки.
 
 Внешние LLM/Telegram/email не вызывались. БД только отдельная `cx_money_normalization_revision` на согласованном scratch сервере; чужие БД не изменялись.

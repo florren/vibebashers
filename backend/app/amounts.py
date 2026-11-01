@@ -13,7 +13,7 @@ from decimal import Decimal
 # Горизонтальные разделители тысяч: пробел, NBSP, narrow NBSP, thin space.
 GROUP_SPACES = " \u00a0\u202f\u2009"
 _RUBLE_AMOUNT = re.compile(
-    r"(?<![0-9−-])"
+    r"(?<![0-9.−-])"
     r"(?P<amount>(?:[0-9]{1,3}(?:[ \u00a0\u202f\u2009][0-9]{3})+|[0-9]+)(?:[.,][0-9]{1,2})?)"
     r"[ \t\u00a0\u202f\u2009]*"
     r"(?:₽|руб(?:лей|ля|ль)?(?![а-яёa-z])\.?|р\.)",
@@ -33,10 +33,7 @@ def first_ruble_amount(text: str) -> Decimal | None:
         if prefix and (
             prefix[-1].isdigit()
             or prefix[-1] in "−-"
-            or (
-                prefix[-1] in ".,"
-                and (not before_punctuation or before_punctuation[-1].isdigit() or before_punctuation[-1].isspace())
-            )
+            or (prefix[-1] in ".," and (not before_punctuation or not before_punctuation[-1].isalpha()))
         ):
             continue
         number = match["amount"].translate(str.maketrans("", "", GROUP_SPACES)).replace(",", ".")
