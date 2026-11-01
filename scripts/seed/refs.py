@@ -344,8 +344,15 @@ def seed_bench(cur: psycopg.Cursor[Any]) -> None:
         "red_phrases_v1": "Красные фразы сотрудника: мисселлинг и conduct (ДТЗ FR-4.2)",
         "golden_v1": "Golden-набор классификации: тип × продукт × канал",
     }
+    from app.bench.datasets import CLASSIFICATION_CODES, check_canonical, load_rows
+    from scripts.seed.bench import seed_dataset
+
+    check_canonical()
     for f in sorted((DATA / "bench").glob("*.jsonl")):
         code = f.stem
+        if code in CLASSIFICATION_CODES:
+            seed_dataset(cur, code, load_rows(code))
+            continue
         cur.execute(
             "insert into bench_datasets (code, title_ru, description) values (%s, %s, %s) on conflict (code) do update set title_ru = excluded.title_ru returning id",
             (code, meta.get(code, code), f"data/bench/{f.name}"),

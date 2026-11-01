@@ -9,7 +9,9 @@ from typing import Any
 
 def _accuracy(results: list[dict[str, Any]], key: str) -> float | None:
     vals = [
-        bool(r["correct"].get(key)) for r in results if key in (r.get("gold") or {}) and key in r.get("correct", {})
+        bool(r["correct"].get(key))
+        for r in results
+        if "ambiguous" not in r.get("tags", []) and key in (r.get("gold") or {}) and key in r.get("correct", {})
     ]
     if not vals:
         return None
@@ -103,7 +105,11 @@ def aggregate(results: list[dict[str, Any]], *, repeats: int = 1) -> dict[str, A
         if acc is not None:
             metrics[field] = acc
 
-    high_gold = [r for r in results if (r.get("gold") or {}).get("criticality") == "high"]
+    high_gold = [
+        r
+        for r in results
+        if "ambiguous" not in r.get("tags", []) and (r.get("gold") or {}).get("criticality") == "high"
+    ]
     if high_gold:
         recalled = sum(1 for r in high_gold if (r.get("predicted") or {}).get("criticality") == "high")
         metrics["recall_critical"] = recalled / len(high_gold)

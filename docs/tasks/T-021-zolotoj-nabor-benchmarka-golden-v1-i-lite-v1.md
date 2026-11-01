@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Размеченные кейсы для сравнения LLM (ТЗ 14.2).
@@ -40,4 +40,19 @@ python scripts/seed/bench.py --check
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+WIP `codex/T-021-golden-datasets`: подготовлен candidate v2 200/40 и строгий
+canonical loader. Источники на момент разметки — f594c43; independent review
+всех200cases выполняет основной агент. Frozen golden SHA256
+4a703aa454566817f6942f55bc9cd09129c5526855052b41da1ae032d6240bb9,
+lite SHA25638d29696905378db7ed2f8d0646ddeb712e94b779a48aa9e237b76e70157bbc7.
+Initial v1 отозван после замечаний, его partial review не считается agreement.
+V2 frozen copy находится в /tmp/t021-review-candidate-v2; её не меняем до полного
+review. Найдены stale routes после merge T014 в main; следующим шагом merge main
+в эту ветку и точечный v3 с source SHA, неизменными texts и повторной независимой
+проверкой изменённых labels. ≥95% и done пока не заявлены.
+
+Код в разработке: единая validation канонических JSONL, exact legacy mirrors,
+строгий lite subset, tags через file/DB runner, ambiguous вне accuracy/critical
+recall. Структурная проверка --check проходит; полноценные regression/unit/DB
+проверки и стратегия versioned upgrade непустых старых DB datasets ещё в работе.
+Исторические bench_cases/results не будут перезаписаны или удалены молча.
