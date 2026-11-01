@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.11
+  version: 1.5.12
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -684,7 +684,7 @@ paths:
                 channel_subtype: { type: string }
                 client_id: { type: [integer, "null"], description: null = неизвестный клиент }
                 external_contact: { $ref: "#/components/schemas/ExternalContact" }
-                text: { type: string, minLength: 3, maxLength: 4000 }
+                text: { type: string, minLength: 3, maxLength: 5000 }
                 compare_with_mock: { type: boolean, default: true, description: Параллельный прогон через mock для панели «ИИ против правил» }
                 voice_meta: { anyOf: [{ $ref: "#/components/schemas/VoiceMeta" }, { type: "null" }], description: "Заполняется при вводе через «Надиктовать» (ТЗ 12.2 экран 7); origin сигнала = voice_input" }
       responses:
@@ -698,6 +698,7 @@ paths:
                   signal_id: { type: integer }
                   agent_run_id: { type: integer }
                   compare_run_id: { type: [integer, "null"] }
+        "429": { $ref: "#/components/responses/Problem", description: "Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах" }
   /api/signals/{id}:
     parameters: [{ $ref: "#/components/parameters/IdPath" }]
     get:
@@ -1083,7 +1084,7 @@ paths:
               type: object
               required: [text, channel_code]
               properties:
-                text: { type: string }
+                text: { type: string, minLength: 3, maxLength: 5000 }
                 channel_code: { type: string }
                 client_id: { type: [integer, "null"] }
                 llm_profile_id: { type: integer }
@@ -1100,6 +1101,7 @@ paths:
                   diff: { type: array, items: { type: object, properties: { field: { type: string }, llm: {}, mock: {} } } }
                   llm_run_id: { type: integer }
                   mock_run_id: { type: integer }
+        "429": { $ref: "#/components/responses/Problem", description: "Общий лимит жюри: не более 20 запросов в минуту; Retry-After содержит задержку в секундах" }
   /api/engine/entity-graph:
     get:
       tags: [engine]
