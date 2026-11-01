@@ -11,6 +11,7 @@ import { IncidentPage } from '@/pages/incident/IncidentPage'
 import { EnginePage } from '@/pages/engine/EnginePage'
 import { CompliancePage } from '@/pages/compliance/CompliancePage'
 import { FeedPage } from '@/pages/feed/FeedPage'
+import { Client360Page } from '@/pages/client/Client360Page'
 import { ClaimPage } from '@/pages/claim/ClaimPage'
 import { PublicLayout } from '@/pages/claim/PublicLayout'
 import { TrackingPage } from '@/pages/claim/TrackingPage'
@@ -40,6 +41,7 @@ export function App() {
           </Route>
           <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspacePage />} />
+            <Route path="clients/:id" element={<Client360Page />} />
             <Route path="incidents/:id" element={<IncidentPage />} />
             <Route path="engine" element={<EnginePage />} />
             <Route path="engine/:runId" element={<EnginePage />} />
