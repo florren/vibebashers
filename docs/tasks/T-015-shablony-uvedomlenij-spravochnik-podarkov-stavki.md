@@ -42,3 +42,13 @@ pytest backend/tests/unit/test_templates.py backend/tests/unit/test_rates.py
 
 ## Отчёт субагента
 Сверка 27.10.2026 (T-261): `data/templates/notifications.yaml` (вместо `*.j2`), `data/gifts.yaml`, `data/dcltv_rates.csv` (30 ставок, `bank_average` 4 050) и `economics_settings` существуют и используются. Остаток: список запрещённых формулировок живёт в коде `app/agent/policies.py` (`forbidden_phrases`), а не в `data/forbidden_phrases.yaml` — при следующем касании вынести в данные (правило: бизнес-правила — данные).
+
+Ревизия `codex/T-015-communication-catalogs`:
+- Прежние18 фраз перенесены в `data/forbidden_phrases.yaml`; сопоставление/порядок сохранены. Добавлен отдельный список10 однозначных технических идентификаторов из `systems.yaml`; проверяются границы токена, регистр не важен. Обычное processing и клиентские error codes не блокируются. Неисправная конфигурация завершает загрузку ошибкой, без отключения фильтра молча. Каталог загружается при старте backend.
+- Добавлены ru/en dm_invite/closure_ack и csi_survey в существующий wildcard seed. SQL fallback теперь допускает только заданный сегмент либо общий шаблон, не чужой сегмент. Денежные/HITL функции и лимиты не менялись; rule.requires_hitl=true для трёх партнёрских подарков отражает уже существующую проверку runtime.
+- Существующий YAML каталог сохраняется: проверена эквивалентность всех его subject/body строгому Jinja rendering с полным набором переменных. Полная матрица9 кодов×12 канонических каналов×7 сегментов×2 языков и fallback push/sms/social_reply/tracking_page проверена без расширения channel enum/FK. Эти четыре legacy delivery-name не являются каноническими каналами текущего контракта.
+- Проверены Decimal значения30 исходных ставок ТЗ0.4 без потери долей копейки; CSV дополнительно сохраняет существующий notifications alias. Маппинг ставок и economics_settings не менялись.
+
+Незавершённая финансовая граница (требует согласования): ТЗ14.4 указывает misselling_case_cost_rub=4050, в gifts.yaml25000; notification_gw/promo_engine должны использовать bank_average4050, текущий CSV привязывает их к292.005/373.005. До сверки последних решений/ADR и согласования эти поля сохранены. Предложение точечного diff подготовлено отдельно и не включено в рабочие изменения. Карточка не объявляется done.
+
+Проверки: адресные unit и настоящая PostgreSQL-регрессия на отдельной cx_t015_catalogs проходят; PostgreSQL проверяет seed, ru/en×4 основных сегмента, fallback и partner rule. Ruff/format/mypy проходят. Полный unit suite собственного worktree: 770 passed / 18 skipped (37 новых unit-тестов); адресная PostgreSQL-регрессия: 1 passed. contracts_check:44 схемы/161 путь, ruff/format/mypy и git diff --check — success. Полный CI/merge выполняет основной агент.
