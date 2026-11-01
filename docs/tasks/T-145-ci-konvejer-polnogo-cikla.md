@@ -99,3 +99,12 @@ cases (20 × 5 повторов) за 40.4s; затем полный suite 58/58
 E2E TypeScript и collection 58 cases проходят; cleanup project/volumes/network/
 .env завершился успешно. Логи `/tmp/t145-map-repeat100.log` и
 `/tmp/t145-lifecycle-image58.log`. Parent выполняет push и повтор GitHub CI.
+
+
+Удалённое подтверждение: PR #155, head517324e, GitHub run41345164835
+(https://github.com/florren/vibebashers/actions/runs/41345164835) завершился success.
+created_at/run_started_at20:07:01Z, updated_at20:15:53Z01.11.2026: полный цикл8min52s,
+включая contracts/db/owners/lint,4backend shards,frontend,imagebuild иe2e.
+Порог≤15min подтверждён этим запуском. После обновления базы T152/T014 выполняется
+новый цикл; закрытие карточки по остальному DoD не заявлено. Прежняя открытая
+граница remote latency выше относится к состоянию до публикации этого run.
