@@ -20,4 +20,3 @@ export function useMobileLayout() {
   const small = useSyncExternalStore(subscribe, () => window.matchMedia(query).matches)
   return mode === 'mobile' || (mode === 'auto' && small)
 }
-
