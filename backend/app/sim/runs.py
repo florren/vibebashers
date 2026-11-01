@@ -11,7 +11,7 @@ from psycopg.rows import tuple_row
 from app.sim.events import dumps
 from app.sim.run_summary import build_summary
 
-RUN_COLS = "id, kind, label, scenario_id, seed, llm_profile_id, reset_mode, parent_run_id, status, started_sim, finished_sim, started_at, finished_at, resumed_count, summary"
+RUN_COLS = "id, kind, label, scenario_id, seed, llm_profile_id, reset_mode, parent_run_id, status, started_sim, finished_sim, started_at, finished_at, resumed_count, summary, settings_snapshot, export_path, notes"
 
 
 def _row_to_run(row: tuple[Any, ...]) -> dict[str, Any]:
@@ -35,9 +35,43 @@ async def get_run(conn: psycopg.AsyncConnection[Any], run_id: int) -> dict[str, 
     return run
 
 
-async def list_runs(conn: psycopg.AsyncConnection[Any], limit: int = 50) -> list[dict[str, Any]]:
-    cur = await conn.execute(f"select {RUN_COLS} from sim_runs order by id desc limit %s", (limit,))  # noqa: S608
-    return [_row_to_run(r) for r in await cur.fetchall()]
+async def list_runs(
+    conn: psycopg.AsyncConnection[Any],
+    limit: int = 50,
+    *,
+    statuses: list[str] | None = None,
+    kind: str | None = None,
+    cursor: int | None = None,
+) -> list[dict[str, Any]]:
+    conditions = ["true"]
+    args: list[Any] = []
+    if statuses:
+        conditions.append("status=any(%s)")
+        args.append(statuses)
+    if kind:
+        conditions.append("kind=%s")
+        args.append(kind)
+    if cursor is not None:
+        conditions.append("id<%s")
+        args.append(cursor)
+    args.append(limit)
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute(
+            f"select {RUN_COLS},(select to_jsonb(v) from v_run_counters v where v.run_id=sim_runs.id) "
+            f"from sim_runs where {' and '.join(conditions)} order by id desc limit %s",
+            args,
+        )  # noqa: S608 — условия фиксированы, значения параметризованы
+        rows = await cur.fetchall()
+    result = []
+    for row in rows:
+        run = _row_to_run(row[:-1])
+        run["counters"] = {
+            key: value
+            for key, value in (row[-1] or {}).items()
+            if key not in ("run_id", "kind", "label", "status", "started_sim", "finished_sim")
+        }
+        result.append(run)
+    return result
 
 
 async def current_run_id(conn: psycopg.AsyncConnection[Any]) -> int | None:
@@ -57,36 +91,65 @@ async def create_run(
     reset_mode: str = "counters",
     parent_run_id: int | None = None,
     scenario_id: str | None = None,
+    llm_profile_id: int | None = None,
 ) -> int:
     """Новый запуск; незавершённый текущий переводится в stopped (reset_mode=counters)."""
-    cur_id = await current_run_id(conn)
-    if cur_id:
-        async with conn.cursor(row_factory=tuple_row) as previous:
-            await previous.execute("select status from sim_runs where id=%s", (cur_id,))
-            previous_row = await previous.fetchone()
-        if previous_row and previous_row[0] in ("running", "paused", "interrupted"):
-            await set_run_status(conn, cur_id, "stopped", sim_time)
-    async with conn.cursor(row_factory=tuple_row) as cur:
-        await cur.execute(
-            "insert into sim_runs (kind, label, scenario_id, seed, reset_mode, parent_run_id, status, started_sim, settings_snapshot) values (%s, %s, %s, %s, %s, %s, 'running', %s, %s::jsonb) returning id",
-            (
-                kind,
-                label,
-                scenario_id,
-                seed,
-                reset_mode,
-                parent_run_id or cur_id,
-                sim_time,
-                dumps({"created_by": "sim_control"}),
-            ),
+    async with conn.transaction():
+        if reset_mode not in ("none", "counters", "baseline"):
+            raise ValueError("неизвестный reset_mode")
+        async with conn.cursor(row_factory=tuple_row) as lock:
+            await lock.execute("select current_run_id from sim_state where id=1 for update")
+            state = await lock.fetchone()
+        cur_id = int(state[0]) if state and state[0] is not None else None
+        if llm_profile_id is not None:
+            async with conn.cursor(row_factory=tuple_row) as cur:
+                await cur.execute("select 1 from llm_profiles where id=%s and is_active", (llm_profile_id,))
+                if await cur.fetchone() is None:
+                    raise ValueError("профиль LLM отсутствует или неактивен")
+        async with conn.cursor(row_factory=tuple_row) as cur:
+            await cur.execute(
+                "select coalesce(jsonb_object_agg(key,value),'{}'::jsonb) from settings where key='policies' or key like 'sim.%' or key like 'policies.%' or key like 'twins.%'"
+            )
+            settings_row = await cur.fetchone()
+            assert settings_row is not None
+            safe_settings = settings_row[0]
+            await cur.execute("select to_jsonb(e)-'updated_at' from economics_settings e where id=1")
+            economics = await cur.fetchone()
+        snapshot = {
+            "created_by": "sim_control",
+            "settings": safe_settings,
+            "economics": economics[0] if economics else {},
+        }
+        if cur_id:
+            async with conn.cursor(row_factory=tuple_row) as previous:
+                await previous.execute("select status from sim_runs where id=%s", (cur_id,))
+                previous_row = await previous.fetchone()
+            if previous_row and previous_row[0] in ("running", "paused", "interrupted"):
+                if reset_mode == "none":
+                    raise ValueError("есть незавершённый запуск; выберите counters или baseline")
+                await set_run_status(conn, cur_id, "stopped", sim_time)
+        async with conn.cursor(row_factory=tuple_row) as cur:
+            await cur.execute(
+                "insert into sim_runs (kind, label, scenario_id, seed, reset_mode, parent_run_id, status, started_sim, settings_snapshot,llm_profile_id) values (%s, %s, %s, %s, %s, %s, 'running', %s, %s::jsonb,%s) returning id",
+                (
+                    kind,
+                    label,
+                    scenario_id,
+                    seed,
+                    reset_mode,
+                    parent_run_id or cur_id,
+                    sim_time,
+                    dumps(snapshot),
+                    llm_profile_id,
+                ),
+            )
+            run_id = int((await cur.fetchone())[0])  # type: ignore[index]
+        await conn.execute("update sim_state set current_run_id = %s, updated_at = now() where id = 1", (run_id,))
+        await conn.execute(
+            "select pg_notify('runs', %s)",
+            (dumps({"type": "started", "run_id": run_id, "data": {"id": run_id, "kind": kind, "label": label}}),),
         )
-        run_id = int((await cur.fetchone())[0])  # type: ignore[index]
-    await conn.execute("update sim_state set current_run_id = %s, updated_at = now() where id = 1", (run_id,))
-    await conn.execute(
-        "select pg_notify('runs', %s)",
-        (dumps({"type": "started", "run_id": run_id, "data": {"id": run_id, "kind": kind, "label": label}}),),
-    )
-    return run_id
+        return run_id
 
 
 async def ensure_live_run(conn: psycopg.AsyncConnection[Any]) -> int:

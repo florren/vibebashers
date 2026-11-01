@@ -439,6 +439,10 @@ async def restore(
     repair_script = _csi_repair_script()
     job_id = str(uuid.uuid4())
     dsn = _connection_dsn(conn)
+    from app.sim.run_lifecycle import prepare_for_restore
+
+    sim_rows = await _fetch_sim_runs(conn)
+    sim_rows = await prepare_for_restore(conn, sim_rows)
     runs_dir = runs_export_dir()
     runs_backup: Path | None = None
     if runs_dir.is_dir() and any(runs_dir.iterdir()):
@@ -447,7 +451,6 @@ async def restore(
             shutil.rmtree(runs_backup)
         shutil.copytree(runs_dir, runs_backup)
 
-    sim_rows = await _fetch_sim_runs(conn)
     await _notify(conn, "baseline_restore_started", job_id)
     await conn.commit()
     await conn.close()

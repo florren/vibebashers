@@ -1,5 +1,4 @@
-"""Роутер тега `sim` (OpenAPI 1.4.0). Реализовано (B03/T-031, T-040-минимум): state, control, events, runs (список, current, карточка, stop,
-resume). Остальное — 501 до карточек T-040/T-041."""
+"""Управление симулятором, история запусков, baseline и сохранённые итоги (T-040/T-042)."""
 
 from __future__ import annotations
 
@@ -12,13 +11,12 @@ from typing import Any, Literal
 import psycopg
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.db.session import psycopg_dsn
-from app.errors import NotImplementedYet
 from app.sim import baseline as baseline_svc
-from app.sim import run_summary
+from app.sim import run_lifecycle, run_summary
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
 
@@ -32,6 +30,16 @@ class SimControlRequest(BaseModel):
     preset: Literal["demo_5min", "day_12min", "realtime"] | None = None
     step_minutes: int = Field(default=15, ge=1, le=24 * 60)
     sim_time: dt.datetime | None = None
+
+
+class SimRunCreate(BaseModel):
+    kind: Literal["free", "scenario"]
+    scenario_id: str | None = None
+    label: str | None = None
+    seed: int | None = None
+    reset_mode: Literal["none", "counters", "baseline"] = "counters"
+    speed_preset: Literal["demo_5min", "day_12min", "realtime"] | None = None
+    llm_profile_id: int | None = None
 
 
 def _sim(request: Request) -> Simulator:
@@ -118,9 +126,20 @@ async def get_sim_events(
 
 
 @router.get("/api/sim/runs", summary="История запусков эмуляции (ТЗ 4.6)")
-async def get_sim_runs(request: Request, limit: int = Query(default=50, ge=1, le=500)) -> Any:
+async def get_sim_runs(
+    limit: int = Query(default=50, ge=1, le=500),
+    status: str | None = None,
+    kind: Literal["baseline", "free", "scenario", "live"] | None = None,
+    cursor: int | None = Query(default=None, ge=1),
+) -> Any:
+    statuses = status.split(",") if status else None
+    if statuses and any(
+        value not in {"running", "paused", "interrupted", "completed", "stopped", "archived"} for value in statuses
+    ):
+        raise HTTPException(422, "неизвестный статус запуска")
     async with await _conn() as conn:
-        return {"items": await run_svc.list_runs(conn, limit)}
+        rows = await run_svc.list_runs(conn, limit + 1, statuses=statuses, kind=kind, cursor=cursor)
+    return {"items": rows[:limit], "next_cursor": str(rows[limit - 1]["id"]) if len(rows) > limit else None}
 
 
 async def _ensure_dump_allowed(request: Request) -> Simulator:
@@ -157,18 +176,44 @@ async def _restore_baseline(request: Request) -> str:
 
 
 @router.post(
-    "/api/sim/runs", summary="Создать и стартовать новый запуск (свободный или сценарный) с выбранным режимом сброса"
+    "/api/sim/runs",
+    summary="Создать и стартовать новый запуск (свободный или сценарный) с выбранным режимом сброса",
+    status_code=202,
 )
-async def post_sim_runs(request: Request, body: dict[str, Any]) -> Any:
-    if body.get("kind", "free") != "free":
-        raise NotImplementedYet("T-040")
-    reset_mode = body.get("reset_mode", "counters")
-    if reset_mode == "baseline":
+async def post_sim_runs(request: Request, body: SimRunCreate) -> Any:
+    if body.kind == "scenario":
+        from app.api.scenarios import ScenarioRunRequest, run_scenario
+
+        if not body.scenario_id:
+            raise HTTPException(422, "scenario_id обязателен для сценарного запуска")
+        result = await run_scenario(request, body.scenario_id, ScenarioRunRequest(**body.model_dump()))
+        return result["run"]
+    if body.scenario_id:
+        raise HTTPException(422, "scenario_id допустим только для сценарного запуска")
+    if body.llm_profile_id is not None:
+        async with await _conn() as conn:
+            profile = await (
+                await conn.execute("select id from llm_profiles where id=%s and is_active", (body.llm_profile_id,))
+            ).fetchone()
+            if profile is None:
+                raise HTTPException(409, "профиль LLM отсутствует или неактивен")
+    if body.reset_mode == "baseline":
         if not baseline_svc.info()["available"]:
             raise HTTPException(status_code=409, detail="снимок baseline ещё не создан")
         await _restore_baseline(request)
-        return await _sim(request).control("start", label=body.get("label") or "Запуск", reset_mode="baseline")
-    return await _sim(request).control("start", label=body.get("label") or "Запуск", reset_mode=reset_mode)
+    sim = _sim(request)
+    try:
+        values = body.model_dump(exclude_none=True)
+        values["label"] = body.label or "Запуск"
+        await sim.control("start", **values)
+        if body.speed_preset:
+            await sim.control("set_preset", preset=body.speed_preset)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if sim.run_id is None:
+        raise RuntimeError("созданный запуск не имеет run_id")
+    async with await _conn() as conn:
+        return await run_svc.get_run(conn, sim.run_id)
 
 
 @router.get("/api/sim/runs/current", summary="Текущий запуск с живыми счётчиками (v_run_counters)")
@@ -211,8 +256,15 @@ async def get_sim_runs_id(request: Request, id: int) -> Any:  # noqa: A002
 
 
 @router.delete("/api/sim/runs/{id}", summary="Удалить запуск вместе с данными (нельзя для baseline и текущего)")
-async def delete_sim_runs_id(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+async def delete_sim_runs_id(id: int) -> Response:  # noqa: A002
+    try:
+        async with await _conn() as conn:
+            await run_lifecycle.delete(conn, id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (run_lifecycle.RunConflict, psycopg.errors.LockNotAvailable) as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.post("/api/sim/runs/{id}/stop", summary="Завершить запуск (рассчитать summary, статус stopped)")
@@ -220,7 +272,9 @@ async def post_sim_runs_id_stop(request: Request, id: int) -> Any:  # noqa: A002
     sim = _sim(request)
     if sim.run_id != id:
         raise HTTPException(status_code=409, detail="остановить можно только текущий запуск")
-    return await sim.control("stop")
+    await sim.control("stop")
+    async with await _conn() as conn:
+        return await run_svc.get_run(conn, id)
 
 
 @router.post("/api/sim/runs/{id}/resume", summary="Возобновить прерванный/приостановленный запуск с того же sim_time")
@@ -228,23 +282,43 @@ async def post_sim_runs_id_resume(request: Request, id: int) -> Any:  # noqa: A0
     sim = _sim(request)
     if sim.run_id != id:
         raise HTTPException(status_code=409, detail="возобновить можно только текущий запуск")
-    return await sim.control("resume")
+    await sim.control("resume")
+    async with await _conn() as conn:
+        return await run_svc.get_run(conn, id)
 
 
 @router.post(
     "/api/sim/runs/{id}/archive",
     summary="Архивировать — экспорт в runs/<id>.json и удаление строк данных, summary сохраняется",
 )
-async def post_sim_runs_id_archive(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+async def post_sim_runs_id_archive(id: int) -> Any:  # noqa: A002
+    try:
+        async with await _conn() as conn:
+            return await run_lifecycle.archive(conn, id)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (run_lifecycle.RunConflict, psycopg.errors.LockNotAvailable) as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.get("/api/sim/runs/{id}/export", summary="Экспорт запуска (JSON с summary и агрегатами или CSV событий)")
 async def get_sim_runs_id_export(id: int, format: Literal["json", "csv"] = "json") -> Any:  # noqa: A002
     async with await _conn() as conn, conn.transaction():
         await conn.execute("set transaction isolation level repeatable read read only")
-        if await run_svc.get_run(conn, id) is None:
+        run = await run_svc.get_run(conn, id)
+        if run is None:
             raise HTTPException(status_code=404, detail="запуск не найден")
+        if run["status"] == "archived":
+            if format == "csv":
+                raise HTTPException(409, "События удалены при архивации; доступен сохранённый JSON")
+            try:
+                exported = run_lifecycle.read_archive(run)
+            except run_lifecycle.RunConflict as exc:
+                raise HTTPException(409, str(exc)) from exc
+            return JSONResponse(
+                exported,
+                headers={"Content-Disposition": f'attachment; filename="run-{id}.json"'},
+            )
         if format == "json":
             out = await run_summary.export_json(conn, id)
             return JSONResponse(

@@ -239,10 +239,13 @@ def test_post_sim_runs_baseline_restore_and_start(tmp_path: Path, monkeypatch: p
         return "job-222"
 
     monkeypatch.setattr("app.api.sim._restore_baseline", _fake_restore)
+    monkeypatch.setattr("app.api.sim._conn", AsyncMock(return_value=AsyncMock()))
+    monkeypatch.setattr("app.api.sim.run_svc.get_run", AsyncMock(return_value={"id": 99, "kind": "free"}))
     with TestClient(create_app()) as client:
         sim = _attach_mock_sim(client)
         res = client.post("/api/sim/runs", json={"kind": "free", "reset_mode": "baseline", "label": "После baseline"})
-    assert res.status_code == 200
+    assert res.status_code == 202
+    assert res.json() == {"id": 99, "kind": "free"}
     assert calls == ["restore"]
     sim.control.assert_awaited_once()
     kw = sim.control.await_args.kwargs

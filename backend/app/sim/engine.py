@@ -119,7 +119,7 @@ class Simulator:
     async def persist(self) -> None:
         conn = await self.connect()
         await conn.execute(
-            "update sim_state set sim_time = %s, day_no = %s, speed = %s, running = %s, phase = %s, current_run_id = %s, rng_state = %s::jsonb, last_tick_at = now(), updated_at = now() where id = 1",
+            "update sim_state set sim_time = %s, day_no = %s, speed = %s, running = %s, phase = %s, current_run_id = %s, rng_state = %s::jsonb, seed=%s, last_tick_at = now(), updated_at = now() where id = 1",
             (
                 self.clock.sim_time,
                 self.clock.day_no,
@@ -128,6 +128,7 @@ class Simulator:
                 self.clock.phase,
                 self.run_id,
                 __import__("orjson").dumps(self.rng.dump_state()).decode(),
+                self.seed,
             ),
         )
 
@@ -231,15 +232,26 @@ class Simulator:
         if action == "start":
             if self.run_status in ("stopped", "completed", "archived", None) or self.run_id is None or kw.get("label"):
                 async with self._lock:
+                    selected_seed = kw.get("seed")
+                    if selected_seed is None:
+                        base = await (
+                            await conn.execute("select seed from sim_runs where kind='baseline' order by id limit 1")
+                        ).fetchone()
+                        selected_seed = base[0] if base else self.seed
+                    new_seed = int(selected_seed)
                     self.run_id = await run_svc.create_run(
                         conn,
                         kind=kw.get("kind") or "free",
                         label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
-                        seed=self.seed,
+                        seed=new_seed,
                         sim_time=self.clock.sim_time,
+                        llm_profile_id=kw.get("llm_profile_id"),
                         scenario_id=kw.get("scenario_id"),
                         reset_mode=kw.get("reset_mode") or "counters",
                     )
+                    self.seed = new_seed
+                    self.rng = SimRng(self.seed)
+                    self.stats = {key: 0 for key in self.stats}
                     self.run_status = "running"
                     self.world = None
                     await conn.commit()

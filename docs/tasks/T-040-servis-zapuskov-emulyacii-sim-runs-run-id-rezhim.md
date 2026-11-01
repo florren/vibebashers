@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `done` |
+| Статус | `in_progress` |
 
 ## Цель
 Каждый запуск эмуляции сохраняется с итогами; повторные запуски не загрязняют друг друга (ТЗ 4.6, решение заказчика 20.4).
@@ -53,3 +53,11 @@ curl -s localhost:8000/api/sim/runs/current | jq .counters
 Ветка main, коммит B03 (минимум). `app/sim/runs.py`: current_run_id, create_run (kind free, reset_mode counters: незавершённый текущий → stopped, parent_run_id, NOTIFY runs started), set_run_status (paused/running/interrupted/stopped c summary из v_run_counters), get_run (+ counters), list_runs. Все вставки симулятора идут с run_id текущего запуска (тест «нет строк без run_id»). Не сделано (остаётся по карточке): сценарные запуски, archive/export/delete, scripts/run.sh, общая зависимость run_id для лент. Время: ~25 мин.
 
 Дополнение feat/T-040-baseline-restore: `app/sim/baseline.py` (pg_dump -Fc, meta, sha256, pg_restore с возвратом sim_runs), GET/POST `/api/sim/baseline`, POST `/restore`, POST `/api/sim/runs` с `reset_mode=baseline`. Сравнение запусков не менялось. В CI без postgresql-client интеграционный restore пропускается; unit мокает subprocess. Образ backend по-прежнему без pg_dump — честный 409, если бинаря нет.
+
+Ревизия 02.11.2026: прежний `done` не подтверждён критериями. Сценарный POST, archive/delete, CLI и параметры запуска остаются неполными; summary/export реализованы отдельно в T-042 (PR #160). Карточка возвращена в работу; утверждения старого отчёта сохранены как история.
+
+Локальный checkpoint T-040 (не merge-ready): добавлены typed POST202/SimRun, seed/profile metadata/settings snapshot, atomic reset none409/counters; history filters/cursor/counters; существующий scenario pipeline/baseline reset; YAML reset policy для1/4/7, internal DemoExecution явно применяет baseline. Stop/resume возвращают SimRun. run_lifecycle реализует archive/delete: FK ownership/cascade closure, short table locks/5s timeout, запрет baseline/current/unfinished/inflight agent, отказ при межзапусковых ссылках, один CTE для циклов, JSON fsync/exclusive link, проверка saved JSON/header/summary, rollback. Delete сохраняет готовый архив и обнуляет parent FK у сохранённых потомков. Audit log без FK остаётся. До pg_restore экспортируются summary/агрегаты прошлых run; archived status применяется к сохранённым заголовкам после успешного restore. scripts/run.sh реализован.
+
+Проверено по мере реализации:7новых PG lifecycle passed; расширенный старый набор21PG (lifecycle+summary+live+sim) passed; затем11новых/restorePG passed, включая настоящий pg_restore с сохранением прошлогоrun/export. Последние YAML policy/list/return-body/fsync additions требуют следующего regression.25baseline unit passed, Ruff/mypy6green; bash-n/help green. Все DSN для последних PG+HTTP прогонов явно направлены на cx_run_lifecycle_revision:55439. Один предыдущий read-only API export test ошибочно использовал default DSN при заданном только DATABASE_URL_TEST; после задания обоих DSN исходныеasserts прошли. Рабочие данные не менялись.
+
+Остаётся: actual per-run LLM profile в process/resume/followups (одной metadata недостаточно), контракт1.5.15 Scenario.reset_mode_required/live enum и review, строгий stopped-resume guard относится также T041, полный final make lint/test/coverage/performance, baseline/run maintenance concurrency и UI T094. Финансовые записи могут удаляться только явным archive/delete/reset после human review конкретного PR; сейчас все data changes — только scratch tests. Карточка in_progress.

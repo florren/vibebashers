@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 from fastapi import APIRouter, HTTPException, Request
@@ -25,9 +25,11 @@ router = APIRouter(tags=["scenarios"])
 
 
 class ScenarioRunRequest(BaseModel):
-    speed_preset: str | None = None
-    reset_mode: str = "counters"
+    speed_preset: Literal["demo_5min", "day_12min", "realtime"] | None = None
+    reset_mode: Literal["none", "counters", "baseline"] = "counters"
     label: str | None = None
+    seed: int | None = None
+    llm_profile_id: int | None = None
 
 
 @router.get("/api/scenarios", summary="Список демо-сценариев")
@@ -54,21 +56,38 @@ async def run_scenario(
     if not sc.is_runnable(scenario):
         raise NotImplementedYet(str(scenario.get("requires") or "B07"))
     body = body or ScenarioRunRequest()
+    if scenario.get("reset_mode_required") == "baseline" and body.reset_mode != "baseline":
+        raise HTTPException(409, "Для этого сценария требуется явный reset_mode=baseline")
+    if body.llm_profile_id is not None:
+        async with db() as conn:
+            profile = await (
+                await conn.execute("select id from llm_profiles where id=%s and is_active", (body.llm_profile_id,))
+            ).fetchone()
+            if profile is None:
+                raise HTTPException(409, "профиль LLM отсутствует или неактивен")
     if body.reset_mode == "baseline":
-        raise NotImplementedYet("T-040")
+        from app.api.sim import _restore_baseline
+
+        await _restore_baseline(request)
     async with db() as conn:
         await sc.ensure_registered(conn, scenario)
     sim: Simulator = request.app.state.sim
     svc = agent_service(request)
     if start_paused:
         await sim.control("pause")
-    await sim.control(
-        "start",
-        start_paused=start_paused,
-        kind="scenario",
-        scenario_id=id,
-        label=body.label or f"Сценарий {scenario.get('number')}: {scenario.get('title_ru')}",
-    )
+    try:
+        await sim.control(
+            "start",
+            start_paused=start_paused,
+            kind="scenario",
+            scenario_id=id,
+            label=body.label or f"Сценарий {scenario.get('number')}: {scenario.get('title_ru')}",
+            seed=body.seed,
+            llm_profile_id=body.llm_profile_id,
+            reset_mode=body.reset_mode,
+        )
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     if body.speed_preset:
         await sim.control("set_preset", preset=body.speed_preset)
     run_id = sim.run_id
