@@ -8,7 +8,7 @@
 | Волна | 5 |
 | Слой | `L5` Качество (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `in_progress` |
+| Статус | `review` |
 
 ## Цель
 Lint → контракты → тесты → сборка → смоук на собранных образах.
@@ -68,9 +68,17 @@ dashboard18.594ms, violations=[]; raw samples сохранены в performance 
 Замер выполнен до нового T-017 operation volume; после его интеграции nightly
 нужно повторить на увеличенном фактическом наборе операций.
 
-Открытая граница: real browser smoke обнаружил map containment overflow
-(1024×768 SVG bottom772.734375, также 1280 ru). Строгие assertions сохранены;
-отдельное исправление делает UI агент. Полный GitHub PR cycle ≤15min требует
+Real-image smoke выявил map containment overflow (1024×768 и 1280 ru).
+Исправление UI агента `ad99a099` включено cherry-pick `4a088b6`: карта получает
+реальную высоту рабочей области, mobile сохраняет aspect ratio. Строгие layout
+assertions сохранены. Final image build PASS; единый полный Playwright запуск
+58 passed за 2.5min, включая 20 map cases. Screenshot 1024×768 просмотрен: SVG/легенда
+в viewport, карта читаема. Trace fixture /api/scenarios актуализирована, smoke
+темы проверяет actual combobox и server persistence; screenshots идут в artifacts,
+tracked PNG больше не перезаписываются. Cleanup своего Compose project/volumes/
+network/.env прошёл, рабочая ветка чистая перед отчётным commit.
+
+Открытая граница: полный GitHub PR cycle ≤15min требует
 замера run после публикации родительским агентом, локальная wall-time shards
 не доказывает remote latency. Monolithic `make test` повторно не запускался:
 вместо него проверена полная pytest collection через четыре изолированных shards
