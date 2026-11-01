@@ -50,4 +50,11 @@ Gap-ревизия: четыре существующих части уже бы
 
 Реальный smoke не запускался по ограничению текущей ревизии. Для конкретного egress review подготовлен `python -m app.llm.live_smoke --run`: только три заданных ID/HTTPS OpenRouter, до 6 HTTP запросов всего (включая `/key`), max_tokens=128, fixed synthetic text. Границы и отсутствие секретов в отчёте проверены MockTransport; подробности `docs/reviews/T-048-live-smoke.md`. Цены/доступность моделей вживую не подтверждены. Карточка остаётся in_progress до согласования и реального smoke/CI.
 
-Проверки: целевые SDK/budget/chain/CLI/startup/local credentials/bench/roles — 96 passed. Полный unit suite до последней pure regression: 808 passed, 18 skipped. `make lint` с документированным Node26 `NODE_OPTIONS=--no-experimental-webstorage` — успешно; полный make test выполняется на отдельной PostgreSQL16 scratch БД `cx_openai_revision`, APP_ENV=test, LLM_PROVIDER=mock, собственные venv/PYTHONPATH. Финальные числа будут внесены после завершения. Логи: `/tmp/t048-targeted-final.log`, `/tmp/t048-lint.log`, `/tmp/t048-full-test.log`.
+Проверки на собственной uv среде/PYTHONPATH, отдельной PostgreSQL16 scratch БД `cx_openai_revision`, APP_ENV=test, LLM_PROVIDER=mock:
+- Финальные targeted SDK/budget/chain/CLI/startup/local credentials/bench/roles — 99 passed.
+- Полный `make lint` с документированным Node26 `NODE_OPTIONS=--no-experimental-webstorage` — успешно: frontend 144 tests, ruff/format (322 файла), mypy (244 файла), OpenAPI drift 191=191.
+- Полный `make test` — exit 0: unit 808 passed/18 skipped, integration 208 passed/4 skipped, scenarios 42 passed/2 skipped, compliance 31 passed, frontend 144 passed. Всего backend 1089 passed/24 skipped.
+- После последних pure/local доработок последовательно повторены полный unit suite (817 passed/18 skipped) и затронутые integration setup/settings, ENV editor, LLM routing, benchmark jobs (14 passed). Общая БД и генераторы параллельно не использовались.
+- `licenses_check.py --write` и свежесть inventory — успешно, 530 distributions. `git diff --check` — успешно.
+
+Логи: `/tmp/t048-targeted-final.log`, `/tmp/t048-lint.log`, `/tmp/t048-full-test.log`, `/tmp/t048-unit-final.log`, `/tmp/t048-integration-final.log`. Сводка: `/tmp/t048-verification-report.json`. Реальные LLM/Telegram/email не вызывались. Budget policy и предлагаемый bounded egress должны пройти отдельный review; CI и реальные smoke логи ещё не получены.
