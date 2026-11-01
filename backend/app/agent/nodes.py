@@ -32,6 +32,7 @@ from app.agent.tools import read as rt
 from app.agent.tools import router_tools
 from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
+from app.amounts import ruble_amount_hint
 from app.contracts.registry import deref, validate
 from app.economics.calibration import PIPELINE as SCORE_PIPELINE
 from app.i18n import communication_lang, declined_action_text
@@ -156,7 +157,6 @@ TYPE_BASE_CRIT = {
 }
 NO_INCIDENT_TYPES = {"gratitude", "suggestion", "info_request"}
 PUBLIC_CHANNELS = {"social", "review_portal"}
-RE_AMOUNT = re.compile(r"(\d[\d\s]{1,8})\s*(?:₽|руб|р\.|рублей|рубля)", re.I)
 RE_CARD4 = re.compile(r"\*{2,4}\s?(\d{4})")
 RE_PROMO = re.compile(r"\b(PROMO-[A-Z0-9-]+)\b", re.I)
 RE_SENT = re.compile(r"[^.!?…]+[.!?…]*")
@@ -430,11 +430,9 @@ async def ingest(state: AgentState, deps: Deps) -> AgentState:
 
 def regex_hints(text: str) -> dict[str, Any]:
     hints: dict[str, Any] = {}
-    if m := RE_AMOUNT.search(text):
-        try:
-            hints["amount_rub"] = float(m.group(1).replace(" ", "").replace("\u00a0", ""))
-        except ValueError:
-            pass
+    amount = ruble_amount_hint(text)
+    if amount is not None:
+        hints["amount_rub"] = amount
     if m := RE_CARD4.search(text):
         hints["masked_card_last4"] = m.group(1)
     if m := RE_PROMO.search(text):
