@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Симуляция не останавливается при лимитах и сбоях провайдеров; расход прозрачен.
@@ -40,3 +40,12 @@ pytest backend/tests/unit/test_ratelimit.py
 
 ## Отчёт субагента
 Доработка 29.10.2026: если все активные неизрасходованные ключи временно на cooldown после 429, KeyPool сообщает rate_limit с retry_after_s, а не исчерпанную quota. Существующее поведение смешанных quota/cooldown и авторизации сохранено. Ошибки ресурса не инициируют повтор той же операцией через другую модель.
+
+
+## Ревизия streaming quota, 2026-11-02
+
+Подтверждён и исправлен обход существующего limiter в `ProviderChain.stream`: acquire перед live candidate, общий deadline ожидания/stream I/O, offline bypass, no fallback после первого чанка, cancellation/close освобождают источник. Значения лимитов, модель/ключи, banking/HITL и contracts не менялись. Targeted 53 passed; lint зелёный; failover statement coverage 82%. Review внешнего API-budget enforcement: `docs/reviews/T-050-stream-limits.md`.
+
+T050 остаётся in_progress: persistence ключевых daily counters и API остатки, queue 20s/global-lock, 429→fast policy и централизованный secret filter требуют отдельных coherent packets; эта доработка не закрывает всю карточку. No live/credentials/DB calls. Подробный read-only audit T050/T047: `/tmp/t050-t047-readonly-audit.json`.
+
+Полный unit: 925 passed/18 skipped, exit 0; license gate 526 прошёл. Полный DB suite не запускался по границам packet. Подробные evidence/ограничения — в review.

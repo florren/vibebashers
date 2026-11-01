@@ -253,11 +253,33 @@ class ProviderChain:
             if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
                 continue
             started = False
+            deadline = time.perf_counter() + timeout_s
             try:
-                async for chunk in prov.stream(provider_messages(messages, prov.name), profile, timeout_s=timeout_s):
-                    started = True
-                    yield chunk
-                return
+                if prov.name not in ("mock", "replay"):
+                    await asyncio.wait_for(
+                        self.limiter.acquire(profile.code, profile.rpm_limit, profile.rpd_limit), timeout_s
+                    )
+                remaining = deadline - time.perf_counter()
+                if remaining <= 0:
+                    raise TimeoutError
+                stream = prov.stream(provider_messages(messages, prov.name), profile, timeout_s=remaining)
+                try:
+                    while True:
+                        remaining = deadline - time.perf_counter()
+                        if remaining <= 0:
+                            raise TimeoutError
+                        try:
+                            # Таймер живёт только во время anext: yield не должен
+                            # отменять task потребителя между запросами чанков.
+                            chunk = await asyncio.wait_for(anext(stream), remaining)
+                        except StopAsyncIteration:
+                            return
+                        started = True
+                        yield chunk
+                finally:
+                    close = getattr(stream, "aclose", None)
+                    if close is not None:
+                        await close()
             except (ProviderError, TimeoutError, OSError) as e:
                 if started:
                     log.warning("llm_stream_broken", provider=prov.name, error=str(e)[:160])
