@@ -136,7 +136,7 @@ def main() -> int:
                 "truncate signals, incidents, operations, faults, client_states, client_products, accounts, clients, sim_runs restart identity cascade"
             )
             cur.execute(
-                "delete from settings where key in ('seed_done', 'coverage') or key like 'seed_fault_history:%'"
+                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:')"
             )
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)

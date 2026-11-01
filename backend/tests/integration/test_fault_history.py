@@ -350,3 +350,23 @@ def test_fault_family_correlation_repeats_after_clearing_same_seed_and_ids(histo
             == before
         )
     assert snapshot(conn, original_run) == original
+
+
+def test_explicit_reset_clears_only_literal_fault_marker_prefix(history, conn, seeded):
+    from psycopg.types.json import Jsonb
+
+    from tests.integration.conftest import _seed
+
+    conn.execute(
+        "insert into settings(key,value) values(%s,%s),(%s,%s)",
+        ("seed_fault_history:99999", Jsonb({"stale": True}), "seedXfaultYhistory:99999", Jsonb({"preserved": True})),
+    )
+    result = _seed(seeded, "--reset-history")
+    assert result.returncode == 0, result.stderr[-1500:]
+    assert conn.execute("select value from settings where key='seed_fault_history:99999'").fetchone() is None
+    assert conn.execute("select value from settings where key='seedXfaultYhistory:99999'").fetchone() == (
+        {"preserved": True},
+    )
+    marker = conn.execute("select value from settings where starts_with(key,'seed_fault_history:')").fetchall()
+    assert len(marker) == 1
+    assert conn.execute("select count(*) from faults").fetchone()[0] == len(marker[0][0]["fault_ids"])

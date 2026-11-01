@@ -22,7 +22,6 @@ from app.contracts.registry import validate  # noqa: E402
 
 from scripts.seed.common import PROFILES, J, get_setting, load_yaml, log, set_setting  # noqa: E402
 
-
 # Стабильный namespace исторических сбоев CX Pulse; смена разорвёт correlation при повторе.
 FAULT_HISTORY_NAMESPACE = uuid.UUID("3ec0009e-e99f-5ec3-82a8-95d3ebbb9aee")
 
