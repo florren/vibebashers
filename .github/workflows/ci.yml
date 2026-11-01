@@ -19,14 +19,9 @@ jobs:
       - name: Проверка JSON-схем, OpenAPI и карточек
         run: |
           uv venv .venv && . .venv/bin/activate
-          uv pip install pyyaml jsonschema openapi-spec-validator referencing pglast
+          uv pip install pyyaml jsonschema openapi-spec-validator referencing
           python scripts/contracts_check.py
           python scripts/gen_tasks.py && git diff --exit-code -- docs/tasks || (echo "::error::docs/tasks устарели — запустите python scripts/gen_tasks.py"; exit 1)
-          python - <<'PY'
-          import pglast, pathlib
-          for f in ["contracts/db/schema.sql", *sorted(pathlib.Path("contracts/db/migrations").glob("*.sql"))]:
-              pglast.parse_sql(pathlib.Path(f).read_text()); print("parse ok", f)
-          PY
       - name: Дрейф OpenAPI ↔ код (когда появится backend)
         run: |
           set -euo pipefail
@@ -56,9 +51,10 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
       - name: schema.sql на чистой БД
         run: psql -v ON_ERROR_STOP=1 -q -f contracts/db/schema.sql
-      - name: Миграции 0002–0010 идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
+      - name: Все SQL-миграции идемпотентны (no-op поверх schema.sql, повторный прогон тоже)
         run: |
-          for f in contracts/db/migrations/0002_brd_contours.sql contracts/db/migrations/0003_additional_tz.sql contracts/db/migrations/0004_trace_search.sql contracts/db/migrations/0005_product_csi_branches.sql contracts/db/migrations/0006_product_routing.sql contracts/db/migrations/0007_csi_audit.sql contracts/db/migrations/0008_financial_evidence.sql contracts/db/migrations/0009_hitl_feedback.sql contracts/db/migrations/0010_operator_personal_chat.sql; do
+          set -euo pipefail
+          for f in contracts/db/migrations/*.sql; do
             psql -v ON_ERROR_STOP=1 -q -f "$f"; psql -v ON_ERROR_STOP=1 -q -f "$f"
           done
       - name: Инварианты схемы
@@ -154,5 +150,7 @@ jobs:
           else echo "frontend ещё нет — пропуск"; fi
       - name: Local font assets after frontend build
         run: cd backend && uv run pytest -q tests/integration/test_no_cdn.py
+      - name: Лицензии всех Python/npm зависимостей
+        run: make licenses-check
       - name: i18n
         run: python3 scripts/i18n_check.py

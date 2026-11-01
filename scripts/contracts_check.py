@@ -1,4 +1,4 @@
-"""Проверка контрактов: синтаксис DDL (pglast), мета-валидность JSON-схем, валидность OpenAPI,
+"""Проверка контрактов: мета-валидность JSON-схем, валидность OpenAPI,
 соответствие перечислений schema.sql ↔ common.schema.json. Запуск: python scripts/contracts_check.py"""
 from __future__ import annotations
 
@@ -12,13 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 C = ROOT / "contracts"
 errors: list[str] = []
 
-# 1. DDL
-try:
-    import pglast
-
-    pglast.parse_sql((C / "db/schema.sql").read_text(encoding="utf-8"))
-except Exception as e:  # noqa: BLE001
-    errors.append(f"schema.sql: {e}")
+# Синтаксис SQL проверяется настоящим PostgreSQL 16 в CI job db.
 
 # 2. JSON-схемы
 from jsonschema import Draft202012Validator  # noqa: E402
