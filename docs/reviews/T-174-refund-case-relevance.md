@@ -53,4 +53,13 @@ Rollback — обычный revert commits финансового пакета �
 
 MockProvider в фактическом normalization output опускает необязательный operation_hint (unknown), а не генерирует произвольный enum. Это закреплено unit test; ненужного изменения Mock/runtime API нет. Добавлены pure tests transfer/online и transfer/transfer, notification/login diagnostic context без financial authority, invalid system; negative graph case notification с реально присутствующей QR fee не должен создавать refund/issued gift. Targeted pure suite:135 passed.
 
-Адресная DB-проверка после исправления routing selector:53 passed (весь `test_scenarios.py`, финансовые regressions/customer/scenario8); дополнительно2 passed для явных contract-valid notification/login hints с QR fee. Исходные assertions сценариев02/06 не менялись. `make lint` прошёл: Ruff, format329, mypy244, frontend144, OpenAPI191/191.
+Адресная DB-проверка после исправления routing selector:53 passed (весь `test_scenarios.py`, финансовые regressions/customer/scenario8); дополнительно2 passed для явных contract-valid notification/login hints с QR fee. Исходные assertions сценариев02/06 не менялись. `make lint` прошёл: Ruff, format 329, mypy 244, frontend 144, OpenAPI 191/191.
+
+
+## Финальное подтверждение, 2026-11-02
+
+Проверен source commit `79f0462`, stacked на актуальный parser `58daefc` обычным merge без history rewrite. `make test` завершился exit 0: unit 929 passed/18 skipped; integration 228 passed/4 skipped; scenarios 42 passed/2 skipped; compliance 31 passed. Итого backend 1230 passed/24 skipped; frontend 144 passed (26 файлов). Все skipped — исходные guarded/live/environment проверки, assertions/кассеты не ослаблялись и не rekeyed.
+
+`make lint` — exit 0: Ruff, format 329, mypy 244, frontend 144, OpenAPI 191/191. `make licenses-check` — exit 0, 526 distributions. `git diff --check` прошёл; working tree до отчётного commit чист. Все DB проверки — отдельная scratch PostgreSQL16 БД, APP_ENV=test/LLM_PROVIDER=mock, собственный PYTHONPATH и Node26 flag. Нужны CI и обязательный human financial review конкретного PR diff до merge. Live Ultra p50/p95 этой ревизией не проверялись.
+
+Логи: `/tmp/refund-scope-full-test.log`, `/tmp/refund-scope-lint-routing.log`, `/tmp/refund-scope-licenses-final.log`. Машиночитаемая сводка: `/tmp/refund-scope-verification.json`. Первые прогоны выявили invalid hardcoded fixtures и transfer selector regression; причины исправлены и весь набор повторён успешно. Связанные T017 assertions/cassettes не изменялись; test_agent setup перенесён ровно из утверждённого T017 diff.
