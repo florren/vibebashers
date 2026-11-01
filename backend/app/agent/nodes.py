@@ -26,9 +26,9 @@ from app.agent.customer_messages import (
 )
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
-from app.agent.refund_scope import case_operations, refund_candidates, validate_refund_decision
 from app.agent.refund_scope import catalog as refund_scope_catalog
 from app.agent.refund_scope import catalog_fingerprint as refund_scope_fingerprint
+from app.agent.refund_scope import refund_candidates, routing_operations, validate_refund_decision
 from app.agent.state import AgentState
 from app.agent.tools import abs as abs_tools
 from app.agent.tools import read as rt
@@ -730,7 +730,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
     ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
-    scoped_operations = case_operations(ctx["operations"], state["normalization"])
+    scoped_operations = routing_operations(ctx["operations"], state["normalization"])
     failed = [op for op in scoped_operations if op["status"] == "failed" or op.get("error_code")]
     active = ctx["system_logs"]["active_faults"]
     # error_code/система — только по фактам клиента (его неуспешные операции); активные сбои без операции — лишь подсказка
