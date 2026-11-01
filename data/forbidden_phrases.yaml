@@ -1,0 +1,31 @@
+# ТЗ8.4/11.1: phrases сохраняет прежние сопоставления; technical_identifiers — только самостоятельные технические идентификаторы.
+phrases:
+- вы сами виноваты
+- ваша ошибка
+- вы неправильно
+- гарантируем
+- в течение часа
+- сегодня же
+- немедленно вернём
+- компенсируем все
+- 100%
+- your fault
+- your mistake
+- you incorrectly
+- guarantee
+- within the hour
+- this very day
+- refund immediately
+- immediate refund
+- compensate everything
+technical_identifiers:
+- mobile_app
+- web_bank
+- contact_center
+- social_listening
+- notification_gw
+- promo_engine
+- sub_deposits
+- sub_lending
+- sub_debit
+- core_abs
