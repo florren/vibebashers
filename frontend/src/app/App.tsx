@@ -1,6 +1,6 @@
 import { DeviceLayoutRuntime } from '@/shared/layout/device'
 import { EconomicsPage } from '@/pages/finance/EconomicsPage'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ThemeRuntime } from '@/shared/theming/ThemeRuntime'
@@ -13,22 +13,31 @@ import { CompliancePage } from '@/pages/compliance/CompliancePage'
 import { FeedPage } from '@/pages/feed/FeedPage'
 import { Client360Page } from '@/pages/client/Client360Page'
 import { ClaimPage } from '@/pages/claim/ClaimPage'
+import { PublicLayout } from '@/pages/claim/PublicLayout'
 import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { TracePage } from '@/pages/trace'
 import { JourneyPage } from '@/pages/journey'
 import { FinancePage } from '@/pages/finance/FinancePage'
 import { SetupPage } from '@/pages/setup/SetupPage'
 
+function OperatorRuntime() {
+  const qc = useQueryClient()
+  useEffect(() => connectWs(qc), [qc])
+  return <ThemeRuntime />
+}
+
 export function App() {
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
-  useEffect(() => connectWs(qc), [qc])
   return (
     <QueryClientProvider client={qc}>
       <DeviceLayoutRuntime />
-      <ThemeRuntime />
       <BrowserRouter>
         <Routes>
-          <Route element={<Shell />}>
+          <Route element={<PublicLayout />}>
+            <Route path="claim" element={<ClaimPage />} />
+            <Route path="landing" element={<ClaimPage />} />
+          </Route>
+          <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspacePage />} />
             <Route path="clients/:id" element={<Client360Page />} />
             <Route path="incidents/:id" element={<IncidentPage />} />
@@ -37,7 +46,6 @@ export function App() {
             <Route path="compliance" element={<CompliancePage />} />
             <Route path="manager" element={<ManagerPage />} />
             <Route path="feed" element={<FeedPage />} />
-            <Route path="claim" element={<ClaimPage />} />
             <Route path="trace" element={<TracePage />} />
             <Route path="trace/:kind/:ref" element={<TracePage />} />
             <Route path="journey" element={<JourneyPage />} />

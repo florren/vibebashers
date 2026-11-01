@@ -48,6 +48,7 @@ describe('claim', () => {
       const url = String(input)
       if (url.includes('/api/sim/state')) return jsonRes({ running: false, current_run_status: 'none', speed: 1 })
       if (url.includes('/api/demo/status')) return jsonRes({})
+      if (url.includes('/api/stt/providers')) return jsonRes([])
       if (url.includes('/api/public/captcha')) return jsonRes({ id: 'cap-1', question: '2 + 3 = ?' })
       if (url.includes('/api/refs/regions')) return jsonRes([{ code: '01', name_ru: 'Республика Адыгея' }])
       if (url.includes('/api/refs/products')) return jsonRes([{ code: 'debit_card', name_ru: 'Дебетовая карта' }])
@@ -61,8 +62,8 @@ describe('claim', () => {
   })
 
   it('ключи en совпадают с блоком claim и nav.claim', () => {
-    const ruBlock = { nav: { claim: ru.nav.claim }, claim: ru.claim }
-    const enBlock = { nav: { claim: en.nav.claim }, claim: en.claim }
+    const ruBlock = { nav: { claim: ru.nav.claim }, claim: ru.claim, tracking: ru.tracking }
+    const enBlock = { nav: { claim: en.nav.claim }, claim: en.claim, tracking: en.tracking }
     const ruKeys = leaves(ruBlock).sort()
     expect(leaves(enBlock).sort()).toEqual(ruKeys)
     for (const key of ruKeys) {
@@ -78,6 +79,15 @@ describe('claim', () => {
     expect(screen.queryByText('claim.title')).toBeNull()
     expect(screen.getByText(i18n.t('claim.fictionalHint'))).toBeInTheDocument()
     expect(screen.getByRole('link', { name: i18n.t('nav.claim') })).toHaveAttribute('href', '/claim')
+  })
+
+  it('поддерживает /landing как публичный маршрут без операторских инструментов', async () => {
+    window.history.pushState({}, '', '/landing')
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: i18n.t('claim.title') })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: i18n.t('tracking.language') })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Старт|Start/ })).not.toBeInTheDocument()
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => /\/api\/(settings|sim\/state)/.test(String(url)))).toBe(false)
   })
 
   it('маршрут /claim рендерит форму внутри оболочки', async () => {
