@@ -34,12 +34,25 @@ def test_scenario_10_skipped_without_cassette() -> None:
         pytest.skip("нет живой кассеты сценария 10, mock как replay не подставляем")
 
 
-async def test_scenario_08_on_replay(seeded: str) -> None:
+async def test_scenario_08_on_replay(seeded: str, monkeypatch, request) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setenv("LLM_PROVIDER", "replay")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     scenario = sc.get("qr_fee_public_review")
     assert scenario is not None
     chain = ProviderChain([ReplayProvider(_store(), speed=100.0)])
     t0 = time.perf_counter()
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        # До создания run закрепляем ту offline-модель всех ролей,
+        # чьи реальные ответы сохранены; Mock snapshot не обходится.
+        await conn.execute(
+            "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
+            "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
+            "from llm_profiles where model='GigaChat-3-Pro' and is_active order by id limit 1 "
+            "on conflict(key) do update set value=excluded.value"
+        )
         run_id = await new_run(conn, "cassette qr_fee", scenario_id=scenario["id"])
         now = await sim_now(conn)
         injected = await sc.inject(conn, scenario, run_id, sim_time=now)
