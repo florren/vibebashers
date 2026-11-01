@@ -85,3 +85,56 @@ Migration `0007_csi_audit` supports the CSI signal primary key and the composite
 
 Проверка конфигурации без записи в БД:
 `backend/.venv/bin/python scripts/seed/operations.py --profile lite --check`.
+
+### Предыстория сбоев и системные логи (T-018)
+
+`scripts/seed/faults.py --profile lite --check` проверяет детерминированный план
+без соединения с БД. Основной seed вызывает `seed_faults` после T-017 operations
+и до исторических signals/incidents. История состоит из 14 последовательных
+24-часовых интервалов, заканчивающихся в `sim_time`: по 2–4 сбоя, длительность
+10–240 минут. Региональный сбой привязан к региону реальной failed-операции;
+пустой `region_codes` означает всю страну. Окна внутри суток не пересекаются.
+
+Привязка изменяет только `operations.fault_id`: требуются тот же run, failed,
+совпадение error_code, его system_code в system_path, времени `[start,end)` и
+региона. Status, error_code, суммы, комиссии и timestamps T-017 сохраняются.
+Другие failed-операции не получают выдуманный fault: отдельные ошибки вне
+массового окна допустимы. impact_count/affected_clients вычисляются из реальных
+связанных операций, а не случайно. При недостатке операций возможен сбой с
+нулевым impact: его health probes всё равно диагностируются.
+
+Логи содержат INFO-heartbeats всех систем, WARN-деградацию, минимум три ERROR
+health probes и FATAL-circuit breaker в каждом окне, INFO-восстановление;
+реальные failed requests имеют affected_operation_id и свой timestamp.
+Health probes не выдают себя за клиентские операции. В сообщениях нет имён,
+телефонов, карт, контактов или клиентских идентификаторов. `get_system_logs`
+читает контрактные ERROR/FATAL только текущего run. В `sim_events` сохраняются
+валидированные fault.started/fault.resolved; startup worker не запускается.
+
+Идемпотентность защищена transaction/advisory lock и
+`settings['seed_fault_history:<run_id>']`. Несовпадающий marker или чужие уже
+существующие faults дают явную ошибку без перезаписи. Обычный повтор install
+по прежнему сохраняет существующий банк и автоматически не backfill-ит историю.
+Явный `--reset-history` очищает и marker; работающий стенд в этой задаче не меняется.
+
+**Граница T-020 остаётся открытой.** 10–15% сбоев записаны как
+`regression_candidate_ids`, а не реальные регрессии. Они пока не имеют
+caused_by_incident_id и не порождают fault.regression. После создания реальных
+инцидентов/релизов T-020 вызывает
+`finalize_regressions(cur, run_id, bindings)`, где каждый binding содержит
+fault_id, caused_by_incident_id, release_action_id. Проверяются candidate,
+принадлежность одному run и incident, действие release, другая исходная система
+и задержка 60–240 минут. Все bindings атомарны; совпадающий повтор — no-op,
+конфликт отклоняется. Только после этого заполняется FK и пишется валидное
+fault.regression. Кандидаты не являются доказательством выполненной приёмки
+реальных регрессий; завершение этой границы требует T-020.
+
+Модель T-018 использует только явно настроенные T-017 `failure_codes` (8 кодов),
+а не все 25 записей error_codes. Существование каждой пары в БД и event contract
+проверяется до генерации; неизвестные/невалидные пары не пропускаются молча.
+Отдельно найден T-014 gap: `ANTIFRAUD-FALSE-BLOCK` из общего каталога не проходит
+текущий pattern префикса `{2,6}` в common.schema.json; настроенный T-017
+`AF-FALSE-BLOCK` существует отдельно и валиден. T-018 не переименовывает коды и
+не расширяет контракт; отрицательная регрессия фиксирует явный отказ для
+невалидной пары. Требуется отдельный contract review перед использованием
+long-prefix кода в fault.*; проверка всех 25 fault codes здесь не заявляется.

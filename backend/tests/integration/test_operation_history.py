@@ -63,13 +63,25 @@ def test_copy_history_and_products(seeded, monkeypatch):
             == before
         )
 
-        # Exercise the actual COPY in this process, not only the seed subprocess.
-        cur.execute("delete from operations where run_id=%s", (run_id,))
+        # COPY проверяется на новом run: исходная история с FK логов остаётся целой.
+        original_run = run_id
+        run_id = cur.execute(
+            "insert into sim_runs(kind,label,seed,started_sim) values('baseline','T017 isolated COPY',42,%s) returning id",
+            (dt.datetime(2026, 11, 9, 9, tzinfo=dt.UTC),),
+        ).fetchone()[0]
         seed_operations(cur, random.Random(42), run_id, dt.datetime(2026, 11, 9, 9, tzinfo=dt.UTC), per_client=5)
         assert cur.execute("select count(*) from operations where run_id=%s", (run_id,)).fetchone()[0] == 1000
         assert (
             cur.execute("select count(*) from operations where status='failed' and error_code is null").fetchone()[0]
             == 0
+        )
+
+        assert (
+            cur.execute(
+                "select id,client_id,system_path,status,error_code,started_sim,finished_sim from operations where run_id=%s order by id",
+                (original_run,),
+            ).fetchall()
+            == before
         )
 
         # Exercise min-product fallback and masked terms in-process as well as via CLI.
