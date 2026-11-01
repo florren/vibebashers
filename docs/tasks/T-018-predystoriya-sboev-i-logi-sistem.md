@@ -68,3 +68,10 @@ Ruff/format323, mypy242, contracts44/161, drift191/191, licenses526 green.
 Отдельный negative test и data/README фиксируют T-014 catalog-vs-contract gap
 ANTIFRAUD-FALSE-BLOCK. Модель T-018 использует8 утверждённых T-017 failure_codes,
 а не заявляет проверку всех25 событийных кодов. DoD пока не выполнен.
+
+Replay follow-up: root cause — T-017 bank-context drift, не fault logs.
+Общий immutable replay_bank_v1 fixture сохранён с source hash174508…;
+исходные replay08/trace12/13 assertions и отдельный changed-seed honest-miss
+тест прошли:4passed. Кассеты/usage/ответы не менялись, external recording не было.
+Это доказательство относится к старому contract; новый common.schema требует
+отдельного разрешённого record и пока не объявлен совместимым.

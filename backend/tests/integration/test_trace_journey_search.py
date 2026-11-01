@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import os
-import random
-import subprocess
-import sys
 from pathlib import Path
 from time import perf_counter
 
@@ -108,45 +104,6 @@ async def test_search_variants_and_explicit_scope(seeded):
         assert max(times) < 300
 
 
-@pytest.fixture
-def replay_bank(migrated_db, monkeypatch):
-    """Recorded prompt context is immutable; current random history is tested separately."""
-    root = Path(__file__).resolve().parents[3]
-    monkeypatch.syspath_prepend(str(root))
-    from scripts.seed.refs import seed_all_refs
-
-    fixture = json.loads((root / "backend/tests/fixtures/replay_bank_v1.json").read_text())
-    with psycopg.connect(dsn(migrated_db), autocommit=True) as conn:
-        conn.execute("drop schema public cascade; create schema public")
-    applied = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        cwd=root / "backend",
-        env={**os.environ, "DATABASE_URL": migrated_db},
-        capture_output=True,
-        text=True,
-    )
-    assert applied.returncode == 0, applied.stderr
-    now = dt.datetime.fromisoformat(fixture["sim_time"])
-    with psycopg.connect(dsn(migrated_db)) as conn, conn.cursor() as cur:
-        seed_all_refs(cur, random.Random(42), seed=42, sim_time=now)
-        client = fixture["client"]
-        city_id = cur.execute(
-            "select id from cities where name_ru=%s and region_code=%s", (client["city"], client["region_code"])
-        ).fetchone()[0]
-        client_id = cur.execute(
-            "insert into clients(display_name,segment_code,psychotype_code,region_code,city_id,churn_risk,clv_estimate_rub) values('Клиент replay',%s,%s,%s,%s,%s,100000) returning id",
-            (client["segment"], client["psychotype"], client["region_code"], city_id, client["churn_risk"]),
-        ).fetchone()[0]
-        product = fixture["product"]
-        cur.execute(
-            "insert into client_products(client_id,product_code,status,card_last4) values(%s,%s,%s,%s)",
-            (client_id, product["product"], product["status"], product["card_last4"]),
-        )
-        cur.execute("insert into sim_state(id,sim_time,seed) values(1,%s,42)", (now,))
-        cur.execute("select setval(pg_get_serial_sequence('operations','id'),%s)", (fixture["operation_sequence"],))
-    return migrated_db
-
-
 async def test_scenario_12_13_replay(replay_bank):
     seeded = replay_bank
     from app.llm.base import LLMProfile
@@ -202,7 +159,6 @@ async def test_scenario_12_13_replay(replay_bank):
 
 
 async def test_fanout_and_query_budget(seeded):
-    import datetime as dt
 
     from app.ingest.normalizer import create_signal, from_api_signal
 
