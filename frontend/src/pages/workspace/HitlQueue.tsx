@@ -1,3 +1,4 @@
+import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Check, Pencil, Users, X } from 'lucide-react'
@@ -117,6 +118,7 @@ export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal:
           {c?.signal_type && <Badge tone="info">{tEnum('signal.type', c.signal_type)}</Badge>}
           {c?.problem_summary && <Badge tone={severityTone(c.problem_summary.severity)}>{tEnum('incident.severity', c.problem_summary.severity)}</Badge>}
           <span className="ml-auto text-xs text-muted">{t('hitl.waiting', { m: item.waiting_minutes ?? 0 })}</span>
+          <ClientProfileLink id={item.signal?.client?.id} runId={item.sim_run_id} />
           {item.signal?.id !== undefined && (
             <button className="btn btn-sm" onClick={() => onOpenSignal(item.signal!.id!)}>
               {t('jury.openSignal')}

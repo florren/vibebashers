@@ -27,7 +27,7 @@ from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
 from app.llm.gigachat import GigaChatProvider
-from app.llm.openai_compat import OpenAICompatProvider, openrouter_deactivation_plan
+from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, openrouter_deactivation_plan
 from app.llm.roles import refresh as refresh_roles
 from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
@@ -43,7 +43,7 @@ log = get_logger(__name__)
 async def _sync_openrouter_models(chain: ProviderChain) -> None:
     """Нет id в каталоге OpenRouter — профиль is_active=false. Чужой base_url, ошибка GET и пустой список не гасят."""
     prov = next((p for p in chain.providers if isinstance(p, OpenAICompatProvider)), None)
-    if prov is None or "openrouter.ai" not in prov.base_url:
+    if prov is None or not is_openrouter(prov.base_url):
         return
     plan = await openrouter_deactivation_plan(prov)
     if not plan:
@@ -147,7 +147,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await app.state.sim.shutdown()
     await bridge.stop()
     for provider in app.state.llm_chain.providers:
-        if isinstance(provider, GigaChatProvider):
+        if isinstance(provider, (GigaChatProvider, OpenAICompatProvider)):
             await provider.aclose()
 
 
