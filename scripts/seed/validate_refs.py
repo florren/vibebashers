@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Проверка ссылочной целостности data/* (T-236 product_lines и смежные справочники)."""
+
 from __future__ import annotations
 
 import csv
+import json
 import re
 import sys
 from pathlib import Path
 
+import structlog
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,12 +81,67 @@ def validate_product_lines() -> list[str]:
     return errors
 
 
+def validate_error_routing() -> list[str]:
+    """T-014: каждый код ведёт к владельцу системы, а fallback остаётся у CX."""
+    errors: list[str] = []
+    catalogs = _load_yaml("error_codes.yaml")
+    codes = catalogs.get("error_codes", [])
+    teams = _load_yaml("teams.yaml")["teams"]
+    system_codes = {row["code"] for row in _load_yaml("systems.yaml")["systems"]}
+    team_codes = {row["code"] for row in teams}
+    products = _product_codes()
+    common = json.loads((ROOT / "contracts/events/common.schema.json").read_text(encoding="utf-8"))["$defs"]
+    rules = _load_yaml("sla.yaml")["routing_rules"]
+    if len(codes) < 25:
+        errors.append(f"error_codes: ожидалось ≥ 25 кодов, получено {len(codes)}")
+    names = [row["code"] for row in codes]
+    if len(names) != len(set(names)):
+        errors.append("error_codes: повторяющиеся коды")
+    if len(rules) < 15:
+        errors.append("routing_rules: ожидалось ≥ 15 правил")
+    for row in codes:
+        code, system = row["code"], row.get("system")
+        if system not in system_codes:
+            errors.append(f"{code}: неизвестная система {system}")
+        if row.get("product") is not None and row["product"] not in products:
+            errors.append(f"{code}: неизвестный продукт {row['product']}")
+        for field in ("complexity", "criticality"):
+            if row.get(field) not in common[field]["enum"]:
+                errors.append(f"{code}: неизвестное значение {field}")
+        owners = {team["code"] for team in teams if system in team["systems"]}
+        explicit = [rule for rule in rules if rule.get("match") == {"error_code": code}]
+        if not explicit or not any(owners.intersection(rule["team_codes"]) for rule in explicit):
+            errors.append(f"{code}: нет явного маршрута владельцу системы {system}")
+    for rule in rules:
+        if not rule.get("team_codes") or not set(rule["team_codes"]) <= team_codes:
+            errors.append(f"routing_rules {rule.get('priority')}: неизвестная или пустая команда")
+        code = rule.get("match", {}).get("error_code")
+        if code is not None and code not in names:
+            errors.append(f"routing_rules: неизвестный код ошибки {code}")
+    fallback = [row for row in rules if row.get("match") == {}]
+    if len(fallback) != 1 or fallback[0].get("team_codes") != ["team_cx"]:
+        errors.append("routing_rules: единственный маршрут по умолчанию должен вести в team_cx")
+    elif fallback[0]["priority"] < max(rule["priority"] for rule in rules):
+        errors.append("routing_rules: маршрут по умолчанию перекрывает более поздние правила")
+    types = catalogs.get("signal_types", [])
+    if {row["code"] for row in types} != set(common["signal_type"]["enum"]):
+        errors.append("signal_types: набор не совпадает с контрактом")
+    for row in types:
+        if row.get("base_criticality") not in common["criticality"]["enum"]:
+            errors.append(f"{row['code']}: некорректная base_criticality")
+        for field in ("requires_hitl", "creates_incident"):
+            if type(row.get(field)) is not bool:
+                errors.append(f"{row['code']}: {field} должен быть bool")
+    return errors
+
+
 def main() -> int:
-    errors = validate_product_lines()
+    errors = validate_product_lines() + validate_error_routing()
+    log = structlog.get_logger("validate_refs")
     if errors:
-        print("\n".join(errors))
+        log.error("reference_validation_failed", errors=errors)
         return 1
-    print("validate_refs: ok")
+    log.info("validate_refs_ok")
     return 0
 
 
