@@ -51,6 +51,13 @@ def _client_id(conn: psycopg.Connection) -> int:
 
 
 def test_cost_estimate_and_llm_profile_id(seeded: str, conn: psycopg.Connection) -> None:
+    # Legacy без snapshot сохраняет явный профиль; новые pinned-тарифы
+    # отдельно проверяются в test_run_profiles (включая неизменный нулевой тариф).
+    legacy = conn.execute(
+        "insert into sim_runs(kind,label,seed,status,started_sim) "
+        "select 'live','legacy priced profile',42,'running',sim_time from sim_state where id=1 returning id"
+    ).fetchone()[0]
+    conn.execute("update sim_state set current_run_id=%s where id=1", (legacy,))
     cid = _client_id(conn)
 
     async def run() -> int:
