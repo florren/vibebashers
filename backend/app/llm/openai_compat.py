@@ -153,8 +153,16 @@ class OpenAICompatProvider:
         r = await self._client.get(f"{self.base_url}/models", headers=self._headers(self.base_url), timeout=timeout_s)
         if r.status_code >= 400:
             raise ProviderError("unavailable", f"models {r.status_code}", status=r.status_code)
-        data = r.json().get("data", [])
-        return [m.get("id", "") for m in data]
+        try:
+            body = r.json()
+        except ValueError as exc:
+            raise ProviderError("unavailable", "models: некорректный JSON") from exc
+        data = body.get("data") if isinstance(body, dict) else None
+        if not isinstance(data, list) or any(
+            not isinstance(model, dict) or not isinstance(model.get("id"), str) or not model["id"] for model in data
+        ):
+            raise ProviderError("unavailable", "models: некорректный каталог")
+        return [model["id"] for model in data]
 
     async def fetch_key(self, timeout_s: float = 10.0, *, base_url: str | None = None) -> dict[str, Any]:
         """GET {base}/key. Ошибка запроса — ProviderError quota, без chat/completions."""

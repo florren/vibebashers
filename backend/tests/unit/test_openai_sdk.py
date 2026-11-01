@@ -221,3 +221,18 @@ async def test_benchmark_local_profile_resolves_env_without_openrouter_key(monke
         assert providers[0].api_key is None
     finally:
         await providers[0].aclose()
+
+
+@pytest.mark.parametrize("body", [{"data": [{"id": None}]}, {"data": "broken"}, []])
+async def test_malformed_catalog_does_not_deactivate_or_stop_startup(body):
+    from app.llm.openai_compat import openrouter_deactivation_plan
+
+    provider = OpenAICompatProvider(
+        "test",
+        "https://openrouter.ai/api/v1",
+        transport=httpx.MockTransport(lambda req: httpx.Response(200, json=body)),
+    )
+    try:
+        assert await openrouter_deactivation_plan(provider) == []
+    finally:
+        await provider.aclose()
