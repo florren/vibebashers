@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Эмуляцию можно прервать (Стоп, падение, остановка контейнера) и продолжить с того же сим-момента (ТЗ 4.6, 19 п. 17).
@@ -44,4 +44,4 @@ bash scripts/dev/kill_and_resume.sh
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка codex/T-041-resume, локальный checkpoint без PR/merge. StateGraph/Transactional PostgresSaver и0012 вschema langgraph; generatedrun_idFK и ARstatus. Строгийresume currentpaused/interrupted, sameRNG/time, recoverysameAR иretry, gracefulpause/drain.6PGactualrecoverypassed, послеnamespacedFK/lifecycle16PGpassed86.31s; Alembiccheck безdrift, licenses548green. Последниеизменениятребуютполногоregression/killupproof/coverage/contract+moneyreview; done не заявлен. Подробный review/rollback/compatibility: docs/reviews/T-041-durable-recovery.md.

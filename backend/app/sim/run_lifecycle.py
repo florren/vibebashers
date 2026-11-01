@@ -22,10 +22,14 @@ class RunConflict(ValueError):
     """Операция нарушила бы область запуска или активную работу."""
 
 
+Table = tuple[str, str]
+RUN_TABLE: Table = ("public", "sim_runs")
+
+
 @dataclass(frozen=True)
 class ForeignKey:
-    child: str
-    parent: str
+    child: Table
+    parent: Table
     child_column: str
     parent_column: str
     cascade: bool
@@ -34,25 +38,35 @@ class ForeignKey:
 async def _foreign_keys(conn: psycopg.AsyncConnection[Any]) -> list[ForeignKey]:
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(
-            "select ch.relname child,pa.relname parent,ca.attname child_column,"
+            "select array[cn.nspname,ch.relname] child,array[pn.nspname,pa.relname] parent,ca.attname child_column,"
             "ap.attname parent_column,c.confdeltype='c' cascade,cardinality(c.conkey) width "
             "from pg_constraint c join pg_class ch on ch.oid=c.conrelid "
             "join pg_class pa on pa.oid=c.confrelid "
+            "join pg_namespace cn on cn.oid=ch.relnamespace join pg_namespace pn on pn.oid=pa.relnamespace "
             "join pg_attribute ca on ca.attrelid=c.conrelid and ca.attnum=c.conkey[1] "
             "join pg_attribute ap on ap.attrelid=c.confrelid and ap.attnum=c.confkey[1] "
-            "where c.contype='f' and ch.relnamespace='public'::regnamespace "
-            "and pa.relnamespace='public'::regnamespace order by ch.relname,c.conname"
+            "where c.contype='f' and cn.nspname in ('public','langgraph') "
+            "and pn.nspname in ('public','langgraph') order by cn.nspname,ch.relname,c.conname"
         )
         rows = await cur.fetchall()
     if any(row["width"] != 1 for row in rows):
         raise RunConflict("Архивирование не поддерживает составные внешние ключи этой схемы")
-    return [ForeignKey(**{key: value for key, value in row.items() if key != "width"}) for row in rows]
+    return [
+        ForeignKey(
+            child=(row["child"][0], row["child"][1]),
+            parent=(row["parent"][0], row["parent"][1]),
+            child_column=row["child_column"],
+            parent_column=row["parent_column"],
+            cascade=row["cascade"],
+        )
+        for row in rows
+    ]
 
 
-def _ownership(keys: list[ForeignKey]) -> dict[str, tuple[ForeignKey, ...]]:
+def _ownership(keys: list[ForeignKey]) -> dict[Table, tuple[ForeignKey, ...]]:
     # Источник принадлежности — именно FK к sim_runs, а не совпадение имени run_id:
     # agent_steps.run_id относится к agent_runs, bench_results.run_id — к bench_runs.
-    paths: dict[str, tuple[ForeignKey, ...]] = {k.child: (k,) for k in keys if k.parent == "sim_runs" and k.cascade}
+    paths: dict[Table, tuple[ForeignKey, ...]] = {k.child: (k,) for k in keys if k.parent == RUN_TABLE and k.cascade}
     while True:
         additions = {
             k.child: (k, *paths[k.parent]) for k in keys if k.cascade and k.parent in paths and k.child not in paths
@@ -64,28 +78,28 @@ def _ownership(keys: list[ForeignKey]) -> dict[str, tuple[ForeignKey, ...]]:
 
 def _owner(alias: str, path: tuple[ForeignKey, ...]) -> sql.Composable:
     edge = path[0]
-    if edge.parent == "sim_runs":
+    if edge.parent == RUN_TABLE:
         return sql.Identifier(alias, edge.child_column)
     parent_alias = alias + "_p"
     return sql.SQL("(select {} from {} {} where {}={})").format(
         _owner(parent_alias, path[1:]),
-        sql.Identifier("public", edge.parent),
+        sql.Identifier(*edge.parent),
         sql.Identifier(parent_alias),
         sql.Identifier(parent_alias, edge.parent_column),
         sql.Identifier(alias, edge.child_column),
     )
 
 
-async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tuple[dict[str, Any], list[str]]:
+async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tuple[dict[str, Any], list[Table]]:
     keys = await _foreign_keys(conn)
     paths = _ownership(keys)
     # Блокируем записи на короткое время до проверки FK и purge. Иначе новая
     # межзапусковая ссылка могла бы попасть под CASCADE после успешной проверки.
-    tables = set(paths) | {k.child for k in keys if k.parent in paths} | {"sim_runs", "sim_state"}
+    tables = set(paths) | {k.child for k in keys if k.parent in paths} | {RUN_TABLE, ("public", "sim_state")}
     await conn.execute("set local lock_timeout='5s'")
     await conn.execute(
         sql.SQL("lock table {} in share row exclusive mode").format(
-            sql.SQL(",").join(sql.Identifier("public", table) for table in sorted(tables))
+            sql.SQL(",").join(sql.Identifier(*table) for table in sorted(tables))
         )
     )
     async with conn.cursor(row_factory=dict_row) as cur:
@@ -111,8 +125,8 @@ async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tu
             child_owner = _owner("c", paths[key.child]) if key.child in paths else sql.SQL("null")
             await cur.execute(
                 sql.SQL("select 1 from {} c join {} p on {}={} where {}=%s and {} is distinct from %s limit 1").format(
-                    sql.Identifier("public", key.child),
-                    sql.Identifier("public", key.parent),
+                    sql.Identifier(*key.child),
+                    sql.Identifier(*key.parent),
                     sql.Identifier("c", key.child_column),
                     sql.Identifier("p", key.parent_column),
                     _owner("p", paths[key.parent]),
@@ -121,21 +135,23 @@ async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tu
                 (run_id, run_id),
             )
             if await cur.fetchone():
-                raise RunConflict(f"Данные запуска используются вне его области: {key.child} → {key.parent}")
+                child = key.child[1] if key.child[0] == "public" else ".".join(key.child)
+                parent = key.parent[1] if key.parent[0] == "public" else ".".join(key.parent)
+                raise RunConflict(f"Данные запуска используются вне его области: {child} → {parent}")
     roots = sorted(table for table, path in paths.items() if len(path) == 1)
     return dict(run), roots
 
 
-async def _purge(conn: psycopg.AsyncConnection[Any], run_id: int, roots: list[str]) -> None:
+async def _purge(conn: psycopg.AsyncConnection[Any], run_id: int, roots: list[Table]) -> None:
     keys = await _foreign_keys(conn)
-    columns = {key.child: key.child_column for key in keys if key.parent == "sim_runs" and key.cascade}
+    columns = {key.child: key.child_column for key in keys if key.parent == RUN_TABLE and key.cascade}
     # Один statement: NO ACTION FK между данными одного запуска (включая циклы
     # signal↔post и incident↔agent) проверяются после удаления всех корней.
     parts = [
         sql.SQL("{} as (delete from {} where {}=%s)").format(
-            sql.Identifier(f"purge_{table}"), sql.Identifier("public", table), sql.Identifier(columns[table])
+            sql.Identifier(f"purge_{index}"), sql.Identifier(*table), sql.Identifier(columns[table])
         )
-        for table in roots
+        for index, table in enumerate(roots)
     ]
     await conn.execute(sql.SQL("with {} select 1").format(sql.SQL(",").join(parts)), (run_id,) * len(parts))
 

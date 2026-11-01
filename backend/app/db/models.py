@@ -50,6 +50,8 @@ class AgentRuns(Base):
     outcome: Mapped[Optional[str]] = mapped_column(Text)
     error: Mapped[Optional[str]] = mapped_column(Text)
     public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('AR-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
+    interrupted_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    status: Mapped[Optional[str]] = mapped_column(Text, Computed("\nCASE\n    WHEN ((outcome IS NULL) AND (interrupted_at IS NOT NULL)) THEN 'interrupted'::text\n    ELSE COALESCE(outcome, 'running'::text)\nEND", persisted=True))
 
     client: Mapped[Optional['Clients']] = relationship('Clients', back_populates='agent_runs')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', foreign_keys=[incident_id], back_populates='agent_runs_incident')
@@ -408,6 +410,16 @@ class Incidents(Base):
     compliance_alerts: Mapped[list['ComplianceAlerts']] = relationship('ComplianceAlerts', back_populates='incident')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='incident')
     financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='incident')
+
+
+class CheckpointMigrations(Base):
+    __tablename__ = 'checkpoint_migrations'
+    __table_args__ = (
+        PrimaryKeyConstraint('v', name='checkpoint_migrations_pkey'),
+        {'schema': 'langgraph'}
+    )
+
+    v: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class LlmApiKeys(Base):
@@ -1214,6 +1226,9 @@ class SimRuns(Base):
     incident_artifacts: Mapped[list['IncidentArtifacts']] = relationship('IncidentArtifacts', back_populates='run')
     incident_economics: Mapped[list['IncidentEconomics']] = relationship('IncidentEconomics', back_populates='run')
     ingest_messages: Mapped[list['IngestMessages']] = relationship('IngestMessages', back_populates='run')
+    checkpoint_blobs: Mapped[list['CheckpointBlobs']] = relationship('CheckpointBlobs', back_populates='run')
+    checkpoint_writes: Mapped[list['CheckpointWrites']] = relationship('CheckpointWrites', back_populates='run')
+    checkpoints: Mapped[list['Checkpoints']] = relationship('Checkpoints', back_populates='run')
     personal_chat_sessions: Mapped[list['PersonalChatSessions']] = relationship('PersonalChatSessions', back_populates='run')
     sim_events: Mapped[list['SimEvents']] = relationship('SimEvents', back_populates='run')
     sim_state: Mapped[list['SimState']] = relationship('SimState', back_populates='current_run')
@@ -1590,6 +1605,67 @@ class IngestMessages(Base):
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='ingest_messages')
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='ingest_messages')
     ingest_sources: Mapped['IngestSources'] = relationship('IngestSources', back_populates='ingest_messages')
+
+
+class CheckpointBlobs(Base):
+    __tablename__ = 'checkpoint_blobs'
+    __table_args__ = (
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='checkpoint_blobs_run_fk'),
+        PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'channel', 'version', name='checkpoint_blobs_pkey'),
+        {'schema': 'langgraph'}
+    )
+
+    thread_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(Text, primary_key=True, server_default=text("''::text"))
+    channel: Mapped[str] = mapped_column(Text, primary_key=True)
+    version: Mapped[str] = mapped_column(Text, primary_key=True)
+    type: Mapped[str] = mapped_column(Text, nullable=False)
+    blob: Mapped[Optional[bytes]] = mapped_column(LargeBinary)
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger, Computed("(split_part(thread_id, ':'::text, 1))::bigint", persisted=True))
+
+    run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='checkpoint_blobs')
+
+
+class CheckpointWrites(Base):
+    __tablename__ = 'checkpoint_writes'
+    __table_args__ = (
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='checkpoint_writes_run_fk'),
+        PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', 'task_id', 'idx', name='checkpoint_writes_pkey'),
+        {'schema': 'langgraph'}
+    )
+
+    thread_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(Text, primary_key=True, server_default=text("''::text"))
+    checkpoint_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    task_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    idx: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel: Mapped[str] = mapped_column(Text, nullable=False)
+    blob: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    task_path: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''::text"))
+    type: Mapped[Optional[str]] = mapped_column(Text)
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger, Computed("(split_part(thread_id, ':'::text, 1))::bigint", persisted=True))
+
+    run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='checkpoint_writes')
+
+
+class Checkpoints(Base):
+    __tablename__ = 'checkpoints'
+    __table_args__ = (
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='checkpoints_run_fk'),
+        PrimaryKeyConstraint('thread_id', 'checkpoint_ns', 'checkpoint_id', name='checkpoints_pkey'),
+        {'schema': 'langgraph'}
+    )
+
+    thread_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(Text, primary_key=True, server_default=text("''::text"))
+    checkpoint_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    checkpoint: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    metadata_: Mapped[dict] = mapped_column('metadata', JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    parent_checkpoint_id: Mapped[Optional[str]] = mapped_column(Text)
+    type: Mapped[Optional[str]] = mapped_column(Text)
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger, Computed("(split_part(thread_id, ':'::text, 1))::bigint", persisted=True))
+
+    run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='checkpoints')
 
 
 class PersonalChatSessions(Base):

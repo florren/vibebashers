@@ -109,9 +109,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.ingest_poll = asyncio.create_task(polling_worker(poll_stop))
         bridge.start()
         app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
-        app.state.agent.start()
         app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
-        app.state.twins.start()
         sim = Simulator(seed=s.sim_seed)
         sim.full_execution = True
         try:
@@ -120,6 +118,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
+    if app.state.sim is not None and app.state.agent is not None:
+        app.state.sim.before_resume = app.state.agent.validate_recovery
+        app.state.sim.after_resume = app.state.agent.recover_run
+    if app.state.agent is not None:
+        app.state.agent.start()
+    if app.state.twins is not None:
+        app.state.twins.start()
     demo_task = public_task = None
     if not s.is_test:
         from app.demo.execution import public_worker
@@ -133,6 +138,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             execution_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await execution_task
+    if app.state.sim is not None:
+        await app.state.sim.control("pause")
     await app.state.bench.stop()
     if app.state.twins is not None:
         await app.state.twins.stop()

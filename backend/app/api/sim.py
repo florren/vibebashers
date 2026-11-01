@@ -282,7 +282,10 @@ async def post_sim_runs_id_resume(request: Request, id: int) -> Any:  # noqa: A0
     sim = _sim(request)
     if sim.run_id != id:
         raise HTTPException(status_code=409, detail="возобновить можно только текущий запуск")
-    await sim.control("resume")
+    try:
+        await sim.control("resume")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     async with await _conn() as conn:
         return await run_svc.get_run(conn, id)
 

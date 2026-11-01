@@ -1,0 +1,27 @@
+# T-041: durable LangGraph и миграция0012 — checkpoint для review
+
+Пакет не готов к merge: полный regression, реальный kill/up процесса и согласование contracts/денежных повторов ещё требуются (AGENTS§5.1/6/7).
+
+## Реализованная граница
+
+Вместо собственного while-runner используется предусмотренный ADR0003 StateGraph LangGraph. Каждый доменный узел — superstep. PostgreSQL saver использует то же соединение: его IO и доменные узлы сериализованы owner_lock, `durability=sync` фиксирует эффекты узла и следующий checkpoint одной транзакцией. Отмена откатывает незавершённый узел. При recovery продолжается прежний agent_run/thread, токены/стоимость берутся из сохранённого recording, seq восстанавливается из реальных шагов; незавершённый узел получает retry. Ранее выполненные шаги не переигрываются. HITL/followup остаются на существующих границах и инструментах; лимиты/суммы/правила возврата не меняются.
+
+Pickle и расширенные конструкторы serializer запрещены, state проходит прежний JSON boundary. Внешний LangSmith tracing явно отключён. Новые зависимости MIT и permissive transitives проверены: licenses548 (111Python437npm), в0012 сохранён upstream MIT notice.
+
+## DB контракт и совместимость
+
+Миграция0012 после T1080011 создаёт upstream checkpoint tables3.2.0 в schema langgraph (требование T056). Runtime setup/DDL не выполняется. Во всех таблицах тредов generated run_id извлекается из внутреннего thread_id и FK CASCADE ссылается на public.sim_runs. Archive/delete учитывает public+langgraph с полностью квалифицированными SQL identifiers и удаляет только принадлежащие run checkpoints; global checkpoint_migrations остаётся.
+
+agent_runs.interrupted_at аддитивна; generated status выводится из прежнего outcome и признака прерывания. Значения outcome не переименовываются. Генератор моделей отражает обе схемы и нормализует default public до schema=None, не редактируя generated файл руками; Alembic проверяет обе схемы. Старые settings/profile snapshots не конвертируются.
+
+Legacy AR без durable checkpoint не объявляется успешно возобновлённым: preflight даёт409 с требованием отдельного ручного восстановления до запуска часов. Legacy HITL сохранён в agent_steps и не переинтерпретируется автоматически. Откат приложения возможен с сохранением additive DB tables, но старый runner не может продолжить новые checkpoints: перед откатом необходимо завершить/приостановить обработку и сохранить DB backup; автоматическое переигрывание денег недопустимо.
+
+## Управление запуском
+
+Resume допускает только текущий paused/interrupted run, восстанавливает persisted RNG/sim_time и увеличивает resumed_count один раз; stopped/completed/archived возвращают409. `start` без нового label для paused/interrupted использует тот же guard. Событие resumed соответствует существующему WS контракту. Детектор прерывания ждёт истечения3тиков; если другой процесс продолжает ticks, startup отказывает вместо вмешательства. Lifespan загружает sim до старта agent, shutdown сначала ставит sim на паузу и ожидает отменённые проходы. Listener-соединение закрывается явно. Recovery/timer tasks зарегистрированы для drain; восстановление followups/HITL ограничено своим run, существующие thresholds/timeouts сохранены.
+
+## Проверки checkpoint
+
+До schema split:6PG passed23.35s — настоящий coroutine cancel после уже выполненного refund/gift, recovery того жеAR без повторного refund/normalization, token total равен сумме шагов; crash между DB effect и saver откатывает effect; RNG/sim_time и stopped409;3старых agent integration. После schema split/qualified lifecycle:16PG passed86.31s. `make lint` до последних узких detector/generator изменений зелёный:340format/248mypy/frontend144/drift191. Последние source-файлы Ruff/mypy24green. `alembic check` после нормализации обеих схем: No new upgrade operations detected (исходные FK cycles вызывают штатный SAWarning, проверки не отключены).
+
+Остаётся: последние detector/hooks/timer edge cases, explicit checkpoint archive ownership proof, subprocess kill/restart и graceful proof, idempotent migration/source generation, coverage нового кода и полный composed regression после T040 compatibility/maintenance. Все DB tests только cx_resume_revision:55439, внешние LLM/сообщения не вызывались. Этот документ не является утверждением полного DoD.

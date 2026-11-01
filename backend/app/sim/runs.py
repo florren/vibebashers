@@ -176,7 +176,12 @@ async def ensure_live_run(conn: psycopg.AsyncConnection[Any]) -> int:
 
 
 async def set_run_status(
-    conn: psycopg.AsyncConnection[Any], run_id: int, status: str, sim_time: dt.datetime | None = None
+    conn: psycopg.AsyncConnection[Any],
+    run_id: int,
+    status: str,
+    sim_time: dt.datetime | None = None,
+    *,
+    event_type: str | None = None,
 ) -> None:
     if status in ("stopped", "completed"):
         async with conn.transaction():
@@ -196,5 +201,5 @@ async def set_run_status(
         )
     await conn.execute(
         "select pg_notify('runs', %s)",
-        (dumps({"type": status, "run_id": run_id, "data": {"id": run_id, "status": status}}),),
+        (dumps({"type": event_type or status, "run_id": run_id, "data": {"id": run_id, "status": status}}),),
     )

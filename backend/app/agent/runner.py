@@ -14,6 +14,7 @@ import psycopg
 from app.agent.graph import (
     expire_hitl,
     process_signal,
+    recover_agent_run,
     resume_after_human,
     wake_due_followups,
     wake_followups_for_incident,
@@ -92,8 +93,11 @@ class AgentService:
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-        for t in list(self._inflight):
-            t.cancel()
+        tasks = list(self._inflight)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         self._task = None
 
     async def _conn(self) -> psycopg.AsyncConnection[Any]:
@@ -101,37 +105,105 @@ class AgentService:
 
     async def _recover(self) -> None:
         async with await self._conn() as conn:
-            st = await (await conn.execute("select sim_time from sim_state where id = 1")).fetchone()
-            sim_time = st[0] if st else dt.datetime.now(dt.UTC)
-            await expire_hitl(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
-            await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
             await conn.execute(
-                "update agent_runs set outcome = 'failed', finished_at = now(), error = 'прерван рестартом' "
-                "where kind = 'agent' and outcome is null and started_at < %s "
-                "and not exists (select 1 from followups f where f.agent_run_id = agent_runs.id and f.status = 'scheduled') "
-                f"and exists(select 1 from signals s where s.id=agent_runs.signal_id and not {AUTOMATIC_EXCLUDED_SQL})",
+                "update agent_runs set interrupted_at=coalesce(interrupted_at,now()) "
+                "where kind='agent' and outcome is null and started_at<%s",
                 (self.started_at,),
             )
-            await conn.execute(
-                "update signals s set status = 'new' where s.status = 'processing' and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.started_at>=%s) "
-                f"and not {AUTOMATIC_EXCLUDED_SQL}",
-                (self.started_at,),
-            )
+            state = await (
+                await conn.execute(
+                    "select st.current_run_id,st.sim_time,r.status from sim_state st "
+                    "left join sim_runs r on r.id=st.current_run_id where st.id=1"
+                )
+            ).fetchone()
+            await conn.commit()
+        # interrupted/paused ждут явного Resume, а не переигрываются при startup.
+        if state and state[0] and state[2] == "running":
+            await self.validate_recovery(int(state[0]), state[1])
+            await self.recover_run(int(state[0]), state[1])
+
+    async def validate_recovery(self, run_id: int, sim_time: dt.datetime) -> None:
+        async with await self._conn() as conn:
+            missing = await (
+                await conn.execute(
+                    "select ar.id from agent_runs ar where ar.sim_run_id=%s and ar.kind='agent' and ar.outcome is null "
+                    "and not exists(select 1 from langgraph.checkpoints c where c.thread_id=ar.thread_id) limit 1",
+                    (run_id,),
+                )
+            ).fetchone()
+            if missing:
+                raise ValueError(f"Проход AR-{missing[0]} не имеет durable checkpoint; нужно ручное восстановление")
+
+    async def recover_run(self, run_id: int, sim_time: dt.datetime) -> None:
+        async with await self._conn() as conn:
             rows = await (
                 await conn.execute(
-                    "select s.id from signals s, sim_state st where st.id = 1 and s.run_id = st.current_run_id and s.status = 'new' "
-                    "and s.origin <> 'scenario' and s.channel_subtype is distinct from 'ui_pers_demo' and s.received_sim >= st.sim_time - interval '2 hours' "
-                    f"and not {AUTOMATIC_EXCLUDED_SQL} order by s.id limit 50"
+                    "select id,signal_id from agent_runs where sim_run_id=%s and kind='agent' and outcome is null order by id",
+                    (run_id,),
                 )
             ).fetchall()
-            await conn.commit()
-        for (sid,) in rows:
-            self.submit(int(sid))
+            new_signals = await (
+                await conn.execute(
+                    "select s.id from signals s where s.run_id=%s and s.status='new' "
+                    "and not exists(select 1 from agent_runs ar where ar.signal_id=s.id and ar.kind='agent' "
+                    "and ar.outcome is distinct from 'failed') "
+                    f"and not {AUTOMATIC_EXCLUDED_SQL} order by s.id",
+                    (run_id,),
+                )
+            ).fetchall()
+        recovery_tasks = []
+        for arid, sid in rows:
+            existing = self._by_signal.get(int(sid))
+            if existing is not None and not existing.done():
+                continue
+            task = asyncio.create_task(self._recover_one(int(arid), sim_time), name=f"agent-recover-{arid}")
+            recovery_tasks.append(task)
+            self._inflight.add(task)
+            self._by_signal[int(sid)] = task
+
+            def finished(value: asyncio.Task[Any], signal_id: int = int(sid)) -> None:
+                self._inflight.discard(value)
+                if self._by_signal.get(signal_id) is value:
+                    self._by_signal.pop(signal_id, None)
+
+            task.add_done_callback(finished)
+        for (sid,) in new_signals:
+            self.submit(int(sid), sim_time)
+        timers = asyncio.create_task(
+            self._recover_timers(run_id, sim_time, recovery_tasks), name=f"agent-recover-timers-{run_id}"
+        )
+        self._inflight.add(timers)
+        timers.add_done_callback(self._inflight.discard)
+
+    async def _recover_timers(self, run_id: int, sim_time: dt.datetime, tasks: list[asyncio.Task[Any]]) -> None:
+        try:
+            if tasks:
+                await asyncio.gather(*tasks)
+            async with self.sem, await self._conn() as conn:
+                await expire_hitl(conn, sim_time=sim_time, chain=self.chain, profile=self.profile, run_id=run_id)
+                await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile, run_id=run_id)
+                await conn.commit()
+        except Exception as exc:
+            log.error("agent_timer_recovery_failed", run_id=run_id, error_type=type(exc).__name__)
+
+    async def _recover_one(self, agent_run_id: int, sim_time: dt.datetime) -> None:
+        async with self.sem:
+            try:
+                async with await self._conn() as conn:
+                    await recover_agent_run(
+                        conn, agent_run_id=agent_run_id, chain=self.chain, profile=self.profile, sim_time=sim_time
+                    )
+            except Exception as exc:
+                log.error("agent_recovery_failed", agent_run_id=agent_run_id, error_type=type(exc).__name__)
+                raise
 
     async def _loop(self) -> None:
-        with contextlib.suppress(Exception):
+        try:
             await self._recover()
+        except Exception as exc:
+            log.error("agent_startup_recovery_failed", error_type=type(exc).__name__)
         while True:
+            conn: psycopg.AsyncConnection[Any] | None = None
             try:
                 conn = await psycopg.AsyncConnection.connect(psycopg_dsn(self.dsn), autocommit=True)
                 await conn.execute("LISTEN sim_events")
@@ -182,6 +254,9 @@ class AgentService:
             except Exception as exc:  # noqa: BLE001
                 log.warning("agent_listen_failed", error=str(exc)[:200])
                 await asyncio.sleep(2)
+            finally:
+                if conn is not None:
+                    await conn.close()
 
     def submit(
         self, signal_id: int, sim_time: dt.datetime | None = None, *, interactive: bool = False

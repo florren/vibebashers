@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import copy
 import datetime as dt
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import psycopg
@@ -31,6 +32,8 @@ MAX_BATCH_MIN = 60.0  # за один тик генерируем не боль�
 
 class Simulator:
     def __init__(self, seed: int = 42, dsn: str | None = None) -> None:
+        self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
+        self.after_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
         self.full_execution = False
         self.seed = seed
         self.dsn = dsn
@@ -73,7 +76,17 @@ class Simulator:
         if self.run_id:
             r = await run_svc.get_run(conn, self.run_id)
             self.run_status = r["status"] if r else None
-            if running and r and r["status"] == "running":  # приложение упало на ходу → interrupted (T-041)
+            if running and r and r["status"] == "running":
+                if last_tick_at is not None:
+                    remaining = (
+                        last_tick_at + dt.timedelta(seconds=3 * REAL_TICK_S) - dt.datetime.now(dt.UTC)
+                    ).total_seconds()
+                    if remaining > 0:
+                        await conn.rollback()
+                        await asyncio.sleep(remaining)
+                        latest = await (await conn.execute("select last_tick_at from sim_state where id=1")).fetchone()
+                        if latest and latest[0] != last_tick_at:
+                            raise RuntimeError("Другой backend продолжает обновлять ticks; восстановление отклонено")
                 await run_svc.set_run_status(conn, self.run_id, "interrupted")
                 self.run_status = "interrupted"
                 await conn.execute("update sim_state set running = false where id = 1")
@@ -208,6 +221,10 @@ class Simulator:
 
     # --- управление ----------------------------------------------------------------------------------------------------
     async def control(self, action: str, **kw: Any) -> dict[str, Any]:
+        if action == "resume" or (
+            action == "start" and not kw.get("label") and self.run_status in ("paused", "interrupted")
+        ):
+            return await self.resume_run()
         conn = await self.connect()
         execution = await configuration(conn, self.run_id) if self.run_id else {}
         if (
@@ -269,12 +286,6 @@ class Simulator:
                     await ensure(conn, self.run_id, running=True)
                     await conn.commit()
                 self._start_loop()
-        elif action == "resume":
-            if self.run_id and self.run_status in ("paused", "interrupted", "stopped"):
-                await run_svc.set_run_status(conn, self.run_id, "running")
-                self.run_status = "running"
-                await conn.commit()
-            self._start_loop()
         elif action == "pause":
             await self._stop_loop()
             if self.run_id and self.run_status == "running":
@@ -323,6 +334,49 @@ class Simulator:
         await self.persist()
         await conn.commit()
         await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+        return self.state_dict()
+
+    async def resume_run(self) -> dict[str, Any]:
+        """Resume продолжает только последний paused/interrupted, не создаёт новый run."""
+        async with self._lock:
+            conn = await self.connect()
+            row = await (
+                await conn.execute(
+                    "select st.current_run_id,r.status,st.sim_time,st.rng_state,st.seed,st.day_no "
+                    "from sim_state st left join sim_runs r on r.id=st.current_run_id where st.id=1 for update of st"
+                )
+            ).fetchone()
+            if not row or row[0] != self.run_id or row[1] not in ("paused", "interrupted"):
+                await conn.rollback()
+                raise ValueError("возобновить можно только текущий paused/interrupted запуск")
+            rid, _, sim_time, rng_state, seed, day_no = row
+            try:
+                if self.before_resume:
+                    await self.before_resume(int(rid), sim_time)
+                self.seed = int(seed)
+                self.rng = SimRng(self.seed)
+                self.rng.load_state(rng_state)
+                self.clock.sim_time, self.clock.day_no = sim_time, int(day_no)
+                self.world = None
+                await run_svc.set_run_status(conn, int(rid), "running", event_type="resumed")
+                self.run_status = "running"
+                execution = await configuration(conn, int(rid))
+                if not execution and self.full_execution:
+                    execution = await ensure(conn, int(rid), running=True)
+                if execution:
+                    execution.update(enabled=True, status="running")
+                    await save(conn, int(rid), execution)
+                self.clock.running = True
+                await self.persist()
+                await conn.commit()
+            except BaseException:
+                await conn.rollback()
+                raise
+            if execution.get("mode") != "demo":
+                self._start_loop()
+        if self.after_resume:
+            await self.after_resume(int(rid), sim_time)
+        await hub.publish("sim", "sim.control", {"action": "resume", **self.state_dict()}, int(rid))
         return self.state_dict()
 
     def _start_loop(self) -> None:

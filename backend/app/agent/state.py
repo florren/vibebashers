@@ -20,6 +20,7 @@ class AgentState(TypedDict, total=False):
     instant: dict[str, Any]  # structured output instant_decision на быстром пути (T-174)
     human: dict[str, Any] | None  # решение человека (human_decisions)
     actions: list[dict[str, Any]]  # что сделал узел act (идемпотентность при повторном входе)
+    recording: dict[str, Any]  # накопленные токены/стоимость/seq для точного recovery
     errors: list[str]
     current_node: str
     outcome: str | None
