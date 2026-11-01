@@ -20,7 +20,7 @@ BRD FR1.4 требует найти событие, вызвавшее нега�
 
 ТЗ21.4 п6 допускает отдельный scan/HITL cohort и проактивные сообщения; это не разрешает считать чужую жалобу решённой. `find_affected_clients` не ограничивается текущим claim. Отдельный explicit proactive fee case возвращает свою комиссию и не закрывает pending deposit incident того же клиента.
 
-Дополнительная threshold regression выявила существующий mass-HITL bypass ordinary decide/act после отказа fast path: при50 pending сначала возвращалась своя fee, scan видел49 и терял массовый proposal. Enforcement существующей policy подготовляется отдельным commit/разделом, threshold и права оператора менять нельзя.
+Дополнительная threshold regression выявила существующий mass-HITL bypass ordinary decide/act после отказа fast path: при50 pending сначала возвращалась своя fee, scan видел49 и терял массовый proposal. Enforcement существующей policy реализован отдельным commit: до refund сохраняется структурный snapshot pending_count/threshold/error_code/observed_sim. Ordinary decide запрашивает HITL; все пять effect-узлов требуют accept/modify для массового случая. Перед act/act_instant scan повторяется для обнаружения нового массового случая. Legacy checkpoint с mass reason без count завершается диагностируемым отказом. Threshold50 и права оператора не изменены. После approved собственного возврата snapshot50 сохраняет массовый proposal, хотя остаток уже49; bulk остаётся отдельной HITL-задачей, без автоматических выплат другим клиентам.
 
 ## Проверки перед полным набором
 
@@ -33,3 +33,7 @@ BRD FR1.4 требует найти событие, вызвавшее нега�
 `act`, `act_instant`, `verify`, `gift`, `close` повторно проверяют финансовый scope до business effects. Legacy matched rule с несвязанным text/product/operation IDs не может воспользоваться старым checkpoint: возвращается диагностируемый `stale_refund_scope`/failed. Это выбранный безопасный исход вместо silent ordinary reprocess: нельзя переинтерпретировать ранее принятое человеком решение как approval другой проблемы. Human decision остаётся сохранённым; нужна новая актуальная обработка/согласование. Уже совершённые старым кодом проводки/подарки не откатываются автоматически.
 
 Retry возобновления выбирает полный wait_human checkpoint, привязанный к конкретному human_decision_id; компактный post-resume ack больше не принимается за state и не выбирается чужой следующий HITL checkpoint. Проверены legacy/unrelated accepted checkpoint (no refund/incident/gift, approval сохранён) и нормальный approved refund6000 с повторным resume (одна refund-проводка). Pure tests подтверждают отказ до вызова DB effect для всех пяти узлов.
+
+## Проверки массового enforcement
+
+Границы49/50/51 проверены на graph/ledger:49 — прежний автономный путь;50/51 — wait_human без refund до approval. После accept выполняется ровно один собственный refund54.72 и одна mass_refund manual_review; повторный resume не дублирует проводку, баланс или задачу. Pure tests проверяют отсутствие DB effects для всех пяти узлов при пропущенном approval, late scan на пороге50 и безопасный отказ legacy snapshot без count. Targeted unit129 passed; полный набор фиксируется ниже после завершения.

@@ -1,5 +1,6 @@
 """ТЗ21.4: операция/сумма/тема, а не client_id, определяют денежный case."""
 
+import datetime as dt
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
@@ -161,3 +162,81 @@ def test_current_single_operation_refund_scope_remains_valid():
             },
         }
     )
+
+
+@pytest.mark.parametrize("count,expected", [(49, False), (50, True), (51, True)])
+def test_existing_mass_threshold_exact_boundary(count, expected):
+    from app.agent import policies
+
+    assert policies.mass_refund_threshold() == 50
+    assert policies.mass_refund_requires_human(count) is expected
+
+
+@pytest.mark.parametrize("node_name", ["act", "act_instant", "verify", "gift", "close"])
+async def test_mass_snapshot_cannot_bypass_human_via_other_nodes(node_name):
+    from types import SimpleNamespace
+
+    from app.agent import nodes
+
+    conn = AsyncMock()
+    deps = SimpleNamespace(ctx=SimpleNamespace(conn=conn), policies={})
+    state = {
+        "signal": {"text": TEXT},
+        "normalization": NORM,
+        "context": {
+            "operations": [OP],
+            "rules_matched": [{"action": "refund_fee", "rule_code": RULE, "operation_ids": [10]}],
+            "refund_mass": {"pending_count": 50, "threshold": 50},
+        },
+    }
+    with pytest.raises(nodes.MassRefundApprovalRequired, match="mass_refund_requires_human"):
+        await getattr(nodes, node_name)(state, deps)
+    conn.execute.assert_not_awaited()
+
+
+async def test_live_mass_race_is_blocked_before_ordinary_act_effect(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.agent import nodes
+
+    conn = AsyncMock()
+    ctx = SimpleNamespace(conn=conn, sim_time=dt.datetime(2026, 11, 9, tzinfo=dt.UTC))
+    deps = SimpleNamespace(ctx=ctx, policies={})
+    scan = AsyncMock(return_value={"pending_count": 50})
+    monkeypatch.setattr(nodes.abs_tools, "find_affected_clients", scan)
+    state = {
+        "signal": {"text": TEXT},
+        "normalization": NORM,
+        "context": {
+            "operations": [OP],
+            "rules_matched": [
+                {"action": "refund_fee", "rule_code": RULE, "error_code": "PROC-QR-FEE-CHARGED", "operation_ids": [10]}
+            ],
+        },
+    }
+    with pytest.raises(nodes.MassRefundApprovalRequired, match="mass_refund_requires_human"):
+        await nodes.act(state, deps)
+    scan.assert_awaited_once()
+    assert state["context"]["refund_mass"]["pending_count"] == 50
+    conn.execute.assert_not_awaited()
+
+
+async def test_legacy_mass_without_structured_count_requires_fresh_approval():
+    from types import SimpleNamespace
+
+    from app.agent import nodes
+
+    conn = AsyncMock()
+    deps = SimpleNamespace(ctx=SimpleNamespace(conn=conn), policies={})
+    state = {
+        "signal": {"text": TEXT},
+        "normalization": NORM,
+        "context": {
+            "operations": [OP],
+            "rules_matched": [{"action": "refund_fee", "rule_code": RULE, "operation_ids": [10]}],
+            "fast_path": {"allowed": False, "reason": "массовый случай (50 ≥ 50) → HITL"},
+        },
+    }
+    with pytest.raises(nodes.MassRefundApprovalRequired, match="legacy_mass_snapshot_missing"):
+        await nodes.act(state, deps)
+    conn.execute.assert_not_awaited()

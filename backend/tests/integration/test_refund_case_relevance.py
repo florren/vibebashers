@@ -202,8 +202,6 @@ async def test_mass_scan_remains_separate_from_individual_case_scope(seeded):
         )
 
 
-
-
 @pytest.mark.parametrize("stale", [True, False])
 async def test_checkpoint_scope_preserves_human_decision_and_normal_approved_refund(seeded, stale):
     from psycopg.types.json import Jsonb
@@ -262,3 +260,77 @@ async def test_checkpoint_scope_preserves_human_decision_and_normal_approved_ref
                 await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (op,))
                 == 1
             )
+
+
+@pytest.mark.parametrize("pending_count", [49, 50, 51])
+async def test_mass_threshold_retains_hitl_boundary_and_never_refunds_other_clients(seeded, pending_count):
+    from app.agent import policies
+    from app.agent.graph import resume_after_human
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid, cid, now = await setup(conn)
+        own = await qr(conn, rid, cid, now)
+        saved = await (await conn.execute("select value from settings where key='policies'")).fetchone()
+        threshold = policies.mass_refund_threshold(saved[0] if saved else {})
+        assert threshold == 50  # Проверяем действующий baseline, не подменяем конфигурацию.
+        cohort = await (
+            await conn.execute("select id from clients where id<>%s order by id limit %s", (cid, pending_count - 1))
+        ).fetchall()
+        assert len(cohort) == pending_count - 1
+        other_ops = [await qr(conn, rid, row[0], now, "7000", "70") for row in cohort]
+        balance = await count(conn, "select balance from accounts where client_id=%s", (cid,))
+        _sid, state = await run(conn, rid, cid, now, "Списали комиссию54.72руб за QR. Верните комиссию")
+        rule = next(r for r in state["context"]["rules_matched"] if r["action"] == "refund_fee")
+        assert rule["operation_ids"] == [own]
+        if pending_count < threshold:
+            assert state["context"]["fast_path"]["allowed"] and state["outcome"] == "completed"
+            assert "refund_mass" not in state["context"]
+        else:
+            assert not state["context"]["fast_path"]["allowed"] and "массов" in state["context"]["fast_path"]["reason"]
+            assert state["context"]["refund_mass"]["pending_count"] == pending_count
+            assert state["decision"]["needs_human"] and state["outcome"] == "awaiting_human"
+            assert (
+                await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (own,))
+                == 0
+            )
+            hid = await count(conn, "select id from human_decisions where agent_run_id=%s", (state["agent_run_id"],))
+            await conn.execute(
+                "update human_decisions set decision='accept',decided_by='test',decided_at=now() where id=%s", (hid,)
+            )
+            await conn.commit()
+            resumed = await resume_after_human(
+                conn, human_decision_id=hid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+            )
+            assert resumed is not None and resumed["outcome"] != "failed", resumed["errors"] if resumed else None
+            proposals = await (
+                await conn.execute(
+                    "select requires_hitl,status,payload from tasks where run_id=%s and payload->>'kind'='mass_refund'",
+                    (rid,),
+                )
+            ).fetchall()
+            assert len(proposals) == 1 and proposals[0][0] and proposals[0][1] == "open"
+            assert proposals[0][2]["pending_count_before_refund"] == pending_count
+            assert proposals[0][2]["pending_count"] == pending_count - 1
+            again = await resume_after_human(
+                conn, human_decision_id=hid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+            )
+            assert again is not None and again["outcome"] != "failed", again["errors"] if again else None
+            assert (
+                await count(
+                    conn, "select count(*) from tasks where run_id=%s and payload->>'kind'='mass_refund'", (rid,)
+                )
+                == 1
+            )
+        assert (
+            await count(
+                conn, "select count(*) from ledger_entries where operation_id=any(%s) and kind='refund'", (other_ops,)
+            )
+            == 0
+        )
+        assert (
+            await count(conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (own,))
+            == 1
+        )
+        assert await count(conn, "select balance from accounts where client_id=%s", (cid,)) == balance + Decimal(
+            "54.72"
+        )
