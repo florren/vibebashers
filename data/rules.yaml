@@ -9,6 +9,14 @@ business_rules:
     owner_team_code: team_processing
     error_code: PROC-QR-FEE-CHARGED
     is_active: true
+    case_scope:
+      allowed_intents: [complaint, refund_request]
+      blocked_intents: [gratitude]
+      request_intents: [refund_request]
+      topic_patterns: ['комисси', '\bfees?\b', '\bcommission\b']
+      evidence_patterns: ['списал|списан|списыв|снял|удерж|charged|debited|ошибочн|лишн|неверн|erroneous|incorrect']
+      blocked_patterns: ['вклад|депозит|ипотек|кредит']
+      operation: {product: [debit_card], method: [qr_sbp], op_type: [card_payment]}
   - code: RULE-DOUBLE-DEBIT-001
     name_ru: "Двойное списание"
     name_en: "Double debit"
@@ -18,6 +26,13 @@ business_rules:
     owner_team_code: team_processing
     error_code: PROC-DOUBLE-DEBIT
     is_active: true
+    case_scope:
+      allowed_intents: [complaint, refund_request]
+      blocked_intents: [gratitude]
+      request_intents: [refund_request]
+      topic_patterns: ['двойн|дважды|два раза|\btwice\b|\bduplicate\b']
+      evidence_patterns: ['двойн|дважды|два раза|\btwice\b|\bduplicate\b']
+      operation: {product: [debit_card], op_type: [card_payment]}
   - code: RULE-PROMO-RATE-001
     name_ru: "Ставка вклада ниже промо в окне акции"
     name_en: "Deposit rate below promo inside promo window"
@@ -45,3 +60,21 @@ business_rules:
     owner_team_code: team_cx
     error_code: null
     is_active: true
+
+# Консервативная граница автономного денежного case. Новое правило без case_scope
+# не получает matched в агентском проходе; лимиты/condition/HITL не изменяются.
+refund_case_context:
+  version: 1
+  blocked_patterns:
+    - 'не\s+узна[юе]|не\s+совершал|не\s+я\b|мошенн|украл|unauthori[sz]ed|do not recogni[sz]e'
+    - 'комисси(?:ю|я|и)\s+не\s+(?:спис|удерж|взима)'
+    - 'fee\s+(?:was|is)\s+not\s+charged'
+  operation_hints:
+    qr_payment: {method: [qr_sbp]}
+    card_payment: {op_type: [card_payment], method: [card]}
+    transfer: {method: [transfer]}
+    withdrawal: {method: [cash]}
+    deposit: {product: [deposit]}
+    loan_payment: {op_type: [loan_payment]}
+    notification: {deny: true}
+    login: {deny: true}

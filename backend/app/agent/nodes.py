@@ -26,12 +26,16 @@ from app.agent.customer_messages import (
 )
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
+from app.agent.refund_scope import case_operations, refund_candidates, validate_refund_decision
+from app.agent.refund_scope import catalog as refund_scope_catalog
+from app.agent.refund_scope import catalog_fingerprint as refund_scope_fingerprint
 from app.agent.state import AgentState
 from app.agent.tools import abs as abs_tools
 from app.agent.tools import read as rt
 from app.agent.tools import router_tools
 from app.agent.tools import write as wt
 from app.agent.tools.base import ActFrame, ToolContext, mask_name
+from app.amounts import ruble_amount_hint
 from app.contracts.registry import deref, validate
 from app.economics.calibration import PIPELINE as SCORE_PIPELINE
 from app.i18n import communication_lang, declined_action_text
@@ -156,7 +160,6 @@ TYPE_BASE_CRIT = {
 }
 NO_INCIDENT_TYPES = {"gratitude", "suggestion", "info_request"}
 PUBLIC_CHANNELS = {"social", "review_portal"}
-RE_AMOUNT = re.compile(r"(\d[\d\s]{1,8})\s*(?:₽|руб|р\.|рублей|рубля)", re.I)
 RE_CARD4 = re.compile(r"\*{2,4}\s?(\d{4})")
 RE_PROMO = re.compile(r"\b(PROMO-[A-Z0-9-]+)\b", re.I)
 RE_SENT = re.compile(r"[^.!?…]+[.!?…]*")
@@ -430,11 +433,9 @@ async def ingest(state: AgentState, deps: Deps) -> AgentState:
 
 def regex_hints(text: str) -> dict[str, Any]:
     hints: dict[str, Any] = {}
-    if m := RE_AMOUNT.search(text):
-        try:
-            hints["amount_rub"] = float(m.group(1).replace(" ", "").replace("\u00a0", ""))
-        except ValueError:
-            pass
+    amount = ruble_amount_hint(text)
+    if amount is not None:
+        hints["amount_rub"] = amount
     if m := RE_CARD4.search(text):
         hints["masked_card_last4"] = m.group(1)
     if m := RE_PROMO.search(text):
@@ -729,7 +730,8 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
     ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
-    failed = [op for op in ctx["operations"] if op["status"] == "failed" or op.get("error_code")]
+    scoped_operations = case_operations(ctx["operations"], state["normalization"])
+    failed = [op for op in scoped_operations if op["status"] == "failed" or op.get("error_code")]
     active = ctx["system_logs"]["active_faults"]
     # error_code/система — только по фактам клиента (его неуспешные операции); активные сбои без операции — лишь подсказка
     error_code = failed[0]["error_code"] if failed else None
@@ -795,12 +797,17 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
 
 async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     ops = state["context"].get("operations") or []
+    scopes = {
+        code: refund_candidates(ops, state.get("normalization") or {}, state["signal"].get("text") or "", code)
+        for code in refund_scope_catalog()[1]
+    }
     matched = await check_rules(
         deps.ctx.conn,
         run_id=deps.ctx.run_id,
         signal_id=state["signal"]["id"],
         agent_run_id=deps.ctx.agent_run_id,
         operations=ops,
+        refund_operations={cause: scope[0] for cause, scope in scopes.items()},
     )
     state["context"]["rules_matched"] = matched
     fee_rule = next((r for r in matched if r.get("action") == "refund_fee"), None)
@@ -808,6 +815,15 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     if fee_rule and fee_rule.get("error_code"):
         aff = await abs_tools.find_affected_clients(deps.ctx, str(fee_rule["error_code"]), 72)
         mass_pending = int(aff.get("pending_count") or 0)
+    if pol.mass_refund_requires_human(mass_pending, deps.policies):
+        state["context"]["refund_mass"] = {
+            "pending_count": mass_pending,
+            "threshold": pol.mass_refund_threshold(deps.policies),
+            "error_code": (fee_rule or {}).get("error_code"),
+            "observed_sim": deps.ctx.sim_time.isoformat(),
+        }
+    else:
+        state["context"].pop("refund_mass", None)
     ident = state["context"].get("identification") or {}
     abs_state = await _abs_refund_state(
         deps, (state.get("client") or {}).get("client_id"), (fee_rule or {}).get("operation_ids") or []
@@ -828,7 +844,12 @@ async def check_rules_node(state: AgentState, deps: Deps) -> AgentState:
     await deps.record_step(
         "check_rules",
         "ok",
-        {"operations": len(ops)},
+        {
+            "operations": len(ops),
+            "refund_scope_hash": refund_scope_fingerprint(),
+            "refund_candidates": {cause: len(scope[0]) for cause, scope in scopes.items()},
+            "refund_scope": {cause: scope[1] for cause, scope in scopes.items()},
+        },
         {"matched": matched, "fast_path": state["context"]["fast_path"]},
         reasoning=(
             f"Сработали правила: {', '.join(m['rule_code'] for m in matched)}. "
@@ -981,8 +1002,46 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
     return state
 
 
+class MassRefundApprovalRequired(ValueError):
+    """Подтверждённый массовый случай нельзя провести через ordinary act автономно."""
+
+
+async def _require_mass_refund_approval(state: AgentState, deps: Deps, node: str) -> None:
+    context = state.get("context") or {}
+    fee_rule = next((r for r in context.get("rules_matched") or [] if r.get("action") == "refund_fee"), None)
+    if fee_rule is None:
+        return
+    human = (state.get("human") or {}).get("status")
+    if human in ("accept", "modify") or (human in ("reject", "delegate") and node != "act_instant"):
+        return  # Существующие права: reject/delegate не разрешают денежную ветку act.
+    snapshot = context.get("refund_mass") or {}
+    pending = int(snapshot.get("pending_count") or 0)
+    threshold = int(snapshot.get("threshold") or pol.mass_refund_threshold(deps.policies))
+    required = bool(snapshot) and pending >= threshold
+    legacy_mass = not snapshot and str((context.get("fast_path") or {}).get("reason") or "").startswith("массовый")
+    if not required and not legacy_mass and node in ("act", "act_instant") and fee_rule.get("error_code"):
+        affected = await abs_tools.find_affected_clients(deps.ctx, str(fee_rule["error_code"]), 72)
+        pending = int(affected.get("pending_count") or 0)
+        threshold = pol.mass_refund_threshold(deps.policies)
+        required = pending >= threshold
+        if required:
+            context["refund_mass"] = {
+                "pending_count": pending,
+                "threshold": threshold,
+                "error_code": fee_rule["error_code"],
+                "observed_sim": deps.ctx.sim_time.isoformat(),
+            }
+    if required or legacy_mass:
+        evidence = "legacy_mass_snapshot_missing" if legacy_mass else f"{pending} pending, threshold {threshold}"
+        raise MassRefundApprovalRequired(
+            f"mass_refund_requires_human: {evidence}; требуется accept/modify до денежных эффектов"
+        )
+
+
 async def act_instant(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение быстрого пути: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)."""
+    validate_refund_decision(state)
+    await _require_mass_refund_approval(state, deps, "act_instant")
     inst, sig, client = state["instant"], state["signal"], state.get("client")
     c = state["classification"]
     fee_rule = next((r for r in (state["context"].get("rules_matched") or []) if r.get("action") == "refund_fee"), None)
@@ -1103,6 +1162,8 @@ async def act_instant(state: AgentState, deps: Deps) -> AgentState:
 
 async def verify(state: AgentState, deps: Deps) -> AgentState:
     """Проверка устранения: verify_service_delivered; быстрый путь — refund и баланс (ТЗ 21.4)."""
+    validate_refund_decision(state)
+    await _require_mass_refund_approval(state, deps, "verify")
     client = state.get("client") or {}
     sig = state["signal"]
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)
@@ -1219,6 +1280,8 @@ async def verify(state: AgentState, deps: Deps) -> AgentState:
 
 async def gift(state: AgentState, deps: Deps) -> AgentState:
     """Подарок: задача (идемпотентно), автовыдача только при verified и resolved|closed."""
+    validate_refund_decision(state)
+    await _require_mass_refund_approval(state, deps, "gift")
     client = state.get("client") or {}
     c = state.get("classification") or {}
     d = state.get("decision") or {}
@@ -1924,6 +1987,20 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     pctx.gift_code = (gift or {}).get("privilege_code")
     pctx.rule_based_type = "tariff_terms" if fee_rule else None
     human_reason = pol.needs_human(c, pctx, deps.policies)
+    mass_snapshot = ctx.get("refund_mass") or {}
+    if fee_rule and mass_snapshot:
+        count = int(mass_snapshot["pending_count"])
+        threshold = int(mass_snapshot["threshold"])
+        if count >= threshold:
+            if human_reason is None:
+                human_reason = "policy_other"
+            checks.append(
+                {
+                    "rule": "mass_refund_hitl",
+                    "passed": False,
+                    "note": f"{count} pending ≥ {threshold}; массовый возврат требует человека",
+                }
+            )
     if human_reason is None and client.get("hitl_required"):
         human_reason = "ultra_vip" if segment == "ultra_vip" else "policy_other"
     if human_reason is None and gift and gift.get("privilege_code") in pol.PARTNER_PRIVILEGES:
@@ -2436,6 +2513,8 @@ async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark:
 
 async def act(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение решения через инструменты записи — идемпотентно (повторный вход не дублирует побочные эффекты)."""
+    validate_refund_decision(state)
+    await _require_mass_refund_approval(state, deps, "act")
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]
@@ -2599,8 +2678,10 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         if fee_rule.get("error_code") and "affected_scan" not in done:
             aff = await abs_tools.find_affected_clients(deps.ctx, str(fee_rule["error_code"]), 72)
             mark("affected_scan", **{k: v for k, v in aff.items() if k != "operations"})
-            threshold = int(pol.merged(deps.policies).get("mass_refund_threshold") or 50)
-            if aff.get("pending_count", 0) >= threshold and "mass_refund_task" not in done:
+            threshold = pol.mass_refund_threshold(deps.policies)
+            snapshot = state["context"].get("refund_mass") or {}
+            was_mass = bool(snapshot) and int(snapshot.get("pending_count") or 0) >= int(snapshot["threshold"])
+            if (aff.get("pending_count", 0) >= threshold or was_mass) and "mass_refund_task" not in done:
                 task = await wt.create_task(
                     deps.ctx,
                     "manual_review",
@@ -2610,6 +2691,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                         "kind": "mass_refund",
                         "error_code": fee_rule["error_code"],
                         "pending_count": aff["pending_count"],
+                        "pending_count_before_refund": snapshot.get("pending_count"),
+                        "threshold": snapshot.get("threshold", threshold),
                         "pending_fee_rub": aff["pending_fee_rub"],
                         "operations": aff.get("operations") or [],
                         "title": f"Массовый возврат комиссии {fee_rule['error_code']}: {aff['pending_count']} операций на {aff['pending_fee_rub']:.2f} ₽",
@@ -2871,6 +2954,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
 
 
 async def close(state: AgentState, deps: Deps) -> AgentState:
+    validate_refund_decision(state)
+    await _require_mass_refund_approval(state, deps, "close")
     sig, client = state["signal"], state.get("client") or {}
     d = state.get("decision") or {}
     incident_id = next((a["incident_id"] for a in state.get("actions") or [] if a.get("incident_id")), None)

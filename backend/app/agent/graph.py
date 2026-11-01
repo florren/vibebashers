@@ -612,7 +612,7 @@ async def resume_after_human(
     """Возобновление после решения оператора: чекпоинт — input шага wait_human; шаги продолжают нумерацию."""
     row = await (
         await conn.execute(
-            "select hd.agent_run_id, hd.decision, hd.modified_proposal, ar.sim_run_id, (select input from agent_steps where run_id = hd.agent_run_id and node = 'wait_human' order by seq desc limit 1), (select count(*) from agent_steps where run_id = hd.agent_run_id) from human_decisions hd join agent_runs ar on ar.id = hd.agent_run_id where hd.id = %s and hd.decision is not null",
+            "select hd.agent_run_id, hd.decision, hd.modified_proposal, ar.sim_run_id, (select input from agent_steps where run_id = hd.agent_run_id and node = 'wait_human' and input ? 'signal' and output->>'human_decision_id' = hd.id::text order by seq desc limit 1), (select count(*) from agent_steps where run_id = hd.agent_run_id) from human_decisions hd join agent_runs ar on ar.id = hd.agent_run_id where hd.id = %s and hd.decision is not null",
             (human_decision_id,),
         )
     ).fetchone()

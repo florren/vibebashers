@@ -10,8 +10,8 @@
 | `segments.yaml`, `psychotypes.yaml` | сегменты (ТЗ 3.1) и психотипы с параметрами по `behavior/psychotype_params.schema.json` (ТЗ 4.5) | ТЗ |
 | `products.yaml`, `systems.yaml`, `teams.yaml`, `channels.yaml` | продукты/тарифы/акции, 12 систем, 12 команд с профилями скорости, 11 каналов | ТЗ 3.3–3.6 |
 | `product_lines.yaml` | 15 продуктовых направлений кабинета менеджера: `rate_code` → `dcltv_rates.csv`, команда-владелец, доли демо-отзывов (54 всего) | ТЗ 24.2 / ЕТЗ; данные синтетические, без брендов реальных банков |
-| `error_codes.yaml` | коды ошибок (`PROC-QR-FEE-CHARGED` и др.) и типы сигналов | ТЗ 4.2, BRD |
-| `sla.yaml` | матрица SLA 3×3 и правила маршрутизации | ТЗ 8.1–8.2 |
+| `error_codes.yaml` | 25 кодов ошибок (`PROC-QR-FEE-CHARGED` и др.) и 10 типов сигналов | ТЗ 4.2, BRD |
+| `sla.yaml` | матрица SLA 3×3 и 40 правил маршрутизации; ID неизменных условий сохраняются при повторной загрузке | ТЗ 8.1–8.2 |
 | `gifts.yaml`, `dcltv_rates.csv` | каталог извинительных подарков, экономические настройки, ставки dCLTV | ТЗ 8.5, 14 |
 | `tariffs.yaml`, `rules.yaml` | тарифы Mock-АБС и бизнес-правила (`RULE-QR-FEE-001`) | BRD |
 | `misselling_patterns.yaml`, `service_scripts.yaml` | паттерны misselling/conduct с примерами, эталонные скрипты | ДТЗ 22.4, 22.8 |
@@ -83,3 +83,5 @@ Migration `0007_csi_audit` supports the CSI signal primary key and the composite
 
 Проверка конфигурации без записи в БД:
 `backend/.venv/bin/python scripts/seed/operations.py --profile lite --check`.
+
+Проверка T-014: `backend/.venv/bin/python scripts/seed/validate_refs.py`; регрессии — `tests/unit/test_refs_routing.py` и `tests/integration/test_refs_routing.py` (в backend). Интеграционная проверка требует отдельной `DATABASE_URL_TEST` и пересоздаёт только тестовую схему.
