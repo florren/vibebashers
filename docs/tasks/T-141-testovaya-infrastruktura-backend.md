@@ -39,3 +39,5 @@ pytest -m 'not slow and not llm'
 ## Отчёт субагента
 - Ветка `feat/T-142-l5-quality` (cross-layer PR). Добавлены `backend/tests/helpers.py` (`run_agent_on`, `advance_sim`, `new_run`, `events_of`, `assert_event`, `mock_chain`, `MOCK_PROFILE`), маркеры pytest `integration/scenario/slow/llm` в `pyproject.toml`, пакет `tests/scenarios` с conftest, переиспользующим фикстуру `seeded` (alembic head + сид lite) из `tests/integration`.
 - Отклонения: фабрики данных не выделялись в отдельный модуль — клиентов и операции подбирает/создаёт `app.sim.scenarios` (`pick_client`, `inject_operation`), что одинаково работает в тестах и на стенде.
+
+Ревизия 01.11.2026, ветка `codex/cli-workflow-completion`: `make test` теперь включает ранее пропущенные `tests/compliance` и frontend vitest; `make lint` включает существующую frontend-проверку `lint-front`. Добавлены цели `test-compliance`/`test-front`. Регрессии через `make -n` проверяют включение всех четырёх backend-каталогов и frontend, а также обоих слоёв lint. Проверки окружения Node 26 документированы в README; CI остаётся на Node 22.

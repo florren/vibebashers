@@ -101,7 +101,15 @@ make bench DATASET=lite_v1 PROFILE=mock  # локальный бенчмарк �
 
 Фоновые бенчмарки запускаются из вкладки на `/engine` через `POST /api/bench/runs`: API возвращает `202` и отдельный `run_id` для каждого профиля. Наборы и профили берутся из БД, результаты сохраняются, прогресс поступает по WS-теме `bench`; доступны отмена и экспорт CSV/JSON. `dry_run=true` считает прогноз без вызова LLM и создания прогона. Ошибка выбранного провайдера завершает его прогон со статусом `failed`; автоматической подмены на mock в бенчмарке нет. CLI-команда `make bench` для профиля, отличного от mock, выводит только прогноз.
 
-`make help` показывает все цели: `lint`, `test`, `test-scenarios`, `sync-contracts`, `scenario`, `report`, `e2e`, `import-transcripts`.
+Основные цели Makefile: `lint`, `test`, `test-scenarios`, `sync-contracts`, `scenario`, `report`, `e2e`, `import-transcripts`.
+
+`make lint` проверяет backend и frontend; `make test` запускает unit, integration, scenarios, compliance и frontend-тесты. Нужны оба установленных окружения; для integration/scenarios/compliance задайте `DATABASE_URL_TEST` на отдельную тестовую БД (её схема пересоздаётся). Отдельные цели: `make test-front`, `make test-compliance`. В локальном Node 26 запускайте frontend-тесты с `NODE_OPTIONS=--no-experimental-webstorage`, чтобы Vitest использовал Web Storage из jsdom; CI использует Node 22.
+
+`make import-transcripts CX_BASE_URL=http://localhost:8000` импортирует серверный каталог `data/import/transcripts/` через API. Повторный импорт возвращает число дубликатов; отклонённые файлы дают код 1, ошибка HTTP/ответа — код 2. Успешный приём не означает завершение фонового анализа.
+
+`make stt-bench` распознаёт встроенный WAV локальной моделью Vosk и выводит JSON с WER, временем вычисления первого partial/final, общей длительностью обработки и real-time factor. Для своего WAV: `make stt-bench FILE=/path/voice.wav REF=/path/reference.txt` (PCM16 mono 16 kHz, эталон UTF-8). Эталон сравнивается без учёта регистра, пунктуации и различия ё/е; в результат попадает только распознанный текст. Это ускоренный файловый прогон: время загрузки модели и задержки доставки микрофона в метрики не входят. Нужна установленная Vosk-модель (`STT_MODEL_PATH` или `make stt-model`); отсутствие модели даёт код 2, пустое распознавание — код 1. CLI не пишет в БД и не реализует весь набор/UI T-191.
+
+`make demo-offline` вызывает `./install.sh --offline` без `--reset`, сохраняя существующие данные. Установщик выбирает replay/mock и Vosk; для первого запуска нужны Docker-образы и локальная модель (без кэша установщик может обращаться к сети).
 
 ### 1.6. Провести демо
 
