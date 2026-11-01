@@ -95,6 +95,8 @@ def _offline(
     if default is not None:
         modes.add(default.provider)
     if "mock" in modes:
+        if not check_settings and default is not None and default.provider == "mock":
+            return {role: dataclasses.replace(default, role=role) for role in ROLES}
         return {role: LLMProfile(code="mock", provider="mock", model="mock-rules-v1", role=role) for role in ROLES}
     if "replay" in modes:
         return {role: dataclasses.replace(profiles[role], provider="replay") for role in ROLES}

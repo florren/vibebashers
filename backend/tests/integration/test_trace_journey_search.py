@@ -103,17 +103,29 @@ async def test_search_variants_and_explicit_scope(seeded):
         assert max(times) < 300
 
 
-async def test_scenario_12_13_replay(seeded):
+async def test_scenario_12_13_replay(seeded, monkeypatch, request):
+    from app.config import get_settings
     from app.llm.base import LLMProfile
     from app.llm.failover import ProviderChain
     from app.replay.provider import ReplayProvider
     from app.replay.store import CassetteStore
 
+    # Новый запуск явно фиксирует offline replay и ту модель всех ролей,
+    # чьи реальные ответы сохранены в кассете; default Mock не переопределяется.
+    monkeypatch.setenv("LLM_PROVIDER", "replay")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     store = CassetteStore(Path(__file__).resolve().parents[3] / "data/cassettes")
     store.load()
     profile = LLMProfile(code="gigachat_main", provider="gigachat", model="GigaChat-3-Pro", role="main")
     scenario = sc.get("qr_fee_public_review")
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as writer:
+        await writer.execute(
+            "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
+            "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
+            "from llm_profiles where model='GigaChat-3-Pro' and is_active order by id limit 1 "
+            "on conflict(key) do update set value=excluded.value"
+        )
         rid = await new_run(writer, "journey replay", scenario_id=scenario["id"])
         now = await sim_now(writer)
         items = await sc.inject(writer, scenario, rid, sim_time=now)
