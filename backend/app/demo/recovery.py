@@ -16,7 +16,7 @@ from app.sim.rng import SimRng
 from app.sim.teams import IncidentPlan, PlannedStep, TeamEmulator
 
 
-async def recover_incident(app: Any, conn: Any, iid: int) -> None:
+async def recover_incident(app: Any, conn: Any, iid: int, *, public_demo: bool = False) -> None:
     sim, svc = app.state.sim, app.state.agent
     row = await (
         await conn.execute(
@@ -24,9 +24,12 @@ async def recover_incident(app: Any, conn: Any, iid: int) -> None:
             (iid,),
         )
     ).fetchone()
-    if not row or row[0] != sim.run_id:
-        raise HTTPException(404, "Инцидент не принадлежит текущему запуску")
+    if not row:
+        raise HTTPException(404, "Инцидент не найден")
     rid, status, team, title, system, product, arid = row
+    config = await configuration(conn, rid)
+    if (public_demo and not config.get("public_demo")) or (not public_demo and rid != sim.run_id):
+        raise HTTPException(404, "Инцидент не принадлежит текущему запуску")
     last = await (
         await conn.execute(
             "select payload->>'outcome',action_sim from team_actions where incident_id=%s order by action_sim desc,id desc limit 1",
@@ -37,15 +40,15 @@ async def recover_incident(app: Any, conn: Any, iid: int) -> None:
         return  # Повтор запроса не создаёт новую попытку или уведомление.
     manual = await (
         await conn.execute(
-            "select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=%s and s.origin='jury' limit 1",
-            (iid,),
+            "select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=%s and ((%s and s.channel_subtype='ui_pers_demo') or (not %s and s.origin='jury')) limit 1",
+            (iid, public_demo, public_demo),
         )
     ).fetchone()
     if status != "escalated" or not last or last[0] not in ("failed", "no_work") or not manual:
         raise HTTPException(409, "Нет завершённой неудачной demo-попытки для восстановления")
-    config = await configuration(conn, rid)
+    base_time = dt.datetime.fromisoformat(config["base_time"]) if public_demo else sim.clock.sim_time
     at = max(
-        sim.clock.sim_time,
+        base_time,
         last[1],
         dt.datetime.fromisoformat((config.get("manual_times") or {}).get(str(iid), last[1].isoformat())),
     )

@@ -58,11 +58,22 @@ async def execution_active(app: Any, conn: Any, run_id: int, *, manual_only: boo
     )
 
 
+def execution_lock(app: Any, *, public_demo: bool) -> Any:
+    """Длительная работа Journey не занимает очередь публичного показа."""
+    if not public_demo:
+        return app.state.sim._lock
+    lock = getattr(app.state, "public_execution_lock", None)
+    if lock is None:
+        lock = app.state.public_execution_lock = asyncio.Lock()
+    return lock
+
+
 async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual_only: bool = False) -> bool:
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
     request = Request({"type": "http", "app": app, "headers": []})
     request.state.demo_sim_time = at
+    public_demo = bool((await configuration(conn, run_id)).get("public_demo"))
     cur = await conn.execute(
         "select h.id,h.reason,h.agent_proposal,h.decision from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
         "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms "
@@ -91,7 +102,7 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             "Демонстрационный оператор рассмотрел предложение агента и согласовал исполнение в пределах действующих правил.",
         )
         decision = obj["decision"] if obj["decision"] in ("accept", "reject") else "reject"
-        async with app.state.sim._lock:
+        async with execution_lock(app, public_demo=public_demo):
             if not await execution_active(app, conn, run_id, manual_only=manual_only):
                 return False
             try:
@@ -331,7 +342,7 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
     if not ids:
         return
     await conn.commit()
-    async with sim._lock:
+    async with execution_lock(app, public_demo=bool(config.get("public_demo"))):
         if not await execution_active(app, conn, rid, manual_only=True):
             return
         emulator = TeamEmulator(
@@ -457,7 +468,8 @@ async def cycle(app: Any) -> None:
         ).fetchone()
         await conn.commit()
         pending = pending_row[0] if pending_row else 0
-        if config.get("mode") == "demo" and (pending or svc._inflight):
+        # pending ограничен этим запуском; публичные графы другого запуска не тормозят Journey.
+        if config.get("mode") == "demo" and pending:
             return
         failed = await (
             await conn.execute(
@@ -543,6 +555,10 @@ async def public_cycle(app: Any) -> None:
             try:
                 await manual_cycle(app, conn, int(rid), await configuration(conn, int(rid)))
                 await conn.commit()
+                from app.demo.public import recover_public_cases
+
+                await recover_public_cases(app, conn, int(rid))
+                await conn.commit()
                 await complete_manual_followups(app, conn, int(rid))
                 await conn.commit()
             except Exception as exc:
@@ -554,10 +570,20 @@ async def public_cycle(app: Any) -> None:
                 await conn.commit()
 
 
-async def worker(app: Any) -> None:
+async def public_worker(app: Any) -> None:
     while True:
         try:
             await public_cycle(app)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            log.exception("public_execution_failed", error_type=type(exc).__name__)
+        await asyncio.sleep(2)
+
+
+async def worker(app: Any) -> None:
+    while True:
+        try:
             await cycle(app)
         except asyncio.CancelledError:
             raise

@@ -10,7 +10,7 @@ from psycopg.rows import tuple_row
 from app.demo.settings import configuration, save
 from app.sim.events import dumps
 
-OUTCOMES = ("on_time", "late", "no_work", "failed", "recovered")
+OUTCOMES = ("on_time", "late", "no_work", "failed")
 
 
 async def public_context(conn: Any) -> tuple[int, dt.datetime]:
@@ -64,3 +64,25 @@ async def assign_outcomes(conn: Any, rid: int, ids: list[int]) -> dict[int, str]
     config.update(incident_outcomes=assigned, outcome_cursor=cursor)
     await save(conn, rid, config)
     return {iid: assigned[str(iid)] for iid in ids}
+
+
+async def recover_public_cases(app: Any, conn: Any, rid: int, *, now: dt.datetime | None = None) -> None:
+    """Второй сценарий: повтор ускоряет восстановление, иначе оно начинается через 30 секунд."""
+    from app.demo.execution import execution_lock
+    from app.demo.recovery import recover_incident
+
+    cutoff = (now or dt.datetime.now(dt.UTC)) - dt.timedelta(seconds=30)
+    async with execution_lock(app, public_demo=True):
+        rows = await (
+            await conn.execute(
+                "select i.id from incidents i where i.run_id=%s and i.status='escalated' "
+                "and (select ta.payload->>'outcome' from team_actions ta where ta.incident_id=i.id order by ta.action_sim desc,ta.id desc limit 1) in ('failed','no_work') "
+                "and exists(select 1 from notifications n where n.incident_id=i.id and n.template_code='demo_unresolved') "
+                "and not exists(select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id and (s.status in ('new','processing','awaiting_human') or exists(select 1 from agent_runs a where a.signal_id=s.id and a.kind='agent' and (a.outcome is null or a.outcome='awaiting_human')))) "
+                "and ((select min(n.created_at) from notifications n where n.incident_id=i.id and n.template_code='demo_unresolved')<=%s "
+                "or exists(select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id and s.channel_subtype='ui_pers_demo' and s.received_at>(select min(n.created_at) from notifications n where n.incident_id=i.id and n.template_code='demo_unresolved'))) order by i.id",
+                (rid, cutoff),
+            )
+        ).fetchall()
+        for (iid,) in rows:
+            await recover_incident(app, conn, int(iid), public_demo=True)
