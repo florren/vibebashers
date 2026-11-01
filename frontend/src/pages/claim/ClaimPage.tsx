@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { ApiError, api, post } from '@/shared/api/client'
 import { useRefs } from '@/shared/api/hooks'
 import type { paths } from '@/shared/api/types'
+import { VoiceInput } from '@/shared/audio/VoiceInput'
 
 type RefRows = paths['/api/refs/{name}']['get']['responses'][200]['content']['application/json']
 type ClaimCreated = paths['/api/public/claim']['post']['responses'][201]['content']['application/json']
@@ -24,7 +25,7 @@ function cellId(row: RefRows[number]): number | null {
 
 /** Экран 6 (T-119): публичная форма обращения неидентифицированного клиента. */
 export function ClaimPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const regions = useRefs('regions')
   const products = useRefs('products')
   const [name, setName] = useState('')
@@ -34,6 +35,7 @@ export function ClaimPage() {
   const [cityId, setCityId] = useState<number | ''>('')
   const [productCode, setProductCode] = useState('')
   const [text, setText] = useState('')
+  const [voiceMeta, setVoiceMeta] = useState<NonNullable<ClaimRequest['voice_meta']> | null>(null)
   const [consent, setConsent] = useState(false)
   const [answer, setAnswer] = useState('')
   const captcha = useQuery({
@@ -67,6 +69,7 @@ export function ClaimPage() {
       captcha: { id: captcha.data.id, answer: Number(answer) },
     }
     if (productCode) body.product_code = productCode
+    if (voiceMeta) body.voice_meta = voiceMeta
     send.mutate(body)
   }
 
@@ -127,6 +130,7 @@ export function ClaimPage() {
           <label className="block text-xs text-muted">
             {t('claim.region')}
             <select
+              aria-label={t('claim.region')}
               value={regionCode}
               onChange={(e) => {
                 setRegionCode(e.target.value)
@@ -137,7 +141,7 @@ export function ClaimPage() {
               <option value="">{t('claim.region')}</option>
               {(regions.data ?? []).map((row) => (
                 <option key={row.code} value={row.code}>
-                  {row.name_ru}
+                  {i18n.language.startsWith('en') ? cellText(row, 'name_en') || row.name_ru : row.name_ru}
                 </option>
               ))}
             </select>
@@ -145,6 +149,7 @@ export function ClaimPage() {
           <label className="block text-xs text-muted">
             {t('claim.city')}
             <select
+              aria-label={t('claim.city')}
               value={cityId}
               onChange={(e) => setCityId(e.target.value ? Number(e.target.value) : '')}
               className="input mt-1 w-full text-sm"
@@ -165,18 +170,20 @@ export function ClaimPage() {
         </div>
         <label className="block text-xs text-muted">
           {t('claim.product')}
-          <select value={productCode} onChange={(e) => setProductCode(e.target.value)} className="input mt-1 w-full text-sm">
+          <select aria-label={t('claim.product')} value={productCode} onChange={(e) => setProductCode(e.target.value)} className="input mt-1 w-full text-sm">
             <option value="">{t('claim.product')}</option>
             {(products.data ?? []).map((row) => (
               <option key={row.code} value={row.code}>
-                {row.name_ru}
+                {i18n.language.startsWith('en') ? cellText(row, 'name_en') || row.name_ru : row.name_ru}
               </option>
             ))}
           </select>
         </label>
         <label className="block text-xs text-muted">
           {t('claim.text')}
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="input mt-1 w-full text-sm" />
+          <span className="ml-2 inline-flex"><VoiceInput serverOnly onVoice={setVoiceMeta} onText={value => setText(current => current ? `${current} ${value}` : value)} /></span>
+          <textarea aria-label={t('claim.text')} value={text} maxLength={4000} onChange={(e) => setText(e.target.value)} rows={4} className="input mt-1 w-full text-sm" />
+          {voiceMeta && <span className="mt-1 block text-xs text-muted">{t('tracking.voiceCheck')}</span>}
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
@@ -199,7 +206,7 @@ export function ClaimPage() {
         {send.isError && (
           <p role="alert" className="text-sm text-danger">
             {t('claim.error')}
-            {send.error instanceof ApiError && send.error.problem?.detail ? `: ${send.error.problem.detail}` : ''}
+            {!i18n.language.startsWith('en') && send.error instanceof ApiError && send.error.problem?.detail ? `: ${send.error.problem.detail}` : ''}
           </p>
         )}
       </form>
