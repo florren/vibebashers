@@ -8,6 +8,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
+from app.llm.run_profiles import capture, validate_main_profile
 from app.sim.events import dumps
 from app.sim.run_summary import build_summary
 
@@ -101,11 +102,7 @@ async def create_run(
             await lock.execute("select current_run_id from sim_state where id=1 for update")
             state = await lock.fetchone()
         cur_id = int(state[0]) if state and state[0] is not None else None
-        if llm_profile_id is not None:
-            async with conn.cursor(row_factory=tuple_row) as cur:
-                await cur.execute("select 1 from llm_profiles where id=%s and is_active", (llm_profile_id,))
-                if await cur.fetchone() is None:
-                    raise ValueError("профиль LLM отсутствует или неактивен")
+        await validate_main_profile(conn, llm_profile_id)
         async with conn.cursor(row_factory=tuple_row) as cur:
             await cur.execute(
                 "select coalesce(jsonb_object_agg(key,value),'{}'::jsonb) from settings where key='policies' or key like 'sim.%' or key like 'policies.%' or key like 'twins.%'"
@@ -119,6 +116,7 @@ async def create_run(
             "created_by": "sim_control",
             "settings": safe_settings,
             "economics": economics[0] if economics else {},
+            "llm_profiles": await capture(conn, llm_profile_id),
         }
         if cur_id:
             async with conn.cursor(row_factory=tuple_row) as previous:

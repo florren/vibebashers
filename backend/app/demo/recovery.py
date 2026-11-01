@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from app.agent.tools.base import ToolContext
 from app.demo.settings import configuration, save
+from app.llm.run_profiles import resolve as run_profiles
 from app.sim.clock import add_working_hours
 from app.sim.events import EventBus
 from app.sim.rng import SimRng
@@ -63,13 +64,14 @@ async def recover_incident(app: Any, conn: Any, iid: int, *, public_demo: bool =
         ],
         outcome="recovered",
     )
+    chain, main_profile = await run_profiles(conn, int(rid), svc.chain, svc.profile)
     emulator = TeamEmulator(
         SimRng(sim.seed),
         conn,
         EventBus(conn),
         rid,
         demo_outcome="recovered",
-        llm=(svc.chain, svc.chain.profile_for("twin", svc.profile)),
+        llm=(chain, chain.profile_for("twin", main_profile)),
         incident_ids=[iid],
     )
     await emulator.load()

@@ -146,6 +146,13 @@ async def test_new_run_none_is_atomic_and_counters_snapshots_settings(seeded, co
         assert conn.execute("select current_run_id from sim_state where id=1").fetchone() == (first,)
         with pytest.raises(ValueError, match="профиль"):
             await runs.create_run(ac, kind="free", label="invalid", seed=19, sim_time=now, llm_profile_id=999999)
+        bench_id = conn.execute(
+            "select id from llm_profiles where role='bench_only' and is_active order by id limit 1"
+        ).fetchone()[0]
+        with pytest.raises(ValueError, match="bench_only"):
+            await runs.create_run(
+                ac, kind="free", label="bench refused", seed=19, sim_time=now, llm_profile_id=bench_id
+            )
         assert conn.execute("select status from sim_runs where id=%s", (first,)).fetchone() == ("running",)
         second = await runs.create_run(ac, kind="free", label="second", seed=18, sim_time=now, reset_mode="counters")
     status, summary = conn.execute("select status,summary from sim_runs where id=%s", (first,)).fetchone()

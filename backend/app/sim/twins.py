@@ -19,6 +19,7 @@ from app.db.session import psycopg_dsn
 from app.ingest.normalizer import create_signal
 from app.llm.base import LLMProfile, ProviderError
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.realtime.hub import hub
 from app.trace.privacy import mask
@@ -162,7 +163,8 @@ class TwinService:
             )
             if remaining < estimate:
                 return None
-            profile = self.chain.profile_for("twin", self.profile)
+            chain, main_profile = await run_profiles(conn, int(run_id), self.chain, self.profile)
+            profile = chain.profile_for("twin", main_profile)
             profile = dataclasses.replace(
                 profile,
                 extra={
@@ -193,7 +195,7 @@ class TwinService:
             assert created is not None
             agent_id = int(created["id"])
         try:
-            result = await self.chain.complete_structured(
+            result = await chain.complete_structured(
                 [{"role": "system", "content": prompt.body}, {"role": "user", "content": content}],
                 deref("agent/client_twin_reaction"),
                 profile,

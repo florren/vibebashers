@@ -79,6 +79,8 @@ class ProviderChain:
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
         self.strict = not append_mock
         self.role_profiles: dict[str, LLMProfile] = {}
+        self.role_profile_ids: dict[str, int | None] = {}
+        self.role_profiles_pinned = False
         self.providers = providers
         self.record_store = record_store
         self.limiter = rate_limiter or default_limiter

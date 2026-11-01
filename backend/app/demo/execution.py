@@ -24,6 +24,7 @@ from app.demo.settings import configuration as configuration
 from app.demo.settings import ensure
 from app.demo.settings import save as save
 from app.ingest.normalizer import create_signal
+from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim import scenarios
 from app.sim.events import EventBus
@@ -71,6 +72,7 @@ def execution_lock(app: Any, *, public_demo: bool) -> Any:
 async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual_only: bool = False) -> bool:
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
+    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile)
     request = Request({"type": "http", "app": app, "headers": []})
     request.state.demo_sim_time = at
     public_demo = bool((await configuration(conn, run_id)).get("public_demo"))
@@ -94,9 +96,9 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             await conn.commit()
             await svc.resume(int(hid), at)
             return True
-        profile = svc.chain.profile_for("twin", svc.profile)
+        profile = chain.profile_for("twin", main_profile)
         obj, meta = await respond(
-            svc.chain,
+            chain,
             profile,
             {"role": "bank_operator", "reason": reason, "proposal": proposal, "language": "ru"},
             "Демонстрационный оператор рассмотрел предложение агента и согласовал исполнение в пределах действующих правил.",
@@ -130,8 +132,8 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
     ).fetchone()
     if alert:
         obj, meta = await respond(
-            svc.chain,
-            svc.chain.profile_for("twin", svc.profile),
+            chain,
+            chain.profile_for("twin", main_profile),
             {
                 "role": "branch_manager",
                 "language": "ru",
@@ -155,7 +157,7 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
                 )
             ).fetchone()
             if locked:
-                service = ComplianceService(conn, run_id=run_id, sim_time=at, chain=svc.chain, profile=svc.profile)
+                service = ComplianceService(conn, run_id=run_id, sim_time=at, chain=chain, profile=main_profile)
                 await service.ack_alert(
                     int(alert[0]),
                     decision="open_incident",
@@ -260,6 +262,7 @@ async def notify_results(
         )
     ).fetchall()
     svc = app.state.agent
+    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile)
     for iid, status, summary, breached, sid, cid, text, segment, consents, channel in rows:
         success = status == "closed"
         from app.i18n import communication_lang
@@ -300,7 +303,7 @@ async def notify_results(
             consents=consents,
             lang=lang,
         )
-        deps = Deps(ctx=ctx, chain=svc.chain, profile=svc.profile)
+        deps = Deps(ctx=ctx, chain=chain, profile=main_profile)
         await deps.record_step(
             "close" if success else "followup_monitor",
             "ok",
@@ -321,6 +324,7 @@ async def notify_results(
 async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) -> None:
     """Событийное время ручных цепочек хранится в профиле; часы фонового банка не двигаются."""
     sim, svc = app.state.sim, app.state.agent
+    chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile)
     base_time = dt.datetime.fromisoformat(config["base_time"]) if config.get("public_demo") else sim.clock.sim_time
     if config.get("emulate_humans") and await employees(app, conn, rid, base_time, manual_only=True):
         return
@@ -351,7 +355,7 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
             EventBus(conn),
             rid,
             demo_outcome=config["team_outcome"],
-            llm=(svc.chain, svc.chain.profile_for("twin", svc.profile)),
+            llm=(chain, chain.profile_for("twin", main_profile)),
             incident_ids=ids,
         )
         await emulator.load()
@@ -438,6 +442,7 @@ async def cycle(app: Any) -> None:
     rid = sim.run_id
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
         config = await configuration(conn, rid)
+        chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile)
         if sim.run_status not in ("running", "paused") and not config.get("recovery_incidents"):
             return
         if not config and getattr(sim, "full_execution", False):
@@ -505,7 +510,7 @@ async def cycle(app: Any) -> None:
                 demo_outcome=config["team_outcome"],
                 demo_context=(scenarios.get(str(config.get("scenario_id") or "")) or {}).get("demo_evidence"),
                 demo_scenario_id=config.get("scenario_id"),
-                llm=(svc.chain, svc.chain.profile_for("twin", svc.profile)),
+                llm=(chain, chain.profile_for("twin", main_profile)),
             )
             await emulator.load()
             await emulator.tick(sim.clock.sim_time, SimpleNamespace(active_faults=[]))
