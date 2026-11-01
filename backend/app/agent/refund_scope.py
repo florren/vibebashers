@@ -18,7 +18,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.agent.state import AgentState
-from app.contracts.enums import Intent, PaymentMethod, Product
+from app.contracts.enums import Intent, PaymentMethod, Product, System
 from app.contracts.registry import deref
 
 
@@ -27,6 +27,7 @@ class OperationSelector(BaseModel):
     product: list[Product] = Field(default_factory=list)
     method: list[PaymentMethod] = Field(default_factory=list)
     op_type: list[str] = Field(default_factory=list)
+    system_path: list[System] = Field(default_factory=list)
     deny: bool = False
 
 
@@ -64,6 +65,7 @@ class CaseScope(Patterns):
 class CaseContext(Patterns):
     version: int = Field(ge=1, le=1)
     operation_hints: dict[str, OperationSelector]
+    routing_operation_hints: dict[str, OperationSelector] = Field(default_factory=dict)
 
 
 @lru_cache(maxsize=1)
@@ -75,7 +77,7 @@ def catalog() -> tuple[CaseContext, dict[str, CaseScope]]:
         data = yaml.safe_load(stream)
     context = CaseContext.model_validate(data["refund_case_context"])
     known_hints = deref("agent/normalization")["properties"]["entities"]["properties"]["operation_hint"]["enum"]
-    if any(hint not in known_hints for hint in context.operation_hints):
+    if any(hint not in known_hints for hint in (*context.operation_hints, *context.routing_operation_hints)):
         raise ValueError("operation_hint вне normalization contract")
     scopes = {
         row["code"]: CaseScope.model_validate(row["case_scope"])
@@ -95,19 +97,36 @@ def catalog_fingerprint() -> str:
 
 
 def _matches(op: dict[str, Any], selector: OperationSelector) -> bool:
-    return not selector.deny and all(
-        not values or op.get(key) in values for key, values in selector.model_dump(exclude={"deny"}).items()
+    return (
+        not selector.deny
+        and (not selector.system_path or bool(set(selector.system_path).intersection(op.get("system_path") or [])))
+        and all(
+            not values or op.get(key) in values
+            for key, values in selector.model_dump(exclude={"deny", "system_path"}).items()
+        )
     )
 
 
-def case_operations(operations: list[dict[str, Any]], normalization: dict[str, Any]) -> list[dict[str, Any]]:
+def _select_operations(
+    operations: list[dict[str, Any]], normalization: dict[str, Any], selectors: dict[str, OperationSelector]
+) -> list[dict[str, Any]]:
     entities = normalization.get("entities") or {}
     product, hint = entities.get("product"), entities.get("operation_hint")
-    context, _ = catalog()
-    selector = context.operation_hints.get(hint) if hint is not None else OperationSelector()
+    selector = selectors.get(hint) if hint is not None else OperationSelector()
     if selector is None:
         return []
     return [op for op in operations if (not product or op.get("product") == product) and _matches(op, selector)]
+
+
+def case_operations(operations: list[dict[str, Any]], normalization: dict[str, Any]) -> list[dict[str, Any]]:
+    context, _ = catalog()
+    return _select_operations(operations, normalization, context.operation_hints)
+
+
+def routing_operations(operations: list[dict[str, Any]], normalization: dict[str, Any]) -> list[dict[str, Any]]:
+    """Диагностика сохраняет notification/login факты, не разрешая ими refund."""
+    context, _ = catalog()
+    return _select_operations(operations, normalization, {**context.operation_hints, **context.routing_operation_hints})
 
 
 def _amount(value: Any) -> Decimal | None:

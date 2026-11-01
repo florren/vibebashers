@@ -72,9 +72,14 @@ refund_case_context:
   operation_hints:
     qr_payment: {method: [qr_sbp]}
     card_payment: {op_type: [card_payment], method: [card]}
-    transfer: {method: [transfer]}
+    transfer: {op_type: [transfer]}
     withdrawal: {method: [cash]}
     deposit: {product: [deposit]}
     loan_payment: {op_type: [loan_payment]}
     notification: {deny: true}
     login: {deny: true}
+
+  # Диагностические факты не означают право возврата: financial deny выше сохраняется.
+  routing_operation_hints:
+    notification: {system_path: [notification_gw]}
+    login: {system_path: [mobile_app, web_bank]}

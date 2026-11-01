@@ -70,6 +70,7 @@ async def count(conn, query, args=()):
         "Не открывается вклад в мобильном приложении, ошибка503",
         "Спасибо за удобную оплату по QR!",
         "QR, ну ок",
+        "Не приходят уведомления, push и смс, ошибка.",
         "Оплата QR не проходит, приложение падает",
         "Не узнаю списание3200по дебетовой карте, верните деньги",
         "Не я совершал покупку3200по дебетовой карте, подозреваю мошенничество. Верните деньги",
@@ -333,4 +334,52 @@ async def test_mass_threshold_retains_hitl_boundary_and_never_refunds_other_clie
         )
         assert await count(conn, "select balance from accounts where client_id=%s", (cid,)) == balance + Decimal(
             "54.72"
+        )
+
+
+@pytest.mark.parametrize(
+    "hint,system,error_code,text",
+    [
+        ("notification", "notification_gw", "NOTIF-DELAY", "Не приходят push и смс, ошибка уведомлений"),
+        ("login", "mobile_app", "APP-LOGIN-FAIL", "Не могу войти в приложение, ошибка авторизации"),
+    ],
+)
+async def test_explicit_nonfinancial_hint_routes_diagnostic_operation_without_refunding_qr(
+    seeded, monkeypatch, hint, system, error_code, text
+):
+    from app.contracts.registry import validate
+    from app.llm.mock import MockProvider
+
+    original = MockProvider.complete_structured
+
+    async def explicit_hint(self, messages, schema, profile, *, timeout_s):
+        obj, usage, raw = await original(self, messages, schema, profile, timeout_s=timeout_s)
+        if "contacts_hint" in schema.get("properties", {}):
+            obj["entities"] = {"product": "debit_card", "operation_hint": hint}
+            assert not validate(obj, "agent/normalization")
+        return obj, usage, raw
+
+    monkeypatch.setattr(MockProvider, "complete_structured", explicit_hint)
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid, cid, now = await setup(conn)
+        qr_operation = await qr(conn, rid, cid, now)
+        diagnostic = (
+            await (
+                await conn.execute(
+                    "insert into operations(run_id,client_id,product_code,op_type,system_path,amount_rub,method,fee_amount,status,error_code,started_sim,finished_sim) values(%s,%s,'debit_card','transfer',%s,10,'online',0,'failed',%s,%s,%s) returning id",
+                    (rid, cid, [system], error_code, now, now),
+                )
+            ).fetchone()
+        )[0]
+        await conn.commit()
+        _sid, state = await run(conn, rid, cid, now, text)
+        assert state["normalization"]["entities"]["operation_hint"] == hint
+        assert state["context"]["hints"]["failed_operation_id"] == diagnostic
+        assert state["context"]["hints"]["error_code"] == error_code
+        assert not any(rule["action"] == "refund_fee" for rule in state["context"]["rules_matched"])
+        assert (
+            await count(
+                conn, "select count(*) from ledger_entries where operation_id=%s and kind='refund'", (qr_operation,)
+            )
+            == 0
         )
