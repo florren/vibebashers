@@ -215,6 +215,12 @@ def test_standalone_trace_records_actual_provider_and_model(configured, mode):
         main_trace = client.get(f"/api/agent/runs/{data['llm_run_id']}")
         mock_trace = client.get(f"/api/agent/runs/{data['mock_run_id']}")
         assert main_trace.status_code == mock_trace.status_code == 200
+        for side, source in (("llm", "replay" if mode in ("replay", "missing_model") else "mock"), ("mock", "mock")):
+            business_trace = client.get(f"/api/trace/agent_run/{data[side + '_run_id']}")
+            assert business_trace.status_code == 200
+            classifications = [event for event in business_trace.json()["after"] if event["kind"] == "classification"]
+            assert len(classifications) == 1
+            assert classifications[0]["badges"]["llm_source"] == source
     step = main_trace.json()["steps"][0]
     expected = {"replay": "replay:recorded-test-model", "missing_model": "replay:unknown"}.get(
         mode, "mock:mock-rules-v1"
