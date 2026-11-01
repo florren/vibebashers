@@ -36,10 +36,10 @@ gh workflow view ci (или аналог GitVerse)
 ```
 
 ## Отчёт субагента
-
 Ветка `codex/T-145-ci-shards`, база T-152 `c6d0485`; cross-layer согласован
 в рамках общей ревизии. Jobs contracts/db/tests сохранены; tests — `always()`
-aggregate с явным отказом при failed/cancelled/skipped prerequisite. Полный pytest
+aggregate с явным отказом при failed/cancelled/skipped prerequisite; owners
+обязателен на PR, intentional skipped owners разрешён только вне PR. Полный pytest
 разделён по реально собранным модулям между четырьмя отдельными checkout/PG16;
 четыре manifests подтверждают общую revision/collection, exit code и JUnit count.
 Добавлены frozen Python installs, lint/frontend jobs, настоящий Docker build,
@@ -55,7 +55,7 @@ LLM_CHAIN/LLM_PROVIDER принудительно mock, API credentials отсу
 Проверки: full standalone four-shard proof на commit `6f87f62` — 1070 passed,
 24 skipped, wall 526.648s. Shard times 454.37/178.80/521.73/374.40s;
 aggregate union PASS, отсутствие одного manifest намеренно проверено как failure.
-Последующие регрессии helper/workflow/owners — 40 passed; staged cross-layer
+Последующие регрессии helper/workflow/owners — 43 passed; staged cross-layer
 изменение теперь обнаруживается check_owners, разрешение --allow-cross не ослаблено.
 `make lint`, frontend build, E2E TypeScript, contracts, i18n, licenses-check
 (526 distributions) прошли. Модельный split сохраняет все 58 Playwright cases:
@@ -65,6 +65,8 @@ Nightly snapshot на отдельном candidate: demo/5000 seed 14.663s,
 simulator.running=true, p95 health6.116/state2.363/signals14.901/map15.291/
 dashboard18.594ms, violations=[]; raw samples сохранены в performance artifact.
 Это не замена длительного T-144 замера WS/CPU/RAM на целевой машине.
+Замер выполнен до нового T-017 operation volume; после его интеграции nightly
+нужно повторить на увеличенном фактическом наборе операций.
 
 Открытая граница: real browser smoke обнаружил map containment overflow
 (1024×768 SVG bottom772.734375, также 1280 ru). Строгие assertions сохранены;

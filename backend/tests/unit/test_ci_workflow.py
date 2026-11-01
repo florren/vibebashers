@@ -21,6 +21,7 @@ def test_required_check_propagates_dependency_results(result):
     assert set(aggregate["needs"]) == {
         "contracts",
         "db",
+        "owners",
         "lint",
         "backend-tests",
         "frontend-tests",
@@ -33,7 +34,7 @@ def test_required_check_propagates_dependency_results(result):
     results["backend-tests"]["result"] = result
     completed = subprocess.run(
         [sys.executable, "-c", code],
-        env={**os.environ, "NEEDS_JSON": json.dumps(results)},
+        env={**os.environ, "NEEDS_JSON": json.dumps(results), "GITHUB_EVENT_NAME": "pull_request"},
         capture_output=True,
         check=False,
     )
@@ -49,3 +50,20 @@ def test_full_suite_and_isolated_runner_contract():
     assert any("ci_test_shard.py" in step.get("run", "") for step in backend["steps"])
     assert "pip install" not in (ROOT / ".github/workflows/ci.yml").read_text()
     assert "npm run typecheck" in (ROOT / ".github/workflows/ci.yml").read_text()
+
+
+@pytest.mark.parametrize("event,allowed", [("pull_request", False), ("push", True), ("schedule", True)])
+def test_owners_skip_is_only_allowed_outside_pr(event, allowed):
+    workflow = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+    aggregate = workflow["jobs"]["tests"]
+    step = next(step for step in aggregate["steps"] if "NEEDS_JSON" in step.get("env", {}))
+    code = step["run"].split("<<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+    results = {name: {"result": "success"} for name in aggregate["needs"]}
+    results["owners"]["result"] = "skipped"
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        env={**os.environ, "NEEDS_JSON": json.dumps(results), "GITHUB_EVENT_NAME": event},
+        capture_output=True,
+        check=False,
+    )
+    assert (completed.returncode == 0) == allowed

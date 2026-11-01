@@ -179,7 +179,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Export exact candidate image
-        run: docker save cx-pulse-backend:ci | zstd -T0 -3 -o /tmp/candidate.tar.zst
+        run: |
+          set -euo pipefail
+          docker save cx-pulse-backend:ci | zstd -T0 -3 -o /tmp/candidate.tar.zst
       - uses: actions/upload-artifact@v4
         with:
           name: candidate-image
@@ -196,7 +198,9 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - uses: actions/download-artifact@v4
         with: { name: candidate-image, path: /tmp/candidate-image }
-      - run: zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
+      - run: |
+          set -euo pipefail
+          zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
       - name: Real image, isolated Compose, all Playwright tests
         run: python3 scripts/ci_compose.py
@@ -204,14 +208,12 @@ jobs:
         if: always()
         with:
           name: e2e-results
-          path: |
-            frontend/test-results/
-            docs/screenshots/trace-journey/
+          path: frontend/test-results/
 
   tests:
     name: tests
     if: always()
-    needs: [contracts, db, lint, backend-tests, frontend-tests, build-images, e2e-smoke]
+    needs: [contracts, db, owners, lint, backend-tests, frontend-tests, build-images, e2e-smoke]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -222,7 +224,13 @@ jobs:
           python3 - <<'PY'
           import json, os
           results = json.loads(os.environ["NEEDS_JSON"])
-          failures = {name: job["result"] for name, job in results.items() if job["result"] != "success"}
+          failures = {
+              name: job["result"] for name, job in results.items()
+              if job["result"] != "success" and not (
+                  name == "owners" and job["result"] == "skipped"
+                  and os.environ["GITHUB_EVENT_NAME"] != "pull_request"
+              )
+          }
           if failures:
               raise SystemExit(f"Required jobs did not succeed: {failures}")
           PY
@@ -242,7 +250,9 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - uses: actions/download-artifact@v4
         with: { name: candidate-image, path: /tmp/candidate-image }
-      - run: zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
+      - run: |
+          set -euo pipefail
+          zstd -dc /tmp/candidate-image/candidate.tar.zst | docker load
       - run: cd frontend && npm ci && npx playwright install --with-deps chromium
       - name: Demo seed <=90 seconds, active-simulator API p95 <=300ms, full browser suite
         run: python3 scripts/ci_compose.py --performance

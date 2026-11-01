@@ -2,7 +2,8 @@
 
 Обязательные имена ruleset сохранены: `contracts`, `db`, `tests`. Последний job
 выполняется с `always()` и явно отвергает `failure`, `cancelled`, `skipped` любого
-из contracts/db/lint/backend-tests/frontend-tests/build-images/e2e-smoke.
+из contracts/db/owners/lint/backend-tests/frontend-tests/build-images/e2e-smoke.
+`owners` обязан пройти на PR; его intentional skipped допускается только вне PR.
 Проверка владельцев отдельно учитывает commit diff, index, worktree и untracked.
 
 Четыре backend runners имеют отдельные checkout и PostgreSQL 16. Helper
