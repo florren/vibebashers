@@ -22,7 +22,7 @@ build-front:                ## сборка фронта в frontend/dist (backe
 	cd frontend && npm run build
 
 lint-front:                 ## eslint + tsc + vitest фронта
-	cd frontend && npm run lint && npx tsc --noEmit && npm test -- --run
+	cd frontend && npm run lint && npm run typecheck && npm test -- --run
 
 migrate:                    ## alembic upgrade head (DATABASE_URL из .env/окружения)
 	cd backend && .venv/bin/alembic upgrade head

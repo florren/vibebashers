@@ -164,4 +164,4 @@ def test_make_lint_checks_both_layers():
     assert "ruff check app tests" in result.stdout
     assert "mypy app" in result.stdout
     assert "npm run lint" in result.stdout
-    assert "tsc --noEmit" in result.stdout
+    assert "npm run typecheck" in result.stdout
