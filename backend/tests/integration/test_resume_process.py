@@ -28,7 +28,7 @@ def test_kill_restart_then_graceful_restart_preserve_agent_effects(seeded, conn,
         LOG_JSONL="false",
         DATABASE_URL=seeded,
         DATABASE_URL_TEST=seeded,
-        PYTHONPATH=str(ROOT),
+        PYTHONPATH=str(ROOT) + os.pathsep + os.environ.get("PYTHONPATH", ""),
         DURABLE_OUTPUT=str(output),
     )
     fixture = ROOT / "tests/fixtures/durable_process.py"

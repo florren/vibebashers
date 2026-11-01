@@ -243,6 +243,7 @@ async def _execute_node(node: str, state: AgentState, deps: Deps, conn: psycopg.
         await conn.execute("update signals set status='error',updated_at=now() where id=%s", (state["signal"]["id"],))
         await _finish(conn, deps, state, "failed", state["errors"][-1])
         state["outcome"] = "failed"
+        state["current_node"] = END
     else:
         if node == "wait_human" and state.get("outcome") == "awaiting_human":
             await _finish(conn, deps, state, "awaiting_human")
@@ -261,7 +262,11 @@ async def _execute_node(node: str, state: AgentState, deps: Deps, conn: psycopg.
 
 
 def _terminal(node: str, state: AgentState) -> bool:
-    return node == "close" or state.get("outcome") in ("failed", "awaiting_human", "deferred")
+    return (
+        node == "close"
+        or (node == "wait_human" and state.get("outcome") == "awaiting_human")
+        or (node == "followup_monitor" and state.get("outcome") == "deferred")
+    )
 
 
 async def run_graph(
