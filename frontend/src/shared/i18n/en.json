@@ -1725,7 +1725,7 @@
   },
   "demoExecution": {
     "title": "Team and employee simulation",
-    "hint": "Configure teams and employees. Manual requests can reach a final reply even while the simulation is paused.",
+    "hint": "For a manual request, select the team outcome and save the profile. The input scenario is only used for a separate demo run.",
     "scenario": "Input scenario",
     "outcome": "Team outcome",
     "humans": "Agent plays employees",
@@ -1750,11 +1750,12 @@
       "paused": "paused"
     },
     "applySimulation": "Save processing profile",
-    "simulation": "Shared simulation",
+    "simulation": "Saved profile for manual requests and shared simulation",
     "demo": "DEMO",
     "pausedHint": "Teams and employees are paused. Resume using the shared simulation controls.",
     "fastManual": "Fast-forward manual requests to a final reply",
-    "controlsHelp": "“Run a separate scenario” creates a new run with the selected input and switches the current history. “Save processing profile” applies settings to the current and future runs without creating a message. Scenario selection only affects a separate run. If employee emulation is disabled, approvals require manual action.",
-    "fastHint": "Fast mode is enabled: manual requests and related incidents advance without waiting for simulated days, even while paused. Background bank clocks and generators remain unchanged. Live LLM calls take time; unresolved issues remain open."
+    "controlsHelp": "Selecting an option does not save settings. “Save processing profile” applies settings to new team plans in the current and future runs without creating a message. Existing plans and past replies are unchanged. “Run a separate scenario” creates a new run with the selected input and switches the current history. If employee emulation is disabled, approvals require manual action.",
+    "fastHint": "Fast mode is enabled: manual requests and related incidents advance without waiting for simulated days, even while paused. Background bank clocks and generators remain unchanged. Live LLM calls take time; unresolved issues remain open.",
+    "draftHint": "The selected settings have not been applied. Click “Save processing profile” before submitting a manual request."
   }
 }

@@ -12,7 +12,7 @@ def outcome_text(lang: str, *, resolved: bool, late: bool, gift: str | None = No
             text += "We are sorry it took longer than promised. " if late else "We are sorry for the inconvenience. "
             text += "If you need any further help, please reply to this message."
         else:
-            text = "We are sorry, but we have not resolved the issue yet. We are continuing to work on it and will let you know the outcome. Your case remains open."
+            text = "We are sorry, but we have not resolved the issue yet. We need more time to resolve it. We are continuing to work on it and will get back to you with the outcome. Your case remains open."
         if gift:
             text += f" As an apology, you have received {gift}."
     else:
@@ -25,7 +25,7 @@ def outcome_text(lang: str, *, resolved: bool, late: bool, gift: str | None = No
             )
             text += "Если вам потребуется помощь, ответьте на это сообщение."
         else:
-            text = "Приносим извинения: проблему пока не удалось решить. Мы продолжаем работу и сообщим вам о результате. Ваше обращение остаётся открытым."
+            text = "Приносим извинения: проблему пока не удалось устранить. Нам потребуется больше времени для её решения. Мы продолжаем работу и вернёмся к вам с результатом. Ваше обращение остаётся открытым."
         if gift:
             text += f" В знак извинения для вас — {gift}."
     return text

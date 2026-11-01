@@ -19,11 +19,11 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
   const scenarios = useQuery({ queryKey: ['demo-scenarios'], queryFn: () => api<Schemas['Scenario'][]>('/api/scenarios') })
   const change = useMutation({
     mutationFn: (stop: boolean) => api<State>('/api/demo/execution', { method: stop ? 'DELETE' : 'POST', ...(stop ? {} : { body: JSON.stringify({ mode: 'demo', scenario_id: scenario, team_outcome: outcome, emulate_humans: humans, auto_advance: true } satisfies Options) }) }),
-    onSuccess: (data, stop) => { void qc.invalidateQueries({ queryKey: ['demo-execution'] }); if (!stop && data.subject_ref) onStarted?.(data.subject_ref) },
+    onSuccess: (data, stop) => { qc.setQueryData(['demo-execution'], data); setEdited(false); void qc.invalidateQueries({ queryKey: ['demo-execution'] }); if (!stop && data.subject_ref) onStarted?.(data.subject_ref) },
   })
   const apply = useMutation({
     mutationFn: () => api<State>('/api/demo/execution', { method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: outcome, emulate_humans: humans, auto_advance: fastManual } satisfies Options) }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['demo-execution'] }) },
+    onSuccess: (data) => { qc.setQueryData(['demo-execution'], data); setEdited(false); void qc.invalidateQueries({ queryKey: ['demo-execution'] }) },
   })
   const config = state.data?.configuration
   useEffect(() => {
@@ -35,6 +35,7 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
   }, [config, edited])
   const enabled = config?.enabled === true
   const isolated = enabled && config?.mode === 'demo'
+  const unapplied = !isolated && edited && (config?.mode !== 'simulation' || config.team_outcome !== outcome || (config.emulate_humans !== false) !== humans || (config.auto_advance === true) !== fastManual)
   const status = enabled && config?.mode === 'simulation' && config.auto_advance === true ? 'manual' : String(config?.status ?? 'idle')
   return <details className="shrink-0 border-b border-line bg-surface px-4 py-2">
     <summary className="cursor-pointer text-sm font-semibold">{t('demoExecution.title')} · {t(`demoExecution.status.${status}`)}</summary>
@@ -52,9 +53,12 @@ export function DemoExecution({ onStarted }: { onStarted?: (ref: string) => void
       </label>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={humans} disabled={isolated || change.isPending || apply.isPending} onChange={e => { setEdited(true); setHumans(e.target.checked) }} />{t('demoExecution.humans')}</label>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={fastManual} disabled={isolated || change.isPending || apply.isPending} onChange={e => { setEdited(true); setFastManual(e.target.checked) }} />{t('demoExecution.fastManual')}</label>
-      <button className="btn btn-sm" disabled={change.isPending || state.isPending || state.isError || scenarios.isError} onClick={() => change.mutate(isolated)}>{t(isolated ? 'demoExecution.stop' : 'demoExecution.start')}</button>
-      <button className="btn btn-sm" disabled={isolated || change.isPending || apply.isPending} onClick={() => apply.mutate()}>{t('demoExecution.applySimulation')}</button>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn btn-sm" disabled={change.isPending || state.isPending || state.isError || scenarios.isError} onClick={() => change.mutate(isolated)}>{t(isolated ? 'demoExecution.stop' : 'demoExecution.start')}</button>
+        <button className="btn btn-sm" disabled={isolated || state.isPending || state.isError || change.isPending || apply.isPending} onClick={() => apply.mutate()}>{t('demoExecution.applySimulation')}</button>
+      </div>
     </div>
+    {unapplied && <p role="status" className="my-2 rounded border border-line px-3 py-2 text-xs">{t('demoExecution.draftHint')}</p>}
     {state.data?.run_id && Boolean(config?.mode) && <p role="status" className="my-2 text-xs">{t(config?.mode === 'simulation' ? 'demoExecution.simulation' : 'demoExecution.demo')} · SR-{state.data.run_id} · {t(`demoExecution.outcomes.${String(config?.team_outcome)}`)}</p>}
     <p className="my-2 text-xs text-muted">{t('demoExecution.controlsHelp')}</p>
     {config?.mode === 'simulation' && config.auto_advance === true && <p className="my-2 text-xs text-muted">{t('demoExecution.fastHint')}</p>}

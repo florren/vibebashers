@@ -282,6 +282,10 @@ async def test_demo_compliance_manager_and_idempotent_ack(seeded, monkeypatch, m
                 (rid,),
             )
         ).fetchone()
+        if not delayed_once and not row:
+            # Анализ может завершиться между этим чтением и original_employees.
+            # До барьера не разрешаем ему автоматически подтвердить новый алерт.
+            return False
         if row and not delayed_once:
             delayed_once = True
             if manual:

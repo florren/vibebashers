@@ -58,8 +58,53 @@ it('loads and saves the fast manual profile without starting a scenario', async 
   render(<QueryClientProvider client={qc}><DemoExecution /></QueryClientProvider>)
   fireEvent.click(screen.getByText(/Эмуляция команд/))
   await waitFor(() => expect(screen.getByLabelText('Ускорять ручные обращения до итогового ответа')).toBeChecked())
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Сохранить профиль обработки' })).toBeEnabled())
   expect(screen.queryByText(/Команды и сотрудники на паузе/)).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль обработки' }))
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST', body: JSON.stringify({ mode: 'simulation', team_outcome: 'on_time', emulate_humans: true, auto_advance: true }) })))
+  qc.clear()
+})
+
+it('keeps a selected outcome as a draft until the profile is saved and then follows saved state', async () => {
+  let applied = 'on_time'
+  const state = () => ({ run_id: 4, configuration: { mode: 'simulation', enabled: true, status: 'paused', team_outcome: applied, auto_advance: true, emulate_humans: true }, incidents: [] })
+  vi.mocked(api).mockImplementation(async (path, init) => {
+    if (path === '/api/scenarios') return [] as never
+    if (init?.method === 'POST') applied = JSON.parse(String(init.body)).team_outcome
+    return state() as never
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(<QueryClientProvider client={qc}><DemoExecution /></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Эмуляция команд/))
+  await screen.findByText(/Сохранённый профиль ручных обращений/)
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
+  expect(screen.getByText(/Выбранные параметры ещё не применены/)).toBeInTheDocument()
+  expect(screen.getByText(/Сохранённый профиль ручных обращений/)).toHaveTextContent('Успех в срок')
+  expect(api).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: 'POST' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль обработки' }))
+  await waitFor(() => expect(screen.queryByText(/Выбранные параметры ещё не применены/)).not.toBeInTheDocument())
+  expect(screen.getByText(/Сохранённый профиль ручных обращений/)).toHaveTextContent('Попытка не устранила проблему')
+  expect(screen.getByLabelText('Работа команды')).toHaveValue('failed')
+  applied = 'on_time'
+  qc.setQueryData(['demo-execution'], state())
+  await waitFor(() => expect(screen.getByLabelText('Работа команды')).toHaveValue('on_time'))
+  qc.clear()
+})
+
+it('does not mark a draft as applied when saving fails', async () => {
+  vi.mocked(api).mockImplementation(async (path, init) => {
+    if (path === '/api/scenarios') return [] as never
+    if (init?.method === 'POST') throw new Error('Сохранение недоступно')
+    return { run_id: 4, configuration: { mode: 'simulation', enabled: true, status: 'paused', team_outcome: 'on_time', auto_advance: true, emulate_humans: true }, incidents: [] } as never
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(<QueryClientProvider client={qc}><DemoExecution /></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Эмуляция команд/))
+  await screen.findByText(/Сохранённый профиль ручных обращений/)
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Сохранить профиль обработки' }))
+  await screen.findByText(/Сохранение недоступно/)
+  expect(screen.getByText(/Выбранные параметры ещё не применены/)).toBeInTheDocument()
+  expect(screen.getByText(/Сохранённый профиль ручных обращений/)).toHaveTextContent('Успех в срок')
   qc.clear()
 })
