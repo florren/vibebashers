@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.10
+  version: 1.5.11
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -124,6 +124,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DemoExecutionState'
+  /api/demo/incidents/{id}/recover:
+    post:
+      tags: [demo]
+      summary: Продолжить неудачную demo-попытку в том же инциденте
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1}
+      responses:
+        '202':
+          description: Продолжение зарегистрировано; повтор идемпотентен
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DemoExecutionState'}
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
   /api/health:
     get:
       tags: [health]
@@ -2724,6 +2743,9 @@ components:
                 type: string
               sla_breached:
                 type: boolean
+              can_recover:
+                type: boolean
+                description: Доступно явное продолжение неудачной ручной demo-попытки.
               resolution_summary:
                 type:
                 - string

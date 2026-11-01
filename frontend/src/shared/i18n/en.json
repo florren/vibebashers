@@ -1724,6 +1724,8 @@
     "displayNameHint": "Optional. A chat name, without identity verification."
   },
   "demoExecution": {
+    "publicHint": "Public chat :9999 runs independently with its own outcome cycle for new incidents. Repeated reports of the same problem keep its outcome.",
+    "recoverIncident": "Resume {{ref}} after escalation",
     "title": "Team and employee simulation",
     "hint": "For a manual request, select the team outcome and save the profile. The input scenario is only used for a separate demo run.",
     "scenario": "Input scenario",

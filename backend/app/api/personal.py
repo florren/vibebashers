@@ -13,7 +13,6 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api._compliance_support import run_context
 from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.ingest.normalizer import create_signal, from_landing
@@ -177,10 +176,9 @@ async def post_personal_message(request: Request, body: PersonalMessageBody) -> 
         )
         if (count and count["n"] >= 60) or (own and own["n"] >= 5):
             raise HTTPException(429, "Ограничение частоты сообщений", headers={"Retry-After": "60"})
-        rid, sim_time = await run_context(request, conn)
-        from app.demo.inputs import prepare
+        from app.demo.public import public_context
 
-        rid = await prepare(request, conn, rid, public_input=True)
+        rid, sim_time = await public_context(conn)
         if s["run_id"] is not None and rid != s["run_id"]:
             # Разговор не переносится в другой запуск незаметно для агента.
             raise HTTPException(409, "Запуск демонстрации изменился. Начните новый чат.")

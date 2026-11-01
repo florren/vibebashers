@@ -108,3 +108,20 @@ it('does not mark a draft as applied when saving fails', async () => {
   expect(screen.getByText(/Сохранённый профиль ручных обращений/)).toHaveTextContent('Успех в срок')
   qc.clear()
 })
+
+it('resumes only the selected escalated incident without changing the saved profile', async () => {
+  let recoverable = true
+  vi.mocked(api).mockImplementation(async (path, init) => {
+    if (path === '/api/scenarios') return [] as never
+    if (path === '/api/demo/incidents/153/recover' && init?.method === 'POST') recoverable = false
+    return { run_id: 2, configuration: { mode: 'simulation', enabled: true, status: 'paused', team_outcome: 'failed', auto_advance: true }, incidents: [{ id: 153, public_id: 'INC-000153', status: 'escalated', can_recover: recoverable }] } as never
+  })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  render(<QueryClientProvider client={qc}><DemoExecution /></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Эмуляция команд/))
+  fireEvent.click(await screen.findByRole('button', { name: 'Продолжить INC-000153 после эскалации' }))
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/demo/incidents/153/recover', { method: 'POST' }))
+  await waitFor(() => expect(screen.queryByRole('button', { name: /Продолжить INC-000153/ })).not.toBeInTheDocument())
+  expect(api).not.toHaveBeenCalledWith('/api/demo/execution', expect.objectContaining({ method: 'POST' }))
+  qc.clear()
+})

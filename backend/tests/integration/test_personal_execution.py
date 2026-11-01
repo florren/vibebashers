@@ -11,7 +11,7 @@ from starlette.requests import Request
 from app.agent.runner import AgentService
 from app.api.demo_execution import DemoExecutionBody, post_demo_execution
 from app.config import get_settings
-from app.demo.execution import cycle
+from app.demo.execution import cycle, public_cycle
 from app.main import create_app
 from app.public_chat import create_public_app
 from app.sim.engine import Simulator
@@ -20,8 +20,10 @@ from tests.helpers import MOCK_PROFILE, dsn, mock_chain
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.parametrize("late,empty_pointer", [(False, False), (True, False), (False, True)])
-async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, late, empty_pointer):
+@pytest.mark.parametrize(
+    "offset,empty_pointer", [(0, False), (1, False), (2, False), (3, False), (4, False), (0, True)]
+)
+async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offset, empty_pointer):
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     app = create_app()
@@ -35,8 +37,22 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, late,
         if empty_pointer:
             async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
                 await conn.execute("update sim_state set current_run_id=null where id=1")
-        if late:
-            await post_demo_execution(request, DemoExecutionBody(mode="simulation", team_outcome="late"))
+        if not empty_pointer:
+            await post_demo_execution(request, DemoExecutionBody(mode="simulation", team_outcome="failed"))
+        from app.demo.public import OUTCOMES, public_context
+        from app.demo.settings import configuration, save
+
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            public_rid, _ = await public_context(conn)
+            cfg = await configuration(conn, public_rid)
+            cfg["outcome_cursor"] = offset
+            await save(conn, public_rid, cfg)
+            if sim.run_id:
+                bank_cfg = await configuration(conn, sim.run_id)
+                bank_cfg.update(enabled=False, auto_advance=False, emulate_humans=False, status="stopped")
+                await save(conn, sim.run_id, bank_cfg)
+        sim.run_status = "stopped"
+        expected = [OUTCOMES[offset % 5], OUTCOMES[(offset + 1) % 5]]
         boot = client.get("/api/personal/session").json()
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             await conn.execute("update personal_chat_sessions set created_at=now()-interval '3 seconds'")
@@ -44,7 +60,7 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, late,
             "request_id": str(uuid.uuid4()),
             "form_token": boot["form_token"],
             "display_name": "Демо клиент",
-            "voice": late,
+            "voice": bool(offset),
             "product_code": "deposit",
             "text": "Не могу открыть вклад в мобильном приложении: ошибка 503 после подтверждения, списаний не было.",
         }
@@ -73,32 +89,61 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, late,
                 ).fetchone()
             )[0]
         assert sid != first[0]
+        bank_run = sim.run_id
         original = sim.clock.sim_time
         await asyncio.gather(svc.submit(first[0], interactive=True), svc.submit(sid, interactive=True))
+        signal_ids = [first[0], sid]
+        if offset == 0 and not empty_pointer:
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                await conn.execute("update personal_chat_sessions set last_message_at=now()-interval '3 seconds'")
+            repeat = client.post("/api/personal/messages", json={**payload, "request_id": str(uuid.uuid4())})
+            assert repeat.status_code == 202, repeat.text
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                repeat_id = (
+                    await (
+                        await conn.execute("select id from signals where public_id=%s", (repeat.json()["public_id"],))
+                    ).fetchone()
+                )[0]
+            await svc.submit(repeat_id, interactive=True)
+            signal_ids.append(repeat_id)
+            expected.append(expected[0])
         for _ in range(32):
             if svc._inflight:
                 await asyncio.gather(*list(svc._inflight))
+            await public_cycle(app)
             await cycle(app)
-        assert sim.run_id == first[1] and sim.run_id != 1
+        assert sim.run_id == bank_run and first[1] != bank_run
         assert not sim.clock.running and sim.clock.sim_time == original
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             rows = await (
                 await conn.execute(
                     "select s.id,s.status,i.id,i.product_code,i.status,i.sla_breached from signals s join incident_signals x on x.signal_id=s.id join incidents i on i.id=x.incident_id where s.id=any(%s) order by s.id",
-                    ([first[0], sid],),
+                    (signal_ids,),
                 )
             ).fetchall()
-            assert len(rows) == 2 and len({r[2] for r in rows}) == 2
-            assert all(r[1] == "closed" and r[4] == "closed" and r[5] == late for r in rows)
+            assert len(rows) == len(signal_ids) and len({r[2] for r in rows}) == 2
+            if len(rows) == 3:
+                assert rows[0][2] == rows[2][2]
+            cfg = await configuration(conn, public_rid)
+            for row in rows:
+                outcome = cfg["incident_outcomes"][str(row[2])]
+                success = outcome in ("on_time", "late", "recovered")
+                assert row[4] == ("closed" if success else "escalated")
+                assert row[1] == ("closed" if success else "deferred")
+                if success:
+                    assert row[5] == (outcome != "on_time")
+            cfg = await configuration(conn, public_rid)
+            assert cfg["outcome_cursor"] == offset + 2
+            assert list(cfg["incident_outcomes"].values()) == expected[:2]
             finals = await (
                 await conn.execute(
-                    "select signal_id,body from notifications where signal_id=any(%s) and template_code='resolved' and status='sent'",
-                    ([first[0], sid],),
+                    "select signal_id,body from notifications where signal_id=any(%s) and template_code in ('resolved','demo_unresolved') and status='sent'",
+                    (signal_ids,),
                 )
             ).fetchall()
-            assert len(finals) == 2
+            assert len(finals) == len(signal_ids) + expected.count("recovered")
         history = client.get("/api/personal/messages").json()
-        assert len(history["messages"]) == 2
+        assert len(history["messages"]) == len(signal_ids)
         assert all(any(n[1] == a["text"] for a in history["answers"]) for n in finals)
         outsider = TestClient(create_public_app())
         outsider.get("/api/personal/session")
