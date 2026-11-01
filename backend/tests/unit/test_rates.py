@@ -5,7 +5,10 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 import yaml
+
+from app.economics.dcltv import pick_rate
 
 ROOT = Path(__file__).resolve().parents[3]
 # Независимый эталон таблицы ТЗ0.4 в том же порядке, с явными кодами приложения.
@@ -29,16 +32,18 @@ def test_all_tz_rates_and_existing_notification_alias_are_exact():
         assert by_code[code]["name_ru"] and by_code[code]["name_en"]
         assert isinstance(json.loads(by_code[code]["maps_to"]), dict)
     assert Decimal(by_code["notifications"]["rate_rub"]) == Decimal(EXPECTED["payments"])
-    assert json.loads(by_code["notifications"]["maps_to"]) == {"systems": ["notification_gw"]}
+    assert json.loads(by_code["notifications"]["maps_to"]) == {}
+    assert json.loads(by_code["loyalty"]["maps_to"]) == {}
     assert json.loads(by_code["bank_average"]["maps_to"]) == {"fallback": True}
 
 
-def test_economics_and_bonus_catalog_defaults_are_unchanged():
+def test_tz_economics_default_and_bonus_rules():
     document = yaml.safe_load((ROOT / "data/gifts.yaml").read_text())
     settings = document["economics_settings"]
     assert Decimal(str(settings["detractor_share"])) == Decimal("0.10")
     assert Decimal(str(settings["no_return_share"])) == Decimal("0.50")
     assert settings["fallback_rate_code"] == "bank_average"
+    assert Decimal(str(settings["misselling_case_cost_rub"])) == Decimal("4050")
     assert settings["calibration_mode"] == "manual"
     bonus = next(row for row in document["gift_catalog"] if row["code"] == "bonus_points")
     assert bonus["rule"] == {
@@ -46,3 +51,16 @@ def test_economics_and_bonus_catalog_defaults_are_unchanged():
         "repeat_bonus": 200,
         "cap": 1000,
     }
+
+
+@pytest.mark.parametrize("system", ["notification_gw", "promo_engine", "antifraud", "core_abs", "not_in_rate_table"])
+def test_system_without_tz_rate_uses_average_from_real_catalog(system):
+    with (ROOT / "data/dcltv_rates.csv").open() as handle:
+        rates = [{**row, "maps_to": json.loads(row["maps_to"])} for row in csv.DictReader(handle)]
+    rate = pick_rate(rates, product=None, system=system, channel=None, segment="mass")
+    assert rate.code == "bank_average"
+    assert Decimal(str(rate.rub)) == Decimal("4050")
+    assert "fallback" in rate.reason
+    # Правило приоритета продукта и точная ставка вклада не меняются.
+    deposit = pick_rate(rates, product="deposit", system=system, channel=None, segment="mass")
+    assert deposit.code == "deposit" and Decimal(str(deposit.rub)) == Decimal("961")

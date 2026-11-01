@@ -5,9 +5,11 @@ from __future__ import annotations
 import datetime as dt
 
 import psycopg
+from psycopg.rows import dict_row
 
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import render_template
+from app.economics import dcltv
 from tests.helpers import dsn
 
 
@@ -58,3 +60,43 @@ async def test_seeded_templates_keep_segment_language_and_partner_confirmation(s
             )
         ).fetchall()
         assert rows == [("business_class_discount", True), ("lounge_pass", True), ("restaurant_special", True)]
+
+
+async def test_seeded_financial_defaults_and_customizable_misselling(seeded):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), row_factory=dict_row) as connection:
+        cfg = await dcltv.load_settings(connection)
+        assert cfg["settings"]["misselling_case_cost_rub"] == 4050
+        for system in ("notification_gw", "promo_engine", "antifraud", "core_abs"):
+            rate = dcltv.pick_rate(cfg["rates"], product=None, system=system, channel=None, segment="mass")
+            assert rate.code == "bank_average" and rate.rub == 4050
+            # ADR-0012: неизвестный продукт использует среднюю даже при известном канале.
+            anonymous = dcltv.pick_rate(
+                cfg["rates"], product=None, system=system, channel="chat", segment="mass", unknown_product_average=True
+            )
+            assert anonymous.code == "bank_average" and anonymous.rub == 4050
+        run = await (
+            await connection.execute(
+                "insert into sim_runs(kind,label,seed,started_sim) values ('free','T015 financial review',42,'2026-11-01T06:00Z') returning id"
+            )
+        ).fetchone()
+        incident = await (
+            await connection.execute(
+                """insert into incidents(run_id,title,incident_type,team_code,complexity,criticality,priority,status,created_by,created_sim,sla_due_sim,take_due_sim)
+               values (%s,'T015 financial review','misselling','team_compliance','easy','low',4,'new','scenario','2026-11-01T06:00Z','2026-11-02T06:00Z','2026-11-01T08:00Z') returning id""",
+                (run["id"],),
+            )
+        ).fetchone()
+        result = await dcltv.compute_incident(connection, incident["id"])
+        assert result["rate_code"] == "misselling_case"
+        assert result["rate_rub"] == result["potential_loss_rub"] == 4050
+        stored = await (
+            await connection.execute(
+                "select rate_rub, potential_loss_rub from incident_economics where incident_id=%s", (incident["id"],)
+            )
+        ).fetchone()
+        assert stored["rate_rub"] == stored["potential_loss_rub"] == 4050
+        # ADR-0012/0013 сохраняют настраиваемую стоимость; новый default её не фиксирует навсегда.
+        await connection.execute("update economics_settings set misselling_case_cost_rub=%s where id=1", (7777,))
+        customized = await dcltv.compute_incident(connection, incident["id"])
+        assert customized["rate_rub"] == customized["potential_loss_rub"] == 7777
+        await connection.rollback()

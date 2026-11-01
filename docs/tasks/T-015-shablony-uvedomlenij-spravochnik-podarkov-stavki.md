@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `in_progress` |
+| Статус | `review` |
 
 ## Цель
 Тексты коммуникаций по сегментам и каналам, подарки, ставки калькулятора.
@@ -49,6 +49,23 @@ pytest backend/tests/unit/test_templates.py backend/tests/unit/test_rates.py
 - Существующий YAML каталог сохраняется: проверена эквивалентность всех его subject/body строгому Jinja rendering с полным набором переменных. Полная матрица9 кодов×12 канонических каналов×7 сегментов×2 языков и fallback push/sms/social_reply/tracking_page проверена без расширения channel enum/FK. Эти четыре legacy delivery-name не являются каноническими каналами текущего контракта.
 - Проверены Decimal значения30 исходных ставок ТЗ0.4 без потери долей копейки; CSV дополнительно сохраняет существующий notifications alias. Маппинг ставок и economics_settings не менялись.
 
-Незавершённая финансовая граница (требует согласования): ТЗ14.4 указывает misselling_case_cost_rub=4050, в gifts.yaml25000; notification_gw/promo_engine должны использовать bank_average4050, текущий CSV привязывает их к292.005/373.005. До сверки последних решений/ADR и согласования эти поля сохранены. Предложение точечного diff подготовлено отдельно и не включено в рабочие изменения. Карточка не объявляется done.
+Финансовая граница вынесена в отдельный последующий review commit: только
+`misselling_case_cost_rub: 25000 → 4050` и удаление привязок notification_gw /
+promo_engine к notifications / loyalty. Все 30 исходных ставок и alias сохранены,
+формулы, HITL и лимиты не менялись. ТЗ §14.4 / §20.3 и DDL default явно задают
+4050; ADR-0012/0013 сохраняют настраиваемый механизм, не задавая числового 25000.
+Трактовка ADR требует явного подтверждения человека **до merge**. Подробные
+основания, точный эффект, риск повторного seed и откат описаны в
+[финансовом review](../T015-FINANCIAL-REVIEW.md). Production не изменялся,
+автоматического reseed/исторического пересчёта нет; карточка не объявляется done.
+
+Проверки финансового proposal: 14 адресных unit и 2 PostgreSQL tests проходят;
+реальная cx_t015_catalogs подтверждает seeded default 4050, fallback систем,
+сохранённый расчёт стоимости мисселлинга и работающую ручную настройку 7777.
+Полный unit suite после proposal: 775 passed / 18 skipped за 21.42s.
+Ruff/format (319 файлов), mypy (242 source files), contracts (44 схемы/161 путь)
+и OpenAPI drift (191/191) — success. Тесты используют только собственный scratch
+DSN, mock LLM и свою worktree. Первоначальная SQL fixture была исправлена под
+обязательные sla_due_sim/take_due_sim; финальный PostgreSQL запуск зелёный.
 
 Проверки: адресные unit и настоящая PostgreSQL-регрессия на отдельной cx_t015_catalogs проходят; PostgreSQL проверяет seed, ru/en×4 основных сегмента, fallback и partner rule. Ruff/format/mypy проходят. Полный unit suite собственного worktree: 770 passed / 18 skipped (37 новых unit-тестов); адресная PostgreSQL-регрессия: 1 passed. contracts_check:44 схемы/161 путь, ruff/format/mypy и git diff --check — success. Полный CI/merge выполняет основной агент.

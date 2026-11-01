@@ -11,5 +11,5 @@ economics_settings:
   retention_factors: {closed_in_sla_with_gift: 1.0, closed_in_sla: 0.9, closed_late: 0.5, closed_with_regression: 0.3, open: 0.0, rejected: 0.0, churned: 0.0}
   calibration_mode: manual
   fallback_rate_code: bank_average
-  misselling_case_cost_rub: 25000
+  misselling_case_cost_rub: 4050
   map_zone_thresholds: {green_max: 0.33, yellow_max: 0.66, critical_count_red: 1}
