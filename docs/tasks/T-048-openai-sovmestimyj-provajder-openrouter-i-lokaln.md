@@ -58,3 +58,8 @@ Gap-ревизия: четыре существующих части уже бы
 - `licenses_check.py --write` и свежесть inventory — успешно, 530 distributions. `git diff --check` — успешно.
 
 Логи: `/tmp/t048-targeted-final.log`, `/tmp/t048-lint.log`, `/tmp/t048-full-test.log`, `/tmp/t048-unit-final.log`, `/tmp/t048-integration-final.log`. Сводка: `/tmp/t048-verification-report.json`. Реальные LLM/Telegram/email не вызывались. Budget policy и предлагаемый bounded egress должны пройти отдельный review; CI и реальные smoke логи ещё не получены.
+
+
+## Одобренный live smoke, 2026-11-02
+
+После явного согласования пользователя PR159 выполнен один bounded запуск:5/6HTTP,3фиксированные модели, max_output_tokens128. Результат:1bad_output и2unavailableHTTP404; успешный structured ответ не подтверждён. Actual tokens/USD неизвестны, не считаются0. Повторных запусков/замен нет. Подробности и safeJSON: `docs/reviews/T-048-live-smoke.md`, `docs/reviews/T-048-live-smoke-result.json`. Ранние записи «не вызывались» выше описывают этап до этого согласования. Карточка остаётся in_progress до актуализации каталога T-047 и положительной live-проверки; schema/guard не ослаблены.

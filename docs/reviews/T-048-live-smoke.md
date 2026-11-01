@@ -1,6 +1,6 @@
 # T-048 — конкретные границы предлагаемого LLM egress
 
-Не запускалось. До запуска требуется согласование внешней передачи и возможного расхода.
+Одобренный пользователем bounded запуск выполнен 2026-11-02; результат и ограничения зафиксированы ниже. Повторный запуск/замена моделей не разрешены этим отчётом.
 
 Команда из `backend`: `.venv/bin/python -m app.llm.live_smoke --run`.
 
@@ -12,4 +12,15 @@
 - Ключ — только из существующего `OPENROUTER_API_KEY`. Вывод содержит ID моделей, ok/error kind/status, число запросов и известные токены; не содержит ключей, raw outputs и URL. Debug-логи SDK отключены внутри CLI.
 - Политика budget из `T-048-budget-policy.md` сохраняется. Поскольку owl-alpha не имеет суффикса :free, требуется известный бюджет/usage. Приложение не утверждает, что все три ID сейчас бесплатны или доступны. Максимум output tokens не ограничивает размер input tokens; prompt фиксирован, schema — из репозитория.
 
-Границы проверены unit tests на MockTransport. Реальный smoke трёх моделей/его лог всё ещё отсутствуют; DoD живого smoke не закрыт.
+Границы проверены unit tests на MockTransport. Успешный live smoke трёх моделей не подтверждён; DoD живого smoke не закрыт.
+
+
+## Фактический результат одобренного запуска, 2026-11-02
+
+Пользователь явно согласовал для PR159 «Политику и ограниченный live smoke». Выполнен ровно один существующий CLI на commit92a235f (runtime CLI/provider/budget byte-identical d0fb457), без изменений настроек и кода. Configuration source — canonical `.env` без вывода; read-only budget scalar settings.llm — из выделенной scratch `cx_openai_revision`. Данные клиентов/операций из БД не читались и не отправлялись.
+
+Exit1; выполнено5HTTPизмаксимум6;3фиксированныхmodel IDs; max_output_tokens128 на completion. `nvidia/nemotron-3-ultra-550b-a55b:free` — `bad_output`; `openrouter/owl-alpha` — `unavailable`,HTTP404; `openai/gpt-oss-120b:free` — `unavailable`,HTTP404. Schema не ослаблялась. Замен моделей, повторного запуска или обхода budget guard не было.
+
+Actual tokens/actual USD при этих ошибках CLI не сообщил: расход неизвестен и не объявляется нулевым. Дополнительные HTTP-запросы ради учёта расходов не выполнялись. Очищенный машиночитаемый результат: `T-048-live-smoke-result.json`; stdout первоначального запуска — `/tmp/t048-approved-live-smoke.json`, stderr пуст. Ключи/headers/raw model outputs в tracked отчёт не включены.
+
+Это диагностика внешнего code path, не успешная приёмка всех трёх моделей. Нужна актуализация доступного каталога T-047 и отдельное согласование нового bounded запуска; карточка T-048 остаётся in_progress.
