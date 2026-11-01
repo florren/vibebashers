@@ -213,6 +213,31 @@ async def test_auth_error_is_one_http_no_inference(tmp_path):
     assert len(calls) == 1
 
 
+@pytest.mark.parametrize(
+    "status,text,kind",
+    [
+        (400, "Cannot decode Authorization", "auth"),
+        (403, "quota exhausted", "quota"),
+        (400, "token limit exceeded", "quota"),
+    ],
+)
+async def test_sanitized_errors_keep_auth_and_quota_classification(tmp_path, status, text, kind):
+    calls, inner = handler(lambda *_: httpx.Response(status, text=text + SECRET))
+    code, report = await br.record(future_plan(), settings(), tmp_path / "record", inner=inner)
+    assert code == 1 and report["error"] == kind and len(calls) == 2
+    assert SECRET not in (tmp_path / "record/provenance.json").read_text()
+
+
+@pytest.mark.parametrize("body", [[], {"choices": []}, {"choices": [{"message": {"content": 123}}]}])
+async def test_malformed_success_is_explicit_failure_without_zero_usage_claim(tmp_path, body):
+    response = body if isinstance(body, list) else chat_response({}, **body)
+    calls, inner = handler(lambda *_: httpx.Response(200, json=response))
+    code, report = await br.record(future_plan(), settings(), tmp_path / "record", inner=inner)
+    assert code == 1 and report["error"] == "bad_output" and len(calls) == 2
+    assert report["usage_unknown"] is isinstance(body, list)
+    assert not (tmp_path / "record/gigachat.jsonl").exists()
+
+
 @pytest.mark.parametrize("usage", [None, {}, {"prompt_tokens": True, "completion_tokens": 1, "total_tokens": 2}])
 async def test_unknown_usage_is_not_zero_and_blocks_second_call(tmp_path, usage):
     plan = future_plan()

@@ -19,7 +19,7 @@ import httpx
 from app.config import Settings, get_settings
 from app.contracts.registry import deref
 from app.llm.base import LLMProfile, ProviderError
-from app.llm.gigachat import JSON_INSTRUCTION, GigaChatProvider, schema_for_model
+from app.llm.gigachat import JSON_INSTRUCTION, GigaChatProvider, _bad_authorization, schema_for_model
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.tls import context as tls_context
 from app.replay.store import CassetteStore, request_hash
@@ -182,8 +182,18 @@ class BoundedTransport(httpx.AsyncBaseTransport):
             self.halted = True
             self.usage_unknown = self.inference > len(self.usage)
             # upstream error не должен отражать credentials в logger провайдера.
-            return httpx.Response(response.status_code, json={"error": "bounded_upstream_failure"}, request=request)
+            marker = "bounded_upstream_failure"
+            if _bad_authorization(response.status_code, response.text):
+                marker = "authorization"
+            elif response.status_code == 403 and "quota" in response.text.lower():
+                marker = "quota"
+            elif response.status_code == 400 and "token" in response.text.lower() and "limit" in response.text.lower():
+                marker = "token limit"
+            return httpx.Response(response.status_code, json={"error": marker}, request=request)
         body = response.json()
+        if not isinstance(body, dict):
+            self.halted = True
+            raise ProviderError("bad_output", "invalid_upstream_json_object")
         if url == OAUTH_URL:
             token = body.get("access_token")
             if not isinstance(token, str) or not token:
@@ -210,6 +220,16 @@ class BoundedTransport(httpx.AsyncBaseTransport):
             if any(secret and secret in json.dumps(body, ensure_ascii=False) for secret in self.secrets):
                 self.halted = True
                 raise ProviderError("bad_output", "upstream_secret_reflection")
+            choices = body.get("choices")
+            if (
+                not isinstance(choices, list)
+                or not choices
+                or not isinstance(choices[0], dict)
+                or not isinstance(choices[0].get("message"), dict)
+                or not isinstance(choices[0]["message"].get("content"), str)
+            ):
+                self.halted = True
+                raise ProviderError("bad_output", "invalid_upstream_choices")
         return response
 
     async def aclose(self) -> None:

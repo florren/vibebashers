@@ -53,3 +53,6 @@ make cassettes-record SCENARIO=qr_fee_public_review
 ## Ревизия schema freshness и bounded записи, 2026-11-02
 
 Карточка переоткрыта: T014 prefix9 меняет actual instant_decision schema/hash, поэтому старый реальный response нельзя rekeyed под новый request. Подготовлен отдельный `python -m app.replay.bounded_record --dry-run`; фиксированный synthetic replay_bank_v1/v1.1, одна модель GigaChat-3-Pro, не более1OAuth+2inference=3HTTP,16000 input chars/1024 output tokens на запрос. Новый ответ — только в отдельный staging, старые кассеты неизменны; unknown cost/usage не считаются0. Подробный human egress plan: `docs/reviews/T-198-bounded-record.md`. Targeted unit68 passed; live не разрешён/не выполнялся. Нужны concrete contract review и отдельное разрешение bounded запуска; DoD обновлённой live-кассеты пока не закрыт.
+
+
+Итог подготовки: ordinary merge T014 `a33b552`; target hash `9c3165dd136da8c44a1d7a12f9e8efef634cda375fb015f3435373e4f8abe903`. Safe full-input plan: `docs/reviews/T-198-bounded-record-plan.json`. Targeted 139 passed; полный unit 930 passed/18 skipped; lint/frontend 144 / coverage 92% / licenses 526 прошли. Real OAuth/inference 0. Contract и bounded Giga egress ещё не согласованы; новую кассету/strict replay DoD не отмечаем выполненными. Порядок миграции с сохранением old cassette bytes описан в review.
