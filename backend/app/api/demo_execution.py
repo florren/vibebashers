@@ -113,6 +113,7 @@ async def start_demo(request: Request, body: DemoExecutionBody) -> Any:
                 status="running" if sim.clock.running else "paused",
                 team_outcome=body.team_outcome,
                 emulate_humans=body.emulate_humans,
+                error=None,
             )
             await save(conn, rid, config)
         return await get_demo_execution(request)

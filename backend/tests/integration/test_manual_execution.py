@@ -106,6 +106,107 @@ async def test_manual_employee_and_final_with_bank_paused_after_error(seeded, mo
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.parametrize("outcome", ["on_time", "late", "no_work", "failed", "recovered"])
+async def test_manual_team_outcomes_without_global_sla_tick(seeded, monkeypatch, outcome):
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    app = create_app()
+    svc = app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
+    sim = app.state.sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    app.state.llm_chain, app.state.llm_profile = svc.chain, svc.profile
+    request = Request({"type": "http", "app": app, "headers": []})
+    body = DemoExecutionBody(mode="simulation", team_outcome=outcome, emulate_humans=True, auto_advance=True)
+    try:
+        await post_demo_execution(request, body)
+        rid = sim.run_id
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            cid = (
+                await (
+                    await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+                ).fetchone()
+            )[0]
+            cfg = await configuration(conn, rid)
+            cfg.update(enabled=False, status="error", error="ToolError")
+            await save(conn, rid, cfg)
+        saved = await post_demo_execution(request, body)
+        assert saved["run_id"] == rid and saved["configuration"]["error"] is None
+        assert saved["configuration"]["status"] == "paused"
+        result = await post_signals(
+            request,
+            SignalCreate(
+                channel_code="chat",
+                client_id=cid,
+                text="Не открывается история операций по карте в мобильном приложении: экран зависает и появляется ошибка",
+            ),
+        )
+        before = sim.clock.sim_time
+        for _ in range(36):
+            if svc._inflight:
+                await asyncio.gather(*list(svc._inflight))
+            await cycle(app)
+        success = outcome in ("on_time", "late", "recovered")
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            iid, status = await (
+                await conn.execute(
+                    "select i.id,i.status from incidents i join incident_signals x on x.incident_id=i.id where x.signal_id=%s",
+                    (result["signal_id"],),
+                )
+            ).fetchone()
+            assert status == ("closed" if success else "escalated")
+            notices = await (
+                await conn.execute(
+                    "select template_code,body from notifications where signal_id=%s and recipient_type='client' "
+                    "and template_code in ('resolved','demo_unresolved') and status='sent' order by id",
+                    (result["signal_id"],),
+                )
+            ).fetchall()
+            assert len(notices) == (2 if outcome == "recovered" else 1)
+            if outcome == "recovered":
+                assert notices[0][0] == "demo_unresolved" and "вернёмся к вам" in notices[0][1]
+            template, text = notices[-1]
+            assert template == ("resolved" if success else "demo_unresolved")
+            if not success:
+                assert "больше времени" in text and "вернёмся к вам" in text and "устранена" not in text
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from tasks where incident_id=%s and kind='gift' and status='done' "
+                            "and payload ? 'issued'",
+                            (iid,),
+                        )
+                    ).fetchone()
+                )[0] == 0
+            if outcome in ("failed", "recovered"):
+                transitions = await (
+                    await conn.execute(
+                        "select from_status,to_status from incident_status_history where incident_id=%s order by id",
+                        (iid,),
+                    )
+                ).fetchall()
+                assert ("fix_proposed", "in_progress") in transitions
+                assert ("in_progress", "escalated") in transitions
+            agent = await (
+                await conn.execute("select outcome from agent_runs where id=%s", (result["agent_run_id"],))
+            ).fetchone()
+            assert agent[0] == ("completed" if success else "deferred")
+        await cycle(app)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            assert (
+                await (
+                    await conn.execute(
+                        "select count(*) from notifications where signal_id=%s and template_code=%s",
+                        (result["signal_id"], template),
+                    )
+                ).fetchone()
+            )[0] == 1
+        assert not sim.clock.running and sim.clock.sim_time == before
+    finally:
+        await svc.stop()
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
 @pytest.mark.parametrize("already_accepted", [False, True])
 async def test_related_bulk_review_is_in_manual_chain_but_unrelated_review_is_not(
     seeded, monkeypatch, already_accepted

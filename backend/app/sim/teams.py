@@ -396,6 +396,11 @@ class TeamEmulator:
         reason: str,
     ) -> None:
         cur = current
+        if target == "escalated" and cur in ("fix_proposed", "fix_deployed", "verifying"):
+            # На локальном времени ручного обращения общий SLA-тик не выполняется.
+            # Неудачную попытку возвращаем в работу перед штатной эскалацией.
+            await update_incident(ctx, incident_id, "in_progress", "попытка не устранила проблему: возврат в работу")
+            cur = "in_progress"
         if cur == "escalated" and target not in STATUS_TRANSITIONS.get("escalated", set()):
             await update_incident(ctx, incident_id, "in_progress", "возврат в работу после эскалации SLA")
             cur = "in_progress"

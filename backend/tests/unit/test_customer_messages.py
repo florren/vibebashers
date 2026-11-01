@@ -14,7 +14,7 @@ def test_rejection_is_customer_facing(lang):
 
 
 @pytest.mark.parametrize("lang", ["ru", "en"])
-@pytest.mark.parametrize("resolved,late", [(True, False), (True, True), (False, True)])
+@pytest.mark.parametrize("resolved,late", [(True, False), (True, True), (False, True), (False, False)])
 def test_outcome_copy(lang, resolved, late):
     body = outcome_text(lang, resolved=resolved, late=late)
     assert not any(
@@ -24,6 +24,9 @@ def test_outcome_copy(lang, resolved, late):
     assert ("устранена" in body if lang == "ru" else "has been resolved" in body) == resolved
     assert ("остаётся открытым" in body if lang == "ru" else "remains open" in body) == (not resolved)
     assert not any(s in body.lower() for s in ("баллов", "подарок", "bonus points", "refund"))
+    if not resolved:
+        assert "больше времени" in body if lang == "ru" else "more time" in body
+        assert "вернёмся к вам" in body if lang == "ru" else "get back to you" in body
     if late and resolved:
         assert "больше времени" in body if lang == "ru" else "longer than promised" in body
 
