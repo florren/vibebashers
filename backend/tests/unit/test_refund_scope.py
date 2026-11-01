@@ -241,3 +241,48 @@ async def test_legacy_mass_without_structured_count_requires_fresh_approval():
     with pytest.raises(nodes.MassRefundApprovalRequired, match="legacy_mass_snapshot_missing"):
         await nodes.act(state, deps)
     conn.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("method", ["online", "transfer"])
+def test_transfer_hint_selects_operation_type_not_payment_method(method):
+    transfer = {**OP, "op_type": "transfer", "method": method}
+    norm = {"entities": {"product": "debit_card", "operation_hint": "transfer"}}
+    assert scope.routing_operations([OP, transfer], norm) == [transfer]
+    assert scope.case_operations([OP, transfer], norm) == [transfer]
+
+
+@pytest.mark.parametrize("hint,system", [("notification", "notification_gw"), ("login", "web_bank")])
+async def test_nonfinancial_hint_preserves_diagnostic_context_without_refund_authority(hint, system):
+    diagnostic = {**OP, "operation_id": 11, "op_type": "transfer", "system_path": [system]}
+    qr = {**OP, "system_path": ["processing", "core_abs"]}
+    from app.contracts.registry import deref, validate
+    from app.llm.base import LLMProfile
+    from app.llm.mock import MockProvider
+
+    norm, _, _ = await MockProvider().complete_structured(
+        [{"role": "user", "content": "Ошибка, не приходят уведомления"}],
+        deref("agent/normalization"),
+        LLMProfile(code="mock", provider="mock", model="mock-1"),
+        timeout_s=8,
+    )
+    norm["entities"] = {"product": "debit_card", "operation_hint": hint}
+    assert not validate(norm, "agent/normalization")
+    assert scope.routing_operations([qr, diagnostic], norm) == [diagnostic]
+    assert scope.case_operations([qr, diagnostic], norm) == []
+    assert scope.refund_candidates([qr, diagnostic], norm, TEXT, RULE)[0] == []
+    with pytest.raises(ValidationError):
+        scope.OperationSelector.model_validate({"system_path": ["invented_system"]})
+
+
+async def test_mock_normalization_never_invents_operation_hint_for_unknown_topic():
+    from app.contracts.registry import deref
+    from app.llm.base import LLMProfile
+    from app.llm.mock import MockProvider
+
+    obj, _, _ = await MockProvider().complete_structured(
+        [{"role": "user", "content": "Здравствуйте, уточните, пожалуйста"}],
+        deref("agent/normalization"),
+        LLMProfile(code="mock", provider="mock", model="mock-1"),
+        timeout_s=8,
+    )
+    assert obj["entities"].get("operation_hint") is None

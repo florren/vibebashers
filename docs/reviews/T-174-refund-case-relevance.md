@@ -37,3 +37,20 @@ Retry возобновления выбирает полный wait_human checkp
 ## Проверки массового enforcement
 
 Границы49/50/51 проверены на graph/ledger:49 — прежний автономный путь;50/51 — wait_human без refund до approval. После accept выполняется ровно один собственный refund54.72 и одна mass_refund manual_review; повторный resume не дублирует проводку, баланс или задачу. Pure tests проверяют отсутствие DB effects для всех пяти узлов при пропущенном approval, late scan на пороге50 и безопасный отказ legacy snapshot без count. Targeted unit129 passed; полный набор фиксируется ниже после завершения.
+
+## Совместимость, риск и rollback
+
+Публичные API/DB contracts и миграции не менялись. Финансовые лимиты, threshold50 и права accept/modify/reject/delegate сохранены. Меняется автономное поведение: неоднозначный/несвязанный fee claim не получает financial matched; checkpoint с устаревшим scope или неизвестным legacy mass count безопасно отказывает вместо продолжения денежных эффектов. Это может потребовать новой обработки и повторного human review для старых paused run.
+
+Snapshot mass count сохраняет основание уже принятого решения; он не является разрешением массово заплатить всем участникам cohort. После accept/modify выполняется собственный подтверждённый refund, остальные остаются manual_review/HITL. Новые формулировки и новые денежные rule codes требуют review metadata, иначе автономный refund не выбирается.
+
+Rollback — обычный revert commits финансового пакета и deployment предыдущей версии приложения, без изменения схемы и без автоматического удаления ledger/tasks/HD. Ранее созданные денежные проводки не отменяются этим diff; их финансовая коррекция требует отдельного решения и штатной процедуры. Откат возвращает прежнюю ошибочную границу claim/mass, поэтому безопаснее временно остановить обработку затронутых cases до исправления, чем переигрывать их автономно. Перед merge обязателен human financial review всего конкретного diff.
+
+
+## Routing context отдельно от финансового права
+
+Полный прогон выявил собственную регрессию selectors: `transfer` ошибочно сравнивался с `method=transfer`, исключая валидный `op_type=transfer,method=online`. Данные исправлены на отбор по op_type; исходные assertions сценариев02/06 сохранены. Диагностика использует отдельный `routing_operations` и data-driven overrides notification/login по system_path; значения проверяются существующим generated System enum. Финансовый `case_operations` по-прежнему запрещает notification/login и не получает право refund от диагностических фактов.
+
+MockProvider в фактическом normalization output опускает необязательный operation_hint (unknown), а не генерирует произвольный enum. Это закреплено unit test; ненужного изменения Mock/runtime API нет. Добавлены pure tests transfer/online и transfer/transfer, notification/login diagnostic context без financial authority, invalid system; negative graph case notification с реально присутствующей QR fee не должен создавать refund/issued gift. Targeted pure suite:135 passed.
+
+Адресная DB-проверка после исправления routing selector:53 passed (весь `test_scenarios.py`, финансовые regressions/customer/scenario8); дополнительно2 passed для явных contract-valid notification/login hints с QR fee. Исходные assertions сценариев02/06 не менялись. `make lint` прошёл: Ruff, format329, mypy244, frontend144, OpenAPI191/191.
