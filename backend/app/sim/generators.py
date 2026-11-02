@@ -156,7 +156,8 @@ class World:
         self.active_faults: list[dict[str, Any]] = []
         self.pending: list[PendingSignal] = []
         self.error_codes: dict[str, dict[str, Any]] = {}
-        self.textgen = TextGen(rng.randrange(1 << 30))
+        # Текст и мир разделяют сохраняемый sim_state.rng_state; второго RNG нет.
+        self.textgen = TextGen(rng)
         self.scale = 1.0
         self.team_emulator = TeamEmulator(rng, conn, bus, run_id)
         self.sla_engine = SlaEngine(conn, bus, run_id)
