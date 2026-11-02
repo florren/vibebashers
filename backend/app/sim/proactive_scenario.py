@@ -443,10 +443,17 @@ async def case(conn: psycopg.AsyncConnection[Any], run_id: int) -> Case | None:
         raise ScriptedScenarioError("inconsistent_evidence")
     journal = await rows(
         conn,
-        "select id,event_type,payload,sim_time from sim_events where run_id=%s and left(event_type,%s)=%s order by id",
+        "select id,event_type,payload,sim_time,correlation_id from sim_events where run_id=%s and left(event_type,%s)=%s order by id",
         (run_id, len(PREFIX), PREFIX),
     )
     events: dict[str, dict[str, Any]] = {}
+    timeline = Case(spec, record, [], {})
+    expected_at = {
+        "prepared": record.at,
+        "notified": timeline.initial_at,
+        "complaints": timeline.complaints_at,
+        "completed": timeline.observed_at,
+    }
     for entry in journal:
         payload = entry["payload"]
         kind = entry["event_type"].removeprefix(PREFIX)
@@ -457,6 +464,9 @@ async def case(conn: psycopg.AsyncConnection[Any], run_id: int) -> Case | None:
             or payload.get("fault_id") != record.payload["fault_id"]
             or payload.get("scenario_id") != spec.id
             or kind in events
+            or entry["correlation_id"] != record.correlation_id
+            or (kind != "failed" and entry["sim_time"] != expected_at.get(kind))
+            or entry["sim_time"] < record.at
             or (kind != "prepared" and payload.get("prepared_event_id") != record.id)
         ):
             raise ScriptedScenarioError("inconsistent_evidence")
@@ -497,3 +507,10 @@ async def validate_step(
     pair = (before, target)
     if pair not in expected or (expected[pair] is not None and expected[pair] not in context.events):
         raise ScriptedScenarioError("phase_clock_changed")
+
+
+async def ready_for_service(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime) -> bool:
+    context = await case(conn, run_id)
+    if context is None:
+        return True
+    return at >= context.initial_at and "failed" not in context.events

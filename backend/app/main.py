@@ -94,7 +94,9 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
     """Создаёт только runtime-компоненты, которыми владеет lifespan."""
     with app.state.maintenance.bind():
         if "agent" in components:
-            app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
+            app.state.agent = AgentService(
+                app.state.llm_chain, app.state.llm_profile, sim=getattr(app.state, "sim", None)
+            )
             app.state.agent.enabled = getattr(app.state, "maintenance_agent_enabled", True)
             sim = getattr(app.state, "sim", None)
             if sim is not None:

@@ -1981,7 +1981,7 @@ export interface paths {
         put?: never;
         /**
          * Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)
-         * @description Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409.
+         * @description Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409. Сценарий6 mass_notifications — scripted/deferred: проверка actual cohort/consents до нового run (409 insufficient_cohort/consents), native prepared source и paused часы, затем bounded journal phases без inject3. Для journal-owned run Resume/step/jump/reset отклоняются409; Stop/новый run доступны. Только native interrupted AR из его journal восстанавливается по существующему strict checkpoint, без обхода awaiting_human/pinned profiles. Failed AR требует ручного разбора. Lite не обещает120 подходящих клиентов.
          */
         post: {
             parameters: {
@@ -2009,7 +2009,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Запущен */
+                /** @description Запущен (scripted — paused) */
                 202: {
                     headers: {
                         [name: string]: unknown;
@@ -2017,7 +2017,8 @@ export interface paths {
                     content: {
                         "application/json": {
                             run?: components["schemas"]["SimRun"];
-                            client_id?: number;
+                            /** @description null для internal service anchor, без вымышленного клиента */
+                            client_id?: number | null;
                         };
                     };
                 };

@@ -36,7 +36,7 @@
 
 ## Как проверить
 ```bash
-make scenario ID=mass_notif
+make scenario ID=mass_notifications
 ```
 
 ## Отчёт субагента
@@ -78,3 +78,15 @@ concurrency/account/audit/ABS проверки зелёные. [Доказате
 null/not_modelled; cancellation provenance proposal, customer aggregate composition,
 итоговые full/coverage/CI и financial/HITL/API25 human review ещё необходимы.
 Статус всей T039 остаётся in_progress, критерии не объявляются закрытыми.
+
+### Scripted scenario candidate
+
+Production YAML/API/worker теперь используют prepared_native и bounded typed
+phase journal вместо inject3. Native120/≥90доfirst/30links/care подтверждены
+Mock/emulated PG; strict evaluator/unknown delivery/paused recovery и controls
+проверены отдельно, ASGI lite409/demo202 проверены. Lite preflight не подменяет
+cohort, contacts или consents; для120 нужен достаточный demo профиль.
+API25 candidate включает запрет Resume/step/jump/reset для journal-owned run,
+Stop/new-run path и узкую strict paused recovery; mandatory human review впереди.
+Owner receipt B/prevented-by-resolution, final composition/full/coverage/CI ещё
+не завершены; критерии всей задачи остаются unchecked.

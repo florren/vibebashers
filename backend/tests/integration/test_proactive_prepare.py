@@ -22,6 +22,8 @@ def mass_seeded(seeded):
 
 def scenario():
     data = copy.deepcopy(scenarios.get("mass_notifications"))
+    if "script" in data:
+        return data
     data["fault"]["expected_duration_min"] = 90
     data["operation"] = {k: v for k, v in data["inject"][0]["client"]["operation"].items() if k != "error_code"}
     data["script"] = {

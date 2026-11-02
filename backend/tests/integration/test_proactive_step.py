@@ -98,9 +98,7 @@ async def test_prepared_owner_failure_rolls_back_clock_rng_episodes_and_retry(ma
         assert sim.clock.sim_time == record.at and sim.rng.dump_state() == before_rng and sim.stats == before_stats
         async with await psycopg.AsyncConnection.connect(dsn(mass_seeded)) as conn:
             assert (await (await conn.execute("select sim_time from sim_state where id=1")).fetchone()) == (record.at,)
-            assert not await (
-                await conn.execute("select 1 from behavior_runtime where run_id=%s", (run,))
-            ).fetchone()
+            assert not await (await conn.execute("select 1 from behavior_runtime where run_id=%s", (run,))).fetchone()
             assert not await (
                 await conn.execute("select 1 from sim_events where run_id=%s and event_type like 'client.%%'", (run,))
             ).fetchone()

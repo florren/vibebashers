@@ -245,6 +245,10 @@ async def produce(conn: psycopg.AsyncConnection[Any]) -> list[int]:
     if clock is None:
         return []
     _, at = clock
+    from app.sim.proactive_scenario import ready_for_service
+
+    if not await ready_for_service(conn, run_id, at):
+        return []
     faults = await rows(
         conn,
         "select id from faults where run_id=%s and started_sim<=%s "

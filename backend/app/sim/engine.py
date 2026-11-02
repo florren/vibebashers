@@ -8,7 +8,7 @@ import contextlib
 import copy
 import datetime as dt
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psycopg
 
@@ -26,6 +26,9 @@ from app.sim.events import EventBus
 from app.sim.generators import World
 from app.sim.maintenance import start_daemon, writer
 from app.sim.rng import SimRng
+
+if TYPE_CHECKING:
+    from app.sim.proactive_scenario import Plan
 
 log = get_logger(__name__)
 REAL_TICK_S = 0.5
@@ -189,8 +192,33 @@ class Simulator:
 
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
+            await self._reject_scripted_control()
             await self._step_chunk_locked(minutes)
         await self._publish_tick()
+
+    async def _reject_scripted_control(self) -> None:
+        from app.sim.proactive_scenario import prepared
+
+        conn = await self.connect()
+        if self.run_id is not None and await prepared(conn, self.run_id) is not None:
+            await conn.rollback()
+            raise ValueError("Scripted-сценарий владеет часами; дождитесь фаз либо выполните Stop/новый запуск")
+
+    @writer("sim-scripted-prepare")
+    async def prepare_scenario(self, spec: Plan) -> None:
+        from app.sim.proactive_scenario import prepare
+
+        async with self._lock:
+            conn = await self.connect()
+            try:
+                if self.run_id is None:
+                    raise ValueError("Сначала создайте paused scenario run")
+                await self._require_current(conn, lock=False)
+                await prepare(conn, self.run_id, spec)
+                await conn.commit()
+            except BaseException:
+                await conn.rollback()
+                raise
 
     @writer("sim-scripted-step")
     async def prepared_step(self, run_id: int, before: dt.datetime, target: dt.datetime) -> bool:
@@ -408,6 +436,8 @@ class Simulator:
             or self.run_status in ("stopped", "completed", "archived", None)
             or bool(kw.get("label"))
         )
+        if not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
+            await self._reject_scripted_control()
         if (
             self.behavior_policy is not None
             and self.run_id is not None
@@ -564,6 +594,7 @@ class Simulator:
     async def resume_run(self) -> dict[str, Any]:
         """Resume продолжает только последний paused/interrupted, не создаёт новый run."""
         async with self._lock:
+            await self._reject_scripted_control()
             conn = await self.connect()
             row = await (
                 await conn.execute(

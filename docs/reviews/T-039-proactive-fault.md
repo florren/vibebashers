@@ -167,3 +167,60 @@ restart/трёх polls, новый AR автоматически не созда
 Это prerequisite, не успешный production scenario6: API/YAML/phase coordinator,
 scoped paused recovery и evaluator ещё не подключены. Modelled prevention B
 остаётся отдельной owner implementation/review; текущий prevented=null честен.
+
+### Scripted phase coordinator / API25 candidate (ещё без full/CI)
+
+Production YAML теперь содержит `prepared_native`, operation template и timings
+1/0.1/0.1 сим-минуты; параметры p/delay/care/severity, цены/HITL не меняются.
+API проверяет native cohort/consents до нового run; start paused и atomic
+Simulator prepare создают120 native rows, не inject3 и не fake customer.
+AgentService использует тот же proactive daemon: короткая phase TX заканчивается
+ДО Simulator lock/model, а каждый clock step использует прежний atomic kernel.
+Source anchor создаётся только после первого native owner tick. Typed journal
+проверяет hash, correlation/time/refs/native cause; phases не заменяют graph.
+Доставка/30 inputs/care/economics подтверждаются native rows. Notified IDs не
+обрезаются, unknown не ретраится. Native queue failed AR остаётся manual.
+
+Public Resume/step/jump/reset для journal-owned scripted run теперь409;
+Stop/new run доступны. Узкая paused recovery — только same native prepared
+run/fault/journal signal, старый interrupted AR и strict durable checkpoint;
+AR/thread/signal/run match и pending human проверяются до graph. Graph recovery
+сам выбирает pinned profiles, phase/run/time locks отпускаются до модели.
+Missing checkpoint и pending HD сохраняются для ручного разбора, без нового AR,
+уведомлений/ledger или потери human choice. Ordinary paused/free/live unchanged.
+**Эта новая control/recovery/HITL граница входит в final API25 human review,
+прежние approvals её не покрывают.**
+
+Source-qualified evidence: phase/prepare/recovery13PG passed127.94s; отдельные
+новые evaluator/unknown-delivery/control/recovery6PG passed64.04s. Actual ASGI
+API2PG passed16.45s: lite409 не меняет run count/time/RNG/owner, demo202 paused
+native120 без signals/AR/ledger/client identity. Controlled phase proof использует
+существующий synthetic5000-client metadata seed, не обещает lite120 cohort.
+Никакие контакты/consents ради phase proof не редактируются.
+
+Evaluator все обязательные checks требует True, незавершённость/unknown — False;
+CLI ждёт bounded completed/failed journal в existing --wait. Map reuse вызывает
+existing get_map_zones с explicit run_id локально, без HTTP: код producer и
+resolve_run_id/_sim_now SELECT-only, без refresh_economics/write/LLM. Actual
+positive evaluator/map + unchanged incident_economics JSON проверены в6PG.
+Raw AR/tokens/Trace не фильтруются. Prevention пока null/not_modelled — отдельный
+owner B helper/receipt dependency ещё не составлен; отменённый timer не Sent credit.
+
+Откат operational: Stop/new run; уже созданные native факты/решения не удалять и
+не переписывать. Старый strict event consumer не знает новую scenario family;
+rollout согласуется вместе с API25/contracts. Новый nullable client_id описывает
+NULL service anchor. Новых DDL, внешних вызовов, env/registry reads здесь нет.
+Финальные whole lint/test/coverage/composition/CI/receipt B ещё обязательны;
+T039 не объявлена done.
+
+Последний early-customer regression:1PG passed13.84s — настоящий normalizer +
+Mock graph создаёт canonical classification до следующего paused owner tick;
+phase фиксирует early_complaint, не выпускает scripted30 и не продвигает часы.
+Timeline/correlation native journal проверяются вместе с hash/refs.
+
+Whole unit на host:1821 passed/19 skipped49.62s, Ruff/format488files green;
+mypy301 green, contracts46schemas/162paths, own sync-contracts110models и TS
+nullable client_id generated. Первый restricted sandbox unit завис на16 dots,
+остановлен только свой session(exit130); host repeat прошёл без source/test
+изменений для этого зависания. Это обход окружения, не runtime fix.
+Coverage/full PG/scenarios/compliance/front/final composition ещё впереди.

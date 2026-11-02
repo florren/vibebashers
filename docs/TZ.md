@@ -903,6 +903,28 @@ Deferred (3):
 4. «Потенциальный клиент через лендинг или Telegram-бота». Неидентифицированный пользователь (на финале — член жюри по QR-коду в боте) жалуется на отказ в кредитной карте без объяснений → агент запрашивает уточнение через бота/страницу → инцидент в `team_lending` → трекинг-страница и сообщения в боте отражают статусы → финальный ответ.
 5. «Отложенное обращение: ждём данные клиента». Подозрение на мошенничество, агент запросил скриншот, обращение «спит», просыпается по таймеру, эскалация при молчании.
 6. «Массовый сбой уведомлений». `NOTIF-DELAY` затрагивает 120 клиентов в ЮФО → тепловая карта «вспыхивает», агент дедуплицирует 30 жалоб в один инцидент с `mass_impact`, превентивно информирует остальных.
+
+   Воспроизведение T039 — явно scripted/deferred `mass_notifications`: native prepared
+   source из 120 разных actual same-run failed operations, paused atomic clock
+   phases из YAML, один internal service signal с NULL client через normal graph.
+   Preflight проверяет actual cohort/consents; lite может честно вернуть409
+   `insufficient_cohort`/`insufficient_consents`, автоматически менять согласия или
+   повторять клиентов нельзя. Journal хранит bounded refs, не тексты/LLM gold.
+   ≥90 native Sent/delivered должны быть строго до первой жалобы; queued/unknown
+   не доставка. Emulated Sent явно отличается от real Telegram delivery.
+   30 последующих inputs проходят normalizer/graph/HITL и должны иметь actual
+   incident links; unchanged policy не обходится ради сценария. Между phase polls
+   учитываются уже committed canonical complaint receipts, а не только следующий
+   owner tick. Только полностью проверенный completed проходит evaluator;
+   missing/failed/unknown phase — не успех. Prevented-by-resolution требует
+   отдельного modelled receipt; Sent/care/cancelled без provenance не становятся
+   количеством предотвращённых жалоб.
+   Для journal-owned scripted run Resume/step/jump/reset запрещены, Stop/new run
+   доступны. Узкое автоматическое восстановление paused run разрешено только
+   его native journal AR с interrupted marker/строгим checkpoint/сохранёнными
+   profiles; awaiting_human и missing checkpoint ждут ручного разбора. Failed AR
+   автоматически не повторяется. Это согласуемый API25/runtime candidate,
+   окончательное human review требуется до merge.
 7. «Молчаливый уход и регрессия». Клиент psychotype `silent_churner` сегмента salary (Екатеринбург) попадает под `PROC-DOUBLE-DEBIT`, не жалуется, активность по карте падает → агент по сигналу «снижение активности после сбоя» отправляет проактивное уведомление с объяснением и баллами → двойник отвечает `satisfied`; параллельно релиз фикса вызывает `fault.regression` в `notification_gw` → новый инцидент со ссылкой на исходный; второй клиент (`demanding_rational`, premium) не получает ответа в срок → `churn_intent` → `account_closure` → инцидент разбора в `team_cx`, строка в калькуляторе «Факт».
 
 Живые контуры BRD (2) **[BRD]**:
