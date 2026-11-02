@@ -212,12 +212,11 @@ def test_all_current_and_foreign_run(client: TestClient, sql: Any) -> None:
         sql.execute("delete from sim_runs where id=%s", (foreign,))
 
 
-def test_saved_economics_deduplicates_signal_fanout(client: TestClient, sql: Any) -> None:
+def test_saved_economics_deduplicates_signal_fanout(client: TestClient, sql: Any, cabinet_db: str) -> None:
     line = sql.execute("select code from product_lines order by code limit 1").fetchone()[0]
     # Seed намеренно не материализует экономику. Только подготовка fixture явно
     # вызывает реальный producer; проверяемые GET его не вызывают и не пишут.
     import asyncio
-    import os
 
     from psycopg.rows import dict_row
 
@@ -225,7 +224,7 @@ def test_saved_economics_deduplicates_signal_fanout(client: TestClient, sql: Any
 
     async def prepare(ids: list[int]) -> None:
         async with await psycopg.AsyncConnection.connect(
-            os.environ["DATABASE_URL_TEST"].replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+            cabinet_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
         ) as connection:
             for incident_id in ids:
                 result = await compute_incident(connection, incident_id)
@@ -503,10 +502,9 @@ def test_actual_demo_5000_overview_p95_includes_first_get(client: TestClient, sq
 
 @pytest.mark.parametrize("manual", [True, False])
 def test_compliance_manual_preset_and_automatic_unknown_preserve_legacy_labels(
-    client: TestClient, sql: Any, manual: bool
+    client: TestClient, sql: Any, manual: bool, cabinet_db: str
 ) -> None:
     import asyncio
-    import os
 
     from psycopg.rows import dict_row
 
@@ -542,7 +540,7 @@ def test_compliance_manual_preset_and_automatic_unknown_preserve_legacy_labels(
 
             async def acknowledge() -> None:
                 async with await psycopg.AsyncConnection.connect(
-                    os.environ["DATABASE_URL_TEST"].replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+                    cabinet_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
                 ) as connection:
                     service = ComplianceService(
                         connection,
@@ -652,7 +650,7 @@ def test_customer_fact_actual_projection_retains_legacy_null_without_weakening_d
 
 
 def test_service_anchor_is_not_customer_evidence_but_real_incident_and_trace_remain(
-    client: TestClient, sql: Any
+    client: TestClient, sql: Any, cabinet_db: str
 ) -> None:
     row = sql.execute("""select s.id,s.origin,s.client_id,s.channel_code,s.product_line_code
         from signals s where s.product_line_code is not null
@@ -674,7 +672,6 @@ def test_service_anchor_is_not_customer_evidence_but_real_incident_and_trace_rem
         (incident[0], sid),
     )
     import asyncio
-    import os
 
     from psycopg.rows import dict_row
 
@@ -682,7 +679,7 @@ def test_service_anchor_is_not_customer_evidence_but_real_incident_and_trace_rem
 
     async def materialize_fixture() -> None:
         async with await psycopg.AsyncConnection.connect(
-            os.environ["DATABASE_URL_TEST"].replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+            cabinet_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
         ) as conn:
             assert await compute_incident(conn, incident[0]) is not None
 
