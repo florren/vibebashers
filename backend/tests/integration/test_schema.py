@@ -25,7 +25,30 @@ def alembic(*args: str, url: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_current_head_and_84_public_tables(conn, migrated_db) -> None:
+BEHAVIOR_TABLES = {
+    "behavior_runs",
+    "behavior_runtime",
+    "behavior_evidence",
+    "behavior_causes",
+    "behavior_work",
+    "behavior_receipts",
+    "behavior_tick_receipts",
+    "behavior_agent_intents",
+    "behavior_pending_signals",
+}
+
+
+def assert_behavior_tables(conn):
+    actual = {
+        row[0]
+        for row in conn.execute(
+            "select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name like 'behavior_%'"
+        )
+    }
+    assert actual == BEHAVIOR_TABLES
+
+
+def test_current_head_and_93_public_tables(conn, migrated_db) -> None:
     assert (
         conn.execute("select version_num from alembic_version").fetchone()[0]
         == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
@@ -33,7 +56,8 @@ def test_current_head_and_84_public_tables(conn, migrated_db) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 84
+    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert_behavior_tables(conn)
     views = {r[0] for r in conn.execute("select table_name from information_schema.views where table_schema='public'")}
     assert {
         "v_tickets",
@@ -65,7 +89,8 @@ def test_migrations_sql_are_idempotent(conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 84
+    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert_behavior_tables(conn)
 
 
 def test_alembic_check_no_drift(migrated_db) -> None:
@@ -109,13 +134,16 @@ def test_downgrade_0003_and_upgrade_again(migrated_db, conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 74
+    # Forward-only0017 сохраняет ровно9 таблиц; прежние74 проверяются отдельно.
+    assert n == 74 + len(BEHAVIOR_TABLES)
+    assert_behavior_tables(conn)
     r = alembic("upgrade", "head", url=migrated_db)
     assert r.returncode == 0, r.stderr[-1500:]
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 84
+    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert_behavior_tables(conn)
 
 
 def test_pg_trgm_and_public_id_columns(conn, migrated_db) -> None:
@@ -143,7 +171,8 @@ def test_downgrade_0004_and_upgrade_again(migrated_db, conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 79
+    assert n == 79 + len(BEHAVIOR_TABLES)
+    assert_behavior_tables(conn)
     missing = conn.execute(
         """
         select count(*) from information_schema.columns
@@ -173,7 +202,8 @@ def test_downgrade_0005_and_upgrade_again(migrated_db, conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 79
+    assert n == 79 + len(BEHAVIOR_TABLES)
+    assert_behavior_tables(conn)
     views = {r[0] for r in conn.execute("select table_name from information_schema.views where table_schema='public'")}
     assert "v_signal_normalized" not in views
     assert conn.execute("select channel_code from signals where id = %s", (signal_id,)).fetchone()[0] == "csi_survey"
