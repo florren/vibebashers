@@ -142,6 +142,12 @@ async def create_run(
                 ),
             )
             run_id = int((await cur.fetchone())[0])  # type: ignore[index]
+        if kind in ("free", "scenario"):
+            from app.sim.behavior.runtime import configured_policy, prepare_run
+
+            policy = configured_policy()
+            if policy is not None:
+                await prepare_run(conn, run_id, sim_time, policy)
         await conn.execute("update sim_state set current_run_id = %s, updated_at = now() where id = 1", (run_id,))
         await conn.execute(
             "select pg_notify('runs', %s)",

@@ -439,6 +439,12 @@ async def test_proposal_snapshot_guard_and_current_state_unique(behavior_db: str
 async def test_proposal_refuses_legacy_duplicate_currents_without_deleting_them(seeded: str) -> None:
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run, client, now, raw, operations = await prepare(conn)
+        # Actual0017 уже установлена fixture; воспроизводим старую0016 boundary
+        # только внутри откатываемой scratch TX, сохраняя прежние assertions.
+        await conn.execute("drop index behavior_client_states_current_key")
+        await conn.execute(
+            "drop table behavior_runs,behavior_pending_signals,behavior_agent_intents,behavior_runtime,behavior_evidence,behavior_causes,behavior_work,behavior_receipts,behavior_tick_receipts cascade"
+        )
         for _ in range(2):
             await conn.execute(
                 "insert into client_states(run_id,client_id,state,since_sim,trigger) values(%s,%s,'waiting',%s,'timer')",

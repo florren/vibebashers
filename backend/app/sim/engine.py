@@ -18,6 +18,9 @@ from app.logging import get_logger
 from app.realtime.hub import hub
 from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
+from app.sim.behavior.owner import BehaviorOwner
+from app.sim.behavior.policy import DemoPolicy
+from app.sim.behavior.runtime import capture, configured_policy, prepare_run
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
@@ -30,10 +33,11 @@ MAX_BATCH_MIN = 60.0  # за один тик генерируем не боль�
 
 
 class Simulator:
-    def __init__(self, seed: int = 42, dsn: str | None = None) -> None:
+    def __init__(self, seed: int = 42, dsn: str | None = None, *, behavior_policy: DemoPolicy | None = None) -> None:
         self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
         self.after_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
         self.full_execution = False
+        self.behavior_policy = behavior_policy if behavior_policy is not None else configured_policy()
         self.seed = seed
         self.dsn = dsn
         self.clock = SimClock(sim_time=dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK))
@@ -131,6 +135,7 @@ class Simulator:
                 self.rng,
                 self.run_id,
                 old.intensities if old is not None else getattr(self, "_intensities", None),
+                behavior_policy=self.behavior_policy,
             )
             if old is not None:
                 self.world.pending = old.pending
@@ -170,8 +175,41 @@ class Simulator:
 
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
-            world = await self._ensure_world()
             conn = await self.connect()
+            if (
+                self.behavior_policy is not None
+                and self.run_id is not None
+                and self.run_status not in ("completed", "stopped", "archived")
+            ):
+                try:
+                    await conn.execute("select id from sim_state where id=1 for update")
+                    if self.run_status == "interrupted":
+                        raise ValueError("Прерванный behavior run сначала нужно возобновить")
+                    # До _ensure_world: legacy отказ не меняет даже memory cache.
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, self.behavior_policy)
+                except BaseException:
+                    await conn.rollback()
+                    raise
+            world = await self._ensure_world()
+            if self.behavior_policy is not None:
+                assert self.run_id is not None
+                try:
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, self.behavior_policy)
+                    row = await (
+                        await conn.execute(
+                            "select current_run_id,sim_time,rng_state from sim_state where id=1 for update"
+                        )
+                    ).fetchone()
+                    if (
+                        row is None
+                        or row[0] != self.run_id
+                        or row[1] != self.clock.sim_time
+                        or (row[2] is not None and row[2] != self.rng.dump_state())
+                    ):
+                        raise ValueError("Behavior tick owner устарел: загрузите актуальные time/run/RNG")
+                except BaseException:
+                    await conn.rollback()
+                    raise
             t0 = self.clock.sim_time
             day_before = self.clock.day_no
             rng_before = self.rng.dump_state()
@@ -193,6 +231,16 @@ class Simulator:
                 await world.sla_engine.tick(t0, self.clock.sim_time)
                 self.stats["ticks"] += 1
                 await self.persist()
+                if self.behavior_policy is not None:
+                    assert self.run_id is not None
+                    await capture(conn, self.run_id)
+                    owner = BehaviorOwner(conn, self.behavior_policy)
+                    next_rng = await owner.advance(
+                        run_id=self.run_id, to_sim=self.clock.sim_time, allow_paused=self.run_status == "paused"
+                    )
+                    self.rng.load_state(next_rng)
+                    self.stats["signals"] += owner.generated_signals
+                    await self.persist()
                 await conn.commit()
             except BaseException as error:
                 # Любая незафиксированная попытка отменяется вместе с logical
@@ -201,7 +249,14 @@ class Simulator:
                 self.clock.day_no = day_before
                 self.rng.load_state(rng_before)
                 self.stats = stats_before
-                restored = World(conn, EventBus(conn), self.rng, world.run_id, world.intensities)
+                restored = World(
+                    conn,
+                    EventBus(conn),
+                    self.rng,
+                    world.run_id,
+                    world.intensities,
+                    behavior_policy=self.behavior_policy,
+                )
                 restored.pending = pending_before
                 restored.active_faults = faults_before
                 self.world = restored

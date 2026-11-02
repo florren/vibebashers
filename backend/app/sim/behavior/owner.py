@@ -20,7 +20,6 @@ from psycopg.types.json import Jsonb
 
 from app.contracts.enums import ClientState
 from app.contracts.events.behavior.psychotype_params import PsychotypeParams
-from app.feed import service as feed_service
 from app.ingest.normalizer import create_signal
 from app.sim.behavior.care import CareComponents, CareContext, CareObservation, CareState, SlaEvidence, evaluate_care
 from app.sim.behavior.codec import dump_care, load_care
@@ -56,8 +55,11 @@ class BehaviorOwner:
             raise ValueError("behavior state потерял владение is_current; требуется reconciliation")
         return current
 
-    async def advance(self, *, run_id: int, to_sim: dt.datetime) -> dict[str, Any]:
+    async def advance(self, *, run_id: int, to_sim: dt.datetime, allow_paused: bool = False) -> dict[str, Any]:
         self.store.require_transaction()
+        self.generated_signals = 0
+        if not isinstance(allow_paused, bool):
+            raise ValueError("allow_paused должен быть явным bool")
         positive_ids(run_id)
         if not isinstance(to_sim, dt.datetime) or to_sim.utcoffset() is None:
             raise ValueError("нужен aware sim_time")
@@ -68,7 +70,7 @@ class BehaviorOwner:
             or state["current_run_id"] != run_id
             or run is None
             or run["kind"] not in ("free", "scenario")
-            or run["status"] != "running"
+            or (run["status"] != "running" and not (allow_paused and run["status"] == "paused"))
         ):
             raise ValueError("behavior advance требует текущий running free/scenario run")
         async with self.conn.cursor(row_factory=tuple_row) as cursor:
@@ -452,21 +454,8 @@ class BehaviorOwner:
         if result["status"] != "accepted":
             raise ValueError("behavior complaint не принят normalizer; TX должна быть отменена")
         signal_id = result["signal_id"]
+        self.generated_signals += 1
         await self.conn.execute("update signals set lang=%s where id=%s", (generated.gold["language"], signal_id))
-        if channel in feed_service.PLATFORM_BY_CHANNEL:
-            post = await feed_service.create_post(
-                self.conn,
-                run_id=current["run_id"],
-                platform=feed_service.PLATFORM_BY_CHANNEL[channel],
-                author_nick=f"@sim_client_{current['client_id']}",
-                text=generated.text,
-                posted_sim=at,
-                origin="background",
-                author_client_id=current["client_id"],
-                match_confidence=1.0,
-                signal_id=signal_id,
-            )
-            await self.conn.execute("update signals set external_post_id=%s where id=%s", (post["id"], signal_id))
         if current["first_complaint_sim"] is None:
             await self.conn.execute(
                 "update behavior_runtime set first_complaint_sim=%s,next_hazard_sim=%s where run_id=%s and client_id=%s",

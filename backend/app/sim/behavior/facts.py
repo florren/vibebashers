@@ -40,14 +40,27 @@ async def related(
 ) -> bool:
     found = await rows(
         conn,
+        "with recursive lineage as ("
+        "select s.id,s.parent_signal_id,s.source_operation_id,s.source_fault_id,array[s.id] path,1 depth from signals s "
+        "where s.run_id=%s and s.client_id=%s and (s.id=%s or exists(select 1 from incident_signals x join incidents i on i.id=x.incident_id "
+        "where x.signal_id=s.id and i.id=%s and i.run_id=s.run_id)) union all "
+        "select p.id,p.parent_signal_id,p.source_operation_id,p.source_fault_id,l.path||p.id,l.depth+1 "
+        "from lineage l join signals p on p.id=l.parent_signal_id where p.run_id=%s and p.client_id=%s and l.depth<64 and not p.id=any(l.path)) "
         "select 1 from behavior_causes b where b.run_id=%s and b.client_id=%s and b.episode_no=%s and ("
-        "exists(select 1 from signals s where s.id=%s and s.run_id=b.run_id and s.client_id=b.client_id "
-        "and (s.source_operation_id=b.operation_id or (b.fault_id is not null and s.source_fault_id=b.fault_id))) "
-        "or exists(select 1 from incidents i where i.id=%s and i.run_id=b.run_id and ("
-        "(b.fault_id is not null and i.fault_id=b.fault_id) or exists(select 1 from incident_signals x join signals s on s.id=x.signal_id "
-        "where x.incident_id=i.id and s.run_id=b.run_id and s.client_id=b.client_id and (s.source_operation_id=b.operation_id "
-        "or (b.fault_id is not null and s.source_fault_id=b.fault_id)))))) limit 1",
-        (current["run_id"], current["client_id"], current["episode_no"], signal_id, incident_id),
+        "exists(select 1 from lineage s where s.source_operation_id=b.operation_id or (b.fault_id is not null and s.source_fault_id=b.fault_id)) "
+        "or exists(select 1 from incidents i where i.id=%s and i.run_id=b.run_id and b.fault_id is not null and i.fault_id=b.fault_id)) limit 1",
+        (
+            current["run_id"],
+            current["client_id"],
+            signal_id,
+            incident_id,
+            current["run_id"],
+            current["client_id"],
+            current["run_id"],
+            current["client_id"],
+            current["episode_no"],
+            incident_id,
+        ),
     )
     return bool(found)
 

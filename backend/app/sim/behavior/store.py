@@ -174,9 +174,10 @@ class BehaviorStore:
         return inserted is not None
 
 
-async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> None:
+async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> bool:
     """Callback TwinService: тот же commit сохраняет observation и durable evidence."""
     await BehaviorStore(conn).enqueue_twin(run_id=run_id, reaction_id=reaction_id)
+    return True
 
 
 async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent) -> int:

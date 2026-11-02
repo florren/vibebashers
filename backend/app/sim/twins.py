@@ -35,7 +35,7 @@ class TwinService:
         chain: ProviderChain,
         profile: LLMProfile,
         *,
-        behavior_sink: Callable[[psycopg.AsyncConnection[Any], int, int], Awaitable[None]] | None = None,
+        behavior_sink: Callable[[psycopg.AsyncConnection[Any], int, int], Awaitable[bool]] | None = None,
     ) -> None:
         self.chain, self.profile = chain, profile
         # Включается только coherent behavior wiring; standalone legacy пока сохранён.
@@ -280,9 +280,8 @@ class TwinService:
                 )
             ).fetchone()
             assert reaction_row is not None
-            if self.behavior_sink is not None:
-                await self.behavior_sink(conn, run_id, int(reaction_row["id"]))
-            else:
+            handled = self.behavior_sink is not None and await self.behavior_sink(conn, run_id, int(reaction_row["id"]))
+            if not handled:
                 await conn.execute(
                     "update client_states set care_score=%s where client_id=%s and run_id=%s and is_current",
                     (obj["satisfaction"], client_id, run_id),

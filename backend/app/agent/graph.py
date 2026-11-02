@@ -112,6 +112,10 @@ async def load_deps(
         chain, profile = await run_profiles(
             conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
         )
+    if state_evidence_sink is None and not dry_run:
+        from app.sim.behavior.runtime import state_sink
+
+        state_evidence_sink = await state_sink(conn, run_id)
     ctx = ToolContext(
         conn,
         run_id=run_id,

@@ -103,7 +103,13 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
             else:
                 app.state.agent.start()
         if "twins" in components:
-            app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
+            from app.sim.behavior.runtime import configured_policy, twin_sink
+
+            app.state.twins = TwinService(
+                app.state.llm_chain,
+                app.state.llm_profile,
+                behavior_sink=twin_sink if configured_policy() is not None else None,
+            )
             app.state.twins.start()
         if "poll" in components:
             from app.ingest.sources import polling_worker
