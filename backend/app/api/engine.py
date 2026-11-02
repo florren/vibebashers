@@ -14,6 +14,8 @@ from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
 from app.search.cases import entity_filter
+from app.trace.privacy import mask
+from app.trace.store import read_db
 
 router = APIRouter(tags=["engine"])
 
@@ -253,11 +255,12 @@ async def get_engine_entity_graph(
     return {"nodes": nodes, "edges": edges}
 
 
-# T-108: только чтение. Имена не подставляются в SQL вне этого множества.
+# T-108: имена/SQL выражения выбираются исключительно из этого закрытого каталога.
 DB_ALLOW = frozenset(
     {
         "signals",
         "incidents",
+        "incident_signals",
         "incident_status_history",
         "notifications",
         "tasks",
@@ -269,80 +272,154 @@ DB_ALLOW = frozenset(
         "faults",
     }
 )
-_CONTACT_KEYS = frozenset({"phone", "email", "contacts", "contact", "contacts_hint"})
+_SENSITIVE = frozenset(
+    {
+        "phone",
+        "email",
+        "contacts",
+        "contact",
+        "contacts_hint",
+        "authorization",
+        "password",
+        "secret",
+        "token",
+        "tracking_token",
+        "api_key",
+        "encrypted_key",
+        "prompt",
+        "response_raw",
+        "reasoning",
+        "input",
+        "output",
+        "tool_calls",
+    }
+)
+
+
+def _mask_value(value: Any, key: str = "") -> Any:
+    name = key.lower()
+    if name in _SENSITIVE or any(part in name for part in ("password", "secret", "token", "api_key", "phone", "email")):
+        return None
+    if isinstance(value, dict):
+        return {k: _mask_value(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask_value(v) for v in value]
+    if isinstance(value, str):
+        return mask(value, limit=10000)
+    return value
 
 
 def _mask_row(row: dict[str, Any]) -> dict[str, Any]:
-    out = dict(row)
-    for key in list(out):
-        if key in _CONTACT_KEYS or key.endswith("_phone") or key.endswith("_email"):
-            out[key] = None
-    return out
+    return {key: _mask_value(value, key) for key, value in row.items()}
+
+
+def _table_source(name: str) -> tuple[str, str, str]:
+    if name in ("incident_status_history", "incident_signals"):
+        return (
+            f"{name} t join incidents parent on parent.id=t.incident_id",
+            "parent.run_id",
+            "t.incident_id desc,t.signal_id" if name == "incident_signals" else "t.id",
+        )
+    if name == "agent_steps":
+        return "agent_steps t join agent_runs parent on parent.id=t.run_id", "parent.sim_run_id", "t.id"
+    return (
+        f"{name} t",
+        "t.sim_run_id" if name == "agent_runs" else "t.run_id",
+        "t.incident_id" if name == "incident_economics" else "t.id",
+    )
+
+
+async def _db_scope(conn: Any, run_id: str) -> list[int] | None:
+    if run_id not in ("current", "all") and (
+        not run_id.isascii() or not run_id.isdigit() or len(run_id) > 18 or int(run_id) <= 0
+    ):
+        raise HTTPException(422, "run_id: current | all | positive integer")
+    rid = await resolve_run_id(conn, run_id)
+    if run_id == "all":
+        return None
+    if rid is not None and not await fetch_one(conn, "select id from sim_runs where id=%s", (rid,)):
+        raise HTTPException(404, "запуск не найден")
+    baseline = await fetch_all(conn, "select id from sim_runs where kind='baseline'")
+    return [int(row["id"]) for row in baseline] + ([rid] if rid is not None else [])
 
 
 @router.get("/api/engine/db/tables", summary="Счётчики строк по таблицам (реальное время)")
-async def get_engine_db_tables(request: Request) -> Any:
-    async with db() as conn:
-        last = await fetch_all(
+async def get_engine_db_tables(run_id: str = "current") -> Any:
+    async with read_db() as conn:
+        scope = await _db_scope(conn, run_id)
+        stats = await fetch_all(
             conn,
-            "select table_name, max(ts) as last_change_at from db_activity_log where table_name = any(%s) group by table_name",
+            "select relname,n_live_tup from pg_stat_user_tables where schemaname='public' and relname=any(%s)",
             (list(DB_ALLOW),),
         )
-        exact: dict[str, int] = {}
+        estimates = {row["relname"]: int(row["n_live_tup"]) for row in stats}
+        changes = await fetch_all(
+            conn,
+            "select table_name,max(ts) as ts from db_activity_log where table_name=any(%s) and (%s::bigint[] is null or run_id=any(%s)) group by table_name",
+            (list(DB_ALLOW), scope, scope),
+        )
+        last = {row["table_name"]: row["ts"] for row in changes}
+        result = []
         for name in sorted(DB_ALLOW):
-            row = await fetch_one(conn, f"select count(*)::bigint as rows from {name}")  # noqa: S608 — имя из DB_ALLOW
-            exact[name] = int(row["rows"]) if row else 0
-    last_map = {r["table_name"]: r["last_change_at"] for r in last}
-    return [
-        {
-            "table": name,
-            "rows": exact[name],
-            "last_change_at": last_map[name].isoformat() if name in last_map and last_map[name] else None,
-        }
-        for name in sorted(DB_ALLOW)
-    ]
+            exact = scope is not None or estimates.get(name, 0) < 10000
+            count = estimates.get(name, 0)
+            if exact:
+                source, column, _ = _table_source(name)
+                row = await fetch_one(
+                    conn,
+                    f"select count(*) as n from {source} where (%s::bigint[] is null or {column}=any(%s))",
+                    (scope, scope),
+                )  # noqa: S608
+                count = row["n"] if row else 0
+            result.append({"table": name, "rows": count, "exact": exact, "last_change_at": last.get(name)})
+    return result
 
 
 @router.get("/api/engine/db/tables/{name}/rows", summary="Последние записи таблицы (только чтение, allow-list таблиц)")
 async def get_engine_db_tables_name_rows(
-    request: Request, name: str, limit: int = Query(default=50, ge=1, le=500)
+    name: str, limit: int = Query(default=50, ge=1, le=500), run_id: str = "current"
 ) -> Any:
     if name not in DB_ALLOW:
-        raise HTTPException(status_code=403, detail="таблица вне allow-list")
-    async with db() as conn:
-        rows = await fetch_all(conn, f"select * from {name} order by id desc limit %s", (limit,))  # noqa: S608
-    return [_mask_row(r) for r in rows]
+        raise HTTPException(403, "таблица вне allow-list")
+    source, column, order = _table_source(name)
+    async with read_db() as conn:
+        scope = await _db_scope(conn, run_id)
+        rows = await fetch_all(
+            conn,
+            f"select t.* from {source} where (%s::bigint[] is null or {column}=any(%s)) order by {order} desc limit %s",
+            (scope, scope, limit),
+        )  # noqa: S608
+    return [_mask_row(row) for row in rows]
 
 
 @router.get("/api/engine/db/activity", summary="Лента INSERT/UPDATE/DELETE из db_activity_log")
 async def get_engine_db_activity(
-    request: Request,
     limit: int = Query(default=50, ge=1, le=500),
     cursor: str | None = None,
+    run_id: str = "current",
+    table: str | None = None,
 ) -> Any:
-    where = "true"
-    args: list[Any] = []
-    if cursor:
-        where = "id < %s"
-        try:
-            args.append(int(cursor))
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail="cursor: id") from exc
-    args.append(limit)
-    async with db() as conn:
+    if table is not None and table not in DB_ALLOW:
+        raise HTTPException(403, "таблица вне allow-list")
+    if cursor is not None and (not cursor.isascii() or not cursor.isdigit() or len(cursor) > 18):
+        raise HTTPException(422, "cursor: positive id")
+    async with read_db() as conn:
+        scope = await _db_scope(conn, run_id)
         rows = await fetch_all(
             conn,
-            f"select id, table_name, op, pk, summary, ts from db_activity_log where {where} order by id desc limit %s",
-            args,
+            "select id,run_id,table_name,op,pk,summary,ts from db_activity_log where table_name=any(%s) and (%s::bigint[] is null or run_id=any(%s)) and (%s::bigint is null or id < %s) order by id desc limit %s",
+            (
+                [table] if table else list(DB_ALLOW),
+                scope,
+                scope,
+                int(cursor) if cursor else None,
+                int(cursor) if cursor else None,
+                limit,
+            ),
         )
-    return [
-        {
-            "id": r["id"],
-            "table_name": r["table_name"],
-            "op": r["op"],
-            "pk": r["pk"],
-            "summary": r["summary"],
-            "ts": r["ts"].isoformat() if r["ts"] else None,
-        }
-        for r in rows
-    ]
+    # Legacy summary может содержать произвольные значения: выдаём только имена полей.
+    for row in rows:
+        raw = row["summary"] or {}
+        fields = raw.get("changed_fields")
+        row["summary"] = {"changed_fields": [str(key) for key in fields] if isinstance(fields, list) else sorted(raw)}
+    return rows

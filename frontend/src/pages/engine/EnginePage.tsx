@@ -11,12 +11,13 @@ import { fmtDateTime, fmtMs } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, Json, SkeletonRows, Tabs } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { LogPanel } from '@/widgets/LogPanel'
+import { DbActivityTab } from './DbActivityTab'
 import { CompareTab } from './CompareTab'
 import { BenchTab } from './BenchTab'
 import { GraphView } from './GraphView'
 import { QualityTab } from './QualityTab'
 
-type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench' | 'compare'
+type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench' | 'db' | 'compare'
 
 /** Экран 3 «Под капотом» (ТЗ 12.2): список прогонов, шаги с промптами, граф, цепочка решений, живые события WS. */
 export function EnginePage() {
@@ -31,14 +32,14 @@ export function EnginePage() {
   const [onlyCurrent, setOnlyCurrent] = useState(true)
   const runs = useAgentRuns({ q: entityQuery || undefined, run_id: onlyCurrent ? simRunId : 'all', limit: 100 })
   const [params, setParams] = useSearchParams()
-  const tab = (['steps', 'graph', 'chain', 'live', 'quality', 'bench', 'compare'].includes(params.get('tab') ?? '') ? params.get('tab') : 'steps') as Tab
+  const tab = (['steps', 'graph', 'chain', 'live', 'quality', 'bench', 'db', 'compare'].includes(params.get('tab') ?? '') ? params.get('tab') : 'steps') as Tab
   const setTab = (value: Tab) => setParams(previous => { const next = new URLSearchParams(previous); next.set('tab', value); return next })
   const items = runs.data?.items ?? []
   const selectedRun = useAgentRun(runId)
 
   return (
     <div className="page-split flex h-full">
-      {tab !== 'compare' && <aside className="flex w-80 shrink-0 flex-col border-r border-line">
+      {tab !== 'db' && tab !== 'compare' && <aside className="flex w-80 shrink-0 flex-col border-r border-line">
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('engine.runs')}</span>
           <label className="ml-auto flex items-center gap-1 text-muted">
@@ -78,7 +79,7 @@ export function EnginePage() {
         </div>
       </aside>}
       <div className="flex min-w-0 flex-1 flex-col">
-        {tab !== 'compare' && selectedRun.data?.signal_id != null && <div className="px-3 py-2"><JourneyLink reference={`SIG-${String(selectedRun.data.signal_id).padStart(6, '0')}`} /></div>}
+        {tab !== 'db' && tab !== 'compare' && selectedRun.data?.signal_id != null && <div className="px-3 py-2"><JourneyLink reference={`SIG-${String(selectedRun.data.signal_id).padStart(6, '0')}`} /></div>}
         <Tabs
           value={tab}
           onChange={setTab}
@@ -86,6 +87,7 @@ export function EnginePage() {
             { id: 'steps', label: t('engine.steps') },
             { id: 'graph', label: t('engine.graph') },
             { id: 'chain', label: t('engine.chain') },
+            { id: 'db', label: t('db.title') },
             { id: 'live', label: t('engine.live') },
             { id: 'quality', label: t('engine.quality') },
             { id: 'bench', label: t('engine.bench') },
@@ -99,6 +101,7 @@ export function EnginePage() {
           {tab === 'live' && <LiveTab />}
           {tab === 'quality' && <QualityTab />}
           {tab === 'bench' && <BenchTab />}
+          {tab === 'db' && <DbActivityTab />}
           {tab === 'compare' && <CompareTab />}
         </div>
       </div>
