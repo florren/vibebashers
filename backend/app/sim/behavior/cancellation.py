@@ -19,6 +19,9 @@ async def complaint_observation(
 ) -> tuple[dt.datetime | None, bool]:
     """Неизвестный classifier связанного входа не превращается в neutral/ноль."""
     first = current["first_complaint_sim"]
+    # Snapshot относится к запрошенному cutoff; поздний факт остаётся в runtime.
+    if first is not None and first > at:
+        first = None
     complete = True
     signals = await rows(
         conn,

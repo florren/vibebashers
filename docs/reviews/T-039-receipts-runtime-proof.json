@@ -1,14 +1,14 @@
 {
   "changed_runtime_coverage": {
-    "covered": 127,
-    "statements": 136,
-    "percent": 93.38235294117646
+    "covered": 129,
+    "statements": 138,
+    "percent": 93.47826086956522
   },
   "files": {
     "backend/app/sim/behavior/cancellation.py": {
-      "covered_lines": 64,
-      "num_statements": 72,
-      "percent_covered": 88.88888888888889
+      "covered_lines": 66,
+      "num_statements": 74,
+      "percent_covered": 89.1891891891892
     },
     "backend/app/sim/behavior/prevention.py": {
       "covered_lines": 49,
@@ -34,33 +34,76 @@
   "storage_parent": "27a895647b466e93e0ce5004b95337e378c8bb12",
   "runtime_parent": "ab9acf8ac82d9eb00b7fe649445272d26479718b",
   "tests": {
-    "passed": 76,
-    "seconds": 142.69,
-    "log": "/tmp/t039-receipts-runtime-coverage-tests.log"
+    "passed": 79,
+    "seconds": 193.14,
+    "log": "/tmp/t039-receipts-cutoff-coverage-tests.log"
   },
-  "full_regression": "pending",
+  "full_regression": "pending final cutoff + cabinet fixture composition",
   "public_api_version": "1.5.22",
   "final_contract_review_required": true,
   "source_sha256": {
-    "backend/app/sim/behavior/cancellation.py": "e198d88255ebb67f5aaed855233b833364e6418a80bfdf32523f3359de108f81",
-    "backend/app/sim/behavior/prevention.py": "9314e19e1bcdd68f0abb894d4013913ad2b924554c6c854159b1f99d792998f7",
+    "backend/app/sim/behavior/cancellation.py": "0df3bde24d284f60c139e648d50e93900ec9a15bec7423ec8b12aa12f043a3bb",
+    "backend/app/sim/behavior/prevention.py": "f03353baa78f34d211306e95432489129f5dcfb308fa62c23b95e775262eaf80",
     "backend/app/sim/behavior/cancellation_details.py": "0fb0223eff9f688879d01a53f2da7179f6370b216cfd6f8565d4433cde4640ca",
     "backend/app/sim/behavior/owner.py": "a1c3b41bbf2343a2ad9dbc87edc5aa95d2b0b196cbd3af56dffe3b4fcf180fac",
     "backend/app/sim/behavior/signals.py": "b3037b467b8cf1a21211c5f0041685648fab525defebf3275630169e18e2a29e",
     "backend/tests/integration/test_behavior_cancellation_runtime.py": "9ebed70b35877f6c6d47192ca34cd4d13c1f023119cd6fd833977d5cf3f16639",
     "backend/tests/unit/test_behavior_prevention.py": "f51d20b5f47b5f93bb823b405462390c80946978cd908df50e6f0d0a4472db27",
-    "contracts/db/migrations/0019_behavior_cancellation_receipts.sql": "e7ec41700c8dfee7fadd46ddae981dc24d28feb95e0dffb20a3a8beb2bee030f"
+    "contracts/db/migrations/0019_behavior_cancellation_receipts.sql": "e7ec41700c8dfee7fadd46ddae981dc24d28feb95e0dffb20a3a8beb2bee030f",
+    "backend/tests/integration/test_behavior_cancellation_cutoff.py": "b8f9bcd65dc5ccf005d2fdd63c9c06aa82c8dcdaa49384b389456f2733d7b7b7"
   },
   "full_unit": {
     "passed": 1900,
     "skipped": 18,
-    "seconds": 57.0,
-    "log": "/tmp/t039-receipts-full-unit.log"
+    "seconds": 63.91,
+    "log": "/tmp/t039-receipts-cutoff-full-unit.log"
   },
   "checks": {
     "make_sync_contracts": "green; generated110ORM, no tracked delta",
     "make_lint": "green; backend489ruff/307mypy; bot12ruff/5mypy; frontend366vitest/47files; inherited DemoMenu1warning0errors",
     "contracts": "47schemas/163paths; drift193/193",
     "licenses": "550+36 distributions"
+  },
+  "historical_5445": {
+    "source": "5445c6cfe118b7a230fc3011f0ea05319cd3bab4",
+    "tests": {
+      "passed": 76,
+      "seconds": 142.69,
+      "log": "/tmp/t039-receipts-runtime-coverage-tests.log"
+    },
+    "full_unit": {
+      "passed": 1900,
+      "skipped": 18,
+      "seconds": 57.0,
+      "log": "/tmp/t039-receipts-full-unit.log"
+    },
+    "changed_runtime_coverage": {
+      "covered": 127,
+      "statements": 136,
+      "percent": 93.38235294117646
+    },
+    "partial_full_integration": {
+      "passed": 173,
+      "skipped": 1,
+      "errors": 36,
+      "seconds": 958.25,
+      "status": "controlled_SIGINT_after_repeated_setup_errors",
+      "root_cause": "cabinet fixture literal0018 vs actual0019",
+      "log": "/tmp/t039-receipts-full-regression.log"
+    }
+  },
+  "cutoff_regression": {
+    "before": {
+      "failed": 3,
+      "seconds": 18.75,
+      "log": "/tmp/t039-receipts-cutoff-before-v2.log"
+    },
+    "after": {
+      "passed": 65,
+      "seconds": 88.28,
+      "log": "/tmp/t039-receipts-cutoff-after.log"
+    },
+    "independent_db": "cx_receipts_cutoff_revision",
+    "codec_and_DDL19_unchanged": true
   }
 }
