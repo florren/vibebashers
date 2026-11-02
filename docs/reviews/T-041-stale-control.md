@@ -51,3 +51,21 @@ TX rollback и close; неожиданный flush failure логируется 
 Более широкий source-c92 прогон до этого followup:56actualPG passed321.86с,
 включая usage/recovery/process/SIGKILL/team journal. Результат source-qualified;
 после status/shutdown нужен новый adjacent/unit/lint/CI, не перенос старого full green.
+
+### Актуальный расширенный прогон c47
+
+На `c47d2784a3953452a9bc154c9048eae0416cd3cb` повторены runtime/inactive/effect-time,
+usage/resume process, durable team-plan recovery и новые control/shutdown cases:
+**59 passed341.95s**, own `cx_stale_control_revision`, без внешних провайдеров.
+Это новый adjacent native результат после status/shutdown follow-up; старые56
+не перенесены на изменённый engine. Full unit/lint/покрытие и точный CI ещё pending.
+
+Итоговая локальная проверка runtime sourcec47: `make lint` GREEN —367frontend/47files,
+Ruff485/mypy301,bot12/5,drift192/192. Полный `make test-unit`:1866passed/18skipped56.09s.
+Существующие positive controls дополнительно3passed/18deselected41.64s под tracer,
+включая штатный stop/newstart, header/run pause/resume и успешный shutdown.
+Семь новых regression под тем же tracer:7passed44.10s. Coverage нового engine diff
+от parent977: **27/33 (81.82%)**, source hash/строки в
+`T-041-stale-control-coverage.json`. Производительность под tracer не измерялась.
+Полный integration/scenario/compliance/build/remoteCI на exacthead остаётся CI gate;
+нового live smoke не было и этим пакетом не запрашивается.

@@ -56,3 +56,32 @@ pending UI/replay `passed=False` не меняются. Отдельно про�
 (включая14 негативных combinations) и2 actual PG supported-True cases,18.99s.
 Coverage92.59% выше относится к source4a8, новый guard проверен этим follow-up;
 полный backend suite остаётся в ожидании ресурсного окна.
+
+### Root: composition актуального UI/Trace и T041
+
+Обычный merge актуального parent PR19992f68f0 и parentPR200144eda8 сохраняет
+API28 и наследуемые reportAPI26 поля. Переводы объединены strict3-way без потери
+ключей report/CSI. Public `scenarios.evaluate` dispatch сначалаобрабатывает
+scripted source (T039), затем named acceptance (T262), legacy путь сохранён.
+Три прежних acceptance проверки теперь вызывают именно public dispatcher, а не
+private evaluate_native, с теми же assertions. Root corrected target47passed138.76s,
+make lint444frontend/Ruff546/mypy322/bot12/5/drift195, затем16PG115.88s (acceptance,
+classification provenance и actual Trace1/6/8) на предыдущей bounded композиции.
+
+После engine fence c47/parent199 catalog correction: **13passed94.77s** —
+6actual acceptance tests через public dispatcher,6actual stale controls и shutdown
+unit. Source5747428; последующийparent200 merge добавляет только evidence.
+Все пять измеренных modules byte-identicala7:210/225новыхстрок=93.33%,
+[точные hashes/границы](T-262-composed-coverage.json). Enginecoverage — отдельный
+proof PR200, не присваивается T262. Actual backend full/новый точный CI остаются
+обязательны. Pending UI/replay не превращаются в общийpassed.
+
+На runtime2f0aef7 после parent200 дополнительно штатный generic scenario06 и
+actual Trace1/6/8: **2passed/31deselected41.89s**. Shared productionHTTP/journal
+actors, CLI30/outer45 и egress bombs прежние; новые Mock product-line projection/
+classification_store и control fence совместимы с scripted phases и readonlyTrace.
+Private evaluator не подставлялся, assertions не отключались.
+
+Final backend static на этой композиции: Ruff549/mypy322 GREEN,
+contracts48schemas/165paths GREEN. Генератор дважды идемпотентен; финальный
+reviewdiff без unintended source edits. Полный CI, UI/replay остаются pending.
