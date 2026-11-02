@@ -6,7 +6,8 @@ import datetime as dt
 import json
 import math
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -35,7 +36,7 @@ def cold_db(migrated_db: str) -> Iterator[str]:
 
 
 def test_cold_report_preserves_links_without_repeated_scans(
-    cold_db: str, monkeypatch: pytest.MonkeyPatch, record_property: Callable[[str, Any], None]
+    cold_db: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from app.analytics import cabinet_signals
     from app.main import create_app
@@ -63,7 +64,6 @@ def test_cold_report_preserves_links_without_repeated_scans(
                 samples.append((time.perf_counter() - start) * 1000)
                 assert response.status_code == 200
             data = response.json()
-        assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300
         # Все связи и ближайший активный deadline сверяем с native таблицами.
         rows = sql.execute(
             "SELECT x.signal_id,i.id,i.public_id,i.status,i.sla_due_sim FROM incident_signals x "
@@ -105,6 +105,16 @@ def test_cold_report_preserves_links_without_repeated_scans(
             "SELECT last_analyze,last_autoanalyze FROM pg_stat_user_tables WHERE relname='signals'"
         ).fetchone() == (None, None)
 
-        record_property("cold_report_samples_ms", json.dumps(samples))
-        record_property("cold_signal_explain", json.dumps(plan))
-        record_property("cold_signal_stats", "last_analyze=NULL,last_autoanalyze=NULL before and after")
+        (tmp_path / "cold-report-proof.json").write_text(
+            json.dumps(
+                {
+                    "samples_ms": samples,
+                    "signal_explain": plan,
+                    "signal_stats": "last_analyze=NULL,last_autoanalyze=NULL before and after",
+                    "fingerprint_unchanged": True,
+                    "signals": len(data["signals"]),
+                },
+                indent=2,
+            )
+        )
+        assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300
