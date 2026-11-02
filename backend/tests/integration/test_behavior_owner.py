@@ -675,3 +675,119 @@ async def test_gift_credit_requires_actual_done_task_and_matching_sent_offer(beh
             assert (
                 await (await conn.execute("select count(*) from ledger_entries where run_id=%s", (run,))).fetchone()
             ) == (0,)
+
+
+@pytest.mark.asyncio
+async def test_agent_legacy_state_reader_and_writer_keep_baseline_and_foreign_runs(behavior_db: str) -> None:
+    from app.agent.tools.base import ToolContext
+    from app.agent.tools.read import get_client_profile
+    from app.agent.tools.write import set_client_state
+
+    async with await psycopg.AsyncConnection.connect(dsn(behavior_db)) as conn:
+        run, client, now, _, _ = await prepare(conn)
+        baseline = (
+            await (await conn.execute("select id from sim_runs where kind='baseline' order by id limit 1")).fetchone()
+        )[0]
+        foreign = await new_run(conn, "foreign state", kind="scenario")
+        for owner, state in ((baseline, "affected"), (run, "waiting"), (foreign, "churned")):
+            await conn.execute(
+                "insert into client_states(run_id,client_id,state,since_sim,trigger) values(%s,%s,%s,%s,'timer')",
+                (owner, client, state, now),
+            )
+        ctx = ToolContext(conn, run_id=run, agent_run_id=0, sim_time=now)
+        assert (await get_client_profile(ctx, client))["state"] == "waiting"
+        changed = await set_client_state(ctx, client, "complaining", "agent:complaint")
+        assert changed["status"] == "applied" and changed["state"] == "complaining"
+        assert (await get_client_profile(ctx, client))["state"] == "complaining"
+        assert (
+            await (
+                await conn.execute(
+                    "select run_id,state from client_states where client_id=%s and is_current order by run_id",
+                    (client,),
+                )
+            ).fetchall()
+        ) == sorted([(baseline, "affected"), (run, "complaining"), (foreign, "churned")])
+        await conn.execute("update client_states set is_current=false where run_id=%s and client_id=%s", (run, client))
+        assert (await get_client_profile(ctx, client))["state"] == "affected"
+        await conn.rollback()
+
+
+@pytest.mark.asyncio
+async def test_agent_sink_is_pending_atomic_and_never_treats_request_as_closure(behavior_db: str) -> None:
+    from app.agent.tools.base import ToolContext
+    from app.agent.tools.write import set_client_state
+    from app.sim.behavior.store import record_agent_state_intent
+
+    async with await psycopg.AsyncConnection.connect(dsn(behavior_db)) as conn:
+        run, client, now, _, operations = await prepare(conn)
+        async with conn.transaction():
+            store, owner = BehaviorStore(conn), BehaviorOwner(conn, POLICY)
+            await store.enqueue_operation(run_id=run, operation_id=operations[0])
+            await owner.advance(run_id=run, to_sim=now)
+            due = (
+                await (
+                    await conn.execute("select due_sim from behavior_work where run_id=%s and kind='complaint'", (run,))
+                ).fetchone()
+            )[0]
+            await owner.advance(run_id=run, to_sim=due)
+            signal = (await (await conn.execute("select id from signals where run_id=%s", (run,))).fetchone())[0]
+            agent = (
+                await (
+                    await conn.execute(
+                        "insert into agent_runs(kind,sim_run_id,signal_id,client_id,started_sim,prompt_version) values('agent',%s,%s,%s,%s,'synthetic-intent-fixture') returning id",
+                        (run, signal, client, due),
+                    )
+                ).fetchone()
+            )[0]
+            from app.agent.graph import load_deps
+            from tests.helpers import MOCK_PROFILE, mock_chain
+
+            deps = await load_deps(
+                conn,
+                chain=mock_chain(),
+                profile=MOCK_PROFILE,
+                run_id=run,
+                agent_run_id=agent,
+                sim_time=due,
+                state_evidence_sink=record_agent_state_intent,
+            )
+            ctx = deps.ctx
+            assert ctx.conn is conn and ctx.state_evidence_sink is record_agent_state_intent
+            with pytest.raises(RuntimeError, match="rollback graph effect"):
+                async with conn.transaction():
+                    pending = await set_client_state(ctx, client, "churned", "agent:complaint", signal)
+                    assert pending["status"] == "pending" and pending["state"] == "waiting"
+                    raise RuntimeError("rollback graph effect")
+            assert (
+                await (
+                    await conn.execute("select count(*) from behavior_agent_intents where run_id=%s", (run,))
+                ).fetchone()
+            ) == (0,)
+            for request in ("churned", "satisfied", "retained", "churn_intent"):
+                first = await set_client_state(ctx, client, request, "agent:complaint", signal)
+                second = await set_client_state(ctx, client, request, "agent:complaint", signal)
+                assert first == second and first["state"] == "waiting" and first["requested_state"] == request
+            await owner.advance(run_id=run, to_sim=due)
+            assert (await owner.episode(run, client))["state"] == "waiting"
+            assert (await owner.episode(run, client))["closed_sim"] is None
+            # Только actual persisted classification flag подтверждает churn intent.
+            await conn.execute(
+                "update signals set classification=jsonb_build_object('flags',jsonb_build_array('churn_intent')) where id=%s",
+                (signal,),
+            )
+            await set_client_state(ctx, client, "churn_intent", "agent:verified_flag", signal)
+            await owner.advance(run_id=run, to_sim=due)
+            assert (await owner.episode(run, client))["state"] == "churn_intent"
+            from app.sim.runs import create_run
+
+            foreign = await create_run(conn, kind="scenario", label="foreign intent", seed=42, sim_time=due)
+            foreign_ctx = ToolContext(
+                conn, run_id=foreign, agent_run_id=agent, sim_time=due, state_evidence_sink=record_agent_state_intent
+            )
+            with pytest.raises(ValueError, match="не принадлежит"):
+                await set_client_state(foreign_ctx, client, "satisfied", "agent:complaint", signal)
+            assert (
+                await (
+                    await conn.execute("select count(*) from behavior_agent_intents where run_id=%s", (foreign,))
+                ).fetchone()
+            ) == (0,)

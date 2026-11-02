@@ -134,6 +134,8 @@ class BehaviorOwner:
                 await self._sla(evidence, at)
             elif evidence["source_kind"] == "resolution":
                 await self._resolution(evidence, at)
+            elif evidence["source_kind"] == "agent_state":
+                await self._agent_intent(evidence, at)
             else:
                 raise ValueError("неподдерживаемый behavior evidence kind")
         await self.conn.execute("update behavior_evidence set consumed_sim=%s where id=%s", (at, source_id))
@@ -612,3 +614,33 @@ class BehaviorOwner:
             "update behavior_work set status='cancelled',consumed_sim=%s where run_id=%s and client_id=%s and episode_no=%s and status='pending'",
             (at, current["run_id"], current["client_id"], current["episode_no"]),
         )
+
+    async def _agent_intent(self, evidence: Any, at: dt.datetime) -> None:
+        current = await self.episode(evidence["run_id"], evidence["client_id"])
+        if current is None or current["closed_sim"] is not None:
+            return
+        intent = await self.one(
+            "select x.*,s.classification from behavior_agent_intents x join signals s on s.id=x.signal_id "
+            "and s.run_id=x.run_id and s.client_id=x.client_id join agent_runs a on a.id=x.agent_run_id "
+            "and a.sim_run_id=x.run_id and a.signal_id=x.signal_id where x.id=%s and x.run_id=%s and x.client_id=%s",
+            (evidence["source_id"], evidence["run_id"], evidence["client_id"]),
+        )
+        if intent is None or not await related(
+            self.conn, current, signal_id=intent["signal_id"], incident_id=intent["incident_id"]
+        ):
+            return
+        # Requested satisfied/retained/churned не доказывает resolution/closure.
+        # Повтор относится к actual signal/Twin evidence, а не решению агента.
+        flags = (intent["classification"] or {}).get("flags") or []
+        if (
+            intent["requested_state"] == "churn_intent"
+            and "churn_intent" in flags
+            and current["state"] != "churn_intent"
+        ):
+            await self._transition(
+                current,
+                ClientState.CHURN_INTENT,
+                max(at, current["since_sim"]),
+                "agent_reply",
+                links={"signal_id": intent["signal_id"]},
+            )

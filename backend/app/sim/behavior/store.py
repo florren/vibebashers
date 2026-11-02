@@ -13,6 +13,8 @@ import psycopg
 from psycopg.pq import TransactionStatus
 from psycopg.rows import tuple_row
 
+from app.agent.tools.base import ClientStateIntent
+
 
 def positive_ids(*values: int) -> None:
     if any(isinstance(value, bool) or not isinstance(value, int) or value <= 0 for value in values):
@@ -175,3 +177,56 @@ class BehaviorStore:
 async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> None:
     """Callback TwinService: тот же commit сохраняет observation и durable evidence."""
     await BehaviorStore(conn).enqueue_twin(run_id=run_id, reaction_id=reaction_id)
+
+
+async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent) -> int:
+    """Graph TX пишет запрос; actual state меняет только owner после проверки фактов."""
+    from app.contracts.enums import ClientState
+
+    store = BehaviorStore(conn)
+    store.require_transaction()
+    if intent.signal_id is None:
+        raise ValueError("agent state intent требует фактический signal_id")
+    positive_ids(intent.run_id, intent.agent_run_id, intent.client_id, intent.signal_id)
+    ClientState(intent.requested_state)
+    if not isinstance(intent.trigger, str) or not 1 <= len(intent.trigger) <= 128:
+        raise ValueError("agent state trigger должен иметь длину 1..128")
+    if not isinstance(intent.at, dt.datetime) or intent.at.utcoffset() is None:
+        raise ValueError("agent state требует aware sim_time")
+    actual = await store._one(
+        "select s.id from agent_runs a join signals s on s.id=a.signal_id "
+        "where a.id=%s and a.sim_run_id=%s and s.id=%s and s.run_id=%s and s.client_id=%s "
+        "and (a.client_id is null or a.client_id=s.client_id) and s.received_sim<=%s "
+        "and (%s::bigint is null or exists(select 1 from incidents i where i.id=%s and i.run_id=s.run_id "
+        "and (a.incident_id=i.id or exists(select 1 from incident_signals x where x.incident_id=i.id and x.signal_id=s.id))))",
+        (
+            intent.agent_run_id,
+            intent.run_id,
+            intent.signal_id,
+            intent.run_id,
+            intent.client_id,
+            intent.at,
+            intent.incident_id,
+            intent.incident_id,
+        ),
+    )
+    if actual is None:
+        raise ValueError("agent state intent не принадлежит signal/client/run")
+    row = await store._one(
+        "insert into behavior_agent_intents(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger,observed_sim) "
+        "values(%s,%s,%s,%s,%s,%s,%s,%s) on conflict(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger) "
+        "do update set trigger=excluded.trigger returning id",
+        (
+            intent.run_id,
+            intent.agent_run_id,
+            intent.client_id,
+            intent.signal_id,
+            intent.incident_id,
+            intent.requested_state,
+            intent.trigger,
+            intent.at,
+        ),
+    )
+    assert row is not None
+    await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], intent.at)
+    return int(row[0])

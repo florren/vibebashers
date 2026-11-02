@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS behavior_evidence (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
   client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  source_kind text NOT NULL CHECK(source_kind IN ('operation','notification','twin_reaction','sla','resolution')),
+  source_kind text NOT NULL CHECK(source_kind IN ('operation','notification','twin_reaction','sla','resolution','agent_state')),
   source_id bigint NOT NULL CHECK(source_id>0),
   observed_sim timestamptz NOT NULL,
   consumed_sim timestamptz,
@@ -120,4 +120,18 @@ CREATE TABLE IF NOT EXISTS behavior_tick_receipts (
   client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   logical_tick_sim timestamptz NOT NULL,
   PRIMARY KEY(run_id,client_id,logical_tick_sim)
+);
+
+-- Запрос агента хранится отдельно от результата owner; никаких inferred closure.
+CREATE TABLE IF NOT EXISTS behavior_agent_intents (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  agent_run_id bigint NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  signal_id bigint NOT NULL REFERENCES signals(id),
+  incident_id bigint REFERENCES incidents(id),
+  requested_state text NOT NULL CHECK(requested_state IN ('calm','affected','complaining','waiting','asks_again','escalates','satisfied','churn_intent','retained','churned')),
+  trigger text NOT NULL CHECK(length(trigger) BETWEEN 1 AND 128),
+  observed_sim timestamptz NOT NULL,
+  UNIQUE NULLS NOT DISTINCT(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger)
 );

@@ -106,3 +106,34 @@ state ограничен `(run_id,client_id)`, а не глобальным clie
   typed care уже поддерживает unknown с нулевым credit, DB composition впереди.
 
 Карточка остаётся `in_progress`; этот checkpoint не доказывает завершение T-161.
+
+## Follow-up: agent state writer и read scope
+
+По отдельному root signoff реализован opt-in `ToolContext.state_evidence_sink`,
+который передаётся через `graph.load_deps` и использует то же graph connection/TX.
+Он пишет проверяемый intent с реальным AR→signal/run/client/incident provenance;
+не меняет state немедленно. Action trace содержит `status=pending`, requested_state
+и actual state; pending не публикует ложный clients.state NOTIFY. Исключение
+вызывающей transaction откатывает одновременно intent/evidence; повтор dedup-safe.
+
+Legacy UPDATE теперь ограничен `(ctx.run_id,client_id)`; baseline и чужие free/
+scenario/live состояния не очищаются. Profile читает только baseline+ctx, сначала
+ctx, затем baseline. Более новый foreign state больше не подменяет контекст.
+
+Owner не считает requested satisfied/retained/churned фактом resolution/closure.
+Churn-intent допускается только при persisted signal flag и actual cause relation;
+repeat принадлежит actual signal/Twin evidence. Новый review-only intent table
+входит в SQL proposal, но actual schema/0017 по-прежнему не менялись. Callback
+не включён main/AgentService, enabled=false; полная activation/OS-restart proof
+этим follow-up не заявляется. Legacy churn_risk projection не менялась.
+
+193 regression tests passed (82.68 s): прежние 99 pure, owner+новые PG scope/sink,
+router/refund tests. После дополнительных incident-provenance/pending-reasoning
+правок affected 81 passed, 13 deselected (12.47 s), затем полный 193 pass выше.
+Старый coverage JSON привязан к be69825 исходникам; новые changed-line результаты
+публикуются отдельно, а не подменяют предыдущий checkpoint.
+
+Actual graph.load_deps дополнительный PG test passed (8.04 s), подтверждает тот
+же connection и opt-in sink в deps.ctx. Объединение exact-file trace на одном
+runtime source: **105/111 = 94.59%** новых executable lines относительно be69825,
+все затронутые файлы >=90%. [Agent proof JSON](T-161-agent-state-proof.json).

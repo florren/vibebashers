@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 from app.agent import gifts as agent_gifts
-from app.agent.tools.base import ToolContext, ToolError, mask_name, tool
+from app.agent.tools.base import ClientStateIntent, ToolContext, ToolError, mask_name, tool
 from app.sim.events import dumps
 
 STATUS_TRANSITIONS: dict[str, set[str]] = {
@@ -529,15 +529,38 @@ async def set_client_state(
     signal_id: int | None = None,
     incident_id: int | None = None,
 ) -> dict[str, Any]:
+    if ctx.dry_run:
+        raise ToolError("Client state недоступен в сравнении без побочных эффектов")
+    if ctx.state_evidence_sink is not None:
+        evidence_id = await ctx.state_evidence_sink(
+            ctx.conn,
+            ClientStateIntent(
+                ctx.run_id, ctx.agent_run_id, client_id, state, trigger, ctx.sim_time, signal_id, incident_id
+            ),
+        )
+        actual = await ctx.fetchone(
+            "select cs.state from client_states cs join sim_runs sr on sr.id=cs.run_id "
+            "where cs.client_id=%s and cs.is_current and (cs.run_id=%s or sr.kind='baseline') "
+            "order by (cs.run_id=%s) desc,cs.id desc limit 1",
+            (client_id, ctx.run_id, ctx.run_id),
+        )
+        return {
+            "client_id": client_id,
+            "state": actual[0] if actual else "calm",
+            "requested_state": state,
+            "status": "pending",
+            "evidence_id": evidence_id,
+        }
     await ctx.conn.execute(
-        "update client_states set is_current = false where client_id = %s and is_current", (client_id,)
+        "update client_states set is_current=false where client_id=%s and run_id=%s and is_current",
+        (client_id, ctx.run_id),
     )
     await ctx.conn.execute(
         "insert into client_states (run_id, client_id, state, since_sim, trigger, incident_id, signal_id, is_current) values (%s, %s, %s, %s, %s, %s, %s, true)",
         (ctx.run_id, client_id, state, ctx.sim_time, trigger, incident_id, signal_id),
     )
     await ctx.notify("clients", "state", {"client_id": client_id, "state": state, "trigger": trigger})
-    return {"client_id": client_id, "state": state}
+    return {"client_id": client_id, "state": state, "requested_state": state, "status": "applied"}
 
 
 __all__ = [
