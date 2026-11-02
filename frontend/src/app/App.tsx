@@ -1,8 +1,7 @@
-import { useTranslation } from 'react-i18next'
 import { OverviewPage } from '@/pages/overview/OverviewPage'
 import { ReportPage } from '@/pages/cabinet/ReportPage'
 import { CabinetPage } from '@/pages/cabinet/CabinetPage'
-import { PendingScreen, WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
+import { WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
 import { DeviceLayoutRuntime } from '@/shared/layout/device'
 import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
@@ -35,7 +34,6 @@ function OperatorRuntime() {
 }
 
 export function App() {
-  const { t } = useTranslation()
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
   return (
     <QueryClientProvider client={qc}>
