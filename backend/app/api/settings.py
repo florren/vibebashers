@@ -519,11 +519,16 @@ async def get_llm_keys() -> Any:
     async with db() as conn:
         items = await load_keys(conn, reveal=not get_settings().is_test)
         if await _refresh_openai_balances(items):
-            for item in items:
-                await conn.execute(
-                    "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
-                    (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
-                )
+            # Existing provider metadata refresh also changes RPD configuration;
+            # serialize it with admission/config snapshots, without extra HTTP.
+            async with conn.transaction():
+                await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+                for item in items:
+                    await conn.execute(
+                        "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
+                        (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
+                    )
+                items = await accounting.attach_public_observations(conn, items)
     public = await _with_openrouter_env_key(_mask_keys(items))
     env_card = next((item for item in public if item.get("id", 0) < 0), None)
     if env_card is not None:

@@ -309,6 +309,20 @@ class PostgresAccounting:
                     "legacy_tokens_hint": account["legacy_tokens_hint"],
                     "prior_usage_known": account["usage_known"],
                 }
+                async with conn.cursor(row_factory=dict_row) as hints:
+                    await hints.execute(
+                        "select k.id,k.requests_today,k.requests_day from llm_api_keys k "
+                        "join llm_runtime.credential_aliases a on a.config_uid=k.credential_uid where a.credential_uid=%s order by k.id",
+                        (scope.uid,),
+                    )
+                    audit["legacy_daily_hints"] = [
+                        {
+                            "key_id": row["id"],
+                            "requests_today": row["requests_today"],
+                            "requests_day": row["requests_day"].isoformat() if row["requests_day"] else None,
+                        }
+                        for row in await hints.fetchall()
+                    ]
                 now = await _utc_now(conn)
                 if as_of > now or as_of.date() != now.date():
                     raise AdmissionRefused("quota", "as_of должен относиться к текущим UTC суткам и не быть будущим")
