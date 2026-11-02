@@ -76,7 +76,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
-        <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}{v2 && sim?.phase ? ` · ${t(`sim.phase.${sim.phase}`)}` : ''}{v2 && sim?.current_run_id != null && <> · <RunLabel id={sim.current_run_id} /></>}</span>
+        <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}{v2 && sim?.phase ? ` · ${t(`sim.phase.${sim.phase}`)}` : ''}{v2 && sim?.current_run_id != null ? ` · #${sim.current_run_id}` : ''}</span>
         <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{v2 && wsStatus === 'open' ? `${t('shell.live')} · ` : ''}{t(`sim.status.${runStatus ?? 'none'}`)}</span>
       </div>
     </header>
@@ -94,6 +94,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         </div>
         <section className="space-y-2" aria-label={t('sim.clock')}>
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
+          {v2 && sim?.current_run_id != null && <p className="break-words font-mono text-xs"><RunLabel id={sim.current_run_id} /></p>}
           <div className="flex flex-wrap gap-2">
             <button className="btn" disabled={ctl.isPending} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
             <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>

@@ -58,12 +58,13 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(page.getByRole('tab', { name: lang === 'ru' ? 'Шаги' : 'Steps', exact: true })).toBeVisible()
       await page.getByRole('navigation', { name: navName }).getByRole('link', { name: lang === 'ru' ? 'Финансовый эффект' : 'Financial impact', exact: true }).click()
       await expect(page).toHaveURL(/\/finance$/)
-      for (const width of [1920, 1440, 1024, 768, 360]) {
+      for (const width of [1920, 1440, 1024, 768, 360, 320]) {
         const height = width === 1024 ? 768 : 900
         await page.setViewportSize({ width, height })
         await page.goto('/workspace?tab=signals')
         await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
         const nav = page.getByRole('navigation', { name: navName })
+        if (width <= 360) expect(await page.locator('header').first().evaluate(el => el.clientHeight)).toBeLessThanOrEqual(100)
         if (width >= 1024) await expect(nav).toBeVisible()
         else {
           await expect(nav).toHaveCount(0)
