@@ -30,9 +30,9 @@
 4. Группы веера раскрываются по клику; режим хранится в URL; производительность — до 300 узлов без деградации (виртуализация/кластеры).
 
 ## Критерии приёмки
-- [ ] Граф строится для сценариев 1, 6, 8; клик по узлу центрирует след.
-- [ ] Нет мигания и внешних ресурсов; доступность с клавиатуры.
-- [ ] Режим можно отключить без потери остальных.
+- [x] Граф строится для сценариев 1, 6, 8; клик по узлу центрирует след.
+- [x] Нет мигания и внешних ресурсов; доступность с клавиатуры.
+- [x] Режим можно отключить без потери остальных.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -42,7 +42,12 @@ cd frontend && npx playwright test e2e/trace-graph.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-234-trace-graph`, T-234 / `contract-change`. Producer: полное read-only keyset-раскрытие N, optional actual group anchor/phase, OpenAPI 1.5.16 и generated TS/Pydantic. Обоснование, совместимость, измерения и human-review gate — `docs/reviews/T-234-trace-fanout-contract.md`. 38 новых unit/PG passed; покрытие fanout.py 98,65%; p95 страницы50 при10001 связях 123,96 мс, peak258278B. Legacy include/detail и defaultall существующего Trace сохранены; новый endpoint defaultcurrent. SVG/UI и полный DoD ещё в работе; критерии приёмки не закрыты.
+Ветка `codex/T-234-trace-graph`; `cross-layer` согласован пользователем. Contract-change OpenAPI 1.5.16 требует human review до merge. Реализован собственный SVG без новых зависимостей: реальные фазы/рёбра, шесть форм и иконок, directed terminal path, visited/static ring/minimap, клавиатура, responsive accordion 400 мс и URL mode/focus/run scope. Columns сохранён. Все N веера доступны страницами по 50 с actual anchor/phase; основной SVG виртуализирован, старые страницы не накапливаются в cache/DOM. Неизвестные узлы не придумываются, для скрытого родителя есть явная подсказка и ссылка на его след. Новый endpoint default `current`, существующий Trace default `all` и `include=detail` сохранены.
 
+Проверки:
+- Полный composed `make test` до bounded ref guard: backend **1406 passed / 22 skipped**, frontend **188 passed**. После guard — **53 targeted unit/PG passed**; финальный `make lint`: 188 frontend, Ruff 353, mypy 254, drift 192 — green. Coverage fanout: **157/159 = 98,74%**.
+- Decimal Unicode поддержан; malformed `²`, overflow и пустой путь не вызывают DB/LLM. Общий parser gap записан в audit существующей T-230. Полный walk 1001 событий; 10001-related page50: p95 **122,96 мс**, Python peak **258387 B**; fingerprints всех таблиц неизменны, BombLLM 0.
+- **17 Trace UI unit**, **11 production browser** Graph + legacy Trace/Journey. Для 300 synthetic UI nodes: render 262 мс, pan 26 мс, main DOM 6→5, steady-frame p95 16,8 мс. Actual Mock-recorded сценарии 1/6/8: **24 production UI/API variants и 24 PNG**, real center/run scope/visited, GET only, fingerprints всех 85 таблиц неизменны, 0 LLM/remote/page errors.
+- Оба builds; i18n 1725 keys; contracts 45/162; sync-contracts и tasks 205 идемпотентны.
 
-UI checkpoint: собственный SVG без новых зависимостей; фазы/шесть форм/реальные edges, directed terminal path, visited/staticring/minimap, keyboard и responsive400ms accordion. Полное раскрытие всех N через bounded50-page UI, точный run scope/URL и виртуализация. 14targetedunit/175fullfrontend lint green,7productionbrowsergreen,24actualAPI/UI variants/24PNG+85tablefingerprints/Bomb0. Подробности: `docs/reviews/T-234-trace-graph-verification.md`. Полный composed backend suite и human contract gate ещё ожидаются.
+Подробности и артефакты: `docs/reviews/T-234-trace-fanout-contract.md`, `docs/reviews/T-234-trace-graph-verification.md`. Полный backend после ограниченного guard не повторялся по согласованному плану; требуется полный PR CI. Generic DoD real GigaChat и human contract review ещё не выполнены, поэтому статус `in_progress` и последний критерий не закрыт. Собственные test servers остановлены; push/PR/merge выполняет родитель.

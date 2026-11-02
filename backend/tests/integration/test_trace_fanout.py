@@ -5,6 +5,7 @@ import json
 import math
 import time
 import tracemalloc
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -302,3 +303,47 @@ def test_large_fan_page_latency_and_bounded_response(configured):
         + "\n"
     )
     assert p95 < 300
+
+
+def test_unicode_anchor_boundary_reads_are_scoped_and_invalid_refs_never_open_db(configured, monkeypatch):
+    from app.api import trace as trace_api
+    from app.trace.fanout import MAX_PK
+
+    original = trace_api.read_db
+    calls = {"db": 0}
+
+    @asynccontextmanager
+    async def counted():
+        calls["db"] += 1
+        async with original() as conn:
+            yield conn
+
+    monkeypatch.setattr(trace_api, "read_db", counted)
+    before = fingerprints(configured)
+    params = {"direction": "after", "event_kind": "signal_created"}
+    with TestClient(create_app()) as client:
+        plain = client.get("/api/trace/client/1/relations", params=params)
+        decimal = client.get("/api/trace/client/١/relations", params=params)
+        assert plain.status_code == decimal.status_code == 200
+        assert plain.json() == decimal.json()
+        assert calls["db"] == 2
+        maximum = client.get(f"/api/trace/client/{MAX_PK}/relations", params=params)
+        assert maximum.status_code == 404
+        assert calls["db"] == 3
+        for ref in ("²", "9" * 200, str(MAX_PK + 1)):
+            assert client.get(f"/api/trace/client/{ref}/relations", params=params).status_code == 422
+        assert client.get("/api/trace/client//relations", params=params).status_code == 404
+        assert calls["db"] == 3
+    assert fingerprints(configured) == before
+    Path("/tmp/vibebashers-t234-ref-boundaries.json").write_text(
+        json.dumps(
+            {
+                "valid_decimal_unicode_matches_ascii": True,
+                "valid_boundary_db_reads": 3,
+                "malformed_ref_db_reads": 0,
+                "read_phase_llm_calls": 0,
+                "all_table_fingerprints_unchanged": True,
+            }
+        )
+        + "\n"
+    )

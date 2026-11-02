@@ -4,6 +4,8 @@ import base64
 import copy
 import json
 from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock
+from urllib.parse import quote
 
 import pytest
 from fastapi import HTTPException
@@ -12,7 +14,7 @@ from fastapi.testclient import TestClient
 from app.contracts.events.trace.trace_response import TraceResponse
 from app.main import create_app
 from app.trace.assembler import render
-from app.trace.fanout import MAX_PK, Cursor, decode_cursor, encode_cursor, normalize_scope
+from app.trace.fanout import MAX_PK, Cursor, decode_cursor, encode_cursor, normalize_scope, validate_anchor_ref
 from tests.unit.test_trace_search import node
 
 CONTEXT = {
@@ -133,3 +135,52 @@ def test_only_recorded_parent_becomes_group_anchor_and_legacy_stays_valid():
     legacy = render(subject, children, [], edges)
     TraceResponse.model_validate(legacy)
     assert "anchor" not in legacy["groups"][0] and "phase" not in legacy["groups"][0]
+
+
+@pytest.mark.parametrize("ref", ["1", "١", "００１", str(MAX_PK), "CL-000001"])
+def test_numeric_anchor_accepts_decimal_unicode_and_valid_bigint(ref):
+    assert validate_anchor_ref("client", ref) is None
+
+
+def test_numeric_code_keys_do_not_acquire_an_invented_bigint_restriction():
+    assert validate_anchor_ref("error_code", "9" * 200) is None
+    assert validate_anchor_ref("rule", "0") is None
+
+
+def test_invalid_anchor_ref_is_rejected_before_any_database_or_llm_access(monkeypatch):
+    calls = {"db": 0}
+    llm = AsyncMock(side_effect=AssertionError("input validation must never call LLM"))
+
+    @asynccontextmanager
+    async def forbidden():
+        calls["db"] += 1
+        raise AssertionError("invalid ref must not open the database")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr("app.api.trace.read_db", forbidden)
+    monkeypatch.setattr("app.llm.failover.ProviderChain.complete_structured", llm)
+    with TestClient(create_app()) as client:
+        for ref, status in [
+            ("²", 422),
+            ("١²", 422),
+            ("9" * 200, 422),
+            ("9" * 201, 422),
+            (str(MAX_PK + 1), 422),
+            ("0", 422),
+            (" ", 422),
+            ("", 404),
+        ]:
+            response = client.get(
+                f"/api/trace/client/{quote(ref, safe='')}/relations",
+                params={"direction": "after", "event_kind": "signal_created"},
+            )
+            assert response.status_code == status
+    assert calls["db"] == 0
+    assert llm.call_count == 0
+
+
+@pytest.mark.parametrize("ref", ["", " ", "²", "9" * 201, str(MAX_PK + 1), "0"])
+def test_service_anchor_guard_also_bounds_internal_callers(ref):
+    with pytest.raises(HTTPException) as error:
+        validate_anchor_ref("client", ref)
+    assert error.value.status_code == 422

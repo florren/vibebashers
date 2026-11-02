@@ -49,6 +49,20 @@ def normalize_scope(run_id: str) -> str:
     return str(value)
 
 
+def validate_anchor_ref(kind: str, ref: str) -> None:
+    # isdigit() includes characters such as ² that the shared legacy grammar
+    # passes to int(), which raises ValueError. Decimal Unicode remains valid.
+    if not ref.strip() or len(ref) > 200:
+        raise HTTPException(422, "Некорректный ref")
+    if ref.isdigit():
+        if not ref.isdecimal():
+            raise HTTPException(422, "Некорректный числовой ref")
+        canonical = {"tracking": "signal", "correlation": "ledger"}.get(kind, kind)
+        spec = TYPES.get(canonical)
+        if spec is not None and spec.key != "code" and not 1 <= int(ref) <= MAX_PK:
+            raise HTTPException(422, "Числовой ref должен быть положительным bigint")
+
+
 def decode_cursor(token: str | None) -> Cursor | None:
     if token is None:
         return None
@@ -132,6 +146,7 @@ async def relation_page(
     if direction not in DIRECTIONS or event_kind not in FAN_TYPES or not 1 <= limit <= 100:
         raise HTTPException(422, "Допустимы before/after, signal_created/notification и limit от 1 до 100")
     run_id = normalize_scope(run_id)
+    validate_anchor_ref(kind, ref)
     anchor = await resolve(conn, kind, ref, run_id)
     rid = await allowed_run(conn, run_id)
     metadata = {"kind": anchor["kind"], "ref": reference(anchor), "event_id": "EVT-" + node_key(anchor)}

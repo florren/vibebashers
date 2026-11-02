@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 
 from app.contracts.enums import TraceEventKind, TracePhase
 from app.trace.assembler import assemble
-from app.trace.fanout import decode_cursor, normalize_scope, relation_page
+from app.trace.fanout import decode_cursor, normalize_scope, relation_page, validate_anchor_ref
 from app.trace.projections import node_key
 from app.trace.store import read_db
 
@@ -49,6 +49,7 @@ async def trace_relations(
     cursor: str | None = None,
 ) -> Any:
     decoded = decode_cursor(cursor)
+    validate_anchor_ref(kind, ref)
     run_id = normalize_scope(run_id)
     async with read_db() as conn:
         return await relation_page(
