@@ -40,13 +40,15 @@ try {
     assert.equal(response.status(), 200)
     assert.deepEqual(await response.json(), { accepted: true })
   }
-  const variants = ['ru', 'en'].flatMap(lang => ['light', 'dark'].map(theme => ({ lang, theme, width: 1920, height: 1080 })))
-  variants.push({ lang: 'ru', theme: 'light', width: 320, height: 800 }, { lang: 'en', theme: 'dark', width: 320, height: 800 })
+  const variants = ['legacy', 'v2'].flatMap(layout => [
+    ...['ru', 'en'].flatMap(lang => ['light', 'dark'].map(theme => ({ layout, lang, theme, width: 1920, height: 1080 }))),
+    { layout, lang: 'ru', theme: 'light', width: 320, height: 800 }, { layout, lang: 'en', theme: 'dark', width: 320, height: 800 },
+  ])
   for (const v of variants) {
     await heartbeat()
     const context = await browser.newContext({ viewport: { width: v.width, height: v.height } })
-    await context.addInitScript(({ lang, theme }) => {
-      localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', theme)
+    await context.addInitScript(({ lang, theme, layout }) => {
+      localStorage.setItem('cx.ui.layout', layout); localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', theme)
       localStorage.setItem('cx.ui.theme_pack', 'brand'); localStorage.setItem('cx.ui.density', 'comfortable')
     }, v)
     const page = await context.newPage(), errors = [], remote = [], mutations = [], failed = []
@@ -72,7 +74,7 @@ try {
     assert.ok(overflow <= 1)
     const mobileHeaderHeight = v.width === 320 ? await page.locator('.mobile-header').evaluate(el => el.getBoundingClientRect().height) : null
     if (mobileHeaderHeight !== null) assert.ok(mobileHeaderHeight <= 100)
-    await page.screenshot({ path: `${out}/qr-${v.lang}-${v.theme}-${v.width}.png` })
+    await page.screenshot({ path: `${out}/qr-${v.layout}-${v.lang}-${v.theme}-${v.width}.png` })
     await page.keyboard.press('Escape')
     assert.equal(await page.getByRole('dialog').count(), 0)
     assert.equal(await trigger.evaluate(el => el === document.activeElement), true)
