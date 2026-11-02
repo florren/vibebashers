@@ -42,6 +42,13 @@ pytest backend/tests/unit/test_ratelimit.py
 Доработка 29.10.2026: если все активные неизрасходованные ключи временно на cooldown после 429, KeyPool сообщает rate_limit с retry_after_s, а не исчерпанную quota. Существующее поведение смешанных quota/cooldown и авторизации сохранено. Ошибки ресурса не инициируют повтор той же операцией через другую модель.
 
 
+## Ревизия streaming quota, 2026-11-02
+
+Подтверждён и исправлен обход существующего limiter в `ProviderChain.stream`: acquire перед live candidate, общий deadline ожидания/stream I/O, offline bypass, no fallback после первого чанка, cancellation/close освобождают источник. Значения лимитов, модель/ключи, banking/HITL и contracts не менялись. Targeted 53 passed; lint зелёный; failover statement coverage 82%. Review внешнего API-budget enforcement: `docs/reviews/T-050-stream-limits.md`.
+
+T050 остаётся in_progress: persistence ключевых daily counters и API остатки, queue 20s/global-lock и 429→fast policy требуют отдельных coherent packets; централизованный secret filter уже слит в PR #170; эта доработка не закрывает всю карточку. No live/credentials/DB calls. Подробный read-only audit T050/T047: `/tmp/t050-t047-readonly-audit.json`.
+
+Полный unit: 925 passed/18 skipped, exit 0; license gate 526 прошёл. Полный DB suite не запускался по границам packet. Подробные evidence/ограничения — в review.
 ## Ревизия application secret logging, 2026-11-02
 
 Добавлена единая pure redaction boundary после format_exc_info перед console/JSONL и до HttpStats error retention. Маскируются известные credential fields/labeled strings без чтения env/реальных ключей; nonmutating/idempotent, hints/counters/business IDs сохранены. Подтверждённый T119 unknown-route capability leak закрыт тем же существующим regex/helper и safe_public_path ДО counter keys/ring buffer; API shape/публичные error responses не менялись.
