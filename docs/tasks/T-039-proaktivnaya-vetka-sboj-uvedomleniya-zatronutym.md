@@ -90,3 +90,14 @@ API25 candidate включает запрет Resume/step/jump/reset для jour
 Stop/new-run path и узкую strict paused recovery; mandatory human review впереди.
 Owner receipt B/prevented-by-resolution, final composition/full/coverage/CI ещё
 не завершены; критерии всей задачи остаются unchecked.
+
+
+### 02.11.2026: отдельный packet prevention receipts B
+
+User variant B разрешён для реализации; final DDL/runtime consumer review отдельно.
+Additive0019 после actual0018 хранит nullable versioned детали отмены без backfill
+legacy. Owner пишет receipt и status атомарно; внутренний run-scoped reader отличает
+modelled resolution до primary due/first complaint от Sent/care/already-complained
+и unknown. Сам proactive subscriber/controlled scenario находится в отдельной
+ветке T039; эта композиция не помечает карточку целиком done. Проверки и границы
+будут зафиксированы в [финальном review receipts](../reviews/T-039-receipts-final-review.md).
