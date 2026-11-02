@@ -60,3 +60,12 @@ policy/ADR/storage, durable integration и process-restart/full-suite proof.
 исходные psychotype/segment/gift параметры и runtime не менялись.
 60 pure tests passed; до wire нужны человеческий review и отдельная реализация/
 проверка durable state/receipt/timer границы. T161 остаётся in_progress.
+
+
+02.11.2026 пользователь явно подтвердил значения/семантику demo-policy из
+`ba5145d` для реализации. Зафиксированы status=approved_for_implementation,
+approved_by=user_in_chat, approved_date и values-only scope; enabled=false.
+Все поведенческие значения deep-equal утверждённому packet; повторное одобрение
+тех же значений не требуется. Следуют typed components/result, durable writer и
+Twin reconciliation. Неполная реализация не активируется; новые контракты — после
+конкретного final review. Другие денежные defaults/live Telegram не разрешались.

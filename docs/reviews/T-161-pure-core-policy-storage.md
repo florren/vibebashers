@@ -148,4 +148,7 @@ Ruff check/format и mypy ядра green. Runtime/БД по-прежнему н�
 [ADR-0024](../adr/ADR-0024-demo-client-behavior-policy.md),
 [demo YAML](../../data/behavior/demo_policy.review.yaml),
 [offline sensitivity](T-161-demo-policy-sensitivity.json).
-Это не одобрение значений/семантики и не изменение действующего pure core.
+Первоначально это было proposal без одобрения. 02.11.2026 пользователь явно
+подтвердил значения/семантику `ba5145d` для реализации; approval metadata теперь
+записана в YAML/ADR, enabled=false. Pure core/runtime и действующие defaults пока
+не менялись. Новые API/DB contracts требуют финального конкретного review.

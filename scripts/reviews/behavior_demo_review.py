@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import hashlib
 import json
 import math
@@ -37,8 +38,17 @@ def care_score(weights: dict[str, float], components: dict[str, float], scale: i
 
 def build_report(policy_path: Path) -> dict[str, Any]:
     policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
-    if policy["enabled"] is not False or policy["approved_by"] is not None or policy["status"] != "proposed_for_review":
-        raise ValueError("этот инструмент принимает только неактивированный draft proposal")
+    draft = policy["status"] == "proposed_for_review" and policy["approved_by"] is None
+    approved = (
+        policy["status"] == "approved_for_implementation"
+        and policy["approved_by"] == "user_in_chat"
+        and policy.get("approval_scope") == "values_and_semantics_only"
+        and isinstance(policy.get("approved_date"), str)
+    )
+    if policy["enabled"] is not False or not (draft or approved):
+        raise ValueError("нужен неактивированный draft или подтверждённый implementation-only packet")
+    if approved:
+        dt.date.fromisoformat(policy["approved_date"])
     if set(policy["segment_multiplier"]) != {x.value for x in Segment}:
         raise ValueError("не хватает явных сегментов")
     if policy["hazard"]["clamp"] is not False or policy["hazard"]["trailing_batch_tick_draw"] is not False:
@@ -118,7 +128,10 @@ def build_report(policy_path: Path) -> dict[str, Any]:
         "policy_id": policy["policy_id"],
         "status": policy["status"],
         "enabled": False,
-        "approved_by": None,
+        "approved_by": policy["approved_by"],
+        "approved_date": policy.get("approved_date"),
+        "approval_scope": policy.get("approval_scope"),
+        "approval_source_commit": policy.get("approval_source_commit"),
         "policy_sha256": hashlib.sha256(policy_path.read_bytes()).hexdigest(),
         "catalog_sha256": {
             name: hashlib.sha256((ROOT / path).read_bytes()).hexdigest()

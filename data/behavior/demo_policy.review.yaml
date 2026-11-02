@@ -1,10 +1,13 @@
-# T-161: только синтетическое предложение для review, не runtime-конфигурация.
+# T-161: значения/семантика утверждены для реализации, runtime ещё не активирован.
 # Predicate names ниже — предлагаемая семантика, не объявление готовых API/колонок.
 policy_id: demo_behavior_v0_review
 version: 1
-status: proposed_for_review
+status: approved_for_implementation
 enabled: false
-approved_by: null
+approved_by: user_in_chat
+approved_date: '2026-11-02'
+approval_scope: values_and_semantics_only
+approval_source_commit: ba5145dc8ff63d1ac0b75a44faa697749fa05e5e
 calibrated_on_real_clients: false
 runtime_loader: absent
 scope:

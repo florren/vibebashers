@@ -1,4 +1,4 @@
-"""T-161: воспроизводимость неактивного proposal, не одобрение его значений."""
+"""T-161: воспроизводимость implementation-approved packet без активации runtime."""
 
 from __future__ import annotations
 
@@ -21,7 +21,10 @@ def test_review_is_disabled_and_catalog_hashes_reproducible() -> None:
     report = review.build_report(POLICY)
     expected = json.loads((ROOT / "docs/reviews/T-161-demo-policy-sensitivity.json").read_text())
     assert report == expected
-    assert report["enabled"] is False and report["approved_by"] is None
+    assert report["enabled"] is False and report["approved_by"] == "user_in_chat"
+    assert report["status"] == "approved_for_implementation"
+    assert report["approved_date"] == "2026-11-02"
+    assert report["approval_scope"] == "values_and_semantics_only"
     assert report["explicit_segments"] == 7 and report["catalog_psychotypes"] == 8
     assert 0 <= report["worst_raw_hazard"]["raw"] <= 1
 
