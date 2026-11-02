@@ -1,0 +1,116 @@
+{
+  "functional_pytest": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "87",
+    "time": "188.784",
+    "timestamp": "2026-11-02T20:12:46.697493+03:00",
+    "hostname": "cachyos-x8664"
+  },
+  "coverage": {
+    "totals": {
+      "covered_lines": 205,
+      "num_statements": 209,
+      "percent_covered": 98.08612440191388,
+      "percent_covered_display": "98",
+      "missing_lines": 4,
+      "excluded_lines": 0,
+      "percent_statements_covered": 98.08612440191388,
+      "percent_statements_covered_display": "98"
+    },
+    "files": {
+      "backend/app/analytics/cabinet_report.py": {
+        "covered_lines": 167,
+        "num_statements": 171,
+        "percent_covered": 97.6608187134503,
+        "percent_covered_display": "98",
+        "missing_lines": 4,
+        "excluded_lines": 0,
+        "percent_statements_covered": 97.6608187134503,
+        "percent_statements_covered_display": "98"
+      },
+      "backend/app/analytics/report_text.py": {
+        "covered_lines": 38,
+        "num_statements": 38,
+        "percent_covered": 100.0,
+        "percent_covered_display": "100",
+        "missing_lines": 0,
+        "excluded_lines": 0,
+        "percent_statements_covered": 100.0,
+        "percent_statements_covered_display": "100"
+      }
+    }
+  },
+  "timing": "separate uninstrumented strict p95<300 standard test; not weakened or removed from CI",
+  "lint": {
+    "frontend_tests": 416,
+    "frontend_files": 58,
+    "backend_formatted_files": 452,
+    "mypy_source_files": 294,
+    "openapi_methods": 193,
+    "exit_code": 0,
+    "source": "401dd4c",
+    "389_test_only_ruff_check_and_format": "passed"
+  },
+  "contracts": {
+    "schemas": 45,
+    "paths": 163,
+    "exit_code": 0
+  },
+  "generators": {
+    "source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+    "gen_tasks_runs": 2,
+    "task_files": 206,
+    "unchanged": true,
+    "openapi_types_regeneration_identical": true
+  },
+  "final_runtime_source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+  "native_target": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "125",
+    "time": "238.877",
+    "timestamp": "2026-11-02T20:38:27.564830+03:00",
+    "hostname": "cachyos-x8664"
+  },
+  "historical_functional_coverage_source": "68832b789e2b9703915370f4112fe850ed9bd429",
+  "report_modules_byte_identical_to_final": true,
+  "report_file_hashes": {
+    "backend/app/analytics/cabinet_report.py": "3ed04a20702d30e6035a17133710e204e2284303ee4c81d67f568f4f49e55a2f",
+    "backend/app/analytics/report_text.py": "0e01244e26ac4e7c76b74d9d60cf06b98783195eede586721b5104885e6c84dd"
+  },
+  "shared_signals_coverage": {
+    "source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+    "functional_cases": 4,
+    "pytest": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "4",
+      "time": "34.295",
+      "timestamp": "2026-11-02T20:42:45.905569+03:00",
+      "hostname": "cachyos-x8664"
+    },
+    "coverage": {
+      "covered_lines": 31,
+      "num_statements": 31,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    }
+  },
+  "production_builds": {
+    "source": "68832b7",
+    "main": true,
+    "personal": true,
+    "frontend_src_byte_identical_to_final": true
+  }
+}

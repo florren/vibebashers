@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from fastapi import APIRouter, Query, Request
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import Response
 
 from app.analytics.cabinet import overview
+from app.analytics.cabinet_report import bounded_json, build_report, workbook_bytes
 from app.analytics.cabinet_scope import ROLES, actor_role, resolve_scope, validate_run
 from app.analytics.cabinet_signals import signals
-from app.errors import NotImplementedYet
 from app.trace.store import read_db
 
 router = APIRouter(tags=["cabinet"])
@@ -70,12 +72,22 @@ async def cabinet_report(
     period: Period = "month",
     format: Literal["json", "xlsx"] = "json",
     run_id: str = Query("current", max_length=32),
-) -> None:
+    lang: Literal["ru", "en"] = "ru",
+) -> Response:
     validate_run(run_id)
     actor_role(request)
     async with read_db() as conn:
-        await resolve_scope(conn, request, product_line, period, run_id)
-    raise NotImplementedYet("T-244")
+        scope = await resolve_scope(conn, request, product_line, period, run_id)
+        data = await build_report(conn, scope, lang, run_id)
+    # Одна сериализация, общая проверка лимита для обеих форм без удержания DB snapshot.
+    response = bounded_json(data)
+    if format == "json":
+        return response
+    return Response(
+        await run_in_threadpool(workbook_bytes, data),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="cabinet-report.xlsx"'},
+    )
 
 
 @router.get("/api/roles", summary="[ЕТЗ] Пресеты представления, не авторизация")

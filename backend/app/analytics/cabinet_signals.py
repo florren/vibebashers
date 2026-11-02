@@ -50,18 +50,30 @@ async def signals(
         + " NULLS LAST,f.id "
         + ("ASC" if direction == "asc" else "DESC")
     )
+    # При stale stats selected может оцениваться как одна строка: materialized
+    # edges исключают декартово run-соединение. Индексируемый JSONB map заменяет
+    # повторный nested scan агрегированных связей на каждый сигнал при той же ошибке оценки.
     rows = await fetch_all(
         conn,
         f"""
       WITH selected AS MATERIALIZED (SELECT f.* FROM v_cabinet_signal_facts f WHERE {where}
-        ORDER BY {order} LIMIT %s OFFSET %s), linked AS (
+        ORDER BY {order} LIMIT %s OFFSET %s), selected_edges AS MATERIALIZED (
+        SELECT x.signal_id,x.incident_id,f.run_id FROM selected f
+        JOIN incident_signals x ON x.signal_id=f.id
+      ), linked AS MATERIALIZED (
         SELECT x.signal_id,min(i.sla_due_sim) FILTER(WHERE i.status NOT IN ('closed','resolved','rejected','duplicate')) AS sla_due_sim,
           jsonb_agg(jsonb_build_object('id',i.id,'public_id',i.public_id,'status',i.status) ORDER BY i.id) AS incidents
-        FROM selected f JOIN incident_signals x ON x.signal_id=f.id
-        JOIN incidents i ON i.id=x.incident_id AND i.run_id=f.run_id GROUP BY x.signal_id)
-      SELECT f.*,s.classification->>'problem_summary' AS problem_summary,
-        coalesce(s.classification->>'summary_ru',s.text) AS summary,l.sla_due_sim,l.incidents
-      FROM selected f JOIN signals s ON s.id=f.id LEFT JOIN linked l ON l.signal_id=f.id ORDER BY {order}
+        FROM selected_edges x JOIN incidents i ON i.id=x.incident_id AND i.run_id=x.run_id GROUP BY x.signal_id
+      ), link_map AS MATERIALIZED (
+        SELECT jsonb_object_agg(signal_id,jsonb_build_object('sla_due_sim',sla_due_sim,'incidents',incidents)) AS by_signal FROM linked
+      )
+      SELECT f.id,f.public_id,f.run_id,f.product_line_code,f.received_sim,f.sentiment,
+        f.criticality,f.region_code,f.channel_code,f.source_platform,f.client_id,
+        nullif(f.flags,ARRAY[]::text[]) AS flags,nullif(f.red_words,ARRAY[]::text[]) AS red_words,
+        f.status,f.client_public_id,f.signal_type,s.classification->>'problem_summary' AS problem_summary,
+        coalesce(s.classification->>'summary_ru',s.text) AS summary,
+        (m.by_signal->f.id::text->>'sla_due_sim')::timestamptz AS sla_due_sim,m.by_signal->f.id::text->'incidents' AS incidents
+      FROM selected f JOIN signals s ON s.id=f.id CROSS JOIN link_map m ORDER BY {order}
     """,
         [*args, limit, offset],
     )  # noqa: S608 — сортировка из закрытого allowlist, значения только params.
@@ -69,8 +81,11 @@ async def signals(
         summary = row.pop("problem_summary") or row.pop("summary")
         row.pop("summary", None)
         row["summary"] = mask(" ".join(re.split(r"(?<=[.!?])\s+", str(summary or ""))[:2]), 500)
-        row["red_words"] = [mask(x, 100) for x in row["red_words"]]
+        # Read-only проекция: не удерживаем тысячи пустых mutable arrays до
+        # сериализации большого отчёта. Пустой tuple на wire остаётся JSON[].
+        row["red_words"] = [mask(x, 100) for x in row["red_words"]] if row["red_words"] else ()
+        row["flags"] = row["flags"] or ()
         row["source_platform"] = project_platform(row.pop("source_platform"))
-        row["incidents"] = row["incidents"] or []
+        row["incidents"] = row["incidents"] or ()
     count = int((total or {})["total"])
     return {"items": rows, "total": count, "next_offset": offset + len(rows) if offset + len(rows) < count else None}

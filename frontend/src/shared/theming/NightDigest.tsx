@@ -1,3 +1,4 @@
+import { useNight } from './night'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -6,9 +7,8 @@ import { api, type Signal } from '@/shared/api/client'
 import { useWs } from '@/shared/ws/client'
 import { IdLink } from '@/shared/components/IdLink'
 
-function currentNight() {
-  const { circadian, phase } = document.documentElement.dataset
-  return circadian === 'true' && phase === 'night'
+export function NightDecoration() {
+  return <div className="circadian-night-layer" aria-hidden="true" data-testid="night-decoration" />
 }
 export function NightDigest() {
   const { t } = useTranslation()
@@ -19,12 +19,7 @@ export function NightDigest() {
     const event = state.events[0]
     if (state.events !== previous.events && event?.topic === 'runs') setRunRevision(event.seq)
   }), [])
-  const [night, setNight] = useState(currentNight)
-  useEffect(() => {
-    const observer = new MutationObserver(() => setNight(currentNight()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-circadian', 'data-phase'] })
-    return () => observer.disconnect()
-  }, [])
+  const night = useNight()
   // Живые контуры руководителя и комплаенса сохраняют обычные приоритетные алерты.
   const enabled = night && !/^\/(manager|compliance)(\/|$)/.test(pathname)
   const query = { run_id: 'current', criticality: 'high', limit: 10 }
@@ -35,7 +30,7 @@ export function NightDigest() {
   }, enabled, refetchInterval: enabled ? 30_000 : false })
   if (!enabled) return null
   return <>
-    <div className="circadian-night-layer" aria-hidden="true" data-testid="night-decoration" />
+    <NightDecoration />
     <details className="relative z-10 shrink-0 border-b border-line bg-surface px-3 py-1 text-xs" data-testid="night-digest">
       <summary className="cursor-pointer">{t('theme.circadian.digest')}</summary>
       <div className="max-h-32 overflow-auto py-2">

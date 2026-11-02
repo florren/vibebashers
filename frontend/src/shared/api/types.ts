@@ -3126,6 +3126,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute. */
+                    rate_code?: string;
                     affected?: number;
                     product?: string;
                     system?: string;
@@ -3148,6 +3150,7 @@ export interface paths {
                         "application/json": components["schemas"]["IncidentEconomics"];
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -7179,6 +7182,7 @@ export interface paths {
                     format?: "json" | "xlsx";
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
+                    lang?: "ru" | "en";
                 };
                 header?: {
                     /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
@@ -7191,16 +7195,19 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Один scoped read-only snapshot; <=10000 signals/incidents/runs each, <=5 MiB JSON и XLSX; превышение — 413 без усечения. Сравнение периодов — только наблюдения, полнота не подтверждена. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["CabinetReport"];
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
                 };
                 403: components["responses"]["Problem"];
+                413: components["responses"]["Problem"];
                 422: components["responses"]["Problem"];
-                501: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -8192,6 +8199,145 @@ export interface components {
             items: components["schemas"]["CabinetSignal"][];
             total: number;
             next_offset: number | null;
+        };
+        CabinetReport: {
+            /** @enum {string} */
+            lang: "ru" | "en";
+            overview: components["schemas"]["CabinetOverview"];
+            summary_ru: string[];
+            summary: string[];
+            kpi: {
+                /** @enum {string} */
+                code: "signals" | "negative" | "critical" | "loss" | "prevented" | "incidents";
+                label: string;
+                /** @description Текущее наблюдаемое значение. Для RUB точные суммы — в money_exact; numeric используется для совместимой визуализации. */
+                value: number | null;
+                unit: string;
+                /** @description Наблюдаемая разница: counts, процентные пункты или RUB по delta_unit; NULL при отсутствии знаменателя/полной сохранённой экономики. Для денег точный источник money_exact.kpi.*_delta_rub. */
+                delta: number | null;
+                verdict: string;
+                /** @enum {string} */
+                delta_unit: "count" | "percentage_points" | "RUB";
+            }[];
+            charts: {
+                /** @enum {string} */
+                code: "daily" | "monthly" | "sources";
+                title_insight: string;
+                note: string;
+            }[];
+            previous: {
+                /** Format: date-time */
+                since_sim: string;
+                /** Format: date-time */
+                sim_time: string;
+                signals: number;
+                note: string;
+                kpi: {
+                    signals: number;
+                    sentiment_known: number;
+                    negative: number;
+                    criticality_known: number;
+                    critical: number;
+                    incidents: number;
+                    economics_known: number;
+                    potential_loss_rub: number | null;
+                    prevented_loss_rub: number | null;
+                    negative_share: number | null;
+                    critical_share: number | null;
+                };
+            };
+            signals: components["schemas"]["CabinetSignal"][];
+            top_problems: {
+                public_id: string;
+                problem: string;
+                clients: number | null;
+                identified_clients: number;
+                region: string;
+                status: string;
+                team: string;
+                action: string;
+                /** @description Только native warning той же стадии/срока; false не доказывает отсутствие риска при неполной истории. */
+                sla_warning_current: boolean;
+                sla_warning_event_id: number | null;
+            }[];
+            attention: {
+                public_id: string;
+                problem: string;
+                clients: number | null;
+                identified_clients: number;
+                region: string;
+                status: string;
+                team: string;
+                action: string;
+                recommendation: string;
+                /** @description Только native warning той же стадии/срока; false не доказывает отсутствие риска при неполной истории. */
+                sla_warning_current: boolean;
+                sla_warning_event_id: number | null;
+            }[];
+            attention_total: number;
+            red_phrase_signals: number;
+            red_phrase_action: string;
+            method: {
+                formula_ru: string[];
+                formula_note: string;
+                rules_version: {
+                    code: string;
+                    version: number;
+                }[];
+                rules_note: string;
+                app_version: string;
+                run_public_id: string[];
+                requested_run: string;
+                synthetic: string;
+                terms: string;
+                /** Format: date-time */
+                generated_sim: string;
+                /** @constant */
+                signal_limit: 10000;
+                /** @constant */
+                byte_limit: 5242880;
+            };
+            money_exact: {
+                kpi: {
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_delta_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_delta_rub: string | null;
+                };
+                daily: {
+                    /** Format: date */
+                    day: string;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                }[];
+                monthly: {
+                    /** Format: date */
+                    month: string;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                }[];
+                previous: {
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                };
+            };
+            /** @description До 10 первых по времени red-word сигналов; полный набор в signals, общее число red_phrase_signals. Только записанные связанные команды, иначе unknown. */
+            red_phrase_attention: {
+                public_id: string;
+                problem: string;
+                team: string;
+            }[];
+            /** @description Количество подтверждённых native warnings текущей стадии, не прогноз полного риска. */
+            sla_warning_count: number;
+            sla_warning_note: string;
         };
         /** @description Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются. */
         CabinetOverview: {

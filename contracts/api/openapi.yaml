@@ -1,7 +1,11 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
+<<<<<<< HEAD
   version: 1.5.28
+=======
+  version: 1.5.26
+>>>>>>> 8f4e82c5464e50531ab99fd9c4946615c2e62bbe
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -1000,6 +1004,10 @@ paths:
       tags: [metrics]
       summary: Калькулятор потерь без записи в БД
       parameters:
+        - name: rate_code
+          in: query
+          description: Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute.
+          schema: { type: string, minLength: 1, maxLength: 120 }
         - { name: affected, in: query, schema: { type: integer, default: 12, minimum: 0, maximum: 100000000 } }
         - { name: product, in: query, schema: { type: string } }
         - { name: system, in: query, schema: { type: string } }
@@ -1008,6 +1016,7 @@ paths:
         - { name: no_return_share, in: query, schema: { type: number, default: 0.5, minimum: 0, maximum: 1 } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
 
   /api/metrics/economics:
     get:
@@ -2329,11 +2338,20 @@ paths:
           in: query
           schema: { type: string, enum: [json, xlsx], default: json }
         - { $ref: "#/components/parameters/RunId" }
+        - name: lang
+          in: query
+          schema: { type: string, enum: [ru, en], default: ru }
       responses:
-        "200": { description: OK }
+        "200":
+          description: "Один scoped read-only snapshot; <=10000 signals/incidents/runs each, <=5 MiB JSON и XLSX; превышение — 413 без усечения. Сравнение периодов — только наблюдения, полнота не подтверждена."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CabinetReport' }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
         "403": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/Problem" }
-        "501": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
   /api/roles:
     get:
       tags: [cabinet]
@@ -3208,6 +3226,461 @@ components:
           type:
           - integer
           - 'null'
+    CabinetReport:
+      type: object
+      required:
+      - lang
+      - overview
+      - summary_ru
+      - summary
+      - kpi
+      - charts
+      - previous
+      - signals
+      - top_problems
+      - attention
+      - attention_total
+      - red_phrase_signals
+      - red_phrase_action
+      - method
+      - money_exact
+      - red_phrase_attention
+      - sla_warning_count
+      - sla_warning_note
+      properties:
+        lang:
+          type: string
+          enum:
+          - ru
+          - en
+        overview:
+          $ref: '#/components/schemas/CabinetOverview'
+        summary_ru:
+          type: array
+          items:
+            type: string
+        summary:
+          type: array
+          items:
+            type: string
+        kpi:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - label
+            - value
+            - unit
+            - delta
+            - verdict
+            - delta_unit
+            properties:
+              code:
+                type: string
+                enum:
+                - signals
+                - negative
+                - critical
+                - loss
+                - prevented
+                - incidents
+              label:
+                type: string
+              value:
+                type:
+                - number
+                - 'null'
+                description: Текущее наблюдаемое значение. Для RUB точные суммы — в money_exact;
+                  numeric используется для совместимой визуализации.
+              unit:
+                type: string
+              delta:
+                type:
+                - number
+                - 'null'
+                description: 'Наблюдаемая разница: counts, процентные пункты или RUB по
+                  delta_unit; NULL при отсутствии знаменателя/полной сохранённой экономики.
+                  Для денег точный источник money_exact.kpi.*_delta_rub.'
+              verdict:
+                type: string
+              delta_unit:
+                type: string
+                enum:
+                - count
+                - percentage_points
+                - RUB
+        charts:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - title_insight
+            - note
+            properties:
+              code:
+                type: string
+                enum:
+                - daily
+                - monthly
+                - sources
+              title_insight:
+                type: string
+              note:
+                type: string
+        previous:
+          type: object
+          required:
+          - since_sim
+          - sim_time
+          - signals
+          - note
+          - kpi
+          properties:
+            since_sim:
+              type: string
+              format: date-time
+            sim_time:
+              type: string
+              format: date-time
+            signals:
+              type: integer
+            note:
+              type: string
+            kpi:
+              type: object
+              required:
+              - signals
+              - sentiment_known
+              - negative
+              - criticality_known
+              - critical
+              - incidents
+              - economics_known
+              - potential_loss_rub
+              - prevented_loss_rub
+              - negative_share
+              - critical_share
+              properties:
+                signals:
+                  type: integer
+                sentiment_known:
+                  type: integer
+                negative:
+                  type: integer
+                criticality_known:
+                  type: integer
+                critical:
+                  type: integer
+                incidents:
+                  type: integer
+                economics_known:
+                  type: integer
+                potential_loss_rub:
+                  type:
+                  - number
+                  - 'null'
+                prevented_loss_rub:
+                  type:
+                  - number
+                  - 'null'
+                negative_share:
+                  type:
+                  - number
+                  - 'null'
+                critical_share:
+                  type:
+                  - number
+                  - 'null'
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetSignal'
+        top_problems:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            - sla_warning_current
+            - sla_warning_event_id
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              clients:
+                type:
+                - integer
+                - 'null'
+              identified_clients:
+                type: integer
+              region:
+                type: string
+              status:
+                type: string
+              team:
+                type: string
+              action:
+                type: string
+              sla_warning_current:
+                type: boolean
+                description: Только native warning той же стадии/срока; false не доказывает
+                  отсутствие риска при неполной истории.
+              sla_warning_event_id:
+                type:
+                - integer
+                - 'null'
+        attention:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            - recommendation
+            - sla_warning_current
+            - sla_warning_event_id
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              clients:
+                type:
+                - integer
+                - 'null'
+              identified_clients:
+                type: integer
+              region:
+                type: string
+              status:
+                type: string
+              team:
+                type: string
+              action:
+                type: string
+              recommendation:
+                type: string
+              sla_warning_current:
+                type: boolean
+                description: Только native warning той же стадии/срока; false не доказывает
+                  отсутствие риска при неполной истории.
+              sla_warning_event_id:
+                type:
+                - integer
+                - 'null'
+        attention_total:
+          type: integer
+        red_phrase_signals:
+          type: integer
+        red_phrase_action:
+          type: string
+        method:
+          type: object
+          required:
+          - formula_ru
+          - formula_note
+          - rules_version
+          - rules_note
+          - app_version
+          - run_public_id
+          - requested_run
+          - synthetic
+          - terms
+          - generated_sim
+          - signal_limit
+          - byte_limit
+          properties:
+            formula_ru:
+              type: array
+              items:
+                type: string
+            formula_note:
+              type: string
+            rules_version:
+              type: array
+              items:
+                type: object
+                required:
+                - code
+                - version
+                properties:
+                  code:
+                    type: string
+                  version:
+                    type: integer
+            rules_note:
+              type: string
+            app_version:
+              type: string
+            run_public_id:
+              type: array
+              items:
+                type: string
+            requested_run:
+              type: string
+            synthetic:
+              type: string
+            terms:
+              type: string
+            generated_sim:
+              type: string
+              format: date-time
+            signal_limit:
+              type: integer
+              const: 10000
+            byte_limit:
+              type: integer
+              const: 5242880
+        money_exact:
+          type: object
+          required:
+          - kpi
+          - daily
+          - monthly
+          - previous
+          properties:
+            kpi:
+              type: object
+              required:
+              - potential_loss_rub
+              - prevented_loss_rub
+              - potential_loss_delta_rub
+              - prevented_loss_delta_rub
+              properties:
+                potential_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                potential_loss_delta_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_delta_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+            daily:
+              type: array
+              items:
+                type: object
+                required:
+                - day
+                - potential_loss_rub
+                - prevented_loss_rub
+                properties:
+                  day:
+                    type: string
+                    format: date
+                  potential_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+                  prevented_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+            monthly:
+              type: array
+              items:
+                type: object
+                required:
+                - month
+                - potential_loss_rub
+                properties:
+                  month:
+                    type: string
+                    format: date
+                  potential_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+            previous:
+              type: object
+              required:
+              - potential_loss_rub
+              - prevented_loss_rub
+              properties:
+                potential_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+        red_phrase_attention:
+          type: array
+          maxItems: 10
+          description: До 10 первых по времени red-word сигналов; полный набор в signals,
+            общее число red_phrase_signals. Только записанные связанные команды, иначе
+            unknown.
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - team
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              team:
+                type: string
+        sla_warning_count:
+          type: integer
+          minimum: 0
+          description: Количество подтверждённых native warnings текущей стадии, не прогноз
+            полного риска.
+        sla_warning_note:
+          type: string
     CabinetOverview:
       description: Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются.
       type: object

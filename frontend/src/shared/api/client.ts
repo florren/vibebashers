@@ -1,3 +1,4 @@
+import { useViewPreset } from '@/shared/layout/preset'
 import type { components, paths } from './types'
 
 export type Schemas = components['schemas']
@@ -114,11 +115,14 @@ export function qs(params?: Query): string {
 
 export async function api<T>(path: string, init?: RequestInit & { query?: Query }): Promise<T> {
   const { query, ...rest } = init ?? {}
+  const suppliedHeaders = rest.headers instanceof Headers || Array.isArray(rest.headers) ? Object.fromEntries(new Headers(rest.headers)) : rest.headers ?? {}
+  const selectedRole = useViewPreset.getState().role
+  const presetHeader: Record<string, string> = selectedRole !== 'cx_lead' && !new Headers(suppliedHeaders).has('X-Cx-Role') ? { 'X-Cx-Role': selectedRole } : {}
   let res: Response
   try {
     res = await fetch(`${path}${qs(query)}`, {
       ...rest,
-      headers: { Accept: 'application/json, text/markdown', ...(rest.body ? { 'Content-Type': 'application/json' } : {}), ...rest.headers },
+      headers: { Accept: 'application/json, text/markdown', ...(rest.body ? { 'Content-Type': 'application/json' } : {}), ...presetHeader, ...suppliedHeaders },
     })
   } catch (error) {
     // Отмена запроса сохраняет прежнюю семантику и не становится network error.

@@ -1,0 +1,33 @@
+.report-root { height: 100%; overflow: auto; padding: 20px; }
+.report-controls { display: flex; flex-wrap: wrap; gap: 8px; max-width: 210mm; margin: 0 auto 16px; }
+.report-paper { position: relative; box-sizing: border-box; width: 100%; max-width: 210mm; min-height: 275mm; margin: 0 auto 20px; padding: 14mm 14mm 20mm; background: white; color: #202020; font-size: 12px; line-height: 1.45; box-shadow: 0 2px 12px #0002; overflow-wrap: anywhere; }
+.report-paper h1 { font-size: 21px; font-weight: 700; margin-bottom: 8px; }
+.report-paper h2 { font-size: 17px; font-weight: 700; margin: 14px 0 8px; }
+.report-paper h3 { font-size: 12px; font-weight: 600; }
+.report-paper p { margin: 4px 0; }
+.report-summary { list-style: decimal; padding-left: 20px; }
+.report-summary li { margin: 10px 0; }
+.report-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.report-kpis > div { padding: 10px; border: 1px solid #666; }
+.report-kpis strong { display: block; font-size: 20px; font-weight: 700; }
+.report-note,.report-meta { font-size: 11px; }
+.report-footer { position: absolute; bottom: 10mm; left: 14mm; right: 14mm; border-top: 1px solid #888; padding-top: 4px; font-size: 10px; }
+.report-chart { height: 175px; width: 100%; }
+.report-figure { break-inside: avoid; margin-bottom: 14px; }
+.report-figure p { font-size: 10px; }
+.report-paper table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.report-paper th,.report-paper td { border: 1px solid #888; padding: 5px; vertical-align: top; text-align: left; }
+.report-detail { font-size: 10px; }
+.report-detail h2 { font-size: 15px; margin-top: 12px; }
+.report-detail li { margin: 4px 0; }
+@media (max-width: 600px) { .report-root { padding: 8px; } .report-paper { padding: 16px 12px 60px; } .report-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } .report-paper table { font-size: 9px; } .report-footer { left: 12px; right: 12px; } }
+@page cabinet-report { size: A4; margin: 10mm 0; }
+@media print {
+  html:has(.report-root),body:has(.report-root),#root:has(.report-root),.report-root { height: auto !important; overflow: visible !important; background: white !important; margin: 0 !important; padding: 0 !important; }
+  .report-controls { display: none !important; }
+  .report-root * { animation: none !important; transition: none !important; }
+  .report-paper { page: cabinet-report; width: 210mm; max-width: none; min-height: 275mm; margin: 0; box-shadow: none; break-after: page; padding: 10mm 14mm 18mm; print-color-adjust: exact; }
+  .report-paper:last-child { break-after: auto; }
+  .report-kpis { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .report-chart { height: 175px; }
+}
