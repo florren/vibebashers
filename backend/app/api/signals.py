@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from app.agent.comparison import guard_jury_rate, mock_comparison
 from app.api._compliance_support import run_context
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
@@ -90,7 +92,7 @@ class SignalCreate(BaseModel):
     channel_subtype: str | None = None
     client_id: int | None = None
     external_contact: dict[str, Any] | None = None
-    text: str = Field(min_length=3, max_length=4000)
+    text: str = Field(min_length=3, max_length=5000)
     compare_with_mock: bool = True
     voice_meta: dict[str, Any] | None = None
     external_id: str | None = None
@@ -98,6 +100,7 @@ class SignalCreate(BaseModel):
 
 @router.post("/api/signals", summary="Жюри-режим — ввести сообщение клиента вручную", status_code=202)
 async def post_signals(request: Request, body: SignalCreate) -> Any:
+    guard_jury_rate(request)
     svc = agent_service(request)
     msg = from_api_signal(body.model_dump(exclude_none=True), origin="jury", source_code="api")
     async with db() as conn:
@@ -111,13 +114,23 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
     if res["status"] == "rejected":
         raise HTTPException(status_code=422, detail=res["error"])
-    task = svc.submit(int(res["signal_id"]))
-    await task  # жюри ждёт результат: проход на mock ≈ 1 с, на live ≤ 30 с
+    comparison_id = None
+    if body.compare_with_mock:
+        async with mock_comparison(int(res["signal_id"])) as comparison:
+            compare_task = asyncio.create_task(comparison.run())
+            try:
+                await svc.submit(int(res["signal_id"]))
+            finally:
+                comparison_id = await compare_task
+    else:
+        await svc.submit(int(res["signal_id"]))
     async with db() as conn:
         run = await fetch_one(
-            conn, "select id from agent_runs where signal_id = %s order by id desc limit 1", (res["signal_id"],)
+            conn,
+            "select id from agent_runs where signal_id = %s and kind='agent' order by id desc limit 1",
+            (res["signal_id"],),
         )
-    return {"signal_id": res["signal_id"], "agent_run_id": run["id"] if run else None, "compare_run_id": None}
+    return {"signal_id": res["signal_id"], "agent_run_id": run["id"] if run else None, "compare_run_id": comparison_id}
 
 
 @router.get("/api/signals/deferred", summary="Отложенные («спящие») обращения с причиной и временем пробуждения")

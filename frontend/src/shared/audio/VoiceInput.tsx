@@ -5,9 +5,10 @@ import { Mic, Square } from 'lucide-react'
 import { useSttProviders } from '@/shared/api/hooks'
 import { micSupported, startMic, type MicHandle } from './mic'
 import { startWebSpeech, webSpeechSupported } from './webSpeech'
+import type { Schemas } from '@/shared/api/client'
 
 /** «Надиктовать» (T-206): офлайн — пишем PCM16 и отправляем в POST /api/stt/transcribe (Vosk); иначе — Web Speech API браузера. */
-export function VoiceInput({ onText, onInterim, className, serverOnly = false, maxSeconds = 120 }: { onText: (text: string) => void; onInterim?: (text: string) => void; className?: string; serverOnly?: boolean; maxSeconds?: number }) {
+export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly = false, maxSeconds = 120 }: { onText: (text: string) => void; onInterim?: (text: string) => void; onVoice?: (meta: Schemas['VoiceMeta']) => void; className?: string; serverOnly?: boolean; maxSeconds?: number }) {
   const { t } = useTranslation()
   const prov = useSttProviders()
   const [rec, setRec] = useState(false)
@@ -70,9 +71,12 @@ export function VoiceInput({ onText, onInterim, className, serverOnly = false, m
     setBusy(true)
     try {
       const r = await fetch('/api/stt/transcribe?sample_rate=16000', { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: buf })
-      const d = (await r.json()) as { ok?: boolean; text?: string; detail?: string; title?: string }
+      const d = (await r.json()) as { ok?: boolean; text?: string; detail?: string; title?: string; provider?: Schemas['VoiceMeta']['stt_provider']; latency_ms?: number }
       if (!r.ok) throw new Error(d.detail ?? d.title ?? `HTTP ${r.status}`)
-      if (d.text) onText(d.text)
+      if (d.text) {
+        onText(d.text)
+        if (d.provider) onVoice?.({ stt_provider: d.provider, transcript_raw: d.text, duration_ms: Math.round(total / 32), latency_ms: d.latency_ms })
+      }
       else setErr(t('voice.nothing'))
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))
