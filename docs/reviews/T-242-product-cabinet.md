@@ -18,9 +18,9 @@ Stacked branch `codex/T-242-product-cabinet` поверх `codex/T-243-server-ca
 
 ## Проверки и actual доказательства
 
-Final application/test source `c69a000` (normal T243cb115a3/API24 composition):
+Final coherent runtime source `833690` (T24119135 customer-only view18 +T2431acc686/API24); handoff81066a8 normal-merges T24372a4365/T241f987591, runtime diff0:
 - full frontend **407 passed**,55files (финальный `make lint` также повторил этот набор); полный composed `make lint` green (Ruff447/mypy292, bot11/5, drift193/193), typecheck green; обе production builds (`vite build` и personal) green; i18n2019keys и generated TS без diff; tasks205 дважды без diff;
-- actual production Playwright **5/5**,29.8s: ru/en × light/dark, реальные KPI/API, keyboard map/prefetch/completedopacity0.35, signal Drawer, full-viewport calculator/visible input/focus Escape, strict own/foreign403, softall, reset/Undo, mobile360 nooverflow/header≤100, fixednight/reducedmotion,7blocks и scoped digest IDs;
+- actual production Playwright **5/5**,27.7s: ru/en × light/dark, реальные KPI/API, keyboard map/prefetch/completedopacity0.35, signal Drawer, full-viewport calculator/visible input/focus Escape, strict own/foreign403, softall, reset/Undo, mobile360 nooverflow/header≤100, fixednight/reducedmotion,7blocks и scoped digest IDs;
 - все31actualcatalogcodes по одному выбраны через UI с HTTP200 и совпадением serveramount, region-prefill/servermoney, known0→server0 и unknown→noquery/`—`; palette text minimum≥4.5/control≥3 в каждой теме; infinite animations0, page errors0, page non-GET attempts0, global incidents/signals queries0, external0. Setup/restore fixture явно PATCHит только собственные settings — **не утверждается DB unchanged для всей browser фазы**;
 - read-only cabinet API отдельно: финальный T24165PG/unit green,98%coverage; demo5000/2813signals,25GET каждогоscope, bank p9540.49ms/direction24.15ms,107 public/private table fingerprints unchanged, LLM/external0 и safe EXPLAIN (`T-241-demo-performance.json`). Никаких compute_incident/money writes;
 -14curatedPNG просмотрены и tracked в `docs/screenshots/T-242`; exact hashes/actual guards — `T-242-browser-proof.json`.
@@ -49,3 +49,24 @@ BombLLM/external markers absent. Браузерная fixture PATCH settings в�
 T262 canonical cabinet_red_words_report scenario14 ещё отсутствует (existing
 number14 demo20_branch_queue — другой сценарий); этот сценарный DoD не подменяется
 UI smoke. Формулы/premium/HITL policy не расширялись. Статус карточки in_progress до CI/review, placeholder KPI нет.
+
+## Финальный coherent handoff
+
+T241f987591 exactCItest-isolationfix обычнымmerge включён черезT24372a4365.
+Новыйhead меняет толькоtests/docs относительно проверенногоruntime833690;
+`git diff --quiet 833690 -- backend/app contracts frontend/src`=0. Никакого
+позднегоT039/T161runtimeWIP. API24 иcustomer-view18 присутствуют вместе, ownUI
+схема18 пере-примененаидемпотентно, previewперезапущен доfinal5caseproof.
+Вbaseline originproactive0; negative service/customer/nullable projection
+доказаны отдельнымиT24169+4PG, coherent API24/service18target18green38.78s.
+ПослеCIfixturefix14calculatorunit/PGgreen12.34s. RootPR186f15CI реальноfailed:
+32cabinetsetuperrors из-за sharedseed1/receipt42 и7schemafailures от leaked
+syntheticprobe; исправленыf987,83exact-orderregressionsgreen110.84s, новыйCIpending.
+Historical full gate не выдаётся за exactfinalCI.
+
+Последнийproduction5caseproof27.7s включаетevery31selectorcode→HTTPserveramount
+иactualemptyregion0→prefill0→server0. Anonymousregionunknownне подменён0;
+positiveidentifiedprefill проверенunit/actualPGcoveragefixture.14PNG сохранены
+изэтогоcoherent source.35GET/107fp повтореныпослеbrowserfixtureфазы, unchanged,
+LLM/external0. Дваruntimeфикса приQA (card-transformDrawer/duplicate localarith)
+исправлены и защищены регрессиями; всеAPI/money approvals ещёpendinghumanreview.

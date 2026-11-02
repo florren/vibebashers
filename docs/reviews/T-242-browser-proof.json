@@ -1,7 +1,7 @@
 {
-  "application_source": "c69a000de666f93f1039c1462bad787a27c29961; normal composition T243cb115a3/API1.5.24",
+  "application_source": "81066a8 (runtime byte-identical833690), normal T24372a4365/T241f987591; API1.5.24/customer-view18",
   "fixture": "actual PostgreSQL0018, standard demo5000/2813signals, own cx_cabinet_ui_revision; no API mocks",
-  "browser_result": "5 passed in29.8s (4ru/en×themes cabinet +1each31rates UI)",
+  "browser_result": "5 passed in27.7s at runtime833690, including31ratecodes and actualemptyregion0",
   "browser_cases": [
     {
       "language": "ru",
@@ -103,7 +103,7 @@
   "screenshots": [
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-top.png",
-      "sha256": "dd568c2c3876abf45ba8f0eb82522d8963c238546df519e1a1fd441c052b4941"
+      "sha256": "d1a07cb3e424b443f741bee28d491ff3741048938aa4ebda17f9a2b0b097f8e1"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-region.png",
@@ -111,15 +111,15 @@
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-analytics.png",
-      "sha256": "e663508bd7997f9f4615b126d6e0cd3369c3a18fdd4be513834366d76958fb62"
+      "sha256": "6caf0e57a4ceb586071f2cf0c0b79ef872b128cfed61c061de02f15b289d15c5"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-calculator.png",
-      "sha256": "f65fc052abeead3a0a042057f27a239dead41819650436bdd8d8298334bb3396"
+      "sha256": "df1bf4b84089d5f4032f690080b769d2cca37e4f85540baa30e76ac0ee37fcb5"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-mobile.png",
-      "sha256": "1ce8efcbb0381355c3dc3524582c94829189af6b494fb5643e756666ebd507ce"
+      "sha256": "0e02f51e5104983641c7f52b20ff5e1305b74a2a17d9a72e0d6985a157a6aa00"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-light-night-mobile.png",
@@ -127,31 +127,31 @@
     },
     {
       "path": "docs/screenshots/T-242/cabinet-ru-dark-top.png",
-      "sha256": "4b218eb72930a38d35ffc2e279b06a76b8aca46e6616bdcc8a73eccb9651faff"
+      "sha256": "1fd53031c28e85e592967893e8073b144f31826e413e6086567acf244a54b0bb"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-light-top.png",
-      "sha256": "108be6b918db88a48c350e08e3e0d354b1ea1209bedb47db30cb2a2558de887d"
+      "sha256": "444cfe5d5910799fe469bc1eee56bdb820697d8d2e71d2537453e85183377d04"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-top.png",
-      "sha256": "828baf518b9ae6e92a9e6e5d9acc44ca274c86c3085030cbaa8f89da9a8e3ea4"
+      "sha256": "1a85c4da5e6099dd0e1e1fdf6cf3f3d3ccba188c9eb3ee3573035864233f8b4b"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-region.png",
-      "sha256": "2919d68ac0f8afd4db059c7dda681d0ded41b073e6f8aa5ce3ae56820b61088f"
+      "sha256": "316c7220943e8babde359384ab78ad41c23cf7e3798d88809b00bfe603092f97"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-analytics.png",
-      "sha256": "ddb6a46d65943da1feec47aa7ecf42df07c6764679fc375d1055a2c0579701d9"
+      "sha256": "c9756f585fb6f9d5e16c071d234027a35cb258f1fe9d0432a505fdf3eaf7e41a"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-calculator.png",
-      "sha256": "721f597f72d52266b87b8e220063ba2506cf43a3ddc4755ed56ac29edb35b7a8"
+      "sha256": "37697cbad7930ea4650a219b8ce644c4a20136d27c7d67dbecb93ee501b86135"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-mobile.png",
-      "sha256": "211b7bcfd78527dbd7072872f1d8ba03e582a70871d1c104f5417e9e721c1941"
+      "sha256": "7a762b78172d136ce7dadbf634e7fe4f65f938bdf8ee958b419b0b4fd607a850"
     },
     {
       "path": "docs/screenshots/T-242/cabinet-en-dark-night-mobile.png",
@@ -160,7 +160,7 @@
   ],
   "financial_producer": "Only GET/api/metrics/economics/preview -> dcltv.compute; no local arithmetic. Money inputs/rounded amount are server DTO. Three-decimal rates preserved; results2decimals.",
   "production_readonly": {
-    "source_api": "T243cb115a3 production loopback preview, Mock-only/BombLLM/external guards",
+    "source_api": "Composed T2431acc686/T242833690/customer-view19135 production loopback, Mock-only/BombLLM/external guards",
     "catalog_codes_checked": 31,
     "get_requests": 35,
     "fingerprint_tables": 107,
@@ -173,6 +173,8 @@
   "actual_ui_rate_catalog": {
     "source": "T242+T243 actual production composition",
     "catalog_count": 31,
+    "actual_empty_region_prefill": 0,
+    "actual_empty_region_server_result": 0,
     "all_selected_codes": [
       "atm",
       "auto_loan",
@@ -207,5 +209,6 @@
       "transfers"
     ],
     "readonly_page_failures": []
-  }
+  },
+  "ui_fixture_proactive_origins": 0
 }

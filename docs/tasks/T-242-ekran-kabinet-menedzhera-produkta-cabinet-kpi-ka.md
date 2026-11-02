@@ -55,3 +55,7 @@ actual production5/5 ru/en×themes/mobile/strict/night/keyboard/Undo/viewportDra
 зафиксированы отдельно. Report: docs/reviews/T-242-product-cabinet.md.
 T244report501/T249fullCSI/T243producerAPI24 внедрён отдельной stacked веткой; canonical T262scenario14 ещё pending; human
 API22/DDL18 review, exactheadCI и liveGigaDoD не заявлены выполненными.
+
+Final coherent runtime833690/handoff81066a8: T241customer-view18 иAPI24вместе,
+5productioncases27.7s (31codes+realemptyregion0); test-onlyCIfixf987 normal-merged
+черезT24372a4365. Runtime diff0 послефакттическогопруфа; CI/humanreviewpending.

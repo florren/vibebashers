@@ -7,7 +7,7 @@ Mock-only startup с BombLLM и запретом внешней сети. API о
 mobile360px и night-mobile. Последняя — **явно заданная fixed night** с
 reduced motion, а не естественный переход симуляции в ночь.
 
-Source приложенияc69a000 (API24/T243cb115a3 composition), browser5/5 (29.8s).
+Runtime source833690 (API24+customer-view18); handoff81066a8 byte-identical runtime, browser5/5 (27.7s).
 Calculator снят после opacity1: fixed-панель вне hover-transformed card,
 верх0/fullviewport900 и поле в viewport проверены regression.
 Синтетические customer texts/run labels остаются данными; статический UI ru/en.
