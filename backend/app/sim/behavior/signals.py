@@ -10,7 +10,6 @@ from psycopg.rows import dict_row
 from app.agent.tools.base import ClientStateIntent, ToolContext
 from app.contracts.registry import validate
 from app.economics.calibration import PIPELINE
-from app.sim.behavior.store import record_agent_state_intent
 
 
 async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, signal: int) -> dict[str, Any] | None:
@@ -32,9 +31,9 @@ async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, s
     if not isinstance(output, dict) or output.get("score_pipeline") != PIPELINE:
         return None
     if row["canonical_node"] == "classify":
-        if any(output.get(key) != classification.get(key) for key in ("signal_type", "sentiment", "flags")):
+        if any(output.get(key) != classification.get(key) for key in classification):
             return None
-    elif output.get("classification_type") != classification.get("signal_type"):
+    elif output.get("classification_snapshot") != classification:
         return None
     flags = classification.get("flags") or []
     if classification.get("sentiment") != "negative" and not ({"churn_intent", "repeat"} & set(flags)):
@@ -44,12 +43,8 @@ async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, s
 
 async def record_classified(ctx: ToolContext, signal_id: int) -> None:
     """Вызывается после record_step внутри той же checkpoint transaction."""
-    if ctx.dry_run:
-        return
-    from app.sim.behavior.runtime import state_sink
-
-    sink = await state_sink(ctx.conn, ctx.run_id)
-    if sink is None:
+    sink = getattr(ctx, "state_evidence_sink", None)
+    if getattr(ctx, "dry_run", False) or sink is None:
         return
     async with ctx.conn.cursor(row_factory=dict_row) as cur:
         await cur.execute("select client_id from signals where id=%s and run_id=%s", (signal_id, ctx.run_id))
@@ -60,7 +55,7 @@ async def record_classified(ctx: ToolContext, signal_id: int) -> None:
         or await canonical(ctx.conn, ctx.run_id, row["client_id"], signal_id) is None
     ):
         return
-    await record_agent_state_intent(
+    await sink(
         ctx.conn,
         ClientStateIntent(
             ctx.run_id,

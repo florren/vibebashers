@@ -21,7 +21,19 @@ from .test_behavior_owner import POLICY
 from .test_behavior_runtime import setup
 
 
-async def source(conn, run, client, now, *, sentiment="negative", flags=(), kind="service_quality", canonical=True):
+async def source(
+    conn,
+    run,
+    client,
+    now,
+    *,
+    sentiment="negative",
+    flags=(),
+    kind="service_quality",
+    canonical=True,
+    unknown_product=False,
+    known_product=False,
+):
     # Полный schema-valid controlled fixture; это не LLM accuracy claim.
     obj, _, _ = await MockProvider().complete_structured(
         [{"role": "user", "content": "Сотрудник грубо ответил, обслуживанием недоволен"}],
@@ -30,6 +42,10 @@ async def source(conn, run, client, now, *, sentiment="negative", flags=(), kind
         timeout_s=1,
     )
     obj.update(sentiment=sentiment, flags=list(flags), signal_type=kind)
+    if unknown_product:
+        obj["product"] = None
+    if known_product:
+        obj["product"] = "debit_card"
     assert not validate(obj, "agent/classification")
     signal = (
         await (
@@ -205,3 +221,116 @@ async def test_actual_mock_graph_classifier_hook_opens_signal_only_episode(seede
             assert (
                 await (await conn.execute("select count(*) from behavior_causes where run_id=%s", (run,))).fetchone()
             ) == (0,)
+
+
+@pytest.mark.asyncio
+async def test_signal_only_care_and_resolution_need_all_real_signal_causes(seeded, monkeypatch):
+    import datetime as dt
+
+    from app.sim.behavior.runtime import capture
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, client, now, sim = await setup(conn, monkeypatch, seeded)
+        await sim.conn.close()
+        first, _ = await source(conn, run, client, now)
+        second, _ = await source(conn, run, client, now)
+        incidents = []
+        for signal in (first, second):
+            incident = (
+                await (
+                    await conn.execute(
+                        "insert into incidents(run_id,title,incident_type,product_code,team_code,complexity,criticality,priority,status,created_by,created_sim,sla_due_sim,take_due_sim,primary_client_id) values(%s,'T161 signal cause','service_quality','debit_card','team_cx','medium','high',2,'in_progress','agent',%s,%s,%s,%s) returning id",
+                        (run, now, now + dt.timedelta(days=1), now + dt.timedelta(hours=1), client),
+                    )
+                ).fetchone()
+            )[0]
+            incidents.append(incident)
+            await conn.execute(
+                "insert into incident_signals(incident_id,signal_id,linked_sim) values(%s,%s,%s)",
+                (incident, signal, now),
+            )
+        body, variables = await (
+            await conn.execute(
+                "select body,variables from notification_templates where code='resolved' and lang='ru' and segment_code is null order by id limit 1"
+            )
+        ).fetchone()
+        for variable in variables:
+            value = "Клиент" if variable == "name" else "Проблема устранена"
+            body = body.replace("{{ " + variable + " }}", value).replace("{{" + variable + "}}", value)
+        await conn.execute(
+            "insert into notifications(run_id,recipient_type,client_id,signal_id,incident_id,channel_code,template_code,body,status,sent_sim) values(%s,'client',%s,%s,%s,'chat','resolved',%s,'sent',%s)",
+            (run, client, first, incidents[0], body, now + dt.timedelta(minutes=1)),
+        )
+        await conn.execute(
+            "update incidents set status='resolved',resolved_sim=%s where id=%s",
+            (now + dt.timedelta(minutes=2), incidents[0]),
+        )
+        await conn.commit()
+        async with conn.transaction():
+            await capture(conn, run)
+            await BehaviorOwner(conn, POLICY).advance(run_id=run, to_sim=now + dt.timedelta(minutes=2))
+            current = await BehaviorOwner(conn, POLICY).episode(run, client)
+            patience = current["patience_due_sim"]
+            assert float(current["care_score"]) >= POLICY.spec["retained_threshold"]
+            assert current["closed_sim"] is None and current["state"] == "waiting"
+            assert (
+                await (
+                    await conn.execute("select count(*) from behavior_work where run_id=%s and kind='patience'", (run,))
+                ).fetchone()
+            ) == (1,)
+        await conn.execute(
+            "update incidents set status='resolved',resolved_sim=%s where id=%s",
+            (now + dt.timedelta(minutes=3), incidents[1]),
+        )
+        await conn.commit()
+        async with conn.transaction():
+            await capture(conn, run)
+            await BehaviorOwner(conn, POLICY).advance(run_id=run, to_sim=now + dt.timedelta(minutes=3))
+            current = await BehaviorOwner(conn, POLICY).episode(run, client)
+            assert current["state"] == "retained" and current["closed_sim"] is not None
+            assert current["patience_due_sim"] == patience
+            assert (
+                await (await conn.execute("select count(*) from operations where run_id=%s", (run,))).fetchone()
+            ) == (0,)
+            assert (
+                await (await conn.execute("select count(*) from ledger_entries where run_id=%s", (run,))).fetchone()
+            ) == (0,)
+
+
+@pytest.mark.asyncio
+async def test_resolved_signal_episode_reopens_on_new_connection_without_old_care(seeded, monkeypatch):
+    from app.contracts.enums import ClientState
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, client, now, sim = await setup(conn, monkeypatch, seeded)
+        await sim.conn.close()
+        first, _ = await source(conn, run, client, now, unknown_product=True)
+        await conn.commit()
+        async with conn.transaction():
+            owner = BehaviorOwner(conn, POLICY)
+            await owner.advance(run_id=run, to_sim=now)
+            current = await owner.episode(run, client)
+            old_due = current["patience_due_sim"]
+            # Закрытие уже доказано отдельным actual resolution test; здесь
+            # исходный fixture — закрытый episode с сохранённой immutable history.
+            await owner._transition(current, ClientState.RETAINED, now, "closure", score=0.6)
+            await conn.execute("update behavior_runtime set closed_sim=%s where run_id=%s", (now, run))
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        later = now + __import__("datetime").timedelta(minutes=5)
+        second, _ = await source(conn, run, client, later, unknown_product=True)
+        await conn.commit()
+        async with conn.transaction():
+            owner = BehaviorOwner(conn, POLICY)
+            await owner.advance(run_id=run, to_sim=later)
+            current = await owner.episode(run, client)
+            assert current["episode_no"] == 2 and current["closed_sim"] is None
+            assert current["first_complaint_sim"] == later and current["signal_id"] == second and second != first
+            assert current["patience_due_sim"] != old_due and float(current["care_score"]) == 0
+            assert (
+                await (
+                    await conn.execute(
+                        "select count(*) from behavior_receipts where run_id=%s and source_kind='signal' and action='cause:2'",
+                        (run,),
+                    )
+                ).fetchone()
+            ) == (1,)

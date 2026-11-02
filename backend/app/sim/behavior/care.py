@@ -175,6 +175,18 @@ class CareResult:
     score: Decimal
 
 
+def eligible_reply(evidence: CommunicationEvidence, *, context: CareContext, policy: CarePolicy) -> bool:
+    """Общая factual граница speed/repeat; deadline проверяет вызывающий timer."""
+    return (
+        evidence.delivery_status in ("sent", "delivered")
+        and evidence.customer_attributed
+        and evidence.valid
+        and context.first_complaint_at is not None
+        and evidence.at >= context.first_complaint_at
+        and evidence.template_code not in policy.first_reply_excluded_templates
+    )
+
+
 def evaluate_care(
     previous: CareState,
     evidence: CareObservation,
@@ -212,12 +224,9 @@ def evaluate_care(
                     values,
                     explanation=max(values.explanation, policy.explanation_scores.get(evidence.template_code, 0.0)),
                 )
-            if (
-                context.first_complaint_at is not None
-                and evidence.at >= context.first_complaint_at
-                and evidence.template_code not in policy.first_reply_excluded_templates
-            ):
+            if eligible_reply(evidence, context=context, policy=policy):
                 first = min(state.first_reply_at, evidence.at) if state.first_reply_at else evidence.at
+                assert context.first_complaint_at is not None
                 delay = (first - context.first_complaint_at).total_seconds() / 60
                 speed = (
                     1.0

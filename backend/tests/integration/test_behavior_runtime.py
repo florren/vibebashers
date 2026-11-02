@@ -208,3 +208,67 @@ async def test_fresh_marker_and_tick_rollback_retry_are_atomic(seeded, monkeypat
         ) == (1,)
         assert sim.clock.sim_time == now + dt.timedelta(minutes=1)
         await sim.conn.close()
+
+
+@pytest.mark.asyncio
+async def test_real_world_failed_operations_use_one_owner_without_legacy_complaints(seeded, monkeypatch):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, _, now, sim = await setup(conn, monkeypatch, seeded)
+        await conn.execute(
+            "insert into faults(run_id,system_code,error_code,started_sim) values(%s,'sub_deposits','DEP-TIMEOUT-503',%s)",
+            (run, now),
+        )
+        await conn.commit()
+        world = await sim._ensure_world()
+        person = next(item for item in world.clients if item.psychotype == "anxious" and "deposit" in item.products)
+        person.products = ["deposit"]
+        world.clients = [person]
+        world.scale = 1
+        world.intensities["op"] = 120
+        await sim.step(60)
+        failed = (
+            await (
+                await conn.execute("select count(*) from operations where run_id=%s and status='failed'", (run,))
+            ).fetchone()
+        )[0]
+        assert failed > 1 and world.pending == []
+        assert (
+            await (
+                await conn.execute(
+                    "select count(*) from behavior_evidence where run_id=%s and source_kind='operation' and consumed_sim is not null",
+                    (run,),
+                )
+            ).fetchone()
+        ) == (failed,)
+        assert (
+            await (await conn.execute("select count(*) from behavior_runtime where run_id=%s", (run,))).fetchone()
+        ) == (1,)
+        assert (
+            await (
+                await conn.execute("select count(*) from behavior_work where run_id=%s and kind='complaint'", (run,))
+            ).fetchone()
+        ) == (1,)
+        assert (
+            await (
+                await conn.execute("select count(*) from behavior_pending_signals where run_id=%s", (run,))
+            ).fetchone()
+        ) == (0,)
+        assert (
+            await (
+                await conn.execute(
+                    "select count(*) from signals s join ingest_messages m on m.signal_id=s.id where s.run_id=%s and m.source_code<>'behavior_param'",
+                    (run,),
+                )
+            ).fetchone()
+        ) == (0,)
+        assert (await (await conn.execute("select count(*) from external_posts where run_id=%s", (run,))).fetchone())[
+            0
+        ] == (
+            await (
+                await conn.execute(
+                    "select count(*) from signals where run_id=%s and channel_code in ('social','review_portal')",
+                    (run,),
+                )
+            ).fetchone()
+        )[0]
+        await sim.conn.close()

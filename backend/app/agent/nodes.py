@@ -990,6 +990,7 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         {
             "instant": {k: inst.get(k) for k in ("rule_codes", "confidence", "actions")},
             "classification_type": cls.get("signal_type"),
+            "classification_snapshot": cls,
             "churn_risk": cls.get("churn_risk"),
             "score_pipeline": SCORE_PIPELINE,
             "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
