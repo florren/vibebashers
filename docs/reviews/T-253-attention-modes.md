@@ -42,3 +42,12 @@
 ## Согласование срока SLA с Header (`7bbdd1b`)
 
 Visual proof показал старое UTC отображение `sla_due_sim` рядом с уже московским Header: deadline08:44Z выглядит прошедшим относительно09:00MSK, хотя реальный срок11:44MSK и остаток2.733ч. Только срок SLA в IncidentCard/IncidentPage переведён на существующий `fmtSimMoscow` с явной подписью МСК/MSK. Generic `fmtSim`, created/history timestamps, серверная матрица и warning policy не менялись. Component/format targets15/15, полный frontend317/317, lint/type и обе builds зелёные. Actual API/browser4/4 проверили date+relative hint в list/detail при device timezone NewYork/Tokyo; обновлены два curated SLA PNG и `actual-sla-mobile.json`. Остальные timestamps истории остаются предметом отдельной общей ревизии; эта правка не утверждает их преобразование.
+
+## Composition с main после T-018
+
+Обычный merge `e572939` в `73e2556`; frontend lint/typecheck и все317Vitest
+прошли повторно. Отдельный новый full backend не заявляется. Cross-layer scope
+ранее согласован пользователем: этот review и docs/screenshots/T-253/* (L1),
+frontend/e2e/calm-mode.spec.ts (L5), product frontend (L4); merge владельцем L1.
+CI owners читает marker из title/body, а не label: marker добавлен в PR title
+перед повторным CI, проверки не изменялись.
