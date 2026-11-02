@@ -3,7 +3,7 @@ import { useDialogFocus } from '@/shared/layout/useDialogFocus'
 import { X } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '@/shared/api/client'
+import { ApiConnectionError, ApiError } from '@/shared/api/client'
 
 import type { Tone } from './tones'
 
@@ -28,7 +28,7 @@ export function Badge({ tone = 'neutral', children, className, title }: { tone?:
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={clsx('animate-pulse rounded-md bg-raised', className)} aria-hidden />
+  return <div className={clsx('status-indicator rounded-md bg-raised', className)} aria-hidden />
 }
 
 export function SkeletonRows({ n = 6 }: { n?: number }) {
@@ -42,11 +42,12 @@ export function SkeletonRows({ n = 6 }: { n?: number }) {
 }
 
 export function Empty({ title, hint, icon }: { title: string; hint?: string; icon?: ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-1 p-6 text-center">
       {icon && <div className="mb-1 text-faint">{icon}</div>}
       <div className="text-sm font-medium text-muted">{title}</div>
-      {hint && <div className="max-w-md text-xs text-faint">{hint}</div>}
+      <div className="max-w-md text-xs text-muted">{hint ?? t('care.emptyNext')}</div>
     </div>
   )
 }
@@ -58,16 +59,18 @@ export function ErrorBox({ error, compact }: { error: unknown; compact?: boolean
     return <Empty title={t('common.notImplemented')} hint={t('common.notImplementedCard', { card: error.problem?.card ?? '—' })} />
   }
   const msg = error instanceof Error ? error.message : String(error)
+  const kind = error instanceof ApiError ? (error.status === 429 ? 'busy' : error.status >= 500 ? 'service' : 'request') : error instanceof ApiConnectionError ? 'connection' : 'unknown'
   return (
     <div className={clsx('rounded-lg border border-danger/30 bg-danger/5 text-danger', compact ? 'px-2 py-1 text-xs' : 'm-3 p-3 text-sm')}>
-      {t('common.error')}: {msg}
+      <p role="status">{t(`care.errors.${kind}`)}</p>
+      <details className="mt-1 text-xs"><summary>{t('care.details')}</summary><p className="break-words">{msg}</p></details>
     </div>
   )
 }
 
 export function Section({ title, children, right, className }: { title: ReactNode; children: ReactNode; right?: ReactNode; className?: string }) {
   return (
-    <section className={clsx('card min-w-0', className)}>
+    <section data-block={typeof title === 'string' ? title : 'section'} className={clsx('card min-w-0', className)}>
       <header className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</h3>
         {right}
@@ -103,7 +106,7 @@ export function Drawer({
   const { t } = useTranslation()
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal>
+    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined}>
       <button className="absolute inset-0 bg-black/30" aria-label={t('common.close')} onClick={onClose} />
       <aside ref={panel} className={clsx('fade-in relative flex h-full max-w-full flex-col border-l border-line bg-surface shadow-2xl', width)}>
         <header className="flex h-11 shrink-0 items-center justify-between border-b border-line px-4">
@@ -135,7 +138,7 @@ export function Modal({
   const { t } = useTranslation()
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-6 pt-[8vh]" role="dialog" aria-modal>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-6 pt-[8vh]" role="dialog" aria-modal aria-label={typeof title === 'string' ? title : undefined}>
       <button className="fixed inset-0 bg-black/30" aria-label={t('common.close')} onClick={onClose} />
       <div ref={panel} className={clsx('fade-in relative w-full rounded-xl border border-line bg-surface shadow-2xl', width)}>
         <header className="flex h-11 items-center justify-between border-b border-line px-4">
@@ -160,7 +163,7 @@ export function Tabs<T extends string>({
   items: { id: T; label: ReactNode; count?: number | null }[]
 }) {
   return (
-    <div className="flex items-end gap-0.5 overflow-x-auto border-b border-line px-1" role="tablist">
+    <div data-block="tabs" className="flex items-end gap-0.5 overflow-x-auto border-b border-line px-1" role="tablist">
       {items.map((it) => (
         <button
           key={it.id}
