@@ -59,3 +59,6 @@ CI perf followup PR172: p95344мс на runner исправляется producti
 
 
 Performancefollowup: CI185315.5ms/CI188305.9ms; actualstalestatsJSONprojection10001доLIMIT51 воспроизведена. Candidate materializedIDsс прежнимиscope/cursor/count/порогом:53targetunit/PGgreen, pairedp9552.639→16.711ms. Источникпроверкииограничения:docs/reviews/T-234-stale-statistics.md. Новогоконтракта/денежнойполитикинет; finalCIещёнужен.
+
+
+Проверка runtime `0364c55`: 1432 unit passed/18 skipped; отдельный coverage-прогон 49 passed, модуль fanout 124/128 statements (96,875%). Actual PG план ограничивает JSON projection 51 строкой. `make lint` полностью зелёный (330 frontend tests). Полный финальный PR CI остаётся обязательным; подробности и ограничения — `docs/reviews/T-234-stale-statistics.md`.

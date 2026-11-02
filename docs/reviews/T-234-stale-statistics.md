@@ -1,27 +1,50 @@
-# T-234: bounded JSON projection до обновления statistics
+# T-234: ограничение JSON projection при устаревшей статистике PostgreSQL
 
-Два независимых CI head выявили p95 раскрытия веера выше300ms:
-P2 d99b856 —305.9006ms; QR76c1624 —315.5023ms. Остальные response/privacy/
-10001members/page50/8MiB assertions проходили. Порог/числоsamples/первыйGET
-не менялись, warmup/retry/skip вperformance gate не добавлены.
+В CI двух независимых веток p95 раскрытия веера превысил 300 мс:
+PR #188, head `d99b856` — 305,90 мс; PR #185, head `76c1624` — 315,50 мс.
+Проверки размера страницы, маскирования, полного количества связей и памяти проходили.
+Порог, десять samples с первым GET и ограничения памяти сохранены без warmup, retry или skip.
 
-На собственной PG16 fixture с last_analyze/last_autoanalyze=NULL exact SQL
-делал to_jsonb для10001строки передSort/LIMIT51. EXPLAIN ANALYZE READ ONLY
-дал39.686ms; wholeASGI cProfile не показал повторногоcold route compile.
-Ранее полученный вручную быстрый0.25ms план послеcatch-upstats не доказывал
-скорость первоначальногоAPIзапроса. Это воспроизведённая лишняя работа; точный
-cloudrunner не воспроизводился и случайнымfailure не объявляется.
+## Причина и изменение
 
-Исправление: materialized CTE выбирает максимумlimit+1 идентификаторов с теми же
-run/upper/last predicates, затемчитаетJSON толькоэтихстрок. Count/max fence,
-UNION dedup, порядокID, cursor binding, поля/маскирование и read-onlyTX прежние.
-Новыхиндексов/миграций/настроекPostgreSQL/записей/LLM нет.
+На собственной изолированной PostgreSQL 16 fixture без `ANALYZE` и auto-analyze
+фактический план вычислял `to_jsonb` для 10 001 записи перед Sort/LIMIT 51.
+READ ONLY EXPLAIN ANALYZE показал 39,686 мс. Отдельный whole-ASGI профиль
+не подтвердил повторную компиляцию metadata маршрута. Ранее измеренный быстрый
+план после обновления статистики не характеризовал первоначальный API-запрос.
+Точный cloud runner локально не воспроизводился; причина его полной задержки
+не считается исчерпывающе установленной.
 
-НовыйactualPGregression временноотключаетautoanalyze толькоfixtureтаблицы
-и проверяетфактическиеJSON-producing plan rows≤51, неформуSQL. Доfixонупал:
-Limit51,Sort51,NestedLoop10001. Existing10001performancegateнеизменён.
+Materialized CTE теперь выбирает максимум `limit + 1` ID с прежними границами
+`run`, `upper` и `last`, затем строит JSON только для выбранных записей.
+Count/max fence, UNION dedup, порядок ID, привязка cursor, поля и маскирование
+сохранены. API, DDL, настройки PostgreSQL, финансовые правила и HITL не меняются.
+Откат — revert этого исправления.
 
-Первыйcandidate:53targetunit/PGpassed55.01s, p95=16.711ms противbaseline52.639ms
-на тойжеhost/fixture; Python peak258286B против260207B. Это локальныйpaired
-результат, не обещаниеCI. Sourceblob/сырыеsamples вproofJSON. Finalfrozenhead
-и newCI ещётребуются. API/DDL/financial/HITL не меняются; rollbackrevert.
+Новая actual-PG регрессия отключает autovacuum только у таблицы собственной fixture
+и проверяет фактическое число строк всех узлов плана, вычисляющих JSON.
+До исправления она падала: NestedLoop обрабатывал 10 001 строку.
+После исправления максимум — 51; анализ статистики и прогрев в тест не добавлены.
+Фактический план сохранён в `T-234-bounded-projection-plan.json`.
+
+## Проверки и ограничения
+
+Runtime source: `0364c55194d317b192be9440ec4fe22b3351a82f`;
+blob `backend/app/trace/fanout.py`: `a609ea241bd57bb343148a76aa038de25e872df9`.
+
+- Полный backend unit: 1 432 passed, 18 skipped, 41,65 с.
+- Первая целевая серия: 53 unit/actual-PG passed, 55,01 с.
+- Отдельный корректно настроенный coverage-прогон: 49 passed, 41,03 с;
+  модуль `app.trace.fanout` — 124/128 statements, 96,875%.
+  Изменение SQL-литерала не добавляет отдельных Python statements (0 новых);
+  это не заявляется как 100% покрытия новых строк. Поведение SQL проверено
+  отдельной регрессией фактического плана, включая отрицательный прогон до fix.
+- `make lint`: 330 frontend tests, ESLint, TypeScript, Ruff/format 381 файл,
+  mypy 258 файлов, OpenAPI drift 192/192 — успешно.
+
+На том же локальном host/fixture неизменённый performance gate показал
+p95 52,639 → 16,711 мс; Python peak 260 207 → 258 286 байт.
+Сырые samples и исходные CI failures находятся в
+`T-234-stale-statistics-proof.json`; coverage — в `T-234-projection-coverage.json`.
+Это локальный результат без обещания времени cloud runner. Полный `make test`
+на финальном PR выполняет CI; до его успешного завершения merge запрещён.
