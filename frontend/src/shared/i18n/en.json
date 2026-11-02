@@ -237,7 +237,6 @@
     }
   },
   "signal": {
-    "sourcePlatform": "Source platform",
     "type": {
       "tech_fault": "Technical fault",
       "client_error": "Client error",
@@ -303,7 +302,8 @@
     "followups": "Deferred checks",
     "noClient": "client not identified",
     "hints": "Hints for finding the client",
-    "text": "Request text"
+    "text": "Request text",
+    "sourcePlatform": "Source platform"
   },
   "incident": {
     "status": {
@@ -949,7 +949,8 @@
     "delivered": "delivered",
     "failed": "error",
     "queued": "queued",
-    "draft": "draft"
+    "draft": "draft",
+    "unknown": "delivery outcome unknown"
   },
   "outcome": {
     "closed_in_sla_with_gift": "closed within SLA with a gift",
@@ -1318,7 +1319,12 @@
       "checkOk": "Check passed · {{ms}} ms · {{model}}",
       "deleteProfile": "Delete profile {{code}}",
       "urlLabel": "URL for {{code}}",
-      "remaining": "Remaining: {{value}}"
+      "remaining": "Remaining: {{value}}",
+      "usageUnknown": "Unknown",
+      "observedFloor": "Confirmed at least: {{value}}",
+      "legacyHint": "Legacy value (unverified): {{value}}",
+      "usageAsOf": "Usage observation: {{value}}",
+      "requestsDay": "Real UTC day: {{value}}"
     }
   },
   "tasks": {

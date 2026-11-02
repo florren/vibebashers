@@ -85,6 +85,7 @@ async def test_actual_aiogram_message_projection_and_backend_signature():
     assert received == [
         {
             "chat_id": 101,
+            "bot_id": 123456,
             "kind": "message",
             "text": "/start",
             "payload": {"message_id": 12, "language_code": "en"},

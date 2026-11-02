@@ -237,7 +237,6 @@
     }
   },
   "signal": {
-    "sourcePlatform": "Площадка",
     "type": {
       "tech_fault": "Техсбой",
       "client_error": "Ошибка клиента",
@@ -303,7 +302,8 @@
     "followups": "Отложенные проверки",
     "noClient": "клиент не определён",
     "hints": "Подсказки для поиска клиента",
-    "text": "Текст обращения"
+    "text": "Текст обращения",
+    "sourcePlatform": "Площадка"
   },
   "incident": {
     "status": {
@@ -949,7 +949,8 @@
     "delivered": "доставлено",
     "failed": "ошибка",
     "queued": "в очереди",
-    "draft": "черновик"
+    "draft": "черновик",
+    "unknown": "исход доставки неизвестен"
   },
   "outcome": {
     "closed_in_sla_with_gift": "закрыт в SLA с подарком",
@@ -1318,7 +1319,12 @@
       "checkOk": "Проверка успешна · {{ms}} мс · {{model}}",
       "deleteProfile": "Удалить профиль {{code}}",
       "urlLabel": "URL профиля {{code}}",
-      "remaining": "Осталось: {{value}}"
+      "remaining": "Осталось: {{value}}",
+      "usageUnknown": "Неизвестно",
+      "observedFloor": "Подтверждено не менее: {{value}}",
+      "legacyHint": "Старое значение (не подтверждено): {{value}}",
+      "usageAsOf": "Наблюдение расхода: {{value}}",
+      "requestsDay": "Реальные сутки UTC: {{value}}"
     }
   },
   "tasks": {

@@ -168,7 +168,12 @@ class ProviderChain:
                         provider: Provider, requested: LLMProfile, limit: float
                     ) -> tuple[dict[str, Any], Usage, str]:
                         if provider.name not in ("mock", "replay"):
-                            await self.limiter.acquire(requested.code, requested.rpm_limit, requested.rpd_limit)
+                            durable = getattr(getattr(provider, "accounting", None), "durable", False) or getattr(
+                                provider, "durable_accounting", False
+                            )
+                            await self.limiter.acquire(
+                                requested.code, requested.rpm_limit, None if durable else requested.rpd_limit
+                            )
                         async with selected_provider(provider, requested) as bound:
                             return await bound.complete_structured(
                                 provider_messages(messages, bound.name), schema, requested, timeout_s=limit
@@ -283,8 +288,12 @@ class ProviderChain:
             deadline = time.perf_counter() + timeout_s
             try:
                 if prov.name not in ("mock", "replay"):
+                    durable = getattr(getattr(prov, "accounting", None), "durable", False) or getattr(
+                        prov, "durable_accounting", False
+                    )
                     await asyncio.wait_for(
-                        self.limiter.acquire(profile.code, profile.rpm_limit, profile.rpd_limit), timeout_s
+                        self.limiter.acquire(profile.code, profile.rpm_limit, None if durable else profile.rpd_limit),
+                        timeout_s,
                     )
                 async with selected_provider(prov, profile) as bound:
                     remaining = deadline - time.perf_counter()

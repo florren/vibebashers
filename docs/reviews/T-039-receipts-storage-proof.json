@@ -1,0 +1,27 @@
+{
+  "actual_upgrade": "0018→0019",
+  "legacy_count": 1,
+  "legacy_rows_sha256_unchanged": true,
+  "legacy_details_null": true,
+  "ddl_reapply_twice": true,
+  "valid_shape": true,
+  "invalid_shapes_rejected": 5,
+  "runtime_hooks_active": false,
+  "parent0018": "bed96481c55139e9d75cd9cb2f57d2b2d251ab9a",
+  "legacy_rows_sha256": "cfe9428e8ce33bc95036b6215f94cf5a1d4018479e3cc69661cc92aadfa734ef",
+  "schema17_unchanged": true,
+  "public_api_version": "1.5.22",
+  "codec_storage_tests": {
+    "passed": 44,
+    "seconds": 6.82,
+    "log": "/tmp/t039-receipts-storage-final.log"
+  },
+  "alembic_check": "No new upgrade operations detected",
+  "generated_orm_classes": 110,
+  "final_DDL_API_human_review_required": true,
+  "source_sha256": {
+    "contracts/db/migrations/0019_behavior_cancellation_receipts.sql": "e7ec41700c8dfee7fadd46ddae981dc24d28feb95e0dffb20a3a8beb2bee030f",
+    "contracts/db/alembic/versions/0019_behavior_cancellation_receipts.py": "4cb87ddf43e1fd11c85a13abf775e90bc5eed0e90a1468a8494345565d94faa9",
+    "backend/app/sim/behavior/cancellation_details.py": "0fb0223eff9f688879d01a53f2da7179f6370b216cfd6f8565d4433cde4640ca"
+  }
+}

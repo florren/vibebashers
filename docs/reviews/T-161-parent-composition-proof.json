@@ -1,0 +1,101 @@
+{
+  "checked_head": "cd102579cd2e32221bf1902124458ec1b0550ce1",
+  "parent_P2": "25852b83807f84ec9a9897f806cc7b38ff004c9c",
+  "coverage_runtime_head": "70e4b00248b8ac0bf6adcaf9d69d6065edb46042",
+  "behavior_files": {
+    "backend/app/sim/behavior/__init__.py": {
+      "sha256": "26d5f30b85d02dac8d0c01c62474a8f53717001ebb10fa94f7e9bb5d0554d418",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/care.py": {
+      "sha256": "39edee31c5b56b0b08910149272f6f006e9b0e586f82c42320b4639df4ccaba0",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/codec.py": {
+      "sha256": "6492b260a3ff01a4d523cc8ceb787bbd74f34b0fb5e58965f2be358a05165846",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/facts.py": {
+      "sha256": "ac82d067858a3a2860fb75dcb04563c1d265739a53eff777db7339ef8ed0bfcf",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/model.py": {
+      "sha256": "e78d6814aaa75d26b43b2fa61eba7d712274aa9ad37d304c7df7c71f11a58a36",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/owner.py": {
+      "sha256": "83da49ae3236ffae9e62ae7966654da5c042d91c4291fe0b5eeb07d2c4f6a16b",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/pending.py": {
+      "sha256": "ad3bf6d8caa5d48a302685d47fbf70855c92b894279e756631241a9d676e9915",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/policy.py": {
+      "sha256": "4039b774524825518c2f62bfd7b44bf3e0fe5018bd4690d29d9c4880f840594b",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/runtime.py": {
+      "sha256": "a5fce26a892992358eaf56510c853b28d721d997dffcbd496f5630b41f475b2d",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/signals.py": {
+      "sha256": "9bdc244df694d4bcaeff7e6db252dbdd2d3dbef182fd1ea3850c87fd0853a324",
+      "unchanged_after_parent": true
+    },
+    "backend/app/sim/behavior/store.py": {
+      "sha256": "18b277dfb4247a82c6ed9f261140139cdfa52b5d361fd30b94f66057bbcb0f37",
+      "unchanged_after_parent": true
+    }
+  },
+  "generation": {
+    "models": 110,
+    "tracked_diff_after_sync_contracts": false,
+    "log": "/tmp/t161-current-parent-generation.log"
+  },
+  "tests": [
+    {
+      "scope": "T235 unit/actual PG acceptance",
+      "passed": 46,
+      "seconds": 10.1,
+      "log": "/tmp/t161-p2-parent-t235.log"
+    },
+    {
+      "scope": "effect-time/Twin/owner/inactive/native-fault/causality/atomicity",
+      "passed": 55,
+      "seconds": 314.39,
+      "log": "/tmp/t161-p2-parent-guards.log"
+    },
+    {
+      "scope": "frontend via make lint",
+      "passed": 366,
+      "files": 47,
+      "log": "/tmp/t161-p2-parent-make-lint.log"
+    }
+  ],
+  "lint": {
+    "make_lint_exit": 0,
+    "backend_files": 472,
+    "backend_mypy_modules": 297,
+    "tgbot_files": 12,
+    "tgbot_mypy_modules": 5,
+    "openapi_operations": 192,
+    "openapi_missing": 0,
+    "openapi_extra": 0,
+    "frontend_inherited_warning": "DemoMenu.tsx react-refresh/only-export-components; zero errors"
+  },
+  "contracts": {
+    "schemas": 45,
+    "paths": 162
+  },
+  "licenses": {
+    "backend_npm": 550,
+    "tgbot": 36
+  },
+  "limitations": [
+    "45-minute full integration not rerun on this head; original9bba469/2failed/4skip remains source-qualified",
+    "Known whole-World pre-first-action team plan/RNG gap until separate T037 child",
+    "Exact final CI and concrete human event/runtime/reset_day/financial-time review required",
+    "Main364c4fd intentionally not merged at this stage; no production or real LLM/Telegram operations"
+  ]
+}

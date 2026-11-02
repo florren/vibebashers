@@ -508,7 +508,7 @@ function KeysBlock({ profiles, keys }: { profiles: LlmProfileT[]; keys: LlmApiKe
             </div>
             {key?.provider === 'gigachat' && (
               <div>
-                {t('bench.tokens')}: {key.tokens_used ?? 0}/{key.tokens_limit ?? '—'}
+                {t('bench.tokens')}: {key.usage_known === true ? key.tokens_used ?? '—' : t('setup.keys.usageUnknown')}/{key.tokens_limit ?? '—'}
               </div>
             )}
             {key?.provider === 'openai_compatible' && (
@@ -517,7 +517,7 @@ function KeysBlock({ profiles, keys }: { profiles: LlmProfileT[]; keys: LlmApiKe
                   {t('bench.balance')}: {key.balance_usd ?? '—'}
                 </div>
                 <div>
-                  {t('bench.requests')}: {key.requests_today ?? 0}/{key.rpd_limit ?? '—'}
+                  {t('bench.requests')}: {key.requests_known === true ? key.requests_today ?? '—' : t('setup.keys.usageUnknown')}/{key.rpd_limit ?? '—'}
                 </div>
               </>
             )}

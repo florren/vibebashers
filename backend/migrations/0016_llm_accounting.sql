@@ -80,3 +80,6 @@ CREATE INDEX IF NOT EXISTS wire_attempts_profile_day_idx
 -- Idempotent for a partially installed development checkpoint as well.
 ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_id integer;
 ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_code text NOT NULL DEFAULT '';
+
+-- Normalize a pre-release partially installed checkpoint without changing history.
+ALTER TABLE llm_runtime.wire_attempts ALTER COLUMN profile_code DROP DEFAULT;

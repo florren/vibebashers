@@ -1,12 +1,12 @@
 {
   "policy_id": "demo_behavior_v0_review",
   "status": "approved_for_implementation",
-  "enabled": false,
+  "enabled": true,
   "approved_by": "user_in_chat",
   "approved_date": "2026-11-02",
   "approval_scope": "values_and_semantics_only",
   "approval_source_commit": "ba5145dc8ff63d1ac0b75a44faa697749fa05e5e",
-  "policy_sha256": "a22fb3375f77809e015747e09e40598c5b744439d45c1436cb70189dcfe7ce9b",
+  "policy_sha256": "22d4d5c2105ecfca96406f2b1fd26a99f382abfda50b7d8edb3b299d5187c807",
   "catalog_sha256": {
     "psychotypes": "63004af0d26c884d44235358cdc517f739ea4c760a92c1b1ec9a39757a8bbb2b",
     "segments": "d2962440c00cb6912e45059e6669896c9f84a4461f6524e296c37a6bf64e0a18",

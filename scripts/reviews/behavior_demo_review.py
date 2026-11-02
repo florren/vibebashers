@@ -45,8 +45,8 @@ def build_report(policy_path: Path) -> dict[str, Any]:
         and policy.get("approval_scope") == "values_and_semantics_only"
         and isinstance(policy.get("approved_date"), str)
     )
-    if policy["enabled"] is not False or not (draft or approved):
-        raise ValueError("нужен неактивированный draft или подтверждённый implementation-only packet")
+    if type(policy["enabled"]) is not bool or not (approved or (draft and not policy["enabled"])):
+        raise ValueError("нужен выключенный draft либо утверждённый implementation packet")
     if approved:
         dt.date.fromisoformat(policy["approved_date"])
     if set(policy["segment_multiplier"]) != {x.value for x in Segment}:
@@ -127,7 +127,7 @@ def build_report(policy_path: Path) -> dict[str, Any]:
     return {
         "policy_id": policy["policy_id"],
         "status": policy["status"],
-        "enabled": False,
+        "enabled": policy["enabled"],
         "approved_by": policy["approved_by"],
         "approved_date": policy.get("approved_date"),
         "approval_scope": policy.get("approval_scope"),

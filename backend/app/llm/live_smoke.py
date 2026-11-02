@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import sys
+from contextlib import asynccontextmanager
 from functools import partial
 from typing import Any
 
@@ -28,6 +29,32 @@ FIXED_TEXT = "В приложении Банка не открывается в�
 MAX_REQUESTS = 6
 MAX_OUTPUT_TOKENS = 128
 BASE_URL = "https://openrouter.ai/api/v1"
+
+
+class _BoundedDiagnosticAccounting:
+    """Reviewed no-DB synthetic CLI only; total HTTP cap remains in BoundedTransport."""
+
+    durable = False
+
+    def __init__(self) -> None:
+        self.attempts = 0
+
+    @asynccontextmanager
+    async def key_scope(self, profile: Any, facts: Any, *, timeout_s: float) -> Any:
+        if profile.code != "bounded_smoke" or profile.model not in DEFAULT_MODEL_IDS:
+            raise ProviderError("quota", "вызов вне fixed synthetic diagnostic scope")
+        yield self
+
+    @asynccontextmanager
+    async def inference(self) -> Any:
+        if self.attempts >= MAX_REQUESTS:
+            raise ProviderError("quota", "synthetic inference cap исчерпан")
+        self.attempts += 1
+        yield self
+
+    async def observe(self, prompt: int, completion: int, *, total_tokens: int, final: bool) -> None:
+        # Validated usage is returned by the CLI; no claim of persistent app accounting.
+        return None
 
 
 class BoundedTransport(httpx.AsyncBaseTransport):
@@ -82,6 +109,7 @@ async def run() -> tuple[int, dict[str, Any]]:
         budget_usd=settings.openrouter_budget_usd,
         budget_loader=partial(load_openrouter_budget, settings.openrouter_budget_usd),
     )
+    provider.accounting = _BoundedDiagnosticAccounting()  # type: ignore[assignment]
     results = []
     try:
         for model in DEFAULT_MODEL_IDS:

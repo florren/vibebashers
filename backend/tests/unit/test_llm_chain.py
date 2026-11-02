@@ -737,14 +737,14 @@ def test_public_openrouter_env_key_balance_and_duplicate_hint() -> None:
     assert len(paid_rows) == 2 and len(saved) == 1 and saved[0]["key_enc"] == "enc1:stored"
     added = paid_rows[-1]
     assert added["provider"] == "openai_compatible"
-    assert added["balance_usd"] == 17 and added["rpd_limit"] == 1000
+    assert added["balance_usd"] == 17 and added["rpd_limit"] is None
     assert added["id"] not in {item["id"] for item in saved}
     assert set(added) <= allowed
     assert "key_enc" not in added and "key" not in added
     assert "enc1:" not in json.dumps(added)
 
     free_rows = public_openrouter_env_key([], free, key_hint="…free", last_error=None)
-    assert free_rows[-1]["balance_usd"] == 0 and free_rows[-1]["rpd_limit"] == 50
+    assert free_rows[-1]["balance_usd"] == 0 and free_rows[-1]["rpd_limit"] is None
     assert "key_enc" not in free_rows[-1] and set(free_rows[-1]) <= allowed
 
     same_hint = [{"id": 4, "provider": "openai_compatible", "key_hint": "…hint", "key_enc": "enc1:stored"}]

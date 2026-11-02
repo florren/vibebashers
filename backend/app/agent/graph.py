@@ -108,10 +108,19 @@ async def load_deps(
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
     state_evidence_sink: StateEvidenceSink | None = None,
 ) -> Deps:
+    from app.sim.behavior.runtime import refresh_effect_time
+
     if not dry_run:
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, run_id)
         chain, profile = await run_profiles(
             conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
         )
+    if state_evidence_sink is None and not dry_run:
+        from app.sim.behavior.runtime import state_sink
+
+        state_evidence_sink = await state_sink(conn, run_id)
     ctx = ToolContext(
         conn,
         run_id=run_id,
@@ -120,6 +129,7 @@ async def load_deps(
         dry_run=dry_run,
         trace_conn=trace_conn,
         state_evidence_sink=state_evidence_sink,
+        effect_time_fence=None if dry_run else refresh_effect_time,
     )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [
@@ -347,6 +357,9 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(sig["run_id"]))
     chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
@@ -458,6 +471,9 @@ async def recover_agent_run(
         ).fetchone()
         if row is None or row[2] is not None:
             return None
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, int(row[0]))
         saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": row[1]}})
         if saved is None:
             raise ValueError("legacy-проход без durable checkpoint: требуется отдельное ручное восстановление")
@@ -516,6 +532,9 @@ async def resume_after_followup(
     reason = str(reason)
     if reason == "escalation_check":
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 
@@ -782,6 +801,9 @@ async def resume_after_human(
     if not row or not row[4]:
         return None
     agent_run_id, decision, modified, run_id, checkpoint, _nsteps = row
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 

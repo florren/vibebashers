@@ -15,6 +15,8 @@ import psycopg
 from app.abs import service as abs_svc
 from app.feed import service as feed_svc
 from app.logging import get_logger
+from app.sim.behavior.policy import DemoPolicy
+from app.sim.behavior.store import BehaviorStore
 from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
@@ -148,8 +150,11 @@ class World:
         rng: SimRng,
         run_id: int,
         intensities: dict[str, float] | None = None,
+        *,
+        behavior_policy: DemoPolicy | None = None,
     ) -> None:
         self.conn, self.bus, self.rng, self.run_id = conn, bus, rng, run_id
+        self.behavior_policy = behavior_policy
         self.intensities = {**DEFAULT_INTENSITIES, **(intensities or {})}
         self.clients: list[ClientRow] = []
         self.by_product: dict[str, list[ClientRow]] = {}
@@ -165,7 +170,6 @@ class World:
 
     async def load(self) -> None:
         self.loaded = False
-        previous_faults = {fault["id"]: fault for fault in self.active_faults}
         cur = await self.conn.execute(
             "select c.id, c.segment_code, c.psychotype_code, c.region_code, ci.name_ru, p.params, "
             "array_agg(cp.product_code order by cp.product_code) filter (where cp.status = 'active'), max(cp.card_last4) "
@@ -199,30 +203,9 @@ class World:
             r[0]: {"system": r[1], "product": r[2], "criticality": r[3], "client_visible": r[4]}
             for r in await ec.fetchall()
         }
-        af = await self.conn.execute(
-            "select id, system_code, error_code, started_sim from faults where run_id = %s and resolved_sim is null",
-            (self.run_id,),
-        )
-        self.active_faults = [
-            {
-                "id": r[0],
-                "system": r[1],
-                "error_code": r[2],
-                "started_sim": r[3],
-                "expected_end": r[3] + dt.timedelta(minutes=90),
-                "impact": 0,
-                "clients": set(),
-                "corr": uuid.uuid4(),
-            }
-            for r in await af.fetchall()
-        ]  # после рестарта: добиваем 90 мин
-        # При rollback reload сохраняем volatile metadata только тех старых
-        # fault IDs, которые действительно остались active в committed DB.
-        for fault in self.active_faults:
-            old = previous_faults.get(fault["id"], {})
-            for name in ("expected_end", "impact", "clients", "corr"):
-                if name in old:
-                    fault[name] = old[name]
+        from app.sim.fault_recovery import load_faults
+
+        self.active_faults = await load_faults(self.conn, self.run_id)
         await self.team_emulator.load()
         await self.sla_engine.load()
         self.loaded = True
@@ -361,7 +344,9 @@ class World:
                 correlation_id=corr,
                 causation_id=fault["corr"] if fault is not None and fault_id else None,
             )
-            if rejected_failure:
+            if self.behavior_policy is not None and status == "failed":
+                await BehaviorStore(self.conn).enqueue_operation(run_id=self.run_id, operation_id=op_id)
+            elif rejected_failure and self.behavior_policy is None:
                 # Потребляем старый complaint draw/delay без фиктивной жалобы.
                 self._maybe_complain(client, product, started, op_id, None, None, None, corr, enqueue=False)
             elif status == "failed" or error_code:
@@ -521,8 +506,17 @@ class World:
 
     # --- сигналы: отложенные жалобы + шум -----------------------------------------------------------------------------
     async def flush_signals(self, now: dt.datetime, minutes: float) -> int:
-        due = [p for p in self.pending if p.due_sim <= now]
-        self.pending = [p for p in self.pending if p.due_sim > now]
+        durable = []
+        if self.behavior_policy is not None:
+            from app.sim.behavior import pending as pending_store
+
+            await pending_store.persist(self.conn, self.run_id, self.pending)
+            self.pending = []
+            durable = await pending_store.due(self.conn, self.run_id, now)
+            due = [item for _, item in durable]
+        else:
+            due = [p for p in self.pending if p.due_sim <= now]
+            self.pending = [p for p in self.pending if p.due_sim > now]
         n_noise = self.rng.poisson(self.intensities["signal_noise"] * self.scale * minutes / 60)
         for _ in range(n_noise):
             client = self.rng.choice(self.clients)
@@ -541,6 +535,8 @@ class World:
             )
         for p in due:
             await self._emit_signal(p)
+        for timer_id, _ in durable:
+            await pending_store.consumed(self.conn, timer_id, now)
         return len(due)
 
     async def _card_last4(self, client_id: int) -> str | None:
@@ -553,7 +549,15 @@ class World:
         return str(row[0]) if row else None
 
     async def _emit_signal(self, p: PendingSignal) -> None:
-        channel = self.rng.weighted(p.client.channel_weights or {"chat": 1.0})
+        if self.behavior_policy is not None:
+            allowed = self.behavior_policy.spec["complaint"]["eligible_inbound_channels"]
+            weights = {key: value for key, value in p.client.channel_weights.items() if key in allowed}
+            total = sum(weights.values())
+            if total <= 0:
+                raise ValueError("World timer не имеет разрешённого inbound channel")
+            channel = self.rng.weighted({key: value / total for key, value in weights.items()})
+        else:
+            channel = self.rng.weighted(p.client.channel_weights or {"chat": 1.0})
         if channel not in (
             "social",
             "call",
@@ -575,6 +579,40 @@ class World:
             channel=channel,
         )
         identified = channel not in ("social", "review_portal") or self.rng.random() < 0.3
+        if self.behavior_policy is not None:
+            from app.ingest.normalizer import create_signal
+
+            await self.conn.execute(
+                "insert into ingest_sources(code,kind,channel_code,enabled,is_external) values('sim_generator','rest','chat',false,false) on conflict(code) do nothing"
+            )
+            result = await create_signal(
+                self.conn,
+                {
+                    "external_id": f"world:{self.run_id}:{p.correlation_id}:{p.client.id}:{p.source_operation_id or 0}:{p.due_sim.isoformat()}",
+                    "channel": channel,
+                    "client": {
+                        "client_id": p.client.id if identified else None,
+                        "contact_hints": None if identified else {"nickname": f"@user_{p.client.id}"},
+                    },
+                    "text": g.text,
+                    "timestamp": p.due_sim.isoformat(),
+                    "origin": "sim",
+                    "geo": {"region_code": p.client.region_code, "source": "client_profile"},
+                    "meta": {
+                        "world_timer": True,
+                        "template_id": g.gold.get("template_id"),
+                        "source_operation_id": p.source_operation_id,
+                        "source_fault_id": p.source_fault_id,
+                    },
+                },
+                source_code="sim_generator",
+                run_id=self.run_id,
+                sim_time=p.due_sim,
+            )
+            if result["status"] != "accepted":
+                raise ValueError("World timer signal не принят normalizer; требуется rollback")
+            await self.conn.execute("update signals set lang=%s where id=%s", (g.gold["language"], result["signal_id"]))
+            return
         cur = await self.conn.execute(
             "insert into signals (run_id, channel_code, client_id, external_contact, text, received_sim, status, origin, source_operation_id, source_fault_id, sentiment, geo, lang) values (%s, %s, %s, %s::jsonb, %s, %s, 'new', 'sim', %s, %s, %s, %s::jsonb, %s) returning id",
             (

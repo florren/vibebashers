@@ -1,7 +1,7 @@
 """Durable evidence/receipt storage: только переданное соединение и внешняя TX.
 
-SQL находится в review proposal до actual0016. Этот модуль не создаёт таблицы,
-не открывает соединения и не подключён к runtime actor.
+Actual0017 принадлежит run. Модуль не создаёт таблицы, не открывает соединения
+и не выполняет commit; внешние producer и Sim owner передают свою TX.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import psycopg
 from psycopg.pq import TransactionStatus
 from psycopg.rows import tuple_row
 
-from app.agent.tools.base import ClientStateIntent
+from app.agent.tools.base import ClientStateIntent, StateEvidenceResult
 
 
 def positive_ids(*values: int) -> None:
@@ -150,6 +150,28 @@ class BehaviorStore:
             return False
         return await self._enqueue(run_id, client_id, "resolution", incident_id, incident[0])
 
+    async def current_effect_time(self, run_id: int, *, include_live: bool = False) -> dt.datetime | None:
+        """Native clock только своего current run; SHARE фиксирует status до commit."""
+        if self.conn.autocommit and self.conn.info.transaction_status != TransactionStatus.INTRANS:
+            raise ValueError("effect fence требует внешнюю transaction")
+        # Первая statement легитимно открывает implicit caller TX; commit здесь нет.
+        row = await self._one("select kind,status from sim_runs where id=%s for share", (run_id,))
+        self.require_transaction()
+        kinds = ("free", "scenario", "live") if include_live else ("free", "scenario")
+        if row is None or row[0] not in kinds or row[1] not in ("running", "paused", "interrupted"):
+            return None
+        current = await self._one("select sim_time from sim_state where id=1 and current_run_id=%s", (run_id,))
+        if not current:
+            return None
+        at = current[0]
+        if not isinstance(at, dt.datetime) or at.utcoffset() is None:
+            raise ValueError("current SimTime должен быть aware timestamp")
+        return at
+
+    async def active_run(self, run_id: int) -> bool:
+        """SHARE/current gate без SimState lock после money locks."""
+        return await self.current_effect_time(run_id) is not None
+
     async def _enqueue(self, run_id: int, client_id: int, kind: str, source_id: int, at: dt.datetime) -> bool:
         row = await self._one("select kind,status from sim_runs where id=%s", (run_id,))
         if row is None or row[0] not in ("free", "scenario") or row[1] not in ("running", "paused", "interrupted"):
@@ -174,12 +196,15 @@ class BehaviorStore:
         return inserted is not None
 
 
-async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> None:
+async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> bool:
     """Callback TwinService: тот же commit сохраняет observation и durable evidence."""
     await BehaviorStore(conn).enqueue_twin(run_id=run_id, reaction_id=reaction_id)
+    return True
 
 
-async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent) -> int:
+async def record_agent_state_intent(
+    conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent
+) -> StateEvidenceResult:
     """Graph TX пишет запрос; actual state меняет только owner после проверки фактов."""
     from app.contracts.enums import ClientState
 
@@ -212,6 +237,13 @@ async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: 
     )
     if actual is None:
         raise ValueError("agent state intent не принадлежит signal/client/run")
+    observed_at = await store.current_effect_time(intent.run_id)
+    if observed_at is None:
+        return StateEvidenceResult(False, None, "inactive_run")
+    # Проверка policy/legacy выполняется повторно в write TX после status pin.
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, intent.run_id)
     row = await store._one(
         "insert into behavior_agent_intents(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger,observed_sim) "
         "values(%s,%s,%s,%s,%s,%s,%s,%s) on conflict(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger) "
@@ -224,9 +256,9 @@ async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: 
             intent.incident_id,
             intent.requested_state,
             intent.trigger,
-            intent.at,
+            observed_at,
         ),
     )
     assert row is not None
-    await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], intent.at)
-    return int(row[0])
+    await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], observed_at)
+    return StateEvidenceResult(True, int(row[0]))

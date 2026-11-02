@@ -25,7 +25,6 @@ from app.agent.tools.write import render_template  # noqa: E402
 from app.api.public import (  # noqa: E402
     InboundBody,
     _accepted_reply,
-    _bot_drafts,
     _bot_turn,
     _status_label,
     _timeline,
@@ -255,14 +254,20 @@ def test_en_tracking_labels_stay_in_label_ru() -> None:
 
 
 async def test_en_bot_stores_lang_after_free_text() -> None:
-    start = await _bot_turn(None, None, InboundBody(chat_id=15701, kind="start", text="/start"))  # type: ignore[arg-type]
+    draft: dict[str, Any] = {"version": 1, "stage": "role"}
+    start = await _bot_turn(
+        None, None, InboundBody(bot_id=123456, update_id=1, chat_id=15701, kind="start", text="/start"), draft
+    )  # type: ignore[arg-type]
     assert "Здравствуйте" in start["reply_text"]
     reply = await _bot_turn(
         None,
         None,
-        InboundBody(chat_id=15701, kind="free_text", text="The fee was charged on my card again"),
+        InboundBody(
+            bot_id=123456, update_id=2, chat_id=15701, kind="free_text", text="The fee was charged on my card again"
+        ),
+        draft,
     )  # type: ignore[arg-type]
-    assert _bot_drafts[15701]["lang"] == "en"
+    assert draft["lang"] == "en"
     assert communication_lang(reply["reply_text"]) == "en"
     assert "+7 900" in reply["reply_text"]
 

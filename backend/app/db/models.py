@@ -2337,6 +2337,7 @@ class BehaviorPendingSignals(Base):
 class BehaviorReceipts(Base):
     __tablename__ = 'behavior_receipts'
     __table_args__ = (
+        CheckConstraint('public.valid_behavior_cancellation_details(source_kind, action, consumed_sim, details)', name='behavior_cancellation_details_valid'),
         CheckConstraint('source_id > 0', name='behavior_receipts_source_id_check'),
         ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_receipts_client_id_fkey'),
         ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_receipts_run_id_fkey'),
@@ -2349,6 +2350,7 @@ class BehaviorReceipts(Base):
     source_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     action: Mapped[str] = mapped_column(Text, primary_key=True)
     consumed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    details: Mapped[Optional[dict]] = mapped_column(JSONB, comment='T039 B v1: native provenance отмены; NULL остаётся неизвестным, без legacy backfill и attribution к Sent')
 
     client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_receipts')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_receipts')

@@ -1304,33 +1304,52 @@ paths:
   /api/internal/tgbot/inbound:
     post:
       tags: [public]
-      summary: Внутренний приём сообщений от сервиса tgbot (только из docker-сети)
+      summary: Подписанный durable приём сообщений от сервиса tgbot
+      description: |
+        HMAC-SHA256 точного body/method/path и UTC timestamp с окном ±60с; body ≤32768 bytes.
+        Старые kind сохранены, но все callers должны передавать bot_id/update_id и подпись.
+        Это service-to-service transport; пользовательский логин/RBAC не добавляется.
+        Повтор bot_id/update_id с тем же body/chat возвращает receipt без новых side effects;
+        другой body/chat даёт409. accepted означает DB commit, не физическую доставку.
+      parameters:
+        - { name: X-CX-Tg-Timestamp, in: header, required: true, schema: { type: string, pattern: '^[0-9]{1,12}$' } }
+        - { name: X-CX-Tg-Signature, in: header, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [chat_id, text, kind]
+              required: [chat_id, bot_id, update_id, text, kind]
               properties:
-                chat_id: { type: integer }
+                chat_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                bot_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                update_id: { type: integer, minimum: 0, maximum: 9223372036854775807 }
                 username: { type: string }
-                kind: { type: string, enum: [start, is_client, not_client, free_text, contact, region, append] }
-                text: { type: string }
+                kind: { type: string, enum: [start, is_client, not_client, free_text, contact, region, append, message, callback] }
+                text: { type: string, maxLength: 4000 }
                 payload: { type: object, additionalProperties: true }
       responses:
         "200":
-          description: Что ответить пользователю
+          description: Durable receipt и текст поставленного в очередь ответа
           content:
             application/json:
               schema:
                 type: object
+                required: [accepted, update_id, notification_id, reply_text]
                 properties:
+                  accepted: { type: boolean, const: true }
+                  update_id: { type: integer, minimum: 0, maximum: 9223372036854775807 }
+                  notification_id: { type: integer }
                   reply_text: { type: string }
                   buttons: { type: array, items: { type: object, properties: { text: { type: string }, data: { type: string } } } }
                   signal_id: { type: [integer, "null"] }
                   tracking_token: { type: [string, "null"] }
-
+        "401": { $ref: "#/components/responses/Problem", description: Неверная подпись или timestamp }
+        "409": { $ref: "#/components/responses/Problem", description: Несовместимый bot namespace или конфликт update_id }
+        "413": { $ref: "#/components/responses/Problem", description: Body превышает32768 bytes }
+        "422": { $ref: "#/components/responses/Problem", description: Невалидные поля события }
+        "503": { $ref: "#/components/responses/Problem", description: Transport не настроен либо maintenance }
 
   # ===================== v1.3 — внешние площадки (ТЗ 21) =====================
   /api/public/reviews:
@@ -3969,10 +3988,18 @@ components:
         endpoint_url: { type: [string, "null"] }
         scope: { type: [string, "null"] }
         created_at: { type: [string, "null"], format: date-time }
-        tokens_used: { type: integer }
+        tokens_used: { type: integer, description: Legacy hint до явного reconciliation; при usage_known=false не означает полный расход }
+        observed_tokens_floor: { type: integer, minimum: 0, readOnly: true, description: Неоткатываемый подтверждённый app-observed или operator-declared floor }
+        usage_known: { type: boolean, readOnly: true, description: Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint }
+        usage_source: { type: string, readOnly: true }
+        usage_as_of: { type: [string, "null"], format: date-time, readOnly: true }
+        requests_known: { type: boolean, readOnly: true }
+        requests_day: { type: string, format: date, readOnly: true, description: Реальная UTC дата operational counter; не SimClock }
+        tokens_remaining: { type: [integer, "null"], minimum: 0, readOnly: true, description: null — остаток неизвестен или лимит не задан; не0 }
+        requests_remaining: { type: [integer, "null"], minimum: 0, readOnly: true }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
-        rpd_limit: { type: [integer, "null"] }
+        rpd_limit: { type: [integer, "null"], description: Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы }
         balance_usd: { type: [number, "null"], description: OpenRouter — из GET /api/v1/key }
         is_active: { type: boolean }
         last_error: { type: [string, "null"] }
@@ -4317,7 +4344,7 @@ components:
         template_code: { type: [string, "null"] }
         subject: { type: [string, "null"] }
         body: { type: string }
-        status: { type: string }
+        status: { type: string, description: "unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет" }
         sent_sim: { type: [string, "null"], format: date-time }
         client_id: { type: [integer, "null"] }
         incident_id: { type: [integer, "null"] }

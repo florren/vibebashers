@@ -1,4 +1,4 @@
-"""T-161: approved-but-disabled loader и strict care snapshot."""
+"""T-161: approved loader и strict care snapshot."""
 
 from __future__ import annotations
 
@@ -18,10 +18,13 @@ ROOT = Path(__file__).resolve().parents[3]
 PATH = ROOT / "data/behavior/demo_policy.review.yaml"
 
 
-def test_approved_policy_is_disabled_immutable_and_domain_preflight() -> None:
+def test_approved_policy_is_active_immutable_and_domain_preflight(tmp_path) -> None:
+    policy = DemoPolicy.load(PATH, validation_only=False)
+    disabled = tmp_path / "disabled.yaml"
+    disabled.write_text(yaml.safe_dump(policy.spec | {"enabled": False}))
     with pytest.raises(ValueError, match="выключен"):
-        DemoPolicy.load(PATH, validation_only=False)
-    policy = DemoPolicy.load(PATH, validation_only=True)
+        DemoPolicy.load(disabled, validation_only=False)
+    assert DemoPolicy.load(disabled, validation_only=True).spec["enabled"] is False
     raw = policy.spec
     raw["segment_multiplier"]["mass"] = 999
     assert policy.multiplier("mass") == 1

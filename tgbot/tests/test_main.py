@@ -14,7 +14,7 @@ SECRET = "public-test-vector-only-000000000000"
 
 
 def env(**overrides):
-    return {"TELEGRAM_BOT_TOKEN": TOKEN, "TGBOT_INTERNAL_SECRET": SECRET, **overrides}
+    return {"TGBOT_ENABLED": "true", "TELEGRAM_BOT_TOKEN": TOKEN, "TGBOT_INTERNAL_SECRET": SECRET, **overrides}
 
 
 def test_config_secrets_not_in_repr_and_default_origin():
@@ -63,6 +63,15 @@ def test_offline_entrypoint_needs_no_configuration_or_network():
 
 def test_missing_configuration_fails_closed_without_traceback():
     result = subprocess.run([sys.executable, "-m", "cx_tgbot.main"], env={}, capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "telegram_transport_disabled" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_explicitly_enabled_missing_token_fails_before_network():
+    result = subprocess.run(
+        [sys.executable, "-m", "cx_tgbot.main"], env={"TGBOT_ENABLED": "true"}, capture_output=True, text=True
+    )
     assert result.returncode == 2
     assert "telegram_token_missing_or_invalid" in result.stderr
     assert "Traceback" not in result.stderr

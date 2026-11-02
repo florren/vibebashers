@@ -6,6 +6,7 @@ Public projection задаётся положительным списком, в
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -22,7 +23,7 @@ class CredentialBindingError(Problem):
 
 
 LOCK = 510013
-PUBLIC_FIELDS = (
+DATABASE_FIELDS = (
     "id",
     "provider",
     "label",
@@ -38,7 +39,18 @@ PUBLIC_FIELDS = (
     "scope",
     "created_at",
 )
-PUBLIC_SQL = ",".join(PUBLIC_FIELDS)
+OBSERVATION_FIELDS = (
+    "observed_tokens_floor",
+    "usage_known",
+    "usage_source",
+    "usage_as_of",
+    "requests_known",
+    "requests_day",
+    "tokens_remaining",
+    "requests_remaining",
+)
+PUBLIC_FIELDS = DATABASE_FIELDS + OBSERVATION_FIELDS
+PUBLIC_SQL = ",".join(DATABASE_FIELDS)
 SECRET_FIELDS = frozenset(
     {
         "key",
@@ -61,7 +73,10 @@ SECRET_FIELDS = frozenset(
 
 
 def public_key(item: dict[str, Any]) -> dict[str, Any]:
-    projected = {key: item.get(key) for key in PUBLIC_FIELDS}
+    from app.llm.accounting import public_observation
+
+    defaults = public_observation(item, None, dt.datetime.now(dt.UTC).date())
+    projected = {key: item.get(key, defaults.get(key)) for key in PUBLIC_FIELDS}
     if projected["last_error"]:
         projected["last_error"] = "Ошибка статуса API-ключа"
     return projected
@@ -194,7 +209,12 @@ async def list_keys(conn: psycopg.AsyncConnection[Any], *, reveal: bool = False)
             f"select {projection} from llm_api_keys where deleted_at is null order by id",
             (get_settings().app_secret,) if reveal else (),
         )
-        return list(await cur.fetchall())
+        items = list(await cur.fetchall())
+    if not items:
+        return []
+    from app.llm.accounting import attach_public_observations
+
+    return await attach_public_observations(conn, items)
 
 
 async def validate_binding(

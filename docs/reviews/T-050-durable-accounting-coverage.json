@@ -1,0 +1,217 @@
+{
+  "head": "6c8ae266f8f1cc5aceead007c58af319c53d8714",
+  "base": "3450afe",
+  "exit_code": 0,
+  "files": [
+    {
+      "path": "backend/app/api/settings.py",
+      "sha256": "d7117fd915844e719ea5e81b2d16ebbb05d240ac3b660966a52bcc3b49377ead",
+      "statements": 22,
+      "covered": 15,
+      "missing": [
+        537,
+        538,
+        539,
+        540,
+        541,
+        542,
+        544
+      ]
+    },
+    {
+      "path": "backend/app/api/setup.py",
+      "sha256": "d8b02affd7845d6baa5caf0168c626c47dd6ee20a7b0819a36ae7c7b4e7350da",
+      "statements": 11,
+      "covered": 11,
+      "missing": []
+    },
+    {
+      "path": "backend/app/bench/service.py",
+      "sha256": "2d28e3afde46454c38825506115670b48f788e63ac22716f673a2a516c9945f2",
+      "statements": 82,
+      "covered": 68,
+      "missing": [
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        148,
+        149,
+        150,
+        264,
+        265,
+        270,
+        271,
+        272
+      ]
+    },
+    {
+      "path": "backend/app/llm/accounting.py",
+      "sha256": "2f70ec10826c5a56c6a2d670b3240f678e9784d9781fd06b0e2b49aee5cb955c",
+      "statements": 660,
+      "covered": 622,
+      "missing": [
+        44,
+        60,
+        63,
+        66,
+        83,
+        84,
+        103,
+        154,
+        178,
+        200,
+        217,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        255,
+        259,
+        284,
+        333,
+        341,
+        357,
+        367,
+        419,
+        436,
+        438,
+        596,
+        598,
+        605,
+        607,
+        655,
+        670,
+        751,
+        792,
+        793,
+        817,
+        818
+      ]
+    },
+    {
+      "path": "backend/app/llm/accounting_cli.py",
+      "sha256": "89ec5e5940a0eba545ae807325575a8f18c82f9ddf34994c0e6ec3126285fdff",
+      "statements": 133,
+      "covered": 122,
+      "missing": [
+        51,
+        57,
+        60,
+        64,
+        78,
+        94,
+        96,
+        152,
+        153,
+        155,
+        161
+      ]
+    },
+    {
+      "path": "backend/app/llm/base.py",
+      "sha256": "be638d89df4cf6e429ad842a7b7322116ea26aa4f5e4d96ec2142e48b6a462f3",
+      "statements": 3,
+      "covered": 2,
+      "missing": [
+        100
+      ]
+    },
+    {
+      "path": "backend/app/llm/credentials.py",
+      "sha256": "8e9ea84a51123ea2ad9a87147d38a956a830128dad74375b8876f4555d8831c9",
+      "statements": 13,
+      "covered": 13,
+      "missing": []
+    },
+    {
+      "path": "backend/app/llm/failover.py",
+      "sha256": "4a85ac1062504d2d31746581a630fe16461ab5cd98e3e67a6dc3f021fcdfd5d7",
+      "statements": 8,
+      "covered": 8,
+      "missing": []
+    },
+    {
+      "path": "backend/app/llm/gigachat.py",
+      "sha256": "1d54afea7c4a65be38ae4968e5a0e1ba11067e79cce499e7b65c71dfd55ac83c",
+      "statements": 127,
+      "covered": 109,
+      "missing": [
+        320,
+        321,
+        323,
+        445,
+        521,
+        522,
+        523,
+        524,
+        525,
+        535,
+        536,
+        538,
+        558,
+        561,
+        564,
+        576,
+        582,
+        584
+      ]
+    },
+    {
+      "path": "backend/app/llm/keys.py",
+      "sha256": "b3c375e779a8378014b0978e8d64fe87e700d2db90742f6ad2746ed08f03db43",
+      "statements": 10,
+      "covered": 10,
+      "missing": []
+    },
+    {
+      "path": "backend/app/llm/live_smoke.py",
+      "sha256": "1f2af98dea97f0e8916aa3b918e0f05a14d9c4f2742bbe336133fd7626954aa2",
+      "statements": 19,
+      "covered": 17,
+      "missing": [
+        45,
+        51
+      ]
+    },
+    {
+      "path": "backend/app/llm/openai_compat.py",
+      "sha256": "e043e125ea19f19fa407381ba5034f0887006ef69fe010f21dbbd8fa4bfd91f3",
+      "statements": 98,
+      "covered": 97,
+      "missing": [
+        460
+      ]
+    },
+    {
+      "path": "backend/app/llm/run_profiles.py",
+      "sha256": "88e543a4f915808e7a8ff5d0a7f5572f7d09d90128906d5be12cb5d4f6263a53",
+      "statements": 3,
+      "covered": 2,
+      "missing": [
+        254
+      ]
+    },
+    {
+      "path": "backend/app/llm/runtime_provider.py",
+      "sha256": "4a99a7d9267d284ebffd60588809e932f59c4d7690f47bb9e0c3e939cadb5804",
+      "statements": 1,
+      "covered": 1,
+      "missing": []
+    },
+    {
+      "path": "backend/app/sim/baseline.py",
+      "sha256": "ce33ea3f5ff2ccb34742c3ce301b1b4e47b4330a99d07659313a6f3b5f88ef65",
+      "statements": 3,
+      "covered": 3,
+      "missing": []
+    }
+  ],
+  "statements": 1193,
+  "covered": 1100,
+  "percent": 92.2
+}

@@ -18,6 +18,9 @@ from app.logging import get_logger
 from app.realtime.hub import hub
 from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
+from app.sim.behavior.owner import BehaviorOwner
+from app.sim.behavior.policy import DemoPolicy
+from app.sim.behavior.runtime import capture, configured_policy, effective_policy, prepare_run, require_run
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
@@ -30,10 +33,11 @@ MAX_BATCH_MIN = 60.0  # за один тик генерируем не боль�
 
 
 class Simulator:
-    def __init__(self, seed: int = 42, dsn: str | None = None) -> None:
+    def __init__(self, seed: int = 42, dsn: str | None = None, *, behavior_policy: DemoPolicy | None = None) -> None:
         self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
         self.after_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
         self.full_execution = False
+        self.behavior_policy = behavior_policy if behavior_policy is not None else configured_policy()
         self.seed = seed
         self.dsn = dsn
         self.clock = SimClock(sim_time=dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK))
@@ -131,33 +135,51 @@ class Simulator:
                 self.rng,
                 self.run_id,
                 old.intensities if old is not None else getattr(self, "_intensities", None),
+                behavior_policy=await effective_policy(conn, self.run_id, self.behavior_policy),
             )
             if old is not None:
                 self.world.pending = old.pending
                 self.world.active_faults = old.active_faults
         if not self.world.loaded:
             try:
+                from app.sim.team_plans import ensure_runtime
+
+                await ensure_runtime(conn, self.run_id, self.clock.sim_time)
                 await self.world.load()
             except BaseException:
                 await conn.rollback()
                 raise
         return self.world
 
+    async def _require_current(self, conn: psycopg.AsyncConnection[Any], *, lock: bool = True) -> None:
+        """Контроллер фиксирует current до эффектов; чужой pointer не возвращает."""
+        query = "select current_run_id from sim_state where id=1"
+        if lock:
+            query += " for update"
+        row = await (await conn.execute(query)).fetchone()
+        if row is None or row[0] != self.run_id:
+            await conn.rollback()
+            raise ValueError("Simulator устарел: загрузите текущий run перед управлением")
+
     async def persist(self) -> None:
         conn = await self.connect()
-        await conn.execute(
-            "update sim_state set sim_time = %s, day_no = %s, speed = %s, running = %s, phase = %s, current_run_id = %s, rng_state = %s::jsonb, seed=%s, last_tick_at = now(), updated_at = now() where id = 1",
+        result = await conn.execute(
+            "update sim_state set sim_time = %s, day_no = %s, speed = %s, running = %s, phase = %s, rng_state = %s::jsonb, seed=%s, last_tick_at = now(), updated_at = now() "
+            "where id=1 and current_run_id is not distinct from %s",
             (
                 self.clock.sim_time,
                 self.clock.day_no,
                 self.clock.speed,
                 self.clock.running,
                 self.clock.phase,
-                self.run_id,
                 __import__("orjson").dumps(self.rng.dump_state()).decode(),
                 self.seed,
+                self.run_id,
             ),
         )
+        if result.rowcount != 1:
+            await conn.rollback()
+            raise ValueError("Simulator устарел: текущий run изменён, state не сохранён")
 
     # --- один шаг сим-времени ---------------------------------------------------------------------------------------
     @writer("sim-step")
@@ -170,8 +192,43 @@ class Simulator:
 
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
-            world = await self._ensure_world()
             conn = await self.connect()
+            policy = await effective_policy(conn, self.run_id, self.behavior_policy)
+            if (
+                policy is not None
+                and self.run_id is not None
+                and self.run_status not in ("completed", "stopped", "archived")
+            ):
+                try:
+                    await self._require_current(conn)
+                    if self.run_status == "interrupted":
+                        raise ValueError("Прерванный behavior run сначала нужно возобновить")
+                    # До _ensure_world: legacy отказ не меняет даже memory cache.
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
+                except BaseException:
+                    await conn.rollback()
+                    raise
+            world = await self._ensure_world()
+            policy = world.behavior_policy
+            if policy is not None:
+                assert self.run_id is not None
+                try:
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
+                    row = await (
+                        await conn.execute(
+                            "select current_run_id,sim_time,rng_state from sim_state where id=1 for update"
+                        )
+                    ).fetchone()
+                    if (
+                        row is None
+                        or row[0] != self.run_id
+                        or row[1] != self.clock.sim_time
+                        or (row[2] is not None and row[2] != self.rng.dump_state())
+                    ):
+                        raise ValueError("Behavior tick owner устарел: загрузите актуальные time/run/RNG")
+                except BaseException:
+                    await conn.rollback()
+                    raise
             t0 = self.clock.sim_time
             day_before = self.clock.day_no
             rng_before = self.rng.dump_state()
@@ -193,6 +250,16 @@ class Simulator:
                 await world.sla_engine.tick(t0, self.clock.sim_time)
                 self.stats["ticks"] += 1
                 await self.persist()
+                if policy is not None:
+                    assert self.run_id is not None
+                    await capture(conn, self.run_id)
+                    owner = BehaviorOwner(conn, policy)
+                    next_rng = await owner.advance(
+                        run_id=self.run_id, to_sim=self.clock.sim_time, allow_paused=self.run_status == "paused"
+                    )
+                    self.rng.load_state(next_rng)
+                    self.stats["signals"] += owner.generated_signals
+                    await self.persist()
                 await conn.commit()
             except BaseException as error:
                 # Любая незафиксированная попытка отменяется вместе с logical
@@ -201,7 +268,14 @@ class Simulator:
                 self.clock.day_no = day_before
                 self.rng.load_state(rng_before)
                 self.stats = stats_before
-                restored = World(conn, EventBus(conn), self.rng, world.run_id, world.intensities)
+                restored = World(
+                    conn,
+                    EventBus(conn),
+                    self.rng,
+                    world.run_id,
+                    world.intensities,
+                    behavior_policy=policy,
+                )
                 restored.pending = pending_before
                 restored.active_faults = faults_before
                 self.world = restored
@@ -252,6 +326,7 @@ class Simulator:
                 conn = await self.connect()
                 previous_status = self.run_status
                 try:
+                    await self._require_current(conn)
                     execution = await configuration(conn, self.run_id) if self.run_id else {}
                     if self.run_id and (
                         self.run_status == "running"
@@ -277,6 +352,23 @@ class Simulator:
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
         conn = await self.connect()
+        await self._require_current(conn, lock=False)
+        creates_new = action == "start" and (
+            self.run_id is None
+            or self.run_status in ("stopped", "completed", "archived", None)
+            or bool(kw.get("label"))
+        )
+        if (
+            self.behavior_policy is not None
+            and self.run_id is not None
+            and action in ("start", "step", "jump_to", "reset_day")
+            and not creates_new
+        ):
+            try:
+                await require_run(conn, self.run_id, policy=self.behavior_policy)
+            except BaseException:
+                await conn.rollback()
+                raise
         execution = await configuration(conn, self.run_id) if self.run_id else {}
         if (
             self.run_id is not None
@@ -286,6 +378,7 @@ class Simulator:
             and not kw.get("label")
         ):
             async with self._lock:
+                await self._require_current(conn)
                 execution.update(status="running", enabled=True)
                 await save(conn, self.run_id, execution)
                 self.clock.running = True
@@ -298,58 +391,102 @@ class Simulator:
         if execution.get("mode") == "demo" and execution.get("enabled") and action in ("step", "jump_to", "reset_day"):
             raise ValueError("Изолированный сценарий использует событийное время; доступны запуск, пауза и остановка")
         if action == "start":
-            if self.run_status in ("stopped", "completed", "archived", None) or self.run_id is None or kw.get("label"):
-                async with self._lock:
-                    selected_seed = kw.get("seed")
-                    if selected_seed is None:
-                        base = await (
-                            await conn.execute("select seed from sim_runs where kind='baseline' order by id limit 1")
-                        ).fetchone()
-                        selected_seed = base[0] if base else self.seed
-                    new_seed = int(selected_seed)
-                    self.run_id = await run_svc.create_run(
-                        conn,
-                        kind=kw.get("kind") or "free",
-                        label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
-                        seed=new_seed,
-                        sim_time=self.clock.sim_time,
-                        llm_profile_id=kw.get("llm_profile_id"),
-                        scenario_id=kw.get("scenario_id"),
-                        reset_mode=kw.get("reset_mode") or "counters",
+            async with self._lock:
+                await self._require_current(conn)
+                previous = (
+                    self.run_id,
+                    self.run_status,
+                    self.seed,
+                    self.rng,
+                    self.clock.running,
+                    dict(self.stats),
+                    self.world,
+                )
+                try:
+                    if (
+                        self.run_status in ("stopped", "completed", "archived", None)
+                        or self.run_id is None
+                        or kw.get("label")
+                    ):
+                        selected_seed = kw.get("seed")
+                        if selected_seed is None:
+                            base = await (
+                                await conn.execute(
+                                    "select seed from sim_runs where kind='baseline' order by id limit 1"
+                                )
+                            ).fetchone()
+                            selected_seed = base[0] if base else self.seed
+                        new_seed = int(selected_seed)
+                        self.run_id = await run_svc.create_run(
+                            conn,
+                            kind=kw.get("kind") or "free",
+                            label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
+                            seed=new_seed,
+                            sim_time=self.clock.sim_time,
+                            llm_profile_id=kw.get("llm_profile_id"),
+                            scenario_id=kw.get("scenario_id"),
+                            reset_mode=kw.get("reset_mode") or "counters",
+                        )
+                        self.seed = new_seed
+                        self.rng = SimRng(self.seed)
+                        self.stats = {key: 0 for key in self.stats}
+                        self.run_status = "running"
+                        self.world = None
+                    self.clock.running = not bool(kw.get("start_paused"))
+                    if not self.clock.running:
+                        if self.run_id:
+                            await run_svc.set_run_status(conn, self.run_id, "paused")
+                        self.run_status = "paused"
+                    if self.full_execution and self.run_id:
+                        await ensure(conn, self.run_id, running=self.clock.running)
+                    await self.persist()
+                    await conn.commit()
+                except BaseException:
+                    await conn.rollback()
+                    self.run_id, self.run_status, self.seed, self.rng, self.clock.running, self.stats, self.world = (
+                        previous
                     )
-                    self.seed = new_seed
-                    self.rng = SimRng(self.seed)
-                    self.stats = {key: 0 for key in self.stats}
-                    self.run_status = "running"
-                    self.world = None
+                    raise
+                if self.clock.running:
+                    self._start_loop()
+            await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+            return self.state_dict()
+        elif action in ("set_speed", "set_preset"):
+            async with self._lock:
+                await self._require_current(conn)
+                previous_speed = self.clock.speed
+                try:
+                    if action == "set_speed":
+                        self.clock.speed = max(0.1, float(kw["speed"]))
+                    else:
+                        self.clock.set_preset(str(kw["preset"]))
+                    await self.persist()
                     await conn.commit()
-            elif self.run_status in ("paused", "interrupted", "stopped"):
-                await run_svc.set_run_status(conn, self.run_id, "running")
-                self.run_status = "running"
-                await conn.commit()
-            if kw.get("start_paused"):
-                self.clock.running = False
-                if self.run_id:
-                    await run_svc.set_run_status(conn, self.run_id, "paused")
-                self.run_status = "paused"
-            else:
-                if self.full_execution and self.run_id:
-                    await ensure(conn, self.run_id, running=True)
-                    await conn.commit()
-                self._start_loop()
+                except BaseException:
+                    await conn.rollback()
+                    self.clock.speed = previous_speed
+                    raise
+            await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+            return self.state_dict()
         elif action == "step":
             await self.step(float(kw.get("step_minutes") or 15))
-        elif action == "set_speed":
-            self.clock.speed = max(0.1, float(kw["speed"]))
-        elif action == "set_preset":
-            self.clock.set_preset(str(kw["preset"]))
         elif action == "reset_day":
             await self._stop_loop()
             lt = self.clock.sim_time.astimezone(MSK)
-            self.clock.sim_time = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-            self.clock.day_no += 1
-            if self.world:
-                self.world.pending.clear()
+            target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+            if await effective_policy(conn, self.run_id, self.behavior_policy) is not None:
+                await self.step((target - self.clock.sim_time).total_seconds() / 60)
+            else:
+                async with self._lock:
+                    await self._require_current(conn)
+                    self.clock.sim_time = target
+                    self.clock.day_no += 1
+                    if self.world:
+                        self.world.pending.clear()
+                    await self.persist()
+                    await conn.commit()
+                await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+                return self.state_dict()
         elif action == "jump_to":
             target = kw["sim_time"]
             if isinstance(target, str):
@@ -361,6 +498,7 @@ class Simulator:
             raise ValueError(f"неизвестное действие: {action}")
         if self.run_id:
             async with self._lock:
+                await self._require_current(conn)
                 execution = await configuration(conn, self.run_id)
                 if not execution and self.full_execution and action in ("start", "resume"):
                     execution = await ensure(conn, self.run_id, running=True)
@@ -388,6 +526,9 @@ class Simulator:
                 raise ValueError("возобновить можно только текущий paused/interrupted запуск")
             rid, _, sim_time, rng_state, seed, day_no = row
             try:
+                policy = await effective_policy(conn, int(rid), self.behavior_policy)
+                if policy is not None:
+                    await prepare_run(conn, int(rid), sim_time, policy)
                 if self.before_resume:
                     await self.before_resume(int(rid), sim_time)
                 self.seed = int(seed)

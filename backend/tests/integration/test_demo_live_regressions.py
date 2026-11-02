@@ -130,6 +130,9 @@ async def test_information_request_gets_team_result_only_in_explicit_demo(seeded
             assert (await (await conn.execute("select count(*) from incidents where run_id=%s", (rid,))).fetchone())[
                 0
             ] == 0
+        # В fixture run создан напрямую вне app.sim, в отличие от production sim.control.
+        # Current fence не должен возвращать старый pointer; синхронизируем reader явно.
+        await sim.load_state()
         state = await post_demo_execution(
             Request({"type": "http", "app": app, "headers": []}), DemoExecutionBody(scenario_id="demo20_15_refinancing")
         )

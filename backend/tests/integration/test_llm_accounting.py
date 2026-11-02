@@ -579,3 +579,749 @@ async def test_unknown_origin_ack_and_legacy_hint_provenance_are_explicit(accoun
         assert facts.secret not in str(audit)
         after = await service.snapshot(profile, facts, timeout_s=3)
         assert after.usage_known and after.tokens_used == 0 and after.tokens_remaining == 20
+
+
+async def test_gigachat_counts_inference_repair_but_not_oauth(accounting_case):
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        if request.url.path == "/oauth":
+            return httpx.Response(200, json={"access_token": "synthetic-access", "expires_at": 9999999999999})
+        return httpx.Response(
+            200,
+            json={
+                "model": profile.model,
+                "choices": [
+                    {"message": {"content": '{"x":1}' if requests.count("/v1/chat/completions") == 2 else "{}"}}
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+            },
+        )
+
+    key = ApiKey("synthetic", facts.secret, tokens_limit=20)
+    provider = GigaChatProvider(
+        KeyPool([key]),
+        oauth_url="https://synthetic.invalid/oauth",
+        base_url=facts.endpoint,
+        transport=httpx.MockTransport(fake),
+    )
+    try:
+        result, usage, _ = await provider.complete_structured(
+            [], {"type": "object", "required": ["x"], "properties": {"x": {"type": "integer"}}}, profile, timeout_s=5
+        )
+        assert result == {"x": 1} and usage.total_tokens == 6 and usage.request_count == 2
+        assert requests == ["/oauth", "/v1/chat/completions", "/v1/chat/completions"]
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.tokens_used == 6 and observed.requests_today == 2 and observed.usage_known
+        assert key.tokens_used == 6  # Outer structured parser must not double-account.
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize(
+    "status,usage_payload,expected",
+    [
+        (503, None, "unavailable"),
+        (200, None, "bad_output"),
+        (200, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, None),
+        (400, None, "quota"),
+    ],
+)
+async def test_sdk_wire_failures_unknown_and_validated_zero(accounting_case, status, usage_payload, expected):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider="openai_compatible")
+    facts = replace(original_facts, provider="openai_compatible")
+    await confirm((service, profile, facts))
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        if status != 200:
+            return httpx.Response(status, json={"error": {"message": "synthetic failure"}})
+        response = {
+            "id": "synthetic",
+            "object": "chat.completion",
+            "created": 1,
+            "model": profile.model,
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": '{"x":1}'}, "finish_reason": "stop"}],
+        }
+        if usage_payload is not None:
+            response["usage"] = usage_payload
+        return httpx.Response(200, json=response)
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    try:
+        if expected is not None:
+            with pytest.raises(ProviderError) as rejected:
+                await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+            # A native-schema400 makes the first attempt unknown; the alternate
+            # format cannot bypass the unknown profile budget and never reaches HTTP.
+            assert rejected.value.kind == expected and rejected.value.usage is None
+        else:
+            result, usage, _ = await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+            assert result == {"x": 1} and usage.total_tokens == 0
+        assert requests == ["/v1/chat/completions"]
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.requests_today == 1 and observed.tokens_used == 0
+        assert observed.usage_known is (expected is None)
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("mode", ["cumulative", "missing", "cancel"])
+async def test_stream_accounts_once_cumulative_unknown_or_consumer_close(accounting_case, provider_name, mode):
+    import json
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider=provider_name)
+    facts = replace(original_facts, provider=provider_name)
+    await confirm((service, profile, facts))
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        frames = [
+            {
+                "id": "synthetic",
+                "object": "chat.completion.chunk",
+                "created": 1,
+                "model": profile.model,
+                "choices": [{"index": 0, "delta": {"content": "plain-prefix"}, "finish_reason": None}],
+            }
+        ]
+        if mode == "cumulative":
+            for prompt, completion in [(1, 1), (1, 1), (1, 3)]:
+                frames.append(
+                    {
+                        "id": "synthetic",
+                        "object": "chat.completion.chunk",
+                        "created": 1,
+                        "model": profile.model,
+                        "choices": [],
+                        "usage": {
+                            "prompt_tokens": prompt,
+                            "completion_tokens": completion,
+                            "total_tokens": prompt + completion,
+                        },
+                    }
+                )
+        payload = "".join("data: " + json.dumps(frame) + "\n\n" for frame in frames) + "data: [DONE]\n\n"
+        return httpx.Response(200, content=payload, headers={"Content-Type": "text/event-stream"})
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    iterator = provider.stream([], profile, timeout_s=5)
+    try:
+        if mode == "cancel":
+            assert await anext(iterator) == "plain-prefix"
+            await iterator.aclose()
+        elif mode == "missing":
+            chunks = []
+            with pytest.raises(ProviderError) as error:
+                async for chunk in iterator:
+                    chunks.append(chunk)
+            assert chunks == ["plain-prefix"] and error.value.usage is None
+        else:
+            assert "".join([chunk async for chunk in iterator]) == "plain-prefix"
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert requests == ["/v1/chat/completions"]
+        assert observed.requests_today == 1
+        assert observed.tokens_used == (4 if mode == "cumulative" else 0)
+        assert observed.usage_known is (mode == "cumulative")
+    finally:
+        await iterator.aclose()
+        await provider.aclose()
+
+
+async def test_durable_quota_health_never_fabricates_spent_tokens(accounting_case):
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        return httpx.Response(403, json={"error": "quota"})
+
+    key = ApiKey(
+        "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+    )
+    provider = GigaChatProvider(
+        KeyPool([key]),
+        oauth_url="https://synthetic.invalid/oauth",
+        base_url=facts.endpoint,
+        transport=httpx.MockTransport(fake),
+    )
+    try:
+        for _ in range(2):
+            with pytest.raises(ProviderError):
+                await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+        assert requests == ["/v1/chat/completions"]
+        assert key.tokens_used == 0  # HTTP quota denial is not token expenditure=limit.
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.tokens_used == 0 and not observed.usage_known and observed.requests_today == 1
+    finally:
+        await provider.aclose()
+
+
+async def test_public_compatibility_and_operator_cli_reconcile_use_same_ledger(accounting_case):
+    from dataclasses import replace
+
+    from app.api import settings
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli, credentials
+
+    service, template, original_facts = accounting_case
+    created = await settings.post_llm_keys(
+        settings.LlmKeyBody(
+            provider="gigachat",
+            label="synthetic-cli",
+            key=original_facts.secret,
+            endpoint_url=original_facts.endpoint,
+            tokens_limit=20,
+            rpd_limit=2,
+        )
+    )
+    key_id = created["id"]
+    assert created["tokens_used"] == 0 and created["observed_tokens_floor"] == 0
+    assert not created["usage_known"] and created["tokens_remaining"] is None
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        await conn.execute("update llm_api_keys set tokens_used=17 where id=%s", (key_id,))
+        profile_id = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,api_key_id,rpd_limit) values(%s,'gigachat','synthetic','main',%s,%s,2) returning id",
+                    (template.code, original_facts.endpoint, key_id),
+                )
+            ).fetchone()
+        )[0]
+    before = next(item for item in await settings.get_llm_keys() if item["id"] == key_id)
+    assert before["tokens_used"] == 17  # Original legacy migration compatibility assertion remains valid.
+    assert before["observed_tokens_floor"] == 0 and not before["usage_known"]
+    assert before["usage_source"] == "legacy_unverified" and before["tokens_remaining"] is None
+    args = accounting_cli.parser().parse_args(
+        [
+            "reconcile",
+            "--profile-id",
+            str(profile_id),
+            "--key-id",
+            str(key_id),
+            "--reconciliation-id",
+            str(uuid.uuid4()),
+            "--as-of",
+            (await now()).isoformat(),
+            "--tokens-used",
+            "0",
+            "--requests-today",
+            "0",
+            "--profile-requests-today",
+            "0",
+            "--confirm",
+            "--reviewed-unknown-origin",
+        ]
+    )
+    receipt = await accounting_cli.execute(args)
+    assert not receipt["idempotent"]
+    assert (await accounting_cli.execute(args))["idempotent"]
+    profile = replace(template, id=profile_id, api_key_id=key_id, base_url=original_facts.endpoint)
+    facts = replace(original_facts, db_id=key_id)
+    async with service.key_scope(profile, facts, timeout_s=3) as scope:
+        ticket = await scope.admit()
+        await ticket.observe(2, 3, final=True)
+    after = next(item for item in await settings.get_llm_keys() if item["id"] == key_id)
+    assert after["tokens_used"] == after["observed_tokens_floor"] == 5 and after["usage_known"]
+    assert after["tokens_remaining"] == 15 and after["requests_today"] == 1 and after["requests_remaining"] == 1
+    assert set(after) == set(credentials.PUBLIC_FIELDS)
+    assert not {"uid", "verifier", "credential_uid", "quota_uid", "_secret"} & after.keys()
+    assert facts.secret not in str(after) + str(receipt)
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        mirrors = await (
+            await conn.execute("select tokens_used,requests_today from llm_api_keys where id=%s", (key_id,))
+        ).fetchone()
+        assert mirrors == (5, 1)
+
+
+async def test_existing_metadata_refresh_serializes_rpd_and_recomputes_public_remaining(accounting_case, monkeypatch):
+    import asyncio
+    from dataclasses import replace
+
+    from app.api import settings
+    from app.db.session import psycopg_dsn
+    from app.llm import credentials
+
+    service, original, source = accounting_case
+    profile = replace(original, provider="openai_compatible")
+    facts = replace(source, provider="openai_compatible")
+    created = await settings.post_llm_keys(
+        settings.LlmKeyBody(
+            provider="openai_compatible",
+            label="synthetic-metadata",
+            key=facts.secret,
+            endpoint_url=facts.endpoint,
+            tokens_limit=20,
+            rpd_limit=2,
+        )
+    )
+    profile = replace(profile, api_key_id=created["id"], base_url=facts.endpoint)
+    await confirm((service, profile, facts))
+    ready, proceed = asyncio.Event(), asyncio.Event()
+    load_keys = settings.load_keys
+    backend_pids = []
+
+    async def track(conn, **kwargs):
+        backend_pids.append(conn.info.backend_pid)
+        return await load_keys(conn, **kwargs)
+
+    async def metadata(items):
+        next(item for item in items if item["id"] == created["id"])["rpd_limit"] = 3
+        ready.set()
+        await proceed.wait()
+        return True  # Synthetic result; no additional GET/key or any HTTP.
+
+    monkeypatch.setattr(settings, "load_keys", track)
+    monkeypatch.setattr(settings, "_refresh_openai_balances", metadata)
+    task = asyncio.create_task(settings.get_llm_keys())
+    await ready.wait()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as blocker:
+        async with blocker.transaction():
+            await blocker.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+            proceed.set()
+            async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as observer:
+                async with asyncio.timeout(3):
+                    while True:
+                        waiting = (
+                            await (
+                                await observer.execute(
+                                    "select exists(select 1 from pg_locks where pid=%s and locktype='advisory' and not granted)",
+                                    (backend_pids[0],),
+                                )
+                            ).fetchone()
+                        )[0]
+                        if waiting:
+                            break
+                        await asyncio.sleep(0)
+            assert not task.done()
+        public = next(item for item in await task if item["id"] == created["id"])
+    assert public["rpd_limit"] == public["requests_remaining"] == 3
+    assert public["requests_today"] == 0 and public["requests_known"]
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_stream_deadline_never_cancels_consumer_between_pulls(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(
+            200,
+            text='data: {"choices":[{"delta":{"content":"prefix"}}]}\n\ndata: [DONE]\n\n',
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = provider.stream([], profile, timeout_s=2)
+    try:
+        assert await anext(stream) == "prefix"
+        # This is consumer work OUTSIDE the provider generator. Its deadline may
+        # reject the next pull, but must never asynchronously cancel this task.
+        await asyncio.sleep(2.1)
+        with pytest.raises(ProviderError) as expired:
+            await anext(stream)
+        assert expired.value.kind == "timeout" and expired.value.usage is None
+        assert calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.requests_today == 1 and not observed.usage_known
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_stream_blocked_io_has_absolute_deadline_and_preserves_known_floor(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    class Blocked(httpx.AsyncByteStream):
+        closed = False
+
+        async def __aiter__(self):
+            try:
+                yield b'data: {"choices":[{"delta":{"content":"prefix"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}\n\n'
+                await asyncio.Event().wait()
+            finally:
+                self.closed = True
+
+        async def aclose(self):
+            self.closed = True
+
+    body = Blocked()
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, stream=body, headers={"Content-Type": "text/event-stream"})
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = provider.stream([], profile, timeout_s=2)
+    try:
+        assert await anext(stream) == "prefix"
+        with pytest.raises(ProviderError) as expired:
+            await asyncio.wait_for(anext(stream), 4)
+        assert expired.value.kind == "timeout"
+        assert expired.value.usage.total_tokens == 2  # Lower observation, not a completeness claim.
+        assert body.closed and calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 2 and not observed.usage_known and observed.tokens_remaining is None
+    assert observed.requests_today == 1
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_actual_chain_deadline_keeps_single_source_and_durable_partial_usage(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.failover import ProviderChain
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    class Blocked(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'data: {"choices":[{"delta":{"content":"prefix"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}\n\n'
+            await asyncio.Event().wait()
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, stream=Blocked(), headers={"Content-Type": "text/event-stream"})
+
+    class ForbiddenMock:
+        name = "mock"
+        called = False
+
+        async def stream(self, *args, **kwargs):
+            self.called = True
+            yield "fallback-must-not-be-mixed"
+
+    fallback = ForbiddenMock()
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = ProviderChain([provider, fallback], timeouts={"default": 2}).stream([], profile)
+    try:
+        assert await anext(stream) == "prefix"
+        with pytest.raises(StopAsyncIteration):
+            await asyncio.wait_for(anext(stream), 4)
+        assert not fallback.called and calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 2 and observed.requests_today == 1 and not observed.usage_known
+
+
+@pytest.mark.parametrize("slot", ["gigachat1", "gigachat2", "openrouter", "local"])
+async def test_operator_cli_env_sources_are_explicit_reconciled_and_show_profile_day(migrated_db, monkeypatch, slot):
+    import json
+
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli
+
+    suffix = uuid.uuid4().hex
+    provider = "gigachat" if slot.startswith("gigachat") else "openai_compatible"
+    endpoint = f"https://synthetic-{slot}.invalid/v1/{suffix}"
+    secret = f"synthetic-cli-{slot}-{suffix}"
+    field = {
+        "gigachat1": "GIGACHAT_AUTH_KEY_1",
+        "gigachat2": "GIGACHAT_AUTH_KEY_2",
+        "openrouter": "OPENROUTER_API_KEY",
+        "local": "LOCAL_LLM_API_KEY",
+    }[slot]
+    url_field = (
+        "GIGACHAT_BASE_URL"
+        if provider == "gigachat"
+        else ("LOCAL_LLM_BASE_URL" if slot == "local" else "OPENROUTER_BASE_URL")
+    )
+    monkeypatch.setenv("DATABASE_URL", migrated_db)
+    monkeypatch.setenv(field, secret)
+    monkeypatch.setenv(url_field, endpoint)
+    get_settings.cache_clear()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        pid = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,rpd_limit) values(%s,%s,'synthetic','main',%s,2) returning id",
+                    (f"cli-{suffix}", provider, endpoint),
+                )
+            ).fetchone()
+        )[0]
+    args = accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", slot])
+    before = await accounting_cli.execute(args)
+    assert not before["admission_allowed"] and not before["usage_known"] and not before["profile_requests_known"]
+    args = accounting_cli.parser().parse_args(
+        [
+            "reconcile",
+            "--profile-id",
+            str(pid),
+            "--env-slot",
+            slot,
+            "--reconciliation-id",
+            str(uuid.uuid4()),
+            "--as-of",
+            (await now()).isoformat(),
+            "--tokens-used",
+            "0",
+            "--requests-today",
+            "0",
+            "--profile-requests-today",
+            "0",
+            "--confirm",
+            "--reviewed-unknown-origin",
+        ]
+    )
+    receipt = await accounting_cli.execute(args)
+    after = await accounting_cli.execute(
+        accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", slot])
+    )
+    assert after["admission_allowed"] and after["usage_known"] and after["profile_requests_known"]
+    assert after["profile_requests_today"] == 0 and after["profile_requests_remaining"] == 2
+    rendered = json.dumps([before, receipt, after], default=str)
+    assert secret not in rendered and not any(name in rendered for name in ("verifier", "quota_uid", "credential_uid"))
+    get_settings.cache_clear()
+
+
+async def test_operator_cli_keyless_local_and_wrong_env_binding_fail_closed(migrated_db, monkeypatch):
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli
+
+    suffix = uuid.uuid4().hex
+    base = f"http://127.0.0.1:4545/v1/{suffix}"
+    monkeypatch.setenv("DATABASE_URL", migrated_db)
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", base)
+    monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
+    monkeypatch.delenv("GIGACHAT_AUTH_KEY_2", raising=False)
+    get_settings.cache_clear()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        pid = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,rpd_limit) values(%s,'openai_compatible','synthetic','main',%s,2) returning id",
+                    (f"cli-local-{suffix}", base),
+                )
+            ).fetchone()
+        )[0]
+        args = accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", "local"])
+        profile, facts = await accounting_cli.selection(args)
+        assert facts.secret is None and facts.endpoint == base
+        for wrong in ("gigachat2", "openrouter"):
+            with pytest.raises(ProviderError) as denied:
+                await accounting_cli.selection(
+                    accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", wrong])
+                )
+            assert denied.value.kind == "auth"
+        await conn.execute("update llm_profiles set base_url=%s where id=%s", (base + "/other", pid))
+        with pytest.raises(ProviderError, match="local env source"):
+            await accounting_cli.selection(args)
+    get_settings.cache_clear()
+
+
+async def test_private_migration_normalizes_pre_release_default_without_rewinding_history(accounting_case):
+    from pathlib import Path
+
+    from app.db.session import psycopg_dsn
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    async with service.key_scope(profile, facts, timeout_s=3) as scope:
+        ticket = await scope.admit()
+        await ticket.observe(2, 3, final=True)
+    sql = (Path(__file__).resolve().parents[3] / "contracts/db/migrations/0016_llm_accounting.sql").read_text()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        await conn.execute("alter table llm_runtime.wire_attempts alter column profile_code set default ''")
+        for _ in range(2):
+            await conn.execute(sql)
+        actual = (
+            await (
+                await conn.execute(
+                    "select column_default from information_schema.columns where table_schema='llm_runtime' and table_name='wire_attempts' and column_name='profile_code'"
+                )
+            ).fetchone()
+        )[0]
+        assert actual is None
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 5 and observed.requests_today == 1 and observed.usage_known
+
+
+async def test_paid_sdk_stream_candidate_uses_endpoint_classification_before_any_http(accounting_case):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    _, original, source = accounting_case
+    profile = replace(original, provider="gigachat", model="paid-model", rpd_limit=None)
+    # Legacy stream-chain may try an SDK candidate with the requested Giga tag.
+    # The actual paid endpoint remains budgeted; a display tag is not an exemption.
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        pytest.fail("unknown paid origin must be rejected before metadata or inference HTTP")
+
+    provider = OpenAICompatProvider(source.secret, "https://openrouter.ai/api/v1", transport=httpx.MockTransport(fake))
+    try:
+        with pytest.raises(ProviderError) as denied:
+            await anext(provider.stream([], profile, timeout_s=3))
+        assert denied.value.kind == "quota" and calls == []
+    finally:
+        await provider.aclose()
+
+
+async def test_env_provider_tier_is_not_reported_as_configured_key_cap(accounting_case):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.api.settings import public_openrouter_env_key
+    from app.db.session import psycopg_dsn
+    from app.llm.accounting import attach_env_observation
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile = replace(original, provider="openai_compatible", model="synthetic:free")
+    facts = KeyFacts("openai_compatible", source.secret, source.endpoint)
+    await confirm((service, profile, facts))
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(
+            200,
+            json={
+                "id": "synthetic",
+                "object": "chat.completion",
+                "created": 1,
+                "model": profile.model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "{}"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            },
+        )
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    try:
+        for count in (1, 2):
+            await provider.complete_structured([], {"type": "object"}, profile, timeout_s=3)
+            card = public_openrouter_env_key(
+                [], {"rpd_limit": 1, "balance_usd": 17}, key_hint="…synthetic", last_error=None
+            )[0]
+            async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+                public = await attach_env_observation(conn, card, facts)
+            assert public["rpd_limit"] is None and public["requests_remaining"] is None
+            assert public["requests_today"] == count and public["requests_known"]
+            assert public["balance_usd"] == 17  # Existing informational balance retained.
+            actual = await service.snapshot(profile, facts, timeout_s=3)
+            assert actual.profile_requests_remaining == 2 - count
+        with pytest.raises(ProviderError) as exhausted:
+            await provider.complete_structured([], {"type": "object"}, profile, timeout_s=3)
+        assert exhausted.value.kind == "rate_limit" and calls == ["/v1/chat/completions"] * 2
+    finally:
+        await provider.aclose()

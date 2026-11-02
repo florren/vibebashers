@@ -8,7 +8,7 @@ import inspect
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar
 
 import orjson
 import psycopg
@@ -79,7 +79,25 @@ class ClientStateIntent:
     incident_id: int | None
 
 
-StateEvidenceSink = Callable[[psycopg.AsyncConnection[Any], ClientStateIntent], Awaitable[int]]
+@dataclass(frozen=True)
+class StateEvidenceResult:
+    """Принятый запрос либо явное подавление вне активного behavior run."""
+
+    accepted: bool
+    evidence_id: int | None
+    reason: Literal["inactive_run"] | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.accepted) is not bool:
+            raise ValueError("accepted должен быть bool")
+        if self.accepted:
+            if type(self.evidence_id) is not int or self.evidence_id <= 0 or self.reason is not None:
+                raise ValueError("accepted требует positive evidence_id без причины отказа")
+        elif self.evidence_id is not None or self.reason != "inactive_run":
+            raise ValueError("suppressed требует inactive_run без evidence_id")
+
+
+StateEvidenceSink = Callable[[psycopg.AsyncConnection[Any], ClientStateIntent], Awaitable[StateEvidenceResult]]
 
 
 class ToolContext:
@@ -94,6 +112,7 @@ class ToolContext:
         dry_run: bool = False,
         trace_conn: psycopg.AsyncConnection[Any] | None = None,
         state_evidence_sink: StateEvidenceSink | None = None,
+        effect_time_fence: EffectTimeFence | None = None,
     ) -> None:
         self.conn = conn
         self.run_id = run_id
@@ -103,6 +122,7 @@ class ToolContext:
         self.dry_run = dry_run
         self.trace_conn = trace_conn
         self.state_evidence_sink = state_evidence_sink
+        self.effect_time_fence = effect_time_fence
         self.calls: list[dict[str, Any]] = []  # tool_calls текущего узла (сбрасывает узел)
         self.pending_wraps: list[str] = []  # внутренние имена, которые фасад свернёт в wraps
         self.act_frame: ActFrame | None = None
@@ -125,6 +145,9 @@ class ToolContext:
     async def fetchall(self, sql: str, args: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
         cur = await self.conn.execute(sql, args)
         return await cur.fetchall()
+
+
+EffectTimeFence = Callable[[ToolContext], Awaitable[None]]
 
 
 def _compact(result: Any) -> Any:
@@ -166,6 +189,8 @@ def tool(name: str) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitab
             try:
                 if ctx.dry_run and name in SIDE_EFFECT_TOOLS:
                     raise ToolError(f"Инструмент {name} недоступен в сравнении без побочных эффектов")
+                if name in SIDE_EFFECT_TOOLS and ctx.effect_time_fence is not None:
+                    await ctx.effect_time_fence(ctx)
                 result = await fn(*args, **kwargs)
             except Exception as exc:
                 del ctx.pending_wraps[wraps_mark:]

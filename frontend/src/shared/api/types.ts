@@ -4275,11 +4275,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Внутренний приём сообщений от сервиса tgbot (только из docker-сети) */
+        /**
+         * Подписанный durable приём сообщений от сервиса tgbot
+         * @description HMAC-SHA256 точного body/method/path и UTC timestamp с окном ±60с; body ≤32768 bytes.
+         *     Старые kind сохранены, но все callers должны передавать bot_id/update_id и подпись.
+         *     Это service-to-service transport; пользовательский логин/RBAC не добавляется.
+         *     Повтор bot_id/update_id с тем же body/chat возвращает receipt без новых side effects;
+         *     другой body/chat даёт409. accepted означает DB commit, не физическую доставку.
+         */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header: {
+                    "X-CX-Tg-Timestamp": string;
+                    "X-CX-Tg-Signature": string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -4287,9 +4297,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         chat_id: number;
+                        bot_id: number;
+                        update_id: number;
                         username?: string;
                         /** @enum {string} */
-                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append";
+                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append" | "message" | "callback";
                         text: string;
                         payload?: {
                             [key: string]: unknown;
@@ -4298,14 +4310,18 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Что ответить пользователю */
+                /** @description Durable receipt и текст поставленного в очередь ответа */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            reply_text?: string;
+                            /** @constant */
+                            accepted: true;
+                            update_id: number;
+                            notification_id: number;
+                            reply_text: string;
                             buttons?: {
                                 text?: string;
                                 data?: string;
@@ -4315,6 +4331,16 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Неверная подпись или timestamp */
+                401: components["responses"]["Problem"];
+                /** @description Несовместимый bot namespace или конфликт update_id */
+                409: components["responses"]["Problem"];
+                /** @description Body превышает32768 bytes */
+                413: components["responses"]["Problem"];
+                /** @description Невалидные поля события */
+                422: components["responses"]["Problem"];
+                /** @description Transport не настроен либо maintenance */
+                503: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -8465,9 +8491,27 @@ export interface components {
             scope?: string | null;
             /** Format: date-time */
             created_at?: string | null;
+            /** @description Legacy hint до явного reconciliation; при usage_known=false не означает полный расход */
             tokens_used?: number;
+            /** @description Неоткатываемый подтверждённый app-observed или operator-declared floor */
+            readonly observed_tokens_floor?: number;
+            /** @description Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint */
+            readonly usage_known?: boolean;
+            readonly usage_source?: string;
+            /** Format: date-time */
+            readonly usage_as_of?: string | null;
+            readonly requests_known?: boolean;
+            /**
+             * Format: date
+             * @description Реальная UTC дата operational counter; не SimClock
+             */
+            readonly requests_day?: string;
+            /** @description null — остаток неизвестен или лимит не задан; не0 */
+            readonly tokens_remaining?: number | null;
+            readonly requests_remaining?: number | null;
             tokens_limit?: number | null;
             requests_today?: number;
+            /** @description Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы */
             rpd_limit?: number | null;
             /** @description OpenRouter — из GET /api/v1/key */
             balance_usd?: number | null;
@@ -8881,6 +8925,7 @@ export interface components {
             template_code?: string | null;
             subject?: string | null;
             body?: string;
+            /** @description unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет */
             status?: string;
             /** Format: date-time */
             sent_sim?: string | null;

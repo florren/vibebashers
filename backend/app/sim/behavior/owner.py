@@ -20,11 +20,19 @@ from psycopg.types.json import Jsonb
 
 from app.contracts.enums import ClientState
 from app.contracts.events.behavior.psychotype_params import PsychotypeParams
-from app.feed import service as feed_service
 from app.ingest.normalizer import create_signal
-from app.sim.behavior.care import CareComponents, CareContext, CareObservation, CareState, SlaEvidence, evaluate_care
+from app.sim.behavior.care import (
+    CareComponents,
+    CareContext,
+    CareObservation,
+    CareState,
+    CommunicationEvidence,
+    SlaEvidence,
+    eligible_reply,
+    evaluate_care,
+)
 from app.sim.behavior.codec import dump_care, load_care
-from app.sim.behavior.facts import notification_observations, related
+from app.sim.behavior.facts import notification_observations, related, signal_resolved
 from app.sim.behavior.model import Snapshot, complaint_timing, draw_repeat, hazard_score
 from app.sim.behavior.policy import DemoPolicy
 from app.sim.behavior.store import BehaviorStore, positive_ids
@@ -56,8 +64,11 @@ class BehaviorOwner:
             raise ValueError("behavior state потерял владение is_current; требуется reconciliation")
         return current
 
-    async def advance(self, *, run_id: int, to_sim: dt.datetime) -> dict[str, Any]:
+    async def advance(self, *, run_id: int, to_sim: dt.datetime, allow_paused: bool = False) -> dict[str, Any]:
         self.store.require_transaction()
+        self.generated_signals = 0
+        if not isinstance(allow_paused, bool):
+            raise ValueError("allow_paused должен быть явным bool")
         positive_ids(run_id)
         if not isinstance(to_sim, dt.datetime) or to_sim.utcoffset() is None:
             raise ValueError("нужен aware sim_time")
@@ -68,7 +79,7 @@ class BehaviorOwner:
             or state["current_run_id"] != run_id
             or run is None
             or run["kind"] not in ("free", "scenario")
-            or run["status"] != "running"
+            or (run["status"] != "running" and not (allow_paused and run["status"] == "paused"))
         ):
             raise ValueError("behavior advance требует текущий running free/scenario run")
         async with self.conn.cursor(row_factory=tuple_row) as cursor:
@@ -96,7 +107,7 @@ class BehaviorOwner:
             "select * from ("
             "select 'evidence'::text kind,id,observed_sim at,0 priority,client_id from behavior_evidence "
             "where run_id=%s and consumed_sim is null and observed_sim<=%s and "
-            "(source_kind='operation' or exists(select 1 from behavior_runtime b where b.run_id=behavior_evidence.run_id and b.client_id=behavior_evidence.client_id)) union all "
+            "(source_kind in ('operation','agent_state') or exists(select 1 from behavior_runtime b where b.run_id=behavior_evidence.run_id and b.client_id=behavior_evidence.client_id)) union all "
             "select 'work',w.id,w.due_sim,case w.kind when 'complaint' then 1 else 2 end,w.client_id "
             "from behavior_work w join behavior_runtime b using(run_id,client_id) "
             "where w.run_id=%s and w.status='pending' and w.episode_no=b.episode_no and b.closed_sim is null and w.due_sim<=%s union all "
@@ -135,7 +146,7 @@ class BehaviorOwner:
             elif evidence["source_kind"] == "resolution":
                 await self._resolution(evidence, at)
             elif evidence["source_kind"] == "agent_state":
-                await self._agent_intent(evidence, at)
+                await self._agent_intent(evidence, at, rng)
             else:
                 raise ValueError("неподдерживаемый behavior evidence kind")
         await self.conn.execute("update behavior_evidence set consumed_sim=%s where id=%s", (at, source_id))
@@ -173,7 +184,9 @@ class BehaviorOwner:
             (run, client, current["episode_no"], operation["id"], operation["fault_id"]),
         )
 
-    async def _open(self, run: int, client: int, at: dt.datetime, rng: SimRng, old: Any) -> Any:
+    async def _open(
+        self, run: int, client: int, at: dt.datetime, rng: SimRng, old: Any, *, source_signal: int | None = None
+    ) -> Any:
         info = await self.one(
             "select c.psychotype_code,c.segment_code,p.params,s.first_response_min from clients c "
             "join psychotypes p on p.code=c.psychotype_code join segments s on s.code=c.segment_code where c.id=%s",
@@ -187,15 +200,17 @@ class BehaviorOwner:
             raise ValueError("legacy state без component snapshot требует явного перехода/нового run")
         params = PsychotypeParams.model_validate(info["params"])
         lo, hi = (item.root for item in params.patience_days)
-        due, silent = complaint_timing(params, at, rng)
+        due, silent = complaint_timing(params, at, rng) if source_signal is None else (None, False)
         patience = add_working_hours(at, rng.uniform(lo, hi) * 9)
         episode = (old["episode_no"] + 1) if old else 1
         care = CareState(CareComponents())
         if old:
             await self.conn.execute("update client_states set is_current=false where id=%s", (old["state_id"],))
+        initial = ClientState.AFFECTED if source_signal is None else ClientState.COMPLAINING
+        trigger = "fault" if source_signal is None else "signal_sent"
         created = await self.one(
-            "insert into client_states(run_id,client_id,state,since_sim,trigger,care_score) values(%s,%s,'affected',%s,'fault',0) returning id",
-            (run, client, at),
+            "insert into client_states(run_id,client_id,state,since_sim,trigger,care_score,signal_id) values(%s,%s,%s,%s,%s,0,%s) returning id",
+            (run, client, initial.value, at, trigger, source_signal),
         )
         await self.conn.execute(
             "insert into behavior_runtime(run_id,client_id,episode_no,state_id,opened_sim,policy_hash,policy_source_sha256,"
@@ -226,7 +241,13 @@ class BehaviorOwner:
         )
         current = await self.episode(run, client)
         await self._event(
-            current, ClientState(old["state"]) if old else ClientState.CALM, ClientState.AFFECTED, at, "fault", 0.0
+            current,
+            ClientState(old["state"]) if old else ClientState.CALM,
+            initial,
+            at,
+            trigger,
+            0.0,
+            links={"signal_id": source_signal} if source_signal is not None else None,
         )
         await self._schedule(current, "patience", episode, patience)
         return current, due, silent
@@ -291,11 +312,11 @@ class BehaviorOwner:
     ) -> None:
         event = (
             "client.affected"
-            if after == ClientState.AFFECTED
+            if after == ClientState.AFFECTED and before != after
             else "client.churn_intent"
-            if after == ClientState.CHURN_INTENT
+            if after == ClientState.CHURN_INTENT and before != after
             else "client.retained"
-            if after == ClientState.RETAINED
+            if after == ClientState.RETAINED and before != after
             else "client.state_changed"
         )
         payload = {
@@ -338,32 +359,144 @@ class BehaviorOwner:
             if job["kind"] == "complaint":
                 await self._complaint(current, job["source_id"], at, rng)
             if job["kind"] == "repeat":
-                answered = await self.one(
-                    "select id from notifications where run_id=%s and signal_id=%s "
-                    "and client_id=%s and recipient_type in ('client','public') and status in ('sent','delivered') limit 1",
-                    (job["run_id"], job["source_id"], job["client_id"]),
-                )
-                if answered is None and current["state"] == ClientState.WAITING.value:
+                answered = await self._answered(current, job["source_id"], at)
+                if not answered and current["state"] == ClientState.WAITING.value:
                     selected = draw_repeat(PsychotypeParams.model_validate(current["params_snapshot"]), rng)
                     if selected is not None:
-                        await self.conn.execute(
-                            "update behavior_runtime set repeat_count=repeat_count+1 where run_id=%s and client_id=%s",
-                            (job["run_id"], job["client_id"]),
-                        )
                         current = await self._transition(current, selected, at, "timer")
-                        operation = await self.one(
-                            "select source_operation_id from signals where id=%s and run_id=%s and client_id=%s",
-                            (job["source_id"], job["run_id"], job["client_id"]),
-                        )
-                        if operation is None or operation["source_operation_id"] is None:
-                            raise ValueError("repeat signal не имеет причинной операции")
-                        await self._complaint(
-                            current, operation["source_operation_id"], at, rng, parent=job["source_id"]
-                        )
+                        child = await self._repeat_signal(current, job["source_id"], at, rng)
+                        await self._count_repeat(current, child, at)
             # patience — только durable eligibility для T164, без закрытия счёта.
         await self.conn.execute(
             "update behavior_work set status='consumed',consumed_sim=%s where id=%s", (at, source_id)
         )
+
+    async def _count_repeat(self, current: Any, signal_id: int, at: dt.datetime) -> bool:
+        fresh = await self.store.receipt(
+            run_id=current["run_id"],
+            client_id=current["client_id"],
+            source_kind="signal",
+            source_id=signal_id,
+            action="repeat",
+            at=at,
+        )
+        if fresh:
+            await self.conn.execute(
+                "update behavior_runtime set repeat_count=repeat_count+1 where run_id=%s and client_id=%s",
+                (current["run_id"], current["client_id"]),
+            )
+        return fresh
+
+    async def _answered(self, current: Any, signal_id: int, deadline: dt.datetime) -> bool:
+        source = await self.one(
+            "select received_sim,created_at from signals where id=%s and run_id=%s and client_id=%s",
+            (signal_id, current["run_id"], current["client_id"]),
+        )
+        if source is None:
+            raise ValueError("repeat timer не имеет исходный same-run/client signal")
+        policy = self.pinned_policy(current)
+        context = CareContext(current["opened_sim"], current["first_complaint_sim"], current["first_response_min"])
+        async with self.conn.cursor(row_factory=tuple_row) as cur:
+            await cur.execute(
+                "select id,template_code from notifications where run_id=%s and client_id=%s and recipient_type in ('client','public') "
+                "and status in ('sent','delivered') and sent_sim>=%s and sent_sim<=%s "
+                "and (sent_sim>%s or signal_id=%s or (signal_id is null and created_at>=%s)) order by sent_sim,id",
+                (
+                    current["run_id"],
+                    current["client_id"],
+                    source["received_sim"],
+                    deadline,
+                    source["received_sim"],
+                    signal_id,
+                    source["created_at"],
+                ),
+            )
+            notices = await cur.fetchall()
+        for notice, template in notices:
+            if template in policy.care.first_reply_excluded_templates:
+                continue
+            for observation in await notification_observations(self.conn, current, notice):
+                if isinstance(observation, CommunicationEvidence) and eligible_reply(
+                    observation, context=context, policy=policy.care
+                ):
+                    return True
+        return False
+
+    async def _repeat_signal(self, current: Any, parent_id: int, at: dt.datetime, rng: SimRng) -> int:
+        from app.contracts.registry import validate
+
+        parent = await self.one(
+            "select s.*,ci.name_ru city,c.region_code from signals s join clients c on c.id=s.client_id "
+            "join cities ci on ci.id=c.city_id where s.id=%s and s.run_id=%s and s.client_id=%s",
+            (parent_id, current["run_id"], current["client_id"]),
+        )
+        if parent is None:
+            raise ValueError("repeat source не принадлежит episode run/client")
+        operation = None
+        if parent["source_operation_id"] is not None:
+            operation = await self.one(
+                "select * from operations where id=%s and run_id=%s and client_id=%s",
+                (parent["source_operation_id"], current["run_id"], current["client_id"]),
+            )
+            if operation is None:
+                raise ValueError("repeat source_operation не принадлежит run/client")
+        params = PsychotypeParams.model_validate(current["params_snapshot"])
+        allowed = current["policy_snapshot"]["complaint"]["eligible_inbound_channels"]
+        weights = {key: float(value.root) for key, value in params.channel_weights.items() if key in allowed}
+        total = sum(weights.values())
+        if total <= 0:
+            raise ValueError("repeat не имеет eligible inbound weights")
+        channel = rng.weighted({key: value / total for key, value in weights.items()})
+        classification = parent["classification"]
+        known = isinstance(classification, dict) and not validate(classification, "agent/classification")
+        product = classification.get("product") if known else operation["product_code"] if operation else None
+        kind = classification["signal_type"] if known else "tech_fault" if operation else None
+        template = None
+        if product is not None:
+            if not isinstance(kind, str):
+                raise ValueError("known repeat product требует canonical signal type")
+            generated = TextGen(rng).generate(
+                kind, product, psychotype=current["psychotype_code"], city=parent["city"], channel=channel
+            )
+            text, language, template = generated.text, generated.gold["language"], generated.gold.get("template_id")
+            text_source = "t019"
+        else:
+            text, language, text_source = parent["text"], parent["lang"], "parent_signal"
+        await self.conn.execute(
+            "insert into ingest_sources(code,kind,channel_code,enabled,is_external) values('behavior_param','rest','chat',false,false) on conflict(code) do nothing"
+        )
+        result = await create_signal(
+            self.conn,
+            {
+                "external_id": f"behavior-repeat:{current['run_id']}:{current['client_id']}:{current['episode_no']}:{parent_id}",
+                "channel": channel,
+                "client": {"client_id": current["client_id"]},
+                "text": text,
+                "timestamp": at.isoformat(),
+                "origin": "sim",
+                "geo": {"source": "client_profile", "region_code": parent["region_code"]},
+                "meta": {
+                    "parent_signal_id": parent_id,
+                    "behavior_policy_hash": current["policy_hash"],
+                    "behavior_episode": current["episode_no"],
+                    "source_operation_id": operation["id"] if operation else None,
+                    "source_fault_id": operation["fault_id"] if operation else None,
+                    "text_source": text_source,
+                    "template_id": template,
+                },
+            },
+            source_code="behavior_param",
+            run_id=current["run_id"],
+            sim_time=at,
+        )
+        if result["status"] != "accepted":
+            raise ValueError("repeat не принят normalizer; требуется rollback")
+        child = result["signal_id"]
+        self.generated_signals += 1
+        await self.conn.execute("update signals set lang=%s where id=%s", (language, child))
+        await self._transition(current, ClientState.WAITING, at, "signal_sent", links={"signal_id": child})
+        await self._schedule(current, "repeat", child, at + dt.timedelta(minutes=current["first_response_min"]))
+        return int(child)
 
     async def _hazard(self, run: int, client: int, at: dt.datetime, rng: SimRng) -> None:
         current = await self.episode(run, client)
@@ -452,21 +585,8 @@ class BehaviorOwner:
         if result["status"] != "accepted":
             raise ValueError("behavior complaint не принят normalizer; TX должна быть отменена")
         signal_id = result["signal_id"]
+        self.generated_signals += 1
         await self.conn.execute("update signals set lang=%s where id=%s", (generated.gold["language"], signal_id))
-        if channel in feed_service.PLATFORM_BY_CHANNEL:
-            post = await feed_service.create_post(
-                self.conn,
-                run_id=current["run_id"],
-                platform=feed_service.PLATFORM_BY_CHANNEL[channel],
-                author_nick=f"@sim_client_{current['client_id']}",
-                text=generated.text,
-                posted_sim=at,
-                origin="background",
-                author_client_id=current["client_id"],
-                match_confidence=1.0,
-                signal_id=signal_id,
-            )
-            await self.conn.execute("update signals set external_post_id=%s where id=%s", (post["id"], signal_id))
         if current["first_complaint_sim"] is None:
             await self.conn.execute(
                 "update behavior_runtime set first_complaint_sim=%s,next_hazard_sim=%s where run_id=%s and client_id=%s",
@@ -545,18 +665,50 @@ class BehaviorOwner:
             self.conn, current, signal_id=reaction["signal_id"], incident_id=reaction["incident_id"]
         ):
             return
-        # satisfaction не подставляется в care_score. Фактический repeat не требует
-        # дополнительного repeat RNG draw; происхождение сохраняется в receipt.
+        # Реальный child определяется по idempotency identity producer, а не
+        # соседству timestamp. Observation без опубликованного текста не создаёт
+        # фиктивный repeat и не переводит клиента в новый waiting.
+        when = max(at, current["since_sim"])
         if reaction["reaction"] in ("asks_again", "escalates"):
-            selected = ClientState(reaction["reaction"])
-            await self.conn.execute(
-                "update behavior_runtime set repeat_count=repeat_count+1 where run_id=%s and client_id=%s",
-                (current["run_id"], current["client_id"]),
+            child = await self.one(
+                "select s.id from ingest_messages m join signals s on s.id=m.signal_id "
+                "where m.source_code='client_twin' and m.external_id=%s and m.status='accepted' and m.run_id=%s "
+                "and s.run_id=%s and s.client_id=%s and s.parent_signal_id=%s",
+                (
+                    f"twin:{reaction['notification_id']}",
+                    current["run_id"],
+                    current["run_id"],
+                    current["client_id"],
+                    reaction["signal_id"],
+                ),
             )
-            current = await self._transition(current, selected, at, "agent_reply")
-            await self._transition(current, ClientState.WAITING, at, "signal_sent")
-        elif reaction["reaction"] == "churn_intent":
-            await self._transition(current, ClientState.CHURN_INTENT, at, "agent_reply")
+            if child is not None and await self._count_repeat(current, child["id"], when):
+                if current["state"] == ClientState.CHURN_INTENT.value:
+                    current = await self._transition(
+                        current, ClientState.CHURN_INTENT, when, "signal_sent", links={"signal_id": child["id"]}
+                    )
+                else:
+                    current = await self._transition(
+                        current,
+                        ClientState(reaction["reaction"]),
+                        when,
+                        "agent_reply",
+                        links={"signal_id": child["id"]},
+                    )
+                    current = await self._transition(
+                        current, ClientState.WAITING, when, "signal_sent", links={"signal_id": child["id"]}
+                    )
+        native = (
+            await self.one(
+                "select output from agent_steps where run_id=%s and node='twin_react' order by seq desc limit 1",
+                (reaction["agent_run_id"],),
+            )
+            if reaction["agent_run_id"] is not None
+            else None
+        )
+        explicit = native is not None and native["output"].get("churn_intent") is True
+        if (reaction["reaction"] == "churn_intent" or explicit) and current["state"] != ClientState.CHURN_INTENT.value:
+            await self._transition(current, ClientState.CHURN_INTENT, when, "agent_reply")
 
     async def _sla(self, evidence: Any, at: dt.datetime) -> None:
         current = await self.episode(evidence["run_id"], evidence["client_id"])
@@ -597,6 +749,15 @@ class BehaviorOwner:
         )
         if missing is not None:
             return
+        async with self.conn.cursor(row_factory=tuple_row) as cur:
+            await cur.execute(
+                "select source_id from behavior_receipts where run_id=%s and client_id=%s and source_kind='signal' and action=%s order by source_id",
+                (current["run_id"], current["client_id"], f"cause:{current['episode_no']}"),
+            )
+            signal_causes = await cur.fetchall()
+        for (source,) in signal_causes:
+            if not await signal_resolved(self.conn, current, source, at):
+                return
         policy = self.pinned_policy(current)
         target = (
             ClientState.RETAINED
@@ -615,32 +776,73 @@ class BehaviorOwner:
             (at, current["run_id"], current["client_id"], current["episode_no"]),
         )
 
-    async def _agent_intent(self, evidence: Any, at: dt.datetime) -> None:
-        current = await self.episode(evidence["run_id"], evidence["client_id"])
-        if current is None or current["closed_sim"] is not None:
-            return
+    async def _agent_intent(self, evidence: Any, at: dt.datetime, rng: SimRng) -> None:
+        from app.sim.behavior.signals import canonical
+
         intent = await self.one(
-            "select x.*,s.classification from behavior_agent_intents x join signals s on s.id=x.signal_id "
+            "select x.* from behavior_agent_intents x join signals s on s.id=x.signal_id "
             "and s.run_id=x.run_id and s.client_id=x.client_id join agent_runs a on a.id=x.agent_run_id "
             "and a.sim_run_id=x.run_id and a.signal_id=x.signal_id where x.id=%s and x.run_id=%s and x.client_id=%s",
             (evidence["source_id"], evidence["run_id"], evidence["client_id"]),
         )
-        if intent is None or not await related(
-            self.conn, current, signal_id=intent["signal_id"], incident_id=intent["incident_id"]
-        ):
+        if intent is None:
             return
-        # Requested satisfied/retained/churned не доказывает resolution/closure.
-        # Повтор относится к actual signal/Twin evidence, а не решению агента.
-        flags = (intent["classification"] or {}).get("flags") or []
-        if (
-            intent["requested_state"] == "churn_intent"
-            and "churn_intent" in flags
-            and current["state"] != "churn_intent"
-        ):
-            await self._transition(
-                current,
-                ClientState.CHURN_INTENT,
-                max(at, current["since_sim"]),
-                "agent_reply",
-                links={"signal_id": intent["signal_id"]},
+        signal = await canonical(self.conn, intent["run_id"], intent["client_id"], intent["signal_id"])
+        if signal is None:
+            return  # Свободный state request/gold не подтверждает complaint.
+        current = await self.episode(intent["run_id"], intent["client_id"])
+        if current is not None and current["state"] == ClientState.CHURNED.value:
+            return
+        fresh = await self.store.receipt(
+            run_id=intent["run_id"],
+            client_id=intent["client_id"],
+            source_kind="signal",
+            source_id=signal["id"],
+            action="affect",
+            at=at,
+        )
+        if current is None or current["closed_sim"] is not None:
+            if not fresh:
+                return
+            current, _, _ = await self._open(
+                intent["run_id"], intent["client_id"], signal["received_sim"], rng, current, source_signal=signal["id"]
             )
+        member = await self.store.receipt(
+            run_id=intent["run_id"],
+            client_id=intent["client_id"],
+            source_kind="signal",
+            source_id=signal["id"],
+            action=f"cause:{current['episode_no']}",
+            at=at,
+        )
+        if not member:
+            return
+        from app.sim.behavior.runtime import capture_signal_case
+
+        await capture_signal_case(self.conn, intent["run_id"], intent["client_id"], signal["id"])
+        when = max(at, current["since_sim"])
+        if current["first_complaint_sim"] is None:
+            first = max(signal["received_sim"], current["opened_sim"])
+            await self.conn.execute(
+                "update behavior_runtime set first_complaint_sim=%s,next_hazard_sim=%s where run_id=%s and client_id=%s",
+                (first, self.next_tick(when), intent["run_id"], intent["client_id"]),
+            )
+            await self.conn.execute(
+                "update behavior_work set status='cancelled',consumed_sim=%s where run_id=%s and client_id=%s and episode_no=%s and kind='complaint' and status='pending'",
+                (when, intent["run_id"], intent["client_id"], current["episode_no"]),
+            )
+        flags = signal["classification"].get("flags") or []
+        if "repeat" in flags:
+            await self._count_repeat(current, signal["id"], when)
+        selected = (
+            ClientState.CHURN_INTENT
+            if "churn_intent" in flags or current["state"] == ClientState.CHURN_INTENT.value
+            else ClientState.WAITING
+        )
+        current = await self._transition(current, selected, when, "signal_sent", links={"signal_id": signal["id"]})
+        await self._schedule(
+            current,
+            "repeat",
+            signal["id"],
+            max(when, signal["received_sim"] + dt.timedelta(minutes=current["first_response_min"])),
+        )

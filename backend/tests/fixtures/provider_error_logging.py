@@ -9,11 +9,13 @@ from pathlib import Path
 
 import httpx
 
+from app.llm import accounting
 from app.llm.base import LLMProfile, ProviderError
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.openai_compat import _SDK_LOGGERS, OpenAICompatProvider
 from app.logging import configure_logging, get_logger
+from tests.fixtures.accounting_protocol import ProtocolAccounting
 
 SECRET = "synthetic-upstream-exception-credential"
 mode, jsonl_path = sys.argv[1], Path(sys.argv[2])
@@ -34,6 +36,7 @@ def handler(request):
 
 
 async def run():
+    accounting.service = ProtocolAccounting
     if mode.startswith("sdk"):
         # OPENAI_LOG=debug был прочитан SDK до создания owned client.
         assert logging.getLogger("openai").getEffectiveLevel() < logging.WARNING

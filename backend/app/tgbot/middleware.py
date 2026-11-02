@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.errors import Problem
 from app.tgbot.signature import MAX_BODY_BYTES, BotTransportDisabled, InvalidBotSignature, verify_signature
 
 INBOUND_PATH = "/api/internal/tgbot/inbound"
@@ -75,4 +75,4 @@ class BotSignatureMiddleware:
 
     @staticmethod
     async def reject(scope: Scope, receive: Receive, send: Send, status: int, code: str) -> None:
-        await JSONResponse({"error": code}, status_code=status)(scope, receive, send)
+        await Problem(status, "Telegram transport", code).to_response(scope["path"])(scope, receive, send)

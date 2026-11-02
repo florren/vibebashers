@@ -1,4 +1,4 @@
-"""T-161: воспроизводимость implementation-approved packet без активации runtime."""
+"""T-161: воспроизводимость implementation-approved packet и явной активации candidate runtime."""
 
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ review = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(review)
 
 
-def test_review_is_disabled_and_catalog_hashes_reproducible() -> None:
+def test_review_activation_and_catalog_hashes_reproducible() -> None:
     report = review.build_report(POLICY)
     expected = json.loads((ROOT / "docs/reviews/T-161-demo-policy-sensitivity.json").read_text())
     assert report == expected
-    assert report["enabled"] is False and report["approved_by"] == "user_in_chat"
+    assert report["enabled"] is True and report["approved_by"] == "user_in_chat"
     assert report["status"] == "approved_for_implementation"
     assert report["approved_date"] == "2026-11-02"
     assert report["approval_scope"] == "values_and_semantics_only"
@@ -46,10 +46,10 @@ def test_cumulative_intent_is_exposed_not_called_real_churn() -> None:
 
 
 @pytest.mark.parametrize("change", ["enabled", "approval", "missing_segment", "invalid_domain", "boolean_threshold"])
-def test_invalid_or_activated_review_refused(tmp_path: Path, change: str) -> None:
+def test_invalid_or_unapproved_activation_refused(tmp_path: Path, change: str) -> None:
     policy = yaml.safe_load(POLICY.read_text())
     if change == "enabled":
-        policy["enabled"] = True
+        policy["enabled"] = "true"
     elif change == "approval":
         policy["approved_by"] = "example-only"
     elif change == "missing_segment":
@@ -62,3 +62,12 @@ def test_invalid_or_activated_review_refused(tmp_path: Path, change: str) -> Non
     p.write_text(yaml.safe_dump(policy))
     with pytest.raises(ValueError):
         review.build_report(p)
+
+
+def test_draft_cannot_activate_runtime(tmp_path: Path) -> None:
+    policy = yaml.safe_load(POLICY.read_text())
+    policy.update(status="proposed_for_review", approved_by=None, enabled=True)
+    path = tmp_path / "unapproved.yaml"
+    path.write_text(yaml.safe_dump(policy))
+    with pytest.raises(ValueError):
+        review.build_report(path)
