@@ -447,7 +447,9 @@
     "lengthHint": "{{count}} / 5000 characters · 3 to 5000 required",
     "resultTitle": "Signal accepted",
     "openTrace": "Show trace",
-    "clientLabel": "Client"
+    "clientLabel": "Client",
+    "resultPending": "Signal #{{id}} accepted. The agent run ID is not yet known.",
+    "resultMissingId": "The service response has no signal ID. Journey and trace links are unavailable."
   },
   "engine": {
     "title": "Under the hood",

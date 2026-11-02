@@ -81,3 +81,15 @@ it('includes anonymous handle only for its selected channel, preserving city sep
  fireEvent.click(screen.getByRole('button',{name:'Send to the agent'}))
  expect(state.mutate.mock.calls[1]![0]).not.toHaveProperty('external_contact')
 })
+
+it('does not invent a run link for an accepted signal with no agent run ID',()=>{
+ state.data={signal_id:123,agent_run_id:null as unknown as number};mount()
+ expect(screen.getByRole('status')).toHaveTextContent('agent run ID is not yet known')
+ expect(screen.queryByRole('link',{name:'Open under the hood'})).not.toBeInTheDocument()
+ expect(screen.getByRole('link',{name:'Show trace'})).toHaveAttribute('href','/trace/signal/123')
+})
+it('does not invent Journey or Trace refs from an incomplete accepted response',()=>{
+ state.data={} as typeof state.data;mount()
+ expect(screen.getByRole('status')).toHaveTextContent('service response has no signal ID')
+ expect(screen.queryByRole('link')).not.toBeInTheDocument()
+})

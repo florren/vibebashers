@@ -22,6 +22,9 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
   const [voice, setVoice] = useState<Schemas['VoiceMeta'] | null>(null)
   const clients = useClients({ segment: segment || undefined }, open)
   const jury = useJury()
+  const reportedSignal = jury.data?.signal_id, reportedAgent = jury.data?.agent_run_id
+  const signalId = typeof reportedSignal === 'number' && Number.isSafeInteger(reportedSignal) && reportedSignal > 0 ? reportedSignal : null
+  const agentId = typeof reportedAgent === 'number' && Number.isSafeInteger(reportedAgent) && reportedAgent > 0 ? reportedAgent : null
   const label = (row: RefRow) => i18n.language.startsWith('en') ? row.name_en ?? row.name_ru : row.name_ru
   const candidate = clientChoice === 'manual' ? manualId.trim() : clientChoice
   const invalidClient = clientChoice === 'manual' && !positiveId(candidate)
@@ -91,11 +94,11 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
       <p id={`${id}-length`} className={length > 5000 ? 'text-sm text-danger' : 'text-sm text-muted'}>{t('jury.lengthHint', { count: length })}</p>
       {jury.isError && <ErrorBox error={jury.error} compact/>}
       {jury.data && <section className="space-y-3 rounded-lg border border-ok/30 bg-ok/5 p-3" aria-label={t('jury.resultTitle')}>
-        <p role="status" className="text-sm text-ok">{t('jury.result', { id: jury.data.signal_id, run: jury.data.agent_run_id })}</p>
+        <p role="status" className="text-sm text-ok">{signalId === null ? t('jury.resultMissingId') : agentId === null ? t('jury.resultPending', { id: signalId }) : t('jury.result', { id: signalId, run: agentId })}</p>
         <div className="flex flex-wrap gap-2">
-          {jury.data.signal_id !== undefined && <><JourneyLink reference={`SIG-${String(jury.data.signal_id).padStart(6, '0')}`} onClick={close}/><Link className="btn btn-sm" to={ROUTES.traceObject('signal', String(jury.data.signal_id))} onClick={close}>{t('jury.openTrace')}</Link>
-            {onSignal && <button type="button" className="btn btn-sm" onClick={() => { onSignal(jury.data!.signal_id!); close() }}>{t('jury.openSignal')}</button>}</>}
-          {jury.data.agent_run_id !== undefined && <Link className="btn btn-sm" to={`/engine/${jury.data.agent_run_id}`} onClick={close}>{t('jury.openRun')}</Link>}
+          {signalId !== null && <><JourneyLink reference={`SIG-${String(signalId).padStart(6, '0')}`} onClick={close}/><Link className="btn btn-sm" to={ROUTES.traceObject('signal', String(signalId))} onClick={close}>{t('jury.openTrace')}</Link>
+            {onSignal && <button type="button" className="btn btn-sm" onClick={() => { onSignal(signalId); close() }}>{t('jury.openSignal')}</button>}</>}
+          {agentId !== null && <Link className="btn btn-sm" to={`/engine/${agentId}`} onClick={close}>{t('jury.openRun')}</Link>}
         </div>
       </section>}
       <div className="flex flex-wrap justify-end gap-2"><button type="button" className="btn" onClick={close}>{t('common.close')}</button><button type="submit" className="btn btn-primary" disabled={jury.isPending || invalidText || invalidClient || invalidCity}>{jury.isPending ? t('jury.sending') : t('jury.send')}</button></div>
