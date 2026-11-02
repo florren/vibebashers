@@ -259,3 +259,10 @@ html[data-attention='calm'] .status-indicator { animation: none; }
 html[data-attention='calm'] .app-content :where(p, blockquote, .signal-row .line-clamp-2) { font-size: 16px; line-height: 1.6; }
 .responsive-filters[open] > div { animation: fade-in var(--motion-reveal) ease-out 1; }
 @media (prefers-reduced-motion: reduce) { .responsive-filters[open] > div { animation: none !important; } }
+
+/* В v2 боковое меню уменьшает рабочую ширину: спокойные KPI сохраняют целые подписи. */
+@media (min-width: 1024px) and (max-width: 1699px) {
+  html[data-attention='calm'][data-device='desktop'] .shell-v2 .kpi-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.shell-v2 summary:focus-visible { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 2px; }
