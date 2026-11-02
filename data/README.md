@@ -83,5 +83,8 @@ Migration `0007_csi_audit` supports the CSI signal primary key and the composite
 
 Проверка конфигурации без записи в БД:
 `backend/.venv/bin/python scripts/seed/operations.py --profile lite --check`.
+## Каталоги коммуникаций (T-015)
+
+`forbidden_phrases.yaml` — прежние клиентские запреты и отдельные технические идентификаторы `systems.yaml`. Последние распознаются только самостоятельными токенами: обычные слова и составные клиентские error codes не подменяются внутренними именами. Файл валидируется при старте backend; после изменения нужен перезапуск. `templates/notifications.yaml` сохраняет простой синтаксис переменных и ru/en пары; wildcard seed разворачивается в текущие канонические каналы. Неизвестный delivery-name использует шаблон своего сегмента либо общий.
 
 Проверка T-014: `backend/.venv/bin/python scripts/seed/validate_refs.py`; регрессии — `tests/unit/test_refs_routing.py` и `tests/integration/test_refs_routing.py` (в backend). Интеграционная проверка требует отдельной `DATABASE_URL_TEST` и пересоздаёт только тестовую схему.

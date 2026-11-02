@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "synthetic": true,
+  "models": [
+    {
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "ok": false,
+      "error": "bad_output",
+      "status": null
+    },
+    {
+      "model": "openrouter/owl-alpha",
+      "ok": false,
+      "error": "unavailable",
+      "status": 404
+    },
+    {
+      "model": "openai/gpt-oss-120b:free",
+      "ok": false,
+      "error": "unavailable",
+      "status": 404
+    }
+  ],
+  "http_requests": 5,
+  "max_output_tokens_per_request": 128,
+  "executed_at_utc": "2026-11-01T21:59:24.258099+00:00",
+  "exit_code": 1,
+  "source_commit": "92a235f597af846c211697af8c558ba5f4a5952d",
+  "runtime_identical_to": "d0fb457",
+  "actual_tokens": null,
+  "actual_cost_usd": null,
+  "actual_usage_status": "unknown_on_failed_calls",
+  "repeated": false
+}

@@ -469,21 +469,9 @@ def gen_bench(rnd: random.Random) -> None:
             }
         )
     write("red_phrases_v1", rows)
-    # golden_v1: классификация тип × продукт × 3 канала
-    rows = []
-    for st, p in combos:
-        for ch in ("chat", "social", "email"):
-            g = tg.generate(st, p, style=rnd.choice(["plain", "plain", "sarcasm", "slang", "typos"]))
-            rows.append(
-                {
-                    "id": f"gold-{st}-{p}-{ch}",
-                    "channel": ch,
-                    "text": g.text,
-                    "gold": {k: v for k, v in g.gold.items() if k != "style"},
-                    "tags": [g.style],
-                }
-            )
-    write("golden_v1", rows)
+    # Golden — вручную размеченный источник истины; не заменяем его неполными метками TextGen.
+    for code in ("golden_v1", "lite_v1"):
+        (OUT_BENCH / f"{code}.jsonl").write_bytes((DATA / "golden" / f"{code}.jsonl").read_bytes())
 
 
 def main() -> int:

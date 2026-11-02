@@ -16,6 +16,7 @@ from app.agent.graph import (
     process_signal,
     resume_after_human,
     wake_due_followups,
+    wake_followups_for_client_reply,
     wake_followups_for_incident,
 )
 from app.db.session import psycopg_dsn
@@ -37,8 +38,10 @@ class AgentService:
         self._task: asyncio.Task[None] | None = None
         self._feedback_task: asyncio.Task[None] | None = None
         self._personal_task: asyncio.Task[None] | None = None
+        self._reply_task: asyncio.Task[None] | None = None
         self._inflight: set[asyncio.Task[Any]] = set()
         self._by_signal: dict[int, asyncio.Task[Any]] = {}
+        self._by_reply: dict[int, asyncio.Task[Any]] = {}
         self.processed = 0
         self.failed = 0
         self.enabled = True
@@ -56,6 +59,32 @@ class AgentService:
 
         if self._personal_task is None or self._personal_task.done():
             self._personal_task = asyncio.create_task(self._personal_loop(), name="personal-chat-queue")
+        if self._reply_task is None or self._reply_task.done():
+            self._reply_task = asyncio.create_task(self._reply_loop(), name="tracking-replies")
+
+    async def _reply_loop(self) -> None:
+        """Восстанавливает доставленные ответы после рестарта или потери NOTIFY."""
+        while True:
+            try:
+                if self.enabled:
+                    async with await self._conn() as conn:
+                        rows = await (
+                            await conn.execute(
+                                "select p.id,reply.id,st.sim_time from followups f join signals p on p.id=f.signal_id "
+                                "join sim_state st on st.id=1 join lateral (select c.id from signals c where c.parent_signal_id=p.id "
+                                "and c.run_id=p.run_id and c.status<>'error' order by c.id desc limit 1) reply on true "
+                                "where p.tracking_token is not null and f.reason='awaiting_client' and f.status='scheduled' "
+                                "and exists(select 1 from agent_steps a where a.run_id=f.agent_run_id and a.node='followup_monitor') "
+                                "order by f.id limit 20"
+                            )
+                        ).fetchall()
+                    for parent_id, child_id, sim_time in rows:
+                        self.submit_client_reply(int(parent_id), int(child_id), sim_time)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("tracking_reply_queue_failed", error=type(exc).__name__)
+            await asyncio.sleep(2)
 
     async def _personal_loop(self) -> None:
         # Публичный чат не ждёт восстановления старой фоновой очереди. Данные остаются в общем signals.
@@ -78,6 +107,11 @@ class AgentService:
             await asyncio.sleep(2)
 
     async def stop(self) -> None:
+        if self._reply_task:
+            self._reply_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._reply_task
+            self._reply_task = None
         if self._personal_task:
             self._personal_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -159,6 +193,15 @@ class AgentService:
                                 self._wake_incident_followups(int(inc_id), st),
                                 name="agent-wake-release",
                             )
+                    elif n.channel == "sim_events" and body.get("event_type") == "signal.appended":
+                        payload = body.get("payload") or {}
+                        if payload.get("signal_id") and payload.get("parent_signal_id"):
+                            raw_time = body.get("sim_time")
+                            self.submit_client_reply(
+                                int(payload["parent_signal_id"]),
+                                int(payload["signal_id"]),
+                                dt.datetime.fromisoformat(raw_time) if raw_time else dt.datetime.now(dt.UTC),
+                            )
                     elif n.channel == "sim_events" and body.get("event_type") == "signal.received":
                         sid = (body.get("payload") or {}).get("signal_id")
                         sim_time = body.get("sim_time")
@@ -203,6 +246,40 @@ class AgentService:
 
         t.add_done_callback(finished)
         return t
+
+    def submit_client_reply(self, parent_id: int, child_id: int, sim_time: dt.datetime) -> asyncio.Task[Any]:
+        existing = self._by_reply.get(child_id)
+        if existing is not None and not existing.done():
+            return existing
+
+        async def continue_reply() -> None:
+            # Сначала штатный граф дополнения: его политика и HITL не обходятся.
+            await self.submit(child_id, sim_time)
+            async with self.sem, await self._conn() as conn:
+                child = await (await conn.execute("select status from signals where id=%s", (child_id,))).fetchone()
+                if not child or child[0] in ("new", "processing", "error", "awaiting_human"):
+                    return
+                await wake_followups_for_client_reply(
+                    conn,
+                    signal_id=parent_id,
+                    sim_time=sim_time,
+                    chain=self.chain,
+                    profile=self.profile,
+                )
+
+        task = asyncio.create_task(continue_reply(), name=f"client-reply-{child_id}")
+        self._by_reply[child_id] = task
+        self._inflight.add(task)
+
+        def finished(done: asyncio.Task[Any]) -> None:
+            self._inflight.discard(done)
+            if self._by_reply.get(child_id) is done:
+                self._by_reply.pop(child_id, None)
+            if not done.cancelled() and done.exception() is not None:
+                log.error("client_reply_failed", signal_id=parent_id, error=type(done.exception()).__name__)
+
+        task.add_done_callback(finished)
+        return task
 
     async def _expire_hitl(self, sim_time: dt.datetime) -> None:
         async with self.sem:

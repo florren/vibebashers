@@ -100,8 +100,12 @@ async def load_deps(
     run_id: int,
     agent_run_id: int,
     sim_time: dt.datetime,
+    dry_run: bool = False,
+    trace_conn: psycopg.AsyncConnection[Any] | None = None,
 ) -> Deps:
-    ctx = ToolContext(conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time)
+    ctx = ToolContext(
+        conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
+    )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [
         (int(r[0]), dict(r[1] or {}), list(r[2] or []))
@@ -510,6 +514,7 @@ async def wake_due_followups(
     chain: ProviderChain,
     profile: LLMProfile,
     incident_id: int | None = None,
+    signal_id: int | None = None,
 ) -> int:
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
@@ -517,9 +522,12 @@ async def wake_due_followups(
             "with due as (select f.id from followups f join signals s on s.id=f.signal_id "
             "where f.status = 'scheduled' and f.wake_sim <= %s and f.agent_run_id is not null "
             "and (%s::bigint is null or (f.incident_id=%s and f.reason is distinct from 'awaiting_client')) "
+            "and (%s::bigint is null or (f.signal_id=%s and f.reason='awaiting_client')) "
+            "and (%s::bigint is null or exists(select 1 from agent_steps checkpoint where checkpoint.run_id=f.agent_run_id "
+            "and checkpoint.node='followup_monitor')) "
             f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
             "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
-            (sim_time, incident_id, incident_id),
+            (sim_time, incident_id, incident_id, signal_id, signal_id, signal_id),
         )
     ).fetchall()
     resumed = 0
@@ -529,6 +537,23 @@ async def wake_due_followups(
         if st is not None:
             resumed += 1
     return resumed
+
+
+async def wake_followups_for_client_reply(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    signal_id: int,
+    sim_time: dt.datetime,
+    chain: ProviderChain,
+    profile: LLMProfile,
+) -> int:
+    """Ответ клиента будит только его ожидание, в том числе при паузе симулятора."""
+    await conn.execute(
+        "update followups set wake_sim=%s where signal_id=%s and status='scheduled' and reason='awaiting_client'",
+        (sim_time, signal_id),
+    )
+    await conn.commit()
+    return await wake_due_followups(conn, sim_time=sim_time, chain=chain, profile=profile, signal_id=signal_id)
 
 
 async def wake_followups_for_incident(
