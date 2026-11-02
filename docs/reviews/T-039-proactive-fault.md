@@ -66,3 +66,22 @@ native-event/catalog validation. Окончательный targeted резул�
 (включая повторный pending HITL и negative native provenance); полный unit
 1797 passed/18 skipped/57.73s; Ruff выбранных файлов и mypy трёх изменённых
 production modules зелёные. Весь T039 `make test` ещё не выполнялся на этом head.
+
+### Automatic wake и durable recheck
+
+`AgentService` теперь coalesces `fault.started`/`op.failed`/`sla.tick` в один
+Event; payload NOTIFY не задаёт clock/impact/client. Один отдельный daemon
+использует тот же технический 2s cadence, что очереди replies/personal, и native
+recheck после рестарта/потери NOTIFY. Producer transaction завершается до графа.
+Новый anchor запускается обычным `submit`; deferred anchor — только через strict
+same-AR/checkpoint continuation. Общие `_by_signal`/semaphore предотвращают
+конкуренцию HTTP/LISTEN/continuation. Pending human не возобновляется этим путём.
+Stop отменяет daemon до дочерних tasks, все lifecycle writer leases сохранены.
+
+Actual PG regression: impact0 не финализируется; после actual op без NOTIFY
+появляются 1 normal AR и 1 Sent; новая service instance находит позднего второго
+получателя и даёт 2 Sent, один прежний AR с теми же tokens, один followup,
+verified mass2. 1 passed/7.94s. Unit wake/coalescing/cancellation + старые
+tracking/ingest/maintenance checks: 28 passed/2.30s; Ruff и mypy runner зелёные.
+Первый non-escalated TestClient запуск остановлен из-за известного sandbox hang;
+доказательством служит полный host повтор, не незавершённый запуск.

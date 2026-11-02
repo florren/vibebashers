@@ -11,11 +11,13 @@ from typing import Any
 import orjson
 import psycopg
 
+from app.agent import proactive
 from app.agent.graph import (
     expire_hitl,
     process_signal,
     recover_agent_run,
     resume_after_human,
+    resume_proactive_fault,
     wake_due_followups,
     wake_followups_for_client_reply,
     wake_followups_for_incident,
@@ -42,6 +44,8 @@ class AgentService:
         self._feedback_task: asyncio.Task[None] | None = None
         self._personal_task: asyncio.Task[None] | None = None
         self._reply_task: asyncio.Task[None] | None = None
+        self._proactive_task: asyncio.Task[None] | None = None
+        self._proactive_wake = asyncio.Event()
         self._inflight: set[asyncio.Task[Any]] = set()
         self._by_signal: dict[int, asyncio.Task[Any]] = {}
         self._by_reply: dict[int, asyncio.Task[Any]] = {}
@@ -65,6 +69,63 @@ class AgentService:
             self._personal_task = start_daemon(self._personal_loop, name="personal-chat-queue")
         if self._reply_task is None or self._reply_task.done():
             self._reply_task = start_daemon(self._reply_loop, name="tracking-replies")
+
+        if self._proactive_task is None or self._proactive_task.done():
+            self._proactive_task = start_daemon(self._proactive_loop, name="proactive-fault-queue")
+
+    async def _proactive_loop(self) -> None:
+        """NOTIFY ускоряет один wakeup; native recheck восстанавливает потерянные события."""
+        while True:
+            self._proactive_wake.clear()
+            try:
+                if self.enabled:
+                    await self._proactive_cycle()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("proactive_fault_queue_failed", error_type=type(exc).__name__)
+            try:
+                await asyncio.wait_for(self._proactive_wake.wait(), timeout=2)
+            except TimeoutError:
+                pass
+
+    @writer("agent-proactive")
+    async def _proactive_cycle(self) -> None:
+        async with await self._conn() as conn:
+            signal_ids = await proactive.produce(conn)
+            # Граф не держит producer TX/run lock через LLM и другие await.
+            await conn.commit()
+            pending = await (
+                await conn.execute(
+                    "select s.id,a.id,a.outcome from signals s left join lateral "
+                    "(select ar.id,ar.outcome from agent_runs ar where ar.signal_id=s.id "
+                    "and ar.sim_run_id=s.run_id and ar.kind='agent' "
+                    "and ar.outcome is distinct from 'failed' order by ar.id desc limit 1) a on true "
+                    "where s.id=any(%s::bigint[]) order by s.id",
+                    (signal_ids,),
+                )
+            ).fetchall()
+        for signal_id, agent_run_id, outcome in pending:
+            if agent_run_id is None:
+                self.submit(int(signal_id))
+            elif outcome == "deferred":
+                self._submit_proactive_resume(int(signal_id))
+
+    def _submit_proactive_resume(self, signal_id: int) -> asyncio.Task[Any]:
+        existing = self._by_signal.get(signal_id)
+        if existing is not None and not existing.done():
+            return existing
+        return self._track_signal(signal_id, self._resume_proactive(signal_id), name=f"proactive-resume-{signal_id}")
+
+    @writer("agent-proactive-resume")
+    async def _resume_proactive(self, signal_id: int) -> None:
+        async with self.sem:
+            try:
+                async with await self._conn() as conn:
+                    await resume_proactive_fault(conn, signal_id=signal_id, chain=self.chain, profile=self.profile)
+            except Exception as exc:
+                self.failed += 1
+                log.warning("proactive_fault_resume_failed", signal_id=signal_id, error_type=type(exc).__name__)
 
     async def _reply_loop(self) -> None:
         """Восстанавливает доставленные ответы после рестарта или потери NOTIFY."""
@@ -119,6 +180,11 @@ class AgentService:
             self.submit(int(sid), interactive=True)
 
     async def stop(self) -> None:
+        if self._proactive_task:
+            self._proactive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._proactive_task
+            self._proactive_task = None
         if self._reply_task:
             self._reply_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -298,6 +364,8 @@ class AgentService:
             body = orjson.loads(n.payload)
         except orjson.JSONDecodeError:
             return
+        if n.channel == "sim_events" and body.get("event_type") in ("fault.started", "op.failed", "sla.tick"):
+            self._proactive_wake.set()
         if n.channel == "sim_events" and body.get("event_type") == "sla.tick":
             sim_raw = body.get("sim_time")
             if sim_raw:
@@ -348,11 +416,14 @@ class AgentService:
         existing = self._by_signal.get(signal_id)
         if existing is not None and not existing.done():
             return existing
-        t = spawn_writer(
+        return self._track_signal(
+            signal_id,
             self._process(signal_id, sim_time, interactive=True) if interactive else self._process(signal_id, sim_time),
             name=f"agent-{signal_id}",
-            kind="agent",
         )
+
+    def _track_signal(self, signal_id: int, coro: Any, *, name: str) -> asyncio.Task[Any]:
+        t = spawn_writer(coro, name=name, kind="agent")
         self._by_signal[signal_id] = t
         self._inflight.add(t)
 
