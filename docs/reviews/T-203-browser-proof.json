@@ -1,0 +1,128 @@
+[
+  {
+    "path": "/feed",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-ru-light.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-ru-light.png"
+  },
+  {
+    "path": "/compliance",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-ru-light.png"
+  },
+  {
+    "path": "/feed",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-ru-dark.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-ru-dark.png"
+  },
+  {
+    "path": "/compliance",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-ru-dark.png"
+  },
+  {
+    "path": "/feed",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-en-light.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-en-light.png"
+  },
+  {
+    "path": "/compliance",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-en-light.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "light",
+    "width": {
+      "viewport": 320,
+      "scroll": 320
+    }
+  },
+  {
+    "path": "/feed",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-en-dark.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-en-dark.png"
+  },
+  {
+    "path": "/compliance",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-en-dark.png"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "dark",
+    "width": {
+      "viewport": 320,
+      "scroll": 320
+    }
+  }
+]

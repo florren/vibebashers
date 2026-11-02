@@ -1,5 +1,9 @@
 # Шаблоны уведомлений клиенту (Jinja2). channel '*' = по умолчанию для всех каналов (сид раскладывает по каналам chat, email, telegram_bot, proactive, social)
 templates:
+  # Разъяснение доступно только для будущего подтверждённого руководителем пути;
+  # наличие шаблона само по себе не запускает отправку и не меняет HITL.
+  - {code: misselling_clarification, channel: "*", segment: null, subject: "Разъяснение по вашему обращению", body: "{{ name }}, по вашему обращению: {{ clarification }}. Если остались вопросы, пожалуйста, напишите нам.", variables: [name, clarification]}
+  - {code: misselling_clarification, channel: "*", segment: null, lang: en, subject: "A clarification about your request", body: "{{ name }}, regarding your request: {{ clarification }}. Please contact us if you have any further questions.", variables: [name, clarification]}
   - {code: ack_received,     channel: "*", segment: null,      subject: "Мы получили ваше обращение", body: "{{ name }}, спасибо за обращение. Мы уже разбираемся: {{ summary }}. Ответим в течение {{ sla_minutes }} минут.", variables: [name, summary, sla_minutes]}
   - {code: ack_received,     channel: "*", segment: null,      lang: en, subject: "We have received your request", body: "{{ name }}, thank you for your request. We are already looking into it: {{ summary }}. We will reply within {{ sla_minutes }} minutes.", variables: [name, summary, sla_minutes]}
   - {code: ack_received,     channel: "*", segment: youth,     subject: "Получили, разбираемся", body: "{{ name }}, спасибо, что написали! Уже смотрим, что случилось: {{ summary }}. Вернёмся с ответом за {{ sla_minutes }} мин.", variables: [name, summary, sla_minutes]}

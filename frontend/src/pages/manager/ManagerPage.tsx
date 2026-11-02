@@ -63,7 +63,7 @@ function AlertCard({ a, onAck, busy }: { a: ComplianceAlert; onAck: (d: 'go' | '
         <Badge tone={tone}>{tEnum('compliance.alertKind', kind)}</Badge>
         <span className="text-sm font-semibold">{a.employee_display_name}</span>
         <span className="text-xs text-muted">
-          ВСП {a.branch_code} · стол {a.desk_no}
+          {t('manager.location', { branch: a.branch_code ?? '—', desk: a.desk_no ?? '—' })}
         </span>
         {a.trigger_count != null && kind === 'threshold' && (
           <Badge tone="neutral">{t('manager.counter', { n: a.trigger_count, m: 3 })}</Badge>
