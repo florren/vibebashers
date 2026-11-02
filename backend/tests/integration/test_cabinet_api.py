@@ -13,17 +13,20 @@ import yaml
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 
-from tests.integration.conftest import _seed
+from tests.integration.conftest import _seed, rebuild_schema
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture(scope="module")
 def cabinet_db(migrated_db: str) -> Iterator[str]:
+    # Предыдущий модуль может изменить sim_state.seed/receipt; production corpus guard сохраняем.
+    rebuild_schema(migrated_db)
     seeded = _seed(migrated_db, "--profile", "demo", "--clients", "5000")
     assert seeded.returncode == 0, seeded.stderr[-1000:]
     with psycopg.connect(migrated_db.replace("postgresql+psycopg:", "postgresql:"), autocommit=True) as conn:
         assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0018"
+        assert conn.execute("select count(*) from clients").fetchone()[0] == 5000
     yield migrated_db
 
 
