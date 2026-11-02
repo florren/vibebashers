@@ -436,3 +436,22 @@ page50of10001, memory=282061bytes припрежнем<8MiB.
 readphaseunchanged, structuredLLMbomb0. Не заявляетсяfingerprint всехprivate
 namespaces. Ruff/format/mypyassembler green. ExactheadwholeCI ещёpendingroot.
 Proof: T-039-native-trace-consumer-proof.json. RealLLM/TG/email/productionне было.
+
+### PR197/198/199: generic scenario suite после native preparation
+
+Новый exact-head CI197 `7ba4b9d` (job125566926815) дал583passed/1failed,
+CI198 `624bf82` (job125569967054) и CI199 `c463cdd` (job125572535420) —697passed/1failed.
+Во всех случаях один generic `test_scenarios[06-mass_notifications]`: прежний
+`inject=[]` не исполнял journal, затем legacy `counts.errors` отсутствовал у typed
+native результата. `native_phases_completed=False` был корректным отказом.
+
+Теперь эта существующая параметризация выполняет сценарий6 тем же общим
+`offline_main_runtime/run_prepared_mass_case`: штатный HTTP/CLI и actors,
+CLI30/outer45,5000-client fixture, все egress bombs сохранены. Проверяются
+`passed is True`, **все** checks строгоTrue, actual affected120/notified≥90/
+complaints=deduplicated30. Legacy ветки и их `errors==0`/failed-check assertions
+сохранены. Нет исключения scenario6, skip/xfail/подмены результата/нового таймаута.
+
+Regression на своей `cx_t039_catalog_revision`: **3passed/29deselected32.48s**
+(native06 и прежние01/08). Ruff/format/diff-check green. Это targeted consumer
+исправление; полный точный CI должен пройти повторно, прежние failures не скрыты.
