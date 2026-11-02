@@ -268,7 +268,7 @@ def test_demo_report_p95_includes_first_get(client, sql):
         response = client.get("/api/cabinet/report?product_line=all&period=quarter")
         samples.append((time.perf_counter() - start) * 1000)
         assert response.status_code == 200
-    assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300
+    assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300, {"samples_ms": samples}
 
 
 @pytest.fixture
