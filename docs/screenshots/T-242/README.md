@@ -7,9 +7,9 @@ Mock-only startup с BombLLM и запретом внешней сети. API о
 mobile360px и night-mobile. Последняя — **явно заданная fixed night** с
 reduced motion, а не естественный переход симуляции в ночь.
 
-Source приложения00d6abf (Drawer fix15856a3; normal T241 composition f1c77fe), browser4/4 (24.9s).
+Source приложенияc69a000 (API24/T243cb115a3 composition), browser5/5 (29.8s).
 Calculator снят после opacity1: fixed-панель вне hover-transformed card,
 верх0/fullviewport900 и поле в viewport проверены regression.
 Синтетические customer texts/run labels остаются данными; статический UI ru/en.
-Серые деньги/пустое число пострадавших обозначают неизвестность, не нулевой убыток.
+Серые KPI деньги/пустое число пострадавших обозначают неизвестность. Calculator PNG показывает готовый serverpreview для явного сценарного ввода2; это не сохранённый ущерб. Все31rates также проверены через UI; трехdecimalcatalog rates передаются без изменения, result округляет сервер.
 Проверки/хеши/границы writes: `docs/reviews/T-242-browser-proof.json`.
