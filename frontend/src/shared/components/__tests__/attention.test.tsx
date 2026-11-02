@@ -86,3 +86,16 @@ it('calm block budget allows nine real blocks and rejects a tenth rather than hi
   expect(() => assertBlockBudget(root)).toThrow('10/9')
   expect(MOTION.enterMs).toBeGreaterThanOrEqual(250); expect(MOTION.revealMs).toBeLessThanOrEqual(400); expect(MOTION.liftPx).toBe(2)
 })
+
+
+it('selected priority follows its real ID when the server reorders the same three items', async () => {
+  let rows = [1,2,3].map(id => ({ id, public_id: `INC-00000${id}`, priority: id }))
+  vi.mocked(api).mockImplementation(async path => path === '/api/sim/state' ? { current_run_id: 11 } : path === '/api/settings' ? {} : { items: rows })
+  show(<PriorityStrip />)
+  await screen.findByRole('link', { name: 'INC-000001 · P1' })
+  fireEvent.click(screen.getByRole('button', { name: 'Приоритет 3' }))
+  rows = [rows[2]!, rows[0]!, rows[1]!]
+  await act(async () => { await clients[0]!.invalidateQueries({ queryKey: ['incidents'] }) })
+  expect(screen.getByRole('link', { name: 'INC-000003 · P3' })).toBeVisible()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Приоритет 1' })).toHaveAttribute('aria-pressed', 'true'))
+})

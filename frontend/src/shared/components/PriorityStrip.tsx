@@ -19,15 +19,15 @@ export function PriorityStrip() {
   }), [])
   const query = { run_id: runId, status: ACTIVE, sort: 'priority', limit: 3 }
   const list = useQuery({ queryKey: ['incidents', 'list', query, 'priorities', revision], queryFn: () => api<{ items?: IncidentBrief[] }>('/api/incidents', { query }), refetchInterval: 15_000 })
-  const [selected, setSelected] = useState(0)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const items = list.data?.items?.slice(0, 3) ?? []
-  const index = Math.min(selected, Math.max(0, items.length - 1))
+  const index = Math.max(0, items.findIndex(item => item.id === selectedId))
   const current = items[index]
   return <section className="priority-strip flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-3 py-1 text-sm" aria-label={t('attention.priorities')}>
     <span className="font-medium">{t('attention.priorities')}</span>
     {list.isError ? <span role="status">{t('care.errors.service')}</span> : !current ? <span className="text-muted">{t(list.isPending ? 'attention.loading' : 'attention.noPriorities')}</span> : <>
       <div className="flex gap-1" role="group" aria-label={t('attention.choosePriority')}>
-        {items.map((item, n) => <button key={item.id} className="btn btn-sm" aria-pressed={index === n} aria-label={t('attention.chooseItem', { n: n + 1 })} onClick={() => setSelected(n)}>{n + 1}</button>)}
+        {items.map((item, n) => <button key={item.id} className="btn btn-sm" aria-pressed={index === n} aria-label={t('attention.chooseItem', { n: n + 1 })} onClick={() => setSelectedId(item.id ?? null)}>{n + 1}</button>)}
       </div>
       <Link className="font-mono text-sm text-info underline" to={`/incidents/${current.id}`}>{current.public_id} · P{current.priority ?? '—'}</Link>
       <SlaWarning due={current.sla_due_sim} status={current.status} />
