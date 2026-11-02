@@ -61,3 +61,9 @@ Ordinary merge сохраняет maintenance coordinator, DB boundary/marker и
 Оператор должен явно открыть реестр API-ключей или выполнить reviewed cutover. GET `/api/settings/llm-keys` выполняет transactional/idempotent migration и удаляет legacy row только при успехе; в production также сохраняет существующее обновление metadata баланса. Поэтому эти GET не объявляются универсально read-only. Пустой JSON null нормализуется как прежним loader в пустой registry при явном cutover. После удаления legacy row fingerprint включает только canonical config; счётчики spending туда не добавляются.
 
 Target guard+baseline/maintenance unit50passed16.19s. В новом PG case проверены HTTP409 обоих endpoints, неизменность marker bytes/mtime/phase/epoch/job, живой writer actor, RNG и sim_state; pg_dump/pause/shutdown не вызываются. После явного successful cutover sync/async fingerprint совпадают.
+
+## Конечная composition base
+
+Ordinary merge PR172/db4c286 сохраняет API1.5.18 со всеми T234 optional fields/relations paths, UI key bindings, DB/Compare tabs и TraceGraph. WS runs инвалидирует db и trace вместе. Public `app.openapi()` выполняется после регистрации routes/mount_frontend, без вызовов DB/LLM. Generated API types пересозданы source generator, diff отсутствует. Composed frontend220passed.
+
+Directed metadata/profile/Trace run:98passed/1failed184.06s. Единственный отказ — synthetic GET cache probe после локального production build попадал в существующий SPA fallback и получал HTML. Probe меняет только synthetic cache; теперь POST `/api/synthetic-runtime-state`, исходные stored/loop-cleanup assertions сохранены. Exact regression1passed1.85s. Продуктовый GET routing этим не изменялся.

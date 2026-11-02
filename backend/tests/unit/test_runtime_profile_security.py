@@ -191,10 +191,12 @@ def test_lifespan_releases_runtime_key_state_even_if_loop_is_still_referenced(mo
         assert loop in runtime_provider._KEY_STATES
         return {"stored": True}
 
-    app.add_api_route("/synthetic-runtime-state", install_state)
+    # Probe меняет synthetic cache; POST не пересекается с GET SPA fallback
+    # при наличии уже собранного frontend/dist в этой worktree.
+    app.add_api_route("/api/synthetic-runtime-state", install_state, methods=["POST"])
     try:
         with TestClient(app) as client:
-            assert client.get("/synthetic-runtime-state").json() == {"stored": True}
+            assert client.post("/api/synthetic-runtime-state").json() == {"stored": True}
         assert loops and loops[0] not in runtime_provider._KEY_STATES
     finally:
         get_settings.cache_clear()
