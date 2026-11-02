@@ -67,3 +67,18 @@ def test_known_plan_rejects_hash_bool_overlap_and_naive_clock():
         invalid[key] = value
         with pytest.raises(PreparationError):
             validate_plan(invalid)
+
+
+@pytest.mark.parametrize("key", ["legal_pending_hitl", "csi_registered_sample"])
+@pytest.mark.parametrize("want", [False, 0, 1, "true", None, {}, []])
+async def test_unsupported_boolean_expectation_is_not_verified_before_sql(key, want):
+    from app.sim.scenario_acceptance import evaluate_native
+
+    class NoSql:
+        def cursor(self, **kwargs):
+            raise AssertionError("unsupported expected не должен выполнять SQL")
+
+    result = await evaluate_native(NoSql(), {"expected": {key: want}}, 1)
+    assert result["checks"][0] == {"code": key, "ok": None, "detail": "not_verified: поддержано только expected=True"}
+    assert result["counts"]["not_verified"] == 1
+    assert not result["counts"]["native_passed"] and not result["passed"]

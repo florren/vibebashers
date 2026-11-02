@@ -26,4 +26,3 @@ export function useCsiPalette(): CsiPalette {
   }, [])
   return colors
 }
-

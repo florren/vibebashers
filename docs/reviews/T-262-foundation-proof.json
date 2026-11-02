@@ -3,7 +3,7 @@
   "runtime_sha256": {
     "backend/app/agent/classification_store.py": "8a6997d482ddd79f0cd5f3326c573b3ef04a965f6fa94cf17f5b17bb075ffa96",
     "backend/app/agent/nodes.py": "153242d0202615c6639a525c034d742e801e38e2fa750c92ba857d24a6042f6d",
-    "backend/app/sim/scenario_acceptance.py": "5739c5f4a493bfb5d4fd8a5321e33e569aabb3f1363a32ed251b2ecf8c0f171a",
+    "backend/app/sim/scenario_acceptance.py": "d14c3f33fb75c96a47e0fa3705abef80d0d7b822d346c1cac9ae9da4c29255cc",
     "backend/app/api/scenarios.py": "2018ab9a8291e90d5711ad2bac2c23e2c3285d6235a6195bee741e773fc5f80c",
     "backend/app/sim/scenarios.py": "7ad7307802c22f57f2aea7648cc3ad3d5770930df2efbbb0e497591e32325271",
     "backend/app/llm/mock.py": "588af306a4a93abd620622c236f15f2e119d0f00c8f26921656e15f124cf1c38",
@@ -27,11 +27,13 @@
         "percent_statements_covered": 92.5925925925926,
         "percent_statements_covered_display": "93"
       },
-      "data": "/tmp/T262-focused-final.data.db"
+      "data": "/tmp/T262-focused-final.data.db",
+      "source_revision": "4a8a1b5227c12039f1a69ebff4d67c4091904a27"
     },
     "focused_pure": {
       "passed": 110,
-      "seconds": 1.96
+      "seconds": 1.96,
+      "source_revision": "4a8a1b5227c12039f1a69ebff4d67c4091904a27"
     },
     "frontend_vitest_via_make_lint": {
       "passed": 429,
@@ -56,6 +58,14 @@
       "before_seconds": 10.56,
       "after_passed": 1,
       "after_seconds": 9.82
+    },
+    "evaluator_guard_follow_up": {
+      "unit_passed": 28,
+      "unit_seconds": 0.5,
+      "native_true_cases_passed": 2,
+      "native_seconds": 18.99,
+      "unsupported_values": "False/0/1/string/null/object/array → not_verified before SQL; only literal True supported",
+      "previous_coverage_scope": "prior4a8 source; new guard independently regression-tested"
     }
   },
   "untested": [

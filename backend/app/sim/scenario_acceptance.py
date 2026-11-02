@@ -260,10 +260,18 @@ async def evaluate_native(conn: psycopg.AsyncConnection[Any], scenario: dict[str
             await cursor.execute(sql, args)
             return list(await cursor.fetchall())
 
-    signals = await rows("select * from signals where run_id=%s", (run,))
-    agents = await rows("select id,outcome from agent_runs where sim_run_id=%s", (run,))
+    expected = dict(scenario.get("expected") or {})
+    boolean_checks = {"legal_pending_hitl", "csi_registered_sample"}
+    unsupported = {key for key, want in expected.items() if key in boolean_checks and want is not True}
+    # Не выполняем SQL ради неподдержанной семантики expected=False/не-bool.
+    needs_data = any(key not in unsupported for key in expected)
+    signals = await rows("select * from signals where run_id=%s", (run,)) if needs_data else []
+    agents = await rows("select id,outcome from agent_runs where sim_run_id=%s", (run,)) if needs_data else []
     checks: list[dict[str, Any]] = []
-    for key, want in (scenario.get("expected") or {}).items():
+    for key, want in expected.items():
+        if key in unsupported:
+            checks.append({"code": key, "ok": None, "detail": "not_verified: поддержано только expected=True"})
+            continue
         ok: bool | None = None
         detail = "not_verified: нет native проверки этого ключа"
         if key == "legal_pending_hitl":
