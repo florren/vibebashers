@@ -1,0 +1,131 @@
+# T-017: синтетическая предыстория; суммы и интенсивности меняются только здесь.
+history_days: 14
+operations_per_client:
+  lite: 24
+  demo: 120
+  stress: 120
+hour_weights:
+- 0.2
+- 0.1
+- 0.05
+- 0.05
+- 0.05
+- 0.1
+- 0.3
+- 0.6
+- 0.9
+- 1.1
+- 1.5
+- 1.6
+- 1.3
+- 1.2
+- 1.2
+- 1.2
+- 1.3
+- 1.4
+- 1.6
+- 1.6
+- 1.5
+- 1.1
+- 0.6
+- 0.4
+weekday_weights:
+- 1
+- 1
+- 1
+- 1
+- 1.1
+- 0.8
+- 0.7
+segment_weights:
+  mass: 1
+  salary: 1.2
+  social: 0.7
+  youth: 1.3
+  premium: 1.5
+  vip: 1.7
+  ultra_vip: 2
+failure_probability: 0.01
+qr_share: 0.45
+qr_fee_probability: 0.04
+products:
+  deposit:
+    op_weights:
+      deposit_open: 1
+      deposit_topup: 2
+      statement: 1
+    amount_median_rub: 20000
+    amount_sigma: 0.85
+  debit_card:
+    op_weights:
+      card_payment: 3
+      transfer: 1
+      login: 1
+      statement: 1
+    amount_median_rub: 1800
+    amount_sigma: 0.85
+  credit:
+    op_weights:
+      loan_payment: 1
+      statement: 1
+    amount_median_rub: 15400
+    amount_sigma: 0.85
+  credit_card:
+    op_weights:
+      card_payment: 2
+      loan_payment: 1
+      limit_request: 1
+    amount_median_rub: 3500
+    amount_sigma: 0.85
+system_paths:
+  deposit_open:
+  - mobile_app
+  - promo_engine
+  - sub_deposits
+  - core_abs
+  - notification_gw
+  deposit_topup:
+  - mobile_app
+  - sub_deposits
+  - core_abs
+  deposit_close:
+  - mobile_app
+  - sub_deposits
+  - core_abs
+  card_payment:
+  - processing
+  - sub_debit
+  - core_abs
+  - notification_gw
+  transfer:
+  - mobile_app
+  - antifraud
+  - processing
+  - core_abs
+  loan_payment:
+  - mobile_app
+  - sub_lending
+  - core_abs
+  card_issue:
+  - mobile_app
+  - sub_debit
+  limit_request:
+  - mobile_app
+  - sub_lending
+  promo_apply:
+  - mobile_app
+  - promo_engine
+  login:
+  - mobile_app
+  statement:
+  - web_bank
+  - core_abs
+failure_codes:
+- DEP-TIMEOUT-503
+- NOTIF-DELAY
+- APP-LOGIN-FAIL
+- APP-CRASH-PAY
+- WEB-SESSION-DROP
+- AF-FALSE-BLOCK
+- LEND-PAYMENT-NOT-POSTED
+- ABS-POSTING-LAG
