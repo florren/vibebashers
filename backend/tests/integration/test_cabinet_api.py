@@ -22,10 +22,8 @@ ROOT = Path(__file__).resolve().parents[3]
 def cabinet_db(migrated_db: str) -> Iterator[str]:
     seeded = _seed(migrated_db)
     assert seeded.returncode == 0, seeded.stderr[-1000:]
-    # Временный proof0014+proposal разрешён root; удалить после композиции actual0017→0018.
     with psycopg.connect(migrated_db.replace("postgresql+psycopg:", "postgresql:"), autocommit=True) as conn:
-        assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0014"
-        conn.execute((ROOT / "docs/reviews/T-241-ddl-proposal.sql").read_text())
+        assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0018"
     yield migrated_db
 
 
@@ -345,3 +343,41 @@ def test_new_human_decision_role_is_not_decided_by(client: TestClient, sql: Any)
         ).fetchone() == ("T241 fixture label", "compliance_officer")
     finally:
         sql.execute("delete from human_decisions where id=%s", (decision[0],))
+
+
+def test_actual_18_reapply_and_additive_downgrade_preserve_audit(cabinet_db: str, sql: Any) -> None:
+    import subprocess
+    import sys
+
+    migration = (ROOT / "contracts/db/migrations/0018_cabinet_scope.sql").read_text()
+    before = fingerprint(sql)
+    sql.execute(migration)
+    sql.execute(migration)
+    assert before == fingerprint(sql)
+    audit = sql.execute("select id,actor_role from incident_status_history order by id limit 1").fetchone()
+    assert audit is not None
+    sql.execute("update incident_status_history set actor_role='admin' where id=%s", (audit[0],))
+    try:
+        down = subprocess.run(
+            [sys.executable, "-m", "alembic", "downgrade", "0017"], cwd=ROOT / "backend", capture_output=True, text=True
+        )
+        assert down.returncode == 0, down.stderr[-1000:]
+        assert sql.execute(
+            "select to_regclass('v_cabinet_signal_facts'),to_regclass('v_cabinet_incident_facts')"
+        ).fetchone() == (None, None)
+        assert (
+            sql.execute("select actor_role from incident_status_history where id=%s", (audit[0],)).fetchone()[0]
+            == "admin"
+        )
+        up = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT / "backend", capture_output=True, text=True
+        )
+        assert up.returncode == 0, up.stderr[-1000:]
+        assert sql.execute("select version_num from alembic_version").fetchone()[0] == "0018"
+        assert (
+            sql.execute("select actor_role from incident_status_history where id=%s", (audit[0],)).fetchone()[0]
+            == "admin"
+        )
+        assert sql.execute("select to_regclass('v_cabinet_signal_facts') is not null").fetchone()[0]
+    finally:
+        sql.execute("update incident_status_history set actor_role=%s where id=%s", (audit[1], audit[0]))

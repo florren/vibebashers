@@ -149,3 +149,25 @@ def test_invalid_boundaries_never_open_db_or_llm(
     client = TestClient(app)
     assert client.get(path, headers=headers).status_code == 422
     assert counters == {"db": 0, "llm": 0}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "settings,role,bound,expected",
+    [
+        ([{"key": "cabinet", "value": "malformed"}], "cx_lead", None, 409),
+        ([{"key": "cabinet", "value": {"visibility": "invalid"}}], "cx_lead", None, 409),
+        ([{"key": "cabinet", "value": {"product_head_lines": [{}]}}], "product_head", None, 409),
+        ([{"key": "cabinet", "value": {"product_head_lines": ["missing"]}}], "product_head", None, 409),
+        ([], "cx_lead", "missing", 422),
+    ],
+)
+async def test_invalid_settings_are_explicit(
+    monkeypatch: pytest.MonkeyPatch, settings: list[dict[str, object]], role: str, bound: str | None, expected: int
+) -> None:
+    monkeypatch.setattr(
+        "app.analytics.cabinet_scope.fetch_all", AsyncMock(side_effect=[settings, [{"code": "deposits"}]])
+    )
+    with pytest.raises(HTTPException) as error:
+        await resolve_scope(None, request(role, bound), None, "week", "current")  # type: ignore[arg-type]
+    assert error.value.status_code == expected

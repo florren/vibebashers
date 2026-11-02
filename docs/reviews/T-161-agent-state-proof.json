@@ -1,0 +1,84 @@
+{
+  "tool": "stdlib trace; exact absolute co_filename filter, no basename ignore cache",
+  "exit": 0,
+  "covered": 105,
+  "statements": 111,
+  "percent": 94.59,
+  "files": {
+    "backend/app/sim/behavior/owner.py": {
+      "covered": 20,
+      "statements": 22,
+      "missing": [
+        621,
+        631
+      ],
+      "percent": 90.91
+    },
+    "backend/app/sim/behavior/store.py": {
+      "covered": 37,
+      "statements": 40,
+      "missing": [
+        189,
+        193,
+        195
+      ],
+      "percent": 92.5
+    },
+    "backend/app/agent/graph.py": {
+      "covered": 9,
+      "statements": 9,
+      "missing": [],
+      "percent": 100.0
+    },
+    "backend/app/agent/nodes.py": {
+      "covered": 6,
+      "statements": 6,
+      "missing": [],
+      "percent": 100.0
+    },
+    "backend/app/agent/tools/base.py": {
+      "covered": 13,
+      "statements": 13,
+      "missing": [],
+      "percent": 100.0
+    },
+    "backend/app/agent/tools/read.py": {
+      "covered": 1,
+      "statements": 1,
+      "missing": [],
+      "percent": 100.0
+    },
+    "backend/app/agent/tools/write.py": {
+      "covered": 19,
+      "statements": 20,
+      "missing": [
+        533
+      ],
+      "percent": 95.0
+    }
+  },
+  "base": "be69825",
+  "scope": "changed executable lines, union of same-runtime-source runs; not branch coverage",
+  "tests": [
+    {
+      "passed": 193,
+      "seconds": 82.68
+    },
+    {
+      "passed": 1,
+      "deselected": 14,
+      "seconds": 8.04,
+      "purpose": "graph.load_deps context injection, test-only follow-up"
+    }
+  ],
+  "source_sha256": {
+    "backend/app/sim/behavior/owner.py": "8ed45af1b51fc27433a07b847e02737ac168182a187bd5bf82c549073bb82443",
+    "backend/app/sim/behavior/store.py": "3a755e9f0ab66725db1448b722cca2377781fb15696f1457fc4425e8dafa81e9",
+    "backend/app/agent/graph.py": "53bdd2f63a018f92c45b73e4543c04a44471542b446927d8e6e9f2479ba2fb3c",
+    "backend/app/agent/nodes.py": "5f148831988ccf24fd4172b3862de991510bdf0d20b054f522025048260ff86d",
+    "backend/app/agent/tools/base.py": "15a52f4d8a65dedf13def7e6362ad84294e0e6196edf4e019de54391deeeccb1",
+    "backend/app/agent/tools/read.py": "86ca7a17fb489e515ca54e1ff904a52c083f538afcc4898dfa0900c565e3501a",
+    "backend/app/agent/tools/write.py": "f9dd61cf6c26b769f834524ac20c3e3dcb65f7eb2ecbd13610d19255dd27c012"
+  },
+  "proposal_sha256": "ba98d47c16d1a59521b04d3656ab93f5c556303288266ddf9f7fec8db16b45f9"
+}

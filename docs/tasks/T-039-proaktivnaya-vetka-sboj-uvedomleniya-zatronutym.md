@@ -41,3 +41,17 @@ make scenario ID=mass_notif
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+
+### 02.11.2026: prerequisite temporal cause fix
+
+В отдельном focused follow-up World.gen_operations проверяет реальные
+fault run/system/code/time/region границы; future fault не создаёт ранний failed
+link/жалобу. Порядок RNG draws сохранён, rollback/retry и actual PG positive/negative
+случаи проверены: 5 passed. [Отчёт](../reviews/T-039-temporal-cause-follow-up.md).
+Это не реализация всей T-039: proactive subscriber/массовый incident/предотвращённые
+жалобы остаются отдельной работой; критерии приёмки не помечались выполненными.
+
+Combined adjacent regression: 49 passed (169.73 s), changed executable line
+coverage 31/31=100%; source SHA в proof JSON. Полный suite/CI остаётся за
+окончательной композицией, completion T-039 этим не утверждается.

@@ -65,6 +65,7 @@ class AgentRuns(Base):
     external_replies: Mapped[list['ExternalReplies']] = relationship('ExternalReplies', back_populates='agent_run')
     followups: Mapped[list['Followups']] = relationship('Followups', back_populates='agent_run')
     rule_evaluations: Mapped[list['RuleEvaluations']] = relationship('RuleEvaluations', back_populates='agent_run')
+    behavior_agent_intents: Mapped[list['BehaviorAgentIntents']] = relationship('BehaviorAgentIntents', back_populates='agent_run')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='agent_run')
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='agent_run')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='agent_run')
@@ -144,6 +145,119 @@ class BenchDatasets(Base):
 
     bench_cases: Mapped[list['BenchCases']] = relationship('BenchCases', back_populates='dataset')
     bench_runs: Mapped[list['BenchRuns']] = relationship('BenchRuns', back_populates='dataset')
+
+
+class TelegramChatRate(Base):
+    __tablename__ = 'telegram_chat_rate'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_chat_rate_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_chat_rate_chat_id_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_chat_rate_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    last_claimed_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+
+
+class TelegramClientBindings(Base):
+    __tablename__ = 'telegram_client_bindings'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_client_bindings_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_client_bindings_chat_id_check'),
+        PrimaryKeyConstraint('bot_id', 'client_id', name='telegram_client_bindings_pkey'),
+        UniqueConstraint('bot_id', 'chat_id', name='telegram_client_bindings_bot_id_chat_id_key'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_code: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramConversations(Base):
+    __tablename__ = 'telegram_conversations'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_conversations_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_conversations_chat_id_check'),
+        CheckConstraint('revision >= 0', name='telegram_conversations_revision_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_conversations_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    state_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramDeliveries(Base):
+    __tablename__ = 'telegram_deliveries'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_deliveries_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_deliveries_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_deliveries_chat_id_check'),
+        CheckConstraint("status <> 'sent'::text OR external_ref IS NOT NULL AND completed_at IS NOT NULL", name='telegram_deliveries_check'),
+        CheckConstraint("status = ANY (ARRAY['queued'::text, 'claimed'::text, 'sent'::text, 'failed'::text, 'unknown'::text, 'suppressed'::text])", name='telegram_deliveries_status_check'),
+        PrimaryKeyConstraint('delivery_key', name='telegram_deliveries_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    bot_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    notification_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    claimed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    external_ref: Mapped[Optional[str]] = mapped_column(Text)
+    error_code: Mapped[Optional[str]] = mapped_column(Text)
+    sent_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+
+class TelegramInbound(Base):
+    __tablename__ = 'telegram_inbound'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_inbound_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_inbound_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_inbound_chat_id_check'),
+        CheckConstraint('update_id >= 0', name='telegram_inbound_update_id_check'),
+        PrimaryKeyConstraint('bot_id', 'update_id', name='telegram_inbound_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    update_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    response_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramSignalBindings(Base):
+    __tablename__ = 'telegram_signal_bindings'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_signal_bindings_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_signal_bindings_chat_id_check'),
+        CheckConstraint("token_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_signal_bindings_token_hash_check'),
+        PrimaryKeyConstraint('bot_id', 'signal_id', 'run_id', 'token_hash', name='telegram_signal_bindings_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    signal_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
 
 
 class Channels(Base):
@@ -290,6 +404,8 @@ class Faults(Base):
     operations: Mapped[list['Operations']] = relationship('Operations', back_populates='fault')
     signals: Mapped[list['Signals']] = relationship('Signals', back_populates='source_fault')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='fault')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='source_fault')
+    behavior_causes: Mapped[list['BehaviorCauses']] = relationship('BehaviorCauses', back_populates='fault')
 
 
 class FederalDistricts(Base):
@@ -402,6 +518,7 @@ class Incidents(Base):
     incident_artifacts: Mapped[list['IncidentArtifacts']] = relationship('IncidentArtifacts', back_populates='incident')
     incident_economics: Mapped['IncidentEconomics'] = relationship('IncidentEconomics', uselist=False, back_populates='incident')
     team_actions: Mapped[list['TeamActions']] = relationship('TeamActions', back_populates='incident')
+    behavior_agent_intents: Mapped[list['BehaviorAgentIntents']] = relationship('BehaviorAgentIntents', back_populates='incident')
     churn_events: Mapped[list['ChurnEvents']] = relationship('ChurnEvents', back_populates='closure_incident')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='incident')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='incident')
@@ -474,6 +591,77 @@ class LlmCassettes(Base):
     prompt_version: Mapped[Optional[str]] = mapped_column(Text)
 
 
+class Credentials(Base):
+    __tablename__ = 'credentials'
+    __table_args__ = (
+        CheckConstraint('confirmed_tokens >= 0', name='credentials_confirmed_tokens_check'),
+        CheckConstraint('legacy_tokens_hint >= 0', name='credentials_legacy_tokens_hint_check'),
+        CheckConstraint('octet_length(verifier) = 32', name='credentials_verifier_check'),
+        CheckConstraint("provider = ANY (ARRAY['gigachat'::text, 'openai_compatible'::text])", name='credentials_provider_check'),
+        PrimaryKeyConstraint('uid', name='credentials_pkey'),
+        UniqueConstraint('verifier', name='credentials_verifier_key'),
+        {'schema': 'llm_runtime'}
+    )
+
+    uid: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, server_default=text('gen_random_uuid()'))
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    verifier: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    confirmed_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    legacy_tokens_hint: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    usage_known: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    usage_source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'unknown'::text"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    usage_as_of: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    credential_aliases: Mapped[list['CredentialAliases']] = relationship('CredentialAliases', back_populates='credentials')
+    reconciliations: Mapped[list['Reconciliations']] = relationship('Reconciliations', back_populates='credentials')
+    wire_attempts: Mapped[list['WireAttempts']] = relationship('WireAttempts', back_populates='credentials')
+
+
+class DailyUsage(Base):
+    __tablename__ = 'daily_usage'
+    __table_args__ = (
+        CheckConstraint('requests_today >= 0', name='daily_usage_requests_today_check'),
+        CheckConstraint("scope_type = ANY (ARRAY['key'::text, 'profile'::text])", name='daily_usage_scope_type_check'),
+        PrimaryKeyConstraint('scope_type', 'scope_id', 'utc_day', name='daily_usage_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    scope_type: Mapped[str] = mapped_column(Text, primary_key=True)
+    scope_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    utc_day: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    requests_today: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    requests_known: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    usage_source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'unknown'::text"))
+    usage_as_of: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+
+class IdentitySettings(Base):
+    __tablename__ = 'identity_settings'
+    __table_args__ = (
+        CheckConstraint('octet_length(secret_tag) = 32', name='identity_settings_secret_tag_check'),
+        CheckConstraint('singleton', name='identity_settings_singleton_check'),
+        PrimaryKeyConstraint('singleton', name='identity_settings_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    singleton: Mapped[bool] = mapped_column(Boolean, primary_key=True, server_default=text('true'))
+    secret_tag: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+
+
+class ProfileScopes(Base):
+    __tablename__ = 'profile_scopes'
+    __table_args__ = (
+        PrimaryKeyConstraint('scope', name='profile_scopes_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    scope: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+
+
 class MissellingPatterns(Base):
     __tablename__ = 'misselling_patterns'
     __table_args__ = (
@@ -540,6 +728,8 @@ class Operations(Base):
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='operations')
     signals: Mapped[list['Signals']] = relationship('Signals', back_populates='source_operation')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='affected_operation')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='source_operation')
+    behavior_causes: Mapped[list['BehaviorCauses']] = relationship('BehaviorCauses', back_populates='operation')
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='operation')
 
 
@@ -559,6 +749,7 @@ class Products(Base):
     operations: Mapped[list['Operations']] = relationship('Operations', back_populates='products')
     error_codes: Mapped[list['ErrorCodes']] = relationship('ErrorCodes', back_populates='products')
     tariffs_: Mapped[list['Tariffs']] = relationship('Tariffs', back_populates='products')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='products')
     client_products: Mapped[list['ClientProducts']] = relationship('ClientProducts', back_populates='products')
 
 
@@ -749,6 +940,7 @@ class Signals(Base):
     followups: Mapped[list['Followups']] = relationship('Followups', back_populates='signal')
     ingest_messages: Mapped[list['IngestMessages']] = relationship('IngestMessages', back_populates='signal')
     rule_evaluations: Mapped[list['RuleEvaluations']] = relationship('RuleEvaluations', back_populates='signal')
+    behavior_agent_intents: Mapped[list['BehaviorAgentIntents']] = relationship('BehaviorAgentIntents', back_populates='signal')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='signal')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='signal')
     personal_chat_messages: Mapped['PersonalChatMessages'] = relationship('PersonalChatMessages', uselist=False, back_populates='signal')
@@ -792,6 +984,7 @@ class Systems(Base):
     teams: Mapped[list['Teams']] = relationship('Teams', secondary='team_systems', back_populates='systems')
     error_codes: Mapped[list['ErrorCodes']] = relationship('ErrorCodes', back_populates='systems')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='systems')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='systems')
 
 
 class Teams(Base):
@@ -973,6 +1166,7 @@ class ErrorCodes(Base):
     systems: Mapped['Systems'] = relationship('Systems', back_populates='error_codes')
     business_rules: Mapped[list['BusinessRules']] = relationship('BusinessRules', back_populates='error_codes')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='error_codes')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='error_codes')
 
 
 class IncidentSignals(Base):
@@ -996,6 +1190,7 @@ class IncidentSignals(Base):
 class IncidentStatusHistory(Base):
     __tablename__ = 'incident_status_history'
     __table_args__ = (
+        CheckConstraint("actor_role = ANY (ARRAY['cx_operator'::text, 'cx_lead'::text, 'product_manager'::text, 'product_head'::text, 'compliance_officer'::text, 'bank_head'::text, 'admin'::text])", name='incident_status_history_actor_role_check'),
         CheckConstraint("actor_type = ANY (ARRAY['agent'::text, 'human'::text, 'team'::text, 'system'::text, 'behavior_model'::text])", name='incident_status_history_actor_type_check'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], ondelete='CASCADE', name='incident_status_history_incident_id_fkey'),
         PrimaryKeyConstraint('id', name='incident_status_history_pkey')
@@ -1010,6 +1205,7 @@ class IncidentStatusHistory(Base):
     from_status: Mapped[Optional[str]] = mapped_column(Text)
     actor_ref: Mapped[Optional[str]] = mapped_column(Text)
     reason: Mapped[Optional[str]] = mapped_column(Text)
+    actor_role: Mapped[Optional[str]] = mapped_column(Text)
 
     incident: Mapped['Incidents'] = relationship('Incidents', back_populates='incident_status_history')
 
@@ -1047,7 +1243,8 @@ class LlmProfiles(Base):
         CheckConstraint("role = ANY (ARRAY['main'::text, 'fast'::text, 'twin'::text, 'bench_only'::text])", name='llm_profiles_role_check'),
         ForeignKeyConstraint(['api_key_id'], ['llm_api_keys.id'], ondelete='RESTRICT', name='llm_profiles_api_key_fk'),
         PrimaryKeyConstraint('id', name='llm_profiles_pkey'),
-        UniqueConstraint('code', name='llm_profiles_code_key')
+        UniqueConstraint('code', name='llm_profiles_code_key'),
+        UniqueConstraint('quota_uid', name='llm_profiles_quota_uid_key')
     )
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=2147483647, cycle=False, cache=1), primary_key=True, autoincrement=True)
@@ -1062,6 +1259,7 @@ class LlmProfiles(Base):
     supports_stream: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
     extra: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    quota_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=text('gen_random_uuid()'), comment='Private budget configuration identity; no API/AR/export projection; not usage')
     base_url: Mapped[Optional[str]] = mapped_column(Text)
     rpm_limit: Mapped[Optional[int]] = mapped_column(Integer)
     rpd_limit: Mapped[Optional[int]] = mapped_column(Integer)
@@ -1071,6 +1269,42 @@ class LlmProfiles(Base):
     api_key: Mapped[Optional['LlmApiKeys']] = relationship('LlmApiKeys', back_populates='llm_profiles')
     bench_runs: Mapped[list['BenchRuns']] = relationship('BenchRuns', back_populates='llm_profile')
     sim_runs: Mapped[list['SimRuns']] = relationship('SimRuns', back_populates='llm_profile')
+
+
+class CredentialAliases(Base):
+    __tablename__ = 'credential_aliases'
+    __table_args__ = (
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='credential_aliases_credential_uid_fkey'),
+        PrimaryKeyConstraint('config_uid', name='credential_aliases_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    config_uid: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='credential_aliases')
+
+
+class Reconciliations(Base):
+    __tablename__ = 'reconciliations'
+    __table_args__ = (
+        CheckConstraint("jsonb_typeof(observation) = 'object'::text", name='reconciliations_observation_check'),
+        CheckConstraint("source = 'operator_declared_app_usage'::text", name='reconciliations_source_check'),
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='reconciliations_credential_uid_fkey'),
+        PrimaryKeyConstraint('id', name='reconciliations_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    as_of: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    observation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='reconciliations')
+    wire_attempts: Mapped[list['WireAttempts']] = relationship('WireAttempts', back_populates='reconciliation')
 
 
 class NotificationTemplates(Base):
@@ -1376,6 +1610,42 @@ class ComplianceTriggers(Base):
     utterance: Mapped['Utterances'] = relationship('Utterances', back_populates='compliance_triggers')
 
 
+class WireAttempts(Base):
+    __tablename__ = 'wire_attempts'
+    __table_args__ = (
+        CheckConstraint('completion_tokens >= 0', name='wire_attempts_completion_tokens_check'),
+        CheckConstraint('observed_tokens >= 0', name='wire_attempts_observed_tokens_check'),
+        CheckConstraint('prompt_tokens >= 0', name='wire_attempts_prompt_tokens_check'),
+        CheckConstraint("state <> 'known'::text OR prompt_tokens IS NOT NULL AND completion_tokens IS NOT NULL AND finished_at IS NOT NULL", name='wire_attempts_check'),
+        CheckConstraint("state = ANY (ARRAY['reserved'::text, 'known'::text, 'unknown'::text, 'reconciled'::text])", name='wire_attempts_state_check'),
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='wire_attempts_credential_uid_fkey'),
+        ForeignKeyConstraint(['reconciliation_id'], ['llm_runtime.reconciliations.id'], name='wire_attempts_reconciliation_id_fkey'),
+        PrimaryKeyConstraint('id', name='wire_attempts_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    profile_scope: Mapped[str] = mapped_column(Text, nullable=False)
+    profile_code: Mapped[str] = mapped_column(Text, nullable=False)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    utc_day: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    admitted_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    deadline_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    state: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'reserved'::text"))
+    observed_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    profile_id: Mapped[Optional[int]] = mapped_column(Integer)
+    finished_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(BigInteger)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(BigInteger)
+    error_kind: Mapped[Optional[str]] = mapped_column(Text)
+    reconciliation_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='wire_attempts')
+    reconciliation: Mapped[Optional['Reconciliations']] = relationship('Reconciliations', back_populates='wire_attempts')
+
+
 class SimRuns(Base):
     __tablename__ = 'sim_runs'
     __table_args__ = (
@@ -1422,6 +1692,7 @@ class SimRuns(Base):
     parent_run: Mapped[Optional['SimRuns']] = relationship('SimRuns', remote_side=[id], back_populates='parent_run_reverse')
     parent_run_reverse: Mapped[list['SimRuns']] = relationship('SimRuns', remote_side=[parent_run_id], back_populates='parent_run')
     scenario: Mapped[Optional['Scenarios']] = relationship('Scenarios', back_populates='sim_runs')
+    behavior_runs: Mapped['BehaviorRuns'] = relationship('BehaviorRuns', uselist=False, back_populates='run')
     external_replies: Mapped[list['ExternalReplies']] = relationship('ExternalReplies', back_populates='run')
     followups: Mapped[list['Followups']] = relationship('Followups', back_populates='sim_run')
     incident_artifacts: Mapped[list['IncidentArtifacts']] = relationship('IncidentArtifacts', back_populates='run')
@@ -1437,15 +1708,36 @@ class SimRuns(Base):
     sim_state: Mapped[list['SimState']] = relationship('SimState', back_populates='current_run')
     system_logs: Mapped[list['SystemLogs']] = relationship('SystemLogs', back_populates='run')
     team_actions: Mapped[list['TeamActions']] = relationship('TeamActions', back_populates='run')
+    behavior_agent_intents: Mapped[list['BehaviorAgentIntents']] = relationship('BehaviorAgentIntents', back_populates='run')
+    behavior_evidence: Mapped[list['BehaviorEvidence']] = relationship('BehaviorEvidence', back_populates='run')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='run')
+    behavior_receipts: Mapped[list['BehaviorReceipts']] = relationship('BehaviorReceipts', back_populates='run')
+    behavior_tick_receipts: Mapped[list['BehaviorTickReceipts']] = relationship('BehaviorTickReceipts', back_populates='run')
     churn_events: Mapped[list['ChurnEvents']] = relationship('ChurnEvents', back_populates='run')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='run')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='run')
     tasks: Mapped[list['Tasks']] = relationship('Tasks', back_populates='run')
+    behavior_runtime: Mapped[list['BehaviorRuntime']] = relationship('BehaviorRuntime', back_populates='run')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='run')
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='sim_run')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='run')
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='run')
     financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='run')
+
+
+class BehaviorRuns(Base):
+    __tablename__ = 'behavior_runs'
+    __table_args__ = (
+        CheckConstraint('length(policy_hash) = 64', name='behavior_runs_policy_hash_check'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_runs_run_id_fkey'),
+        PrimaryKeyConstraint('run_id', name='behavior_runs_pkey')
+    )
+
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    policy_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    activated_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_runs')
 
 
 class BenchResults(Base):
@@ -1553,12 +1845,18 @@ class Clients(Base):
     psychotypes: Mapped['Psychotypes'] = relationship('Psychotypes', back_populates='clients')
     regions: Mapped['Regions'] = relationship('Regions', back_populates='clients')
     segments: Mapped['Segments'] = relationship('Segments', back_populates='clients')
+    behavior_agent_intents: Mapped[list['BehaviorAgentIntents']] = relationship('BehaviorAgentIntents', back_populates='client')
+    behavior_evidence: Mapped[list['BehaviorEvidence']] = relationship('BehaviorEvidence', back_populates='client')
+    behavior_pending_signals: Mapped[list['BehaviorPendingSignals']] = relationship('BehaviorPendingSignals', back_populates='client')
+    behavior_receipts: Mapped[list['BehaviorReceipts']] = relationship('BehaviorReceipts', back_populates='client')
+    behavior_tick_receipts: Mapped[list['BehaviorTickReceipts']] = relationship('BehaviorTickReceipts', back_populates='client')
     churn_events: Mapped[list['ChurnEvents']] = relationship('ChurnEvents', back_populates='client')
     client_products: Mapped[list['ClientProducts']] = relationship('ClientProducts', back_populates='client')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='client')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='client')
     tasks: Mapped[list['Tasks']] = relationship('Tasks', back_populates='client')
     accounts: Mapped[list['Accounts']] = relationship('Accounts', back_populates='client')
+    behavior_runtime: Mapped[list['BehaviorRuntime']] = relationship('BehaviorRuntime', back_populates='client')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='client')
 
 
@@ -1945,6 +2243,133 @@ class TeamActions(Base):
     teams: Mapped['Teams'] = relationship('Teams', back_populates='team_actions')
 
 
+class BehaviorAgentIntents(Base):
+    __tablename__ = 'behavior_agent_intents'
+    __table_args__ = (
+        CheckConstraint('length(trigger) >= 1 AND length(trigger) <= 128', name='behavior_agent_intents_trigger_check'),
+        CheckConstraint("requested_state = ANY (ARRAY['calm'::text, 'affected'::text, 'complaining'::text, 'waiting'::text, 'asks_again'::text, 'escalates'::text, 'satisfied'::text, 'churn_intent'::text, 'retained'::text, 'churned'::text])", name='behavior_agent_intents_requested_state_check'),
+        ForeignKeyConstraint(['agent_run_id'], ['agent_runs.id'], ondelete='CASCADE', name='behavior_agent_intents_agent_run_id_fkey'),
+        ForeignKeyConstraint(['client_id'], ['clients.id'], name='behavior_agent_intents_client_id_fkey'),
+        ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='behavior_agent_intents_incident_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_agent_intents_run_id_fkey'),
+        ForeignKeyConstraint(['signal_id'], ['signals.id'], name='behavior_agent_intents_signal_id_fkey'),
+        PrimaryKeyConstraint('id', name='behavior_agent_intents_pkey'),
+        UniqueConstraint('run_id', 'agent_run_id', 'client_id', 'signal_id', 'incident_id', 'requested_state', 'trigger', name='behavior_agent_intents_run_id_agent_run_id_client_id_signal_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    agent_run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    signal_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    requested_state: Mapped[str] = mapped_column(Text, nullable=False)
+    trigger: Mapped[str] = mapped_column(Text, nullable=False)
+    observed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    incident_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+
+    agent_run: Mapped['AgentRuns'] = relationship('AgentRuns', back_populates='behavior_agent_intents')
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_agent_intents')
+    incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='behavior_agent_intents')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_agent_intents')
+    signal: Mapped['Signals'] = relationship('Signals', back_populates='behavior_agent_intents')
+
+
+class BehaviorEvidence(Base):
+    __tablename__ = 'behavior_evidence'
+    __table_args__ = (
+        CheckConstraint('source_id > 0', name='behavior_evidence_source_id_check'),
+        CheckConstraint("source_kind = ANY (ARRAY['operation'::text, 'notification'::text, 'twin_reaction'::text, 'sla'::text, 'resolution'::text, 'agent_state'::text])", name='behavior_evidence_source_kind_check'),
+        ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_evidence_client_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_evidence_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='behavior_evidence_pkey'),
+        UniqueConstraint('run_id', 'client_id', 'source_kind', 'source_id', name='behavior_evidence_run_id_client_id_source_kind_source_id_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    source_kind: Mapped[str] = mapped_column(Text, nullable=False)
+    source_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    observed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    consumed_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_evidence')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_evidence')
+
+
+class BehaviorPendingSignals(Base):
+    __tablename__ = 'behavior_pending_signals'
+    __table_args__ = (
+        CheckConstraint("jsonb_typeof(client_snapshot) = 'object'::text AND octet_length(client_snapshot::text) <= 16384", name='behavior_pending_signals_client_snapshot_check'),
+        ForeignKeyConstraint(['client_id'], ['clients.id'], name='behavior_pending_signals_client_id_fkey'),
+        ForeignKeyConstraint(['error_code'], ['error_codes.code'], name='behavior_pending_signals_error_code_fkey'),
+        ForeignKeyConstraint(['product_code'], ['products.code'], name='behavior_pending_signals_product_code_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_pending_signals_run_id_fkey'),
+        ForeignKeyConstraint(['source_fault_id'], ['faults.id'], ondelete='CASCADE', name='behavior_pending_signals_source_fault_id_fkey'),
+        ForeignKeyConstraint(['source_operation_id'], ['operations.id'], ondelete='CASCADE', name='behavior_pending_signals_source_operation_id_fkey'),
+        ForeignKeyConstraint(['system_code'], ['systems.code'], name='behavior_pending_signals_system_code_fkey'),
+        PrimaryKeyConstraint('id', name='behavior_pending_signals_pkey')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    due_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    client_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    signal_type: Mapped[str] = mapped_column(Text, nullable=False)
+    product_code: Mapped[str] = mapped_column(Text, nullable=False)
+    correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    source_operation_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    source_fault_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+    error_code: Mapped[Optional[str]] = mapped_column(Text)
+    system_code: Mapped[Optional[str]] = mapped_column(Text)
+    consumed_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_pending_signals')
+    error_codes: Mapped[Optional['ErrorCodes']] = relationship('ErrorCodes', back_populates='behavior_pending_signals')
+    products: Mapped['Products'] = relationship('Products', back_populates='behavior_pending_signals')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_pending_signals')
+    source_fault: Mapped[Optional['Faults']] = relationship('Faults', back_populates='behavior_pending_signals')
+    source_operation: Mapped[Optional['Operations']] = relationship('Operations', back_populates='behavior_pending_signals')
+    systems: Mapped[Optional['Systems']] = relationship('Systems', back_populates='behavior_pending_signals')
+
+
+class BehaviorReceipts(Base):
+    __tablename__ = 'behavior_receipts'
+    __table_args__ = (
+        CheckConstraint('source_id > 0', name='behavior_receipts_source_id_check'),
+        ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_receipts_client_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_receipts_run_id_fkey'),
+        PrimaryKeyConstraint('run_id', 'client_id', 'source_kind', 'source_id', 'action', name='behavior_receipts_pkey')
+    )
+
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    source_kind: Mapped[str] = mapped_column(Text, primary_key=True)
+    source_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    action: Mapped[str] = mapped_column(Text, primary_key=True)
+    consumed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_receipts')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_receipts')
+
+
+class BehaviorTickReceipts(Base):
+    __tablename__ = 'behavior_tick_receipts'
+    __table_args__ = (
+        ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_tick_receipts_client_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_tick_receipts_run_id_fkey'),
+        PrimaryKeyConstraint('run_id', 'client_id', 'logical_tick_sim', name='behavior_tick_receipts_pkey')
+    )
+
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    logical_tick_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), primary_key=True)
+
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_tick_receipts')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_tick_receipts')
+
+
 class ChurnEvents(Base):
     __tablename__ = 'churn_events'
     __table_args__ = (
@@ -2023,6 +2448,7 @@ class ClientStates(Base):
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='client_states')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='client_states')
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='client_states')
+    behavior_runtime: Mapped[list['BehaviorRuntime']] = relationship('BehaviorRuntime', back_populates='state')
 
 
 class CsiVisitsAgg(Base):
@@ -2070,7 +2496,7 @@ class Notifications(Base):
     __tablename__ = 'notifications'
     __table_args__ = (
         CheckConstraint("recipient_type = ANY (ARRAY['client'::text, 'team'::text, 'public'::text, 'cx'::text])", name='notifications_recipient_type_check'),
-        CheckConstraint("status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'failed'::text, 'suppressed'::text])", name='notifications_status_check'),
+        CheckConstraint("status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'failed'::text, 'suppressed'::text, 'unknown'::text])", name='notifications_status_check'),
         ForeignKeyConstraint(['client_id'], ['clients.id'], name='notifications_client_id_fkey'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='notifications_incident_id_fkey'),
         ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='notifications_run_id_fkey'),
@@ -2086,6 +2512,7 @@ class Notifications(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=text('gen_random_uuid()'))
     client_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     team_code: Mapped[Optional[str]] = mapped_column(Text)
     signal_id: Mapped[Optional[int]] = mapped_column(BigInteger)
@@ -2186,6 +2613,49 @@ class Accounts(Base):
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='account')
 
 
+class BehaviorRuntime(Base):
+    __tablename__ = 'behavior_runtime'
+    __table_args__ = (
+        CheckConstraint('episode_no > 0', name='behavior_runtime_episode_no_check'),
+        CheckConstraint('first_response_min > 0', name='behavior_runtime_first_response_min_check'),
+        CheckConstraint('octet_length(care_snapshot::text) <= 4096 AND public.valid_behavior_care_snapshot(care_snapshot)', name='behavior_runtime_care_snapshot_check'),
+        CheckConstraint("policy_hash ~ '^[0-9a-f]{64}$'::text", name='behavior_runtime_policy_hash_check'),
+        CheckConstraint("policy_source_sha256 ~ '^[0-9a-f]{64}$'::text", name='behavior_runtime_policy_source_sha256_check'),
+        CheckConstraint('repeat_count >= 0', name='behavior_runtime_repeat_count_check'),
+        ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_runtime_client_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_runtime_run_id_fkey'),
+        ForeignKeyConstraint(['state_id'], ['client_states.id'], name='behavior_runtime_state_id_fkey'),
+        PrimaryKeyConstraint('run_id', 'client_id', name='behavior_runtime_pkey')
+    )
+
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    episode_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    state_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    opened_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    psychotype_code: Mapped[str] = mapped_column(Text, nullable=False)
+    segment_code: Mapped[str] = mapped_column(Text, nullable=False)
+    first_response_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_source_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    policy_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    policy_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    params_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    care_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    patience_due_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    repeat_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    sla_breached: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    silent_decline: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    next_hazard_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    closed_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    first_complaint_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_runtime')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_runtime')
+    state: Mapped['ClientStates'] = relationship('ClientStates', back_populates='behavior_runtime')
+    behavior_causes: Mapped[list['BehaviorCauses']] = relationship('BehaviorCauses', back_populates='behavior_runtime')
+    behavior_work: Mapped[list['BehaviorWork']] = relationship('BehaviorWork', back_populates='behavior_runtime')
+
+
 class ClientReactions(Base):
     __tablename__ = 'client_reactions'
     __table_args__ = (
@@ -2262,6 +2732,7 @@ class CsiResponses(Base):
 class HumanDecisions(Base):
     __tablename__ = 'human_decisions'
     __table_args__ = (
+        CheckConstraint("actor_role = ANY (ARRAY['cx_operator'::text, 'cx_lead'::text, 'product_manager'::text, 'product_head'::text, 'compliance_officer'::text, 'bank_head'::text, 'admin'::text])", name='human_decisions_actor_role_check'),
         CheckConstraint("decision = ANY (ARRAY['accept'::text, 'modify'::text, 'reject'::text, 'delegate'::text])", name='human_decisions_decision_check'),
         ForeignKeyConstraint(['agent_run_id'], ['agent_runs.id'], name='human_decisions_agent_run_id_fkey'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='human_decisions_incident_id_fkey'),
@@ -2291,6 +2762,7 @@ class HumanDecisions(Base):
     decided_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     decided_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('HD-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
+    actor_role: Mapped[Optional[str]] = mapped_column(Text)
 
     agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='human_decisions')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='human_decisions')
@@ -2300,6 +2772,52 @@ class HumanDecisions(Base):
     compliance_alerts: Mapped[list['ComplianceAlerts']] = relationship('ComplianceAlerts', back_populates='human_decision')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='human_decision')
     hitl_feedback: Mapped[list['HitlFeedback']] = relationship('HitlFeedback', back_populates='human_decision')
+
+
+class BehaviorCauses(Base):
+    __tablename__ = 'behavior_causes'
+    __table_args__ = (
+        CheckConstraint('episode_no > 0', name='behavior_causes_episode_no_check'),
+        ForeignKeyConstraint(['fault_id'], ['faults.id'], name='behavior_causes_fault_id_fkey'),
+        ForeignKeyConstraint(['operation_id'], ['operations.id'], name='behavior_causes_operation_id_fkey'),
+        ForeignKeyConstraint(['run_id', 'client_id'], ['behavior_runtime.run_id', 'behavior_runtime.client_id'], ondelete='CASCADE', name='behavior_causes_run_id_client_id_fkey'),
+        PrimaryKeyConstraint('run_id', 'client_id', 'operation_id', name='behavior_causes_pkey')
+    )
+
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    episode_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    operation_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    fault_id: Mapped[Optional[int]] = mapped_column(BigInteger)
+
+    fault: Mapped[Optional['Faults']] = relationship('Faults', back_populates='behavior_causes')
+    operation: Mapped['Operations'] = relationship('Operations', back_populates='behavior_causes')
+    behavior_runtime: Mapped['BehaviorRuntime'] = relationship('BehaviorRuntime', back_populates='behavior_causes')
+
+
+class BehaviorWork(Base):
+    __tablename__ = 'behavior_work'
+    __table_args__ = (
+        CheckConstraint('episode_no > 0', name='behavior_work_episode_no_check'),
+        CheckConstraint("kind = ANY (ARRAY['complaint'::text, 'repeat'::text, 'patience'::text])", name='behavior_work_kind_check'),
+        CheckConstraint('source_id > 0', name='behavior_work_source_id_check'),
+        CheckConstraint("status = ANY (ARRAY['pending'::text, 'consumed'::text, 'cancelled'::text])", name='behavior_work_status_check'),
+        ForeignKeyConstraint(['run_id', 'client_id'], ['behavior_runtime.run_id', 'behavior_runtime.client_id'], ondelete='CASCADE', name='behavior_work_run_id_client_id_fkey'),
+        PrimaryKeyConstraint('id', name='behavior_work_pkey'),
+        UniqueConstraint('run_id', 'client_id', 'episode_no', 'kind', 'source_id', name='behavior_work_run_id_client_id_episode_no_kind_source_id_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    episode_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'::text"))
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    source_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    due_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    consumed_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    behavior_runtime: Mapped['BehaviorRuntime'] = relationship('BehaviorRuntime', back_populates='behavior_work')
 
 
 class ComplianceAlerts(Base):

@@ -17,9 +17,9 @@ WINDOW_H = 72
 async def get_client_profile(ctx: ToolContext, client_id: int) -> dict[str, Any] | None:
     row = await ctx.fetchone(
         "select c.id, c.display_name, c.segment_code, c.psychotype_code, c.region_code, ci.name_ru, c.social_handles, c.consents, c.contacts, c.churn_risk, s.first_response_min, s.tone, s.hitl_required, s.personal_manager, "
-        "(select state from client_states where client_id = c.id and is_current order by id desc limit 1) "
+        "(select cs.state from client_states cs join sim_runs sr on sr.id=cs.run_id where cs.client_id=c.id and cs.is_current and (cs.run_id=%s or sr.kind='baseline') order by (cs.run_id=%s) desc,cs.id desc limit 1) "
         "from clients c join cities ci on ci.id = c.city_id join segments s on s.code = c.segment_code where c.id = %s",
-        (client_id,),
+        (ctx.run_id, ctx.run_id, client_id),
     )
     if not row:
         return None

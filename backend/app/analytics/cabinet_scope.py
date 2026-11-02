@@ -87,6 +87,8 @@ async def resolve_scope(
     )
     settings = {r["key"]: r["value"] for r in rows}
     cabinet = settings.get("cabinet") or {}
+    if not isinstance(cabinet, dict):
+        raise HTTPException(409, "Некорректный settings.cabinet")
     visibility = settings.get("cabinet.visibility", cabinet.get("visibility", "soft"))
     if visibility not in ("soft", "strict"):
         raise HTTPException(409, "Некорректный settings.cabinet.visibility")
@@ -109,7 +111,7 @@ async def resolve_scope(
         allowed = [bound]
     elif role == "product_head":
         allowed = settings.get("cabinet.product_head_lines", cabinet.get("product_head_lines", []))
-        if not isinstance(allowed, list) or any(x not in codes for x in allowed):
+        if not isinstance(allowed, list) or any(not isinstance(x, str) or x not in codes for x in allowed):
             raise HTTPException(409, "Некорректный settings.cabinet.product_head_lines")
     selected: list[str] | None
     if visibility == "strict" and allowed is not None:

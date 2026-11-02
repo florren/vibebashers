@@ -7172,6 +7172,8 @@ export interface paths {
                     };
                     content?: never;
                 };
+                403: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
                 501: components["responses"]["Problem"];
             };
         };
