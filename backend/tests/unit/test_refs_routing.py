@@ -75,6 +75,7 @@ def test_sla_matrix_matches_tz_working_days_and_reports():
         ("unknown_system", "неизвестная система"),
         ("fallback", "маршрут по умолчанию"),
         ("signal_type", "набор не совпадает"),
+        ("invalid_contract_code", "код не соответствует"),
     ],
 )
 def test_validator_rejects_broken_catalog(monkeypatch, mutation, match):
@@ -96,7 +97,51 @@ def test_validator_rejects_broken_catalog(monkeypatch, mutation, match):
         errors[0]["system"] = "missing"
     elif mutation == "fallback":
         next(row for row in rules if row["match"] == {})["priority"] = 0
+    elif mutation == "invalid_contract_code":
+        old_code = errors[0]["code"]
+        errors[0]["code"] = "ANTIFRAUDX-FALSE-BLOCK"
+        for rule in rules:
+            if rule["match"] == {"error_code": old_code}:
+                rule["match"]["error_code"] = errors[0]["code"]
     else:
         docs["error_codes.yaml"]["signal_types"].pop()
     monkeypatch.setattr(refs, "_load_yaml", lambda name: docs[name])
     assert any(match in message for message in refs.validate_error_routing())
+
+
+@pytest.mark.parametrize("error", load("error_codes.yaml")["error_codes"], ids=lambda row: row["code"])
+def test_each_catalog_error_is_valid_in_real_fault_event(error):
+    from app.contracts.registry import validate
+
+    assert (
+        validate(
+            {
+                "event_type": "fault.started",
+                "fault_id": 1,
+                "system": error["system"],
+                "error_code": error["code"],
+                "started_sim": "2026-11-09T09:00:00+03:00",
+            },
+            "sim/fault",
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize(
+    "code", ["ANTIFRAUDX-FALSE-BLOCK", "antifraud-FALSE-BLOCK", "A-FALSE", "AF-X", "AF-ABCDEFGHIJKLM", "AF-AA-BB-CC-DD"]
+)
+def test_error_code_extension_keeps_other_constraints(code):
+    from app.contracts.registry import validate
+
+    errors = validate(
+        {
+            "event_type": "fault.started",
+            "fault_id": 1,
+            "system": "antifraud",
+            "error_code": code,
+            "started_sim": "2026-11-09T09:00:00+03:00",
+        },
+        "sim/fault",
+    )
+    assert len(errors) == 1 and errors[0].startswith("error_code:")
