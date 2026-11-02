@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Эмуляцию можно прервать (Стоп, падение, остановка контейнера) и продолжить с того же сим-момента (ТЗ 4.6, 19 п. 17).
@@ -44,4 +44,23 @@ bash scripts/dev/kill_and_resume.sh
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка codex/T-041-resume, локальный checkpoint без PR/merge. StateGraph/Transactional PostgresSaver и0012 вschema langgraph; generatedrun_idFK и ARstatus. Строгийresume currentpaused/interrupted, sameRNG/time, recoverysameAR иretry, gracefulpause/drain.6PGactualrecoverypassed, послеnamespacedFK/lifecycle16PGpassed86.31s; Alembiccheck безdrift, licenses548green. Последниеизменениятребуютполногоregression/killupproof/coverage/contract+moneyreview; done не заявлен. Подробный review/rollback/compatibility: docs/reviews/T-041-durable-recovery.md.
+
+Process checkpoint: настоящий SIGKILL собственного mock ASGI процесса и два restart (interrupted→resume, gracefulpaused→resume)1passed10.69s. SameAR/refund1/normalization1/sim_timepersisted/resumed_count+1; fullunit877/18skip и19startup/coreunitgreen. Dockerproductionнеостанавливался, liveLLMневызывался. Полныйcomposed/coverage/reviewвсёещёнужны.
+
+### Составной кандидат recovery + maintenance + API1.5.17
+
+Normal merge T0415758 + T0402a88, backend7b8b6b0:1261passed24skip в4изолированных
+checkout/DB; точный aggregate exit0. Финальный UI-only097c5d8 имеет идентичный
+backend tree, frontend167passed, real-image75Playwrightpassed (Graph/Trace
+interrupted ru/en light/dark, static node, Resume, без browser mutations).
+Scope/current/fresh/legacy/HITL timer tests сохранены и уточнены согласно
+строгому stopped409 контракту; настоящие legacy AR без checkpoint не
+возобновляются молча. API list/detail/nested/Trace показывают status и
+interrupted_at до/после того же AR Resume; refund1/normalization1/token assertions
+сохранены. Path-filter trace138passed, changed844/968=87.19%.
+
+[Review, ограничения и screenshots](../reviews/T-041-maintenance-compose.md),
+[машинные результаты](../reviews/T-041-maintenance-compose-proof.json).
+Optional API1.5.17 и деньги/HITL атомарность требуют human review поAGENTS§5;
+последующая SDK/P1 интеграция не включена в эти цифры. Общий DoD не закрыт.

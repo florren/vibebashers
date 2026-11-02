@@ -206,7 +206,7 @@ def test_key_usage_persists_exactly_once(
     monkeypatch.setattr(service, "OpenAICompatProvider", SyntheticOpenAI)
     pid = profiles(conn, "bench_key_accounting")[0]
     conn.execute("update llm_profiles set provider='openai_compatible' where id=%s", (pid,))
-    set_setting = service.set_setting
+    record_key_usage = service.record_key_usage
     failures = 0
 
     async def flaky_save(*args, **kwargs):
@@ -214,9 +214,9 @@ def test_key_usage_persists_exactly_once(
         if fail_first_commit and failures == 0:
             failures += 1
             raise psycopg.OperationalError("synthetic rollback")
-        await set_setting(*args, **kwargs)
+        await record_key_usage(*args, **kwargs)
 
-    monkeypatch.setattr(service, "set_setting", flaky_save)
+    monkeypatch.setattr(service, "record_key_usage", flaky_save)
     app = create_app()
     with TestClient(app) as client:
         key = client.post(
@@ -239,9 +239,75 @@ def test_key_usage_persists_exactly_once(
             else conn.execute("select count(*) from bench_cases where dataset_id=%s", (dataset(conn),)).fetchone()[0]
         )
         tokens = sum(r["prompt_tokens"] + r["completion_tokens"] for r in row["results"])
-        stored = conn.execute("select value from settings where key='llm_keys'").fetchone()[0][0]
-        assert stored["tokens_used"] == tokens
-        assert stored["requests_today"] == len(row["results"])
+        stored = conn.execute(
+            "select tokens_used,requests_today from llm_api_keys where id=%s", (key.json()["id"],)
+        ).fetchone()
+        assert stored[0] == tokens
+        assert stored[1] == len(row["results"])
+        assert conn.execute("select value from settings where key='llm_keys'").fetchone() is None
         cached = next(iter(app.state.bench.keys.values()))
         assert cached.tokens_used == tokens
         assert cached.requests_today == len(row["results"])
+
+
+def test_bench_refuses_credential_in_valid_200_and_never_persists_or_exports_it(bench_db, conn, monkeypatch):
+    import json
+
+    import httpx
+
+    from app.bench import service
+    from app.llm.gigachat import GigaChatProvider
+
+    secret = "synthetic-bench-credential"
+    base = "https://synthetic-bench.invalid/v1"
+    clients = []
+
+    def handle(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(
+                200, json={"access_token": "synthetic-bench-access", "expires_at": (time.time() + 3600) * 1000}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": json.dumps({"problem_summary": secret})}}],
+                "usage": {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7},
+            },
+        )
+
+    def factory(*args, **kwargs):
+        provider = GigaChatProvider(*args, **kwargs, transport=httpx.MockTransport(handle))
+        clients.append(provider)
+        return provider
+
+    monkeypatch.setattr(service, "GigaChatProvider", factory)
+    pid = profiles(conn, "bench-secret-reflection")[0]
+    conn.execute(
+        "update llm_profiles set provider='gigachat',model='synthetic-model',base_url=%s where id=%s", (base, pid)
+    )
+    with TestClient(create_app()) as client:
+        key = client.post(
+            "/api/settings/llm-keys",
+            json={
+                "provider": "gigachat",
+                "label": "synthetic-bench",
+                "key": secret,
+                "endpoint_url": base,
+                "tokens_limit": 1000000,
+            },
+        )
+        assert key.status_code == 201
+        conn.execute("update llm_profiles set api_key_id=%s where id=%s", (key.json()["id"], pid))
+        started = client.post("/api/bench/runs", json={"dataset_id": dataset(conn), "llm_profile_ids": [pid]})
+        assert started.status_code == 202, started.text
+        row = finished(client, started.json()["run_ids"])[0]
+        assert row["status"] == "done" and row["results"]
+        assert all(result["predicted"] == {"_benchmark_error": {"kind": "bad_output"}} for result in row["results"])
+        assert all(result["prompt_tokens"] == 3 and result["completion_tokens"] == 4 for result in row["results"])
+        assert secret not in json.dumps(row)
+        assert secret not in client.get("/api/bench/runs").text
+        assert secret not in client.get(f"/api/bench/runs/{row['id']}/export?format=json").text
+        assert secret not in client.get(f"/api/bench/runs/{row['id']}/export?format=csv").text
+        stored = conn.execute("select predicted from bench_results where run_id=%s", (row["id"],)).fetchall()
+        assert stored and secret not in json.dumps(stored)
+    assert clients and all(provider._client.is_closed for provider in clients)

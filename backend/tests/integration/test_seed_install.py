@@ -24,7 +24,7 @@ def test_first_install_after_backend_bootstrap_generates_events(migrated_db):
     """Health уже доступен и sim_state существует, но первичный банк ещё не заполнен."""
     url = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(url, autocommit=True) as connection:
-        connection.execute("drop schema public cascade; create schema public")
+        connection.execute("drop schema if exists langgraph cascade; drop schema public cascade; create schema public")
     env = {**os.environ, "DATABASE_URL": migrated_db}
     migrated = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -71,7 +71,9 @@ def test_first_install_after_backend_bootstrap_generates_events(migrated_db):
         try:
             await sim.load_state()
             await sim.control("start", label="Проверка чистой установки", start_paused=True)
-            await sim.step(120)
+            # Проверяем полный рабочий день: двухчасовой случайный поток может
+            # законно не содержать жалоб при неизменных вероятностях генерации.
+            await sim.step(480)
             assert sim.stats["ops"] > 0 and sim.stats["signals"] > 0
             return sim.run_id
         finally:

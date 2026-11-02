@@ -69,3 +69,16 @@ def replay_bank(migrated_db, monkeypatch):
         cur.execute("insert into sim_state(id,sim_time,seed) values(1,%s,42)", (now,))
         cur.execute("select setval(pg_get_serial_sequence('operations','id'),%s)", (fixture["operation_sequence"],))
     return migrated_db
+
+
+@pytest.fixture(autouse=True)
+def isolated_maintenance_control(tmp_path_factory, monkeypatch):
+    """Готовый store каждого теста; bootstrap/crash тесты меняют только свой marker."""
+    from app.config import get_settings
+    from app.sim.maintenance_control import MaintenanceControl
+
+    monkeypatch.setenv("MAINTENANCE_CONTROL_DIR", str(tmp_path_factory.mktemp("maintenance-control")))
+    get_settings.cache_clear()
+    MaintenanceControl().write("idle")
+    yield
+    get_settings.cache_clear()

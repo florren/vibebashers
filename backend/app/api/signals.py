@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -13,6 +12,7 @@ from app.api._compliance_support import run_context
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
 from app.search.cases import case_search
+from app.sim.maintenance import spawn_writer
 from app.trace.store import allowed_run
 
 router = APIRouter(tags=["signals"])
@@ -117,7 +117,7 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     comparison_id = None
     if body.compare_with_mock:
         async with mock_comparison(int(res["signal_id"])) as comparison:
-            compare_task = asyncio.create_task(comparison.run())
+            compare_task = spawn_writer(comparison.run(), kind="comparison")
             try:
                 await svc.submit(int(res["signal_id"]))
             finally:
@@ -200,7 +200,7 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
         )
         runs = await fetch_all(
             conn,
-            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
+            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.status, ar.interrupted_at, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
             (id,),
         )
         notifications = await fetch_all(

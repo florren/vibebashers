@@ -61,7 +61,11 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
-        return Problem(422, "Невалидный запрос", "Проверьте поля запроса", errors=exc.errors()).to_response(
+        errors = exc.errors()
+        if request.url.path.startswith(("/api/settings", "/api/setup")):
+            # Pydantic input/ctx могут содержать writeOnly credential или URL с ним.
+            errors = [{key: error[key] for key in ("type", "loc", "msg") if key in error} for error in errors]
+        return Problem(422, "Невалидный запрос", "Проверьте поля запроса", errors=errors).to_response(
             safe_public_path(str(request.url.path))
         )
 

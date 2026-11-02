@@ -36,7 +36,9 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled(model):
 
     async def handler(request):
         if request.url.path.endswith("/oauth"):
-            return httpx.Response(200, json={"access_token": "synthetic", "expires_at": 9999999999999})
+            return httpx.Response(
+                200, json={"access_token": "synthetic-benchmark-access-unique", "expires_at": 9999999999999}
+            )
         calls.append(json.loads(request.content))
         content = "{}" if len(calls) == 1 else '{"ok":true}'
         return httpx.Response(
@@ -48,7 +50,7 @@ async def test_native_json_repair_is_counted_and_key_usage_not_doubled(model):
             },
         )
 
-    key = ApiKey("synthetic", "synthetic")
+    key = ApiKey("synthetic", "synthetic-benchmark-auth-unique")
     provider = GigaChatProvider(
         KeyPool([key]),
         oauth_url="https://test.invalid/oauth",
@@ -167,7 +169,9 @@ async def test_transport_outage_is_bounded_and_partial_metrics_are_marked():
 async def test_failed_native_json_keeps_usage_and_evaluates_all_cases():
     async def handler(request):
         if request.url.path.endswith("/oauth"):
-            return httpx.Response(200, json={"access_token": "synthetic", "expires_at": 9999999999999})
+            return httpx.Response(
+                200, json={"access_token": "synthetic-benchmark-access-unique", "expires_at": 9999999999999}
+            )
         return httpx.Response(
             200,
             json={
@@ -177,7 +181,7 @@ async def test_failed_native_json_keeps_usage_and_evaluates_all_cases():
             },
         )
 
-    key = ApiKey("synthetic", "synthetic")
+    key = ApiKey("synthetic", "synthetic-benchmark-auth-unique")
     provider = GigaChatProvider(
         KeyPool([key]),
         oauth_url="https://test.invalid/oauth",

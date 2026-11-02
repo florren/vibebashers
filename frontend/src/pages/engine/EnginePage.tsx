@@ -1,21 +1,24 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { EntityFilter } from '@/shared/components/EntityFilter'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { clsx } from 'clsx'
 import { Copy } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAgentGraph, useAgentRun, useAgentRuns, useDecisionChain, useSimState } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
 import { fmtDateTime, fmtMs } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, Json, SkeletonRows, Tabs } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { LogPanel } from '@/widgets/LogPanel'
+import { DbActivityTab } from './DbActivityTab'
+import { CompareTab } from './CompareTab'
 import { BenchTab } from './BenchTab'
 import { GraphView } from './GraphView'
 import { QualityTab } from './QualityTab'
 
-type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench'
+type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench' | 'db' | 'compare'
 
 /** Экран 3 «Под капотом» (ТЗ 12.2): список прогонов, шаги с промптами, граф, цепочка решений, живые события WS. */
 export function EnginePage() {
@@ -29,13 +32,15 @@ export function EnginePage() {
   const simRunId = (live ?? simQ.data)?.current_run_id ?? undefined
   const [onlyCurrent, setOnlyCurrent] = useState(true)
   const runs = useAgentRuns({ q: entityQuery || undefined, run_id: onlyCurrent ? simRunId : 'all', limit: 100 })
-  const [tab, setTab] = useState<Tab>('steps')
+  const [params, setParams] = useSearchParams()
+  const tab = (['steps', 'graph', 'chain', 'live', 'quality', 'bench', 'db', 'compare'].includes(params.get('tab') ?? '') ? params.get('tab') : 'steps') as Tab
+  const setTab = (value: Tab) => setParams(previous => { const next = new URLSearchParams(previous); next.set('tab', value); return next })
   const items = runs.data?.items ?? []
   const selectedRun = useAgentRun(runId)
 
   return (
     <div className="page-split flex h-full">
-      <aside className="flex w-80 shrink-0 flex-col border-r border-line">
+      {tab !== 'db' && tab !== 'compare' && <aside className="flex w-80 shrink-0 flex-col border-r border-line">
         <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted">{t('engine.runs')}</span>
           <label className="ml-auto flex items-center gap-1 text-muted">
@@ -57,7 +62,7 @@ export function EnginePage() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs">#{r.id}</span>
                     <Badge tone={r.outcome === 'completed' ? 'ok' : r.outcome === 'awaiting_human' ? 'warn' : r.outcome === 'failed' ? 'danger' : 'info'}>
-                      {tEnum('engine.outcome', r.outcome ?? 'running')}
+                      {tEnum('engine.outcome', agentRunStatus(r))}
                     </Badge>
                     {r.needed_human && <Badge tone="warn">HITL</Badge>}
                     <span className="ml-auto num text-[11px] text-muted">{fmtMs(r.total_latency_ms)}</span>
@@ -73,9 +78,9 @@ export function EnginePage() {
             ))}
           </ul>
         </div>
-      </aside>
+      </aside>}
       <div className="flex min-w-0 flex-1 flex-col">
-        {selectedRun.data?.signal_id != null && <div className="px-3 py-2"><JourneyLink reference={`SIG-${String(selectedRun.data.signal_id).padStart(6, '0')}`} /></div>}
+        {tab !== 'db' && tab !== 'compare' && selectedRun.data?.signal_id != null && <div className="px-3 py-2"><JourneyLink reference={`SIG-${String(selectedRun.data.signal_id).padStart(6, '0')}`} /></div>}
         <Tabs
           value={tab}
           onChange={setTab}
@@ -83,9 +88,11 @@ export function EnginePage() {
             { id: 'steps', label: t('engine.steps') },
             { id: 'graph', label: t('engine.graph') },
             { id: 'chain', label: t('engine.chain') },
+            { id: 'db', label: t('db.title') },
             { id: 'live', label: t('engine.live') },
             { id: 'quality', label: t('engine.quality') },
             { id: 'bench', label: t('engine.bench') },
+            { id: 'compare', label: t('compare.title') },
           ]}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -95,6 +102,8 @@ export function EnginePage() {
           {tab === 'live' && <LiveTab />}
           {tab === 'quality' && <QualityTab />}
           {tab === 'bench' && <BenchTab />}
+          {tab === 'db' && <DbActivityTab />}
+          {tab === 'compare' && <CompareTab />}
         </div>
       </div>
     </div>
@@ -115,7 +124,7 @@ function GraphTab({ runId }: { runId: number | null }) {
         {runId ? ` · ${t('common.runId', { id: runId })}` : ''}
       </div>
       <div className="card p-3">
-        <GraphView graph={g.data!} visited={visited} current={run.data?.current_node ?? null} outcome={run.data?.outcome ?? null} />
+        <GraphView graph={g.data!} visited={visited} current={run.data?.current_node ?? null} outcome={run.data?.outcome ?? null} executionStatus={agentRunStatus(run.data)} />
       </div>
       {!runId && <Empty title={t('engine.selectRun')} />}
     </div>

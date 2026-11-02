@@ -19,6 +19,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.api import personal, stt
 from app.api.common import db
 from app.errors import install_error_handlers
+from app.sim.maintenance_db import PublicMaintenanceMiddleware
 from app.stt import registry
 
 
@@ -66,6 +67,7 @@ class PublicBoundary:
 def create_public_app(dist: str | None = None) -> FastAPI:
     app = FastAPI(title="Анонимный чат", docs_url=None, redoc_url=None, openapi_url=None)
     install_error_handlers(app)
+    app.add_middleware(PublicMaintenanceMiddleware)
     app.add_middleware(PublicBoundary)
     app.include_router(personal.router)
     voice_lock = asyncio.Semaphore(1)

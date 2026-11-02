@@ -9,14 +9,16 @@ import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
 from functools import partial
-from typing import Any
+from typing import Any, Literal
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
 from app.llm.budget import load_openrouter_budget
+from app.llm.credentials import CredentialBindingError
 from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
 from app.llm.ratelimit import limiter as default_limiter
+from app.llm.runtime_provider import selected_provider
 from app.logging import get_logger
 from app.replay.store import CassetteStore
 
@@ -76,12 +78,20 @@ class ProviderChain:
         scenario_id: str | None = None,
         prompt_version: str | None = None,
         append_mock: bool = True,
+        offline_mode: Literal["mock", "replay"] | None = None,
     ) -> None:
         if append_mock and (not providers or providers[-1].name != "mock"):
             providers = [*providers, MockProvider()]  # mock всегда замыкает цепочку
+        if offline_mode not in (None, "mock", "replay"):
+            raise ValueError("offline_mode: mock | replay")
+        self.offline_mode = offline_mode
         self.strict = not append_mock
         self.role_profiles: dict[str, LLMProfile] = {}
+        self.role_profile_ids: dict[str, int | None] = {}
+        self.role_profiles_pinned = False
+        self.role_snapshot: dict[str, Any] | None = None
         self.providers = providers
+        self.provider_source = providers  # Общие configured clients; scoped offline view не теряет origin.
         self.record_store = record_store
         self.limiter = rate_limiter or default_limiter
         self.timeouts = {**TIMEOUTS_S, **(timeouts or {})}
@@ -107,6 +117,10 @@ class ProviderChain:
         context: Context | str = "default",
         fallback_profile: LLMProfile | None = None,
     ) -> ChainResult:
+        if self.offline_mode is not None:
+            profile = replace(profile, provider=self.offline_mode)
+            if fallback_profile is not None:
+                fallback_profile = replace(fallback_profile, provider=self.offline_mode)
         timeout_s = self.timeout_for(context)
         # Используем только настроенные живые профили; роль twin остаётся без изменений.
         backups: list[tuple[Provider, LLMProfile]] = []
@@ -134,6 +148,8 @@ class ProviderChain:
         for prov in self.providers:
             if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
                 continue
+            if profile.api_key_id is not None and prov.name not in (profile.provider, "mock", "replay"):
+                continue
             requests = [(prov, profile)]
             for candidate, selected in requests:
                 remaining = max(0.0, deadline - time.perf_counter()) if deadline else timeout_s
@@ -153,9 +169,10 @@ class ProviderChain:
                     ) -> tuple[dict[str, Any], Usage, str]:
                         if provider.name not in ("mock", "replay"):
                             await self.limiter.acquire(requested.code, requested.rpm_limit, requested.rpd_limit)
-                        return await provider.complete_structured(
-                            provider_messages(messages, provider.name), schema, requested, timeout_s=limit
-                        )
+                        async with selected_provider(provider, requested) as bound:
+                            return await bound.complete_structured(
+                                provider_messages(messages, bound.name), schema, requested, timeout_s=limit
+                            )
 
                     obj, usage, raw = await asyncio.wait_for(invoke(candidate, selected, budget), timeout=budget)
                 except TimeoutError:
@@ -201,6 +218,8 @@ class ProviderChain:
                         requests.append(backups[backup_index])
                         backup_index += 1
                     continue
+                except CredentialBindingError:
+                    raise
                 except Exception as exc:  # любая иная ошибка — тоже failover, с полным логом
                     last_error = ProviderError("unavailable", type(exc).__name__)
                     ms = int((time.perf_counter() - t0) * 1000)
@@ -250,15 +269,22 @@ class ProviderChain:
         self, messages: list[Message], profile: LLMProfile, *, context: Context | str = "default"
     ) -> AsyncIterator[str]:
         """Поток токенов: первый провайдер, отдавший хотя бы один чанк, становится источником; ошибка до первого чанка → следующий."""
+        if self.offline_mode is not None:
+            profile = replace(profile, provider=self.offline_mode)
         timeout_s = self.timeout_for(context)
         for prov in self.providers:
             if profile.provider in ("mock", "replay") and prov.name in ("gigachat", "openai_compatible"):
                 continue
+            if profile.api_key_id is not None and prov.name not in (profile.provider, "mock", "replay"):
+                continue
             started = False
             try:
-                async for chunk in prov.stream(provider_messages(messages, prov.name), profile, timeout_s=timeout_s):
-                    started = True
-                    yield chunk
+                async with selected_provider(prov, profile) as bound:
+                    async for chunk in bound.stream(
+                        provider_messages(messages, bound.name), profile, timeout_s=timeout_s
+                    ):
+                        started = True
+                        yield chunk
                 return
             except (ProviderError, TimeoutError, OSError) as e:
                 if started:
@@ -320,7 +346,9 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
             providers.append(MockProvider())
         else:
             log.warning("llm_chain_unknown", provider=name)
-    return ProviderChain(providers, record_store=store if settings.llm_record else None)
+    configured = getattr(settings, "llm_provider", None)
+    mode = configured if configured in ("mock", "replay") else None
+    return ProviderChain(providers, record_store=store if settings.llm_record else None, offline_mode=mode)
 
 
 def live_recording_possible(settings: Any) -> bool:

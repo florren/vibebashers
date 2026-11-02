@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 // Проверенные read-only API и браузерные mocks; новые файлы по умолчанию идут serial.
-const readOnlyFiles = ['fonts.spec.ts', 'journey-modes.spec.ts', 'map-layout.spec.ts', 'mobile.spec.ts', 'trace-journey.spec.ts']
+const readOnlyFiles = ['fonts.spec.ts', 'journey-modes.spec.ts', 'map-layout.spec.ts', 'mobile.spec.ts', 'trace-journey.spec.ts', 'engine_compare.spec.ts']
 
 // Дымовые e2e (T-143): нужен работающий стенд (backend с собранным фронтом или vite dev). Адрес — E2E_BASE_URL (по умолчанию :8000).
 export default defineConfig({

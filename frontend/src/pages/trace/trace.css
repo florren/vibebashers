@@ -44,3 +44,30 @@
     display: block;
   }
 }
+
+.trace-graph { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 16px; margin-top: 16px; }
+.trace-graph-main, .trace-graph-panel { min-width: 0; }
+.trace-graph-viewport { height: min(52vh, 520px); min-height: 280px; overflow: auto; border: 1px solid rgb(var(--line)); border-radius: 12px; background: rgb(var(--surface)); }
+.trace-graph-node { cursor: pointer; outline: none; }
+.trace-graph-node > .trace-node-shape { fill: rgb(var(--surface)); stroke: rgb(var(--muted)); stroke-width: 1.5; }
+.trace-graph-node.visited > .trace-node-shape { fill: rgb(var(--raised)); stroke-dasharray: 4 2; }
+.trace-graph-node.on-path > .trace-node-shape { stroke: rgb(var(--brand)); stroke-width: 2.5; }
+.trace-graph-node.selected > .trace-node-shape, .trace-graph-node:focus-visible > .trace-node-shape { stroke: rgb(var(--brand)); stroke-width: 4; }
+.trace-graph-edge { stroke: rgb(var(--line)); stroke-width: 1.5; color: rgb(var(--muted)); }
+.trace-graph-edge text { stroke: none; }
+.trace-graph-edge.on-path { stroke: rgb(var(--brand)); stroke-width: 3; color: rgb(var(--brand)); }
+.trace-graph-footer { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+.trace-minimap { width: 180px; height: 90px; flex-shrink: 0; border: 1px solid rgb(var(--line)); border-radius: 6px; background: rgb(var(--surface)); }
+.trace-graph-panel { border: 1px solid rgb(var(--line)); background: rgb(var(--surface)); border-radius: 12px; padding: 12px; align-self: start; }
+.trace-graph-accordion { border-top: 1px solid rgb(var(--line)); padding-top: 8px; padding-bottom: 8px; overflow-wrap: anywhere; }
+.trace-graph-accordion summary { cursor: pointer; font-weight: 600; }
+.trace-graph-accordion-body { margin-top: 8px; max-height: 360px; overflow: auto; }
+.trace-graph-accordion::details-content { interpolate-size: allow-keywords; block-size: 0; overflow: clip; transition: block-size 400ms ease, content-visibility 400ms allow-discrete; }
+.trace-graph-accordion[open]::details-content { block-size: auto; }
+.trace-fan-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; max-height: 200px; overflow: auto; }
+@media (max-width: 1023px) {
+  .trace-graph { grid-template-columns: minmax(0, 1fr); }
+  .trace-graph-panel { width: 100%; }
+  .trace-graph-footer { align-items: start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { .trace-graph-accordion::details-content { transition: none; } }

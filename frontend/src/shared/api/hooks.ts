@@ -15,6 +15,7 @@ import {
   type GenerateStatus,
   type GiftCatalogItem,
   type LlmApiKey,
+  type LlmKeyCreate,
   type LlmProfileT,
   type NotificationTemplateT,
   type PsychotypeSettings,
@@ -426,7 +427,10 @@ export function useFinishSetup() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: () => post<void>('/api/setup', {}), onSuccess: () => void qc.invalidateQueries({ queryKey: ['setup'] }) })
 }
-export const useTestLlm = () => useMutation({ mutationFn: (body: TestLlmBody) => post<TestLlmResult>('/api/setup/test-llm', body) })
+export const useTestLlm = () => {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: TestLlmBody) => post<TestLlmResult>('/api/setup/test-llm', body), onSettled: () => void qc.invalidateQueries({ queryKey: ['settings', 'llm-keys'] }) })
+}
 export const useTestTgBot = () => useMutation({ mutationFn: (token: string) => post<{ ok: boolean; username?: string; error?: string }>('/api/setup/test-tgbot', { token }) })
 export const useGenerateStatus = (poll: boolean) =>
   useQuery({ queryKey: ['setup', 'generate'], queryFn: () => api<GenerateStatus>('/api/setup/generate'), refetchInterval: poll ? 1_000 : false })
@@ -460,7 +464,7 @@ export function useSaveSetting<T>(name: string, path: string) {
 export function useLlmKeyOps() {
   const qc = useQueryClient()
   const inv = () => void qc.invalidateQueries({ queryKey: ['settings', 'llm-keys'] })
-  const add = useMutation({ mutationFn: (b: { provider: string; label: string; key: string }) => post<LlmApiKey>('/api/settings/llm-keys', b), onSuccess: inv })
+  const add = useMutation({ mutationFn: (b: LlmKeyCreate) => post<LlmApiKey>('/api/settings/llm-keys', b), gcTime: 0, onSuccess: inv })
   const remove = useMutation({ mutationFn: (id: number) => del<void>(`/api/settings/llm-keys/${id}`), onSuccess: inv })
   return { add, remove }
 }

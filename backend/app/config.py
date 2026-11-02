@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://cx:cx@localhost:5432/cx_pulse"
     database_url_test: str | None = None
+    maintenance_control_dir: str | None = None
 
     profile: Profile = "lite"
     sim_seed: int = 42

@@ -1,0 +1,11 @@
+import type { AgentRunDetail, Classification, LlmProfileT } from '@/shared/api/client'
+import type { paths } from '@/shared/api/types'
+
+/** Синтетические ответы ТОЛЬКО для UI-тестов, не доказательство различий реальных моделей. */
+export const selectedClassification: Classification = { language: 'ru', signal_type: 'tariff_terms', product: 'deposit', system: null, cause_hypothesis: 'tariff_terms', criticality: 'medium', tone: 'sarcastic', flags: [], churn_risk: 82, confidence: 0.91, rationale_ru: 'Тест: сарказм означает недовольство, а не благодарность.', summary_ru: 'Тест: клиент оспаривает ставку вклада.', sentiment: 'negative', problem_summary: { problem: 'Тест: ставка ниже обещанной.', severity: 'medium', suggested_team: 'team_deposits' } }
+export const mockClassification: Classification = { ...selectedClassification, signal_type: 'gratitude', cause_hypothesis: 'gratitude', product: null, criticality: 'low', tone: 'positive', churn_risk: 5, confidence: 0.75, sentiment: 'positive', rationale_ru: 'Тест: найдено слово благодарности.', summary_ru: 'Тест: благодарность за обслуживание.' }
+export const compareResponse: paths['/api/agent/compare']['post']['responses'][200]['content']['application/json'] = { llm: selectedClassification, mock: mockClassification, llm_run_id: 301, mock_run_id: 302, diff: [{ field: 'signal_type', llm: 'tariff_terms', mock: 'gratitude' }, { field: 'sentiment', llm: 'negative', mock: 'positive' }] }
+export const compareProfiles: LlmProfileT[] = [{ id: 7, code: 'mock', model: 'mock-rules-v1', provider: 'mock', role: 'main', is_active: true }, { id: 9, code: 'bench_only_allowed', model: 'test-benchmark', provider: 'openai_compatible', role: 'bench_only', is_active: true }, { id: 10, code: 'inactive', model: 'unavailable', provider: 'mock', role: 'main', is_active: false }]
+export function compareTrace(id: number, model = id === 301 ? 'replay:recorded-test-model' : 'mock:mock-rules-v1', status = 'ok'): AgentRunDetail {
+  return { id, kind: 'compare', signal_id: null, outcome: 'completed', llm_profile_code: 'requested-test-profile', total_tokens: 123, steps: [{ seq: 1, node: 'classify', status, model, prompt_tokens: 100, completion_tokens: 23, latency_ms: 12 }] }
+}

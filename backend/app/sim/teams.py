@@ -424,6 +424,25 @@ class TeamEmulator:
         status: str,
     ) -> None:
         self.artifact_meta = {}
+        active_llm = self.llm
+        reserved_ar: int | None = None
+        if plan.outcome:
+            from app.llm.run_profiles import no_llm_snapshot, resolve
+
+            snapshot = no_llm_snapshot()
+            kind = ARTIFACT_FOR_ACTION.get(step.action)
+            if self.llm and kind and kind != "verification_report" and not step.skipped:
+                scoped, main = await resolve(self.conn, self.run_id, self.llm[0], self.llm[1], new=True)
+                role = self.llm[1].role
+                active_llm = (scoped, scoped.profile_for(role, main))
+                snapshot = {**(scoped.role_snapshot or {}), "execution_role": role}
+            started = await ctx.fetchone(
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) "
+                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s,%s::jsonb) returning id",
+                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time, dumps(snapshot)),
+            )
+            assert started is not None
+            reserved_ar = int(started[0])
         key = (incident_id, step.action, step.report_day)
         payload: dict[str, Any] = {"plan": _plan_blob(plan)}
         if plan.outcome:
@@ -472,7 +491,7 @@ class TeamEmulator:
 
         artifact_kind = ARTIFACT_FOR_ACTION.get(step.action)
         if artifact_kind and not step.skipped:
-            body = await self._artifact_body(ctx, artifact_kind, step, incident_ctx)
+            body = await self._artifact_body(ctx, artifact_kind, step, incident_ctx, active_llm)
             title = {
                 "rca": "Анализ первопричины",
                 "fix_decision": "Решение о внедрении фикса",
@@ -532,14 +551,18 @@ class TeamEmulator:
         if plan.outcome:
             from app.agent.nodes import Deps
 
-            ar = await ctx.fetchone(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
-                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s) returning id",
-                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
-            )
-            assert ar is not None
-            ctx.agent_run_id = int(ar[0])
-            deps = Deps(ctx=ctx, chain=self.llm[0], profile=self.llm[1])
+            assert reserved_ar is not None
+            ctx.agent_run_id = reserved_ar
+            if active_llm is None:
+                from app.llm.base import LLMProfile
+                from app.llm.failover import ProviderChain
+                from app.llm.mock import MockProvider
+
+                active_llm = (
+                    ProviderChain([MockProvider()], offline_mode="mock"),
+                    LLMProfile(code="no_llm", provider="mock", model="not-called"),
+                )
+            deps = Deps(ctx=ctx, chain=active_llm[0], profile=active_llm[1])
             await deps.record_step(
                 "act",
                 "ok",
@@ -567,10 +590,13 @@ class TeamEmulator:
                     pr.release_action_id = action_id
                     break
 
-    async def _artifact_body(self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]) -> str:
+    async def _artifact_body(
+        self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any], llm: Any = None
+    ) -> str:
         self.artifact_meta = {}
         outcome = incident_ctx.get("outcome", self.demo_outcome)
-        if outcome and self.llm:
+        active_llm = llm if llm is not None else self.llm
+        if outcome and active_llm:
             from app.demo.roles import respond
 
             evidence = incident_ctx.get("demo_evidence", self.demo_context)
@@ -617,7 +643,7 @@ class TeamEmulator:
                     "confirmed_result": facts["result"],
                 }
                 return str(facts["result"])
-            obj, self.artifact_meta = await respond(self.llm[0], self.llm[1], facts, fallback)
+            obj, self.artifact_meta = await respond(active_llm[0], active_llm[1], facts, fallback)
             self.artifact_meta["outcome"] = outcome
             self.artifact_meta["stage"] = kind
             return PII_RE.sub("****", str(obj["body"]))

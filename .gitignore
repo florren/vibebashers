@@ -49,3 +49,9 @@ frontend/dist-personal
 
 # Локальное происхождение конвертированного baseline (#108)
 data/baseline/*.dump.provenance.json
+
+# T-040: runtime archives are data, not source artifacts.
+data/runs/
+
+# Долговечный runtime maintenance marker, не часть исходников/образа.
+data/maintenance/
