@@ -1314,7 +1314,12 @@
       "checkOk": "Проверка успешна · {{ms}} мс · {{model}}",
       "deleteProfile": "Удалить профиль {{code}}",
       "urlLabel": "URL профиля {{code}}",
-      "remaining": "Осталось: {{value}}"
+      "remaining": "Осталось: {{value}}",
+      "usageUnknown": "Неизвестно",
+      "observedFloor": "Подтверждено не менее: {{value}}",
+      "legacyHint": "Старое значение (не подтверждено): {{value}}",
+      "usageAsOf": "Наблюдение расхода: {{value}}",
+      "requestsDay": "Реальные сутки UTC: {{value}}"
     }
   },
   "tasks": {

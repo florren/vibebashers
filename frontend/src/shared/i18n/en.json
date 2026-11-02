@@ -1314,7 +1314,12 @@
       "checkOk": "Check passed · {{ms}} ms · {{model}}",
       "deleteProfile": "Delete profile {{code}}",
       "urlLabel": "URL for {{code}}",
-      "remaining": "Remaining: {{value}}"
+      "remaining": "Remaining: {{value}}",
+      "usageUnknown": "Unknown",
+      "observedFloor": "Confirmed at least: {{value}}",
+      "legacyHint": "Legacy value (unverified): {{value}}",
+      "usageAsOf": "Usage observation: {{value}}",
+      "requestsDay": "Real UTC day: {{value}}"
     }
   },
   "tasks": {
