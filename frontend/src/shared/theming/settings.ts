@@ -1,12 +1,13 @@
 import { api, patch } from '@/shared/api/client'
 import { applyUiTheme } from './apply'
 import { useUiTheme } from './store'
+import { validCircadian, type CircadianPreferences } from './circadian'
 import type { ThemeDensity, ThemeMode, ThemePack } from './types'
 
-type Preferences = { theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity }
+type Preferences = { theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity; circadian: CircadianPreferences }
 const PENDING = 'cx.ui.pending'
 let saveQueue = Promise.resolve()
-const KEYS = ['theme_pack', 'mode', 'density'] as const
+const KEYS = ['theme_pack', 'mode', 'density', 'circadian'] as const
 
 function validated(value: unknown): Partial<Preferences> {
   if (!value || typeof value !== 'object') return {}
@@ -15,10 +16,12 @@ function validated(value: unknown): Partial<Preferences> {
   if (obj.theme_pack === 'brand' || obj.theme_pack === 'ops') out.theme_pack = obj.theme_pack
   if (['light', 'dark', 'auto', 'circadian'].includes(String(obj.mode))) out.mode = obj.mode as ThemeMode
   if (obj.density === 'compact' || obj.density === 'comfortable') out.density = obj.density
+  const circadian = validCircadian(obj.circadian)
+  if (circadian) out.circadian = circadian
   return out
 }
 
-/** Serialized PATCHes update only chosen keys; edits made while GET is pending win. */
+/** PATCH содержит только изменённые ключи ui; локальные изменения побеждают запоздалый GET. */
 export function connectThemeSettings(): () => void {
   let pending: Partial<Preferences>
   try { pending = validated(JSON.parse(localStorage.getItem(PENDING) ?? '{}')) } catch { pending = {} }
@@ -56,7 +59,7 @@ export function connectThemeSettings(): () => void {
     hydrating = true
     useUiTheme.setState(preferences)
     const state = useUiTheme.getState()
-    for (const key of KEYS) localStorage.setItem(`cx.ui.${key}`, state[key])
+    for (const key of KEYS) localStorage.setItem(`cx.ui.${key}`, typeof state[key] === 'string' ? state[key] : JSON.stringify(state[key]))
     applyUiTheme(state.theme_pack, state.mode, state.density, state.simTime)
     hydrating = false
     save()

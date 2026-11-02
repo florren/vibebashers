@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CircadianControls } from './CircadianControls'
 import { useUiTheme } from './store'
 import type { ThemeDensity, ThemeMode, ThemePack } from './types'
 
@@ -47,6 +48,7 @@ export function ThemeSelector({ className }: { className?: string }) {
         <option value="comfortable">{t('theme.density.comfortable')}</option>
         <option value="compact">{t('theme.density.compact')}</option>
       </select>
+      {mode === 'circadian' && <CircadianControls />}
       {syncError && <span role="status" className="text-xs text-danger">{t('theme.syncError')}</span>}
     </div>
   )

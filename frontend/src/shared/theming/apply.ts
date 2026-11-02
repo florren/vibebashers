@@ -1,37 +1,36 @@
 import type { ResolvedThemeMode, ThemeDensity, ThemeMode, ThemePack } from './types'
-
-export const PHASES = ['dawn', 'morning', 'noon', 'sunset', 'twilight', 'night'] as const
-export type ThemePhase = (typeof PHASES)[number]
+import { circadianPhase, readCircadian, type ThemePhase } from './circadian'
+import { animateTheme, cancelThemeTransition, clearPalette, readPalette } from './transition'
+export { PHASES, type ThemePhase } from './circadian'
 
 export function phaseAt(simTime?: string | null): ThemePhase {
-  if (!simTime || !Number.isFinite(Date.parse(simTime))) {
-    const cached = localStorage.getItem('cx.ui.phase')
-    return PHASES.includes(cached as ThemePhase) ? cached as ThemePhase : 'morning'
-  }
-  const hour = Number(new Intl.DateTimeFormat('en', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Moscow' }).format(new Date(simTime)))
-  if (hour < 5 || hour >= 21) return 'night'
-  if (hour < 7) return 'dawn'
-  if (hour < 11) return 'morning'
-  if (hour < 16) return 'noon'
-  if (hour < 19) return 'sunset'
-  return 'twilight'
+  return circadianPhase(readCircadian(), simTime)
 }
-
 export function resolveMode(mode: ThemeMode, phase: ThemePhase = phaseAt()): ResolvedThemeMode {
   if (mode === 'light' || mode === 'dark') return mode
   if (mode === 'circadian') return phase === 'night' || phase === 'twilight' ? 'dark' : 'light'
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export function applyUiTheme(pack: ThemePack, mode: ThemeMode, density: ThemeDensity = 'comfortable', simTime?: string | null) {
+export function applyUiTheme(pack: ThemePack, mode: ThemeMode, density: ThemeDensity = 'comfortable', simTime?: string | null, animate = false) {
   const phase = phaseAt(simTime)
   const resolved = resolveMode(mode, phase)
   const root = document.documentElement
-  root.dataset.pack = pack
-  root.dataset.mode = resolved
-  root.dataset.phase = phase
-  root.dataset.density = density
-  root.classList.toggle('dark', resolved === 'dark')
+  const changed = root.dataset.phase !== phase || root.dataset.mode !== resolved || root.dataset.pack !== pack
+  const shouldAnimate = animate && changed && mode === 'circadian' && !matchMedia('(prefers-reduced-motion: reduce)').matches
+  const from = shouldAnimate ? readPalette(root) : null
+  // Повторный tick той же фазы не обрывает уже идущий переход.
+  if (!changed && animate) return
+  cancelThemeTransition()
+  clearPalette(root)
+  root.dataset.themeTransition = 'idle'
+  const attributes = { pack, mode: resolved, phase, circadian: String(mode === 'circadian'), density }
+  for (const [key, value] of Object.entries(attributes)) if (root.dataset[key] !== value) root.dataset[key] = value
+  if (root.classList.contains('dark') !== (resolved === 'dark')) root.classList.toggle('dark', resolved === 'dark')
   localStorage.setItem('cx.ui.phase', phase)
   localStorage.setItem('cx.theme', resolved)
+  if (from) {
+    const to = readPalette(root)
+    if (to) animateTheme(root, from, to)
+  }
 }

@@ -1,0 +1,11 @@
+/* Независимые от mode фазовые оттенки; inline bootstrap выставляет фазу до загрузки CSS. */
+html[data-circadian='true'][data-mode='light'][data-phase='dawn'] { --bg: 250 246 241; }
+html[data-circadian='true'][data-mode='light'][data-phase='morning'] { --bg: 246 248 242; }
+html[data-circadian='true'][data-mode='light'][data-phase='noon'] { --bg: 244 248 251; }
+html[data-circadian='true'][data-mode='light'][data-phase='sunset'] { --bg: 251 245 240; }
+html[data-circadian='true'][data-mode='dark'][data-phase='twilight'] { --bg: 22 19 31; }
+html[data-circadian='true'][data-mode='dark'][data-phase='night'] { --bg: 10 16 25; }
+.circadian-night-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .06; color: rgb(var(--ink)); background-image: radial-gradient(circle at 8% 16%, currentColor 1px, transparent 2px), radial-gradient(circle at 80% 14%, currentColor 1px, transparent 2px), radial-gradient(circle at 43% 22%, currentColor 1px, transparent 2px); }
+.circadian-night-layer::after { content: '☾'; position: absolute; right: 4%; top: 10%; font-size: 72px; }
+/* CSS transition отдельных контролов не должен запаздывать за покадровой проверкой контраста. */
+html[data-theme-transition='running'] *, html[data-theme-transition='running'] *::before, html[data-theme-transition='running'] *::after { transition: none !important; }
