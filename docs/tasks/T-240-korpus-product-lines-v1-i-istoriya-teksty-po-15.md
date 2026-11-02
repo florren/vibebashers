@@ -46,7 +46,6 @@ pytest backend/tests/unit/test_no_pii.py
 ```
 
 ## Отчёт субагента
-
 Реализованы 162 осмысленных синтетических отзыва с точными долями 3×54,
 ограниченный импорт JSON/CSV/XLSX через normalizer и отдельная проекция trusted
 seed. Generic CLI игнорирует gold; editorial sentiment: 139/14/9. OpenAPI 1.5.19

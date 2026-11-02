@@ -43,14 +43,17 @@ curl -s -H 'X-Cx-Role: product_manager' -H 'X-Cx-Product-Line: deposits' localho
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-241-cabinet-api`. Backend/API22 checkpoint, normal composition T240 + P1 + T254.
-Реализованы read-only overview/signals/roles, soft/strict, baseline+current run scope,
-nullable coverage, saved economics и новый actor_role audit без изменения HITL/денежной политики.
-Конкретный contract/DDL proposal: `docs/reviews/T-241-contract-review.md`.
-52 targeted unit/actualPG green на временном0014+proposal; это НЕ окончательная migration proof.
-Фактическая0017 normal-merged;0018 canonical/mirror/ORM110, fresh/reapply/downgrade→upgrade
-сохраняют audit. Полный исходный gate выявил11producer incompatibilities; focused
-corrections и15lifecycle targets green. Новый API22quality/preset target65green,
-actualdemo5000/p95<300/GETfingerprints, ранняя newmodule coverage97%.
-До full DoD: оставшиеся phases/composed checks, final main compatibility и CI,
-human contract/audit review. T242 — отдельная stacked ветка.
+Ветка `codex/T-241-cabinet-api`, normal composition T240/P1/T254/actual17/main73425c9.
+Actual API1.5.22/DDL0018: read-only overview/signals/roles, soft/strict,
+baseline+current run scope, nullable client/CSI coverage, saved economics,
+заявленный actor_role audit без изменения HITL/денежной политики.
+Human contract/audit review обязателен; подробный diff/rollback и версионные
+доказательства — `docs/reviews/T-241-contract-review.md`.
+Финальный API/PG target65 green, coverage213/217 (98%); composed lint green
+(front354), contracts45/163, drift193/193, generators/205cards идемпотентны.
+Demo5000/2813signals: bank p95 40.49ms / direction24.15ms, 107 fingerprints
+unchanged, LLM/external attempts0. Actual fresh18/reapply/downgrade→upgrade
+сохраняет audit. Исходный full gate дал11producer failures; focused fixes и15PG
+исходных lifecycle/composite/lease cases green, legacy fixture проверена отдельно.
+Оставшиеся unit1747/scenarios43/compliance31/bot33 green; full exact-head CI
+и human approval ожидаются, статус не done. T242 — отдельная stacked UI ветка.
