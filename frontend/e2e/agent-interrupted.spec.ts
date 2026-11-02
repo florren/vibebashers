@@ -15,6 +15,7 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         if (request.method() !== 'GET') { mutations.push(path); await route.abort(); return }
         if (path === '/api/agent/runs') { await route.fulfill({ json: { items: [run], next_cursor: null } }); return }
         if (path === '/api/agent/runs/42') { await route.fulfill({ json: run }); return }
+        if (path === '/api/trace/agent_run/42') { await route.fulfill({ json: { subject: { kind: 'agent_run', ref: 'AR-42', title_ru: 'AR-42', status: 'interrupted' }, before: [], after: [], edges: [], groups: [], pending: [], terminal: { reached: false }, stats: { before_count: 0, after_count: 0, build_ms: 1 } } }); return }
         if (path === '/api/settings' || path === '/api/sim/state') {
           const response = await route.fetch(), value = await response.json()
           await route.fulfill({ response, json: path === '/api/settings' ? { ...value, ui: { ...value.ui, theme_pack: 'brand', mode, density: 'comfortable' } } : { ...value, running: false, current_run_id: 1, current_run_status: 'interrupted' } })
@@ -33,6 +34,10 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       expect(mutations).toEqual([])
       await page.screenshot({ path: info.outputPath(`interrupted-${lang}-${mode}.png`), fullPage: true })
+      await page.goto('/trace/agent_run/42')
+      await expect(page.getByText(lang === 'ru' ? 'прерван' : 'interrupted', { exact: true }).first()).toBeVisible()
+      expect(mutations).toEqual([])
+      await page.screenshot({ path: info.outputPath(`trace-interrupted-${lang}-${mode}.png`), fullPage: true })
     } finally {
       await context.unrouteAll({ behavior: 'wait' })
       expect(activeRoutes).toBe(0)

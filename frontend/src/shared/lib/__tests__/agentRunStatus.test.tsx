@@ -1,3 +1,6 @@
+import { MemoryRouter } from 'react-router-dom'
+import type { Trace } from '@/shared/api/trace'
+import { SubjectCard } from '@/pages/trace/components/SubjectCard'
 import { render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import i18n from '@/shared/i18n'
@@ -34,4 +37,13 @@ it('shows an interrupted current node statically and keeps the legacy running an
   rerender(<GraphView {...props} />)
   expect(container.querySelector('[data-execution-status="running"]')).not.toBeNull()
   expect(container.querySelector('.animate-pulse')).not.toBeNull()
+})
+
+it.each([['ru', 'прерван'], ['en', 'interrupted']])('localizes only the agent trace subject in %s', async (lang, text) => {
+  await i18n.changeLanguage(lang)
+  const trace: Trace = { subject: { kind: 'agent_run', ref: 'AR-42', title_ru: 'AR-42', status: 'interrupted' }, before: [], after: [], edges: [], groups: [], pending: [], terminal: { reached: false }, stats: { before_count: 0, after_count: 0, build_ms: 1 } }
+  const { rerender } = render(<MemoryRouter><SubjectCard trace={trace} /></MemoryRouter>)
+  expect(screen.getByText(text, { exact: true })).toBeInTheDocument()
+  rerender(<MemoryRouter><SubjectCard trace={{ ...trace, subject: { ...trace.subject, kind: 'other', status: 'raw_custom_status' } }} /></MemoryRouter>)
+  expect(screen.getByText('raw_custom_status')).toBeInTheDocument()
 })
