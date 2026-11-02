@@ -163,7 +163,7 @@ async def service_scope(
     )
     clock = await current_clock(conn, run_id) if provenance else None
     if for_effect and clock:
-        if not await BehaviorStore(conn).active_run(run_id):
+        if await BehaviorStore(conn).current_effect_time(run_id) is None:
             return None
         clock = await current_clock(conn, run_id)
     if clock is None:
@@ -193,13 +193,32 @@ async def causal_fault(
     return int(found[0]["fault_id"]) if found else None
 
 
+async def require_active_effect(
+    conn: psycopg.AsyncConnection[Any], run_id: int, fault_id: int, at: dt.datetime
+) -> None:
+    """После общего effect-time callback: только короткая native fault-window проверка."""
+    valid = await rows(
+        conn,
+        "select f.id from faults f join sim_runs r on r.id=f.run_id "
+        "join sim_state st on st.current_run_id=r.id and st.id=1 "
+        "where f.id=%s and f.run_id=%s and r.kind in ('free','scenario') "
+        "and r.status in ('running','paused') and f.started_sim<=%s "
+        "and (f.resolved_sim is null or f.resolved_sim>%s) "
+        "and exists(select 1 from operations o where o.run_id=f.run_id and o.fault_id=f.id "
+        "and o.started_sim<=%s and behavior_valid_failed_operation(o.id,f.run_id))",
+        (fault_id, run_id, at, at, at),
+    )
+    if not valid:
+        raise ValueError("служебный fault scope устарел перед инструментом")
+
+
 async def produce(conn: psycopg.AsyncConnection[Any]) -> list[int]:
     """Повторяемый wakeup: impact0 ждёт actual operations, потеря NOTIFY не теряет работу."""
     clock = await current_clock(conn)
     if clock is None:
         return []
     run_id, at = clock
-    if not await BehaviorStore(conn).active_run(run_id):
+    if await BehaviorStore(conn).current_effect_time(run_id) is None:
         return []
     clock = await current_clock(conn, run_id)
     if clock is None:

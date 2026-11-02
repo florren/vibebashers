@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 
 import psycopg
@@ -10,6 +11,7 @@ from psycopg.types.json import Jsonb
 
 from app.agent import nodes, proactive
 from app.agent.graph import process_signal
+from app.agent.tools import write
 from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
 from app.sim.events import EventBus, dumps
@@ -250,3 +252,45 @@ async def test_invalid_native_routing_configuration_never_falls_back(seeded, con
         with pytest.raises(ValueError, match="fault_monitor"):
             await proactive.produce(conn)
         assert not await (await conn.execute("select 1 from signals where run_id=%s", (run,))).fetchone()
+
+
+@pytest.mark.asyncio
+async def test_fault_resolution_during_fanout_rechecks_each_send_and_rolls_back_step(seeded, monkeypatch):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run = await new_run(conn, "T039 fault resolved during fanout")
+        at = await sim_now(conn)
+        clients = [
+            row[0] for row in await (await conn.execute("select id from clients order by id limit 2")).fetchall()
+        ]
+        fid = await fault(conn, run, at)
+        for client in clients:
+            await operation(conn, run, fid, client, at)
+            await conn.execute(
+                "update clients set consents=jsonb_build_object('proactive',true), "
+                "contacts=contacts||jsonb_build_object('preferred','chat') where id=%s",
+                (client,),
+            )
+        [sid] = await proactive.produce(conn)
+        await conn.commit()
+        original = write.notify_client
+        first_attempted = False
+
+        async def resolve_after_first(*args, **kwargs):
+            nonlocal first_attempted
+            result = await original(*args, **kwargs)
+            if not first_attempted:
+                assert result["status"] == "sent"
+                first_attempted = True
+                async with asyncio.timeout(5):
+                    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as other:
+                        later = at + dt.timedelta(minutes=5)
+                        await other.execute("update faults set resolved_sim=%s where id=%s", (later, fid))
+                        await other.execute("update sim_state set sim_time=%s where id=1", (later,))
+            return result
+
+        monkeypatch.setattr(write, "notify_client", resolve_after_first)
+        state = await process_signal(conn, signal_id=sid, chain=mock_chain(), profile=MOCK_PROFILE)
+        assert first_attempted and state["outcome"] == "failed"
+        assert any("scope устарел перед инструментом" in error for error in state["errors"])
+        assert not await (await conn.execute("select 1 from notifications where run_id=%s", (run,))).fetchone()
+        assert not await (await conn.execute("select 1 from incidents where run_id=%s", (run,))).fetchone()

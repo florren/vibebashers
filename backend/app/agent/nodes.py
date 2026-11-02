@@ -719,7 +719,17 @@ async def _native_service_scope(state: AgentState, deps: Deps, *, for_effect: bo
     if for_effect and previous and previous.get("co_team_codes") != native["co_team_codes"]:
         raise ValueError("служебный маршрут изменился после решения; требуется повторная обработка")
     state["context"]["proactive_fault"] = proactive.summary(native)
-    deps.ctx.sim_time = native["as_of"]
+    if for_effect:
+        original_fence = deps.ctx.effect_time_fence
+
+        async def fault_fence(context: ToolContext) -> None:
+            if original_fence is not None:
+                await original_fence(context)
+            await proactive.require_active_effect(context.conn, context.run_id, native["id"], context.sim_time)
+
+        deps.ctx.effect_time_fence = fault_fence
+    else:
+        deps.ctx.sim_time = native["as_of"]
     return native
 
 
