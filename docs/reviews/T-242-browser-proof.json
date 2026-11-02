@@ -1,0 +1,137 @@
+{
+  "application_source": "00d6abf (T242 final source; backend byte-identical T24142f2488/f15b02d)",
+  "fixture": "actual PostgreSQL0018, standard demo5000/2813signals, own cx_cabinet_ui_revision; no API mocks",
+  "browser_result": "4 passed in24.9s",
+  "browser_cases": [
+    {
+      "language": "ru",
+      "mode": "light",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 4.760713308355131,
+        "control": 3.1834204505648223
+      },
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "ru",
+      "mode": "dark",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 5.793715110412343,
+        "control": 4.672395027039239
+      },
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "en",
+      "mode": "light",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 4.760713308355131,
+        "control": 3.1834204505648223
+      },
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "en",
+      "mode": "dark",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 5.793715110412343,
+        "control": 4.672395027039239
+      },
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    }
+  ],
+  "browser_page_non_get_attempts": 0,
+  "fixture_writes": "Only explicit own scratch /api/settings PATCH setup/restore; this is NOT a whole-browser DB-unchanged claim. Cabinet GET-only fingerprints are independently proven over107tables in T241 performance report.",
+  "server_llm_attempt_marker_exists": false,
+  "server_external_attempt_marker_exists": false,
+  "screenshots": [
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-top.png",
+      "sha256": "1e1a7592eabe1a6d4cfe6a4ba99bbd9c046483ceda1f4ff1d523a0e392628bfa"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-region.png",
+      "sha256": "dfc1a95874c82a93622d993689ca89ee6165281899c374b00f2d09b7b7714ea6"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-analytics.png",
+      "sha256": "146d15b51efc33983a222068a63986a8546814c55c7b4b7f1e85a73d468a8f45"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-calculator.png",
+      "sha256": "8dbb5bedb8d4f11adeb074a2155af20b3659e3cb9bd52a0d439f5a79feed026b"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-mobile.png",
+      "sha256": "35c3e393c4eea7aaf1bf61e8dd3538ffc3146ebb217d9ed0d76f4e7df60fdac6"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-night-mobile.png",
+      "sha256": "7663590981dd51e4cbb303b5bf91587efa1cf0e30ac9a42339016b86faea1886"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-dark-top.png",
+      "sha256": "aa46479cebaeca495d8391cbb03ac06e7dac9e033fd7dafcb666180fa5e94af8"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-light-top.png",
+      "sha256": "e5c56990ba379e1ac65c1927c53dc817f6d7008aca7fd74016b04ef6c13aad13"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-top.png",
+      "sha256": "f8ac0aa85750aecbaba1118b14c337fab3ed8b20b8ec165a061d363ba81a54c3"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-region.png",
+      "sha256": "a1272b0a001331939247ad0fc009be884b19523dcbf16850474970f74e7b3bdc"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-analytics.png",
+      "sha256": "ddb6a46d65943da1feec47aa7ecf42df07c6764679fc375d1055a2c0579701d9"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-calculator.png",
+      "sha256": "267d9ffa2b79b9d169ee841565c0f025e2e052ee77ed953a75f00611884c3a21"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-mobile.png",
+      "sha256": "2df72d30c29c133d25df6ad679e0451d5f27a65853de02599ee67788f8e08e2e"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-night-mobile.png",
+      "sha256": "5bbc43b2f292a6ac9f326ba93ada5fec454b179218e7f3ddac5682f91368395c"
+    }
+  ]
+}

@@ -32,9 +32,9 @@
 5. e2e: пресет `product_manager` показывает одно направление; `strict` скрывает остальные.
 
 ## Критерии приёмки
-- [ ] Экран показывает только блоки ТЗ 24.4 (≤ 7), ничего не мигает, нет звука.
-- [ ] KPI, динамика и топ-5 совпадают с ответом API; клик по региону даёт панель сигналов.
-- [ ] Скриншоты обеих тем и языков в PR.
+- [x] Экран показывает только блоки ТЗ 24.4 (≤ 7), ничего не мигает, нет звука.
+- [x] KPI, динамика и топ-5 совпадают с ответом API; клик по региону даёт панель сигналов.
+- [x] Скриншоты обеих тем и языков в PR.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,11 +44,14 @@ cd frontend && npx playwright test e2e/cabinet.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-242-product-cabinet`, stacked от T241.
-Реализованы семь блоков, scoped API queries/WS invalidation, presets/visibility,
-карта с клавиатурой/hover prefetch/zoom400ms, лента/таблица/фильтры,
-SVG charts без анимации с NULL gaps и synthetic labels, CSI observations,
-сценарный калькулятор по текущим rates/settings. Header/Jury не изменялись.
-15 новых frontend tests, lint/typecheck green. Это implementation checkpoint:
-actual API18 composition, production builds/browser/screenshots и full checks ещё впереди.
-T244 report и T249 полный CSI остаются отдельными задачами, готовность не приписана.
+Ветка `codex/T-242-product-cabinet`, stacked от T241 API22/DDL18.
+Реальны7blocks, scoped roles/run/period/visibility, карта/топ5/регион,
+feed20/table/filters/SLA, SVG charts, coverage-aware CSI и локальный калькулятор.
+Глобальные priority/night queries на cabinet не стартуют; scoped night внутри
+signalsblock. Unknown money/anonymous cohort не становятся0.
+Full frontend384green, обеproductionbuilds/lint/typecheck/i18n2015keys green,
+actual production4/4 ru/en×themes/mobile/strict/night/keyboard/Undo/viewportDrawer,
+14curatedPNG tracked. T241 actual65PG/98%coverage и readonly107fingerprints
+зафиксированы отдельно. Report: docs/reviews/T-242-product-cabinet.md.
+T244report501/T249fullCSI/T243expandedcalculator — отдельные карточки; human
+API22/DDL18 review, exactheadCI и liveGigaDoD не заявлены выполненными.
