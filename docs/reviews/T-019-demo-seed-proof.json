@@ -1,0 +1,64 @@
+{
+  "source_sha": "96caa2a596828ccf442a45160246a5bdbb56d082",
+  "elapsed_seconds": 21.502,
+  "exit_code": 0,
+  "generator_cpu_set": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "pg_container": "cx-t019-demo-proof-20261102",
+  "url_port": 55448,
+  "server_version": 160015,
+  "operations": 600000,
+  "signals": 2500,
+  "noise": 75,
+  "english": 118,
+  "hint_language_mismatches": 0,
+  "coverage": {
+    "run_id": 1,
+    "styles": {
+      "caps": 138,
+      "plain": 1705,
+      "slang": 218,
+      "typos": 245,
+      "sarcasm": 194
+    },
+    "sla_cells": {
+      "easy×low": 43,
+      "hard×low": 46,
+      "easy×high": 47,
+      "hard×high": 50,
+      "medium×low": 39,
+      "easy×medium": 38,
+      "hard×medium": 49,
+      "medium×high": 40,
+      "medium×medium": 48
+    },
+    "sla_cells_ok": true,
+    "hard_text_share": 0.318,
+    "incident_statuses": {
+      "new": 40,
+      "closed": 120,
+      "routed": 40,
+      "resolved": 40,
+      "escalated": 40,
+      "verifying": 40,
+      "in_progress": 40,
+      "awaiting_client": 40
+    },
+    "signal_combos_total": 480,
+    "signal_combos_covered": 480,
+    "signal_combos_missing": []
+  },
+  "baseline_dump_bytes": 17031341,
+  "postgres_limits": {
+    "CpusetCpus": "0,1,2,3",
+    "NanoCpus": 4000000000,
+    "Memory": 2147483648
+  },
+  "catalog_sha256": "d6c390b194bafe2a38f2e612b835b21fd5f42e5722c96e759c3789d4baa8d860",
+  "baseline_sha256": "32883a853b7d375c6b926ce75ca8a8d1a27139ba1dec0de9d39477ab3b86f69c",
+  "limits": "Synthetic isolated localhost PG16; four shared logical CPUs for generator and database. Includes baseline dump, excludes migration/bootstrap. No production mutation or live LLM calls."
+}
