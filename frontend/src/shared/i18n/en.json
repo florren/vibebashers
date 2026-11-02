@@ -2169,7 +2169,8 @@
     "hitlTitle": "Confirm human decision",
     "hitlConsequence": "{{id}}: “{{mode}}”. The decision will be saved and may resume the agent, route a task or send a client message under server rules. Local undo cannot reverse it.",
     "closeTitle": "Close the incident?",
-    "closeConsequence": "The incident will be closed on the server. This changes its status and SLA reporting; the server will validate the action. Local undo cannot restore the previous state."
+    "closeConsequence": "The incident will be closed on the server. This changes its status and SLA reporting; the server will validate the action. Local undo cannot restore the previous state.",
+    "slaTimezone": "MSK"
   },
   "care": {
     "details": "Technical details",

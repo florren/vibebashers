@@ -10,7 +10,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { Notification, Signal, StatusHistoryItem } from '@/shared/api/client'
 import { listItems, useIncident, useIncidentComms, useIncidentHistory, useIncidentSignals, useRefName } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
-import { fmtSim, fmtDuration } from '@/shared/lib/format'
+import { fmtSim, fmtSimMoscow, fmtDuration } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, KV, Section, Skeleton, SlaBar, Tabs } from '@/shared/ui'
 import { criticalityTone, incidentStatusTone, severityTone } from '@/shared/ui/tones'
 import { DecisionView } from '@/pages/workspace/SignalDrawer'
@@ -90,7 +90,7 @@ export function IncidentPage() {
               k={t('incident.slaDue')}
               v={
                 <span className="num font-mono text-xs">
-                  {fmtSim(inc.sla_due_sim, 'dd.MM HH:mm')} · {fmtDuration(inc.created_sim, inc.sla_due_sim)}
+                  {fmtSimMoscow(inc.sla_due_sim, 'dd.MM HH:mm')} {t('attention.slaTimezone')} · {fmtDuration(inc.created_sim, inc.sla_due_sim)}
                 </span>
               }
             />
