@@ -1,0 +1,16 @@
+{
+  "version": "csi_v1",
+  "synthetic": true,
+  "label_ru": "демонстрационные данные",
+  "seed": 42,
+  "seed_anchor": "2026-11-09T09:00:00+03:00",
+  "as_of": "2026-11-09T17:00:00+03:00",
+  "observation_window": {
+    "start": "2026-11-09T09:00:00+03:00",
+    "end": "2026-11-09T17:00:00+03:00",
+    "bounds": "[start,end)"
+  },
+  "employee_binding": "fresh baseline seed only; validate branch + desk + public_id before import",
+  "denominator_scope": "this synthetic corpus only; not all real branch visits or arbitrary runs",
+  "sampling": "fixed weighted cell counts; seeded text/time variation, not observed causal evidence"
+}

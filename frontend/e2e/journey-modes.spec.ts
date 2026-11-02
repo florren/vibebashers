@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { recording } from '../src/pages/journey/__tests__/recordings'
+import { readFileSync } from 'node:fs'
+const ru = JSON.parse(readFileSync(new URL('../src/shared/i18n/ru.json', import.meta.url), 'utf8'))
+const en = JSON.parse(readFileSync(new URL('../src/shared/i18n/en.json', import.meta.url), 'utf8'))
 
-for (const scenario of [1, 8, 11] as const) {
-  test(`запись сценария ${scenario}: повтор и ведущий без нового агента`, async ({ page }) => {
+for (const scenario of [1, 8, 11] as const) for (const lang of ['ru', 'en'] as const) for (const theme of ['light', 'dark']) {
+  test(`запись сценария ${scenario} ${lang} ${theme}: повтор и ведущий без нового агента`, async ({ page }) => {
+    const labels = lang === 'ru' ? ru : en
+    await page.addInitScript(({ lang, theme }) => { localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', theme); localStorage.setItem('cx.ui.layout', 'legacy') }, { lang, theme })
     const writes: string[] = []
     await page.route('**/api/**', async (route) => {
       const req = route.request(),
@@ -24,21 +29,23 @@ for (const scenario of [1, 8, 11] as const) {
       })
     })
     await page.goto(`/journey/SIG-${scenario}?mode=replay`)
-    await expect(page.getByRole('button', { name: 'Воспроизвести', exact: true })).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'Сообщение клиента' })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Вперёд', exact: true }).click()
+    await expect(page.getByRole('button', { name: labels.journeyModes.play, exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: labels.journeyLive.message })).toHaveCount(0)
+    await page.getByRole('button', { name: labels.journeyModes.next, exact: true }).click()
     await expect(page.getByText(`Сценарий ${scenario}`, { exact: true })).toBeVisible()
     await expect(page.getByText('Ответ банка', { exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Вперёд', exact: true }).click()
-    await page.getByRole('button', { name: 'Вперёд', exact: true }).click()
+    await page.getByRole('button', { name: labels.journeyModes.next, exact: true }).click()
+    await page.getByRole('button', { name: labels.journeyModes.next, exact: true }).click()
     await expect(page.getByText('Ответ банка', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Назад', exact: true }).click()
+    await page.getByRole('button', { name: labels.journeyModes.previous, exact: true }).click()
     await expect(page.getByText('Ответ банка', { exact: true })).toHaveCount(0)
-    await page.getByRole('link', { name: 'Ведущий', exact: true }).click()
+    await page.getByRole('link', { name: labels.journeyModes.presenter, exact: true }).click()
     await expect(page.getByText(`Тезис сценария ${scenario}`, { exact: true })).toBeVisible()
     await page.locator('h1').click()
     await page.keyboard.press('ArrowRight')
-    await expect(page.getByRole('heading', { name: 'Понимание', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: labels.journeyUi.stage.understanding, exact: true })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('data-mode', theme)
+    await page.screenshot({ path: test.info().outputPath('journey-presenter.png') })
     expect(writes).toEqual([])
   })
 }

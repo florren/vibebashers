@@ -102,6 +102,7 @@ export function DemoMenu() {
             </button>
           </div>
           <div className="flex flex-col gap-2">
+            <button className="btn btn-sm justify-start" onClick={() => { nav(ROUTES.journey); setOpen(false) }}>{t('demoMenu.scenario12')}</button>
             <button
               type="button"
               className="btn btn-sm justify-start"
