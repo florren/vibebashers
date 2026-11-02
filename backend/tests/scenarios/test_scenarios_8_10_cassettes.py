@@ -69,7 +69,10 @@ async def test_changed_seed_context_is_honest_replay_miss(seeded: str) -> None:
     fixture = json.loads((CASSETTES.parents[1] / "backend/tests/fixtures/replay_bank_v1.json").read_text())
     recorded = store._index[f"{fixture['source_request_hash']}:{PROFILE.model}"]
     schema = deref("agent/instant_decision")
-    assert store.get("gigachat", PROFILE.model, recorded["messages"], schema) is recorded
+    current = store.get("gigachat", PROFILE.model, recorded["messages"], schema)
+    assert current is not None
+    current_hash = request_hash("gigachat", PROFILE.model, recorded["messages"], schema)
+    assert current["request_hash"] == current_hash
     misses = []
 
     class AuditedReplay(ReplayProvider):
@@ -96,4 +99,4 @@ async def test_changed_seed_context_is_honest_replay_miss(seeded: str) -> None:
                 sim_time=now,
             )
             assert state is not None and state["outcome"] == "fallback_mock"
-    assert misses and fixture["source_request_hash"] not in misses
+    assert misses and current_hash not in misses

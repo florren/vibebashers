@@ -11,7 +11,7 @@ from enum import StrEnum
 class Common(RootModel[Any]):
     root: Any = Field(
         ...,
-        title="Общие перечисления CX Pulse Control v1.5 (единый источник для backend/frontend; синхронизировать с schema.sql)",
+        title="Общие перечисления CX Pulse Control v1.5.1 (единый источник для backend/frontend; синхронизировать с schema.sql)",
     )
 
 
@@ -213,8 +213,9 @@ class Id(RootModel[int]):
 class ErrorCode(RootModel[str]):
     root: str = Field(
         ...,
+        description="Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.",
         examples=["DEP-TIMEOUT-503", "PROMO-RATE-MISMATCH", "PROC-DOUBLE-DEBIT", "NOTIF-DELAY", "APP-LOGIN-FAIL"],
-        pattern="^[A-Z]{2,6}(-[A-Z0-9]{2,12}){1,3}$",
+        pattern="^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$",
     )
 
 

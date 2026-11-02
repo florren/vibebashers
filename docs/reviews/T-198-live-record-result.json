@@ -1,0 +1,40 @@
+{
+  "scenario_id": "qr_fee_public_review",
+  "model": "GigaChat-3-Pro",
+  "prompt_version": "v1.1",
+  "source_request_hash": "174508311da29178f016ba3094e36291612a740c37427ff51ec4dedeede099a0",
+  "source_record_sha256": "9fa6dbc1585c3c6bf251c7774779f5f9e6da467ba1ea26f42e792cb82aef03ed",
+  "source_recorded_at": "2026-10-28T07:30:44.410429+00:00",
+  "frozen_bank_sha256": "f07fb885f1f300849fee83a6c3e1cae400d507a5b9e4af085aac92c6361b6bb7",
+  "schema_sha256": "02f49c4b9abaafe1ca12f9c8195e6805ef9f4bfd6b6360f8704aa5f62044b0f9",
+  "request_hash": "9c3165dd136da8c44a1d7a12f9e8efef634cda375fb015f3435373e4f8abe903",
+  "record_required": true,
+  "initial_input_chars": 10593,
+  "initial_input_utf8_bytes": 12827,
+  "initial_payload_utf8_bytes": 14024,
+  "limits": {
+    "http_requests": 3,
+    "oauth_requests": 1,
+    "inference_requests": 2,
+    "input_chars_per_request": 16000,
+    "input_utf8_bytes_per_request": 48000,
+    "payload_bytes_per_request": 64000,
+    "output_tokens_per_request": 1024,
+    "total_output_tokens": 2048,
+    "total_generation_timeout_s": 30
+  },
+  "endpoints": [
+    "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+    "https://api.giga.chat/v1/chat/completions"
+  ],
+  "scope": "GIGACHAT_API_PERS",
+  "database_access": false,
+  "ok": true,
+  "http_requests": 2,
+  "oauth_requests": 1,
+  "inference_requests": 1,
+  "usage_unknown": false,
+  "observed_prompt_tokens": 3213,
+  "observed_completion_tokens": 506,
+  "actual_cost_rub": null
+}
