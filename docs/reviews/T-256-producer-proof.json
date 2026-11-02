@@ -1,5 +1,5 @@
 {
-  "status": "targeted_producer_checkpoint_not_full_acceptance",
+  "status": "local_full_green_pending_parent_review_ci",
   "scope": "T256 API1.5.29, noDDL/noLLM/no monetary writes",
   "functional": {
     "passed": 91,
@@ -217,6 +217,39 @@
     "Functional coverage uses Python tracer; 91 tests incl exact stored money fixture 10999999999999.67.",
     "GET /api/settings remains legacy generic map; typed PATCH validates new weights, invalid stored config is explicit unknown in CX endpoint.",
     "EXPLAIN ANALYZE executed only SELECT in READ ONLY transaction after native measurement.",
-    "Full suite/composed CI and T255/T257 UI not yet complete."
-  ]
+    "Full make test on frozen1968631 exited0; parent/composed CI and T255/T257 remain pending. No live LLM calls."
+  ],
+  "full_checks": {
+    "source_commit": "1968631",
+    "make_test_exit": 0,
+    "backend_unit": {
+      "passed": 2024,
+      "skipped": 18,
+      "seconds": 66.49
+    },
+    "backend_integration": {
+      "passed": 672,
+      "skipped": 4,
+      "seconds": 3476.63
+    },
+    "scenarios": {
+      "passed": 43,
+      "skipped": 2,
+      "seconds": 247.43
+    },
+    "compliance": {
+      "passed": 31,
+      "seconds": 123.04
+    },
+    "frontend": {
+      "passed": 429,
+      "files": 61
+    },
+    "tgbot": {
+      "passed": 43,
+      "seconds": 8
+    },
+    "log": "/tmp/t256-full-make-test.log",
+    "make_lint": "green 429frontend/505format/311mypy/bot12format5mypy/drift194"
+  }
 }
