@@ -5,7 +5,7 @@ import { Badge, Empty, ErrorBox, SkeletonRows } from '@/shared/ui'
 
 type Row = { followup_id?: number; signal_id?: number; incident_id?: number | null; wake_sim?: string; reason?: string; status?: string; text?: string }
 
-export function DeferredList({ runId, onOpenSignal }: { runId: number | undefined; onOpenSignal: (id: number) => void }) {
+export function DeferredList({ runId, onOpenSignal }: { runId: string | number | undefined; onOpenSignal: (id: number) => void }) {
   const { t } = useTranslation()
   const q = useDeferred({ run_id: runId, limit: 100 })
   const items = (q.data?.items ?? []) as Row[]

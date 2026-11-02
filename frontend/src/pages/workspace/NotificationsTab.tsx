@@ -10,7 +10,7 @@ import { Badge, Empty, ErrorBox, SkeletonRows } from '@/shared/ui'
 
 const TYPES = ['all', 'client', 'team', 'public', 'cx'] as const
 
-export function NotificationsTab({ runId }: { runId: number | undefined }) {
+export function NotificationsTab({ runId }: { runId: string | number | undefined }) {
   const { t } = useTranslation()
   const [type, setType] = useState<(typeof TYPES)[number]>('all')
   const [open, setOpen] = useState<number | null>(null)

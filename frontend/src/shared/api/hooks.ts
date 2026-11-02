@@ -324,16 +324,16 @@ export function useManualReply() {
 
 // ---- B08/B14: карта, метрики, уведомления ----
 export type MapLayer = 'signals' | 'critical' | 'incidents' | 'churn'
-export const useMapHeat = (layer: MapLayer, windowHours: number, runId: 'all' | 'current' = 'current') =>
+export const useMapHeat = (layer: MapLayer, windowHours: number, runId: string = 'current') =>
   useQuery({
     queryKey: ['map', 'heat', layer, windowHours, runId],
     queryFn: () => api<RegionHeat[]>('/api/map/heat', { query: { layer, window_hours: windowHours, run_id: runId } }),
     refetchInterval: 10_000,
     placeholderData: (p) => p,
   })
-export const useMapZones = (runId: 'all' | 'current' = 'current') =>
+export const useMapZones = (runId: string = 'current') =>
   useQuery({ queryKey: ['map', 'zones', runId], queryFn: () => api<MapZonesResponse>('/api/map/zones', { query: { run_id: runId } }), refetchInterval: 15_000 })
-export const useMapCities = (code: string | null, windowHours: number, runId: 'all' | 'current' = 'current') =>
+export const useMapCities = (code: string | null, windowHours: number, runId: string = 'current') =>
   useQuery({
     queryKey: ['map', 'cities', code, windowHours, runId],
     queryFn: () => api<CityHeat[]>(`/api/map/regions/${code}/cities`, { query: { window_hours: windowHours, run_id: runId } }),
@@ -384,7 +384,7 @@ export const useEscalations = (query: Query) =>
   })
 export const useEscalation = (id: number | null) =>
   useQuery({ queryKey: ['escalations', 'one', id], queryFn: () => api<EscalationDetail>(`/api/escalations/${id}`), enabled: id !== null })
-export const useTeamsLoad = (runId: 'all' | 'current' = 'current') =>
+export const useTeamsLoad = (runId: string = 'current') =>
   useQuery({ queryKey: ['teams', 'load', runId], queryFn: () => api<TeamLoad[]>('/api/teams/load', { query: { run_id: runId } }), refetchInterval: 8_000 })
 
 function invalidateTicketing(qc: ReturnType<typeof useQueryClient>) {

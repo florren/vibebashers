@@ -29,7 +29,7 @@ const COL_LABEL: Record<string, string> = {
   done: 'Решены',
 }
 
-export function IncidentsBoard({ runId }: { runId: number | undefined }) {
+export function IncidentsBoard({ runId }: { runId: string | number | undefined }) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<'board' | 'table'>('board')
   const [team, setTeam] = useState('')

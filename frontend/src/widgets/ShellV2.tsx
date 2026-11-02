@@ -26,6 +26,7 @@ export function ShellV2({ footer }: { footer: ReactNode }) {
   const mobile = useMobileLayout(), small = narrow || mobile
   const { role, demonstrator } = useViewPreset()
   const [navigationOpen, setNavigationOpen] = useState(false), [help, setHelp] = useState(false)
+  const overviewRoute = location.pathname === '/overview' || new URLSearchParams(location.search).has('run_id')
   const cabinetRoute = location.pathname === '/cabinet' || location.pathname.startsWith('/cabinet/')
   const routeParams = new URLSearchParams(location.search)
   const undoScope = cabinetRoute ? JSON.stringify([location.pathname, routeParams.get('run_id'), routeParams.get('product_line'), routeParams.get('period')]) : location.key
@@ -52,7 +53,7 @@ export function ShellV2({ footer }: { footer: ReactNode }) {
     <div className="flex min-h-0 min-w-0 flex-1">
       {!small && <aside className="flex min-h-0 w-64 shrink-0 flex-col border-r border-line bg-surface">{nav()}</aside>}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {!(location.pathname === '/cabinet' || location.pathname.startsWith('/cabinet/')) && <PriorityStrip />}{!(location.pathname === '/cabinet' || location.pathname.startsWith('/cabinet/')) && <NightDigest />}
+        {!cabinetRoute && !overviewRoute && <PriorityStrip />}{!cabinetRoute && !overviewRoute && <NightDigest />}
         <main className="app-content min-h-0 min-w-0 flex-1 overflow-auto"><Outlet /></main>
       </div>
     </div>

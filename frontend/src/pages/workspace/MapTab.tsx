@@ -18,14 +18,16 @@ function heatColor(intensity: number): string {
 }
 const ZONE_FILL: Record<string, string> = { green: '#8fcf9a', yellow: '#f2c94c', red: '#e2574c' }
 
-export function MapTab() {
+export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope?: string; onRunScopeChange?: (value: string) => void }) {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const mode: Mode = params.get('map_mode') === 'zones' ? 'zones' : 'heat'
   const setMode = (mode: Mode) => setParams(p => { if (mode === 'zones') p.set('map_mode', mode); else p.delete('map_mode'); return p }, { replace: true })
   const [layer, setLayer] = useState<MapLayer>('signals')
   const [win, setWin] = useState(24 * 7)
-  const [runScope, setRunScope] = useState<'current' | 'all'>('all')
+  const [localScope, setLocalScope] = useState('all')
+  const runScope = externalScope ?? localScope
+  const setRunScope = (value: string) => { if (externalScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setLocalScope(value) }
   const [selected, setSelected] = useState<string | null>(null)
   const geo = RUSSIA
 
@@ -61,7 +63,7 @@ export function MapTab() {
             <Seg value={mode} onChange={setMode} items={[{ id: 'heat', label: t('map.mode.heat') }, { id: 'zones', label: t('map.mode.zones') }]} />
             {mode === 'heat' && <Seg value={layer} onChange={setLayer} items={LAYERS.map((l) => ({ id: l, label: t(`map.layer.${l}`) }))} />}
             {mode === 'heat' && <Seg value={String(win)} onChange={(v) => setWin(Number(v))} items={WINDOWS.map((w) => ({ id: String(w), label: t(`map.window.${w}`) }))} />}
-            <Seg value={runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }]} />
+            <Seg value={runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }, ...(runScope !== 'all' && runScope !== 'current' ? [{ id: runScope, label: t('overviewUi.selectedRun', { run: runScope }) }] : [])]} />
           </div>
         }
       >
