@@ -396,9 +396,10 @@ class GigaChatProvider:
                 remaining = max(0.0, timeout_s - (time.perf_counter() - t0))
                 r, key = await self._with_keys(payload, profile, remaining, total_usage)
             except ProviderError as exc:
-                # Новый wire не подтвердил usage: initial0 или прежний partial
-                # не являются общим расходом. Per-key known observations сохранены.
-                exc.usage = None
+                # Только pick/admission ДО _chat доказывает отсутствие HTTP и0tokens.
+                # Начавшийся wire без validated usage остаётся unknown; per-key
+                # прежние known observations при этом сохранены.
+                exc.usage = total_usage if total_usage.request_count == 0 else None
                 exc.request_count = total_usage.request_count
                 raise
             try:

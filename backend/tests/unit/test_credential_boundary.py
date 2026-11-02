@@ -656,3 +656,41 @@ async def test_error_attempt_count_is_separate_from_unknown_tokens_and_never_cou
         MESSAGES, SCHEMA, LLMProfile(code="attempts", provider="gigachat", model="synthetic")
     )
     assert result.usage.request_count == 3
+
+
+def test_sdk_policy_is_local_and_preserves_existing_stricter_levels():
+    import logging
+
+    from app.llm.openai_compat import _SDK_LOGGERS, _enforce_sdk_logging
+
+    loggers = [logging.getLogger(name) for name in _SDK_LOGGERS]
+    previous = [logger.level for logger in loggers]
+    root = logging.getLogger().level
+    httpx_level = logging.getLogger("httpx").level
+    try:
+        for logger in loggers:
+            logger.setLevel(logging.DEBUG)
+        _enforce_sdk_logging()
+        assert all(logger.getEffectiveLevel() >= logging.WARNING for logger in loggers)
+        for logger in loggers:
+            logger.setLevel(logging.ERROR)
+        _enforce_sdk_logging()
+        assert all(logger.level == logging.ERROR for logger in loggers)
+        assert logging.getLogger().level == root and logging.getLogger("httpx").level == httpx_level
+    finally:
+        for logger, level in zip(loggers, previous, strict=True):
+            logger.setLevel(level)
+
+
+async def test_pool_admission_no_http_has_proven_zero_usage():
+    provider = giga(lambda request: pytest.fail("cooldown admission must not do HTTP"))
+    provider.pool.keys[0].cooldown_until = time.monotonic() + 60
+    try:
+        with pytest.raises(ProviderError) as refused:
+            await provider.complete_structured(
+                MESSAGES, SCHEMA, LLMProfile(code="cooldown", provider="gigachat", model="synthetic"), timeout_s=1
+            )
+        assert refused.value.kind == "rate_limit" and refused.value.request_count == 0
+        assert refused.value.usage is not None and refused.value.usage.total_tokens == 0
+    finally:
+        await provider.aclose()
