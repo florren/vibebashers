@@ -75,7 +75,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         <GlobalSearch compact />
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
+      <div className={clsx('flex items-center justify-between px-3 pb-2 text-xs text-muted', v2 ? 'flex-wrap gap-x-2 gap-y-0 leading-tight' : 'gap-2')}>
         <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}{v2 && sim?.phase ? ` · ${t(`sim.phase.${sim.phase}`)}` : ''}{v2 && sim?.current_run_id != null ? ` · #${sim.current_run_id}` : ''}</span>
         <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{v2 && wsStatus === 'open' ? `${t('shell.live')} · ` : ''}{t(`sim.status.${runStatus ?? 'none'}`)}</span>
       </div>
