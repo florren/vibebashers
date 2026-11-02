@@ -175,6 +175,7 @@ class DbActivityLog(Base):
     op: Mapped[str] = mapped_column(Text, nullable=False)
     pk: Mapped[str] = mapped_column(Text, nullable=False)
     ts: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     summary: Mapped[Optional[dict]] = mapped_column(JSONB)
 
 
