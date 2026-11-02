@@ -107,3 +107,29 @@ implicit Mock snapshot, поэтому ReplayProvider честно получа�
 (как уже принятые08/12); responses/hash/messages кассет и assertions не менялись.
 Affected09passed7.42s; compliance31passed115.37s. Полный scenarios union43/2skip
 покрывает прежние42 и исправленный09, без замены mock на replay в отчёте.
+
+## Финальная локальная ревизия
+
+На source4211db7 проведён полный scope всех backend/frontend фаз как
+source-qualified union:1961backend passed/24skipped,225frontend passed. Все
+runtime файлы неизменны между полным прогоном и fixture-only corrections.
+Нет утверждения, что один final-head make test завершился exit0: required CI
+родитель выполнит на опубликованной композиции. Final make lint exit0 (Ruff413,
+mypy275, drift192/192), contracts45/162, licenses550, alembic check zero drift;
+main/personal builds green. Changed executable coverage776/815=95.21%:54targets
+80.90s + supplemental actual API worker/CLI trace; минимум по task-owned файлам80%.
+
+Default lite1000 proof:1168signals (800+162+151+53hard+2noise),24000ops,
+180history rows,180/180+480/480cells, hard0.25. Fresh builder twice == persisted180;
+tail313 exact0%, unmapped855 явны. CSI84=69old+15new: matrix480 не fakeCSIcount.
+Повтор seed и штатный nativePG16 restore сохраняют measured history/counts.
+Финальный dump+штатные sidecars скопированы в новый immutable scratch directory;
+точный path/SHA/native header/source SHA и scope0014 в default-lite-proof.json.
+Ни original/canonical artifacts, ни production не изменялись.
+
+Loss null сейчас обслуживает typed internal history reader/aggregate; существующие
+cabinet endpoints ещё501 и не имеют declared monthly loss DTO. Public history
+producer/nullable display T241 потребует своего forward contract/проверки; здесь
+новый HTTP import/history endpoint не выдумывался. Actual linked fault-months0 —
+честная граница входных причинных данных; explicit spike mechanism протестирован,
+не превращён в вымышленные причинные labels.
