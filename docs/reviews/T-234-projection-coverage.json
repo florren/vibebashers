@@ -1,0 +1,21 @@
+{
+  "source": "0364c55194d317b192be9440ec4fe22b3351a82f",
+  "scope": "49targeted unit/actualPG; corrected module source selector",
+  "blob": "a609ea241bd57bb343148a76aa038de25e872df9",
+  "file_summary": {
+    "covered_lines": 124,
+    "num_statements": 128,
+    "percent_covered": 96.875,
+    "percent_covered_display": "97",
+    "missing_lines": 4,
+    "excluded_lines": 0,
+    "percent_statements_covered": 96.875,
+    "percent_statements_covered_display": "97"
+  },
+  "added_executable": {
+    "covered": 0,
+    "total": 0,
+    "missing": [],
+    "interpretation": "SQL literal replacement adds no Python executable statements; SQL behavior is covered by actual PostgreSQL plan-budget regression, not a 100% added-line claim."
+  }
+}

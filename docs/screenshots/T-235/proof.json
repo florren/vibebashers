@@ -1,0 +1,851 @@
+{
+  "source": "ae7141d19d56d7912f12a3715b83c9a491c28088",
+  "scope": "actual production UI/API + explicitly synthetic scratch PG; SQL readonly, no actors, no route mocks, no real LLM/Telegram",
+  "results": [
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "searchMatch": true,
+      "beforeCenterAfter": true,
+      "jsonDownload": true,
+      "markdownDownload": true,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    }
+  ],
+  "tableCount": 85,
+  "before": {
+    "incident": "INC-000151",
+    "signal": "SIG-000801",
+    "tables": {
+      "public.accounts": [
+        352,
+        "4f7934cbe97c9f2586351a2dbedbbef6"
+      ],
+      "public.agent_runs": [
+        1,
+        "f0d1fb3f8cc567866ccdb490017e5c44"
+      ],
+      "public.agent_steps": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.alembic_version": [
+        1,
+        "55e013c0adc679f6245097b5efc92142"
+      ],
+      "public.audio_sessions": [
+        2,
+        "88901dc90e7ae5cdb48c22bec4bb3e45"
+      ],
+      "public.bench_cases": [
+        859,
+        "8fbeb13619d2e7361ab292c33cf81a1d"
+      ],
+      "public.bench_datasets": [
+        6,
+        "49b734f68e1a8d2d10a34d44f134660d"
+      ],
+      "public.bench_results": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.bench_runs": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.branch_network_history": [
+        1068,
+        "ae91a2c5e63beb5d2c85440f3061fdc8"
+      ],
+      "public.branches": [
+        240,
+        "3edc4f527f77b5d148756a7332a73c78"
+      ],
+      "public.business_rules": [
+        5,
+        "a1bce40088b1a36480ee82b2965610ee"
+      ],
+      "public.channels": [
+        12,
+        "888e491f047eeae253fc46c1b7558718"
+      ],
+      "public.churn_events": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.cities": [
+        1121,
+        "bf6a28a256ee9a8cbe261f70599bba11"
+      ],
+      "public.client_products": [
+        406,
+        "5be7dc690a000577508cec90ec93032c"
+      ],
+      "public.client_reactions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.client_states": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.clients": [
+        200,
+        "7745d44992c3126ee3ca22ba0e71e03c"
+      ],
+      "public.compliance_alerts": [
+        2,
+        "ac1e17eb898d1d513b731bee808e8391"
+      ],
+      "public.compliance_triggers": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.csi_responses": [
+        61,
+        "d321a14bda9c9fe128f9561039e2b9ea"
+      ],
+      "public.csi_visits_agg": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.db_activity_log": [
+        3767,
+        "3f379767691af4510b73d94a4ad82d41"
+      ],
+      "public.dcltv_rates": [
+        31,
+        "7500f338a517cbb4b1dd6c02577f5061"
+      ],
+      "public.demo_assets": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.economics_settings": [
+        1,
+        "3cd8af633ddc4b347fbeb8db133e19f6"
+      ],
+      "public.employees": [
+        1440,
+        "3f9266d04e9b78a7f288eb4d63838e31"
+      ],
+      "public.error_codes": [
+        25,
+        "490007e17c0afc209fe9b46db22b508b"
+      ],
+      "public.escalations": [
+        1,
+        "4ad9b62b18cd41c60d4f63c863b2658e"
+      ],
+      "public.external_posts": [
+        1,
+        "0d398834f887676dbd73a5ff1a3377dc"
+      ],
+      "public.external_replies": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.faults": [
+        37,
+        "87b5979ff48f0f5b3397daf5856b3fab"
+      ],
+      "public.federal_districts": [
+        8,
+        "fc04c3ee6b11e846a95e84872f336bbc"
+      ],
+      "public.financial_evidence": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.followups": [
+        1,
+        "25a201210bd8df3284e3ac404e1347f6"
+      ],
+      "public.gift_catalog": [
+        5,
+        "f1f424bae54aea79edcf61ef28824ca6"
+      ],
+      "public.hitl_feedback": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.hitl_feedback_processing": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.human_decisions": [
+        1,
+        "46c23d23df63e1302cb8036c5c29a780"
+      ],
+      "public.incident_artifacts": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.incident_economics": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.incident_signals": [
+        271,
+        "f57b6368836751701eb8209c5f0be44d"
+      ],
+      "public.incident_status_history": [
+        150,
+        "fa41ae9ec85e694c91e7354402faec39"
+      ],
+      "public.incidents": [
+        151,
+        "4e806844d209921f8de3f926fef3c62b"
+      ],
+      "public.ingest_messages": [
+        183,
+        "2cb2313b87f3051b03496e886387af6a"
+      ],
+      "public.ingest_sources": [
+        9,
+        "501c4ece416f5569f7b299df96d245c5"
+      ],
+      "public.ledger_entries": [
+        2,
+        "ce5c98d74afe6bbfb1cb258e8d30c246"
+      ],
+      "public.llm_api_keys": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.llm_cassettes": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.llm_profiles": [
+        8,
+        "a194842c0620398520dd3d887f1a2cb7"
+      ],
+      "public.misselling_patterns": [
+        8,
+        "ee6481d72198162067c90886612801fb"
+      ],
+      "public.notification_templates": [
+        389,
+        "9964a93cec9c8c137fd9a7affd45ad8b"
+      ],
+      "public.notifications": [
+        1,
+        "407bbbd9ab8eaa7ad46d273e1c8fca98"
+      ],
+      "public.operations": [
+        4801,
+        "aefa3457287827fcb4badf318cd7d960"
+      ],
+      "public.personal_chat_messages": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.personal_chat_sessions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.product_lines": [
+        15,
+        "a5d55187d23a2e97fe455ed463d73d48"
+      ],
+      "public.product_signal_history": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.products": [
+        4,
+        "24f374577b4795bf1f33e559d8a05f6f"
+      ],
+      "public.psychotypes": [
+        8,
+        "8919c0bba1021cfe3f52dfce731f460d"
+      ],
+      "public.regions": [
+        89,
+        "0a20b82bf7850136ff6e24e091e38d22"
+      ],
+      "public.routing_rules": [
+        40,
+        "c8b9959f56fbc7ed506b060f81d1870f"
+      ],
+      "public.rule_evaluations": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.scenarios": [
+        33,
+        "c97dae6c624557260f7611240d053999"
+      ],
+      "public.segment_psychotype_mix": [
+        36,
+        "97dc21794cbc4794f60e60786e4a428c"
+      ],
+      "public.segments": [
+        7,
+        "8a6a0b432ea80470415aed56bb3dc9b4"
+      ],
+      "public.service_scripts": [
+        2,
+        "a58c8cf3811e0bf9957d68beb076470a"
+      ],
+      "public.settings": [
+        5,
+        "30b0387145e0f60e19fce54353551ea2"
+      ],
+      "public.signal_types": [
+        10,
+        "6ab13beab7a1a235a8f0f92f57796a08"
+      ],
+      "public.signals": [
+        922,
+        "6254c51b6abd1ce174eb8609c0fbcf10"
+      ],
+      "public.sim_events": [
+        74,
+        "728267ab861755384c29b69ac566c58f"
+      ],
+      "public.sim_runs": [
+        3,
+        "ab56342adfb946c1af013d5f14888d44"
+      ],
+      "public.sim_state": [
+        1,
+        "8e68d8b03a1439f732a1a0678c665894"
+      ],
+      "public.sla_matrix": [
+        9,
+        "42765ccc29966181eb4fe970429b627e"
+      ],
+      "public.stt_metrics": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.system_logs": [
+        413,
+        "c862f318ad9d1962561e8e14ad8821c3"
+      ],
+      "public.systems": [
+        12,
+        "6c45c6415a9ee091ea571c2a5ea1eaf0"
+      ],
+      "public.tariffs": [
+        12,
+        "2458b73f377168e8ebab6293aa755b83"
+      ],
+      "public.tasks": [
+        1,
+        "b98802ee3b158b6d58d9284639075d33"
+      ],
+      "public.team_actions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.team_systems": [
+        12,
+        "7e0f24363092f24fd96e4848048f13cc"
+      ],
+      "public.teams": [
+        12,
+        "20282f8746ca4a3a163de1dd4291bc72"
+      ],
+      "public.transcripts": [
+        1,
+        "dd75a9dc6748be52188be3504878776f"
+      ],
+      "public.utterances": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ]
+    }
+  },
+  "after": {
+    "incident": "INC-000151",
+    "signal": "SIG-000801",
+    "tables": {
+      "public.accounts": [
+        352,
+        "4f7934cbe97c9f2586351a2dbedbbef6"
+      ],
+      "public.agent_runs": [
+        1,
+        "f0d1fb3f8cc567866ccdb490017e5c44"
+      ],
+      "public.agent_steps": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.alembic_version": [
+        1,
+        "55e013c0adc679f6245097b5efc92142"
+      ],
+      "public.audio_sessions": [
+        2,
+        "88901dc90e7ae5cdb48c22bec4bb3e45"
+      ],
+      "public.bench_cases": [
+        859,
+        "8fbeb13619d2e7361ab292c33cf81a1d"
+      ],
+      "public.bench_datasets": [
+        6,
+        "49b734f68e1a8d2d10a34d44f134660d"
+      ],
+      "public.bench_results": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.bench_runs": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.branch_network_history": [
+        1068,
+        "ae91a2c5e63beb5d2c85440f3061fdc8"
+      ],
+      "public.branches": [
+        240,
+        "3edc4f527f77b5d148756a7332a73c78"
+      ],
+      "public.business_rules": [
+        5,
+        "a1bce40088b1a36480ee82b2965610ee"
+      ],
+      "public.channels": [
+        12,
+        "888e491f047eeae253fc46c1b7558718"
+      ],
+      "public.churn_events": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.cities": [
+        1121,
+        "bf6a28a256ee9a8cbe261f70599bba11"
+      ],
+      "public.client_products": [
+        406,
+        "5be7dc690a000577508cec90ec93032c"
+      ],
+      "public.client_reactions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.client_states": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.clients": [
+        200,
+        "7745d44992c3126ee3ca22ba0e71e03c"
+      ],
+      "public.compliance_alerts": [
+        2,
+        "ac1e17eb898d1d513b731bee808e8391"
+      ],
+      "public.compliance_triggers": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.csi_responses": [
+        61,
+        "d321a14bda9c9fe128f9561039e2b9ea"
+      ],
+      "public.csi_visits_agg": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.db_activity_log": [
+        3767,
+        "3f379767691af4510b73d94a4ad82d41"
+      ],
+      "public.dcltv_rates": [
+        31,
+        "7500f338a517cbb4b1dd6c02577f5061"
+      ],
+      "public.demo_assets": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.economics_settings": [
+        1,
+        "3cd8af633ddc4b347fbeb8db133e19f6"
+      ],
+      "public.employees": [
+        1440,
+        "3f9266d04e9b78a7f288eb4d63838e31"
+      ],
+      "public.error_codes": [
+        25,
+        "490007e17c0afc209fe9b46db22b508b"
+      ],
+      "public.escalations": [
+        1,
+        "4ad9b62b18cd41c60d4f63c863b2658e"
+      ],
+      "public.external_posts": [
+        1,
+        "0d398834f887676dbd73a5ff1a3377dc"
+      ],
+      "public.external_replies": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.faults": [
+        37,
+        "87b5979ff48f0f5b3397daf5856b3fab"
+      ],
+      "public.federal_districts": [
+        8,
+        "fc04c3ee6b11e846a95e84872f336bbc"
+      ],
+      "public.financial_evidence": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.followups": [
+        1,
+        "25a201210bd8df3284e3ac404e1347f6"
+      ],
+      "public.gift_catalog": [
+        5,
+        "f1f424bae54aea79edcf61ef28824ca6"
+      ],
+      "public.hitl_feedback": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.hitl_feedback_processing": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.human_decisions": [
+        1,
+        "46c23d23df63e1302cb8036c5c29a780"
+      ],
+      "public.incident_artifacts": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.incident_economics": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.incident_signals": [
+        271,
+        "f57b6368836751701eb8209c5f0be44d"
+      ],
+      "public.incident_status_history": [
+        150,
+        "fa41ae9ec85e694c91e7354402faec39"
+      ],
+      "public.incidents": [
+        151,
+        "4e806844d209921f8de3f926fef3c62b"
+      ],
+      "public.ingest_messages": [
+        183,
+        "2cb2313b87f3051b03496e886387af6a"
+      ],
+      "public.ingest_sources": [
+        9,
+        "501c4ece416f5569f7b299df96d245c5"
+      ],
+      "public.ledger_entries": [
+        2,
+        "ce5c98d74afe6bbfb1cb258e8d30c246"
+      ],
+      "public.llm_api_keys": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.llm_cassettes": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.llm_profiles": [
+        8,
+        "a194842c0620398520dd3d887f1a2cb7"
+      ],
+      "public.misselling_patterns": [
+        8,
+        "ee6481d72198162067c90886612801fb"
+      ],
+      "public.notification_templates": [
+        389,
+        "9964a93cec9c8c137fd9a7affd45ad8b"
+      ],
+      "public.notifications": [
+        1,
+        "407bbbd9ab8eaa7ad46d273e1c8fca98"
+      ],
+      "public.operations": [
+        4801,
+        "aefa3457287827fcb4badf318cd7d960"
+      ],
+      "public.personal_chat_messages": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.personal_chat_sessions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.product_lines": [
+        15,
+        "a5d55187d23a2e97fe455ed463d73d48"
+      ],
+      "public.product_signal_history": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.products": [
+        4,
+        "24f374577b4795bf1f33e559d8a05f6f"
+      ],
+      "public.psychotypes": [
+        8,
+        "8919c0bba1021cfe3f52dfce731f460d"
+      ],
+      "public.regions": [
+        89,
+        "0a20b82bf7850136ff6e24e091e38d22"
+      ],
+      "public.routing_rules": [
+        40,
+        "c8b9959f56fbc7ed506b060f81d1870f"
+      ],
+      "public.rule_evaluations": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.scenarios": [
+        33,
+        "c97dae6c624557260f7611240d053999"
+      ],
+      "public.segment_psychotype_mix": [
+        36,
+        "97dc21794cbc4794f60e60786e4a428c"
+      ],
+      "public.segments": [
+        7,
+        "8a6a0b432ea80470415aed56bb3dc9b4"
+      ],
+      "public.service_scripts": [
+        2,
+        "a58c8cf3811e0bf9957d68beb076470a"
+      ],
+      "public.settings": [
+        5,
+        "30b0387145e0f60e19fce54353551ea2"
+      ],
+      "public.signal_types": [
+        10,
+        "6ab13beab7a1a235a8f0f92f57796a08"
+      ],
+      "public.signals": [
+        922,
+        "6254c51b6abd1ce174eb8609c0fbcf10"
+      ],
+      "public.sim_events": [
+        74,
+        "728267ab861755384c29b69ac566c58f"
+      ],
+      "public.sim_runs": [
+        3,
+        "ab56342adfb946c1af013d5f14888d44"
+      ],
+      "public.sim_state": [
+        1,
+        "8e68d8b03a1439f732a1a0678c665894"
+      ],
+      "public.sla_matrix": [
+        9,
+        "42765ccc29966181eb4fe970429b627e"
+      ],
+      "public.stt_metrics": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.system_logs": [
+        413,
+        "c862f318ad9d1962561e8e14ad8821c3"
+      ],
+      "public.systems": [
+        12,
+        "6c45c6415a9ee091ea571c2a5ea1eaf0"
+      ],
+      "public.tariffs": [
+        12,
+        "2458b73f377168e8ebab6293aa755b83"
+      ],
+      "public.tasks": [
+        1,
+        "b98802ee3b158b6d58d9284639075d33"
+      ],
+      "public.team_actions": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ],
+      "public.team_systems": [
+        12,
+        "7e0f24363092f24fd96e4848048f13cc"
+      ],
+      "public.teams": [
+        12,
+        "20282f8746ca4a3a163de1dd4291bc72"
+      ],
+      "public.transcripts": [
+        1,
+        "dd75a9dc6748be52188be3504878776f"
+      ],
+      "public.utterances": [
+        0,
+        "d41d8cd98f00b204e9800998ecf8427e"
+      ]
+    }
+  },
+  "backend_external_attempts": 0,
+  "backend_llm_structured_attempts": 0
+}

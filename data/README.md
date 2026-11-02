@@ -149,3 +149,8 @@ correlation_id. Namespace CX Pulse зафиксирован как
 Повтор с тем же seed/ID после очистки даёт те же business payload/time/correlation;
 другие fault/run не смешиваются. DB real_time и generated event IDs не выдаются
 за детерминированные временные значения.
+
+
+### CSI corpus csi_v1 (T-247)
+
+`corpus/csi_v1/` — 300 синтетических жалоб, 2400 визитов и fixture roster без ФИО/контактов; параметры `csi_params.yaml`. JSON/XLSX для штатного T-246 import лежат отдельно в `import/csi/csi_v1/`. Генерация не обращается к БД или сети; опциональный `--check-db` только читает собственную тестовую БД и проверяет fixture bindings. Распределения задают демонстрационные зависимости, не runtime policy. Знаменатели пока не загружаются в глобальную таблицу без provenance: ограничения и команды в `corpus/csi_v1/README.md`.
