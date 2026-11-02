@@ -44,7 +44,6 @@ pytest backend/tests/unit/test_clock.py backend/tests/integration/test_determini
 ```
 
 ## Отчёт субагента
-
 ### Ревизия: сохраняемый RNG текста
 
 Ветка `codex/T-031-text-rng-state`: private RNG `TextGen` заменён общим `SimRng`
