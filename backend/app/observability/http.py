@@ -17,11 +17,20 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.logging import get_logger
+from app.observability.redaction import redact_text
 
 log = get_logger("http")
 
 SLOW_MS = 2000
 ERRORS_KEEP = 500
+
+
+def safe_public_path(path: str) -> str:
+    """Токен трекинга — секрет доступа, не часть диагностического журнала."""
+    for prefix in ("/api/public/track/", "/track/"):
+        if path.startswith(prefix):
+            return prefix + "{token}"
+    return path
 
 
 class HttpStats:
@@ -36,6 +45,7 @@ class HttpStats:
     def record(
         self, method: str, route: str, status: int, ms: int, *, path: str, request_id: str, error: str | None
     ) -> None:
+        route, path = safe_public_path(route), safe_public_path(path)
         key = (method, route)
         self.by_route_status[(method, route, status)] += 1
         self.latency_sum_ms[key] += ms
@@ -52,7 +62,7 @@ class HttpStats:
                     "path": path,
                     "status": status,
                     "latency_ms": ms,
-                    "error": error,
+                    "error": redact_text(error) if error is not None else None,
                 }
             )
 
@@ -103,23 +113,28 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         t0 = time.perf_counter()
         status = 500
         error: str | None = None
+        path = safe_public_path(request.url.path)
         try:
             response = await call_next(request)
+            if path != request.url.path or request.url.path == "/api/public/claim":
+                response.headers["Cache-Control"] = "no-store"
+                response.headers["Referrer-Policy"] = "no-referrer"
+                response.headers["X-Robots-Tag"] = "noindex, nofollow"
             status = response.status_code
             return response
         except Exception as exc:
-            error = f"{type(exc).__name__}: {str(exc)[:200]}"
+            error = type(exc).__name__ if path != request.url.path else f"{type(exc).__name__}: {str(exc)[:200]}"
             raise
         finally:
             ms = int((time.perf_counter() - t0) * 1000)
             route = _route_template(request)
-            stats.record(request.method, route, status, ms, path=request.url.path, request_id=rid, error=error)
+            stats.record(request.method, route, status, ms, path=path, request_id=rid, error=error)
             if (status >= 500 and status != 501) or error:
                 log.error(
                     "http_request",
                     method=request.method,
                     route=route,
-                    path=request.url.path,
+                    path=path,
                     status=status,
                     latency_ms=ms,
                     error=error,
@@ -134,7 +149,7 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
                     "http_request",
                     method=request.method,
                     route=route,
-                    path=request.url.path,
+                    path=path,
                     status=status,
                     latency_ms=ms,
                     slow=ms > SLOW_MS,

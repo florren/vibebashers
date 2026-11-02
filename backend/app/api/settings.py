@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from functools import partial
 from typing import Any, Literal
 
 from fastapi import APIRouter, Request, Response
@@ -13,6 +14,7 @@ from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.errors import Problem
 from app.llm import secrets as sec
+from app.llm.budget import load_openrouter_budget
 from app.llm.openai_compat import OpenAICompatProvider
 
 router = APIRouter(tags=["settings"])
@@ -333,6 +335,7 @@ async def _refresh_openai_balances(items: list[dict[str, Any]]) -> bool:
             secret,
             s.openrouter_base_url,
             budget_usd=s.openrouter_budget_usd,
+            budget_loader=partial(load_openrouter_budget, s.openrouter_budget_usd),
             http_referer=f"http://localhost:{s.app_port}",
         )
         try:
@@ -395,6 +398,7 @@ async def _with_openrouter_env_key(items: list[dict[str, Any]]) -> list[dict[str
             secret,
             s.openrouter_base_url,
             budget_usd=s.openrouter_budget_usd,
+            budget_loader=partial(load_openrouter_budget, s.openrouter_budget_usd),
             http_referer=f"http://localhost:{s.app_port}",
         )
         try:

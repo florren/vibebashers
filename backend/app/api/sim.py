@@ -5,15 +5,20 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import tempfile
+from collections.abc import Iterator
 from typing import Any, Literal
 
 import psycopg
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.db.session import psycopg_dsn
 from app.errors import NotImplementedYet
 from app.sim import baseline as baseline_svc
+from app.sim import run_summary
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
 
@@ -176,24 +181,24 @@ async def get_sim_runs_current(request: Request) -> Any:
     return run
 
 
-def _numeric_diff(a: dict[str, Any], b: dict[str, Any]) -> dict[str, float]:
-    diff: dict[str, float] = {}
-    keys = set(a) | set(b)
-    for key in keys:
-        va, vb = a.get(key), b.get(key)
-        if isinstance(va, (int, float)) and isinstance(vb, (int, float)) and not isinstance(va, bool):
-            diff[key] = float(vb) - float(va)
-    return diff
+_numeric_diff = run_summary.numeric_diff
 
 
 @router.get("/api/sim/runs/compare", summary="Сравнение двух запусков по метрикам 14.1/14.4 и расходу токенов")
 async def get_sim_runs_compare(a: int, b: int) -> Any:
-    async with await _conn() as conn:
+    async with await _conn() as conn, conn.transaction():
+        await conn.execute("set transaction isolation level repeatable read read only")
         left = await run_svc.get_run(conn, a)
         right = await run_svc.get_run(conn, b)
-    if left is None or right is None:
-        raise HTTPException(status_code=404, detail="запуск не найден")
-    return {"a": left, "b": right, "diff": _numeric_diff(left.get("counters") or {}, right.get("counters") or {})}
+        if left is None or right is None:
+            raise HTTPException(status_code=404, detail="запуск не найден")
+        for run in (left, right):
+            if (
+                not isinstance(run.get("summary"), dict)
+                or run["summary"].get("summary_version") != run_summary.SUMMARY_VERSION
+            ):
+                run["summary"] = await run_summary.build_summary(conn, int(run["id"]))
+    return {"a": left, "b": right, "diff": _numeric_diff(left["summary"], right["summary"])}
 
 
 @router.get("/api/sim/runs/{id}", summary="Запуск: параметры, счётчики, итоговые метрики")
@@ -235,8 +240,38 @@ async def post_sim_runs_id_archive(request: Request) -> Any:
 
 
 @router.get("/api/sim/runs/{id}/export", summary="Экспорт запуска (JSON с summary и агрегатами или CSV событий)")
-async def get_sim_runs_id_export(request: Request) -> Any:
-    raise NotImplementedYet("T-031")
+async def get_sim_runs_id_export(id: int, format: Literal["json", "csv"] = "json") -> Any:  # noqa: A002
+    async with await _conn() as conn, conn.transaction():
+        await conn.execute("set transaction isolation level repeatable read read only")
+        if await run_svc.get_run(conn, id) is None:
+            raise HTTPException(status_code=404, detail="запуск не найден")
+        if format == "json":
+            out = await run_summary.export_json(conn, id)
+            return JSONResponse(
+                jsonable_encoder(out), headers={"Content-Disposition": f'attachment; filename="run-{id}.json"'}
+            )
+        # Буфер до отправки заголовков: единый snapshot, ограниченная RAM, курсор закрыт до disconnect.
+        spool = tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode="w+", encoding="utf-8", newline="")
+        try:
+            async for chunk in run_summary.csv_events(conn, id):
+                spool.write(chunk)
+            spool.seek(0)
+        except BaseException:
+            spool.close()
+            raise
+
+    def chunks() -> Iterator[str]:
+        try:
+            while chunk := spool.read(64 * 1024):
+                yield chunk
+        finally:
+            spool.close()
+
+    return StreamingResponse(
+        chunks(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="run-{id}.csv"'},
+    )
 
 
 @router.get(

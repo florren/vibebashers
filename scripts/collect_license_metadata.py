@@ -31,6 +31,7 @@ classes = {
 }
 aliases = {
     "Apache Software License": "Apache-2.0",
+    "Apache License, Version 2.0": "Apache-2.0",
     "PSFL": "PSF-2.0",
     "MIT license": "MIT",
     "MIT License": "MIT",

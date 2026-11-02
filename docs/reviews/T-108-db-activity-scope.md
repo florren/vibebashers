@@ -9,3 +9,9 @@ DB: 0011 добавляет nullable db_activity_log.run_id и индекс (run
 Зависимости интеграции: T-067 / PR #152 (1.5.12) и T-091 (1.5.13) pending review; этот diff от main 3c1c12c не отменяет их input bounds/429/Client360 RunId. При merge сохранить оба предшествующих diff и итоговую версию ≥1.5.14. DB migration number0011 согласуется с интегратором.
 
 Merge запрещён до human review контрактов. API только читает; никаких arbitrary SQL, LLM, уведомлений или поддельных audit INSERT.
+
+## Согласование и интеграция 02.11.2026
+
+Пользователь подтвердил контракт PR164 после зелёногоCI. Обычный merge main d2a4026 сохраняет Compare5000/20RPM, Client360scope, TraceGraph и общуюверсиюAPI1.5.16. В Engine одновременно доступны DB и Compare, их самостоятельныевкладки скрывают списокAR; WSruns инвалидирует иdb,иtrace. Миграция0011 сохранена. В конфликтеbaselinefixture принят dynamicAlembichead +SimRunscommentregression изPR174; старый dashboardSQL не вернуливместо актуального analytics.dashboard.
+
+После composition:196frontend, Ruff359/mypy255, drift192/192,140targetunit4.61s и14PGDB/Trace/Compare97.09s green. Первый lint дошёлдоdrift и остановился из-за отсутствовавшегоopenai вcanonicalvenv; sharedvenv не менялся, использован готовыйSDKvenv, drift+targets повтореныуспешно. ExactnewheadCI обязателенпередmerge.

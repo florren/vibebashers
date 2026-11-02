@@ -225,8 +225,8 @@ async def _template_row(
     )
     if not row:
         row = await ctx.fetchone(
-            "select subject, body from notification_templates where code = %s and lang = %s order by (channel_code = 'chat') desc, segment_code nulls last limit 1",
-            (code, lang),
+            "select subject, body from notification_templates where code = %s and (segment_code = %s or segment_code is null) and lang = %s order by (channel_code = 'chat') desc, segment_code nulls last limit 1",
+            (code, segment, lang),
         )
     return row
 

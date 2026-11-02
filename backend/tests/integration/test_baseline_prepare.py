@@ -7,8 +7,11 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from psycopg import sql
 
+from app.db.models import SimRuns
 from app.sim import baseline
 from tests.helpers import dsn
 
@@ -44,7 +47,12 @@ def test_prepare_and_restore_keep_source(seeded, tmp_path, monkeypatch):
                 repair = baseline._run_csi_repair(scratch, baseline._csi_repair_script())
                 assert repair["added"] == 0 and repair["after"] == repair["total"] == 480
             with psycopg.connect(scratch) as conn:
-                assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0011"
+                head = ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
+                assert conn.execute("select version_num from alembic_version").fetchone()[0] == head
+                assert (
+                    conn.execute("select obj_description('public.sim_runs'::regclass)").fetchone()[0]
+                    == SimRuns.__table__.comment
+                )
                 assert conn.execute("select count(*) from clients").fetchone()[0] == 200
             with psycopg.connect(scratch, autocommit=True) as conn:
                 conn.execute("update clients set display_name='rollback-marker' where id=(select min(id) from clients)")

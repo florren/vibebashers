@@ -169,3 +169,65 @@ def test_standalone_compare_persists_both_results_without_signal(configured):
             ([data["llm_run_id"], data["mock_run_id"]],),
         ).fetchall()
         assert rows == [("compare", "completed", None), ("compare", "completed", None)]
+
+
+@pytest.mark.parametrize("mode", ["mock", "replay", "fallback", "missing_model"])
+def test_standalone_trace_records_actual_provider_and_model(configured, mode):
+    """Настоящие Mock/Replay adapters; cassette transport только test-only, без live calls."""
+    from app.contracts.registry import deref
+    from app.llm.base import LLMProfile, ProviderError
+    from app.llm.failover import ProviderChain
+    from app.replay.provider import ReplayProvider
+
+    text = "Верните комиссию за перевод"
+    obj, _, _ = asyncio.run(
+        MockProvider().complete_structured([], deref("agent/classification"), MOCK_PROFILE, timeout_s=1)
+    )
+
+    class TestCassetteTransport:
+        def get(self, *args):
+            return {
+                "response": obj,
+                "model": "" if mode == "missing_model" else "recorded-test-model",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+            }
+
+    class UnavailableTransport:
+        name = "gigachat"
+
+        async def complete_structured(self, *args, **kwargs):
+            raise ProviderError("unavailable", "test-only unavailable transport")
+
+    profile = LLMProfile(code="requested", provider="gigachat", model="requested-test-model")
+    if mode == "mock":
+        chain, profile = mock_chain(), MOCK_PROFILE
+    elif mode in ("replay", "missing_model"):
+        chain = ProviderChain([ReplayProvider(TestCassetteTransport())])
+    else:
+        chain = ProviderChain([UnavailableTransport(), MockProvider()])
+    with psycopg.connect(dsn(configured)) as conn:
+        before = conn.execute("select count(*) from signals").fetchone()[0]
+    with TestClient(create_app()) as client:
+        client.app.state.llm_chain, client.app.state.llm_profile = chain, profile
+        response = client.post("/api/agent/compare", json={"text": text, "channel_code": "chat"})
+        assert response.status_code == 200
+        data = response.json()
+        main_trace = client.get(f"/api/agent/runs/{data['llm_run_id']}")
+        mock_trace = client.get(f"/api/agent/runs/{data['mock_run_id']}")
+        assert main_trace.status_code == mock_trace.status_code == 200
+        for side, source in (("llm", "replay" if mode in ("replay", "missing_model") else "mock"), ("mock", "mock")):
+            business_trace = client.get(f"/api/trace/agent_run/{data[side + '_run_id']}")
+            assert business_trace.status_code == 200
+            classifications = [event for event in business_trace.json()["after"] if event["kind"] == "classification"]
+            assert len(classifications) == 1
+            assert classifications[0]["badges"]["llm_source"] == source
+    step = main_trace.json()["steps"][0]
+    expected = {"replay": "replay:recorded-test-model", "missing_model": "replay:unknown"}.get(
+        mode, "mock:mock-rules-v1"
+    )
+    assert step["model"] == expected
+    assert step["status"] == ("fallback" if mode == "fallback" else "ok")
+    assert mock_trace.json()["steps"][0]["model"] == "mock:mock-rules-v1"
+    assert mock_trace.json()["steps"][0]["status"] == "ok"
+    with psycopg.connect(dsn(configured)) as conn:
+        assert conn.execute("select count(*) from signals").fetchone()[0] == before
