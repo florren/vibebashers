@@ -1,3 +1,4 @@
+import { SlaWarning } from '@/shared/components/SlaWarning'
 import { IncidentEconomics } from './IncidentEconomics'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
@@ -95,6 +96,7 @@ export function IncidentPage() {
             />
             <div className="flex items-center gap-2 py-1">
               <span className="text-muted">{t('common.sla')}</span>
+              <SlaWarning due={inc.sla_due_sim} status={inc.status} />
               <SlaBar pct={inc.sla_remaining_pct} breached={inc.sla_breached} className="flex-1" />
               <span className="num font-mono text-xs text-muted">
                 {inc.sla_breached ? t('incident.slaBreached') : `${Math.round(inc.sla_remaining_pct ?? 0)}%`}

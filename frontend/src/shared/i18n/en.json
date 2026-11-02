@@ -2148,5 +2148,37 @@
       "language": "Language"
     },
     "diffScope": "The count covers API diff fields. The table below highlights all differing response fields."
+  },
+  "attention": {
+    "label": "Attention mode",
+    "auto": "By context",
+    "calm": "Calm",
+    "control_room": "Control room",
+    "priorities": "Priorities",
+    "choosePriority": "Choose a priority",
+    "chooseItem": "Priority {{n}}",
+    "loading": "Checking current priorities…",
+    "noPriorities": "All quiet for now. Priority incidents will appear here.",
+    "slaSoon": "Due in {{hours}} h",
+    "slaOverdue": "Past due",
+    "undoLabel": "Undo local action",
+    "localChanged": "Only the interface changed. You can undo within 8 seconds.",
+    "undo": "Undo",
+    "cancel": "Go back",
+    "confirm": "Confirm action",
+    "hitlTitle": "Confirm human decision",
+    "hitlConsequence": "{{id}}: “{{mode}}”. The decision will be saved and may resume the agent, route a task or send a client message under server rules. Local undo cannot reverse it.",
+    "closeTitle": "Close the incident?",
+    "closeConsequence": "The incident will be closed on the server. This changes its status and SLA reporting; the server will validate the action. Local undo cannot restore the previous state."
+  },
+  "care": {
+    "details": "Technical details",
+    "emptyNext": "New data will appear here. You can check the selected filters.",
+    "errors": {
+      "busy": "There are many requests right now. Please wait a moment and try again.",
+      "service": "We could not retrieve the service data. Shall we try again?",
+      "request": "We could not complete the action. Check the selected data and try again.",
+      "connection": "We could not reach the service. Check the connection and try again."
+    }
   }
 }

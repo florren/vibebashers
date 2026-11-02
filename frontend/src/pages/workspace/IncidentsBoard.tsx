@@ -1,3 +1,4 @@
+import { SlaWarning } from '@/shared/components/SlaWarning'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
 import { Columns3, Table2 } from 'lucide-react'
@@ -123,6 +124,7 @@ export function IncidentCard({ i, teamName }: { i: IncidentBrief; teamName: (c?:
         <span className="truncate">{teamName(i.team_code)}</span>
         <span className="ml-auto num font-mono">{fmtSim(i.sla_due_sim)}</span>
       </div>
+      <SlaWarning due={i.sla_due_sim} status={i.status} />
       <SlaBar className="mt-1.5" pct={i.sla_remaining_pct} breached={i.sla_breached} />
     </article>
   )
@@ -162,7 +164,7 @@ function Table({ items, teamName }: { items: IncidentBrief[]; teamName: (c?: str
               <td className="num px-2 py-1.5 font-mono text-xs text-muted">{fmtSim(i.created_sim)}</td>
               <td className="w-36 px-2 py-1.5">
                 <div className="flex items-center gap-2">
-                  <SlaBar pct={i.sla_remaining_pct} breached={i.sla_breached} className="w-20" />
+                  <SlaWarning due={i.sla_due_sim} status={i.status} /><SlaBar pct={i.sla_remaining_pct} breached={i.sla_breached} className="w-20" />
                   <span className="num font-mono text-[11px] text-muted">{i.sla_breached ? 'срыв' : `${Math.round(i.sla_remaining_pct ?? 0)}%`}</span>
                 </div>
               </td>
