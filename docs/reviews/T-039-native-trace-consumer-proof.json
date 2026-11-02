@@ -1,0 +1,141 @@
+{
+  "mode": "Mock fixture generation, then actual read-only GET; noLLM",
+  "cases": [
+    {
+      "scenario": "deposit_promo_rate",
+      "run_id": 3,
+      "signal_ref": "SIG-001194",
+      "incident_ref": "INC-000152"
+    },
+    {
+      "scenario": "mass_notifications",
+      "run_id": 2,
+      "signal_ref": "SIG-001163",
+      "incident_ref": "INC-000151"
+    },
+    {
+      "scenario": "qr_fee_public_review",
+      "run_id": 4,
+      "signal_ref": "SIG-001196",
+      "incident_ref": "INC-000153"
+    }
+  ],
+  "observations": [
+    {
+      "scenario": "deposit_promo_rate",
+      "run_id": 3,
+      "signal_ref": "SIG-001194",
+      "incident_ref": "INC-000152",
+      "kind": "signal",
+      "nodes": 31,
+      "edges": 49,
+      "groups": 0,
+      "subject_alias_unambiguous": true
+    },
+    {
+      "scenario": "deposit_promo_rate",
+      "run_id": 3,
+      "signal_ref": "SIG-001194",
+      "incident_ref": "INC-000152",
+      "kind": "incident",
+      "nodes": 30,
+      "edges": 38,
+      "groups": 0,
+      "subject_alias_unambiguous": true
+    },
+    {
+      "scenario": "mass_notifications",
+      "run_id": 2,
+      "signal_ref": "SIG-001163",
+      "incident_ref": "INC-000151",
+      "kind": "signal",
+      "nodes": 203,
+      "edges": 248,
+      "groups": 3,
+      "subject_alias_unambiguous": true
+    },
+    {
+      "scenario": "mass_notifications",
+      "run_id": 2,
+      "signal_ref": "SIG-001163",
+      "incident_ref": "INC-000151",
+      "kind": "incident",
+      "nodes": 214,
+      "edges": 248,
+      "groups": 2,
+      "subject_alias_unambiguous": true
+    },
+    {
+      "scenario": "qr_fee_public_review",
+      "run_id": 4,
+      "signal_ref": "SIG-001196",
+      "incident_ref": "INC-000153",
+      "kind": "signal",
+      "nodes": 33,
+      "edges": 51,
+      "groups": 0,
+      "subject_alias_unambiguous": true
+    },
+    {
+      "scenario": "qr_fee_public_review",
+      "run_id": 4,
+      "signal_ref": "SIG-001196",
+      "incident_ref": "INC-000153",
+      "kind": "incident",
+      "nodes": 28,
+      "edges": 35,
+      "groups": 0,
+      "subject_alias_unambiguous": true
+    }
+  ],
+  "all_application_table_fingerprints_unchanged": true,
+  "read_phase_llm_calls": 0,
+  "source_base": "e5222d34bbac5bbd14890aba0e1810e3861e655d",
+  "fix": "final visible set rebuilt after terminal replacement; no relationSQL/group/total/cursor changes",
+  "checks": {
+    "unit": {
+      "passed": 100,
+      "seconds": 1.56
+    },
+    "native_runtime_trace_fanout": {
+      "passed": 6,
+      "seconds": 79.61
+    },
+    "native_perf_after_root_functional_window": {
+      "passed": 1,
+      "seconds": 19.27,
+      "mode": "actual TestClient/PG, readonly GET, noLLM",
+      "members": 10001,
+      "page_size": 50,
+      "samples_ms": [
+        17.786840035114437,
+        16.520682023838162,
+        14.78934200713411,
+        15.02743799937889,
+        15.083295002114028,
+        14.902068010997027,
+        17.499017994850874,
+        26.190576027147472,
+        24.021476972848177,
+        26.385108998510987
+      ],
+      "p95_ms": 26.385108998510987,
+      "response_items": 50,
+      "python_request_peak_bytes": 282061
+    },
+    "lint": "Ruff/format5touched files; mypyassembler passed"
+  },
+  "fingerprint_scope": "public application tables, per existing fingerprints helper; no claim of all private namespaces",
+  "tested_blobs": {
+    "backend/app/trace/assembler.py": "f830a38730da7d8a4f97fa6a04d29a5593329288",
+    "backend/tests/proactive_runtime.py": "ecbc0b9e9b988b29923e7b70d210a9696d4c36a0",
+    "backend/tests/integration/test_proactive_runtime.py": "18fd4e7cd850a554db7d69f9c21acd7f1414517c",
+    "backend/tests/integration/test_trace_graph_scenarios.py": "09d53b1448bdd7510c1b17fba59d37b8554191fa",
+    "backend/tests/unit/test_trace_search.py": "90760a5ddbec7bd5697c37b1b8817e3e7b8ca962"
+  },
+  "limitations": [
+    "whole exact-head CI pending root",
+    "no realLLM/Telegram/email/production",
+    "separate first6PG timing may have overlapped root functional PG; isolated repeat reported separately"
+  ]
+}

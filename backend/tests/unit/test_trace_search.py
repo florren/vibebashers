@@ -224,3 +224,40 @@ def test_pending_human_prevents_a_closed_summary_for_the_related_path():
     assert result["summary"]["outcome_ru"] == "Ожидаем решения человека"
     assert result["stages"][4]["status"] == "waiting_human"
     assert result["stages"][7]["status"] != "done"
+
+
+def test_terminal_inclusion_rebuilds_visible_edges_without_losing_recorded_relations_or_group_anchor():
+    subject = node("signal", 1, status="processing")
+    step = node("step", 10, node="decide", seq=1, run_id=7)
+    anchor = node("incident", 20, public_id="INC-000020", status="in_progress")
+    terminal = node("incident", 30, public_id="INC-000030", status="closed")
+    notices = [
+        {
+            **node("notification", i, status="sent", recipient_type="client", body="Принято", channel_code="chat"),
+            "parent": "incident:20",
+        }
+        for i in range(100, 109)
+    ]
+    recorded_edges = [
+        {"from": "EVT-signal:1", "to": "EVT-step:10", "relation_ru": "Причина"},
+        {"from": "EVT-step:10", "to": "EVT-incident:20", "relation_ru": "Создано"},
+        {"from": "EVT-step:10", "to": "EVT-incident:30", "relation_ru": "Завершено"},
+        *[{"from": "EVT-incident:20", "to": f"EVT-notification:{i}", "relation_ru": "Ответ"} for i in range(100, 109)],
+    ]
+    recorded = [step, anchor, terminal, *notices]
+    bounded = render(subject, [], recorded, recorded_edges, after_limit=2)
+    visible = {"EVT-signal:1", *(event["id"] for event in bounded["after"])}
+    assert bounded["terminal"]["event_ref"] == "EVT-incident:30"
+    assert "EVT-incident:20" not in visible
+    assert all(edge["from"] in visible and edge["to"] in visible for edge in bounded["edges"])
+    assert bounded["stats"]["truncated_after"] and bounded["stats"]["after_count"] == len(recorded)
+    # Записанный off-page anchor остаётся честным expansion ref, не phantom event.
+    assert bounded["groups"][0]["anchor"]["event_id"] == "EVT-incident:20"
+    assert bounded["groups"][0]["count"] == 9
+    expanded = render(subject, [], recorded, recorded_edges, after_limit=20)
+    assert {"from": "EVT-step:10", "to": "EVT-incident:20", "relation_ru": "Создано"} in expanded["edges"]
+    assert expanded["groups"] == bounded["groups"]
+    assert expanded["stats"]["after_count"] == bounded["stats"]["after_count"]
+    assert not expanded["stats"]["truncated_after"]
+    TraceResponse.model_validate(bounded)
+    TraceResponse.model_validate(expanded)
