@@ -67,3 +67,21 @@ QR modal не вкладывается во второй modal/focus trap. Deskt
 После credential binding26backendunit/PG passed26.36s;41bot7.95s;
 network-none container smoke прошёл с Python CLI. Полный unit1647 выше относится
 к предшествующему checkpoint; final full/backend UI доказательства версионируются отдельно.
+
+## Actual UI proof0708fd9
+
+6production cases: ru/en×light/dark1920×1080, дополнительно ru/light иen/dark320px.
+Настоящие health/heartbeat/QR endpoints, read-only synthetic PostgreSQL, browser без
+route mocks. Poll proof подписан локальным synthetic service, delivery task —
+явный stand-in; настоящего Telegram нет. Cold healtherror/QR503, затем actualHMAC
+proof, одинmodal, SVGloaded, Escapeвозвращаетфокус, overflow≤1, mobileHeader≤100px.
+94tablehashes до/после совпали,0browsernonGET/0external/0LLM/pageerrors. Guardmarkers
+проверены. Исходный UI capture попадал в180ms fade-in; итоговые6PNG пересняты после
+штатного завершения finiteanimation и визуально проверены. Process preview остановлен.
+Скрипт:frontend/e2e/tgbot-qr-actual-proof.mjs; artifacts:docs/screenshots/T-122/.
+
+Backend coverage новых executable строк84/85=98.82% относительноT1217acce1b;
+liveness48/48=100%, middleware2/2, public32/33, health2/2. Hashes и source0708fd9
+вT-122-backend-coverage.json. Fullsuite на final composition ещё впереди.
+README содержит отдельно обозначенный staticQR бота изТЗCXPulseControlBot и команду
+локального экспорта actualQR; статическое изображение не выдаётся за live readiness.
