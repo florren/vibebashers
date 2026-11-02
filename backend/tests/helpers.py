@@ -67,6 +67,7 @@ async def run_agent_on(
     channel: str = "chat",
     run_id: int | None = None,
     origin: str = "jury",
+    sim_time: dt.datetime | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Создаёт сигнал и прогоняет агента на mock-модели. Возвращает (signal_id, state)."""
     body: dict[str, Any] = {"channel_code": channel, "text": text}
@@ -75,7 +76,7 @@ async def run_agent_on(
     else:
         body["external_contact"] = {"nick": "@unknown_tester"}
     msg = from_api_signal(body, origin=origin)
-    res = await create_signal(conn, msg, source_code="api", run_id=run_id, emit_event=False)
+    res = await create_signal(conn, msg, source_code="api", run_id=run_id, sim_time=sim_time, emit_event=False)
     await conn.commit()
     assert res["status"] == "accepted", res
     state = await process_signal(conn, signal_id=int(res["signal_id"]), chain=mock_chain(), profile=MOCK_PROFILE)

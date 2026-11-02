@@ -101,6 +101,8 @@ def validate_error_routing() -> list[str]:
         errors.append("routing_rules: ожидалось ≥ 15 правил")
     for row in codes:
         code, system = row["code"], row.get("system")
+        if re.fullmatch(common["error_code"]["pattern"], code) is None:
+            errors.append(f"{code}: код не соответствует contracts/events/common.schema.json error_code")
         if system not in system_codes:
             errors.append(f"{code}: неизвестная система {system}")
         if row.get("product") is not None and row["product"] not in products:

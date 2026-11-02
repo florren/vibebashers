@@ -9,7 +9,7 @@ from psycopg.types.json import Jsonb
 
 from app.config import get_settings
 from app.main import create_app
-from tests.helpers import dsn, new_run, run_agent_on
+from tests.helpers import dsn, new_run, run_agent_on, sim_now
 
 pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[3]
@@ -24,20 +24,64 @@ async def test_db_activity_chain_isolation_masking_and_idempotent_migration(seed
         await conn.execute(migration)
         await conn.execute(migration)
         before = (await (await conn.execute("select coalesce(max(id),0) from db_activity_log")).fetchone())[0]
+        # Существующая политика повторов не должна переводить positive audit fixture в HITL.
         cid = (
             await (
-                await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+                await conn.execute(
+                    "select c.id from clients c where c.segment_code='mass' and not exists ("
+                    "select 1 from signals s where s.client_id=c.id and s.classification->>'signal_type'='tech_fault' and s.received_sim >= "
+                    "(select sim_time from sim_state where id=1)-interval '14 days') order by c.id limit 1"
+                )
             ).fetchone()
         )[0]
+
+        async def deposit_failure(run_id: int, minutes: int) -> int:
+            # Причина обращения задаётся явно; история T017 не гарантирует депозит у первого mass-клиента.
+            now = await sim_now(conn)
+            row = await (
+                await conn.execute(
+                    "insert into operations(run_id,client_id,product_code,op_type,system_path,status,error_code,started_sim) "
+                    "values (%s,%s,'deposit','deposit_open',array['sub_deposits','core_abs'],'failed','DEP-TIMEOUT-503',%s-make_interval(mins=>%s)) returning id",
+                    (run_id, cid, now, minutes),
+                )
+            ).fetchone()
+            assert row is not None
+            # Более новая QR-операция не должна подменить причину жалобы об открытии вклада.
+            await conn.execute(
+                "insert into operations(run_id,client_id,product_code,op_type,system_path,method,status,error_code,started_sim) "
+                "values (%s,%s,'debit_card','card_payment',array['processing'],'qr_sbp','failed','PROC-QR-FEE-CHARGED',%s)",
+                (run_id, cid, now),
+            )
+            await conn.commit()
+            return int(row[0])
+
         old = await new_run(conn, "T108 previous run")
+        old_operation = await deposit_failure(old, 2)
         old_sid, _ = await run_agent_on(
-            conn, "Не могу открыть вклад: ошибка 503 в мобильном приложении", client_id=cid, run_id=old
+            conn,
+            "Не работает открытие вклада: ошибка DEP-TIMEOUT-503 в мобильном приложении",
+            client_id=cid,
+            run_id=old,
+            sim_time=await sim_now(conn),
         )
         current = await new_run(conn, "T108 current run")
+        current_operation = await deposit_failure(current, 1)
         sid, state = await run_agent_on(
-            conn, "Не могу открыть вклад: ошибка 503 в мобильном приложении", client_id=cid, run_id=current
+            conn,
+            "Не работает открытие вклада: ошибка DEP-TIMEOUT-503 в мобильном приложении",
+            client_id=cid,
+            run_id=current,
+            sim_time=await sim_now(conn),
         )
         await conn.commit()
+        assert state["context"]["hints"]["error_code"] == "DEP-TIMEOUT-503"
+        assert state["context"]["hints"]["failed_operation_id"] == current_operation
+        assert (
+            await (await conn.execute("select run_id from operations where id=%s", (old_operation,))).fetchone()
+        ) == (old,)
+        assert (
+            await (await conn.execute("select run_id from operations where id=%s", (current_operation,))).fetchone()
+        ) == (current,)
         incident = (
             await (await conn.execute("select incident_id from incident_signals where signal_id=%s", (sid,))).fetchone()
         )[0]
@@ -137,9 +181,6 @@ def test_audit_downgrade_upgrade_preserves_evidence_and_notifies(seeded):
     import subprocess
     import sys
 
-    from alembic.config import Config
-    from alembic.script import ScriptDirectory
-
     from app.realtime.notify import route
 
     with psycopg.connect(dsn(seeded), autocommit=True) as conn:
@@ -156,10 +197,7 @@ def test_audit_downgrade_upgrade_preserves_evidence_and_notifies(seeded):
         assert result.returncode == 0, result.stderr[-1000:]
     with psycopg.connect(dsn(seeded), autocommit=True) as listener, psycopg.connect(dsn(seeded)) as conn:
         assert conn.execute("select count(*) from db_activity_log").fetchone()[0] == before
-        assert (
-            conn.execute("select version_num from alembic_version").fetchone()[0]
-            == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
-        )
+        assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0011"
         from app.api.engine import DB_ALLOW
 
         triggers = conn.execute("select tgname from pg_trigger where not tgisinternal").fetchall()
