@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+import { PendingScreen, WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
 import { DeviceLayoutRuntime } from '@/shared/layout/device'
 import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
@@ -29,6 +31,7 @@ function OperatorRuntime() {
 }
 
 export function App() {
+  const { t } = useTranslation()
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
   return (
     <QueryClientProvider client={qc}>
@@ -42,7 +45,12 @@ export function App() {
             <Route path="track/:token" element={<TrackingPage />} />
           </Route>
           <Route element={<><OperatorRuntime /><Shell /></>}>
-            <Route index element={<WorkspacePage />} />
+            <Route index element={<WorkspaceEntry />} />
+            <Route path="workspace" element={<WorkspacePage />} />
+            <Route path="overview" element={<PendingScreen title={t('shell.overview')} />} />
+            <Route path="cabinet" element={<PendingScreen title={t('shell.cabinet')} />} />
+            <Route path="cabinet/:productLine" element={<PendingScreen title={t('shell.cabinet')} />} />
+            <Route path="csi" element={<PendingScreen title={t('shell.csi')} />} />
             <Route path="clients/:id" element={<Client360Page />} />
             <Route path="incidents/:id" element={<IncidentPage />} />
             <Route path="engine" element={<EnginePage />} />

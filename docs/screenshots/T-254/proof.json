@@ -1,0 +1,80 @@
+{
+  "source_revision": "18de30fc1e4aa10126405f59c70933a107a06215",
+  "parent_attention_revision": "e61ce535c67e35fe1268ee75045fe6ba39ccc1d2",
+  "frontend_tests_passed": 325,
+  "actual_shell_cases_passed": 4,
+  "actual_shell_modes": [
+    "legacy",
+    "v2 calm",
+    "v2 control_room"
+  ],
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "widths": [
+    1920,
+    1440,
+    1024,
+    768,
+    360,
+    320
+  ],
+  "map_svg_contained_at": [
+    [
+      1920,
+      900
+    ],
+    [
+      1440,
+      900
+    ],
+    [
+      1024,
+      768
+    ]
+  ],
+  "mobile_header_limit_px": 100,
+  "legacy_mobile_320_cases_passed": 4,
+  "inherited_browser_suite_source": "80f569a13ce0e059d02ac162ebcef5d2d62c9944",
+  "inherited_legacy_cases_passed": 49,
+  "full_backend_source": "59da3d314151d7af16b16eeda31eec74057ab183",
+  "identical_backend_contracts_scripts": true,
+  "full_backend_passed": 1663,
+  "full_backend_skipped": 22,
+  "actual_v2_HTTP_mocks": false,
+  "legacy_mobile_fixture": "Существующая read-only GET theme fixture; layout сервера явно legacy",
+  "settings_PATCH": "Разрешены настоящие ui.layout/ui.attention PATCH",
+  "forbidden_browser_mutation_attempts": 0,
+  "external_attempts": 0,
+  "LLM_attempts": 0,
+  "DB_unchanged_claim": false,
+  "DB_note": "Существующие GET economics могут материализовать computed_at/audit; см. T-253 finding",
+  "pending_real_pages": [
+    "T-255 /overview",
+    "T-242 /cabinet",
+    "T-249 /csi"
+  ],
+  "images": [
+    "legacy-ru-light.png",
+    "v2-ru-light-1440.png",
+    "v2-ru-light-360.png",
+    "control-room-ru-light.png",
+    "legacy-ru-dark.png",
+    "v2-ru-dark-1440.png",
+    "v2-ru-dark-360.png",
+    "control-room-ru-dark.png",
+    "legacy-en-light.png",
+    "v2-en-light-1440.png",
+    "v2-en-light-360.png",
+    "control-room-en-light.png",
+    "legacy-en-dark.png",
+    "v2-en-dark-1440.png",
+    "v2-en-dark-360.png",
+    "control-room-en-dark.png"
+  ]
+}

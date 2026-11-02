@@ -26,6 +26,8 @@ function readDensity(): ThemeDensity {
 }
 
 export type UiThemeState = {
+  layout: 'legacy' | 'v2'
+  setLayout: (layout: 'legacy' | 'v2') => void
   attention: AttentionMode | null
   setAttention: (attention: AttentionMode | null) => void
   theme_pack: ThemePack
@@ -43,6 +45,8 @@ export type UiThemeState = {
 }
 
 export const useUiTheme = create<UiThemeState>((set, get) => ({
+  layout: localStorage.getItem('cx.ui.layout') === 'v2' ? 'v2' : 'legacy',
+  setLayout: (layout) => { localStorage.setItem('cx.ui.layout', layout); set({ layout }) },
   attention: validAttention(localStorage.getItem('cx.ui.attention')),
   setAttention: (attention) => {
     if (attention) localStorage.setItem('cx.ui.attention', attention)
