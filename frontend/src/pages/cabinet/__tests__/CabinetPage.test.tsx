@@ -28,6 +28,7 @@ beforeEach(async () => {
     if (path === '/api/sim/runs') return { items: [] }
     if (path === '/api/settings') return { sla_warn_hours: 4 }
     if (path === '/api/refs/channels') return [{ code: 'review_portal', name_ru: 'Отзывы', name_en: 'Reviews' }]
+    if (path === '/api/metrics/economics/preview') return { affected_count: 2, rate_code: 'deposit', rate_rub: 961, potential_loss_rub: 123.45, premium_addon_rub: 0, detractor_share: .1, no_return_share: .5 }
     if (path === '/api/settings/economics') return { detractor_share: .1, no_return_share: .5, rates: [{ code: 'deposit', name_ru: 'Вклады', name_en: 'Deposits', rate_rub: 961 }] }
     throw new Error(`Unmocked unit endpoint: ${path}`)
   })

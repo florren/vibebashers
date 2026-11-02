@@ -1,3 +1,4 @@
+import { formatCompactRub } from '../src/shared/lib/compactMoney'
 import { writeFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
@@ -6,6 +7,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
   test(`cabinet actual scoped seven blocks ${language} ${mode}`, async ({ page, request }, info) => {
     test.setTimeout(60_000)
     const settings = await (await request.get('/api/settings')).json()
+    const economics = await (await request.get('/api/settings/economics')).json()
     const initial = await (await request.get('/api/cabinet/overview?product_line=all&period=month&run_id=current', { headers: { 'X-Cx-Role': 'cx_lead' } })).json()
     const direction = initial.product_lines[0]
     const foreign = initial.product_lines[1]
@@ -13,9 +15,9 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     const line = direction.code as string
     const headers = { 'X-Cx-Role': 'product_manager', 'X-Cx-Product-Line': line }
     const api = await (await request.get(`/api/cabinet/overview?product_line=${encodeURIComponent(line)}&period=month&run_id=current`, { headers })).json()
-    const errors: string[] = [], external: string[] = [], forbiddenWrites: string[] = [], globalQueries: string[] = [], calls: string[] = []
+    const errors: string[] = [], external: string[] = [], forbiddenWrites: string[] = [], globalQueries: string[] = [], calls: string[] = [], previewQueries: string[] = []
     page.on('pageerror', error => errors.push(error.message))
-    page.on('request', req => { const url = new URL(req.url()); if (url.pathname.startsWith('/api/cabinet/')) calls.push(url.pathname + url.search); if (['/api/incidents', '/api/signals'].includes(url.pathname)) globalQueries.push(url.pathname + url.search) })
+    page.on('request', req => { const url = new URL(req.url()); if (url.pathname === '/api/metrics/economics/preview') previewQueries.push(url.search); if (url.pathname.startsWith('/api/cabinet/')) calls.push(url.pathname + url.search); if (['/api/incidents', '/api/signals'].includes(url.pathname)) globalQueries.push(url.pathname + url.search) })
     await page.route('**/*', route => {
       const req = route.request(), url = new URL(req.url())
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) { external.push(url.hostname); return route.abort() }
@@ -65,7 +67,19 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(root.locator('svg [aria-pressed="false"]').first()).toHaveCSS('opacity', '0.35')
       await expect(root.getByLabel(ru ? 'Сигналы выбранного региона' : 'Selected region signals')).toContainText(ru ? 'Маршрутизация' : 'Routing')
       await expect(root.getByLabel(ru ? 'Сигналы выбранного региона' : 'Selected region signals')).not.toContainText('csi_survey')
+      const signedMoney = (value: number) => formatCompactRub(value > 0 ? -value : value, language)
+      if (region.affected_clients != null) {
+        const regionResponse = await request.get('/api/metrics/economics/preview', { params: { affected: region.affected_clients, rate_code: direction.rate_code, detractor_share: economics.detractor_share, no_return_share: economics.no_return_share } })
+        expect(regionResponse.status()).toBe(200)
+        const regionExpected = await regionResponse.json()
+        await expect(root.getByTestId('region-loss-preview')).toContainText(signedMoney(regionExpected.potential_loss_rub))
+      } else await expect(root.getByTestId('region-loss-preview')).toContainText('—')
       await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-region.png`) })
+      await root.getByRole('button', { name: ru ? 'Рассчитать потерю' : 'Calculate loss', exact: true }).click()
+      const regionCalculator = page.getByRole('dialog', { name: text.calc, exact: true })
+      await expect(regionCalculator.getByLabel(text.affected)).toHaveValue(region.affected_clients == null ? '' : String(region.affected_clients))
+      await page.keyboard.press('Escape')
+      await expect(regionCalculator).toHaveCount(0)
       await root.getByRole('button', { name: ru ? 'Сбросить фильтры' : 'Reset filters', exact: true }).click()
       await page.getByRole('button', { name: ru ? 'Отменить' : 'Undo', exact: true }).click()
       await expect(page).toHaveURL(new RegExp('region=' + region.code))
@@ -93,7 +107,26 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect.poll(async () => calc.evaluate(element => Math.round(element.getBoundingClientRect().top))).toBe(0)
       expect(await calc.evaluate(element => Math.round(element.getBoundingClientRect().height))).toBe(900)
       await expect(calc.locator('aside')).toHaveCSS('opacity', '1')
+      await expect(calc.locator('[aria-live]')).toHaveText('—')
+      expect(await calc.getByLabel(text.rate).locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value).filter(Boolean).sort())).toEqual(economics.rates.map((row: { code: string }) => row.code).sort())
+      const initialResult = page.waitForResponse(response => new URL(response.url()).pathname === '/api/metrics/economics/preview' && new URL(response.url()).searchParams.get('affected') === '2' && new URL(response.url()).searchParams.get('rate_code') === direction.rate_code)
+      await calc.getByLabel(text.affected).fill('2')
+      const response = await initialResult; expect(response.status()).toBe(200)
+      const server = await response.json()
+      await expect(calc.locator('[aria-live]')).toHaveText(signedMoney(server.potential_loss_rub))
       await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-calculator.png`) })
+      const unmapped = economics.rates.find((row: { code: string; maps_to?: Record<string, unknown> }) => row.code !== direction.rate_code && !Object.keys(row.maps_to ?? {}).length)
+      expect(unmapped).toBeTruthy()
+      const changedResult = page.waitForResponse(response => new URL(response.url()).pathname === '/api/metrics/economics/preview' && new URL(response.url()).searchParams.get('rate_code') === unmapped.code)
+      await calc.getByLabel(text.rate).selectOption(unmapped.code)
+      const changed = await changedResult; expect(changed.status()).toBe(200)
+      await expect(calc.locator('[aria-live]')).toHaveText(signedMoney((await changed.json()).potential_loss_rub))
+      const zeroResult = page.waitForResponse(response => new URL(response.url()).pathname === '/api/metrics/economics/preview' && new URL(response.url()).searchParams.get('affected') === '0' && new URL(response.url()).searchParams.get('rate_code') === unmapped.code)
+      await calc.getByLabel(text.affected).fill('0')
+      expect((await (await zeroResult).json()).potential_loss_rub).toBe(0)
+      await expect(calc.locator('[aria-live]')).toHaveText('0 ₽')
+      await calc.getByLabel(text.affected).fill('')
+      await expect(calc.locator('[aria-live]')).toHaveText('—')
       await page.keyboard.press('Escape')
       await expect(calc).toHaveCount(0)
       await expect(root.getByRole('button', { name: text.openCalc, exact: true })).toBeFocused()
@@ -139,7 +172,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await page.getByRole('button', { name: ru ? 'Открыть меню' : 'Open menu', exact: true }).click()
       await page.keyboard.press('Escape')
       const proofPath = info.outputPath('cabinet-actual-proof.json')
-      await writeFile(proofPath, JSON.stringify({ language, mode, block_count: 7, product_line: line, strict_foreign_status: forbidden.status(), global_queries: globalQueries, forbidden_writes: forbiddenWrites, external, page_errors: errors, palette, night: 'explicit fixed phase, reduced motion', night_scoped_high_count: expectedIds.length }, null, 2))
+      await writeFile(proofPath, JSON.stringify({ language, mode, block_count: 7, product_line: line, strict_foreign_status: forbidden.status(), global_queries: globalQueries, forbidden_writes: forbiddenWrites, external, page_errors: errors, palette, preview_queries: previewQueries, rate_catalog_count: economics.rates.length, night: 'explicit fixed phase, reduced motion', night_scoped_high_count: expectedIds.length }, null, 2))
       await info.attach('cabinet-actual-proof', { path: proofPath, contentType: 'application/json' })
     } finally {
       await request.patch('/api/settings', { data: { ui: settings.ui ?? null, cabinet: settings.cabinet ?? null } })
