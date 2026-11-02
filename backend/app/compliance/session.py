@@ -480,7 +480,7 @@ class ComplianceService:
         return inc_id
 
     async def ack_alert(
-        self, alert_id: int, *, decision: str, by: str, comment: str | None = None
+        self, alert_id: int, *, decision: str, by: str, comment: str | None = None, actor_role: str | None = None
     ) -> dict[str, Any] | None:
         row = await (
             await self.conn.execute(
@@ -515,17 +515,18 @@ class ComplianceService:
                 "update incidents set status = %s, updated_at = now() where id = %s", (new_status, incident_id)
             )
             await self.conn.execute(
-                "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, 'awaiting_human', %s, 'human', %s, %s, %s)",
+                "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, 'awaiting_human', %s, 'human', %s, %s, %s, %s)",
                 (
                     incident_id,
                     new_status,
                     by,
                     f"решение руководителя: {decision}" + (f" — {comment}" if comment else ""),
                     self.sim_time,
+                    actor_role,
                 ),
             )
         await self.conn.execute(
-            "update human_decisions set decision=%s,decided_by=%s,comment=%s,decided_sim=%s,decided_at=now(),use_as_fewshot=case when %s then false else use_as_fewshot end "
+            "update human_decisions set decision=%s,decided_by=%s,comment=%s,decided_sim=%s,decided_at=now(),use_as_fewshot=case when %s then false else use_as_fewshot end,actor_role=%s "
             "where id=(select human_decision_id from compliance_alerts where id=%s) and decision is null",
             (
                 "reject" if decision == "false_positive" else "accept",
@@ -533,6 +534,7 @@ class ComplianceService:
                 comment,
                 self.sim_time,
                 by.startswith("demo-agent:"),
+                actor_role,
                 alert_id,
             ),
         )

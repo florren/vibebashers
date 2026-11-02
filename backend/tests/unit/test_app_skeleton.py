@@ -66,10 +66,18 @@ def test_ws_subscribe_and_ping() -> None:
 
 @pytest.mark.parametrize(
     ("path", "card"),
-    [("/api/cabinet/overview", "T-241"), ("/api/csi/analytics", "T-247")],
+    [("/api/test-v15-stub/cabinet", "T-241"), ("/api/test-v15-stub/csi", "T-247")],
 )
 def test_v15_stubs_are_problem_json(path: str, card: str) -> None:
-    with TestClient(create_app()) as client:
+    from app.errors import NotImplementedYet
+
+    app = create_app()
+
+    @app.get(path)
+    async def stub() -> None:
+        raise NotImplementedYet(card)
+
+    with TestClient(app) as client:
         response = client.get(path)
     assert response.status_code == 501
     assert response.headers["content-type"].startswith("application/problem+json")
