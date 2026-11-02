@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ErrorBox, KV, Section, Skeleton } from '@/shared/ui'
+import { ErrorBox, Section, Skeleton } from '@/shared/ui'
 import { IdLink } from '@/shared/components/IdLink'
 import type { BranchDetail } from './api'
+
+function Field({ k, v }: { k: string; v: string }) {
+  return <div className="px-3 py-1 text-sm"><dt className="text-muted">{k}</dt><dd className="break-words">{v}</dd></div>
+}
 
 export function BranchCard({ data, error, loading, runId, close }: { data: BranchDetail | undefined; error: unknown; loading: boolean; runId: string; close: () => void }) {
   const { t, i18n } = useTranslation()
@@ -14,12 +18,12 @@ export function BranchCard({ data, error, loading, runId, close }: { data: Branc
     {data && error == null && <>
       <p className="p-3 text-sm">{data.branch.name_ru}</p>
       {noCurrent && <p className="p-3 text-xs text-muted">{t('branchMap.noCurrent')}</p>}
-      <KV k={t('branchMap.address')} v={data.branch.address_ru ?? t('branchMap.unknown')} />
-      <KV k={t('branchMap.hours')} v={data.branch.hours_ru ?? t('branchMap.unknown')} />
-      <KV k={t('branchMap.statusLabel')} v={t('branchMap.status.' + (data.branch.branch_status ?? 'unknown'))} />
-      <KV k={t('branchMap.directSignals')} v={value(noCurrent ? null : data.signals.total)} />
-      <KV k={t('branchMap.csiResponses')} v={value(noCurrent ? null : data.csi.coverage.complaints)} />
-      <KV k={t('branchMap.sample')} v={`${value(data.csi.probabilities.sample_complaints)} / ${value(data.csi.probabilities.sample_visits)}`} />
+      <dl><Field k={t('branchMap.address')} v={data.branch.address_ru ?? t('branchMap.unknown')} />
+      <Field k={t('branchMap.hours')} v={data.branch.hours_ru ?? t('branchMap.unknown')} />
+      <Field k={t('branchMap.statusLabel')} v={t('branchMap.status.' + (data.branch.branch_status ?? 'unknown'))} />
+      <Field k={t('branchMap.directSignals')} v={value(noCurrent ? null : data.signals.total)} />
+      <Field k={t('branchMap.csiResponses')} v={value(noCurrent ? null : data.csi.coverage.complaints)} />
+      <Field k={t('branchMap.sample')} v={`${value(data.csi.probabilities.sample_complaints)} / ${value(data.csi.probabilities.sample_visits)}`} /></dl>
       <p className="p-3 text-xs text-muted">{t('branchMap.directBasis')}</p>
       <Link className="block px-3 pb-3 text-sm text-brand hover:underline" to={`/trace/branch/${encodeURIComponent(data.branch.code)}?run_id=${encodeURIComponent(runId)}`}>{t('branchMap.trace')}</Link>
       <ul className="max-h-40 overflow-auto border-t border-line p-3">{data.signals.items.map(signal => <li key={signal.signal_ref}><IdLink kind="signal" value={signal.signal_ref} runId={runId} /></li>)}</ul>

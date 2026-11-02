@@ -1,0 +1,745 @@
+{
+  "results": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "initial_ms": 323,
+      "branches_all_reads_ms": 752,
+      "closed_reads": 20,
+      "requests": [
+        {
+          "url": "/api/sim/state",
+          "at": 1793660029489
+        },
+        {
+          "url": "/api/settings",
+          "at": 1793660029490
+        },
+        {
+          "url": "/api/refs/channels",
+          "at": 1793660029492
+        },
+        {
+          "url": "/api/refs/segments",
+          "at": 1793660029493
+        },
+        {
+          "url": "/api/health",
+          "at": 1793660029493
+        },
+        {
+          "url": "/api/demo/status",
+          "at": 1793660029493
+        },
+        {
+          "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+          "at": 1793660029493
+        },
+        {
+          "url": "/api/metrics/overview?run_id=current",
+          "at": 1793660029507
+        },
+        {
+          "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
+          "at": 1793660029568
+        },
+        {
+          "url": "/api/map/zones?run_id=2",
+          "at": 1793660029568
+        },
+        {
+          "url": "/api/refs/teams",
+          "at": 1793660029569
+        },
+        {
+          "url": "/api/hitl/queue?run_id=2",
+          "at": 1793660029569
+        },
+        {
+          "url": "/api/branches?limit=200",
+          "at": 1793660029691
+        },
+        {
+          "url": "/api/cabinet/overview?run_id=current",
+          "at": 1793660029692
+        },
+        {
+          "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
+          "at": 1793660029692
+        },
+        {
+          "url": "/api/branches?limit=200&cursor=S0199",
+          "at": 1793660029728
+        },
+        {
+          "url": "/api/refs/regions",
+          "at": 1793660029808
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660029843
+        },
+        {
+          "url": "/api/branches/S0017?run_id=2&period=week",
+          "at": 1793660029844
+        },
+        {
+          "url": "/api/branches/S0018?run_id=2&period=week",
+          "at": 1793660029844
+        },
+        {
+          "url": "/api/branches/S0032?run_id=2&period=week",
+          "at": 1793660029906
+        },
+        {
+          "url": "/api/branches/S0033?run_id=2&period=week",
+          "at": 1793660029906
+        },
+        {
+          "url": "/api/branches/S0036?run_id=2&period=week",
+          "at": 1793660029906
+        },
+        {
+          "url": "/api/branches/S0038?run_id=2&period=week",
+          "at": 1793660029938
+        },
+        {
+          "url": "/api/branches/S0045?run_id=2&period=week",
+          "at": 1793660029939
+        },
+        {
+          "url": "/api/branches/S0067?run_id=2&period=week",
+          "at": 1793660029939
+        },
+        {
+          "url": "/api/branches/S0072?run_id=2&period=week",
+          "at": 1793660029967
+        },
+        {
+          "url": "/api/branches/S0080?run_id=2&period=week",
+          "at": 1793660029968
+        },
+        {
+          "url": "/api/branches/S0118?run_id=2&period=week",
+          "at": 1793660029968
+        },
+        {
+          "url": "/api/branches/S0149?run_id=2&period=week",
+          "at": 1793660029996
+        },
+        {
+          "url": "/api/branches/S0161?run_id=2&period=week",
+          "at": 1793660029997
+        },
+        {
+          "url": "/api/branches/S0173?run_id=2&period=week",
+          "at": 1793660029997
+        },
+        {
+          "url": "/api/branches/S0183?run_id=2&period=week",
+          "at": 1793660030026
+        },
+        {
+          "url": "/api/branches/S0198?run_id=2&period=week",
+          "at": 1793660030026
+        },
+        {
+          "url": "/api/branches/S0199?run_id=2&period=week",
+          "at": 1793660030026
+        },
+        {
+          "url": "/api/branches/S0238?run_id=2&period=week",
+          "at": 1793660030053
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660030615
+        }
+      ],
+      "forbidden": [],
+      "errors": [],
+      "bad": [],
+      "bounds": {
+        "doc": 1440,
+        "width": 1440,
+        "svg": [
+          {
+            "w": 762.4375,
+            "h": 401.4375
+          }
+        ]
+      }
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "initial_ms": 296,
+      "branches_all_reads_ms": 735,
+      "closed_reads": 20,
+      "requests": [
+        {
+          "url": "/api/sim/state",
+          "at": 1793660030992
+        },
+        {
+          "url": "/api/settings",
+          "at": 1793660030993
+        },
+        {
+          "url": "/api/refs/channels",
+          "at": 1793660030993
+        },
+        {
+          "url": "/api/refs/segments",
+          "at": 1793660030994
+        },
+        {
+          "url": "/api/health",
+          "at": 1793660030994
+        },
+        {
+          "url": "/api/demo/status",
+          "at": 1793660030994
+        },
+        {
+          "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+          "at": 1793660030994
+        },
+        {
+          "url": "/api/metrics/overview?run_id=current",
+          "at": 1793660031000
+        },
+        {
+          "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
+          "at": 1793660031063
+        },
+        {
+          "url": "/api/map/zones?run_id=2",
+          "at": 1793660031063
+        },
+        {
+          "url": "/api/refs/teams",
+          "at": 1793660031063
+        },
+        {
+          "url": "/api/hitl/queue?run_id=2",
+          "at": 1793660031063
+        },
+        {
+          "url": "/api/branches?limit=200",
+          "at": 1793660031176
+        },
+        {
+          "url": "/api/cabinet/overview?run_id=current",
+          "at": 1793660031177
+        },
+        {
+          "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
+          "at": 1793660031177
+        },
+        {
+          "url": "/api/refs/regions",
+          "at": 1793660031318
+        },
+        {
+          "url": "/api/branches?limit=200&cursor=S0199",
+          "at": 1793660031319
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660031442
+        },
+        {
+          "url": "/api/branches/S0017?run_id=2&period=week",
+          "at": 1793660031443
+        },
+        {
+          "url": "/api/branches/S0018?run_id=2&period=week",
+          "at": 1793660031443
+        },
+        {
+          "url": "/api/branches/S0032?run_id=2&period=week",
+          "at": 1793660031478
+        },
+        {
+          "url": "/api/branches/S0033?run_id=2&period=week",
+          "at": 1793660031478
+        },
+        {
+          "url": "/api/branches/S0036?run_id=2&period=week",
+          "at": 1793660031479
+        },
+        {
+          "url": "/api/branches/S0038?run_id=2&period=week",
+          "at": 1793660031507
+        },
+        {
+          "url": "/api/branches/S0045?run_id=2&period=week",
+          "at": 1793660031508
+        },
+        {
+          "url": "/api/branches/S0067?run_id=2&period=week",
+          "at": 1793660031508
+        },
+        {
+          "url": "/api/branches/S0072?run_id=2&period=week",
+          "at": 1793660031535
+        },
+        {
+          "url": "/api/branches/S0080?run_id=2&period=week",
+          "at": 1793660031536
+        },
+        {
+          "url": "/api/branches/S0118?run_id=2&period=week",
+          "at": 1793660031536
+        },
+        {
+          "url": "/api/branches/S0149?run_id=2&period=week",
+          "at": 1793660031562
+        },
+        {
+          "url": "/api/branches/S0161?run_id=2&period=week",
+          "at": 1793660031563
+        },
+        {
+          "url": "/api/branches/S0173?run_id=2&period=week",
+          "at": 1793660031563
+        },
+        {
+          "url": "/api/branches/S0183?run_id=2&period=week",
+          "at": 1793660031588
+        },
+        {
+          "url": "/api/branches/S0198?run_id=2&period=week",
+          "at": 1793660031589
+        },
+        {
+          "url": "/api/branches/S0199?run_id=2&period=week",
+          "at": 1793660031589
+        },
+        {
+          "url": "/api/branches/S0238?run_id=2&period=week",
+          "at": 1793660031614
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660032099
+        }
+      ],
+      "forbidden": [],
+      "errors": [],
+      "bad": [],
+      "bounds": {
+        "doc": 1440,
+        "width": 1440,
+        "svg": [
+          {
+            "w": 762.4375,
+            "h": 401.4375
+          }
+        ]
+      }
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "initial_ms": 305,
+      "branches_all_reads_ms": 727,
+      "closed_reads": 20,
+      "requests": [
+        {
+          "url": "/api/sim/state",
+          "at": 1793660032485
+        },
+        {
+          "url": "/api/settings",
+          "at": 1793660032485
+        },
+        {
+          "url": "/api/refs/channels",
+          "at": 1793660032486
+        },
+        {
+          "url": "/api/refs/segments",
+          "at": 1793660032486
+        },
+        {
+          "url": "/api/health",
+          "at": 1793660032486
+        },
+        {
+          "url": "/api/demo/status",
+          "at": 1793660032486
+        },
+        {
+          "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+          "at": 1793660032486
+        },
+        {
+          "url": "/api/metrics/overview?run_id=current",
+          "at": 1793660032493
+        },
+        {
+          "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
+          "at": 1793660032560
+        },
+        {
+          "url": "/api/map/zones?run_id=2",
+          "at": 1793660032560
+        },
+        {
+          "url": "/api/refs/teams",
+          "at": 1793660032560
+        },
+        {
+          "url": "/api/hitl/queue?run_id=2",
+          "at": 1793660032560
+        },
+        {
+          "url": "/api/branches?limit=200",
+          "at": 1793660032690
+        },
+        {
+          "url": "/api/cabinet/overview?run_id=current",
+          "at": 1793660032690
+        },
+        {
+          "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
+          "at": 1793660032691
+        },
+        {
+          "url": "/api/branches?limit=200&cursor=S0199",
+          "at": 1793660032725
+        },
+        {
+          "url": "/api/refs/regions",
+          "at": 1793660032796
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660032830
+        },
+        {
+          "url": "/api/branches/S0017?run_id=2&period=week",
+          "at": 1793660032831
+        },
+        {
+          "url": "/api/branches/S0018?run_id=2&period=week",
+          "at": 1793660032831
+        },
+        {
+          "url": "/api/branches/S0032?run_id=2&period=week",
+          "at": 1793660032883
+        },
+        {
+          "url": "/api/branches/S0033?run_id=2&period=week",
+          "at": 1793660032884
+        },
+        {
+          "url": "/api/branches/S0036?run_id=2&period=week",
+          "at": 1793660032884
+        },
+        {
+          "url": "/api/branches/S0038?run_id=2&period=week",
+          "at": 1793660032915
+        },
+        {
+          "url": "/api/branches/S0045?run_id=2&period=week",
+          "at": 1793660032915
+        },
+        {
+          "url": "/api/branches/S0067?run_id=2&period=week",
+          "at": 1793660032916
+        },
+        {
+          "url": "/api/branches/S0072?run_id=2&period=week",
+          "at": 1793660032945
+        },
+        {
+          "url": "/api/branches/S0080?run_id=2&period=week",
+          "at": 1793660032946
+        },
+        {
+          "url": "/api/branches/S0118?run_id=2&period=week",
+          "at": 1793660032946
+        },
+        {
+          "url": "/api/branches/S0149?run_id=2&period=week",
+          "at": 1793660032975
+        },
+        {
+          "url": "/api/branches/S0161?run_id=2&period=week",
+          "at": 1793660032976
+        },
+        {
+          "url": "/api/branches/S0173?run_id=2&period=week",
+          "at": 1793660032976
+        },
+        {
+          "url": "/api/branches/S0183?run_id=2&period=week",
+          "at": 1793660033003
+        },
+        {
+          "url": "/api/branches/S0198?run_id=2&period=week",
+          "at": 1793660033003
+        },
+        {
+          "url": "/api/branches/S0199?run_id=2&period=week",
+          "at": 1793660033003
+        },
+        {
+          "url": "/api/branches/S0238?run_id=2&period=week",
+          "at": 1793660033030
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660033582
+        }
+      ],
+      "forbidden": [],
+      "errors": [],
+      "bad": [],
+      "bounds": {
+        "doc": 1440,
+        "width": 1440,
+        "svg": [
+          {
+            "w": 762.4375,
+            "h": 485.03125
+          }
+        ]
+      }
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "initial_ms": 297,
+      "branches_all_reads_ms": 718,
+      "closed_reads": 20,
+      "requests": [
+        {
+          "url": "/api/sim/state",
+          "at": 1793660033948
+        },
+        {
+          "url": "/api/settings",
+          "at": 1793660033949
+        },
+        {
+          "url": "/api/refs/channels",
+          "at": 1793660033950
+        },
+        {
+          "url": "/api/refs/segments",
+          "at": 1793660033950
+        },
+        {
+          "url": "/api/health",
+          "at": 1793660033950
+        },
+        {
+          "url": "/api/demo/status",
+          "at": 1793660033950
+        },
+        {
+          "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+          "at": 1793660033950
+        },
+        {
+          "url": "/api/metrics/overview?run_id=current",
+          "at": 1793660033964
+        },
+        {
+          "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
+          "at": 1793660034021
+        },
+        {
+          "url": "/api/map/zones?run_id=2",
+          "at": 1793660034021
+        },
+        {
+          "url": "/api/refs/teams",
+          "at": 1793660034021
+        },
+        {
+          "url": "/api/hitl/queue?run_id=2",
+          "at": 1793660034021
+        },
+        {
+          "url": "/api/branches?limit=200",
+          "at": 1793660034140
+        },
+        {
+          "url": "/api/cabinet/overview?run_id=current",
+          "at": 1793660034140
+        },
+        {
+          "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
+          "at": 1793660034140
+        },
+        {
+          "url": "/api/branches?limit=200&cursor=S0199",
+          "at": 1793660034176
+        },
+        {
+          "url": "/api/refs/regions",
+          "at": 1793660034248
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660034282
+        },
+        {
+          "url": "/api/branches/S0017?run_id=2&period=week",
+          "at": 1793660034282
+        },
+        {
+          "url": "/api/branches/S0018?run_id=2&period=week",
+          "at": 1793660034283
+        },
+        {
+          "url": "/api/branches/S0032?run_id=2&period=week",
+          "at": 1793660034336
+        },
+        {
+          "url": "/api/branches/S0033?run_id=2&period=week",
+          "at": 1793660034337
+        },
+        {
+          "url": "/api/branches/S0036?run_id=2&period=week",
+          "at": 1793660034337
+        },
+        {
+          "url": "/api/branches/S0038?run_id=2&period=week",
+          "at": 1793660034368
+        },
+        {
+          "url": "/api/branches/S0045?run_id=2&period=week",
+          "at": 1793660034368
+        },
+        {
+          "url": "/api/branches/S0067?run_id=2&period=week",
+          "at": 1793660034368
+        },
+        {
+          "url": "/api/branches/S0072?run_id=2&period=week",
+          "at": 1793660034397
+        },
+        {
+          "url": "/api/branches/S0080?run_id=2&period=week",
+          "at": 1793660034398
+        },
+        {
+          "url": "/api/branches/S0118?run_id=2&period=week",
+          "at": 1793660034398
+        },
+        {
+          "url": "/api/branches/S0149?run_id=2&period=week",
+          "at": 1793660034426
+        },
+        {
+          "url": "/api/branches/S0161?run_id=2&period=week",
+          "at": 1793660034426
+        },
+        {
+          "url": "/api/branches/S0173?run_id=2&period=week",
+          "at": 1793660034426
+        },
+        {
+          "url": "/api/branches/S0183?run_id=2&period=week",
+          "at": 1793660034453
+        },
+        {
+          "url": "/api/branches/S0198?run_id=2&period=week",
+          "at": 1793660034454
+        },
+        {
+          "url": "/api/branches/S0199?run_id=2&period=week",
+          "at": 1793660034454
+        },
+        {
+          "url": "/api/branches/S0238?run_id=2&period=week",
+          "at": 1793660034480
+        },
+        {
+          "url": "/api/branches/S0016?run_id=2&period=week",
+          "at": 1793660035031
+        }
+      ],
+      "forbidden": [],
+      "errors": [],
+      "bad": [],
+      "bounds": {
+        "doc": 1440,
+        "width": 1440,
+        "svg": [
+          {
+            "w": 762.4375,
+            "h": 485.03125
+          }
+        ]
+      }
+    }
+  ],
+  "profile": "demo",
+  "clients": 5000,
+  "seed_operations": 600000,
+  "prepared_current_run_id": 2,
+  "scoped_csi_inputs": 301,
+  "registered_members": 300,
+  "registered_visits": 2400,
+  "closed_direct_signal_count": 1,
+  "closed_branch": "S0016",
+  "read_only": {
+    "tables": 97,
+    "unchanged": true,
+    "changed": []
+  },
+  "api_dto_preservation": [
+    {
+      "source": "c8fc85da341d8808b08be5f732db4e54df051f94",
+      "version": "1.5.29",
+      "schemas_preserved": 155,
+      "canonical_json_bytes_equal": true,
+      "sha256": "381d4a0d1b5daa9e35f7321a4101685fdc256ca8f5ca9eda1aee2ac47a43bc66"
+    },
+    {
+      "source": "c2842c62f531182f007df12a7646ce86d0a3b454",
+      "version": "1.5.28",
+      "schemas_preserved": 167,
+      "canonical_json_bytes_equal": true,
+      "sha256": "2324347a87cfe6826847a6e06d0e42bcb5c2c604f70f76338dc5694fbf3c27af"
+    }
+  ],
+  "presentation_only_interception": "GET /api/settings ui: mode/layout/theme_pack; no business API mocking",
+  "runtime": "APP_ENV=test with actual paused Simulator loaded before fingerprint; no actor loop",
+  "threshold_ms": 3000,
+  "measurement": "four cold browser contexts; initial navigation and one-click layer including directory pagination + analytics + all closed detail reads; selected detail follows measurement",
+  "strict_map_layout": {
+    "cases": 20,
+    "passed": 20,
+    "seconds": 15.9
+  },
+  "portable_native_e2e": {
+    "cases": 4,
+    "passed": 4,
+    "seconds": 6.6
+  },
+  "source_hashes": {
+    "frontend/src/pages/workspace/MapTab.tsx": "05a80086f1c7e730d6c1668b0425742dae2702b5aaa38f55b597eaca56ce1fe3",
+    "frontend/src/pages/workspace/WorkspacePage.tsx": "580917758210d8f59b1c831fa5504eeaa3f8ef30490041a1c684e357a481dca4",
+    "frontend/src/pages/workspace/map/BranchAnalytics.tsx": "2a682c2b9def12c4fb6bce56753d12f33756c2b1b66544bda05ef45bbe8aafa5",
+    "frontend/src/pages/workspace/map/BranchCard.tsx": "fc8c39831991a8efb8b474b80966f7554fb763caf2c282c095425f53f750ca86",
+    "frontend/src/pages/workspace/map/BranchLayer.tsx": "d8e370eb808b5488f3f58e0c09e58bfa6fb97fb4346837151aaedebd7f6f6ba9"
+  },
+  "screenshots": {
+    "docs/screenshots/T-250/en-dark-detail.png": "668061670ceeadb7d5c6a79daefef77f37d6c7a490260a04098ba50449914145",
+    "docs/screenshots/T-250/en-dark.png": "6ded055b06e069dc5b4813af38c0160f480dfebada6bcc0a8b27f17e98432632",
+    "docs/screenshots/T-250/en-light-detail.png": "ade78c286c798c9f52900cda4826cd7a50c9b0900c3c1eb7797963b4feb563cf",
+    "docs/screenshots/T-250/en-light.png": "7c4eae2a5f115cbc2f79bbafff14a9f2b92c0bc4afb68e3b8527324ecc45bf0f",
+    "docs/screenshots/T-250/ru-dark-detail.png": "1405e2703fd7f351e8b302d658a50ee8789554c8079a5320f0cb1f91325d0748",
+    "docs/screenshots/T-250/ru-dark.png": "9899fedb97f8d51ec657b7c006187f37373388398e21e7dc187db21168d1a5c6",
+    "docs/screenshots/T-250/ru-light-detail.png": "db797209c245de6bdc56a08908403c30187b6ea2471161db97cd2f2bc51d7f4e",
+    "docs/screenshots/T-250/ru-light.png": "31f346a4340cae7fd01af200545fde11c450586b956bffe864561b5d1acce574"
+  }
+}

@@ -39,3 +39,46 @@ map-layout regression, read-only fingerprints/zero egress и фактическ�
 Дальше — ordinary composition final API29, additive API30 (RunId/оба слоя aliases),
 генераторы/контракты и final scoped regression. Карточка T250 не done; T262 overall
 также остаётся pending до обязательных UI/replay checks.
+
+## Финальная композиция и native proof (03.11.2026)
+
+Позднее включены clean API29 c8, T255192 и Journeyc463 обычными merge; ранее
+описанное ожидание API29/окна относится только к исходному candidate07e.
+[Конкретный API30/compatibility diff](T-250-api30-review.md) и
+[native evidence](T-250-native-proof.json) относятся к финальному runtime.
+
+Своя fresh `cx_map_ui_revision`: actual migration20, demo5000,600000 seed operations,
+затем настоящий T262 XLSX→normalizer301 inputs,300 registered members/2400 visits.
+Исходный корпус не менялся. Mock-only APP_ENV=test; реальный paused Simulator
+загружен до fingerprint, поэтому Header/ScopedRunBoundary не скрываются за503.
+Actors не запускались. Единственная browser interception — presentation ui в
+GET settings (theme/layout); бизнес-ответы API настоящие.
+
+4cold contexts ru/en×light/dark: initial296–323ms; toggle→полная pagination,
+analytics и все19closed background reads718–752ms. Это4 замера, не статистический
+p95. Selected detail —20й read, после замера. S0016 direct1 совпал с подписью
+co-located списка и карточкой/scoped trace links. Его cohort denominator честно
+unknown: extra1 не приписывается к300 зарегистрированным. Ни city-zone count,
+ни directory network history не выдаются за direct linkage.
+
+Все97таблиц fingerprint равны до/после4cases,0external/nonGET/JS/HTTP errors.
+Первый probe выявил3ожидаемых abort при pagination: теперь closed fanout стартует
+только после полной directory, final0abort. Native visual также выявил обрезание
+длинной sample подписи; локальный dl карточки показывает полное поле/unknown.
+
+Portable `e2e/map-branches.spec.ts`:4/4 за6.6s (one-clickon/off, native direct
+counts, co-located membership/card/scoped links, GET-only). Исходный строгий
+`map-layout.spec.ts` без изменения assertions:20/20 за15.9s на5viewports/2языках/
+2темах. Визуально просмотрены map/card PNG обеих тем/языков.
+`make lint` exit0:511front/74files, backend557/325,bot12/5,drift196/196;
+contracts48schemas/166paths; обе production сборки green. Финальный full backend
+regression/CI и human contract review ещё обязательны; не заявляем полный DoD.
+
+### Открытая visual граница после PNG review
+
+На overview PNG центр cluster count совпадает с некоторыми heat value labels
+(например Moscow area в en-light). Порядок SVG групп корректный, но наложенные
+цифры трудно читать. Это не скрывается отсутствием HTTP/JS ошибок: финальная
+visual приёмка требует scoped presentation correction count glyph без сдвига
+native anchor/координат, затем нового build/native proof. Эти PNG и времена
+остаются доказательством исходного runtime; не приписывать им будущий фикс.

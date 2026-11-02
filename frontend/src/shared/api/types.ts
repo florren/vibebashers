@@ -3005,7 +3005,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    layer?: "signals" | "critical" | "incidents_open" | "churn_risk";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    layer?: "signals" | "critical" | "incidents_open" | "churn_risk" | "incidents" | "churn";
                     window_hours?: number;
                 };
                 header?: never;
@@ -3023,6 +3025,7 @@ export interface paths {
                         "application/json": components["schemas"]["RegionHeat"][];
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -3046,6 +3049,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     window_hours?: number;
                 };
                 header?: never;
@@ -3065,6 +3070,7 @@ export interface paths {
                         "application/json": components["schemas"]["CityHeat"][];
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;

@@ -59,7 +59,7 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
   const catalog = useDirectionCatalog(headers, branchesOn)
   const branches = useMemo(() => branchesOn && !directory.isError ? directory.data?.pages.flatMap(page => page.items) ?? [] : [], [branchesOn, directory.data, directory.isError])
   const closedCodes = useMemo(() => branches.filter(branch => branch.branch_status === 'closed').map(branch => branch.code).sort(), [branches])
-  const closed = useQuery({ ...closedDetailsOptions(closedCodes, scope, headers), enabled: branchesOn && closedCodes.length > 0 })
+  const closed = useQuery({ ...closedDetailsOptions(closedCodes, scope, headers), enabled: branchesOn && directory.data != null && !directory.hasNextPage && closedCodes.length > 0 })
   const detail = useQuery({ ...branchDetailOptions(currentBranch, scope, headers), enabled: branchesOn && currentBranch != null })
   const analytics = useQuery({ ...branchAnalyticsOptions(scope, headers, offset), enabled: branchesOn })
   useEffect(() => { setSelectedBranch(null); setSelectedCluster(null); setOffset(0) }, [scopeKey])
@@ -132,8 +132,8 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
             {mode === 'heat' && <Seg value={String(win)} onChange={(v) => setWin(Number(v))} items={WINDOWS.map((w) => ({ id: String(w), label: t(`map.window.${w}`) }))} />}
             <button className="btn btn-sm" aria-pressed={branchesOn} onClick={() => setBranchesOn(value => !value)}>{t('branchMap.toggle')}</button>
             {(branchesOn || zoom.scale > 1) && <><button className="btn btn-sm" aria-label={t('branchMap.zoomIn')} disabled={zoom.scale >= 8} onClick={() => setZoom(value => ({ ...value, scale: Math.min(8, value.scale * 2) }))}>+</button><button className="btn btn-sm" aria-label={t('branchMap.zoomOut')} disabled={zoom.scale === 1} onClick={() => setZoom(value => ({ ...value, scale: Math.max(1, value.scale / 2) }))}>−</button><button className="btn btn-sm" onClick={() => setZoom({ scale: 1, centerX: W / 2, centerY: H / 2 })}>{t('branchMap.resetZoom')}</button></>}
-            {!['current', 'all'].includes(runScope) && <span>{t('branchMap.explicitRun', { id: runScope || t('branchMap.unknown') })}</span>}
-            <Seg value={runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }]} />
+            {!['current', 'all'].includes(params.get('run_id') ?? runScope) && <span>{t('branchMap.explicitRun', { id: runScope || t('branchMap.unknown') })}</span>}
+            <Seg value={params.get('run_id') ?? runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }]} />
           </div>
         }
       >

@@ -1,7 +1,7 @@
 import { useUndo } from '@/shared/ui/undo'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useHitlQueue, useSimState } from '@/shared/api/hooks'
 import { ScopedRunBoundary } from '@/shared/layout/ScopedRunBoundary'
 import { ScopedMetrics } from '@/pages/overview/ScopedMetrics'
@@ -26,6 +26,11 @@ const TABS: Tab[] = ['signals', 'incidents', 'hitl', 'tickets', 'deferred', 'map
 /** Экран 1 «Рабочее место» (ТЗ 12.2): KPI-полоса + вкладки. Текущий прогон берём из состояния симулятора. */
 export function WorkspacePage() {
   const [params] = useSearchParams()
+  // Scope карты фиксируем до монтирования legacy KPI и любых дочерних запросов.
+  if (params.get('tab') === 'map' && !params.has('run_id')) {
+    const scoped = new URLSearchParams(params); scoped.set('run_id', 'current')
+    return <Navigate replace to={{ search: scoped.toString() }} />
+  }
   const requested = params.get('run_id')
   return requested === null ? <WorkspaceContent /> : <ScopedRunBoundary requested={requested}>{resolved => <WorkspaceContent key={resolved} resolvedScope={resolved} />}</ScopedRunBoundary>
 }
