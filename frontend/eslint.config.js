@@ -1,3 +1,4 @@
+import { noInfiniteMotion } from './scripts/motion-rules.js'
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -10,11 +11,13 @@ export default tseslint.config(
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
     languageOptions: { ecmaVersion: 2022, globals: globals.browser },
-    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
+    plugins: { 'attention': { rules: { 'no-infinite-motion': noInfiniteMotion } }, 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
+      'attention/no-infinite-motion': 'error',
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   },
+  { files: ['**/*.test.{ts,tsx}', '**/__tests__/**'], rules: { 'attention/no-infinite-motion': 'off' } },
 )

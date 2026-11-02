@@ -24,6 +24,6 @@ describe('GraphView', () => {
     const { container } = render(<GraphView graph={graph} visited={new Set(['ingest', 'normalize'])} current="classify" outcome={null} />)
     expect(container.querySelectorAll('rect').length).toBeGreaterThanOrEqual(graph.nodes.length)
     expect(container.querySelectorAll('path.stroke-brand').length).toBe(1)
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
+    expect(container.querySelector('.status-indicator')).not.toBeNull()
   })
 })
