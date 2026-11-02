@@ -564,7 +564,8 @@
     "branch_audio": "Branch audio",
     "api": "API",
     "internal": "Internal",
-    "manager_ui": "Manager device"
+    "manager_ui": "Manager device",
+    "csi_survey": "CSI survey"
   },
   "compliance": {
     "title": "Compliance control",
@@ -2410,6 +2411,8 @@
     "clearCompliancePreset": "Clear compliance filter",
     "restoreCompliancePreset": "Restore compliance preset",
     "noConfiguredLines": "No product lines are configured for this preset. Choose another preset or configure its product lines.",
-    "noSavedEconomics": "No saved money calculations for these days"
+    "noSavedEconomics": "No saved money calculations for these days",
+    "partialAffected": "Partial customer coverage: {{clients}} known customers across {{known}} of {{total}} signals. The total affected count is unknown; enter a scenario assumption explicitly.",
+    "csiCoverage": "Of {{total}} responses: {{branch}} have a known branch and {{wait}} a known wait. The average covers known waits only."
   }
 }

@@ -23,7 +23,7 @@ export function CabinetCalculator({ line, region }: { line: Overview['product_li
     {settings.isError ? <ErrorBox error={settings.error} /> : settings.isPending ? <Skeleton className="h-20" /> : <>
       <label className="block text-sm">{t('cabinet.rate')}<select className="input mt-1 w-full" value={rateCode ?? ''} onChange={e => setRateCode(e.target.value || null)}><option value="">{t('cabinet.chooseRate')}</option>{rates.map(row => <option key={row.code} value={row.code}>{i18n.language.startsWith('en') ? row.name_en : row.name_ru} · {compactMoney(row.rate_rub, i18n.language)}</option>)}</select></label>
       <label className="block text-sm">{t('incidentEconomics.affected')}<input className="input mt-1 w-full" type="number" min={0} max={100000000} step={1} value={affected ?? ''} onChange={e => { const value = Number(e.target.value); setAffected(e.target.value !== '' && Number.isInteger(value) && value >= 0 && value <= 100000000 ? value : null) }} /></label>
-      {region && <p className="text-sm">{t('cabinet.actualAffected', { n: region.affected_clients })}</p>}
+      {region && <p className="text-sm">{region.affected_clients == null ? t('cabinet.partialAffected', { clients: region.identified_clients, known: region.identified_signals, total: region.signals }) : t('cabinet.actualAffected', { n: region.affected_clients })}</p>}
       {rateCode === 'bank_average' && <p className="text-sm text-muted">{t('cabinet.bankAverage')}</p>}
       <p className="text-2xl font-semibold num" aria-live="polite">{total == null ? '—' : `−${compactMoney(total, i18n.language)}`}</p>
       <p className="text-sm text-muted break-words">{affected ?? '—'} × {detractors ?? '—'} × {noReturn ?? '—'} × {rate?.rate_rub ?? '—'} ₽</p>

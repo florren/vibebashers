@@ -25,3 +25,13 @@ it('reselects the product-specific rate when direction changes, using the catalo
   rerender(<CabinetCalculator line={{ ...overview.product_lines[0]!, code: 'credit_cards', rate_code: 'credit_card' }} region={undefined} />)
   expect(screen.getByLabelText('Ставка dCLTV')).toHaveValue('credit_card')
 })
+
+it('keeps an anonymous partial cohort unknown but preserves a genuinely empty known zero', () => {
+  const { container, rerender } = render(<CabinetCalculator line={overview.product_lines[0]} region={{ ...overview.regions[0]!, affected_clients: null, identified_clients: 1, identified_signals: 1 }} />)
+  expect(screen.getByLabelText('Пострадавшие')).toHaveValue(null)
+  expect(container.querySelector('[aria-live]')).toHaveTextContent('—')
+  expect(screen.getByText(/Неполный охват клиентов/)).toHaveTextContent('1 из 2 сигналов')
+  rerender(<CabinetCalculator line={overview.product_lines[0]} region={{ ...overview.regions[0]!, signals: 0, affected_clients: 0, identified_clients: 0, identified_signals: 0 }} />)
+  expect(screen.getByLabelText('Пострадавшие')).toHaveValue(0)
+  expect(container.querySelector('[aria-live]')).toHaveTextContent(/^−0\s₽$/)
+})

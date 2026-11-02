@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 // Настоящий production UI/API; fixture меняет только настройки собственного стенда.
@@ -14,7 +15,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     const api = await (await request.get(`/api/cabinet/overview?product_line=${encodeURIComponent(line)}&period=month&run_id=current`, { headers })).json()
     const errors: string[] = [], external: string[] = [], forbiddenWrites: string[] = [], globalQueries: string[] = [], calls: string[] = []
     page.on('pageerror', error => errors.push(error.message))
-    page.on('request', req => { const url = new URL(req.url()); if (url.pathname.startsWith('/api/cabinet/')) calls.push(url.pathname + url.search); if (url.pathname === '/api/incidents') globalQueries.push(url.pathname + url.search) })
+    page.on('request', req => { const url = new URL(req.url()); if (url.pathname.startsWith('/api/cabinet/')) calls.push(url.pathname + url.search); if (['/api/incidents', '/api/signals'].includes(url.pathname)) globalQueries.push(url.pathname + url.search) })
     await page.route('**/*', route => {
       const req = route.request(), url = new URL(req.url())
       if (!['127.0.0.1', 'localhost'].includes(url.hostname)) { external.push(url.hostname); return route.abort() }
@@ -42,6 +43,14 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(root.locator('[data-block="cabinet-kpi"]')).toContainText(String(api.kpi.signals))
       await expect(root.locator('[data-block="cabinet-kpi"]')).toContainText(api.kpi.potential_loss_rub == null ? '—' : '')
       await expect(root.getByRole('link', { name: /SIG-/ }).first()).toHaveAttribute('href', /run_id=current/)
+      const palette = await page.evaluate(() => {
+        const css = getComputedStyle(document.documentElement)
+        const rgb = (key: string) => css.getPropertyValue(`--${key}`).trim().split(/\s+/).map(Number)
+        const lum = (c: number[]) => c.map(v => { const n = v / 255; return n <= .03928 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4 }).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i]!, 0)
+        const ratio = (a: number[], b: number[]) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05) }
+        return { text: Math.min(...['bg', 'surface', 'raised'].flatMap(bg => ['ink', 'muted', 'ok', 'warn', 'danger', 'info'].map(fg => ratio(rgb(fg), rgb(bg))))), control: Math.min(...['bg', 'surface', 'raised'].flatMap(bg => ['control-line', 'focus-ring'].map(fg => ratio(rgb(fg), rgb(bg))))) }
+      })
+      expect(palette.text).toBeGreaterThanOrEqual(4.5); expect(palette.control).toBeGreaterThanOrEqual(3)
       await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-top.png`) })
       const region = api.top_regions[0]
       expect(region).toBeTruthy()
@@ -53,8 +62,22 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(page).toHaveURL(new RegExp('region=' + region.code))
       await expect(root.getByLabel(ru ? 'Сигналы выбранного региона' : 'Selected region signals')).toBeVisible()
       await expect(root.locator('svg g[transform]')).toHaveAttribute('transform', /scale\(1\.8\)/)
+      await expect(root.locator('svg [aria-pressed="false"]').first()).toHaveCSS('opacity', '0.35')
+      await expect(root.getByLabel(ru ? 'Сигналы выбранного региона' : 'Selected region signals')).toContainText(ru ? 'Маршрутизация' : 'Routing')
+      await expect(root.getByLabel(ru ? 'Сигналы выбранного региона' : 'Selected region signals')).not.toContainText('csi_survey')
+      await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-region.png`) })
+      await root.getByRole('button', { name: ru ? 'Сбросить фильтры' : 'Reset filters', exact: true }).click()
+      await page.getByRole('button', { name: ru ? 'Отменить' : 'Undo', exact: true }).click()
+      await expect(page).toHaveURL(new RegExp('region=' + region.code))
+      await regionButton.focus()
       await page.keyboard.press(' ')
       await expect.poll(() => new URL(page.url()).searchParams.has('region')).toBe(false)
+      await root.getByRole('button', { name: ru ? 'Открыть карточку' : 'Open card', exact: true }).first().click()
+      const signalDrawer = page.getByRole('dialog', { name: ru ? 'Сигнал клиента' : 'Customer signal', exact: true })
+      await expect(signalDrawer.getByRole('link', { name: /SIG-/ })).toHaveAttribute('href', /run_id=current/)
+      await expect(signalDrawer.locator('input,textarea')).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await expect(signalDrawer).toHaveCount(0)
       const chart = root.locator('[data-block="cabinet-charts"]')
       await chart.scrollIntoViewIfNeeded()
       await chart.getByRole('button', { name: text.monthly, exact: true }).click()
@@ -93,9 +116,27 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       const infinite = await page.evaluate(() => document.getAnimations().filter(animation => animation.playState === 'running' && animation.effect?.getTiming().iterations === Infinity).length)
       expect(infinite).toBe(0)
       expect(globalQueries).toEqual([]); expect(forbiddenWrites).toEqual([]); expect(external).toEqual([]); expect(errors).toEqual([])
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await request.patch('/api/settings', { data: { ui: { mode: 'circadian', circadian: { source: 'fixed', fixed_phase: 'night' } } } })
+      await page.addInitScript(() => { localStorage.setItem('cx.ui.mode', 'circadian'); localStorage.setItem('cx.ui.circadian', JSON.stringify({ source: 'fixed', fixed_phase: 'night' })) })
+      await page.goto(ownPath)
+      await expect(page.locator('html')).toHaveAttribute('data-phase', 'night')
+      const digest = page.getByTestId('cabinet-night-digest')
+      await digest.locator('summary').click()
+      const scoped = await (await request.get(`/api/cabinet/signals?product_line=${encodeURIComponent(line)}&period=month&run_id=current&sort=level&direction=desc&limit=10`, { headers })).json()
+      const expectedIds = scoped.items.filter((item: { criticality: string }) => item.criticality === 'high').map((item: { public_id: string }) => item.public_id)
+      await expect.poll(async () => digest.getByRole('link', { name: /SIG-/ }).allTextContents()).toEqual(expectedIds)
+      await expect(root.locator('[data-block]')).toHaveCount(7)
+      await expect(page.getByTestId('night-digest')).toHaveCount(0)
+      expect(await page.getByTestId('night-decoration').evaluate(element => Number(getComputedStyle(element).opacity))).toBeLessThanOrEqual(.08)
+      expect(await page.locator('audio,video').count()).toBe(0)
+      expect(globalQueries).toEqual([]); expect(forbiddenWrites).toEqual([]); expect(external).toEqual([]); expect(errors).toEqual([])
+      await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-night-mobile.png`) })
       await page.getByRole('button', { name: ru ? 'Открыть меню' : 'Open menu', exact: true }).click()
       await page.keyboard.press('Escape')
-      await info.attach('cabinet-actual-proof', { body: JSON.stringify({ language, mode, block_count: 7, product_line: line, strict_foreign_status: forbidden.status(), global_queries: globalQueries, forbidden_writes: forbiddenWrites, external, page_errors: errors }), contentType: 'application/json' })
+      const proofPath = info.outputPath('cabinet-actual-proof.json')
+      await writeFile(proofPath, JSON.stringify({ language, mode, block_count: 7, product_line: line, strict_foreign_status: forbidden.status(), global_queries: globalQueries, forbidden_writes: forbiddenWrites, external, page_errors: errors, palette, night: 'explicit fixed phase, reduced motion', night_scoped_high_count: expectedIds.length }, null, 2))
+      await info.attach('cabinet-actual-proof', { path: proofPath, contentType: 'application/json' })
     } finally {
       await request.patch('/api/settings', { data: { ui: settings.ui ?? null, cabinet: settings.cabinet ?? null } })
     }
