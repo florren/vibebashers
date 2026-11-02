@@ -2,7 +2,7 @@
 
 Реальных Telegram HTTP, getMe или сообщений людям не было. Пользователь разрешил
 service-to-service HMAC, но final API/DDL review и live smoke этим не заменяются.
-Статус: реализация и targeted proof готовы; полный final-head DoD ещё выполняется.
+Статус: реализация и source-qualified полный local proof готовы; final review/CI перед merge. Последний итог — внизу и T-121-final-verification.json.
 
 ## Контракт и совместимость
 
@@ -86,3 +86,27 @@ Preview принудительно default_transaction_read_only, external DNS/s
 npm run build (он уже включает personal); отдельного build:personal script нет.
 
 Полные integration/scenario/compliance/bot фазы ещё выполняются; итог не заявлен.
+
+## Final local proof и parent composition
+
+Полный make test на7acce1b завершилсяexit0:1633unit/18skip,390PG/2skip,
+43scenario/2skip,31compliance,331frontend,34bot. Итого2097backend/22skip.
+Наcurrentmain501/P1e6→93f180b:1640unit/18skip49.81s, make lint348frontend,
+Ruff432/mypy283,botRuff11/mypy5,drift192;15actualPGdelivery/dialogue/public93.85s.
+Ancestry-only parentmerge3450afe имееттотжеtree, latestT240cbfd включён.
+Это source-qualified verification, не новый монолитный make test на3450afe.
+
+Покрытие ВСЕХ новых backend executable строк относительноactualparentT240:
+575/623=92.30%, каждый затронутый runtimefile≥80%; generatedORM исключён,
+schema/generator/migration провереныотдельно. 88actualunit/PG106.84s +18ASGI/lifespan
+15.64s на техжеruntimeblobs. Bot219statements/209covered95.43%,43fakeSDK/CLI
+15.12s: SIGTERM/cancel/sessioncleanup, rate/network/server/permanentpollerrors,
+nooffsetadvance и secret-negative assertions. Backendlicense550+bot36green;
+botgate запускался bot interpreter (backend interpreter не содержит aiofiles).
+
+ActualnotificationsUI повторён на3450afe:4ru/en×themes,94tablehashesunchanged,
+0browsernonGET/external/LLM/pageerrors, новые4PNG/proof сохранены. Previewостановлен.
+Ни один файл/результат не утверждает настоящий Telegram smoke или jury QR flow.
+Детальные источники/хэши: T-121-final-verification.json, added-backend-coverage.json,
+bot-coverage.json и docs/screenshots/T-121/proof.json. Final API/DDL review и
+exact-head CI ещё обязательны доmerge; T122actualreadiness/QR остаётся отдельной веткой.

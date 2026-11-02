@@ -1,5 +1,5 @@
 {
-  "source": "155600efde77c82cabd6634d31fa65a751f165da",
+  "source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
   "scope": "production UI + actual API; four explicit synthetic notification fixtures, no seeded real receipts, no HTTP mocks; actor-free read-only scratch DB; Telegram disabled",
   "results": [
     {

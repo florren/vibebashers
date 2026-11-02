@@ -90,3 +90,12 @@ async def test_disabled_transport_fails_closed_before_body_validation_and_db(gua
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://backend.test") as client:
         response = await client.post("/api/internal/tgbot/inbound", content=b"invalid json")
     assert response.status_code == 503 and calls == []
+
+
+async def test_invalid_enabled_configuration_fails_closed_before_db(guarded_app, monkeypatch):
+    app, calls, settings = guarded_app
+    monkeypatch.setattr(settings, "telegram_bot_token", "invalid-public-test-vector")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://backend.test") as client:
+        response = await client.post("/api/internal/tgbot/inbound", content=b"invalid json")
+    assert response.status_code == 503 and calls == []
+    assert "invalid-public-test-vector" not in response.text
