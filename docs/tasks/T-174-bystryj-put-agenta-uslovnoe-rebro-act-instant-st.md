@@ -47,3 +47,10 @@ pytest -m live backend/tests/scenarios/test_scenario_08_latency.py
 
 ## Отчёт субагента
 Ветка `feat/T-174-fast-path`. `policies.fast_path_allowed`; после `check_rules` условное ребро → `instant_decide` (LLM `agent/instant_decision`, context fast_path 8 с) → `act_instant` → `verify` → `gift` → `close`. `_ensure_instant_decision` дополняет план инструментов по fee_rule; идемпотентность refund через `refund_fee`. Промпт `prompts/v1/instant_decision.md`. Хвост T-173: `identify_client` → `match_client_by_hints`. Тесты: `test_fast_path_allowed_branches`, `test_scenario_08_qr_fee.py`; live-замер — `test_scenario_08_latency.py`. Контракты не менялись. Live p50/p95 — в PR после прогона с GIGACHAT_*.
+
+## Ревизия финансовой границы, 2026-11-02
+
+Связь refund с текущим claim, pre-effect validation resumed checkpoint и enforcement существующего mass-HITL подготовлены в отдельном stack. Данные selector находятся в `data/rules.yaml`; threshold50, лимиты и права оператора не изменены. Конкретный diff/совместимость/rollback: `docs/reviews/T-174-refund-case-relevance.md`. Требуется human financial review до merge. Live latency по Ultra этой ревизией не проверялась; исходные live-критерии не отмечаются выполненными.
+
+
+Финальный source `79f0462`: `make lint` и `make test` exit 0; backend 1230 passed/24 skipped, frontend 144 passed. Unit 929/18 skipped, integration 228/4 skipped, scenarios 42/2 skipped, compliance 31; license gate 526 distributions. Целевые 135 unit + 53 PG/scenario + 2 explicit-hints PG прошли. Review: `docs/reviews/T-174-refund-case-relevance.md`; evidence `/tmp/refund-scope-verification.json`. Исходные live Ultra latency критерии не закрыты; human financial review перед merge остаётся обязательным.
