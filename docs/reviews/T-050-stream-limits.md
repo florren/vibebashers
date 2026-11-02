@@ -28,3 +28,7 @@ T050 п. 1 и ТЗ 16.4 требуют проводить LLM-вызовы че�
 Полный `make test-unit`: 925 passed / 18 skipped, exit 0. `make licenses-check`: 526 distributions, exit 0. Полный DB/integration make test в согласованном без-DB packet не запускался. До merge нужен human review конкретного enforcement diff; root agent ведёт PR/CI/merge. Rollback — обычный revert packet, без миграции/удаления данных; он вернёт прежний quota bypass для stream, поэтому это не предлагается как обход лимита.
 
 Логи: `/tmp/t050-targeted.log`, `/tmp/t050-full-unit.log`, `/tmp/t050-lint.log`, `/tmp/t050-coverage.log`, `/tmp/t050-licenses.log`; машинная сводка `/tmp/t050-stream-verification.json`.
+
+## Проверка композиции с main 34e39ef
+
+Обычный merge сохраняет SDK/budget, финансовые defaults и golden corpus. 53 targeted tests; make lint exit0 (163 frontend, Ruff/format350, mypy250, OpenAPI191/191). contracts44/161, owners L1 и diff-check green. Полная remote CI проверяет итоговый head; приведённые выше полные unit runs относятся к явно указанным предыдущим исходным версиям. Новых внешних вызовов не было.
