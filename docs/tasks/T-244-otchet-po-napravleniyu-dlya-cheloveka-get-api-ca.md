@@ -34,9 +34,9 @@
 5. Проверка понятности: e2e-смоук печатной формы (Playwright `page.pdf()` в headless Chromium как артефакт CI, визуальная проверка человеком по чек-листу 24.5 п. 1–7); тексты через i18n.
 
 ## Критерии приёмки
-- [ ] JSON и XLSX согласованы с `overview` и между собой; `summary_ru` не пустой при наличии данных и корректен при их отсутствии.
-- [ ] Печатная форма помещается на 2–3 страницы A4 без обрезки; первый блок — выводы словами; у каждого графика заголовок-вывод; внутренние коды только в скобках после расшифровки.
-- [ ] Лицензия `openpyxl` указана; LLM не вызывается (тест: провайдер mock не получает запросов).
+- [x] JSON и XLSX согласованы с `overview` и между собой; `summary_ru` не пустой при наличии данных и корректен при их отсутствии.
+- [x] Печатная форма помещается на 2–3 страницы A4 без обрезки; первый блок — выводы словами; у каждого графика заголовок-вывод; внутренние коды только в скобках после расшифровки.
+- [x] Лицензия `openpyxl` указана; LLM не вызывается (тест: провайдер mock не получает запросов).
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -47,4 +47,8 @@ cd frontend && npx playwright test e2e/cabinet-report.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-244-cabinet-report`, база T-242 `5b34a5f`. Реализованы общий read-only JSON/XLSX producer, API 1.5.26 и печатная форма A4 с точными decimal sums. Конкретный контракт/лимиты/rollback: [review](../reviews/T-244-report-contract-review.md). Финальные source-specific проверки и PDF proof будут дополнены после полного прогона; CI и human contract review ещё не получены. T-249 и T-262 не закрываются.
+Ветка `codex/T-244-cabinet-report`, база T-242 `5b34a5f`. Реализованы общий read-only JSON/XLSX producer, API 1.5.26 и трёхстраничная A4 форма с exact money values/deltas. [Контракт, лимиты и rollback](../reviews/T-244-report-contract-review.md).
+
+Runtime `3898630`: 125 native unit/PG passed; production browser 5/5, 8 actual HTTP exports, large-money 2/2. Сохранены 24 PNG/PDF/XLSX artifacts, включая шесть PDF по 3 страницы. Fingerprint всех 107 таблиц unchanged во время чтения; LLM/external/non-GET attempts — 0. Cold stale-stats p95=272.497 мс; отдельный benchmark общего отчёта/направления — p95=242.665/32.591 мс, первые GET включены. Исторические failures явно сохранены в review.
+
+Report coverage 205/209 (файлы byte-identical final), shared SQL helper 31/31. Lint: 416 frontend tests, Ruff 452 files, mypy 294 files, drift 193 methods. Обе production builds, contracts и generator idempotence зелёные. Исторический полный `make lint test` на `3f42ae8` отделён от final scoped proof. Exact-head CI и human API26 review ещё требуются; T-249/T-262 не закрываются.
