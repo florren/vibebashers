@@ -1,0 +1,360 @@
+{
+  "source": "d1a4197831f0e87230bd60bce08e4bc65c0ebb87",
+  "container": "cx-t235-perf-d1a4197",
+  "cpu_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "memory_bytes": 2147483648,
+  "postgres": "16.15 (Debian 16.15-1.pgdg13+2)",
+  "seed_seconds_including_dump": 22.508627556991996,
+  "counts_before_explicit_search_fixture": {
+    "clients": 5000,
+    "signals": 2500,
+    "incidents": 400,
+    "operations": 600000
+  },
+  "fixture": "reused actual integration fixture, deferred synthetic-search-fixture; no live LLM/TG",
+  "data_scope": "own ephemeral benchmark PostgreSQL only",
+  "measurement": "actual localhost HTTP, sequential requests; validation warmup precedes timing; actor-free synthetic dataset, no active simulator load",
+  "routes": 47,
+  "timed_GET_requests": 1175,
+  "validation_GET_requests": 47,
+  "fingerprinted_tables": 84,
+  "fingerprints_unchanged": true,
+  "structured_LLM_attempts": 0,
+  "external_network_attempts": 0,
+  "measurements": [
+    {
+      "case": "search:prefix:SIG",
+      "samples": 25,
+      "p95_ms": 10.159,
+      "max_ms": 10.283,
+      "response_bytes_max": 515
+    },
+    {
+      "case": "search:prefix:INC",
+      "samples": 25,
+      "p95_ms": 8.5,
+      "max_ms": 8.761,
+      "response_bytes_max": 445
+    },
+    {
+      "case": "search:prefix:CL",
+      "samples": 25,
+      "p95_ms": 9.052,
+      "max_ms": 9.198,
+      "response_bytes_max": 304
+    },
+    {
+      "case": "search:prefix:POST",
+      "samples": 25,
+      "p95_ms": 7.535,
+      "max_ms": 7.944,
+      "response_bytes_max": 332
+    },
+    {
+      "case": "search:prefix:TR",
+      "samples": 25,
+      "p95_ms": 8.114,
+      "max_ms": 8.286,
+      "response_bytes_max": 325
+    },
+    {
+      "case": "search:prefix:ESC",
+      "samples": 25,
+      "p95_ms": 7.624,
+      "max_ms": 7.869,
+      "response_bytes_max": 327
+    },
+    {
+      "case": "search:prefix:AS",
+      "samples": 25,
+      "p95_ms": 7.945,
+      "max_ms": 7.975,
+      "response_bytes_max": 333
+    },
+    {
+      "case": "search:prefix:EMP",
+      "samples": 25,
+      "p95_ms": 8.259,
+      "max_ms": 8.728,
+      "response_bytes_max": 312
+    },
+    {
+      "case": "search:prefix:AR",
+      "samples": 25,
+      "p95_ms": 8.199,
+      "max_ms": 8.259,
+      "response_bytes_max": 315
+    },
+    {
+      "case": "search:prefix:SR",
+      "samples": 25,
+      "p95_ms": 8.451,
+      "max_ms": 9.017,
+      "response_bytes_max": 302
+    },
+    {
+      "case": "search:prefix:TSK",
+      "samples": 25,
+      "p95_ms": 8.116,
+      "max_ms": 8.279,
+      "response_bytes_max": 303
+    },
+    {
+      "case": "search:prefix:NTF",
+      "samples": 25,
+      "p95_ms": 7.85,
+      "max_ms": 7.984,
+      "response_bytes_max": 337
+    },
+    {
+      "case": "search:prefix:LED",
+      "samples": 25,
+      "p95_ms": 8.622,
+      "max_ms": 8.878,
+      "response_bytes_max": 309
+    },
+    {
+      "case": "search:prefix:HD",
+      "samples": 25,
+      "p95_ms": 9.7,
+      "max_ms": 10.014,
+      "response_bytes_max": 335
+    },
+    {
+      "case": "search:prefix:FUP",
+      "samples": 25,
+      "p95_ms": 8.641,
+      "max_ms": 8.68,
+      "response_bytes_max": 324
+    },
+    {
+      "case": "search:prefix:CSI",
+      "samples": 25,
+      "p95_ms": 8.325,
+      "max_ms": 9.198,
+      "response_bytes_max": 297
+    },
+    {
+      "case": "search:prefix:VSP",
+      "samples": 25,
+      "p95_ms": 7.444,
+      "max_ms": 7.46,
+      "response_bytes_max": 294
+    },
+    {
+      "case": "search:format:UUID",
+      "samples": 25,
+      "p95_ms": 7.827,
+      "max_ms": 8.616,
+      "response_bytes_max": 392
+    },
+    {
+      "case": "search:format:tracking_token",
+      "samples": 25,
+      "p95_ms": 8.235,
+      "max_ms": 12.751,
+      "response_bytes_max": 384
+    },
+    {
+      "case": "search:format:nickname",
+      "samples": 25,
+      "p95_ms": 16.573,
+      "max_ms": 16.981,
+      "response_bytes_max": 10609
+    },
+    {
+      "case": "search:format:masked_card",
+      "samples": 25,
+      "p95_ms": 9.117,
+      "max_ms": 9.361,
+      "response_bytes_max": 10618
+    },
+    {
+      "case": "search:format:masked_phone",
+      "samples": 25,
+      "p95_ms": 11.39,
+      "max_ms": 12.71,
+      "response_bytes_max": 10632
+    },
+    {
+      "case": "search:format:number",
+      "samples": 25,
+      "p95_ms": 12.377,
+      "max_ms": 13.11,
+      "response_bytes_max": 3036
+    },
+    {
+      "case": "search:format:text",
+      "samples": 25,
+      "p95_ms": 132.993,
+      "max_ms": 133.356,
+      "response_bytes_max": 25404
+    },
+    {
+      "case": "search:format:rule",
+      "samples": 25,
+      "p95_ms": 7.653,
+      "max_ms": 7.984,
+      "response_bytes_max": 368
+    },
+    {
+      "case": "search:format:error_code",
+      "samples": 25,
+      "p95_ms": 7.664,
+      "max_ms": 7.725,
+      "response_bytes_max": 386
+    },
+    {
+      "case": "trace:prefix:SIG",
+      "samples": 25,
+      "p95_ms": 24.531,
+      "max_ms": 24.582,
+      "response_bytes_max": 559
+    },
+    {
+      "case": "trace:prefix:INC",
+      "samples": 25,
+      "p95_ms": 28.609,
+      "max_ms": 31.779,
+      "response_bytes_max": 2770
+    },
+    {
+      "case": "trace:prefix:CL",
+      "samples": 25,
+      "p95_ms": 44.836,
+      "max_ms": 45.214,
+      "response_bytes_max": 9058
+    },
+    {
+      "case": "trace:prefix:POST",
+      "samples": 25,
+      "p95_ms": 13.598,
+      "max_ms": 16.001,
+      "response_bytes_max": 380
+    },
+    {
+      "case": "trace:prefix:TR",
+      "samples": 25,
+      "p95_ms": 14.665,
+      "max_ms": 15.496,
+      "response_bytes_max": 2167
+    },
+    {
+      "case": "trace:prefix:ESC",
+      "samples": 25,
+      "p95_ms": 21.728,
+      "max_ms": 22.123,
+      "response_bytes_max": 5126
+    },
+    {
+      "case": "trace:prefix:AS",
+      "samples": 25,
+      "p95_ms": 14.72,
+      "max_ms": 14.752,
+      "response_bytes_max": 1626
+    },
+    {
+      "case": "trace:prefix:EMP",
+      "samples": 25,
+      "p95_ms": 14.898,
+      "max_ms": 14.899,
+      "response_bytes_max": 1033
+    },
+    {
+      "case": "trace:prefix:AR",
+      "samples": 25,
+      "p95_ms": 38.849,
+      "max_ms": 39.303,
+      "response_bytes_max": 8304
+    },
+    {
+      "case": "trace:prefix:SR",
+      "samples": 25,
+      "p95_ms": 7.926,
+      "max_ms": 8.121,
+      "response_bytes_max": 379
+    },
+    {
+      "case": "trace:prefix:TSK",
+      "samples": 25,
+      "p95_ms": 16.382,
+      "max_ms": 16.702,
+      "response_bytes_max": 3968
+    },
+    {
+      "case": "trace:prefix:NTF",
+      "samples": 25,
+      "p95_ms": 14.612,
+      "max_ms": 14.632,
+      "response_bytes_max": 2364
+    },
+    {
+      "case": "trace:prefix:LED",
+      "samples": 25,
+      "p95_ms": 10.031,
+      "max_ms": 10.157,
+      "response_bytes_max": 375
+    },
+    {
+      "case": "trace:prefix:HD",
+      "samples": 25,
+      "p95_ms": 17.308,
+      "max_ms": 17.589,
+      "response_bytes_max": 4960
+    },
+    {
+      "case": "trace:prefix:FUP",
+      "samples": 25,
+      "p95_ms": 13.983,
+      "max_ms": 14.072,
+      "response_bytes_max": 2505
+    },
+    {
+      "case": "trace:prefix:CSI",
+      "samples": 25,
+      "p95_ms": 16.738,
+      "max_ms": 19.927,
+      "response_bytes_max": 1311
+    },
+    {
+      "case": "trace:prefix:VSP",
+      "samples": 25,
+      "p95_ms": 12.717,
+      "max_ms": 13.397,
+      "response_bytes_max": 1028
+    },
+    {
+      "case": "trace:context:causal_signal",
+      "samples": 25,
+      "p95_ms": 43.257,
+      "max_ms": 54.86,
+      "response_bytes_max": 10130
+    },
+    {
+      "case": "trace:context:causal_incident",
+      "samples": 25,
+      "p95_ms": 40.048,
+      "max_ms": 40.734,
+      "response_bytes_max": 8218
+    },
+    {
+      "case": "trace:context:pending",
+      "samples": 25,
+      "p95_ms": 20.473,
+      "max_ms": 21.326,
+      "response_bytes_max": 2938
+    },
+    {
+      "case": "trace:context:fanout",
+      "samples": 25,
+      "p95_ms": 35.9,
+      "max_ms": 36.134,
+      "response_bytes_max": 8218
+    }
+  ]
+}
