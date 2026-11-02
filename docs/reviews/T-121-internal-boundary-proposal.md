@@ -75,3 +75,22 @@ updates, invalid signature/time/body, process restart, failed/ambiguous delivery
 
 Реальный Telegram smoke потребует отдельного разрешения с конкретными chat_id,
 текстами и числом вызовов. Разрешение GigaChat к Telegram не относится.
+
+## Проверенный checkpoint transport/storage (не готовый сервис)
+
+Source transport `0f9796a`, затем main8b composition `83bfd64`.
+31 verifier/ASGI unit, 19 SDK/HTTP/license tests, licenses530+36 зелёные.
+Добавленный CLI проверен отдельно:33bot tests8.13s, mypy5source/Ruff green;
+`--offline` и отсутствие конфигурации дают0HTTP, secrets исключены из repr,
+upstream SDK records очищаются от args/traceback, permanent failure не ack updates.
+CLI пока не включён в Compose и не запускался с реальным token.
+
+`T-121-runtime-schema-proposal.sql` — только SQL-предложение для будущей0015,
+не миграция Alembic и не изменение рабочего контракта. Encrypted state/response,
+durable inbound и stable notification delivery_key не ссылаются FK на resettable
+public. Worker/delivery ещё не реализованы. На собственной
+`cx_t121_transport_revision`5actual PostgreSQL checks passed1.87s:
+повтор schema proposal идемпотентен, новый объект/connection читает ciphertext,
+три concurrent duplicate исполняют handler один раз, изменение body/chat того же
+update_id отклоняется, failure/missing response откатывают draft/receipt/side effect.
+Это не OS-restart, restore/drain или actual delivery proof; эти проверки впереди.
