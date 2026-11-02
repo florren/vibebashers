@@ -35,14 +35,20 @@ async def test_agent_close_keeps_report_internal_and_gift_awaits_approval(seeded
             "insert into incident_artifacts(run_id,incident_id,kind,title,body_md,meta,published_sim,generated_by) values (%s,%s,%s,'Проверка',%s,'{\"demo\":true,\"outcome\":\"late\"}',%s,'template')",
             (rid, iid, artifact_kind, report, await sim_now(conn)),
         )
-        tid = (
-            await (
-                await conn.execute(
-                    'insert into tasks(run_id,kind,incident_id,client_id,requires_hitl,status,payload,created_sim) values (%s,\'gift\',%s,%s,true,\'open\',\'{"gift":{"gift_code":"bonus_points","points":1000}}\',%s) returning id',
-                    (rid, iid, cid, await sim_now(conn)),
-                )
-            ).fetchone()
-        )[0]
+        # This case tests one pending human-reviewed gift. A second SQL-inserted
+        # proposal could collide with the agent's legitimate autonomous 1000 points.
+        gifts = await (
+            await conn.execute(
+                "select id,status from tasks where run_id=%s and incident_id=%s and client_id=%s and kind='gift'",
+                (rid, iid, cid),
+            )
+        ).fetchall()
+        assert len(gifts) == 1 and gifts[0][1] == "open"
+        tid = gifts[0][0]
+        await conn.execute(
+            'update tasks set requires_hitl=true,payload=\'{"gift":{"gift_code":"bonus_points","points":1000}}\'::jsonb where id=%s',
+            (tid,),
+        )
         await conn.commit()
         deps = await load_deps(
             conn,
