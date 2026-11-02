@@ -21,7 +21,7 @@ router = APIRouter(tags=["engine"])
 
 
 RUN_SQL = (
-    "select ar.id, ar.kind, ar.signal_id, ar.incident_id, ar.client_id, coalesce(lp.code, 'default') as llm_profile_code, ar.prompt_version, ar.graph_version, ar.outcome, ar.needed_human, "
+    "select ar.id, ar.kind, ar.signal_id, ar.incident_id, ar.client_id, coalesce(lp.code, 'default') as llm_profile_code, ar.prompt_version, ar.graph_version, ar.outcome, ar.status, ar.interrupted_at, ar.needed_human, "
     "ar.total_tokens, ar.prompt_tokens, ar.completion_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, ar.started_sim, ar.error, ar.cost_estimate, "
     "(select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node "
     "from agent_runs ar left join llm_profiles lp on lp.id = ar.llm_profile_id"

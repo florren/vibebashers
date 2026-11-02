@@ -200,7 +200,7 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
         )
         runs = await fetch_all(
             conn,
-            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
+            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.status, ar.interrupted_at, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
             (id,),
         )
         notifications = await fetch_all(

@@ -390,6 +390,7 @@
     "profile": "LLM profile",
     "promptVersion": "prompt version",
     "outcome": {
+      "interrupted": "interrupted",
       "completed": "completed",
       "fallback_mock": "completed with fallback provider",
       "awaiting_human": "waiting for a human",
@@ -1498,6 +1499,7 @@
     "linked": "Linked to the selected step",
     "notMapped": "No unambiguous link to a single agent step. Open Trace for event context.",
     "status": {
+      "interrupted": "interrupted",
       "pending": "Pending",
       "running": "Running",
       "done": "Completed",

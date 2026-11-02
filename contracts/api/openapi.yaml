@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.15
+  version: 1.5.17
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -3411,6 +3411,8 @@ components:
         llm_profile_code: { type: string }
         prompt_version: { type: string }
         outcome: { type: [string, "null"] }
+        status: { type: string, enum: [running, interrupted, completed, awaiting_human, deferred, failed, fallback_mock, cancelled], description: "Состояние исполнения; interrupted не подменяет бизнес-исход outcome." }
+        interrupted_at: { type: [string, "null"], format: date-time, description: "Реальное время обнаруженного прерывания; очищается при Resume." }
         needed_human: { type: boolean }
         total_tokens: { type: integer }
         total_latency_ms: { type: integer }

@@ -1,3 +1,4 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { clsx } from 'clsx'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
@@ -34,7 +35,7 @@ export function LogPanel({ runId, full }: { runId: number | null; full?: boolean
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-xs">
         <span className="font-mono">#{run.id}</span>
         <Badge tone={run.outcome === 'completed' ? 'ok' : run.outcome === 'awaiting_human' ? 'warn' : run.outcome === 'failed' ? 'danger' : 'info'}>
-          {tEnum('engine.outcome', run.outcome ?? 'running')}
+          {tEnum('engine.outcome', agentRunStatus(run))}
         </Badge>
         <span className="text-muted">
           {run.llm_profile_code} · {run.prompt_version}

@@ -136,6 +136,32 @@ async def test_real_agent_continues_same_run_without_repeating_refund(seeded, co
         "select id,sim_run_id,outcome from agent_runs where signal_id=%s", (sid,)
     ).fetchone()
     assert outcome is None
+    # Projection fixture того же durable AR; detection/restart отдельно проверены OS-process тестом.
+    conn.execute("update agent_runs set interrupted_at=now() where id=%s", (arid,))
+
+    async def api_projection(status, expected_outcome):
+        import httpx
+
+        from app.main import create_app
+
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app()), base_url="http://test") as client:
+            listing = await client.get("/api/agent/runs", params={"run_id": str(rid)})
+            assert listing.status_code == 200
+            detail = await client.get(f"/api/agent/runs/{arid}")
+            signal = await client.get(f"/api/signals/{sid}")
+            assert detail.status_code == signal.status_code == 200
+            views = [
+                next(row for row in listing.json()["items"] if row["id"] == arid),
+                detail.json(),
+                next(row for row in signal.json()["agent_runs"] if row["id"] == arid),
+            ]
+            for row in views:
+                assert row["id"] == arid and row["outcome"] == expected_outcome and row["status"] == status
+                assert bool(row["interrupted_at"]) == (status == "interrupted")
+            trace = await client.get(f"/api/trace/agent_run/{arid}")
+            assert trace.status_code == 200 and trace.json()["subject"]["status"] == status
+
+    await api_projection("interrupted", None)
     before = conn.execute("select count(*) from ledger_entries where kind='refund'").fetchone()[0]
     assert before == 1
     now = conn.execute("select sim_time from sim_state where id=1").fetchone()[0]
@@ -143,6 +169,7 @@ async def test_real_agent_continues_same_run_without_repeating_refund(seeded, co
         recovered = await graph.recover_agent_run(ac, agent_run_id=arid, chain=chain, profile=profile, sim_time=now)
         assert recovered["outcome"] == "completed"
         assert await graph.recover_agent_run(ac, agent_run_id=arid, chain=chain, profile=profile, sim_time=now) is None
+    await api_projection("completed", "completed")
     assert conn.execute("select count(*) from ledger_entries where kind='refund'").fetchone()[0] == before
     assert conn.execute("select count(*) from agent_runs where signal_id=%s", (sid,)).fetchone()[0] == 1
     assert (
