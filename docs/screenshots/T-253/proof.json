@@ -4,7 +4,7 @@
   "full_backend_passed": 1663,
   "full_backend_skipped": 22,
   "full_frontend_at_original_source": 311,
-  "final_frontend_passed": 315,
+  "final_frontend_passed": 317,
   "inherited_browser_passed_at_original_source": 49,
   "actual_calm_browser_passed": 4,
   "actual_sla_mobile_cases_passed": 4,
@@ -35,5 +35,12 @@
   "actual_calm_settings_PATCH": "Реальные сохранения ui.attention разрешены и проверены; число PATCH отдельно не фиксировалось.",
   "theme_frontend_passed": 312,
   "error_boundary_source_revision": "1f073b615fc4a95fb1afce00f8dada8931eeb385",
-  "error_boundary_target_passed": 13
+  "error_boundary_target_passed": 13,
+  "sla_clock_source_revision": "7bbdd1be4543531d4884bd431fdde5064bc7c336",
+  "sla_clock_target_passed": 15,
+  "sla_clock_actual_cases": 4,
+  "sla_clock_browser_timezones": [
+    "America/New_York",
+    "Asia/Tokyo"
+  ]
 }

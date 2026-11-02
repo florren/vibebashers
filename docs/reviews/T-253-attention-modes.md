@@ -37,3 +37,8 @@
 ## Уточнение ErrorBox (`1f073b6`)
 
 Обычная ошибка протокола/локальный TypeError больше не называется ошибкой соединения. Generic unknown использует нейтральную формулировку, исходные управляемые details сохранены. Только отклонение внутри известной границы `fetch` получает тип `ApiConnectionError`; raw URL/токены transport exception не отражаются в UI, нового логирования нет. HTTP `ApiError` и `AbortError` сохраняют прежнюю семантику. Target13/13, финальный frontend315/315, lint/type и обе production сборки зелёные. Backend и OpenAPI остаются побайтно теми же, что в полном прогоне59.
+
+
+## Согласование срока SLA с Header (`7bbdd1b`)
+
+Visual proof показал старое UTC отображение `sla_due_sim` рядом с уже московским Header: deadline08:44Z выглядит прошедшим относительно09:00MSK, хотя реальный срок11:44MSK и остаток2.733ч. Только срок SLA в IncidentCard/IncidentPage переведён на существующий `fmtSimMoscow` с явной подписью МСК/MSK. Generic `fmtSim`, created/history timestamps, серверная матрица и warning policy не менялись. Component/format targets15/15, полный frontend317/317, lint/type и обе builds зелёные. Actual API/browser4/4 проверили date+relative hint в list/detail при device timezone NewYork/Tokyo; обновлены два curated SLA PNG и `actual-sla-mobile.json`. Остальные timestamps истории остаются предметом отдельной общей ревизии; эта правка не утверждает их преобразование.
