@@ -1,0 +1,84 @@
+{
+  "baseline_source": "364c4fdfd6a8b80ded268b1f2f67e2a169e8db52",
+  "baseline_unchanged_test": {
+    "mode": "actual TestClient/PG, readonly GET, noLLM",
+    "members": 10001,
+    "page_size": 50,
+    "samples_ms": [
+      52.6394420012366,
+      51.993464992847294,
+      50.6545540119987,
+      50.72340599144809,
+      51.295530021889135,
+      50.432870018994436,
+      51.379101001657546,
+      50.563119002617896,
+      50.71215401403606,
+      51.56084900954738
+    ],
+    "p95_ms": 52.6394420012366,
+    "response_items": 50,
+    "python_request_peak_bytes": 260207
+  },
+  "candidate_unchanged_test": {
+    "mode": "actual TestClient/PG, readonly GET, noLLM",
+    "members": 10001,
+    "page_size": 50,
+    "samples_ms": [
+      16.326308017596602,
+      16.711085016140714,
+      15.171078004641458,
+      14.782112993998453,
+      13.983896002173424,
+      14.423748012632132,
+      14.329487981740385,
+      14.76352897589095,
+      14.812662004260346,
+      14.3811060115695
+    ],
+    "p95_ms": 16.711085016140714,
+    "response_items": 50,
+    "python_request_peak_bytes": 258286
+  },
+  "candidate_blob": "a609ea241bd57bb343148a76aa038de25e872df9",
+  "diagnostic_separate_instrumented_run": {
+    "execution_ms": 39.686,
+    "stats": {
+      "n_live_tup": 10002,
+      "n_mod_since_analyze": 10002,
+      "last_analyze": null,
+      "last_autoanalyze": null
+    },
+    "first_two": [
+      {
+        "index": 0,
+        "fetch_one": 2.604203997179866,
+        "fetch_all": 39.883538003778085,
+        "total_ms": 108.67502499604598
+      },
+      {
+        "index": 1,
+        "fetch_one": 2.333244978217408,
+        "fetch_all": 39.48396400664933,
+        "total_ms": 63.30262200208381
+      }
+    ]
+  },
+  "before_regression": "JSON-producing NestedLoop10001 rows before Sort/LIMIT51; new test red on unchanged app",
+  "CI_failures": [
+    {
+      "PR": 188,
+      "head": "d99b8569426a400bb013839ac9c8d645a3c2550e",
+      "p95_ms": 305.900601,
+      "job": 125300930611
+    },
+    {
+      "PR": 185,
+      "head": "76c16241ced4bbf559ba48ac6c6d3a8e8ddf75c1",
+      "p95_ms": 315.502337,
+      "job": 125323928968
+    }
+  ],
+  "threshold_unchanged_ms": 300,
+  "row_memory_privacy_assertions_weakened": false
+}
