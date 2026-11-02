@@ -31,7 +31,7 @@ Giga OAuth/chat error diagnostics сохраняют kind/status/Retry-After/usa
 
 ## Обязательный review перед merge
 
-`contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage/balance/day/last_error не входят в baseline fingerprint; private UID/endpoint/scope/limits/deleted config входят. Номер0015 зарезервирован parent для отдельно reviewed durable operational store;0014 принадлежит T-240.
+`contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage/balance/day/last_error не входят в baseline fingerprint; private UID/endpoint/scope/limits/deleted config входят. Номер0016 зарезервирован parent для отдельно reviewed durable operational store;0014 принадлежит T-240.
 
 
 ## Составной checkpoint после297a8459 (в работе)
@@ -75,3 +75,5 @@ Unit1298passed/18skipped51.44s; PostgreSQL320passed/2skipped1749.14s; scenarios4
 Coverage выполнен в отдельном checkout/venv/DB того же727, без общей генерации/БД:1442passed/18skipped1082.62s; изменённые executable statements2260/2516=89.83% относительно85fcbaa, generated DB/models/contracts и line0 исключены. Per-file missing lines и source SHA в `T-051-frozen-727-coverage.json`, сводка в `T-051-frozen-727-proof.json`.
 
 Дополнительные synthetic counterexamples подтвердили SDK raw exception cause в formatted traceback и Giga exact credential в usage до int parsing. Эти данные НЕ означают, что provider boundary уже полностью защищена. Согласован отдельный followup после frozen proof: fromNone, minimumWARNING exact installed SDK loggers и безопасный pre-parse usage boundary. Приведённые числа относятся727, не будущему изменённому source.
+
+Provider followup описан отдельно в `T-051-provider-error-boundary.md`: безопасные causes, explicit SDK minimum WARNING и nullable unknown usage вместо fabricated0. Реальная pre0013 schema297 проверена отдельной scratch DB: повторныйDDL/cutover стабильны; existingcipher/identity/observations не изменились. Прежняя canonical row с endpointNULL остаётся unknown, не получает угаданный destination: для explicit binding оператор должен зарегистрировать тот же credential с известным endpoint (private UID повторно используется). Это migration limitation, не молчаливый env fallback.

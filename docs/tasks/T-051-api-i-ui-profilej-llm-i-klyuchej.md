@@ -42,7 +42,7 @@ P1, ветка `codex/T-051-runtime-profiles`: backend source checkpoint пос�
 
 На source checkpoint:146 pure tests прошли; directed PG11 routing/tracing/profile tests и16 API/bench tests проходили на промежуточном дереве; после расширения no-echo проверок23/25 проходили, два API-case упали из-за cached structlog/capsys test file, fixture исправлен и оба case вместе с API/legacy/cache проверками6/6 прошли. Это не full DoD доказательство окончательного дерева. Mypy255 и targeted ruff/format прошли; code/types сгенерированы только own checkout/scratchDB. Реальные LLM/Telegram/email не вызывались.
 
-До done: обычное объединение maintenance checkpoint297a8459 и актуализация config fingerprint/preflight, narrow Setup UI key select/Save/Check+endpoint/scope, screenshots4варианта, полные lint/test/coverage и CI, human review конкретного DB/credential/external-budget diff. Persistent UTC RPD/attempt ledger остаётся отдельным T-050 P2/0015; numeric policies/customer money/HITL не менялись. Подробности в `docs/reviews/T-051-runtime-profiles.md`.
+До done: обычное объединение maintenance checkpoint297a8459 и актуализация config fingerprint/preflight, narrow Setup UI key select/Save/Check+endpoint/scope, screenshots4варианта, полные lint/test/coverage и CI, human review конкретного DB/credential/external-budget diff. Persistent UTC RPD/attempt ledger остаётся отдельным T-050 P2/0016; numeric policies/customer money/HITL не менялись. Подробности в `docs/reviews/T-051-runtime-profiles.md`.
 
 
 ### UI source checkpoint (от83516b7)
