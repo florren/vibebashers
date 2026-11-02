@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 @pytest.fixture(scope="module")
 def cabinet_db(migrated_db: str) -> Iterator[str]:
-    seeded = _seed(migrated_db)
+    seeded = _seed(migrated_db, "--profile", "demo", "--clients", "5000")
     assert seeded.returncode == 0, seeded.stderr[-1000:]
     with psycopg.connect(migrated_db.replace("postgresql+psycopg:", "postgresql:"), autocommit=True) as conn:
         assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0018"
@@ -190,7 +190,9 @@ def test_all_current_and_foreign_run(client: TestClient, sql: Any) -> None:
     foreign = sql.execute(
         "insert into sim_runs(kind,label,seed,started_sim) select 'live','T241 scope fixture',42,sim_time from sim_state where id=1 returning id"
     ).fetchone()[0]
-    original = sql.execute("select id,run_id from signals order by id desc limit 1").fetchone()
+    original = sql.execute(
+        "select s.id,s.run_id from signals s cross join sim_state st where st.id=1 and s.received_sim<=st.sim_time order by s.received_sim desc,s.id desc limit 1"
+    ).fetchone()
     try:
         sql.execute("update signals set run_id=%s where id=%s", (foreign, original[0]))
         sql.execute("update sim_state set current_run_id=null where id=1")
@@ -381,3 +383,247 @@ def test_actual_18_reapply_and_additive_downgrade_preserve_audit(cabinet_db: str
         assert sql.execute("select to_regclass('v_cabinet_signal_facts') is not null").fetchone()[0]
     finally:
         sql.execute("update incident_status_history set actor_role=%s where id=%s", (audit[1], audit[0]))
+
+
+def test_client_coverage_does_not_turn_anonymous_signals_into_zero_affected(client: TestClient, sql: Any) -> None:
+    line = sql.execute(
+        "select product_line_code from signals where product_line_code is not null group by 1 order by count(*) limit 1"
+    ).fetchone()[0]
+    sample = sql.execute(
+        "select geo->>'region_code' from signals where product_line_code=%s and geo->>'region_code' is not null limit 1",
+        (line,),
+    ).fetchone()[0]
+    rows = sql.execute(
+        "select id,client_id from signals where product_line_code=%s and geo->>'region_code'=%s", (line, sample)
+    ).fetchall()
+    known_client = sql.execute("select id from clients order by id limit 1").fetchone()[0]
+
+    def region() -> dict[str, Any]:
+        data = client.get("/api/cabinet/overview", params={"product_line": line, "period": "quarter"}).json()
+        return next(row for row in data["regions"] if row["code"] == sample)
+
+    try:
+        for sid, _ in rows:
+            sql.execute("update signals set client_id=%s where id=%s", (known_client, sid))
+        complete = region()
+        assert complete["affected_clients"] == complete["identified_clients"] == 1
+        assert complete["identified_signals"] == complete["signals"]
+        sql.execute("update signals set client_id=null where id=%s", (rows[0][0],))
+        partial = region()
+        assert partial["affected_clients"] is None
+        assert partial["identified_signals"] < partial["signals"]
+        empty = next(
+            row
+            for row in client.get("/api/cabinet/overview", params={"product_line": line, "period": "quarter"}).json()[
+                "regions"
+            ]
+            if row["signals"] == 0
+        )
+        assert empty["affected_clients"] == empty["identified_signals"] == empty["identified_clients"] == 0
+        before = fingerprint(sql)
+        region()
+        assert before == fingerprint(sql)
+    finally:
+        for sid, original in rows:
+            sql.execute("update signals set client_id=%s where id=%s", (original, sid))
+
+
+def test_csi_only_counts_observed_quality_without_assigning_global_visits(client: TestClient, sql: Any) -> None:
+    row = sql.execute(
+        "select id,channel_code,product_line_code from signals where product_line_code is not null and id not in(select signal_id from csi_responses) limit 1"
+    ).fetchone()
+    previous = client.get("/api/cabinet/overview", params={"product_line": row[2], "period": "quarter"}).json()["csi"]
+    sql.execute("update signals set channel_code='csi_survey' where id=%s", (row[0],))
+    sql.execute(
+        "insert into csi_responses(signal_id,csi_no,complaint_ru) values(%s,'T241-CSI-QUALITY','explicit quality fixture')",
+        (row[0],),
+    )
+    try:
+        data = client.get("/api/cabinet/overview", params={"product_line": row[2], "period": "quarter"}).json()["csi"]
+        assert data["responses"] == previous["responses"] + 1
+        assert data["branch_known"] == previous["branch_known"]
+        assert data["wait_known"] == previous["wait_known"]
+        assert data["branches"] is None
+        assert data["average_wait_min"] == previous["average_wait_min"]
+        branch = sql.execute("select id from branches order by id limit 1").fetchone()[0]
+        sql.execute("update csi_responses set branch_id=%s,wait_min=7.5 where signal_id=%s", (branch, row[0]))
+        data = client.get("/api/cabinet/overview", params={"product_line": row[2], "period": "quarter"}).json()["csi"]
+        assert data["branch_known"] == previous["branch_known"] + 1
+        assert data["wait_known"] == previous["wait_known"] + 1
+        expected_wait = ((previous["average_wait_min"] or 0) * previous["wait_known"] + 7.5) / data["wait_known"]
+        assert data["average_wait_min"] == pytest.approx(expected_wait)
+        if data["branch_known"] < data["responses"]:
+            assert data["branches"] is None
+        else:
+            assert data["branches"] >= 1
+    finally:
+        sql.execute("delete from csi_responses where signal_id=%s", (row[0],))
+        sql.execute("update signals set channel_code=%s where id=%s", (row[1], row[0]))
+
+
+def test_unknown_source_codes_are_one_honest_bucket(client: TestClient, sql: Any) -> None:
+    from psycopg.types.json import Jsonb
+
+    rows = sql.execute("select id,meta from signals order by id desc limit 2").fetchall()
+    try:
+        for n, (sid, meta) in enumerate(rows):
+            sql.execute(
+                "update signals set meta=%s where id=%s",
+                (Jsonb({**meta, "source_platform": f"unknown_fixture_{n}"}), sid),
+            )
+        data = client.get("/api/cabinet/overview?period=quarter&product_line=all").json()
+        unknown = [row for row in data["sources"] if row["platform"] is None]
+        assert len(unknown) == 1 and unknown[0]["signals"] >= 2
+        assert sum(row["signals"] for row in data["sources"]) == data["kpi"]["signals"]
+    finally:
+        for sid, meta in rows:
+            sql.execute("update signals set meta=%s where id=%s", (Jsonb(meta), sid))
+
+
+def test_actual_demo_5000_overview_p95_includes_first_get(client: TestClient, sql: Any) -> None:
+    import math
+    import time
+
+    assert sql.execute("select count(*) from clients").fetchone()[0] == 5000
+    assert sql.execute("select value->>'profile' from settings where key='seed_done'").fetchone()[0] == "demo"
+    before = fingerprint(sql)
+    samples = []
+    for _ in range(25):
+        start = time.perf_counter()
+        response = client.get("/api/cabinet/overview?period=quarter&product_line=all")
+        samples.append((time.perf_counter() - start) * 1000)
+        assert response.status_code == 200
+    p95 = sorted(samples)[math.ceil(len(samples) * 0.95) - 1]
+    assert p95 < 300, {"p95_ms": p95, "first_ms": samples[0], "samples": len(samples)}
+    assert before == fingerprint(sql)
+
+
+@pytest.mark.parametrize("manual", [True, False])
+def test_compliance_manual_preset_and_automatic_unknown_preserve_legacy_labels(
+    client: TestClient, sql: Any, manual: bool
+) -> None:
+    import asyncio
+    import os
+
+    from psycopg.rows import dict_row
+
+    from app.compliance.session import ComplianceService
+
+    incident = sql.execute("select id,status,updated_at from incidents order by id limit 1").fetchone()
+    run, now = sql.execute("select current_run_id,sim_time from sim_state where id=1").fetchone()
+    branch, employee = sql.execute("select branch_id,id from employees order by id limit 1").fetchone()
+    decision = sql.execute(
+        "insert into human_decisions(sim_run_id,incident_id,requested_sim,reason,agent_proposal,options) values(%s,%s,%s,'T241 compliance audit fixture','{}','[]') returning id",
+        (run, incident[0], now),
+    ).fetchone()[0]
+    session = sql.execute(
+        "insert into audio_sessions(run_id,branch_id,employee_id,source,stt_provider,diarization_mode,started_sim) values(%s,%s,%s,'transcript','none','manual',%s) returning id",
+        (run, branch, employee, now),
+    ).fetchone()[0]
+    alert = sql.execute(
+        "insert into compliance_alerts(session_id,incident_id,human_decision_id) values(%s,%s,%s) returning id",
+        (session, incident[0], decision),
+    ).fetchone()[0]
+    old_max = sql.execute("select coalesce(max(id),0) from incident_status_history").fetchone()[0]
+    sql.execute("update incidents set status='awaiting_human' where id=%s", (incident[0],))
+    label = "T241 branch label" if manual else "demo-agent:T241"
+    try:
+        if manual:
+            response = client.post(
+                f"/api/compliance/alerts/{alert}/ack",
+                json={"decision": "false_positive"},
+                headers={"X-Role": label, "X-Cx-Role": "compliance_officer"},
+            )
+            assert response.status_code == 200
+        else:
+
+            async def acknowledge() -> None:
+                async with await psycopg.AsyncConnection.connect(
+                    os.environ["DATABASE_URL_TEST"].replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+                ) as connection:
+                    service = ComplianceService(
+                        connection,
+                        run_id=run,
+                        sim_time=now,
+                        chain=client.app.state.llm_chain,
+                        profile=client.app.state.llm_profile,
+                    )
+                    result = await service.ack_alert(alert, decision="false_positive", by=label)
+                    assert result is not None
+
+            asyncio.run(acknowledge())
+        expected = "compliance_officer" if manual else None
+        assert sql.execute(
+            "select decided_by,actor_role,decision from human_decisions where id=%s", (decision,)
+        ).fetchone() == (label, expected, "reject")
+        assert sql.execute(
+            "select actor_ref,actor_role,to_status from incident_status_history where incident_id=%s and id>%s",
+            (incident[0], old_max),
+        ).fetchall() == [(label, expected, "rejected")]
+    finally:
+        sql.execute("delete from compliance_alerts where id=%s", (alert,))
+        sql.execute("delete from audio_sessions where id=%s", (session,))
+        sql.execute("delete from human_decisions where id=%s", (decision,))
+        sql.execute("delete from incident_status_history where incident_id=%s and id>%s", (incident[0], old_max))
+        sql.execute("update incidents set status=%s,updated_at=%s where id=%s", (incident[1], incident[2], incident[0]))
+
+
+def test_compliance_preset_is_existing_type_or_and_explicit_false_clears_it(client: TestClient, sql: Any) -> None:
+    from psycopg.types.json import Jsonb
+
+    line = sql.execute(
+        "select product_line_code from signals where product_line_code is not null group by 1 having count(*)>=4 order by 1 limit 1"
+    ).fetchone()[0]
+    rows = sql.execute(
+        "select id,classification,flags,red_words from signals where product_line_code=%s and id not in(select signal_id from incident_signals) order by received_sim desc,id desc limit 4",
+        (line,),
+    ).fetchall()
+    assert len(rows) == 4
+    incident = sql.execute("select id,incident_type from incidents order by id limit 1").fetchone()
+    try:
+        for index, (sid, classification, _, _) in enumerate(rows):
+            sql.execute(
+                "update signals set classification=%s,flags=%s,red_words=%s where id=%s",
+                (
+                    Jsonb(
+                        {**(classification or {}), "signal_type": "legal_regulatory" if index == 1 else "info_request"}
+                    ),
+                    ["red_word"] if index == 0 else [],
+                    ["суд"] if index == 0 else [],
+                    sid,
+                ),
+            )
+        sql.execute("update incidents set incident_type='misselling' where id=%s", (incident[0],))
+        sql.execute(
+            "insert into incident_signals(incident_id,signal_id,link_type,linked_sim) select %s,%s,'primary',sim_time from sim_state where id=1",
+            (incident[0], rows[2][0]),
+        )
+        headers = {"X-Cx-Role": "compliance_officer"}
+        params = {"product_line": line, "period": "quarter", "limit": 200}
+        candidate_ids = {row[0] for row in rows}
+
+        def selected(extra: dict[str, Any]) -> set[int]:
+            response = client.get("/api/cabinet/signals", headers=headers, params={**params, **extra})
+            assert response.status_code == 200
+            return {row["id"] for row in response.json()["items"]} & candidate_ids
+
+        assert selected({}) == {row[0] for row in rows[:3]}
+        assert selected({"red_words": "true"}) == {rows[0][0]}
+        assert selected({"red_words": "false"}) == candidate_ids
+        stats = client.get(
+            "/api/cabinet/overview", headers=headers, params={"product_line": line, "period": "quarter"}
+        ).json()["kpi"]
+        assert (
+            stats
+            == client.get("/api/cabinet/overview", params={"product_line": line, "period": "quarter"}).json()["kpi"]
+        )
+        roles = client.get("/api/roles").json()["items"]
+        assert [row["code"] for row in roles if row["default_compliance_filter"]] == ["compliance_officer"]
+    finally:
+        sql.execute("delete from incident_signals where incident_id=%s and signal_id=%s", (incident[0], rows[2][0]))
+        sql.execute("update incidents set incident_type=%s where id=%s", (incident[1], incident[0]))
+        for sid, classification, flags, words in rows:
+            sql.execute(
+                "update signals set classification=%s,flags=%s,red_words=%s where id=%s",
+                (Jsonb(classification) if classification is not None else None, flags, words, sid),
+            )

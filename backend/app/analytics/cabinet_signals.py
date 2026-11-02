@@ -36,9 +36,12 @@ async def signals(
         if value is not None:
             where += f" AND f.{column}=%s"
             args.append(value)
-    if red_words is not None:
-        where += " AND ('red_word'=ANY(f.flags))=%s"
-        args.append(red_words)
+    if red_words is True:
+        where += " AND ('red_word'=ANY(f.flags))"
+    elif red_words is None and scope.role == "compliance_officer":
+        # Preset объединяет только существующие классы. False явно снимает
+        # presentation filter; это не ограничение полномочий пользователя.
+        where += " AND ('red_word'=ANY(f.flags) OR f.signal_type='legal_regulatory' OR f.id IN (SELECT x.signal_id FROM incident_signals x JOIN incidents i ON i.id=x.incident_id JOIN signals s ON s.id=x.signal_id AND s.run_id=i.run_id WHERE i.incident_type='misselling'))"
     total = await fetch_one(conn, f"SELECT count(*) AS total FROM v_cabinet_signal_facts f WHERE {where}", args)  # noqa: S608
     order = (
         SORTS[sort]

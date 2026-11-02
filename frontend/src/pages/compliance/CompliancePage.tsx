@@ -88,7 +88,7 @@ export function CompliancePage() {
                   </div>
                   <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted">
                     <span className="truncate">{tr.filename ?? tr.source}</span>
-                    {tr.branch_code && <span>ВСП {tr.branch_code}</span>}
+                    {tr.branch_code && <span>{t('compliance.branchLabel', { code: tr.branch_code })}</span>}
                     <span className="ml-auto">{tr.turns_count} ⟷</span>
                   </div>
                 </button>
@@ -102,7 +102,7 @@ export function CompliancePage() {
           <Tabs<Tab> value={tab} onChange={setTab} items={[{ id: 'report', label: t('compliance.report') }, { id: 'turns', label: t('compliance.turns') }, { id: 'stats', label: t('compliance.stats') }]} />
           {detail.data && (
             <span className="ml-auto text-xs text-muted">
-              <IdLink kind="transcript" value={detail.data.public_id} /> · {tEnum('compliance.kind', detail.data.kind)} · {detail.data.branch_code ? `ВСП ${detail.data.branch_code}` : '—'} · {fmtDateTime(detail.data.received_at)}
+              <IdLink kind="transcript" value={detail.data.public_id} /> · {tEnum('compliance.kind', detail.data.kind)} · {detail.data.branch_code ? t('compliance.branchLabel', { code: detail.data.branch_code }) : '—'} · {fmtDateTime(detail.data.received_at)}
             </span>
           )}
         </div>
@@ -254,8 +254,8 @@ function StatsTable() {
     <table className="w-full text-sm">
       <thead className="text-left text-[11px] uppercase tracking-wide text-muted">
         <tr>
-          <th className="px-2 py-1">ВСП</th>
-          <th className="px-2 py-1">Сотрудник</th>
+          <th className="px-2 py-1">{t('manager.branch')}</th>
+          <th className="px-2 py-1">{t('compliance.speaker.employee')}</th>
           <th className="num px-2 py-1 text-right">{t('compliance.sessions')}</th>
           <th className="num px-2 py-1 text-right">{t('compliance.triggers')}</th>
           <th className="num px-2 py-1 text-right">{t('compliance.alerts')}</th>

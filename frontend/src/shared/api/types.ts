@@ -7240,6 +7240,7 @@ export interface paths {
                     region?: string;
                     status?: string;
                     channel?: string;
+                    /** @description true — только red_word; false — без presentation preset; отсутствие — OR preset для compliance_officer, остальные роли без фильтра. Overview не меняется. */
                     red_words?: boolean;
                     sort?: "date" | "level" | "region";
                     direction?: "asc" | "desc";
@@ -7991,7 +7992,12 @@ export interface components {
             signals: number;
             negative: number;
             critical: number;
-            affected_clients: number;
+            /** @description Сигналы с известным client_id */
+            identified_signals: number;
+            /** @description Различные известные клиенты; не весь охват при partial coverage */
+            identified_clients: number;
+            /** @description NULL если хотя бы один сигнал не идентифицирован; 0 только для действительно пустой группы */
+            affected_clients: number | null;
             negativity_index: number | null;
             /** @enum {string} */
             zone: "red" | "yellow" | "green";
@@ -8000,6 +8006,7 @@ export interface components {
             zone_index: number;
         };
         CabinetSignal: {
+            signal_type: string | null;
             client_public_id: string | null;
             id: number;
             public_id: string;
@@ -8095,8 +8102,10 @@ export interface components {
                 coverage_end: string | null;
             }[];
             csi: {
+                branch_known: number;
+                wait_known: number;
                 responses: number;
-                branches: number;
+                branches: number | null;
                 average_wait_min: number | null;
             };
             history_note: string;
@@ -8112,6 +8121,8 @@ export interface components {
                 name_en: string;
                 /** @enum {string} */
                 scope: "one" | "configured" | "all";
+                /** @description OR: red_word, legal_regulatory, связанный incident_type misselling; только фильтр списка */
+                default_compliance_filter: boolean;
                 default_red_words: boolean;
             }[];
         };

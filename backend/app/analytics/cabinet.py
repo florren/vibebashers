@@ -63,7 +63,8 @@ async def overview(conn: Conn, scope: CabinetScope) -> dict[str, Any]:
       regions AS (SELECT r.code,r.name_ru,r.name_en,r.centroid_lat AS lat,r.centroid_lon AS lon,count(s.id) AS signals,
         count(s.id) FILTER(WHERE s.sentiment='negative') AS negative,
         count(s.id) FILTER(WHERE s.criticality='high') AS critical,
-        count(DISTINCT s.client_id) AS affected_clients,
+        count(s.client_id) AS identified_signals,count(DISTINCT s.client_id) AS identified_clients,
+        CASE WHEN count(s.id)=count(s.client_id) THEN count(DISTINCT s.client_id) END AS affected_clients,
         coalesce(max(ri.critical_incidents),0)+coalesce(max(rc.alerts),0) AS critical_count,
         CASE WHEN max(rc.sessions)>0 THEN least(1,(max(rc.triggers)::float/3+max(rc.alerts))/max(rc.sessions)) END AS copilot_index
         FROM regions r LEFT JOIN selected_signals s ON s.region_code=r.code
@@ -103,7 +104,8 @@ async def overview(conn: Conn, scope: CabinetScope) -> dict[str, Any]:
         bool_or(is_synthetic) AS is_synthetic,bool_or(is_partial) AS is_partial,
         bool_or(quality_unknown) AS quality_unknown,min(coverage_start) AS coverage_start,max(coverage_end) AS coverage_end
         FROM history_segments GROUP BY month),
-      csi AS (SELECT count(*) AS responses,count(DISTINCT cr.branch_id) AS branches,
+      csi AS (SELECT count(*) AS responses,count(cr.branch_id) AS branch_known,count(cr.wait_min) AS wait_known,
+        CASE WHEN count(*)=count(cr.branch_id) THEN count(DISTINCT cr.branch_id) END AS branches,
         avg(cr.wait_min) AS average_wait_min FROM selected_signals s JOIN csi_responses cr ON cr.signal_id=s.id)
       SELECT (SELECT to_jsonb(signal_kpi) FROM signal_kpi) AS signal_kpi,
         (SELECT to_jsonb(economy) FROM economy) AS economy,
@@ -147,7 +149,16 @@ async def overview(conn: Conn, scope: CabinetScope) -> dict[str, Any]:
         )
         if region["signals"] == 0 and region["critical_count"] == 0:
             region["zone"] = "green"
-    sources = [{"platform": project_platform(x["code"]), "signals": x["signals"]} for x in row["sources"] or []]
+    grouped_sources: dict[str | None, dict[str, Any]] = {}
+    for source in row["sources"] or []:
+        platform = project_platform(source["code"])
+        key = platform["code"] if platform else None
+        if key not in grouped_sources:
+            grouped_sources[key] = {"platform": platform, "signals": 0}
+        grouped_sources[key]["signals"] += source["signals"]
+    sources = sorted(
+        grouped_sources.values(), key=lambda item: (-item["signals"], (item["platform"] or {}).get("code", ""))
+    )
     return {
         "scope": {
             "role": scope.role,

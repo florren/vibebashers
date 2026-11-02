@@ -12,10 +12,11 @@ from typing import Any
 import psycopg
 from psycopg import sql
 from psycopg.pq import TransactionStatus
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 
 from app.sim import baseline, run_summary, runs
 from app.sim.events import dumps
+from app.tgbot.storage import lock_id
 
 
 class RunConflict(ValueError):
@@ -30,33 +31,36 @@ RUN_TABLE: Table = ("public", "sim_runs")
 class ForeignKey:
     child: Table
     parent: Table
-    child_column: str
-    parent_column: str
+    child_columns: tuple[str, ...]
+    parent_columns: tuple[str, ...]
     cascade: bool
 
 
 async def _foreign_keys(conn: psycopg.AsyncConnection[Any]) -> list[ForeignKey]:
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(
-            "select array[cn.nspname,ch.relname] child,array[pn.nspname,pa.relname] parent,ca.attname child_column,"
-            "ap.attname parent_column,c.confdeltype='c' cascade,cardinality(c.conkey) width "
-            "from pg_constraint c join pg_class ch on ch.oid=c.conrelid "
-            "join pg_class pa on pa.oid=c.confrelid "
+            "select array[cn.nspname,ch.relname] child,array[pn.nspname,pa.relname] parent,"
+            "array(select ca.attname from unnest(c.conkey) with ordinality k(attnum,pos) "
+            "join pg_attribute ca on ca.attrelid=c.conrelid and ca.attnum=k.attnum order by k.pos) child_columns,"
+            "array(select ap.attname from unnest(c.confkey) with ordinality k(attnum,pos) "
+            "join pg_attribute ap on ap.attrelid=c.confrelid and ap.attnum=k.attnum order by k.pos) parent_columns,"
+            "c.confdeltype='c' cascade "
+            "from pg_constraint c join pg_class ch on ch.oid=c.conrelid join pg_class pa on pa.oid=c.confrelid "
             "join pg_namespace cn on cn.oid=ch.relnamespace join pg_namespace pn on pn.oid=pa.relnamespace "
-            "join pg_attribute ca on ca.attrelid=c.conrelid and ca.attnum=c.conkey[1] "
-            "join pg_attribute ap on ap.attrelid=c.confrelid and ap.attnum=c.confkey[1] "
             "where c.contype='f' and cn.nspname in ('public','langgraph') "
             "and pn.nspname in ('public','langgraph') order by cn.nspname,ch.relname,c.conname"
         )
         rows = await cur.fetchall()
-    if any(row["width"] != 1 for row in rows):
-        raise RunConflict("Архивирование не поддерживает составные внешние ключи этой схемы")
+    if any(not row["child_columns"] or len(row["child_columns"]) != len(row["parent_columns"]) for row in rows):
+        raise RunConflict("Некорректные пары столбцов внешнего ключа")
+    if any(row["parent"] == list(RUN_TABLE) and row["parent_columns"] != ["id"] for row in rows):
+        raise RunConflict("Корневой FK запуска должен ссылаться на единственный sim_runs.id")
     return [
         ForeignKey(
             child=(row["child"][0], row["child"][1]),
             parent=(row["parent"][0], row["parent"][1]),
-            child_column=row["child_column"],
-            parent_column=row["parent_column"],
+            child_columns=tuple(row["child_columns"]),
+            parent_columns=tuple(row["parent_columns"]),
             cascade=row["cascade"],
         )
         for row in rows
@@ -76,21 +80,34 @@ def _ownership(keys: list[ForeignKey]) -> dict[Table, tuple[ForeignKey, ...]]:
         paths.update(additions)
 
 
+def _join(child: str, parent: str, edge: ForeignKey) -> sql.Composable:
+    # Каждая упорядоченная пара обязательна: одного run_id недостаточно для
+    # (run_id,client_id), иначе scalar owner неоднозначен или FK guard ошибочен.
+    return sql.SQL(" and ").join(
+        sql.SQL("{}={}").format(sql.Identifier(child, left), sql.Identifier(parent, right))
+        for left, right in zip(edge.child_columns, edge.parent_columns, strict=True)
+    )
+
+
 def _owner(alias: str, path: tuple[ForeignKey, ...]) -> sql.Composable:
     edge = path[0]
     if edge.parent == RUN_TABLE:
-        return sql.Identifier(alias, edge.child_column)
+        return sql.Identifier(alias, edge.child_columns[0])
     parent_alias = alias + "_p"
-    return sql.SQL("(select {} from {} {} where {}={})").format(
+    return sql.SQL("(select {} from {} {} where {})").format(
         _owner(parent_alias, path[1:]),
         sql.Identifier(*edge.parent),
         sql.Identifier(parent_alias),
-        sql.Identifier(parent_alias, edge.parent_column),
-        sql.Identifier(alias, edge.child_column),
+        _join(alias, parent_alias, edge),
     )
 
 
 async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tuple[dict[str, Any], list[Table]]:
+    async with conn.cursor(row_factory=tuple_row) as guard:
+        await guard.execute("select pg_try_advisory_xact_lock(%s)", (lock_id("run", 0, run_id),))
+        acquired = await guard.fetchone()
+    if not acquired or not acquired[0]:
+        raise RunConflict("Дождитесь завершения Telegram доставки запуска")
     keys = await _foreign_keys(conn)
     paths = _ownership(keys)
     # Блокируем записи на короткое время до проверки FK и purge. Иначе новая
@@ -124,11 +141,10 @@ async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tu
                 continue
             child_owner = _owner("c", paths[key.child]) if key.child in paths else sql.SQL("null")
             await cur.execute(
-                sql.SQL("select 1 from {} c join {} p on {}={} where {}=%s and {} is distinct from %s limit 1").format(
+                sql.SQL("select 1 from {} c join {} p on {} where {}=%s and {} is distinct from %s limit 1").format(
                     sql.Identifier(*key.child),
                     sql.Identifier(*key.parent),
-                    sql.Identifier("c", key.child_column),
-                    sql.Identifier("p", key.parent_column),
+                    _join("c", "p", key),
                     _owner("p", paths[key.parent]),
                     child_owner,
                 ),
@@ -143,15 +159,18 @@ async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tu
 
 
 async def _purge(conn: psycopg.AsyncConnection[Any], run_id: int, roots: list[Table]) -> None:
-    keys = await _foreign_keys(conn)
-    columns = {key.child: key.child_column for key in keys if key.parent == RUN_TABLE and key.cascade}
-    # Один statement: NO ACTION FK между данными одного запуска (включая циклы
-    # signal↔post и incident↔agent) проверяются после удаления всех корней.
+    paths = _ownership(await _foreign_keys(conn))
+    if not set(roots) <= set(paths):
+        raise RunConflict("FK ownership изменился после guard")
+    # Явно удаляем и transitive descendants. Одного root CASCADE недостаточно:
+    # immediate NO ACTION (например causes→operations) может провериться раньше
+    # cascade runtime→causes. Все целевые строки удаляются в одном statement;
+    # owner выражение использует каждую упорядоченную пару composite FK.
     parts = [
-        sql.SQL("{} as (delete from {} where {}=%s)").format(
-            sql.Identifier(f"purge_{index}"), sql.Identifier(*table), sql.Identifier(columns[table])
+        sql.SQL("{} as (delete from {} t where {}=%s)").format(
+            sql.Identifier(f"purge_{index}"), sql.Identifier(*table), _owner("t", paths[table])
         )
-        for index, table in enumerate(roots)
+        for index, table in enumerate(sorted(paths))
     ]
     await conn.execute(sql.SQL("with {} select 1").format(sql.SQL(",").join(parts)), (run_id,) * len(parts))
 
