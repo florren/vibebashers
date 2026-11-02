@@ -56,3 +56,7 @@ make cassettes-record SCENARIO=qr_fee_public_review
 
 
 Итог подготовки: ordinary merge T014 `a33b552`; target hash `9c3165dd136da8c44a1d7a12f9e8efef634cda375fb015f3435373e4f8abe903`. Safe full-input plan: `docs/reviews/T-198-bounded-record-plan.json`. Targeted 139 passed; полный unit 930 passed/18 skipped; lint/frontend 144 / coverage 92% / licenses 526 прошли. Real OAuth/inference 0. Contract и bounded Giga egress ещё не согласованы; новую кассету/strict replay DoD не отмечаем выполненными. Порядок миграции с сохранением old cassette bytes описан в review.
+
+## Одобренная запись 02.11.2026
+
+Пользователь подтвердил contract prefix9 и bounded GigaChat record. Один запуск:2HTTP (1OAuth+1inference),3213+506tokens, costunknown. Новый отдельный реальный JSONL и provenance добавлены после schema/credential/promise проверки, исторический JSONL byte-for-byte неизменён. После честного miss на текущемseed stricttests используют immutable записанныйbank, без rekey/изменения ответов/ослабления assertions; changedseed отдельно обязан датьmiss.3targeted replay/miss passed15.33s;68fake transport/auth guards passed2.01s. Подробности docs/reviews/T-198-bounded-record.md. Fullmake/CI выполняются, остальной live/cassette scope этим не объявляется закрытым.

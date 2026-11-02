@@ -11,3 +11,5 @@
 Финансовые правила, ставки и HITL не меняются.
 
 Проверки:65целевых unit passed (25каталогных fault events,6негативных границ и validator). Полный набор:822unit/18skip,200integration/4skip passed, затем strict replay trace12 получил miss; полный make test не зелёный. Доказано: для двух instant_decision записей старый schema hash совпадает с recorded request_hash, новая схема даёт другой hash; normalization hashes неизменны. Старые кассеты/ответы/usage не rekeyed и не изменялись. Нужна новая реальная запись по фиксированному synthetic контексту после отдельного ограниченного разрешения пользователя (T198). Этот checkpoint не готов к merge.
+
+02.11.2026: контрактPR167 и ограниченнаязаписьодобрены. Новыйреальныйответ дляcurrent schema получен(2HTTP,3213+506tokens,costunknown). Старыекассеты неизменны; frozenbank3strictreplay/miss tests passed15.33s. Итогfullsuite/CIфиксируетсяотдельно.

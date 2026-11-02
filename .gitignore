@@ -49,3 +49,6 @@ frontend/dist-personal
 
 # Локальное происхождение конвертированного baseline (#108)
 data/baseline/*.dump.provenance.json
+
+# Локальный staging ограниченных live-записей; в Git идут только проверенные кассеты.
+/var/recordings/

@@ -58,3 +58,34 @@ T014 `a33b552` добавлен обычным merge после независи
 После T014 merge: 139 targeted unit passed; полный `make test-unit`: 930 passed/18 skipped, exit 0. Финальный `make lint`: exit 0, Ruff/format 334/mypy 246, frontend 144 passed, OpenAPI 191/191. `make licenses-check`: 526 distributions, exit 0. Новый module: 38 tests passed под stdlib trace, statement coverage 92% (294 executable lines). pytest-cov отсутствует, новых зависимостей ради измерения не добавлено.
 
 Первый полный unit запуск был остановлен в sandbox на штатном health loopback-тесте; повтор с доступом к локальным fake services прошёл полностью. Логи: `/tmp/t198-targeted-final.log`, `/tmp/t198-full-unit-final.log`, `/tmp/t198-lint-final.log`, `/tmp/t198-coverage-final.log`, `/tmp/t198-licenses.log`. Новых OAuth/inference не выполнялось; output-каталог live не создавался. Полный replay DoD/make test зелёным не заявляется до одобренной новой реальной кассеты; известный strict schema freshness blocker описан в `T-014-error-code-contract.md`.
+
+## Согласованный live запуск 02.11.2026
+
+Пользователь согласовал prefix 9 и один bounded run. Source `05badd2`, после
+обычного merge main `d2a4026`; dry plan полностью совпал с reviewed JSON.
+До live прошли 68 fake transport/auth tests за 2,01 с.
+
+Выполнены 1 OAuth + 1 inference = 2 HTTP. Usage: 3213 prompt + 506 completion
+= 3719 tokens, latency 5364 ms, actual model `GigaChat-3-Pro:32.4.30.3`.
+TLS включён, maxima 1 OAuth + 2 inference / 1024 output соблюдены.
+`cost_known=false`, `actual_cost_rub=null`: дополнительных запросов баланса,
+тарифа или записи не было. Стоимость неизвестна.
+
+Новый response прошёл текущую instant_decision schema, проверку известных
+credentials и запрещённых обещаний клиенту. Отдельный файл:
+`data/cassettes/gigachat-T198-schema9.jsonl`, SHA256
+`371f2fc0ed0b37e84a5cfc333730b2002f7c106b984d85c569ee21cdebb78362`.
+Historical `data/cassettes/gigachat.jsonl` остался byte-for-byte неизменным:
+`f04151b285398ede4d3c1d4a480350dbc6989a40351a6025ba026b2c3ad189df`.
+Provenance: `T-198-live-record-result.json`. Headers/auth/access token не сохранены.
+
+Первые два strict replay tests на current seed честно дали miss: банк отличается
+от исходного записанного контекста. Применена immutable synthetic bank fixture
+из T-017; исходные assertions сохранены. Historical `source_request_hash`
+остаётся provenance; lookup ищет настоящий ответ по computed hash с текущей
+schema в CassetteStore. Старому ответу новый hash не назначается.
+Дополнительная регрессия проверяет изменённый seed → настоящий miss / fallback_mock.
+На frozen bank сценарий 8 и Trace/Journey 12/13, плюс changed-seed miss:
+**3 passed за 15,33 с**. Первый локальный audit script потребовал исправления
+порядка imports; runtime не менялся, дополнительных HTTP не было.
+`CassetteStore.get` и `request_hash` не изменены. Full make / CI обязательны до merge.
