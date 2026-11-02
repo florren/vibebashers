@@ -137,7 +137,7 @@ export function Header() {
       <GlobalSearch />
       <div className="mx-auto flex flex-wrap items-center gap-2">
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
-          <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
+          <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok status-indicator' : 'bg-faint')} />
           <span className="text-xs text-muted">{t('sim.clock')}</span>
           <span className="num font-mono text-sm">{fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
           <span className="hidden text-xs text-muted md:inline">

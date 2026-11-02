@@ -13,7 +13,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-  useUiTheme.setState({ theme_pack: 'brand', mode: 'light', density: 'comfortable', simTime: null, syncError: false, circadian: { ...DEFAULT_CIRCADIAN } })
+  useUiTheme.setState({ attention: null, theme_pack: 'brand', mode: 'light', density: 'comfortable', simTime: null, syncError: false, circadian: { ...DEFAULT_CIRCADIAN } })
 })
 afterEach(() => { disconnect(); vi.unstubAllGlobals() })
 
@@ -122,4 +122,17 @@ it('does not cancel an in-flight clock transition when a late GET repeats the sa
   expect(document.documentElement.dataset.phase).toBe('night')
   expect(document.documentElement.dataset.themeTransition).toBe('running')
   expect(patch).not.toHaveBeenCalled()
+})
+
+it('hydrates and saves attention only, retaining unrelated ui preferences and circadian coordinates', async () => {
+  vi.mocked(api).mockResolvedValue({ ui: { attention: 'control_room', layout: 'legacy', lang: 'en' } })
+  vi.mocked(patch).mockResolvedValue(undefined)
+  disconnect = connectThemeSettings(); await flush()
+  expect(useUiTheme.getState().attention).toBe('control_room')
+  expect(patch).not.toHaveBeenCalled()
+  useUiTheme.getState().setAttention('calm'); await flush()
+  expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { attention: 'calm' } })
+  useUiTheme.getState().setAttention(null); await flush()
+  expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { attention: null } })
+  expect(localStorage.getItem('cx.ui.attention')).toBeNull()
 })

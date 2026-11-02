@@ -1,5 +1,6 @@
 import { SourcePlatformBadge } from '@/shared/components/SourcePlatformBadge'
 import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
+import { useUndo } from '@/shared/ui/undo'
 import { clsx } from 'clsx'
 import { Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -36,7 +37,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
 
   return (
     <div className="signals-feed flex h-full flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      <aside className="signal-filters max-h-[40vh] w-full shrink-0 space-y-4 overflow-y-auto border-b border-line p-3 md:max-h-none md:w-56 md:border-r">
+      <aside data-block="signal-filters" className="signal-filters max-h-[40vh] w-full shrink-0 space-y-4 overflow-y-auto border-b border-line p-3 md:max-h-none md:w-56 md:border-r">
         <ResponsiveFilters active={Boolean(hasFilters)}>
         <label className="relative block">
           <Search size={13} className="pointer-events-none absolute left-2 top-2.5 text-faint" />
@@ -51,6 +52,8 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
           <button
             className="btn btn-ghost btn-sm w-full"
             onClick={() => {
+              const previous = { q, personalOnly, types, statuses, channels }
+              useUndo.getState().offer(() => { setQ(previous.q); setPersonalOnly(previous.personalOnly); setTypes(previous.types); setStatuses(previous.statuses); setChannels(previous.channels) })
               setQ('')
               setPersonalOnly(false)
               setTypes([])
@@ -63,7 +66,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
         ) : null}
         </ResponsiveFilters>
       </aside>
-      <div className="signals-list min-w-0 shrink-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
+      <div data-block="signals-list" className="signals-list min-w-0 shrink-0 md:min-h-0 md:flex-1 md:overflow-y-auto">
         {list.isPending && <SkeletonRows n={8} />}
         {list.isError && <ErrorBox error={list.error} />}
         {list.data && items.length === 0 && <Empty title={t('common.empty')} />}

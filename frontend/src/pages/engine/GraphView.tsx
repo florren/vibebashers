@@ -156,7 +156,7 @@ export function GraphView({
                         : 'fill-surface stroke-line',
               )}
             />
-            {isCur && <rect width={W} height={nodeHeight} rx={10} className="animate-pulse fill-none stroke-brand" strokeWidth={3} />}
+            {isCur && <rect width={W} height={nodeHeight} rx={10} className="status-indicator fill-none stroke-brand" strokeWidth={3} />}
             {interrupted && <rect width={W} height={nodeHeight} rx={10} className="fill-none stroke-warn" strokeWidth={3} />}
             <text x={12} y={18} className={clsx('text-[11.5px] font-medium', done || isCur ? 'fill-ink' : 'fill-muted')}>
               {tEnum('engine.node', n.id)}

@@ -48,7 +48,7 @@ async function fixture(page: Page, { lang = 'ru', source = 'fixed', phase = 'noo
 }
 async function openControls(page: Page) {
   const details = page.getByTestId('circadian-controls')
-  if (!(await details.getAttribute('open'))) await details.locator('summary').click()
+  if ((await details.getAttribute('open')) === null) await details.locator('summary').click()
   return details
 }
 async function contrast(page: Page) {
@@ -70,11 +70,18 @@ for (const lang of ['ru', 'en']) test(`T252 all packs/phases and manual override
   for (const pack of ['brand', 'ops']) {
     await page.getByRole('combobox', { name: label.pack, exact: true }).selectOption(pack)
     for (const phase of ['dawn', 'morning', 'noon', 'sunset', 'twilight', 'night']) {
+      await openControls(page)
       await controls.getByRole('combobox', { name: label.phase, exact: true }).selectOption(phase)
       await expect(page.locator('html')).toHaveAttribute('data-phase', phase)
       const c = await contrast(page); expect(c.text).toBeGreaterThanOrEqual(4.5); expect(c.control).toBeGreaterThanOrEqual(3); expect(c.overflow).toBeLessThanOrEqual(2)
       if (pack === 'brand' && ['noon', 'night'].includes(phase)) {
-        if (phase === 'night') { await page.getByTestId('night-digest').locator('summary').click(); await expect(page.getByText('SIG-000001')).toBeVisible() }
+        if (phase === 'night') {
+          // Закрываем перекрывающий popover обычным действием пользователя.
+          await controls.locator('summary').click()
+          await expect(controls).not.toHaveAttribute('open', '')
+          await page.getByTestId('night-digest').locator('summary').click()
+          await expect(page.getByText('SIG-000001')).toBeVisible()
+        }
         await page.screenshot({ path: info.outputPath(`circadian-${phase === 'night' ? 'dark' : 'light'}-${lang}.png`) })
       }
     }
