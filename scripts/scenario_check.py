@@ -59,6 +59,10 @@ async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
 
 
 async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
+    if scenario.get("kind") == "read_model" and scenario["id"] == "customer_journey":
+        from scripts.journey_check import run_journeys
+
+        return await run_journeys(base, dsn, scenario)
     if scenario.get("kind") == "read_model" and scenario["id"] == "search_and_trace":
         from scripts.read_model_check import run_search_trace
 
@@ -96,6 +100,12 @@ async def main() -> int:
     ap.add_argument("which", help="номер сценария, id или all")
     ap.add_argument("--base", default=os.environ.get("CX_BASE_URL", "http://localhost:8000"))
     ap.add_argument(
+        "--recording-source",
+        choices=("replay", "live"),
+        default="replay",
+        help="источник записанных путей сценария12; не запускает LLM",
+    )
+    ap.add_argument(
         "--wait",
         type=float,
         default=30,
@@ -105,13 +115,15 @@ async def main() -> int:
     dsn = _dsn(os.environ.get("DATABASE_URL") or "postgresql://cx:cx@localhost:5432/cx_pulse")
     items = sc.load_all()
     if a.which != "all":
-        items = [s for s in items if str(s.get("number")) == a.which or s["id"] == a.which]
+        items = [
+            s for s in items if str(s.get("number")) == a.which or s["id"] == a.which or a.which in s.get("aliases", [])
+        ]
         if not items:
             print(f"сценарий {a.which} не найден")  # noqa: T201
             return 2
     ok = True
     for s in items:
-        ok = await run_one(a.base, dsn, s, a.wait) and ok
+        ok = await run_one(a.base, dsn, {**s, "_recording_source": a.recording_source}, a.wait) and ok
     return 0 if ok else 1
 
 

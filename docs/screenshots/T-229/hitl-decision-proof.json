@@ -1,0 +1,66 @@
+{
+  "source": "ab9b8daac9d21e156ac583c860f87e7f1dc42a57",
+  "scope": "actual presenter waiting-human frame; no human decision submitted; no route mocks",
+  "results": [
+    {
+      "lang": "ru",
+      "theme": "light",
+      "layout": "legacy",
+      "width": 1920,
+      "height": 1080,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    },
+    {
+      "lang": "ru",
+      "theme": "dark",
+      "layout": "legacy",
+      "width": 1920,
+      "height": 1080,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    },
+    {
+      "lang": "en",
+      "theme": "light",
+      "layout": "legacy",
+      "width": 1920,
+      "height": 1080,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    },
+    {
+      "lang": "en",
+      "theme": "dark",
+      "layout": "legacy",
+      "width": 1920,
+      "height": 1080,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    },
+    {
+      "lang": "ru",
+      "theme": "light",
+      "layout": "v2",
+      "width": 320,
+      "height": 800,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    },
+    {
+      "lang": "en",
+      "theme": "dark",
+      "layout": "v2",
+      "width": 320,
+      "height": 800,
+      "stage": "decision",
+      "nonGet": 0,
+      "pageErrors": 0
+    }
+  ]
+}
