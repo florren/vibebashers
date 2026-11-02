@@ -627,3 +627,87 @@ def test_compliance_preset_is_existing_type_or_and_explicit_false_clears_it(clie
                 "update signals set classification=%s,flags=%s,red_words=%s where id=%s",
                 (Jsonb(classification) if classification is not None else None, flags, words, sid),
             )
+
+
+@pytest.mark.parametrize(("origin", "visible"), [(None, True), ("sim", True), ("proactive", False)])
+def test_customer_fact_actual_projection_retains_legacy_null_without_weakening_ddl(
+    sql: Any, origin: str | None, visible: bool
+) -> None:
+    from psycopg import sql as pgsql
+
+    definition = sql.execute("select pg_get_viewdef('v_cabinet_signal_facts'::regclass,true)").fetchone()[0]
+    # Canonical origin NOT NULL остаётся. CTE исполняет фактическую view-проекцию
+    # над nullable legacy shape без изменения таблиц/constraints или записи данных.
+    assert "public.signals" not in definition
+    assert "is distinct from" in definition.lower()
+    projection = pgsql.SQL("""with signals as (
+        select id,public_id,run_id,product_line_code,received_sim,sentiment,classification,
+        geo,channel_code,meta,client_id,flags,red_words,status,%s::text as origin
+        from public.signals order by id limit 1)
+        select count(*) from ({}) actual""").format(pgsql.SQL(definition.rstrip().rstrip(";")))
+    assert sql.execute(projection, (origin,)).fetchone()[0] == int(visible)
+
+
+def test_service_anchor_is_not_customer_evidence_but_real_incident_and_trace_remain(
+    client: TestClient, sql: Any
+) -> None:
+    row = sql.execute("""select s.id,s.origin,s.client_id,s.channel_code,s.product_line_code
+        from signals s where s.product_line_code is not null
+        and s.received_sim <= (select sim_time from sim_state where id=1)
+        and s.run_id=(select id from sim_runs where kind='baseline' order by id limit 1)
+        order by s.received_sim desc,s.id desc limit 1""").fetchone()
+    assert row is not None
+    sid, origin, customer, channel, line = row
+    incident = sql.execute(
+        "select i.id from incidents i join signals s on s.run_id=i.run_id where s.id=%s order by i.id limit 1", (sid,)
+    ).fetchone()
+    assert incident is not None
+    linked = sql.execute(
+        "select count(*) from incident_signals where incident_id=%s and signal_id=%s", (incident[0], sid)
+    ).fetchone()[0]
+    # Связь fixture явная: seed customer projection не обязан иметь incident_signals.
+    sql.execute(
+        "insert into incident_signals(incident_id,signal_id,linked_sim) select %s,%s,sim_time from sim_state where id=1 on conflict do nothing",
+        (incident[0], sid),
+    )
+    import asyncio
+    import os
+
+    from psycopg.rows import dict_row
+
+    from app.economics.dcltv import compute_incident
+
+    async def materialize_fixture() -> None:
+        async with await psycopg.AsyncConnection.connect(
+            os.environ["DATABASE_URL_TEST"].replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+        ) as conn:
+            assert await compute_incident(conn, incident[0]) is not None
+
+    asyncio.run(materialize_fixture())
+    params = {"product_line": line, "period": "quarter", "run_id": "current"}
+    headers = {"X-Cx-Role": "product_manager", "X-Cx-Product-Line": line}
+    before = client.get("/api/cabinet/overview", params=params, headers=headers).json()
+    assert before["kpi"]["incidents"] >= 1
+    assert before["kpi"]["economics_known"] >= 1
+    listed = client.get("/api/cabinet/signals", params={**params, "limit": 200}, headers=headers).json()
+    assert sid in {item["id"] for item in listed["items"]}
+    try:
+        sql.execute("update signals set origin='proactive',channel_code='proactive',client_id=null where id=%s", (sid,))
+        stable = fingerprint(sql)
+        after = client.get("/api/cabinet/overview", params=params, headers=headers).json()
+        rows = client.get("/api/cabinet/signals", params={**params, "limit": 200}, headers=headers).json()
+        assert after["kpi"]["signals"] == before["kpi"]["signals"] - 1
+        assert rows["total"] == listed["total"] - 1
+        assert sid not in {item["id"] for item in rows["items"]}
+        assert sql.execute("select count(*) from v_cabinet_signal_facts where id=%s", (sid,)).fetchone()[0] == 0
+        for key in ("incidents", "economics_known", "potential_loss_rub", "prevented_loss_rub"):
+            assert after["kpi"][key] == before["kpi"][key], key
+        assert client.get(f"/api/trace/signal/{sid}", params={"run_id": "current"}).status_code == 200
+        assert sql.execute("select count(*) from signals where id=%s", (sid,)).fetchone()[0] == 1
+        assert fingerprint(sql) == stable
+    finally:
+        if not linked:
+            sql.execute("delete from incident_signals where incident_id=%s and signal_id=%s", (incident[0], sid))
+        sql.execute(
+            "update signals set origin=%s,client_id=%s,channel_code=%s where id=%s", (origin, customer, channel, sid)
+        )

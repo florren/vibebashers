@@ -2986,6 +2986,7 @@ components:
               status:
                 type: string
     CabinetSignals:
+      description: Обращения клиентов; служебные origin=proactive anchors исключены из списка/total. Technical Trace/raw history и реальные инциденты/экономика сохраняются.
       type: object
       required:
       - items
@@ -3003,6 +3004,7 @@ components:
           - integer
           - 'null'
     CabinetOverview:
+      description: Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются.
       type: object
       required:
       - scope

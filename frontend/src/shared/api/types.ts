@@ -8035,11 +8035,13 @@ export interface components {
                 status: string;
             }[];
         };
+        /** @description Обращения клиентов; служебные origin=proactive anchors исключены из списка/total. Technical Trace/raw history и реальные инциденты/экономика сохраняются. */
         CabinetSignals: {
             items: components["schemas"]["CabinetSignal"][];
             total: number;
             next_offset: number | null;
         };
+        /** @description Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются. */
         CabinetOverview: {
             scope: {
                 /** @enum {string} */

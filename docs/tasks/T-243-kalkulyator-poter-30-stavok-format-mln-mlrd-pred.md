@@ -31,9 +31,9 @@
 4. vitest: расчёт совпадает с `incident_economics` на фикстуре; e2e сценария 14.
 
 ## Критерии приёмки
-- [ ] Формула и коэффициенты не изменены; результат совпадает с серверным расчётом на фикстуре.
-- [ ] Форматы суммы корректны для ±, тысяч, млн, млрд.
-- [ ] Подстановка из региона работает.
+- [x] Формула и коэффициенты не изменены; результат совпадает с серверным расчётом на фикстуре.
+- [x] Форматы суммы корректны для ±, тысяч, млн, млрд.
+- [x] Подстановка из региона работает.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -53,3 +53,10 @@ Shared formatter15/queryhook3tests green; fullfront372/builds/type/lint green.
 Подробный monetary diff/review boundary: docs/reviews/T-243-server-calculator.md.
 До normalT242composition и actualcalculator/map/screens/CI/humanreview
 карточка остаётся in_progress; localarithT242 не принимается окончательно.
+
+Consumer normal composition T242c69a000 проверена: no localarith, fullinput/scope
+query/AbortSignal, all31 UI→server, real emptyregion0→prefill0→server0, unknown
+без запроса, serverrounding/precision. Fullfront407, production5/5+expanded1/1,
+107readonlyfingerprints/35GET unchanged,14PNG вT242. Full backendunit1761/18skip
+green56.87s после точного SPAfixturefix. Canonical T262scenario14, exactheadCI и
+new API24money humanreview pending; статус не done.

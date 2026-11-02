@@ -12,7 +12,9 @@ SELECT s.id,s.public_id,s.run_id,s.product_line_code,s.received_sim,s.sentiment,
   s.channel_code,s.meta->>'source_platform' AS source_platform,
   s.client_id,s.flags,s.red_words,s.status,c.public_id AS client_public_id,
   s.classification->>'signal_type' AS signal_type
-FROM signals s LEFT JOIN clients c ON c.id=s.client_id;
+FROM signals s LEFT JOIN clients c ON c.id=s.client_id
+-- Служебный proactive anchor не является обращением клиента. NULL legacy сохраняем.
+WHERE s.origin IS DISTINCT FROM 'proactive';
 -- Сначала distinct соответствия, затем сохранённая экономика: без compute/write.
 CREATE OR REPLACE VIEW v_cabinet_incident_facts AS
 SELECT x.product_line_code,i.id,i.run_id,i.created_sim,i.region_code,i.status,
