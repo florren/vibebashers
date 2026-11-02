@@ -11,7 +11,7 @@ export function UndoToast() {
   useEffect(() => { dismiss() }, [pathname, dismiss])
   useEffect(() => {
     if (!entry) return
-    const timer = setTimeout(dismiss, Math.max(0, entry.expires - Date.now()))
+    const timer = setTimeout(() => { if (useUndo.getState().entry?.id === entry.id) dismiss() }, Math.max(0, entry.expires - Date.now()))
     return () => clearTimeout(timer)
   }, [entry, dismiss])
   if (!entry) return null
