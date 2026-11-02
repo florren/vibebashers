@@ -9939,6 +9939,7 @@ export interface components {
         /** @enum {string} */
         system: "mobile_app" | "web_bank" | "contact_center" | "social_listening" | "processing" | "notification_gw" | "promo_engine" | "antifraud" | "sub_deposits" | "sub_lending" | "sub_debit" | "core_abs";
         /**
+         * @description Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.
          * @example DEP-TIMEOUT-503
          * @example PROMO-RATE-MISMATCH
          * @example PROC-DOUBLE-DEBIT
