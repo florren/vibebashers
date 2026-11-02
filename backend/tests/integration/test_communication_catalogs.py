@@ -27,8 +27,10 @@ async def test_seeded_templates_keep_segment_language_and_partner_confirmation(s
             "resolution": "TEST_RESOLUTION",
             "gift": "TEST_GIFT",
             "question": "TEST_QUESTION",
+            "clarification": "TEST_CLARIFICATION",
         }
         codes = (
+            "misselling_clarification",
             "ack_received",
             "proactive_fault",
             "clarify_request",
@@ -46,7 +48,7 @@ async def test_seeded_templates_keep_segment_language_and_partner_confirmation(s
                     assert body and "{{" not in body, (lang, segment, code)
                 _, acknowledgement = await render_template(ctx, "ack_received", "sms", segment, values, lang)
                 assert ("TEST_MANAGER" in acknowledgement) == (segment in ("vip", "ultra_vip"))
-            for code in ("dm_invite", "closure_ack"):
+            for code in ("dm_invite", "closure_ack", "misselling_clarification"):
                 row = await (
                     await connection.execute(
                         "select lang from notification_templates where code=%s and channel_code=%s and lang=%s",

@@ -18,6 +18,7 @@ from app.agent import gifts, policies  # noqa: E402
 from app.agent.tools.write import render_template  # noqa: E402
 
 CODES = (
+    "misselling_clarification",
     "ack_received",
     "proactive_fault",
     "clarify_request",
