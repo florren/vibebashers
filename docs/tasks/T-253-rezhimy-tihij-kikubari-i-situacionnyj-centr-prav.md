@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Принцип «кикубари» как проверяемые правила интерфейса (ТЗ 26.3).
@@ -33,8 +33,8 @@
 
 ## Критерии приёмки
 - [ ] В «Тихом» режиме нет мигания и звука (исключения 12.1 сохраняются); тест блоков зелёный.
-- [ ] Undo и confirm работают согласно разделению локальных/серверных действий.
-- [ ] SLA-метка за 4 часа появляется в списках.
+- [x] Undo и confirm работают согласно разделению локальных/серверных действий.
+- [x] SLA-метка за 4 часа появляется в списках.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,4 +44,4 @@ cd frontend && npx playwright test e2e/calm-mode.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-253-attention-modes`; код `59da3d3` + `747bd92`, обычная композиция `bd649f2`. Полный backend1663/22skip и frontend311 на59; финальный frontend317 (`1f073b6` добавляет typed fetch marker/generic unknown; target13/13; `7bbdd1b` согласует только SLA display с MSK, target15/15 +actual4/4) +actual4calm/4SLA-mobile. Backend/contracts не менялись. Подробности и безопасный GET materialization finding: [T-253-attention-modes.md](../reviews/T-253-attention-modes.md). Снимки: `docs/screenshots/T-253/`. Human review UI HITL confirmation и применение budget к реальным T242/T255 остаются открыты; done не выставлен.

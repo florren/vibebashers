@@ -1,3 +1,4 @@
+import { SlaWarning } from '@/shared/components/SlaWarning'
 import { IncidentEconomics } from './IncidentEconomics'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
@@ -9,7 +10,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { Notification, Signal, StatusHistoryItem } from '@/shared/api/client'
 import { listItems, useIncident, useIncidentComms, useIncidentHistory, useIncidentSignals, useRefName } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
-import { fmtSim, fmtDuration } from '@/shared/lib/format'
+import { fmtSim, fmtSimMoscow, fmtDuration } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, KV, Section, Skeleton, SlaBar, Tabs } from '@/shared/ui'
 import { criticalityTone, incidentStatusTone, severityTone } from '@/shared/ui/tones'
 import { DecisionView } from '@/pages/workspace/SignalDrawer'
@@ -89,12 +90,13 @@ export function IncidentPage() {
               k={t('incident.slaDue')}
               v={
                 <span className="num font-mono text-xs">
-                  {fmtSim(inc.sla_due_sim, 'dd.MM HH:mm')} · {fmtDuration(inc.created_sim, inc.sla_due_sim)}
+                  {fmtSimMoscow(inc.sla_due_sim, 'dd.MM HH:mm')} {t('attention.slaTimezone')} · {fmtDuration(inc.created_sim, inc.sla_due_sim)}
                 </span>
               }
             />
             <div className="flex items-center gap-2 py-1">
               <span className="text-muted">{t('common.sla')}</span>
+              <SlaWarning due={inc.sla_due_sim} status={inc.status} />
               <SlaBar pct={inc.sla_remaining_pct} breached={inc.sla_breached} className="flex-1" />
               <span className="num font-mono text-xs text-muted">
                 {inc.sla_breached ? t('incident.slaBreached') : `${Math.round(inc.sla_remaining_pct ?? 0)}%`}
