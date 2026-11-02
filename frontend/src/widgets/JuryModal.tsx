@@ -38,7 +38,7 @@ export function JuryModal({ open, onClose, onSignal }: { open: boolean; onClose:
         ...(nick ? { nick } : {}),
         ...(city ? { city_id: Number(city.id), ...(typeof city.region_code === 'string' ? { region_code: city.region_code } : {}) } : {}),
       } } : {}),
-      ...(voice ? { voice_meta: voice } : {}),
+      ...(voice ? { voice_meta: { ...voice, edited: text.trim() !== voice.transcript_raw.trim() } } : {}),
     })
   }
   const close = () => { jury.reset(); onClose() }

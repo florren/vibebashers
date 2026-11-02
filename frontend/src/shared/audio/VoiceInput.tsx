@@ -42,8 +42,15 @@ export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly =
         chunks.current = []
         micRef.current = await startMic({ channels: 1, onFrame: (pcm) => chunks.current.push(pcm) })
       } else {
+        const finalTranscripts: string[] = []
         speechRef.current = startWebSpeech({
-          onResult: (text, isFinal) => (isFinal ? onText(text) : onInterim?.(text)),
+          onResult: (text, isFinal) => {
+            if (!isFinal) { onInterim?.(text); return }
+            finalTranscripts.push(text)
+            onText(text)
+            // Native final transcript известен; audio duration/mean confidence — нет.
+            onVoice?.({ stt_provider: 'browser', transcript_raw: finalTranscripts.join(' ') })
+          },
           onError: (e) => e !== 'no-speech' && setErr(e),
         })
       }

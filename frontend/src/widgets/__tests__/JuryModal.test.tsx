@@ -45,7 +45,10 @@ it.each([[2,false],[3,true],[5000,true],[5001,false]])('matches Python code-poin
 it('submits voice provenance from VoiceInput only after its explicit gesture',()=>{
   mount();expect(state.mutate).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Voice fixture'}))
   fireEvent.click(screen.getByRole('button',{name:'Send to the agent'}))
-  expect(state.mutate.mock.calls[0]![0].voice_meta).toEqual({stt_provider:'vosk',transcript_raw:'Voice training transcript',duration_ms:2000,latency_ms:10})
+  expect(state.mutate.mock.calls[0]![0].voice_meta).toEqual({stt_provider:'vosk',transcript_raw:'Voice training transcript',duration_ms:2000,latency_ms:10,edited:false})
+ fireEvent.change(screen.getByRole('textbox',{name:/Client request text/}),{target:{value:'Edited training transcript'}})
+ fireEvent.click(screen.getByRole('button',{name:'Send to the agent'}))
+ expect(state.mutate.mock.calls[1]![0].voice_meta).toMatchObject({transcript_raw:'Voice training transcript',edited:true})
 })
 it('shows actual result Journey/Trace/Engine links and retains optional signal action',()=>{
   state.data={signal_id:123,agent_run_id:44};const signal=vi.fn();mount(signal)
