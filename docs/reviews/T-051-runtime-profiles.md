@@ -2,7 +2,7 @@
 
 ## Статус
 
-Backend source checkpoint, не готовый к merge пакет. База85fcbaa объединяет main SDK6d7e5e и T-04134711ec. Перед итоговыми проверками требуется ordinary merge maintenance297a8459 (0011/0012, API17), затем сохраняется P1 API1.5.18/0013. UI выполняется отдельным focused commit от этого source checkpoint; full DoD/CI/human review ещё впереди.
+Составная ветка объединяет SDK/main, T-041 maintenance297a8459, P1 API1.5.18/DB0013 и UIa631386. Актуальный main1df0024 подключён ordinary merge с сохранением DB и Compare tabs, golden corpus/RNG и legacy migration comments. Первый полный прогон имел2 подтверждённых отказа; они исправлены в отдельном control/fixture checkpoint, targeted проверки проходят. Полный итоговый прогон/coverage/CI и human review ещё впереди. Исторические числа ниже привязаны к конкретным checkpoint и не объявляются доказательством нового head.
 
 ## Конкретное поведение
 
@@ -17,7 +17,7 @@ Backend source checkpoint, не готовый к merge пакет. База85fc
 
 ## Credential boundary
 
-Публичные key projections положительные; private значения и неизвестные будущие private fields не пролезают через generic settings/export/engine DB. Invalid credential/config input errors не включают Pydantic input/ctx. Secret URL/query/fragment/extra и ambiguously shadowed binding не допускаются. Все selected roles/bound metadata проверяются до destructive baseline reset даже без body profile ID; maintenance fingerprint/race integration ещё предстоит.
+Публичные key projections положительные; private значения и неизвестные будущие private fields не пролезают через generic settings/export/engine DB. Invalid credential/config input errors не включают Pydantic input/ctx. Secret URL/query/fragment/extra и ambiguously shadowed binding не допускаются. Все selected roles/bound metadata проверяются до destructive baseline reset даже без body profile ID; metadata повторно проверяется внутри существующего exclusive maintenance preflight.
 
 Giga OAuth/chat error diagnostics сохраняют kind/status/Retry-After/usage/retry behavior, но upstream body и network exception values не идут в KeyPool logs/API. Exact selected credential и Giga bearer token в model raw/parsed JSON вызывают constant bad_output до return/trace/persistence: ответ не маскируется и не подменяется. Known response usage при отказе сохраняется. Stream держит только неоднозначный literal prefix, поэтому split credential не выдаётся по кускам. Обычный trace/text не редактируется. OAuth `access_token` — ожидаемое private поле протокола, никогда не public model output; echo authkey в иных OAuth полях отклоняется. Произвольные сторонние debug handlers/opaque энкодинги не объявляются защищёнными универсально.
 
@@ -31,7 +31,7 @@ Giga OAuth/chat error diagnostics сохраняют kind/status/Retry-After/usa
 
 ## Обязательный review перед merge
 
-`contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage counters не добавлять в baseline fingerprint; private UID/endpoint/scope/limits/deleted config включить после maintenance composition. Номер0014 сохранён для отдельно reviewed durable operational store.
+`contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage/balance/day/last_error не входят в baseline fingerprint; private UID/endpoint/scope/limits/deleted config входят. Номер0015 зарезервирован parent для отдельно reviewed durable operational store;0014 принадлежит T-240.
 
 
 ## Составной checkpoint после297a8459 (в работе)
@@ -53,3 +53,11 @@ Ordinary merge сохраняет maintenance coordinator, DB boundary/marker и
 `make lint` зелёный:195 frontend tests, ruff375files, mypy260sources, OpenAPI191/191. Production+personal build прошли, licenses550, i18n1697/fresh API types. `make test`: contracts44/161; unit1145passed/18skipped26.90s; integration291passed/2failed/2skipped1148.03s. До scenarios/compliance/frontend этот make не дошёл. Это НЕ full green.
 
 Два подтверждённых отказа: durable process записал recover/graceful reports, но child превысил45s при завершении; первая установка упала ДО seed/assertions на FK старого `langgraph.checkpoints`→новая пустая `sim_runs`, потому что отдельная test fixture сбрасывает только public namespace. Assertions/timeouts не ослаблены; причина shutdown ещё исследуется.
+
+## Legacy boundary baseline
+
+Непустая неконвертированная `settings.llm_keys` блокирует snapshot/restore constant409 до marker/drain/pause/export/pg_dump/restore. Guard читает только SQL EXISTS boolean, не возвращает/читает credential values, не decrypt и не конвертирует store. Missing row, пустой список и JSON null разрешены; malformed nonempty payload отказывает. Повторная проверка fingerprint внутри согласованной maintenance boundary сохраняется для race protection.
+
+Оператор должен явно открыть реестр API-ключей или выполнить reviewed cutover. GET `/api/settings/llm-keys` выполняет transactional/idempotent migration и удаляет legacy row только при успехе; в production также сохраняет существующее обновление metadata баланса. Поэтому эти GET не объявляются универсально read-only. Пустой JSON null нормализуется как прежним loader в пустой registry при явном cutover. После удаления legacy row fingerprint включает только canonical config; счётчики spending туда не добавляются.
+
+Target guard+baseline/maintenance unit50passed16.19s. В новом PG case проверены HTTP409 обоих endpoints, неизменность marker bytes/mtime/phase/epoch/job, живой writer actor, RNG и sim_state; pg_dump/pause/shutdown не вызываются. После явного successful cutover sync/async fingerprint совпадают.

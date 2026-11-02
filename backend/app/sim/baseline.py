@@ -291,6 +291,8 @@ def dump_for_connection(
         )
         log.info("baseline_dump_done", profile=prof, bytes=dump_path.stat().st_size)
         return info(prof)
+    except baseline_llm.LLMConfigDrift as exc:
+        raise BaselineToolingError(str(exc)) from exc
     finally:
         if stage is not None:
             stage.unlink(missing_ok=True)
@@ -345,6 +347,8 @@ async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -
             },
         )
         return info(prof)
+    except baseline_llm.LLMConfigDrift as exc:
+        raise BaselineToolingError(str(exc)) from exc
     finally:
         if stage is not None:
             stage.unlink(missing_ok=True)

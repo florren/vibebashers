@@ -6,8 +6,16 @@ import hashlib
 import json
 from typing import Any
 
+LEGACY_PRESENT_SQL = (
+    "select exists(select 1 from settings where key='llm_keys' and value not in ('[]'::jsonb,'null'::jsonb))"
+)
+LEGACY_PENDING = (
+    "Реестр LLM-ключей ещё не конвертирован. Откройте реестр API-ключей для transactional cutover "
+    "или выполните согласованную конвертацию; baseline не изменён"
+)
 PROFILES_SQL = (
-    "select coalesce(jsonb_agg(to_jsonb(p)-'created_at'-'updated_at' order by p.id),'[]'::jsonb) from llm_profiles p"
+    "select coalesce(jsonb_agg(to_jsonb(p)-'created_at'-'updated_at' order by p.id),'[]'::jsonb),"
+    f"({LEGACY_PRESENT_SQL}) from llm_profiles p"
 )
 KEYS_SQL = "select id,provider,label,is_active,tokens_limit,rpd_limit,endpoint_url,scope,credential_uid::text,(deleted_at is not null),encrypted_key from llm_api_keys order by id"
 SETUP_SQL = "select value->'llm' from settings where key='setup_payload'"
@@ -34,15 +42,28 @@ def fingerprint(profiles: Any, keys: list[Any], setup: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+async def ensure_canonical(conn: Any) -> None:
+    """Только boolean metadata: не читаем/decrypt/конвертируем legacy credential values."""
+    row = await (await conn.execute(LEGACY_PRESENT_SQL)).fetchone()
+    if row and row[0] is True:
+        raise LLMConfigDrift(LEGACY_PENDING)
+
+
 def read_sync(cur: Any) -> str:
-    profiles = cur.execute(PROFILES_SQL).fetchone()[0]
+    row = cur.execute(PROFILES_SQL).fetchone()
+    if len(row) > 1 and row[1] is True:
+        raise LLMConfigDrift(LEGACY_PENDING)
+    profiles = row[0]
     keys = cur.execute(KEYS_SQL).fetchall()
     setup = cur.execute(SETUP_SQL).fetchone()
     return fingerprint(profiles, keys, setup[0] if setup else None)
 
 
 async def read(conn: Any) -> str:
-    profiles = (await (await conn.execute(PROFILES_SQL)).fetchone())[0]
+    row = await (await conn.execute(PROFILES_SQL)).fetchone()
+    if len(row) > 1 and row[1] is True:
+        raise LLMConfigDrift(LEGACY_PENDING)
+    profiles = row[0]
     keys = await (await conn.execute(KEYS_SQL)).fetchall()
     setup = await (await conn.execute(SETUP_SQL)).fetchone()
     return fingerprint(profiles, keys, setup[0] if setup else None)

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from app.db.session import psycopg_dsn
 from app.llm.run_profiles import capture
 from app.sim import baseline as baseline_svc
-from app.sim import run_lifecycle, run_summary
+from app.sim import baseline_llm, run_lifecycle, run_summary
 from app.sim import runs as run_svc
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator
@@ -159,6 +159,12 @@ async def _ensure_dump_allowed(request: Request) -> Simulator:
 
 async def _restore_baseline(request: Request, *, main_profile_id: int | None = None) -> str:
     coordinator: MaintenanceCoordinator = request.app.state.maintenance
+    # До marker/drain: pending legacy store нельзя silently вернуть из dump.
+    try:
+        async with await _conn() as conn:
+            await baseline_llm.ensure_canonical(conn)
+    except baseline_llm.LLMConfigDrift as exc:
+        raise HTTPException(409, str(exc)) from exc
 
     async def preflight() -> None:
         async with await _conn() as conn, conn.transaction():

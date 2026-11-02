@@ -626,3 +626,97 @@ async def test_frozen_approved_non_llm_remainder_survives_key_revocation_but_net
 
             await capture(ac, None)
     get_settings.cache_clear()
+
+
+async def test_pending_legacy_blocks_snapshot_restore_before_marker_actors_rng_or_dump(
+    seeded, conn, monkeypatch, tmp_path
+):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from app.main import create_app
+    from app.sim import baseline, baseline_llm
+    from app.sim.maintenance_control import MaintenanceControl
+    from app.sim.rng import SimRng
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    secret = "synthetic-pending-legacy"
+    preupgrade_legacy_row(
+        conn,
+        [
+            {
+                "id": 77,
+                "provider": "gigachat",
+                "label": "synthetic pending",
+                "key_enc": encrypt(secret, get_settings().app_secret),
+            }
+        ],
+    )
+    before = conn.execute("select to_jsonb(s) from sim_state s where id=1").fetchone()[0]
+    dump = Mock(side_effect=AssertionError("pending legacy must not start pg_dump"))
+    monkeypatch.setattr(baseline, "_run_pg_dump", dump)
+    monkeypatch.setattr(baseline, "info", lambda: {"available": True})
+    app = create_app()
+    coor = app.state.maintenance
+    coor.boundary = None
+    coor.control = MaintenanceControl(tmp_path / "control")
+    coor.control.initialize_missing()
+    marker = coor.control.path.read_bytes(), coor.control.path.stat().st_mtime_ns
+    rng = SimRng(42)
+    rng_before = rng.dump_state()
+    ac = await connect(seeded)
+    sim = SimpleNamespace(
+        clock=SimpleNamespace(running=False),
+        run_status="completed",
+        rng=rng,
+        connect=AsyncMock(return_value=ac),
+        control=AsyncMock(),
+        shutdown=AsyncMock(),
+    )
+    app.state.sim = sim
+    ready, finish = asyncio.Event(), asyncio.Event()
+
+    async def actor():
+        ready.set()
+        await finish.wait()
+
+    task = coor.spawn(actor(), kind="agent", name="synthetic-pending-legacy-actor")
+    try:
+        await ready.wait()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            for path in ("/api/sim/baseline", "/api/sim/baseline/restore"):
+                result = await client.post(path)
+                assert result.status_code == 409 and "конвертирован" in result.text
+                assert secret not in result.text and "enc1:" not in result.text
+        assert (coor.phase, coor.epoch, coor.job_id) == ("ready", 0, None)
+        assert (coor.control.path.read_bytes(), coor.control.path.stat().st_mtime_ns) == marker
+        assert not task.done() and sim.rng.dump_state() == rng_before
+        sim.control.assert_not_awaited()
+        sim.shutdown.assert_not_awaited()
+        dump.assert_not_called()
+        assert conn.execute("select to_jsonb(s) from sim_state s where id=1").fetchone()[0] == before
+        assert conn.execute("select value from settings where key='llm_keys'").fetchone() is not None
+        with pytest.raises(baseline_llm.LLMConfigDrift):
+            baseline_llm.read_sync(conn.cursor())
+        # Явное открытие registry выполняет transactional migration; preflight этого не делает.
+        await credentials.list_keys(ac)
+        assert conn.execute("select value from settings where key='llm_keys'").fetchone() is None
+        assert baseline_llm.read_sync(conn.cursor()) == await baseline_llm.read(ac)
+    finally:
+        finish.set()
+        await task
+        await ac.close()
+
+
+@pytest.mark.parametrize("legacy", [[], None])
+async def test_empty_legacy_row_does_not_block_canonical_metadata(seeded, conn, legacy):
+    from app.sim import baseline_llm
+
+    preupgrade_legacy_row(conn, legacy)
+    async with await connect(seeded) as ac:
+        await baseline_llm.ensure_canonical(ac)
+        assert baseline_llm.read_sync(conn.cursor()) == await baseline_llm.read(ac)
+        assert await credentials.list_keys(ac) == []
+        assert conn.execute("select value from settings where key='llm_keys'").fetchone() is None

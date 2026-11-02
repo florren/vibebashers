@@ -122,6 +122,8 @@ async def migrate_legacy(conn: psycopg.AsyncConnection[Any]) -> None:
         if old is None:
             return
         items = old["value"]
+        if items is None:
+            items = []  # Старый loader также считал JSON null пустым реестром.
         if not isinstance(items, list):
             raise Problem(409, "Legacy key configuration требует ручной миграции")
         seen: set[int] = set()

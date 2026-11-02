@@ -53,6 +53,7 @@ def wired(monkeypatch):
     monkeypatch.setattr(baseline, "preflight_restore", AsyncMock())
     # Real maintenance cancellation/leases; binding has real-PG regressions.
     monkeypatch.setattr(api, "capture", AsyncMock())
+    monkeypatch.setattr(api.baseline_llm, "ensure_canonical", AsyncMock())
     monkeypatch.setattr(api, "_conn", AsyncMock(return_value=connection))
     return app, sim
 

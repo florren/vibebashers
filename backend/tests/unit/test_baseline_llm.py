@@ -67,3 +67,28 @@ def test_plaintext_key_and_malformed_setup_are_rejected_without_echo():
     assert "not-encrypted-secret" not in str(exc.value)
     with pytest.raises(LLMConfigDrift):
         fingerprint([], [], ["invalid"])
+
+
+def test_pending_legacy_is_refused_before_reading_other_config_values():
+    from unittest.mock import Mock
+
+    from app.sim.baseline_llm import LEGACY_PENDING, read_sync
+
+    cur = Mock()
+    cur.execute.return_value.fetchone.return_value = ([], True)
+    with pytest.raises(LLMConfigDrift, match=LEGACY_PENDING):
+        read_sync(cur)
+    assert cur.execute.call_count == 1
+
+
+async def test_early_legacy_guard_reads_boolean_only_and_never_converts():
+    from unittest.mock import AsyncMock
+
+    from app.sim.baseline_llm import LEGACY_PRESENT_SQL, ensure_canonical
+
+    conn = AsyncMock()
+    conn.execute.return_value.fetchone.return_value = (True,)
+    with pytest.raises(LLMConfigDrift, match="конвертирован"):
+        await ensure_canonical(conn)
+    assert conn.execute.await_args.args == (LEGACY_PRESENT_SQL,)
+    assert "exists" in LEGACY_PRESENT_SQL and "pgp" not in LEGACY_PRESENT_SQL
