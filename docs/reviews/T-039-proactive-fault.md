@@ -372,3 +372,19 @@ coverage1076/1197 changed lines89.89% — только diagnostic frozen8a measu
 root сохраняет concrete source/CI/parent review API25/receipt19. Разрешение не
 распространяется на paid/LLM/Telegram/email/production или отдельно заблокированный
 PR180 forward-only credential cutover. Новых внешних вызовов не выполнялось.
+
+
+Focused source9f370816 runner coverage:35 passed25.00s (33unit+2PG),
+changed executable lines15/18=83.33% against frozen8a; whole runner280/415=67.47%.
+Это узкая проверка нового wake, не показатель полного T039 coverage. Missing новые
+строки193/196/636 — scoped recovery/human resume call sites; исходные functional
+regressions сохранены, whole final CI ещё должен их покрыть. JSON proof:
+[T-039-wake-coverage.json](T-039-wake-coverage.json). Первый запуск33pass/2setupE
+использовал pg_dump18; повтор PATH=/tmp/cx-demo-pg16:$PATH прошёл. Source не менялся
+ради tooling. Exact touched Ruff/format3files и mypy runner green.
+
+Ordinary metadata-only58a4a28 merged9f37081, один card-report conflict объединён
+без удаления обеих source-qualified историй. Owner full2591backend/24skip и
+366frontend/43bot относится к owner0e, не consumer composition. Final T039 full
+make/whole CI остаётся pending; merge не выполнялся. Draft body подготовлен
+в/tmp/T-039-draft-pr.md, публикацией и проверкой окончательного head занимается root.
