@@ -237,6 +237,7 @@
     }
   },
   "signal": {
+    "sourcePlatform": "Площадка",
     "type": {
       "tech_fault": "Техсбой",
       "client_error": "Ошибка клиента",

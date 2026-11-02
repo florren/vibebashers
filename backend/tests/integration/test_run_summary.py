@@ -30,6 +30,7 @@ def baseline(conn):
 
 def test_stop_summary_matches_metrics_and_profiles(seeded, conn):
     rid = baseline(conn)
+    expected_signals = conn.execute("select count(*) from signals where run_id=%s", (rid,)).fetchone()[0]
     profile_id = conn.execute("select id from llm_profiles where code='mock'").fetchone()[0]
     conn.execute("update llm_profiles set price_in_per_1m=2,price_out_per_1m=4 where id=%s", (profile_id,))
     signal_id = conn.execute("select id from signals where run_id=%s order by id limit 1", (rid,)).fetchone()[0]
@@ -46,7 +47,7 @@ def test_stop_summary_matches_metrics_and_profiles(seeded, conn):
             stored = (await (await ac.execute("select summary from sim_runs where id=%s", (rid,))).fetchone())[0]
             assert stored["summary_version"] == 1
             assert stored["dashboard"] == json.loads(json.dumps(await dashboard(ac, rid=rid), default=str))
-            assert stored["signals"] == 800
+            assert stored["signals"] == expected_signals
             assert stored["dashboard"]["agent_runs"] == 1
             assert stored["dashboard"]["tokens_total"] == 100
             assert stored["tokens"] == 10100
@@ -74,6 +75,7 @@ def test_stop_summary_matches_metrics_and_profiles(seeded, conn):
 
 def test_readonly_json_csv_and_run_isolation(seeded, conn):
     rid = baseline(conn)
+    expected_signals = conn.execute("select count(*) from signals where run_id=%s", (rid,)).fetchone()[0]
     historical_count = conn.execute("select count(*) from sim_events where run_id=%s", (rid,)).fetchone()[0]
     assert historical_count > 0
 
@@ -105,7 +107,7 @@ def test_readonly_json_csv_and_run_isolation(seeded, conn):
             assert {"hours", "products", "teams"} == exported["aggregates"].keys()
             hours = exported["aggregates"]["hours"]
             assert sum(row["events"] for row in hours) == 1001
-            assert sum(row["signals"] for row in hours) == 800
+            assert sum(row["signals"] for row in hours) == expected_signals
             assert sum(row["incidents"] for row in hours) == 150
             assert (
                 sum(row["operations"] for row in hours)
@@ -119,7 +121,7 @@ def test_readonly_json_csv_and_run_isolation(seeded, conn):
                     ).fetchone()
                 )[0]
             )
-            assert exported["summary"]["dashboard"]["signals_total"] == 800
+            assert exported["summary"]["dashboard"]["signals_total"] == expected_signals
             chunks = [chunk async for chunk in csv_events(ac, rid)]
             assert len(chunks) == 4
             rows = list(csv.DictReader(io.StringIO("".join(chunks))))
@@ -141,7 +143,7 @@ def test_readonly_json_csv_and_run_isolation(seeded, conn):
         assert client.get(f"/api/sim/runs/{rid}/export?format=xml").status_code == 422
         comparison = client.get(f"/api/sim/runs/compare?a={rid}&b={other}")
         assert comparison.status_code == 200
-        assert comparison.json()["diff"]["dashboard.signals_total"] == -800
+        assert comparison.json()["diff"]["dashboard.signals_total"] == -expected_signals
         assert conn.execute("select count(*) from db_activity_log").fetchone()[0] == before
 
 
@@ -203,9 +205,10 @@ def test_explicit_recalculation_and_status_guards(seeded, conn, monkeypatch):
     from scripts.run_summary import recalculate
 
     rid = baseline(conn)
+    expected_signals = conn.execute("select count(*) from signals where run_id=%s", (rid,)).fetchone()[0]
     assert asyncio.run(recalculate(rid)) == 0
     stored = conn.execute("select summary from sim_runs where id=%s", (rid,)).fetchone()[0]
-    assert stored["summary_version"] == 1 and stored["dashboard"]["signals_total"] == 800
+    assert stored["summary_version"] == 1 and stored["dashboard"]["signals_total"] == expected_signals
     assert asyncio.run(recalculate(9999999)) == 2
     conn.execute("update sim_runs set status='running' where id=%s", (rid,))
     assert asyncio.run(recalculate(rid)) == 2

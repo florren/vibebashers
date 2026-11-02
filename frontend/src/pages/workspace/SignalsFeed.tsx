@@ -1,3 +1,4 @@
+import { SourcePlatformBadge } from '@/shared/components/SourcePlatformBadge'
 import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
 import { clsx } from 'clsx'
 import { Search, X } from 'lucide-react'
@@ -104,6 +105,7 @@ export function SignalRow({
           <span className="mb-1 block break-words font-mono text-xs text-info">{s.public_id}{s.run_public_id && ` · ${s.run_public_id}`}{(s.incident_refs ?? []).length > 0 && ` → ${s.incident_refs!.join(', ')}`}</span>
           <span className="flex flex-wrap items-center gap-1.5">
             <Badge tone="neutral">{tEnum('channel', s.channel_code)}</Badge>
+            <SourcePlatformBadge platform={s.source_platform} />
             {c?.signal_type && <Badge tone="info">{tEnum('signal.type', c.signal_type)}</Badge>}
             {c?.criticality && c.criticality !== 'low' && <Badge tone={criticalityTone(c.criticality)}>{tEnum('incident.criticality', c.criticality)}</Badge>}
             {s.sentiment && s.sentiment !== 'neutral' && <Badge tone={sentimentTone(s.sentiment)}>{tEnum('signal.sentiment', s.sentiment)}</Badge>}

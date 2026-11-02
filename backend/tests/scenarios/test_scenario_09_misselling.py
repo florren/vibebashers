@@ -44,7 +44,7 @@ async def test_scenario_09_transcript_on_replay(seeded: str, monkeypatch, reques
     chain = _replay_chain()
     t0 = time.perf_counter()
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
-        # До SimRun snapshot выбираем модель, чьи реальные ответы записаны.
+        # Кассета записана Pro: фиксируем честный offline профиль до создания run.
         await conn.execute(
             "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
             "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
