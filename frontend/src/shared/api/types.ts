@@ -7359,33 +7359,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** [ЕТЗ] Аналитика CSI (ТЗ 25.2) */
+        /** [ЕТЗ] Read-only аналитика CSI с run/direction/coverage (ТЗ25.3) */
         get: {
             parameters: {
                 query?: {
                     branch_id?: number;
-                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
-                    run_id?: components["parameters"]["RunId"];
+                    run_id?: string;
+                    product_line?: string;
+                    region_code?: string;
+                    period?: "day" | "week" | "month" | "quarter";
+                    limit?: number;
+                    offset?: number;
+                    scatter_limit?: number;
                 };
                 header?: {
                     /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
                     "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
                 };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Один read-only snapshot; явные границы sample и неизвестных данных */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["CsiAnalyticsResponse"];
                     };
                 };
-                501: components["responses"]["Problem"];
+                403: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -7403,31 +7412,39 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** [ЕТЗ] Справочник ВСП (ТЗ 25.3) */
+        /** [ЕТЗ] Справочник ВСП: strict direction, TTL 24h */
         get: {
             parameters: {
                 query?: {
                     region_code?: string;
-                    status?: components["schemas"]["branch_status"];
-                    limit?: components["parameters"]["Limit"];
-                    cursor?: components["parameters"]["Cursor"];
+                    status?: "open" | "closed";
+                    product_line?: string;
+                    limit?: number;
+                    cursor?: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Read-only snapshot */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["BranchDirectoryResponse"];
                     };
                 };
-                501: components["responses"]["Problem"];
+                403: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -7445,29 +7462,141 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** [ЕТЗ] Динамика сети ВСП (ТЗ 25.3) */
+        /** [ЕТЗ] История сети ВСП с явным provenance */
         get: {
             parameters: {
                 query?: {
                     region_code?: string;
+                    product_line?: string;
                     months?: number;
                 };
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Read-only snapshot */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["BranchNetworkResponse"];
                     };
                 };
-                501: components["responses"]["Problem"];
+                403: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/branches/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Давление сигналов и зоны закрытия ВСП */
+        get: {
+            parameters: {
+                query?: {
+                    run_id?: string;
+                    product_line?: string;
+                    region_code?: string;
+                    period?: "day" | "week" | "month" | "quarter";
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Read-only snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BranchAnalyticsResponse"];
+                    };
+                };
+                403: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/branches/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Карточка ВСП и явно связанные сигналы */
+        get: {
+            parameters: {
+                query?: {
+                    run_id?: string;
+                    product_line?: string;
+                    period?: "day" | "week" | "month" | "quarter";
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Read-only snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BranchDetailResponse"];
+                    };
+                };
+                403: components["responses"]["Problem"];
+                404: components["responses"]["Problem"];
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -10190,6 +10319,313 @@ export interface components {
                 at: string;
             }[];
         };
+        /** @description Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime, run scope baseline+current/id либо явный all. */
+        CsiAnalyticsScope: {
+            role: components["schemas"]["CabinetRole"];
+            /** @enum {string} */
+            visibility: "soft" | "strict";
+            product_lines: string[] | null;
+            run_ids: number[] | null;
+            /** @enum {string} */
+            period: "day" | "week" | "month" | "quarter";
+            /** Format: date-time */
+            since_sim: string;
+            /** Format: date-time */
+            sim_time: string;
+            branch_id: number | null;
+            region_code: string | null;
+        };
+        /** @description Нет имён/контактов сотрудников. direction_source отличает объявленное направление синтетической когорты от classifier. response_at есть только у зарегистрированного sample; received_sim не подменяется. */
+        CsiComplaint: {
+            signal_ref: string;
+            csi_no: string | null;
+            /** Format: date-time */
+            received_sim: string;
+            /** Format: date-time */
+            response_at: string | null;
+            branch_id: number | null;
+            branch_code: string | null;
+            region_code: string | null;
+            product_line_code: string | null;
+            /** @enum {string} */
+            direction_source: "cohort_declared" | "classified" | "unknown";
+            position: string | null;
+            wait_min: number | null;
+            service_min: number | null;
+            redirects: number | null;
+            /** @enum {string|null} */
+            criticality: "high" | "medium" | "low" | null;
+            summary: string;
+        };
+        CsiScatterPoint: {
+            signal_ref: string;
+            wait_min: number;
+            service_min: number;
+            /** @enum {string|null} */
+            criticality: "high" | "medium" | "low" | null;
+            branch_code: string | null;
+        };
+        CsiPosition: {
+            position: string | null;
+            complaints: number;
+            known_employees: number;
+            anonymous_complaints: number;
+        };
+        /** @description Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont. */
+        CsiTenureGroup: {
+            /** @enum {string} */
+            group: "with_complaints" | "without_complaints";
+            employees: number;
+            known_tenure: number;
+            q1: number | null;
+            median: number | null;
+            q3: number | null;
+        };
+        CsiHeatmapRegion: {
+            region_code: string | null;
+            complaints: number;
+        };
+        CsiTopBranch: {
+            branch_id: number;
+            branch_code: string;
+            branch_name: string;
+            region_code: string;
+            complaints: number;
+            average_wait_min: number | null;
+        };
+        /** @description Числитель и знаменатель относятся только к полным зарегистрированным когортам. Нет подходящей когорты или visits=0 — probability=null; unknown не подменяется нулём. */
+        CsiProbabilityBucket: {
+            /** @enum {string} */
+            bucket: "0-5" | "5-15" | "15-30" | "30+" | "0" | "1" | "2+";
+            complaints: number | null;
+            visits: number | null;
+            probability: number | null;
+        };
+        /** @description Spearman по ordinal bucket и bucket probability с average tied ranks; n_buckets — число пригодных корзин, не число посетителей. Constant series/n<2 — null; это не причинность на уровне людей. */
+        CsiProbabilityAxis: {
+            buckets: components["schemas"]["CsiProbabilityBucket"][];
+            spearman: number | null;
+            n_buckets: number;
+        };
+        /** @description Read-only integrity проверяет immutable membership/visits digests в том же MVCC snapshot. Частичное observation window не даёт вероятности. Legacy csi_visits_agg без run/cohort provenance не используется. synthetic относится только к sample, не ко всей популяции жалоб; mixed/no sample остаётся null. */
+        CsiProbabilities: {
+            overlapping_cohorts: number;
+            incomplete_cohorts: number;
+            partial_window_cohorts: number;
+            complete_cohorts: number;
+            synthetic: boolean | null;
+            sample_complaints: number | null;
+            sample_visits: number | null;
+            /** @constant */
+            time_basis: "cohort_response_at";
+            /** @constant */
+            scope: "registered_complete_cohorts";
+            /** @constant */
+            legacy_denominators_usable: false;
+            mixed_sources: boolean;
+            wait: components["schemas"]["CsiProbabilityAxis"];
+            redirects: components["schemas"]["CsiProbabilityAxis"];
+        };
+        /** @description T-248: описательная CSI аналитика. Жалобы фильтруются по native_received_sim; вероятности — по полной зарегистрированной когорте и source observation window. Все поля сохраняют unknown, GET не пишет данные и не вызывает LLM. */
+        CsiAnalyticsResponse: {
+            scope: components["schemas"]["CsiAnalyticsScope"];
+            coverage: {
+                complaints: number;
+                branch_known: number;
+                direction_known: number;
+                employee_known: number;
+                cohort_bound: number;
+                scatter_total: number;
+                uncohorted: number;
+                /** @constant */
+                time_basis: "native_received_sim";
+            };
+            complaints: {
+                items: components["schemas"]["CsiComplaint"][];
+                total: number;
+                next_offset: number | null;
+            };
+            scatter: {
+                items: components["schemas"]["CsiScatterPoint"][];
+                total: number;
+                shown: number;
+                has_more: boolean;
+            };
+            positions: components["schemas"]["CsiPosition"][];
+            tenure: {
+                groups: components["schemas"]["CsiTenureGroup"][];
+                /** @constant */
+                unit: "days";
+                /** Format: date-time */
+                as_of_sim: string;
+                /** @constant */
+                population: "current_active_branch_roster";
+            };
+            heatmap: components["schemas"]["CsiHeatmapRegion"][];
+            top_branches: components["schemas"]["CsiTopBranch"][];
+            probabilities: components["schemas"]["CsiProbabilities"];
+        };
+        BranchDirectoryMetadata: {
+            /** @enum {string|null} */
+            mode: "synthetic" | "snapshot_file" | null;
+            synthetic: boolean | null;
+            /** Format: date-time */
+            as_of_sim: string | null;
+            /** @constant */
+            scope: "global_directory_snapshot";
+        };
+        BranchPresetScope: {
+            /** @enum {string} */
+            role: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
+            /** @enum {string} */
+            visibility: "soft" | "strict";
+            product_lines: string[] | null;
+        };
+        /** @description Координаты сохраняют прежнюю decimal-string сериализацию; manager contacts/employee names отсутствуют. */
+        BranchRecord: {
+            id: number;
+            code: string;
+            name_ru: string;
+            region_code: string;
+            region_okato: string | null;
+            city_name: string;
+            desks: number;
+            /** @enum {string|null} */
+            branch_type: "flagship" | "standard" | "additional" | "mobile" | null;
+            /** @enum {string|null} */
+            branch_status: "open" | "closed" | null;
+            lat: string | null;
+            lon: string | null;
+            address_ru: string | null;
+            hours_ru: string | null;
+            /** Format: date-time */
+            opened_sim: string | null;
+            /** Format: date-time */
+            closed_sim: string | null;
+            product_line_codes: string[];
+        };
+        BranchDirectoryResponse: {
+            items: components["schemas"]["BranchRecord"][];
+            next_cursor: string | null;
+            scope: components["schemas"]["BranchPresetScope"];
+            directory: components["schemas"]["BranchDirectoryMetadata"];
+        };
+        BranchNetworkItem: {
+            /** Format: date */
+            month: string;
+            open_count: number | null;
+            closed_count: number | null;
+            opened_in_month: number | null;
+            closed_in_month: number | null;
+        };
+        /** @description Без direction сохраняются исходные агрегаты branch_network_history; direction subset восстанавливается по явным датам directory snapshot. Это отдельный provenance, не фильтрация неразмеченной истории. Missing dates →unknown. */
+        BranchNetwork: {
+            items: components["schemas"]["BranchNetworkItem"][];
+            synthetic: boolean | null;
+            /** @enum {string} */
+            basis: "stored_global_history" | "scoped_directory_lifecycle" | "unavailable_snapshot_time";
+            directory: components["schemas"]["BranchDirectoryMetadata"];
+        };
+        BranchNetworkResponse: {
+            items: components["schemas"]["BranchNetworkItem"][];
+            synthetic: boolean | null;
+            /** @enum {string} */
+            basis: "stored_global_history" | "scoped_directory_lifecycle" | "unavailable_snapshot_time";
+            directory: components["schemas"]["BranchDirectoryMetadata"];
+            scope: components["schemas"]["BranchPresetScope"];
+        };
+        /** @description Числитель: customer signals в явном run/period/direction; proactive anchors исключены. Знаменатель: open ВСП выбранного directory subset. Нет open/неизвестный status →ratio null. Deficit только при положительном явно настроенном пороге. */
+        BranchPressure: {
+            region_code: string | null;
+            branches: number;
+            open_branches: number;
+            closed_branches: number;
+            unknown_status_branches: number;
+            signals: number;
+            signals_per_open_branch: number | null;
+            deficit: boolean | null;
+        };
+        BranchClosureZone: {
+            branch_id: number;
+            branch_code: string;
+            region_code: string;
+            city_id: number;
+            /** Format: date-time */
+            closed_sim: string;
+            signals: number;
+            /** Format: date-time */
+            first_signal_sim: string | null;
+            /** Format: date-time */
+            last_signal_sim: string | null;
+        };
+        BranchAnalyticsScope: {
+            role: components["schemas"]["CabinetRole"];
+            /** @enum {string} */
+            visibility: "soft" | "strict";
+            product_lines: string[] | null;
+            run_ids: number[] | null;
+            /** @enum {string} */
+            period: "day" | "week" | "month" | "quarter";
+            /** Format: date-time */
+            since_sim: string;
+            /** Format: date-time */
+            sim_time: string;
+            region_code: string | null;
+        };
+        /** @description Current-only default, explicit all/id; baseline не примешивается. Closure — per-branch строки с точным совпадением региона/города и received_sim в 90 дней после закрытия; строки одного города не суммируются как unique signals. settings.csi_analytics.deficit_signals_per_open_branch отсутствует →unknown, выдуманного default нет. */
+        BranchAnalyticsResponse: {
+            scope: components["schemas"]["BranchAnalyticsScope"];
+            pressure: components["schemas"]["BranchPressure"][];
+            deficit_threshold: number | null;
+            /** @constant */
+            deficit_basis: "signals_per_open_branch_strictly_above_configured_threshold";
+            network: components["schemas"]["BranchNetwork"];
+            closure_zones: {
+                items: components["schemas"]["BranchClosureZone"][];
+                total: number;
+                next_offset: number | null;
+                /** @constant */
+                window_days: 90;
+                /** @constant */
+                basis: "same_region_and_city_after_closure";
+            };
+            directory: components["schemas"]["BranchDirectoryMetadata"];
+        };
+        BranchSignal: {
+            signal_ref: string;
+            /** Format: date-time */
+            received_sim: string;
+            channel_code: string;
+            status: string;
+        };
+        /** @description Сигналы связаны с ВСП явно: CSI branch_id или geo.vsp_code. Географическая близость не выдаётся за связь. Метрики read-only и не кэшируются 24 часа; TTL относится к directory/network endpoints. */
+        BranchDetailResponse: {
+            branch: components["schemas"]["BranchRecord"];
+            directory: components["schemas"]["BranchDirectoryMetadata"];
+            scope: components["schemas"]["CsiAnalyticsScope"];
+            csi: {
+                coverage: {
+                    complaints: number;
+                    branch_known: number;
+                    direction_known: number;
+                    employee_known: number;
+                    cohort_bound: number;
+                    scatter_total: number;
+                    uncohorted: number;
+                    /** @constant */
+                    time_basis: "native_received_sim";
+                };
+                probabilities: components["schemas"]["CsiProbabilities"];
+            };
+            signals: {
+                items: components["schemas"]["BranchSignal"][];
+                total: number;
+                next_offset: number | null;
+                /** @constant */
+                basis: "explicit_branch_link";
+            };
+            trace_path: string;
+        };
         /** @enum {string} */
         tone: "neutral" | "positive" | "irritated" | "angry" | "sarcastic" | "formal";
         /**
@@ -11412,8 +11848,6 @@ export interface components {
             /** @description Уточнённая тематика */
             subtopic?: string | null;
         };
-        /** @enum {string} */
-        branch_status: "open" | "closed";
     };
     responses: {
         /** @description Ошибка (RFC 9457) */

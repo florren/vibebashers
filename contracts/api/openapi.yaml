@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.22
+  version: 1.5.28
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2458,46 +2458,237 @@ paths:
   /api/csi/analytics:
     get:
       tags: [csi]
-      summary: "[ЕТЗ] Аналитика CSI (ТЗ 25.2)"
+      summary: "[ЕТЗ] Read-only аналитика CSI с run/direction/coverage (ТЗ25.3)"
       parameters:
         - { $ref: "#/components/parameters/CxRole" }
-        - name: branch_id
-          in: query
-          schema: { type: integer }
-        - { $ref: "#/components/parameters/RunId" }
+        - { $ref: "#/components/parameters/CxProductLine" }
+        - { name: branch_id, in: query, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+        - { name: run_id, in: query, schema: { type: string, default: current, maxLength: 32 } }
+        - { name: product_line, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: region_code, in: query, schema: { type: string, maxLength: 20 } }
+        - { name: period, in: query, schema: { type: string, enum: [day, week, month, quarter], default: week } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: scatter_limit, in: query, schema: { type: integer, minimum: 1, maximum: 5000, default: 1000 } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        "200": { description: "Один read-only snapshot; явные границы sample и неизвестных данных", content: { application/json: { schema: { $ref: "#/components/schemas/CsiAnalyticsResponse" } } } }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/branches:
     get:
-      tags: [branches]
-      summary: "[ЕТЗ] Справочник ВСП (ТЗ 25.3)"
+      tags:
+      - branches
+      summary: '[ЕТЗ] Справочник ВСП: strict direction, TTL 24h'
       parameters:
-        - name: region_code
-          in: query
-          schema: { type: string }
-        - name: status
-          in: query
-          schema: { $ref: "../events/common.schema.json#/$defs/branch_status" }
-        - { $ref: "#/components/parameters/Limit" }
-        - { $ref: "#/components/parameters/Cursor" }
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - open
+          - closed
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 32
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDirectoryResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
   /api/branches/network:
     get:
-      tags: [branches]
-      summary: "[ЕТЗ] Динамика сети ВСП (ТЗ 25.3)"
+      tags:
+      - branches
+      summary: '[ЕТЗ] История сети ВСП с явным provenance'
       parameters:
-        - name: region_code
-          in: query
-          schema: { type: string }
-        - name: months
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 24, default: 12 }
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: months
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 24
+          default: 12
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchNetworkResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /api/branches/analytics:
+    get:
+      tags:
+      - branches
+      summary: '[ЕТЗ] Давление сигналов и зоны закрытия ВСП'
+      parameters:
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+          maxLength: 32
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+          default: week
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+      responses:
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchAnalyticsResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /api/branches/{code}:
+    get:
+      tags:
+      - branches
+      summary: '[ЕТЗ] Карточка ВСП и явно связанные сигналы'
+      parameters:
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 32
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+          maxLength: 32
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+          default: week
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+      responses:
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDetailResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
   /api/metrics/cx-index:
     get:
       tags: [metrics]
@@ -5571,3 +5762,1120 @@ components:
       properties:
         messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, display_name: { type: string, maxLength: 120 }, status: { type: string }, received_at: { type: string, format: date-time } } } }
         answers: { type: array, items: { type: object, required: [id, text, at], properties: { id: { type: integer }, text: { type: string }, at: { type: string, format: date-time } } } }
+
+    CsiAnalyticsScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      - run_ids
+      - period
+      - since_sim
+      - sim_time
+      - branch_id
+      - region_code
+      properties:
+        role:
+          $ref: '#/components/schemas/CabinetRole'
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+        run_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+            minimum: 1
+            format: int64
+        period:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+        since_sim:
+          type: string
+          format: date-time
+        sim_time:
+          type: string
+          format: date-time
+        branch_id:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        region_code:
+          type:
+          - string
+          - 'null'
+      description: Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime,
+        run scope baseline+current/id либо явный all.
+    CsiComplaint:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - csi_no
+      - received_sim
+      - response_at
+      - branch_id
+      - branch_code
+      - region_code
+      - product_line_code
+      - direction_source
+      - position
+      - wait_min
+      - service_min
+      - redirects
+      - criticality
+      - summary
+      properties:
+        signal_ref:
+          type: string
+        csi_no:
+          type:
+          - string
+          - 'null'
+          pattern: ^CSI-\d{3,6}$
+        received_sim:
+          type: string
+          format: date-time
+        response_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        branch_id:
+          type:
+          - integer
+          - 'null'
+        branch_code:
+          type:
+          - string
+          - 'null'
+        region_code:
+          type:
+          - string
+          - 'null'
+        product_line_code:
+          type:
+          - string
+          - 'null'
+        direction_source:
+          type: string
+          enum:
+          - cohort_declared
+          - classified
+          - unknown
+        position:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        wait_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        service_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        redirects:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        criticality:
+          type:
+          - string
+          - 'null'
+          enum:
+          - high
+          - medium
+          - low
+          - null
+        summary:
+          type: string
+          maxLength: 500
+      description: Нет имён/контактов сотрудников. direction_source отличает объявленное направление синтетической когорты
+        от classifier. response_at есть только у зарегистрированного sample; received_sim не подменяется.
+    CsiScatterPoint:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - wait_min
+      - service_min
+      - criticality
+      - branch_code
+      properties:
+        signal_ref:
+          type: string
+        wait_min:
+          type: number
+          minimum: 0
+        service_min:
+          type: number
+          minimum: 0
+        criticality:
+          type:
+          - string
+          - 'null'
+          enum:
+          - high
+          - medium
+          - low
+          - null
+        branch_code:
+          type:
+          - string
+          - 'null'
+    CsiPosition:
+      type: object
+      additionalProperties: false
+      required:
+      - position
+      - complaints
+      - known_employees
+      - anonymous_complaints
+      properties:
+        position:
+          type:
+          - string
+          - 'null'
+        complaints:
+          type: integer
+          minimum: 0
+        known_employees:
+          type: integer
+          minimum: 0
+        anonymous_complaints:
+          type: integer
+          minimum: 0
+    CsiTenureGroup:
+      type: object
+      additionalProperties: false
+      required:
+      - group
+      - employees
+      - known_tenure
+      - q1
+      - median
+      - q3
+      properties:
+        group:
+          type: string
+          enum:
+          - with_complaints
+          - without_complaints
+        employees:
+          type: integer
+          minimum: 0
+        known_tenure:
+          type: integer
+          minimum: 0
+        q1:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        median:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        q3:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+      description: Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future
+        position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont.
+    CsiHeatmapRegion:
+      type: object
+      additionalProperties: false
+      required:
+      - region_code
+      - complaints
+      properties:
+        region_code:
+          type:
+          - string
+          - 'null'
+        complaints:
+          type: integer
+          minimum: 0
+    CsiTopBranch:
+      type: object
+      additionalProperties: false
+      required:
+      - branch_id
+      - branch_code
+      - branch_name
+      - region_code
+      - complaints
+      - average_wait_min
+      properties:
+        branch_id:
+          type: integer
+          minimum: 1
+        branch_code:
+          type: string
+        branch_name:
+          type: string
+          maxLength: 200
+        region_code:
+          type: string
+        complaints:
+          type: integer
+          minimum: 0
+        average_wait_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+    CsiProbabilityBucket:
+      type: object
+      additionalProperties: false
+      required:
+      - bucket
+      - complaints
+      - visits
+      - probability
+      properties:
+        bucket:
+          type: string
+          enum:
+          - 0-5
+          - 5-15
+          - 15-30
+          - 30+
+          - '0'
+          - '1'
+          - 2+
+        complaints:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        visits:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        probability:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+      description: Числитель и знаменатель относятся только к полным зарегистрированным когортам. Нет подходящей когорты
+        или visits=0 — probability=null; unknown не подменяется нулём.
+    CsiProbabilityAxis:
+      type: object
+      additionalProperties: false
+      required:
+      - buckets
+      - spearman
+      - n_buckets
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiProbabilityBucket'
+          minItems: 3
+          maxItems: 4
+        spearman:
+          type:
+          - number
+          - 'null'
+          minimum: -1
+          maximum: 1
+        n_buckets:
+          type: integer
+          minimum: 0
+          maximum: 4
+      description: Spearman по ordinal bucket и bucket probability с average tied ranks; n_buckets — число пригодных
+        корзин, не число посетителей. Constant series/n<2 — null; это не причинность на уровне людей.
+    CsiProbabilities:
+      type: object
+      additionalProperties: false
+      required:
+      - overlapping_cohorts
+      - incomplete_cohorts
+      - partial_window_cohorts
+      - complete_cohorts
+      - synthetic
+      - sample_complaints
+      - sample_visits
+      - time_basis
+      - scope
+      - legacy_denominators_usable
+      - mixed_sources
+      - wait
+      - redirects
+      properties:
+        overlapping_cohorts:
+          type: integer
+          minimum: 0
+        incomplete_cohorts:
+          type: integer
+          minimum: 0
+        partial_window_cohorts:
+          type: integer
+          minimum: 0
+        complete_cohorts:
+          type: integer
+          minimum: 0
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        sample_complaints:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        sample_visits:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        time_basis:
+          type: string
+          const: cohort_response_at
+        scope:
+          type: string
+          const: registered_complete_cohorts
+        legacy_denominators_usable:
+          type: boolean
+          const: false
+        mixed_sources:
+          type: boolean
+        wait:
+          $ref: '#/components/schemas/CsiProbabilityAxis'
+        redirects:
+          $ref: '#/components/schemas/CsiProbabilityAxis'
+      description: Read-only integrity проверяет immutable membership/visits digests в том же MVCC snapshot. Частичное
+        observation window не даёт вероятности. Legacy csi_visits_agg без run/cohort provenance не используется. synthetic
+        относится только к sample, не ко всей популяции жалоб; mixed/no sample остаётся null.
+    CsiAnalyticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - scope
+      - coverage
+      - complaints
+      - scatter
+      - positions
+      - tenure
+      - heatmap
+      - top_branches
+      - probabilities
+      properties:
+        scope:
+          $ref: '#/components/schemas/CsiAnalyticsScope'
+        coverage:
+          type: object
+          additionalProperties: false
+          required:
+          - complaints
+          - branch_known
+          - direction_known
+          - employee_known
+          - cohort_bound
+          - scatter_total
+          - uncohorted
+          - time_basis
+          properties:
+            complaints:
+              type: integer
+              minimum: 0
+            branch_known:
+              type: integer
+              minimum: 0
+            direction_known:
+              type: integer
+              minimum: 0
+            employee_known:
+              type: integer
+              minimum: 0
+            cohort_bound:
+              type: integer
+              minimum: 0
+            scatter_total:
+              type: integer
+              minimum: 0
+            uncohorted:
+              type: integer
+              minimum: 0
+            time_basis:
+              type: string
+              const: native_received_sim
+        complaints:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiComplaint'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+        scatter:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - shown
+          - has_more
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiScatterPoint'
+              maxItems: 5000
+            total:
+              type: integer
+              minimum: 0
+            shown:
+              type: integer
+              minimum: 0
+            has_more:
+              type: boolean
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiPosition'
+        tenure:
+          type: object
+          additionalProperties: false
+          required:
+          - groups
+          - unit
+          - as_of_sim
+          - population
+          properties:
+            groups:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiTenureGroup'
+              minItems: 2
+              maxItems: 2
+            unit:
+              type: string
+              const: days
+            as_of_sim:
+              type: string
+              format: date-time
+            population:
+              type: string
+              const: current_active_branch_roster
+        heatmap:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiHeatmapRegion'
+        top_branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiTopBranch'
+          maxItems: 10
+        probabilities:
+          $ref: '#/components/schemas/CsiProbabilities'
+      description: 'T-248: описательная CSI аналитика. Жалобы фильтруются по native_received_sim; вероятности — по полной
+        зарегистрированной когорте и source observation window. Все поля сохраняют unknown, GET не пишет данные и не
+        вызывает LLM.'
+    BranchDirectoryMetadata:
+      type: object
+      additionalProperties: false
+      required:
+      - mode
+      - synthetic
+      - as_of_sim
+      - scope
+      properties:
+        mode:
+          type:
+          - string
+          - 'null'
+          enum:
+          - synthetic
+          - snapshot_file
+          - null
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        as_of_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        scope:
+          type: string
+          const: global_directory_snapshot
+    BranchPresetScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      properties:
+        role:
+          type: string
+          enum:
+          - cx_operator
+          - cx_lead
+          - product_manager
+          - product_head
+          - compliance_officer
+          - bank_head
+          - admin
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+    BranchRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - name_ru
+      - region_code
+      - region_okato
+      - city_name
+      - desks
+      - branch_type
+      - branch_status
+      - lat
+      - lon
+      - address_ru
+      - hours_ru
+      - opened_sim
+      - closed_sim
+      - product_line_codes
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        code:
+          type: string
+        name_ru:
+          type: string
+        region_code:
+          type: string
+        region_okato:
+          type:
+          - string
+          - 'null'
+        city_name:
+          type: string
+        desks:
+          type: integer
+          minimum: 0
+        branch_type:
+          type:
+          - string
+          - 'null'
+          enum:
+          - flagship
+          - standard
+          - additional
+          - mobile
+          - null
+        branch_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - open
+          - closed
+          - null
+        lat:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+        lon:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+        address_ru:
+          type:
+          - string
+          - 'null'
+        hours_ru:
+          type:
+          - string
+          - 'null'
+        opened_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        closed_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        product_line_codes:
+          type: array
+          items:
+            type: string
+      description: Координаты сохраняют прежнюю decimal-string сериализацию; manager contacts/employee names отсутствуют.
+    BranchDirectoryResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      - scope
+      - directory
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchRecord'
+          maxItems: 200
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        scope:
+          $ref: '#/components/schemas/BranchPresetScope'
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+    BranchNetworkItem:
+      type: object
+      additionalProperties: false
+      required:
+      - month
+      - open_count
+      - closed_count
+      - opened_in_month
+      - closed_in_month
+      properties:
+        month:
+          type: string
+          format: date
+        open_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        closed_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        opened_in_month:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        closed_in_month:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+    BranchNetwork:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - synthetic
+      - basis
+      - directory
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchNetworkItem'
+          maxItems: 24
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        basis:
+          type: string
+          enum:
+          - stored_global_history
+          - scoped_directory_lifecycle
+          - unavailable_snapshot_time
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+      description: Без direction сохраняются исходные агрегаты branch_network_history; direction subset восстанавливается
+        по явным датам directory snapshot. Это отдельный provenance, не фильтрация неразмеченной истории. Missing dates
+        →unknown.
+    BranchNetworkResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - synthetic
+      - basis
+      - directory
+      - scope
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchNetworkItem'
+          maxItems: 24
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        basis:
+          type: string
+          enum:
+          - stored_global_history
+          - scoped_directory_lifecycle
+          - unavailable_snapshot_time
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+        scope:
+          $ref: '#/components/schemas/BranchPresetScope'
+    BranchPressure:
+      type: object
+      additionalProperties: false
+      required:
+      - region_code
+      - branches
+      - open_branches
+      - closed_branches
+      - unknown_status_branches
+      - signals
+      - signals_per_open_branch
+      - deficit
+      properties:
+        region_code:
+          type:
+          - string
+          - 'null'
+        branches:
+          type: integer
+          minimum: 0
+        open_branches:
+          type: integer
+          minimum: 0
+        closed_branches:
+          type: integer
+          minimum: 0
+        unknown_status_branches:
+          type: integer
+          minimum: 0
+        signals:
+          type: integer
+          minimum: 0
+        signals_per_open_branch:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        deficit:
+          type:
+          - boolean
+          - 'null'
+      description: 'Числитель: customer signals в явном run/period/direction; proactive anchors исключены. Знаменатель:
+        open ВСП выбранного directory subset. Нет open/неизвестный status →ratio null. Deficit только при положительном
+        явно настроенном пороге.'
+    BranchClosureZone:
+      type: object
+      additionalProperties: false
+      required:
+      - branch_id
+      - branch_code
+      - region_code
+      - city_id
+      - closed_sim
+      - signals
+      - first_signal_sim
+      - last_signal_sim
+      properties:
+        branch_id:
+          type: integer
+          minimum: 1
+        branch_code:
+          type: string
+        region_code:
+          type: string
+        city_id:
+          type: integer
+          minimum: 1
+        closed_sim:
+          type: string
+          format: date-time
+        signals:
+          type: integer
+          minimum: 0
+        first_signal_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_signal_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    BranchAnalyticsScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      - run_ids
+      - period
+      - since_sim
+      - sim_time
+      - region_code
+      properties:
+        role:
+          $ref: '#/components/schemas/CabinetRole'
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+        run_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+            minimum: 1
+            format: int64
+        period:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+        since_sim:
+          type: string
+          format: date-time
+        sim_time:
+          type: string
+          format: date-time
+        region_code:
+          type:
+          - string
+          - 'null'
+    BranchAnalyticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - scope
+      - pressure
+      - deficit_threshold
+      - deficit_basis
+      - network
+      - closure_zones
+      - directory
+      properties:
+        scope:
+          $ref: '#/components/schemas/BranchAnalyticsScope'
+        pressure:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchPressure'
+        deficit_threshold:
+          type:
+          - number
+          - 'null'
+          exclusiveMinimum: 0
+        deficit_basis:
+          type: string
+          const: signals_per_open_branch_strictly_above_configured_threshold
+        network:
+          $ref: '#/components/schemas/BranchNetwork'
+        closure_zones:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          - window_days
+          - basis
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/BranchClosureZone'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+            window_days:
+              type: integer
+              const: 90
+            basis:
+              type: string
+              const: same_region_and_city_after_closure
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+      description: Current-only default, explicit all/id; baseline не примешивается. Closure — per-branch строки с точным
+        совпадением региона/города и received_sim в 90 дней после закрытия; строки одного города не суммируются как
+        unique signals. settings.csi_analytics.deficit_signals_per_open_branch отсутствует →unknown, выдуманного default
+        нет.
+    BranchSignal:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - received_sim
+      - channel_code
+      - status
+      properties:
+        signal_ref:
+          type: string
+        received_sim:
+          type: string
+          format: date-time
+        channel_code:
+          type: string
+        status:
+          type: string
+    BranchDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - branch
+      - directory
+      - scope
+      - csi
+      - signals
+      - trace_path
+      properties:
+        branch:
+          $ref: '#/components/schemas/BranchRecord'
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+        scope:
+          $ref: '#/components/schemas/CsiAnalyticsScope'
+        csi:
+          type: object
+          additionalProperties: false
+          required:
+          - coverage
+          - probabilities
+          properties:
+            coverage:
+              type: object
+              additionalProperties: false
+              required:
+              - complaints
+              - branch_known
+              - direction_known
+              - employee_known
+              - cohort_bound
+              - scatter_total
+              - uncohorted
+              - time_basis
+              properties:
+                complaints:
+                  type: integer
+                  minimum: 0
+                branch_known:
+                  type: integer
+                  minimum: 0
+                direction_known:
+                  type: integer
+                  minimum: 0
+                employee_known:
+                  type: integer
+                  minimum: 0
+                cohort_bound:
+                  type: integer
+                  minimum: 0
+                scatter_total:
+                  type: integer
+                  minimum: 0
+                uncohorted:
+                  type: integer
+                  minimum: 0
+                time_basis:
+                  type: string
+                  const: native_received_sim
+            probabilities:
+              $ref: '#/components/schemas/CsiProbabilities'
+        signals:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          - basis
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/BranchSignal'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+            basis:
+              type: string
+              const: explicit_branch_link
+        trace_path:
+          type: string
+      description: 'Сигналы связаны с ВСП явно: CSI branch_id или geo.vsp_code. Географическая близость не выдаётся
+        за связь. Метрики read-only и не кэшируются 24 часа; TTL относится к directory/network endpoints.'

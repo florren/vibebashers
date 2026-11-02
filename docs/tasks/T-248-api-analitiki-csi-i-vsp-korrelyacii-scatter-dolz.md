@@ -47,3 +47,8 @@ _Заполняется исполнителем: ветка/PR, что сдел
 ## Промежуточный checkpoint: математическое ядро
 
 Ветка codex/T-248-csi-analytics. Реализованы Spearman с ties/missing и квартили R7 без новых зависимостей;20 unit/actual-PG reference tests passed2,14с,52/52 statements, Ruff/mypy green. API/DDL/денежные правила не менялись; endpoint остаётся прежним501. Знаменатели требуют отдельного run/cohort provenance, concrete API28/DDL20 ещё не реализованы и не утверждены. План и ограничения: docs/reviews/T-248-statistics-checkpoint.md.
+
+
+## API28 / actual0020 checkpoint
+
+CSI и branch read-only API реализованы локально; strict scope, typed DTO, current-only metrics, integrity/unknown и backup проверены.49 PG composition passed152.70с, schema/install15passed и отдельный dump/restore1passed, core/bounds29passed. Initial demo5000 p95≤34.575мс с15 actual plans; final-source performance/full suite/coverage/CI и human API/DDL review ещё требуются. Детали и честные source-specific границы: docs/reviews/T-248-api28-checkpoint.md. Статус остаётся in_progress; T-249/T-250 не закрыты.

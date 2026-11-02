@@ -1,4 +1,6 @@
-# T-248: локальный CSI cohort storage checkpoint
+# T-248: исторический CSI cohort storage checkpoint
+
+Источник e7e4377; актуальный статус — [API28 checkpoint](T-248-api28-checkpoint.md).
 
 Это кандидат реализации, не финальная API/DDL приёмка. API28 ещё не подключён;
 существующий CSI endpoint остаётся501. Migration0020 временно опирается на0018

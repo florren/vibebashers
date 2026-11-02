@@ -2,7 +2,7 @@ import datetime as dt
 
 import pytest
 
-from app.analytics.csi_cohorts import cohort_status, members_fingerprint, visits_fingerprint
+from app.ingest.csi_cohorts import cohort_status, members_fingerprint, visits_fingerprint
 from app.sim.csi_scoped_corpus import generate_scoped
 
 

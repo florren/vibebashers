@@ -84,10 +84,15 @@ async def _preflight(conn: Conn, corpus: dict[str, Any]) -> tuple[int, dict[str,
     if not directory or not isinstance(directory["value"], dict):
         raise CohortRegistrationError("Неизвестное происхождение branch directory")
     origin = directory["value"]
+    try:
+        origin_at = dt.datetime.fromisoformat(origin["as_of_sim"])
+    except (KeyError, TypeError, ValueError):
+        raise CohortRegistrationError("Неизвестное время branch directory snapshot") from None
     if (
         origin.get("mode") != "synthetic"
         or origin.get("is_synthetic") is not True
-        or origin.get("as_of_sim") != expected_anchor.isoformat()
+        or origin_at.tzinfo is None
+        or origin_at != expected_anchor
     ):
         raise CohortRegistrationError("CSI sample требует исходного synthetic directory snapshot")
     expected = {r["branch_code"]: r for r in corpus["directory_snapshot"]}

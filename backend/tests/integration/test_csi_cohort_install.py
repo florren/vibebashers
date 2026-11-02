@@ -7,7 +7,7 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 
-from app.analytics import csi_cohorts
+from app.ingest import csi_cohorts
 from app.ingest.csi import Row, import_rows
 from app.sim.csi_scoped_corpus import generate_scoped
 from app.sim.runs import create_run
@@ -134,4 +134,54 @@ def test_storage_failure_rolls_back_all_native_imports(seeded, monkeypatch):
             assert await scalar(conn, "SELECT count(*) FROM db_activity_log") == before
 
     monkeypatch.setattr(csi_cohorts, "_native_members", fail)
+    asyncio.run(check())
+
+
+async def test_registered_cohort_survives_own_dump_restore(seeded, tmp_path, monkeypatch):
+    from app.sim import baseline
+
+    monkeypatch.setattr(baseline, "baseline_dir", lambda: tmp_path)
+    monkeypatch.setattr(baseline, "runs_export_dir", lambda: tmp_path / "runs")
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), row_factory=dict_row) as conn:
+        await sample_run(conn)
+        await csi_cohorts.install_scoped_sample(conn)
+        await conn.commit()
+        original = await (
+            await conn.execute("SELECT id,run_id,members_digest,visits_digest FROM csi_cohorts ORDER BY id")
+        ).fetchall()
+    # baseline API использует штатную tuple-row connection; installer — dict-row.
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        info = await baseline.dump(conn, profile="lite")
+        await conn.commit()
+        assert info["available"] is True
+        await conn.execute("DELETE FROM csi_cohort_visits WHERE id=(SELECT min(id) FROM csi_cohort_visits)")
+        await conn.commit()
+        assert (
+            await (await conn.execute("SELECT count(*) FROM v_csi_cohort_integrity WHERE NOT is_complete")).fetchone()
+        )[0] == 1
+        await conn.commit()
+        assert await baseline.restore(conn, profile="lite")
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), row_factory=dict_row) as conn:
+        after = await (
+            await conn.execute("SELECT id,run_id,members_digest,visits_digest FROM csi_cohorts ORDER BY id")
+        ).fetchall()
+        assert after == original
+        assert await scalar(conn, "SELECT count(*) FROM v_csi_cohort_integrity WHERE is_complete") == 10
+        assert await scalar(conn, "SELECT sum(visits) FROM csi_cohort_visits") == 2400
+
+
+def test_directory_snapshot_same_instant_in_utc_is_accepted(seeded):
+    from psycopg.types.json import Jsonb
+
+    async def check():
+        async with await psycopg.AsyncConnection.connect(dsn(seeded), row_factory=dict_row) as conn:
+            await sample_run(conn)
+            row = await (await conn.execute("SELECT value FROM settings WHERE key='branch_directory'")).fetchone()
+            import datetime as dt
+
+            value = row["value"]
+            value["as_of_sim"] = dt.datetime.fromisoformat(value["as_of_sim"]).astimezone(dt.UTC).isoformat()
+            await conn.execute("UPDATE settings SET value=%s WHERE key='branch_directory'", (Jsonb(value),))
+            assert (await csi_cohorts.install_scoped_sample(conn))["members"] == 300
+
     asyncio.run(check())
