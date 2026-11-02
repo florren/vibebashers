@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Серверная часть кабинета (ТЗ 24.1, 24.4–24.5): KPI, ряды, источники, топ-5 регионов, список сигналов — одним быстрым запросом.
@@ -43,4 +43,10 @@ curl -s -H 'X-Cx-Role: product_manager' -H 'X-Cx-Product-Line: deposits' localho
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-241-cabinet-api`. Backend/API22 checkpoint, normal composition T240 + P1 + T254.
+Реализованы read-only overview/signals/roles, soft/strict, baseline+current run scope,
+nullable coverage, saved economics и новый actor_role audit без изменения HITL/денежной политики.
+Конкретный contract/DDL proposal: `docs/reviews/T-241-contract-review.md`.
+52 targeted unit/actualPG green на временном0014+proposal; это НЕ окончательная migration proof.
+До full DoD: normal merge фактического0017 → DDL18, fresh upgrade/idempotence/downgrade,
+полный lint/test/coverage, demo p95/EXPLAIN, human contract/audit review. T242 отдельной веткой.

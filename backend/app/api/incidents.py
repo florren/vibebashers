@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.agent.tools.write import PII_RE, STATUS_TRANSITIONS
+from app.analytics.cabinet_scope import actor_role
 from app.api.common import db, fetch_all, fetch_one, page, resolve_run_id
 from app.economics import dcltv
 from app.errors import Problem
@@ -144,7 +145,7 @@ async def get_incidents_id_history(request: Request, id: int) -> Any:  # noqa: A
     async with db() as conn:
         rows = await fetch_all(
             conn,
-            "select id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, changed_at from incident_status_history where incident_id = %s order by id",
+            "select id, from_status, to_status, actor_type, actor_ref, actor_role, reason, changed_sim, changed_at from incident_status_history where incident_id = %s order by id",
             (id,),
         )
     return {"items": rows}
@@ -227,7 +228,13 @@ class ActionBody(BaseModel):
 
 
 async def _transition(
-    conn: Any, inc: dict[str, Any], to_status: str, actor: str, reason: str | None, sim_time: Any
+    conn: Any,
+    inc: dict[str, Any],
+    to_status: str,
+    actor: str,
+    reason: str | None,
+    sim_time: Any,
+    role: str | None = None,
 ) -> None:
     cur = str(inc["status"])
     if to_status == cur:
@@ -243,8 +250,8 @@ async def _transition(
         extra, args = ", closed_sim = %s", [to_status, sim_time]
     await conn.execute(f"update incidents set status = %s{extra}, updated_at = now() where id = %s", (*args, inc["id"]))  # noqa: S608 — extra фиксирован кодом
     await conn.execute(
-        "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
-        (inc["id"], cur, to_status, actor, reason, sim_time),
+        "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, %s, %s, 'human', %s, %s, %s, %s)",
+        (inc["id"], cur, to_status, actor, reason, sim_time, role),
     )
     inc["status"] = to_status
 
@@ -252,6 +259,7 @@ async def _transition(
 @router.post("/api/incidents/{id}/actions", summary="Действие сотрудника CX над инцидентом")
 async def post_incidents_id_actions(request: Request, id: int, body: ActionBody) -> Any:  # noqa: A002
     """Ручные действия оператора поверх FSM ТЗ 8.3: все переходы пишутся в историю с actor_type = human, уведомления — в центр уведомлений."""
+    role = actor_role(request)
     async with db() as conn:
         inc = await fetch_one(
             conn,
@@ -266,8 +274,10 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
         a = body.action
         if a == "take":
             if inc["status"] in ("new", "classified"):
-                await _transition(conn, inc, "routed", body.actor, "взят оператором: маршрутизация", sim_time)
-            await _transition(conn, inc, "in_progress", body.actor, reason or "взят в работу оператором", sim_time)
+                await _transition(conn, inc, "routed", body.actor, "взят оператором: маршрутизация", sim_time, role)
+            await _transition(
+                conn, inc, "in_progress", body.actor, reason or "взят в работу оператором", sim_time, role
+            )
         elif a == "reroute":
             if not body.team_code:
                 raise Problem(422, "Укажите team_code")
@@ -280,11 +290,11 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
             )
             if inc["status"] in ("new", "classified", "awaiting_human", "escalated"):
                 await _transition(
-                    conn, inc, "routed", body.actor, reason or f"перенаправлен в {body.team_code}", sim_time
+                    conn, inc, "routed", body.actor, reason or f"перенаправлен в {body.team_code}", sim_time, role
                 )
             else:
                 await conn.execute(
-                    "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
+                    "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, %s, %s, 'human', %s, %s, %s, %s)",
                     (
                         id,
                         inc["status"],
@@ -292,6 +302,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
                         body.actor,
                         f"перенаправлен {inc['team_code']} → {body.team_code}: {reason or ''}",
                         sim_time,
+                        role,
                     ),
                 )
             await conn.execute(
@@ -332,18 +343,18 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
             )
             if a == "request_client_data" and "awaiting_client" in STATUS_TRANSITIONS.get(str(inc["status"]), set()):
                 await _transition(
-                    conn, inc, "awaiting_client", body.actor, reason or "запрошены данные у клиента", sim_time
+                    conn, inc, "awaiting_client", body.actor, reason or "запрошены данные у клиента", sim_time, role
                 )
         elif a == "close":
             if inc["status"] not in ("resolved", "closed"):
-                await _transition(conn, inc, "resolved", body.actor, reason or "закрыт оператором", sim_time)
-            await _transition(conn, inc, "closed", body.actor, reason or "закрыт оператором", sim_time)
+                await _transition(conn, inc, "resolved", body.actor, reason or "закрыт оператором", sim_time, role)
+            await _transition(conn, inc, "closed", body.actor, reason or "закрыт оператором", sim_time, role)
             if body.text:
                 await conn.execute(
                     "update incidents set resolution_summary = %s, updated_at = now() where id = %s", (body.text, id)
                 )
         elif a == "reject":
-            await _transition(conn, inc, "rejected", body.actor, reason or "отклонён оператором", sim_time)
+            await _transition(conn, inc, "rejected", body.actor, reason or "отклонён оператором", sim_time, role)
             await conn.execute(
                 "update incidents set routing_status = 'rejected', updated_at = now() where id = %s", (id,)
             )
@@ -354,7 +365,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
             if not orig or body.duplicate_of_id == id:
                 raise Problem(404, "Исходный инцидент не найден")
             await _transition(
-                conn, inc, "duplicate", body.actor, f"дубликат инцидента #{body.duplicate_of_id}", sim_time
+                conn, inc, "duplicate", body.actor, f"дубликат инцидента #{body.duplicate_of_id}", sim_time, role
             )
             await conn.execute(
                 "insert into incident_signals (incident_id, signal_id, link_type, linked_sim) select %s, signal_id, 'duplicate', %s from incident_signals where incident_id = %s on conflict do nothing",
@@ -367,7 +378,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
                 "update incidents set priority = %s, updated_at = now() where id = %s", (body.priority, id)
             )
             await conn.execute(
-                "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, %s, 'human', %s, %s, %s)",
+                "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, %s, %s, 'human', %s, %s, %s, %s)",
                 (
                     id,
                     inc["status"],
@@ -375,6 +386,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
                     body.actor,
                     f"приоритет {inc['priority']} → {body.priority}: {reason or ''}",
                     sim_time,
+                    role,
                 ),
             )
         elif a == "escalate":
@@ -385,7 +397,7 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
                 (inc["run_id"], id, reason, sim_time),
             )
             if "escalated" in STATUS_TRANSITIONS.get(str(inc["status"]), set()):
-                await _transition(conn, inc, "escalated", body.actor, reason, sim_time)
+                await _transition(conn, inc, "escalated", body.actor, reason, sim_time, role)
             await conn.execute(
                 "update incidents set routing_status = 'escalated', updated_at = now() where id = %s", (id,)
             )
