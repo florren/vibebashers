@@ -1,0 +1,144 @@
+[
+  {
+    "path": "/feed",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-ru-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-ru-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/compliance",
+    "lang": "ru",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-ru-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/feed",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-ru-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-ru-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/compliance",
+    "lang": "ru",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-ru-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/feed",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-en-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-en-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/compliance",
+    "lang": "en",
+    "mode": "light",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-en-light.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "light",
+    "width": {
+      "viewport": 320,
+      "scroll": 320
+    },
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67",
+    "image": "/tmp/t203-manager-en-light-320.png"
+  },
+  {
+    "path": "/feed",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-feed-en-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-manager-en-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/compliance",
+    "lang": "en",
+    "mode": "dark",
+    "errors": [],
+    "external": [],
+    "writes": [],
+    "image": "/tmp/t203-compliance-en-dark.png",
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67"
+  },
+  {
+    "path": "/manager",
+    "lang": "en",
+    "mode": "dark",
+    "width": {
+      "viewport": 320,
+      "scroll": 320
+    },
+    "source_revision": "c4d4d0a366246fe96691b484111f527a5a252e67",
+    "image": "/tmp/t203-manager-en-dark-320.png"
+  }
+]
