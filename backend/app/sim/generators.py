@@ -156,6 +156,7 @@ class World:
         self.active_faults: list[dict[str, Any]] = []
         self.pending: list[PendingSignal] = []
         self.error_codes: dict[str, dict[str, Any]] = {}
+        self.loaded = False
         # Текст и мир разделяют сохраняемый sim_state.rng_state; второго RNG нет.
         self.textgen = TextGen(rng)
         self.scale = 1.0
@@ -163,6 +164,8 @@ class World:
         self.sla_engine = SlaEngine(conn, bus, run_id)
 
     async def load(self) -> None:
+        self.loaded = False
+        previous_faults = {fault["id"]: fault for fault in self.active_faults}
         cur = await self.conn.execute(
             "select c.id, c.segment_code, c.psychotype_code, c.region_code, ci.name_ru, p.params, "
             "array_agg(cp.product_code order by cp.product_code) filter (where cp.status = 'active'), max(cp.card_last4) "
@@ -213,8 +216,16 @@ class World:
             }
             for r in await af.fetchall()
         ]  # после рестарта: добиваем 90 мин
+        # При rollback reload сохраняем volatile metadata только тех старых
+        # fault IDs, которые действительно остались active в committed DB.
+        for fault in self.active_faults:
+            old = previous_faults.get(fault["id"], {})
+            for name in ("expected_end", "impact", "clients", "corr"):
+                if name in old:
+                    fault[name] = old[name]
         await self.team_emulator.load()
         await self.sla_engine.load()
+        self.loaded = True
         log.info(
             "world_loaded", clients=len(self.clients), active_faults=len(self.active_faults), scale=round(self.scale, 3)
         )
