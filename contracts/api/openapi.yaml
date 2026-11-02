@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.22
+  version: 1.5.24
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -1000,6 +1000,10 @@ paths:
       tags: [metrics]
       summary: Калькулятор потерь без записи в БД
       parameters:
+        - name: rate_code
+          in: query
+          description: Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute.
+          schema: { type: string, minLength: 1, maxLength: 120 }
         - { name: affected, in: query, schema: { type: integer, default: 12, minimum: 0, maximum: 100000000 } }
         - { name: product, in: query, schema: { type: string } }
         - { name: system, in: query, schema: { type: string } }
@@ -1008,6 +1012,7 @@ paths:
         - { name: no_return_share, in: query, schema: { type: number, default: 0.5, minimum: 0, maximum: 1 } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
 
   /api/metrics/economics:
     get:

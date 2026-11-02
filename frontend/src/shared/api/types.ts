@@ -3126,6 +3126,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute. */
+                    rate_code?: string;
                     affected?: number;
                     product?: string;
                     system?: string;
@@ -3148,6 +3150,7 @@ export interface paths {
                         "application/json": components["schemas"]["IncidentEconomics"];
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
