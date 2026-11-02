@@ -253,7 +253,7 @@
     "make_lint": "green 429frontend/505format/311mypy/bot12format5mypy/drift194"
   },
   "temporal_defensive_followup": {
-    "status": "targeted_green_requires_T041_composition_and_native_probes",
+    "status": "composed_fence_native_functional_green_pending_native_performance_parent_ci",
     "historical_full_runtime": "1968631",
     "pg_http_passed": 28,
     "pg_http_seconds": 17.86,
@@ -262,5 +262,34 @@
     "performance_not_repeated_yet": true,
     "limitation": "No universal publication receipt; positive native classification requires upstream stale-controller fence",
     "runtime_sha256": "4e7e40bd3c81706fc97c24d986d31e4d647a36a8b66b564eedb5588b9faf6959"
+  },
+  "temporal_composition": {
+    "upstream_fence": "c92c367",
+    "ordinary_merge": "4f15336",
+    "native_cases_passed": 6,
+    "native_seconds": 34.67,
+    "functional_passed": 95,
+    "functional_seconds": 42.38,
+    "coverage": {
+      "covered": 224,
+      "statements": 226,
+      "core": [
+        54,
+        55
+      ],
+      "reader": [
+        136,
+        137
+      ],
+      "overview": [
+        34,
+        34
+      ]
+    },
+    "timing_instrumented": false,
+    "performance_pending_quiet_window": true,
+    "full_proof_still_runtime": "1968631",
+    "native_publication_tests_sha256": "2d53afddbe0b1a745470420977c822ab500d226ef7bd5ca536d87744eb5e0f4b",
+    "reader_sha256": "5b499db71396bd52493093b72ecaa65ad56fa0b04cc9143dcd55900a88c9cb45"
   }
 }

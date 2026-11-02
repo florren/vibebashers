@@ -72,7 +72,8 @@ async def _validate_temporal_context(conn: Conn, scope: MetricsScope) -> None:
         ) AS conflict""",
         args,
     )  # noqa: S608 — predicates внутренние, scope и время параметризованы.
-    if conflict is not None and conflict["conflict"]:
+    assert conflict is not None
+    if conflict["conflict"]:
         raise HTTPException(409, "temporal_context_conflict")
 
 
