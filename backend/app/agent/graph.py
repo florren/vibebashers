@@ -109,6 +109,9 @@ async def load_deps(
     state_evidence_sink: StateEvidenceSink | None = None,
 ) -> Deps:
     if not dry_run:
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, run_id)
         chain, profile = await run_profiles(
             conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
         )
@@ -351,6 +354,9 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(sig["run_id"]))
     chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
@@ -462,6 +468,9 @@ async def recover_agent_run(
         ).fetchone()
         if row is None or row[2] is not None:
             return None
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, int(row[0]))
         saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": row[1]}})
         if saved is None:
             raise ValueError("legacy-проход без durable checkpoint: требуется отдельное ручное восстановление")
@@ -520,6 +529,9 @@ async def resume_after_followup(
     reason = str(reason)
     if reason == "escalation_check":
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 
@@ -782,6 +794,9 @@ async def resume_after_human(
     if not row or not row[4]:
         return None
     agent_run_id, decision, modified, run_id, checkpoint, _nsteps = row
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 

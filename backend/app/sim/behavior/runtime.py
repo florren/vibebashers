@@ -34,8 +34,11 @@ async def prepare_run(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.da
         return
     legacy = await store._one(
         "select exists(select 1 from operations where run_id=%s) or exists(select 1 from signals where run_id=%s) "
-        "or exists(select 1 from faults where run_id=%s) or exists(select 1 from client_states where run_id=%s)",
-        (run_id, run_id, run_id, run_id),
+        "or exists(select 1 from faults where run_id=%s) or exists(select 1 from client_states where run_id=%s) "
+        "or exists(select 1 from sim_events where run_id=%s) or exists(select 1 from notifications where run_id=%s) "
+        "or exists(select 1 from incidents where run_id=%s) or exists(select 1 from client_reactions where run_id=%s) "
+        "or exists(select 1 from agent_runs where sim_run_id=%s)",
+        (run_id,) * 9,
     )
     if legacy and legacy[0]:
         raise ValueError("Legacy run без behavior marker содержит историю/неизвестные timers: создайте новый run")
@@ -44,9 +47,38 @@ async def prepare_run(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.da
     )
 
 
+async def require_run(conn: psycopg.AsyncConnection[Any], run_id: int, *, policy: DemoPolicy | None = None) -> None:
+    """Read-only admission до graph/control effects; legacy историю не угадывает."""
+    policy = policy if policy is not None else configured_policy()
+    if policy is None:
+        return
+    store = BehaviorStore(conn)
+    run = await store._one("select kind from sim_runs where id=%s", (run_id,))
+    if run is None:
+        raise ValueError("behavior run отсутствует")
+    if run[0] not in ("free", "scenario"):
+        return
+    marker = await store._one("select policy_hash from behavior_runs where run_id=%s", (run_id,))
+    if marker is not None:
+        if marker[0] != policy.sha256:
+            raise ValueError("behavior policy изменена: создайте новый run")
+        return
+    legacy = await store._one(
+        "select exists(select 1 from operations where run_id=%s) or exists(select 1 from signals where run_id=%s) "
+        "or exists(select 1 from faults where run_id=%s) or exists(select 1 from client_states where run_id=%s) "
+        "or exists(select 1 from sim_events where run_id=%s) or exists(select 1 from notifications where run_id=%s) "
+        "or exists(select 1 from incidents where run_id=%s) or exists(select 1 from client_reactions where run_id=%s) "
+        "or exists(select 1 from agent_runs where sim_run_id=%s)",
+        (run_id,) * 9,
+    )
+    if legacy and legacy[0]:
+        raise ValueError("Legacy run без behavior marker содержит историю/неизвестные timers: создайте новый run")
+
+
 async def state_sink(conn: psycopg.AsyncConnection[Any], run_id: int) -> StateEvidenceSink | None:
     if configured_policy() is None:
         return None
+    await require_run(conn, run_id)
     row = await BehaviorStore(conn)._one("select 1 from behavior_runs where run_id=%s", (run_id,))
     return record_agent_state_intent if row else None
 

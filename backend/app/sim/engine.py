@@ -20,7 +20,7 @@ from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
 from app.sim.behavior.owner import BehaviorOwner
 from app.sim.behavior.policy import DemoPolicy
-from app.sim.behavior.runtime import capture, configured_policy, prepare_run
+from app.sim.behavior.runtime import capture, configured_policy, prepare_run, require_run
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
@@ -332,6 +332,22 @@ class Simulator:
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
         conn = await self.connect()
+        creates_new = action == "start" and (
+            self.run_id is None
+            or self.run_status in ("stopped", "completed", "archived", None)
+            or bool(kw.get("label"))
+        )
+        if (
+            self.behavior_policy is not None
+            and self.run_id is not None
+            and action in ("start", "step", "jump_to", "reset_day")
+            and not creates_new
+        ):
+            try:
+                await require_run(conn, self.run_id, policy=self.behavior_policy)
+            except BaseException:
+                await conn.rollback()
+                raise
         execution = await configuration(conn, self.run_id) if self.run_id else {}
         if (
             self.run_id is not None
@@ -401,10 +417,14 @@ class Simulator:
         elif action == "reset_day":
             await self._stop_loop()
             lt = self.clock.sim_time.astimezone(MSK)
-            self.clock.sim_time = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-            self.clock.day_no += 1
-            if self.world:
-                self.world.pending.clear()
+            target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+            if self.behavior_policy is not None:
+                await self.step((target - self.clock.sim_time).total_seconds() / 60)
+            else:
+                self.clock.sim_time = target
+                self.clock.day_no += 1
+                if self.world:
+                    self.world.pending.clear()
         elif action == "jump_to":
             target = kw["sim_time"]
             if isinstance(target, str):
@@ -443,6 +463,8 @@ class Simulator:
                 raise ValueError("возобновить можно только текущий paused/interrupted запуск")
             rid, _, sim_time, rng_state, seed, day_no = row
             try:
+                if self.behavior_policy is not None:
+                    await prepare_run(conn, int(rid), sim_time, self.behavior_policy)
                 if self.before_resume:
                     await self.before_resume(int(rid), sim_time)
                 self.seed = int(seed)

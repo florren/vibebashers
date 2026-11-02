@@ -272,3 +272,167 @@ async def test_real_world_failed_operations_use_one_owner_without_legacy_complai
             ).fetchone()
         )[0]
         await sim.conn.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["start", "resume", "step", "jump_to", "reset_day"])
+async def test_legacy_event_only_control_refuses_before_clock_counter_world_or_rng(seeded, monkeypatch, action):
+    from app.sim.events import EventBus
+    from app.sim.generators import CLIENT_ERROR_KINDS, CLIENT_ERROR_PRODUCT
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        monkeypatch.setattr(runtime, "configured_policy", lambda: None)
+        now = await sim_now(conn)
+        run = await new_run(conn, "T161 legacy pending-only", kind="free")
+        client = (await (await conn.execute("select id from clients order by id limit 1")).fetchone())[0]
+        kind = next(iter(CLIENT_ERROR_KINDS))
+        await EventBus(conn).emit(
+            run,
+            f"client_error.{kind}",
+            {
+                "client_id": client,
+                "kind": kind,
+                "product": CLIENT_ERROR_PRODUCT[kind],
+                "operation_id": None,
+                "details": {},
+                "sim_time": now.isoformat(),
+            },
+            now,
+        )
+        await conn.execute("update sim_runs set status='paused' where id=%s", (run,))
+        await conn.commit()
+        sim = Simulator(dsn=seeded, behavior_policy=POLICY)
+        await sim.load_state()
+        memory = (
+            sim.clock.sim_time,
+            sim.clock.day_no,
+            sim.rng.dump_state(),
+            dict(sim.stats),
+            sim.run_status,
+            sim.clock.running,
+        )
+        before = await (
+            await conn.execute(
+                "select to_jsonb(st),r.status,r.resumed_count from sim_state st join sim_runs r on r.id=st.current_run_id where st.id=1"
+            )
+        ).fetchone()
+        with pytest.raises(ValueError, match="Legacy run.*новый run"):
+            await sim.control(action, **({"sim_time": now + dt.timedelta(hours=1)} if action == "jump_to" else {}))
+        assert (
+            sim.clock.sim_time,
+            sim.clock.day_no,
+            sim.rng.dump_state(),
+            dict(sim.stats),
+            sim.run_status,
+            sim.clock.running,
+        ) == memory
+        assert sim.world is None
+        after = await (
+            await conn.execute(
+                "select to_jsonb(st),r.status,r.resumed_count from sim_state st join sim_runs r on r.id=st.current_run_id where st.id=1"
+            )
+        ).fetchone()
+        assert after == before
+        assert (
+            await (await conn.execute("select count(*) from behavior_runs where run_id=%s", (run,))).fetchone()
+        ) == (0,)
+        await sim.conn.close()
+
+
+@pytest.mark.asyncio
+async def test_legacy_graph_admission_refuses_before_agent_or_role_effects(seeded, monkeypatch):
+    from app.agent.graph import process_signal
+    from app.llm.base import LLMProfile
+    from app.llm.failover import ProviderChain
+    from app.llm.mock import MockProvider
+
+    class NoCalls(MockProvider):
+        async def complete_structured(self, *args, **kwargs):
+            raise AssertionError("legacy graph не должен вызывать даже Mock provider")
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        monkeypatch.setattr(runtime, "configured_policy", lambda: None)
+        now = await sim_now(conn)
+        run = await new_run(conn, "T161 legacy graph", kind="free")
+        client = (await (await conn.execute("select id from clients order by id limit 1")).fetchone())[0]
+        signal = (
+            await (
+                await conn.execute(
+                    "insert into signals(run_id,client_id,channel_code,text,received_sim,origin) values(%s,%s,'chat','Историческая незавершённая жалоба',%s,'jury') returning id",
+                    (run, client, now),
+                )
+            ).fetchone()
+        )[0]
+        await conn.commit()
+        monkeypatch.setattr(runtime, "configured_policy", lambda: POLICY)
+        profile = LLMProfile(code="mock", provider="mock", model="mock", role="main")
+        with pytest.raises(ValueError, match="Legacy run.*новый run"):
+            await process_signal(
+                conn,
+                signal_id=signal,
+                chain=ProviderChain([NoCalls()], append_mock=False),
+                profile=profile,
+                sim_time=now,
+            )
+        assert (
+            await (await conn.execute("select count(*) from agent_runs where sim_run_id=%s", (run,))).fetchone()
+        ) == (0,)
+        assert (await (await conn.execute("select status from signals where id=%s", (signal,))).fetchone()) == ("new",)
+        await conn.rollback()
+
+
+@pytest.mark.asyncio
+async def test_owned_reset_day_processes_timers_and_preserves_working_deadline(seeded, monkeypatch):
+    from app.sim.clock import MSK, is_working_time
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, client, _, sim = await setup(conn, monkeypatch, seeded)
+        friday = dt.datetime(2026, 11, 6, 23, 55, tzinfo=MSK)
+        sim.clock.sim_time = friday
+        sim.clock.day_no = 10
+        await sim.persist()
+        await sim.conn.commit()
+        await failed(conn, run, client, friday)
+        world = await sim._ensure_world()
+        person = next(item for item in world.clients if item.id == client)
+        person.channel_weights = {"chat": 1.0}
+        due = friday + dt.timedelta(minutes=3)
+        world.pending.append(
+            PendingSignal(due, person, "client_error", "deposit", None, None, None, None, uuid.uuid4())
+        )
+        await sim.step(1)
+        patience = (
+            await (
+                await conn.execute("select patience_due_sim from behavior_runtime where run_id=%s", (run,))
+            ).fetchone()
+        )[0]
+        assert is_working_time(patience) and patience > friday + dt.timedelta(days=2)
+        await conn.rollback()
+        await sim.control("reset_day")
+        assert sim.clock.sim_time == dt.datetime(2026, 11, 7, 9, tzinfo=MSK)
+        assert sim.clock.day_no == 11 and not sim.clock.running
+        assert sim.stats["ticks"] > 1 and world.pending == []
+        assert (
+            await (
+                await conn.execute(
+                    "select count(*) from signals s join ingest_messages m on m.signal_id=s.id where s.run_id=%s and m.source_code='sim_generator' and s.received_sim=%s",
+                    (run, due),
+                )
+            ).fetchone()
+        ) == (1,)
+        assert (
+            await (
+                await conn.execute("select patience_due_sim from behavior_runtime where run_id=%s", (run,))
+            ).fetchone()
+        ) == (patience,)
+        assert (
+            await (
+                await conn.execute(
+                    "select status,due_sim from behavior_work where run_id=%s and kind='patience'", (run,)
+                )
+            ).fetchone()
+        ) == ("pending", patience)
+        assert (
+            await (await conn.execute("select sim_time,day_no,rng_state from sim_state where id=1")).fetchone()
+        ) == (sim.clock.sim_time, 11, sim.rng.dump_state())
+        await sim.conn.close()

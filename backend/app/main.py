@@ -34,6 +34,7 @@ from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
+from app.sim.behavior.runtime import configured_policy
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
 from app.sim.maintenance_control import ControlError, MaintenanceControl
@@ -245,7 +246,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.twins = None
     app.state.runtime_components = set()
     if recovering:
-        app.state.sim = Simulator(seed=s.sim_seed)
+        app.state.sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         app.state.sim.full_execution = True
         app.state.maintenance_saved_components = (
             {"agent", "twins", "poll", "demo", "public"} if not s.is_test else set()
@@ -253,7 +254,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.maintenance_startup_recovery = True
     if not s.is_test and not recovering:
         bridge.start()
-        sim = Simulator(seed=s.sim_seed)
+        sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         sim.full_execution = True
         try:
             await sim.load_state()
