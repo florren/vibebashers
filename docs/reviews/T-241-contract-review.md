@@ -154,3 +154,19 @@ probe удаляется вfinally **после** foreignguard/retry/purge asser
 units →4populated compositeFK lifecycle cases →все9schema tests: **83passed,
 110.84s**,2existing Alembic deprecation warnings. Это воспроизводит оба CI
 state boundaries без ослабления проверок; exact new-head CI требуется повторно.
+
+## Второй exact-head CI: URL fixture
+
+PR186 f987591 / run41453475631 / job125304214225: 620 passed,21 skipped,
+3 failed. Все три — `KeyError: DATABASE_URL_TEST` в async test helpers
+(saved economics, automatic compliance, service anchor). CI задаёт только
+DATABASE_URL; общий conftest это поддерживал, а эти helpers ошибочно читали
+TEST-переменную напрямую. Предыдущие32setup/7schema failures закрыты.
+
+Исправлен только test helper URL: три функции получают уже разрешённый
+`cabinet_db` fixture, собственные environment lookups удалены. Production
+handlers/DB/денежные формулы/guards не менялись. Проверены все69cabinet+scope
+cases при **намеренно отсутствующем DATABASE_URL_TEST** (launcher assert),
+только DATABASE_URL собственной scratch DB: **69passed90.14s**. Ruff/format
+и поиск environment accesses в новых cabinet tests чистые. New-head CI
+по-прежнему обязателен, результат f987 не переименовывается в success.
