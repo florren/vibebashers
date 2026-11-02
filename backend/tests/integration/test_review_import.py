@@ -34,7 +34,7 @@ async def test_actual_reviews_date_idempotence_and_run_isolation(seeded: str) ->
         }
         stored = await (
             await conn.execute(
-                "select s.received_sim,s.meta,s.product_line_code,s.classification from signals s "
+                "select s.received_sim,s.meta,s.product_line_code,s.classification,s.sentiment from signals s "
                 "join ingest_messages m on m.signal_id=s.id where m.source_code='test_reviews' and m.external_id=%s",
                 (f"run:{run_id}:{rows[0].external_id}",),
             )
@@ -44,6 +44,7 @@ async def test_actual_reviews_date_idempotence_and_run_isolation(seeded: str) ->
         assert stored[1]["source_url"] == rows[0].source_url and stored[1]["source_date"] == rows[0].date
         assert stored[1]["source_platform"] == rows[0].source_platform and "gold" not in stored[1]
         assert stored[2] is None and not (stored[3] or {}).get("product_line")
+        assert stored[4] is None  # Внешний gold не присваивается; unknown не превращается в neutral.
         second = await new_run(conn, "T240 separate run", kind="free")
         assert await import_reviews(conn, rows[:1], run_id=second, source_code="test_reviews") == {
             "accepted": 1,
@@ -97,13 +98,26 @@ async def test_seed_projection_baseline_only_red_word_priority(seeded: str) -> N
         )[0]
         with pytest.raises(CorpusError, match="внешнюю транзакцию"):
             await apply_seed_projection(conn, run_id=baseline, signal_id=signal, gold=low_gold)
+        with pytest.raises(CorpusError, match="sentiment неизвестен"):
+            async with conn.transaction():
+                await apply_seed_projection(
+                    conn, run_id=baseline, signal_id=signal, gold=low_gold.model_copy(update={"sentiment": None})
+                )
+        assert (await (await conn.execute("select sentiment from signals where id=%s", (signal,))).fetchone())[
+            0
+        ] is None
         async with conn.transaction():
             await apply_seed_projection(conn, run_id=baseline, signal_id=signal, gold=low_gold)
         stored = await (
-            await conn.execute("select product_line_code,classification,red_words from signals where id=%s", (signal,))
+            await conn.execute(
+                "select product_line_code,classification,red_words,sentiment,meta from signals where id=%s", (signal,)
+            )
         ).fetchone()
         assert stored[0] == original.gold.product_line.value
         assert stored[1]["criticality"] == stored[1]["signal_level"] == "high" and stored[2]
+        assert stored[3] == low_gold.sentiment.value == stored[1]["sentiment"]
+        assert stored[4]["seed_annotation"]["source"] == "editorial_seed_gold"
+        assert "llm_source" not in stored[1]
         free = await new_run(conn, "T240 runtime not seed", kind="free")
         await import_reviews(conn, [row], run_id=free, source_code="runtime_reviews")
         other = (

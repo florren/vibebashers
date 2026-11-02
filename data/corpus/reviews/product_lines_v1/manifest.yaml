@@ -3,7 +3,7 @@ version: 1
 synthetic: true
 rows: 162
 source: reviews.json
-sha256: 642b41590435ed1680cedf91241b2def46b86e5dd00cc6dfb40dc56ccc1933e9
+sha256: d70ad54df4ea4c1d40d8b3a34d13dbb4678d808ea20ddc69755a325b5b01e19f
 review_share_multiplier: 3
 history:
   seasonality:
@@ -24,3 +24,5 @@ history:
 notes: Все тексты синтетические. Исторические коэффициенты задают вариативность генератора,
   не экономические или поведенческие правила.
 reference_anchor: '2026-10-15T09:00:00+03:00'
+annotation_revision: 2
+sentiment_annotation_source: editorial_text_review_not_criticality_or_model_output

@@ -297,3 +297,43 @@ def test_verified_seed_manifest_and_checksum(tmp_path: Path) -> None:
     p.write_bytes(p.read_bytes() + b" ")
     with pytest.raises(CorpusError, match="checksum"):
         load_seed_corpus(tmp_path)
+
+
+def test_manual_sentiment_gold_is_independent_and_runtime_ignores_it() -> None:
+    from collections import Counter
+
+    from app.contracts.enums import Sentiment
+    from app.corpus.seed_plan import load_seed_corpus
+
+    rows = load_seed_corpus()
+    labels = {row.external_id: row.gold for row in rows}
+    assert Counter(row.gold.sentiment for row in rows if row.gold) == {
+        Sentiment.NEGATIVE: 139,
+        Sentiment.NEUTRAL: 14,
+        Sentiment.POSITIVE: 9,
+    }
+    # Одна и та же low criticality имеет все три sentiment; это не функция уровня.
+    assert labels["PLV1-0020"].sentiment == labels["PLV1-0079"].sentiment == Sentiment.NEGATIVE
+    assert labels["PLV1-0009"].sentiment == Sentiment.NEUTRAL
+    assert labels["PLV1-0015"].sentiment == Sentiment.POSITIVE
+    assert len({labels[key].criticality for key in ["PLV1-0020", "PLV1-0079", "PLV1-0009", "PLV1-0015"]}) == 1
+    original = rows[0]
+    changed = original.model_copy(update={"gold": original.gold.model_copy(update={"sentiment": Sentiment.POSITIVE})})
+    assert message(original, run_id=42) == message(changed, run_id=42)
+
+
+def test_missing_sentiment_is_unknown_not_neutral_and_seed_refuses(tmp_path: Path) -> None:
+    import hashlib
+
+    from app.corpus.seed_plan import load_seed_corpus
+
+    rows = json.loads(CORPUS.read_text())
+    rows[0]["gold"].pop("sentiment")
+    p = tmp_path / "reviews.json"
+    p.write_text(json.dumps(rows, ensure_ascii=False))
+    assert parse_reviews(p)[0].gold.sentiment is None
+    manifest = yaml.safe_load(CORPUS.with_name("manifest.yaml").read_text())
+    manifest["sha256"] = hashlib.sha256(p.read_bytes()).hexdigest()
+    (tmp_path / "manifest.yaml").write_text(yaml.safe_dump(manifest))
+    with pytest.raises(CorpusError, match="sentiment"):
+        load_seed_corpus(tmp_path)

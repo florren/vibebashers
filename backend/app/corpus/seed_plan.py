@@ -61,13 +61,32 @@ async def apply_seed_projection(
     ).fetchone()
     if found is None:
         raise CorpusError("сигнал отсутствует в seed run")
+    if gold.sentiment is None:
+        raise CorpusError("seed sentiment неизвестен: нельзя подменять neutral")
     level = Criticality.HIGH if found[0] else gold.criticality
     await conn.execute(
-        "update signals set product_line_code=%s,classification=coalesce(classification,'{}'::jsonb)||%s "
+        "update signals set product_line_code=%s,sentiment=%s,classification=coalesce(classification,'{}'::jsonb)||%s, "
+        "meta=coalesce(meta,'{}'::jsonb)||%s "
         "where id=%s and run_id=%s",
         (
             gold.product_line.value,
-            Jsonb({"product_line": gold.product_line.value, "criticality": level.value, "signal_level": level.value}),
+            gold.sentiment.value,
+            Jsonb(
+                {
+                    "product_line": gold.product_line.value,
+                    "criticality": level.value,
+                    "signal_level": level.value,
+                    "sentiment": gold.sentiment.value,
+                }
+            ),
+            Jsonb(
+                {
+                    "seed_annotation": {
+                        "source": "editorial_seed_gold",
+                        "fields": ["product_line", "criticality", "sentiment"],
+                    }
+                }
+            ),
             signal_id,
             run_id,
         ),
@@ -101,8 +120,8 @@ def load_seed_corpus(directory: Path | None = None) -> list[ReviewRow]:
     if hashlib.sha256(raw).hexdigest() != manifest.get("sha256"):
         raise CorpusError("seed corpus checksum не совпадает")
     rows = parse_reviews(source, synthetic_only=True)
-    if len(rows) != manifest.get("rows") or any(x.gold is None for x in rows):
-        raise CorpusError("seed corpus требует разметку всех строк")
+    if len(rows) != manifest.get("rows") or any(x.gold is None or x.gold.sentiment is None for x in rows):
+        raise CorpusError("seed corpus требует явную direction/level/sentiment разметку всех строк")
     refs = yaml.safe_load((ROOT / "data/product_lines.yaml").read_text())["product_lines"]
     expected = {x["code"]: x["demo_review_share"] * 3 for x in refs}
     if Counter(x.gold.product_line.value for x in rows if x.gold) != expected:

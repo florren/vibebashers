@@ -8,7 +8,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0001",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -20,7 +21,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0002",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -32,7 +34,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0003",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -44,7 +47,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0004",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -56,7 +60,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0005",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -68,7 +73,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0006",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -80,7 +86,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0007",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -92,7 +99,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0008",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -104,7 +112,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0009",
     "gold": {
       "product_line": "deposits",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -116,7 +125,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0010",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -128,7 +138,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0011",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -140,7 +151,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0012",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -152,7 +164,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0013",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -164,7 +177,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0014",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -176,7 +190,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0015",
     "gold": {
       "product_line": "deposits",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -188,7 +203,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0016",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -200,7 +216,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0017",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -212,7 +229,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0018",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -224,7 +242,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0019",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -236,7 +255,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0020",
     "gold": {
       "product_line": "deposits",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "negative"
     }
   },
   {
@@ -248,7 +268,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0021",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -260,7 +281,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0022",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -272,7 +294,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0023",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -284,7 +307,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0024",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -296,7 +320,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0025",
     "gold": {
       "product_line": "deposits",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -308,7 +333,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0026",
     "gold": {
       "product_line": "deposits",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -320,7 +346,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0027",
     "gold": {
       "product_line": "deposits",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -332,7 +359,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0028",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -344,7 +372,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0029",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -356,7 +385,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0030",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -368,7 +398,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0031",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -380,7 +411,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0032",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -392,7 +424,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0033",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -404,7 +437,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0034",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -416,7 +450,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0035",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -428,7 +463,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0036",
     "gold": {
       "product_line": "mortgage",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -440,7 +476,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0037",
     "gold": {
       "product_line": "loans",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -452,7 +489,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0038",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -464,7 +502,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0039",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -476,7 +515,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0040",
     "gold": {
       "product_line": "loans",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -488,7 +528,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0041",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -500,7 +541,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0042",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -512,7 +554,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0043",
     "gold": {
       "product_line": "loans",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -524,7 +567,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0044",
     "gold": {
       "product_line": "loans",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -536,7 +580,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0045",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -548,7 +593,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0046",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -560,7 +606,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0047",
     "gold": {
       "product_line": "loans",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -572,7 +619,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0048",
     "gold": {
       "product_line": "loans",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -584,7 +632,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0049",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -596,7 +645,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0050",
     "gold": {
       "product_line": "loans",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -608,7 +658,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0051",
     "gold": {
       "product_line": "loans",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -620,7 +671,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0052",
     "gold": {
       "product_line": "credit_cards",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -632,7 +684,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0053",
     "gold": {
       "product_line": "credit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -644,7 +697,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0054",
     "gold": {
       "product_line": "credit_cards",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -656,7 +710,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0055",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -668,7 +723,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0056",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -680,7 +736,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0057",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -692,7 +749,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0058",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -704,7 +762,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0059",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -716,7 +775,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0060",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -728,7 +788,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0061",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -740,7 +801,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0062",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -752,7 +814,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0063",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -764,7 +827,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0064",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -776,7 +840,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0065",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -788,7 +853,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0066",
     "gold": {
       "product_line": "debit_cards",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -800,7 +866,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0067",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -812,7 +879,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0068",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -824,7 +892,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0069",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -836,7 +905,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0070",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -848,7 +918,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0071",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -860,7 +931,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0072",
     "gold": {
       "product_line": "transfers_payments",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -872,7 +944,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0073",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -884,7 +957,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0074",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -896,7 +970,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0075",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -908,7 +983,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0076",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -920,7 +996,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0077",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -932,7 +1009,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0078",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -944,7 +1022,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0079",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "negative"
     }
   },
   {
@@ -956,7 +1035,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0080",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -968,7 +1048,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0081",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -980,7 +1061,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0082",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -992,7 +1074,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0083",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1004,7 +1087,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0084",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -1016,7 +1100,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0085",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1028,7 +1113,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0086",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1040,7 +1126,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0087",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1052,7 +1139,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0088",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1064,7 +1152,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0089",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1076,7 +1165,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0090",
     "gold": {
       "product_line": "mobile_app",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1088,7 +1178,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0091",
     "gold": {
       "product_line": "investments",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1100,7 +1191,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0092",
     "gold": {
       "product_line": "investments",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1112,7 +1204,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0093",
     "gold": {
       "product_line": "investments",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1124,7 +1217,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0094",
     "gold": {
       "product_line": "investments",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1136,7 +1230,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0095",
     "gold": {
       "product_line": "investments",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1148,7 +1243,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0096",
     "gold": {
       "product_line": "investments",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1160,7 +1256,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0097",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1172,7 +1269,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0098",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1184,7 +1282,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0099",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1196,7 +1295,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0100",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1208,7 +1308,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0101",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1220,7 +1321,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0102",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1232,7 +1334,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0103",
     "gold": {
       "product_line": "insurance",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1244,7 +1347,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0104",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1256,7 +1360,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0105",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1268,7 +1373,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0106",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1280,7 +1386,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0107",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1292,7 +1399,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0108",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1304,7 +1412,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0109",
     "gold": {
       "product_line": "insurance",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -1316,7 +1425,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0110",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1328,7 +1438,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0111",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1340,7 +1451,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0112",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1352,7 +1464,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0113",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1364,7 +1477,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0114",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1376,7 +1490,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0115",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1388,7 +1503,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0116",
     "gold": {
       "product_line": "insurance",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1400,7 +1516,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0117",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1412,7 +1529,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0118",
     "gold": {
       "product_line": "insurance",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1424,7 +1542,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0119",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1436,7 +1555,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0120",
     "gold": {
       "product_line": "insurance",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1448,7 +1568,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0121",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1460,7 +1581,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0122",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1472,7 +1594,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0123",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1484,7 +1607,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0124",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1496,7 +1620,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0125",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1508,7 +1633,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0126",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1520,7 +1646,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0127",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1532,7 +1659,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0128",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -1544,7 +1672,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0129",
     "gold": {
       "product_line": "bonuses_subscription",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1556,7 +1685,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0130",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1568,7 +1698,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0131",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1580,7 +1711,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0132",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1592,7 +1724,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0133",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -1604,7 +1737,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0134",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1616,7 +1750,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0135",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1628,7 +1763,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0136",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1640,7 +1776,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0137",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1652,7 +1789,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0138",
     "gold": {
       "product_line": "branches_service",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1664,7 +1802,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0139",
     "gold": {
       "product_line": "support",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1676,7 +1815,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0140",
     "gold": {
       "product_line": "support",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1688,7 +1828,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0141",
     "gold": {
       "product_line": "support",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1700,7 +1841,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0142",
     "gold": {
       "product_line": "support",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   },
   {
@@ -1712,7 +1854,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0143",
     "gold": {
       "product_line": "support",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1724,7 +1867,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0144",
     "gold": {
       "product_line": "support",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1736,7 +1880,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0145",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1748,7 +1893,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0146",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1760,7 +1906,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0147",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1772,7 +1919,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0148",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1784,7 +1932,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0149",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1796,7 +1945,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0150",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "neutral"
     }
   },
   {
@@ -1808,7 +1958,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0151",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1820,7 +1971,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0152",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1832,7 +1984,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0153",
     "gold": {
       "product_line": "business_banking",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1844,7 +1997,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0154",
     "gold": {
       "product_line": "atm_self_service",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1856,7 +2010,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0155",
     "gold": {
       "product_line": "atm_self_service",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1868,7 +2023,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0156",
     "gold": {
       "product_line": "atm_self_service",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1880,7 +2036,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0157",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1892,7 +2049,8 @@
     "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0158",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1904,7 +2062,8 @@
     "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0159",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1916,7 +2075,8 @@
     "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0160",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "high"
+      "criticality": "high",
+      "sentiment": "negative"
     }
   },
   {
@@ -1928,7 +2088,8 @@
     "source_url": "https://client-voice.example.invalid/reviews/PLV1-0161",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "medium"
+      "criticality": "medium",
+      "sentiment": "negative"
     }
   },
   {
@@ -1940,7 +2101,8 @@
     "source_url": "https://open-channel.example.invalid/reviews/PLV1-0162",
     "gold": {
       "product_line": "fraud_security",
-      "criticality": "low"
+      "criticality": "low",
+      "sentiment": "positive"
     }
   }
 ]

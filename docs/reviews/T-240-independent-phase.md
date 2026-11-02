@@ -1,6 +1,6 @@
 # T-240: независимая фаза корпуса, CLI и pure history
 
-База: T019 `96caa2a596828ccf442a45160246a5bdbb56d082`. Это checkpoint перед
+База: T019 `96caa2a596828ccf442a45160246a5bdbb56d082`, frozen checkpoint `400d85f`. Это checkpoint перед
 композицией с P1, **не завершение T240**. [Машиночитаемые проверки](T-240-independent-proof.json).
 
 ## Корпус и приём файлов
@@ -83,3 +83,8 @@ partial/coverage typed columns и nullable unknown loss с согласован�
 dump/restore proof; forward API1.5.19 source_platform producer + generated types
 и ru/en text-only UI. До этих проверок UI, весь T240 и future schema compatibility
 не объявляются готовыми. Полный composed suite остаётся обязательным.
+
+
+Последующая delta не переписывает приведённые здесь исходные hashes/проверки:
+[editorial sentiment revision2](T-240-sentiment-annotation-review.md). Там отдельно
+зафиксированы новые labels и разрешённая baseline-only sentiment projection.

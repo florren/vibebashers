@@ -24,7 +24,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.xml import DEFUSEDXML
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.contracts.enums import Channel, Criticality, ProductLine
+from app.contracts.enums import Channel, Criticality, ProductLine, Sentiment
 
 ROOT = Path(__file__).resolve().parents[3]
 MAX_BYTES = 10_000_000
@@ -55,6 +55,7 @@ class ReviewGold(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     product_line: ProductLine
     criticality: Criticality
+    sentiment: Sentiment | None = None
 
     @field_validator("product_line")
     @classmethod

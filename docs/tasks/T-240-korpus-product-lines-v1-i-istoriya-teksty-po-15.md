@@ -56,3 +56,10 @@ Ruff/mypy/licenses green. Подробности: [phase proof](../reviews/T-240
 history persistence/tail/dump, CLI maintenance cooperation и API1.5.19/UI ещё
 впереди. Старый type×product×channel код не менялся; CSI/audio metadata не
 выдумывались. Реальные LLM/production не использовались.
+
+
+Отдельная editorial sentiment revision2: 162 labels (139 negative/14 neutral/9
+positive), без изменения текстов/дат/ID/направлений/criticality. Generic CLI gold
+игнорирует; unknown остаётся None. После root review расширена только baseline
+seed projection с editorial provenance/known guard; без AR/LLM accuracy claim.
+[Delta/review](../reviews/T-240-sentiment-annotation-review.md).
