@@ -32,6 +32,10 @@ REAL_TICK_S = 0.5
 MAX_BATCH_MIN = 60.0  # за один тик генерируем не больше часа сим-времени (защита от «догоняния» после паузы)
 
 
+class StaleSimulatorError(ValueError):
+    """Устаревший контроллер не вправе перезаписывать native state."""
+
+
 class Simulator:
     def __init__(self, seed: int = 42, dsn: str | None = None, *, behavior_policy: DemoPolicy | None = None) -> None:
         self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
@@ -151,15 +155,32 @@ class Simulator:
                 raise
         return self.world
 
-    async def _require_current(self, conn: psycopg.AsyncConnection[Any], *, lock: bool = True) -> None:
+    async def _require_current(
+        self, conn: psycopg.AsyncConnection[Any], *, lock: bool = True, check_state: bool = False
+    ) -> None:
         """Контроллер фиксирует current до эффектов; чужой pointer не возвращает."""
-        query = "select current_run_id from sim_state where id=1"
+        query = (
+            "select current_run_id,sim_time,rng_state from sim_state where id=1"
+            if check_state
+            else "select current_run_id from sim_state where id=1"
+        )
         if lock:
             query += " for update"
         row = await (await conn.execute(query)).fetchone()
         if row is None or row[0] != self.run_id:
             await conn.rollback()
-            raise ValueError("Simulator устарел: загрузите текущий run перед управлением")
+            raise StaleSimulatorError("Simulator устарел: загрузите текущий run перед управлением")
+        # Один и тот же pointer не доказывает актуальность контроллера: чужой
+        # tick мог уже зафиксировать новое время/RNG. Проверка до create_run не
+        # позволяет stale start остановить старый run и записать прежние часы.
+        if check_state and (row[1] != self.clock.sim_time or (row[2] is not None and row[2] != self.rng.dump_state())):
+            await conn.rollback()
+            raise StaleSimulatorError("Simulator устарел: загрузите актуальные time/run/RNG перед управлением")
+        if check_state:
+            status = await (await conn.execute("select status from sim_runs where id=%s", (self.run_id,))).fetchone()
+            if (status[0] if status else None) != self.run_status:
+                await conn.rollback()
+                raise StaleSimulatorError("Simulator устарел: загрузите актуальный status текущего run")
 
     async def persist(self) -> None:
         conn = await self.connect()
@@ -179,7 +200,7 @@ class Simulator:
         )
         if result.rowcount != 1:
             await conn.rollback()
-            raise ValueError("Simulator устарел: текущий run изменён, state не сохранён")
+            raise StaleSimulatorError("Simulator устарел: текущий run изменён, state не сохранён")
 
     # --- один шаг сим-времени ---------------------------------------------------------------------------------------
     @writer("sim-step")
@@ -326,7 +347,7 @@ class Simulator:
                 conn = await self.connect()
                 previous_status = self.run_status
                 try:
-                    await self._require_current(conn)
+                    await self._require_current(conn, check_state=True)
                     execution = await configuration(conn, self.run_id) if self.run_id else {}
                     if self.run_id and (
                         self.run_status == "running"
@@ -352,7 +373,7 @@ class Simulator:
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
         conn = await self.connect()
-        await self._require_current(conn, lock=False)
+        await self._require_current(conn, lock=False, check_state=True)
         creates_new = action == "start" and (
             self.run_id is None
             or self.run_status in ("stopped", "completed", "archived", None)
@@ -378,7 +399,7 @@ class Simulator:
             and not kw.get("label")
         ):
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 execution.update(status="running", enabled=True)
                 await save(conn, self.run_id, execution)
                 self.clock.running = True
@@ -392,7 +413,7 @@ class Simulator:
             raise ValueError("Изолированный сценарий использует событийное время; доступны запуск, пауза и остановка")
         if action == "start":
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 previous = (
                     self.run_id,
                     self.run_status,
@@ -453,7 +474,7 @@ class Simulator:
             return self.state_dict()
         elif action in ("set_speed", "set_preset"):
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 previous_speed = self.clock.speed
                 try:
                     if action == "set_speed":
@@ -478,7 +499,7 @@ class Simulator:
                 await self.step((target - self.clock.sim_time).total_seconds() / 60)
             else:
                 async with self._lock:
-                    await self._require_current(conn)
+                    await self._require_current(conn, check_state=True)
                     self.clock.sim_time = target
                     self.clock.day_no += 1
                     if self.world:
@@ -498,7 +519,7 @@ class Simulator:
             raise ValueError(f"неизвестное действие: {action}")
         if self.run_id:
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 execution = await configuration(conn, self.run_id)
                 if not execution and self.full_execution and action in ("start", "resume"):
                     execution = await ensure(conn, self.run_id, running=True)
@@ -573,10 +594,20 @@ class Simulator:
     async def shutdown(self) -> None:
         await self._stop_loop()
         if self.conn and not self.conn.closed:
-            with contextlib.suppress(Exception):
-                await self.persist()
-                await self.conn.commit()
-            await self.conn.close()
+            try:
+                async with self._lock:
+                    await self._require_current(self.conn, check_state=True)
+                    await self.persist()
+                    await self.conn.commit()
+            except StaleSimulatorError:
+                await self.conn.rollback()
+                log.info("sim_shutdown_stale_skipped", run_id=self.run_id)
+            except Exception:
+                await self.conn.rollback()
+                log.exception("sim_shutdown_failed", run_id=self.run_id)
+                raise
+            finally:
+                await self.conn.close()
 
     async def reload_after_restore(self) -> None:
         """Перечитать sim_state после pg_restore (новое соединение, сброс World)."""

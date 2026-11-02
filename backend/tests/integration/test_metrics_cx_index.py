@@ -254,7 +254,7 @@ def test_native_registered_sla_scope_lifecycle_and_unknown(cx_db, sql, native_sl
 
 
 @pytest.mark.asyncio
-async def test_delayed_native_receipt_prevents_future_classification_leak(cx_db, sql, monkeypatch):
+async def test_delayed_native_receipt_prevents_future_classification_leak(cx_db, sql, monkeypatch, metrics_client):
     """Frozen ctx T0 не доказывает publication: native observation появляется в T5."""
     import asyncio
     from dataclasses import replace
@@ -344,6 +344,20 @@ async def test_delayed_native_receipt_prevents_future_classification_leak(cx_db,
         assert published["components"]["negativity"].complete_value == value["negativity"]
         assert published["components"]["criticality"].known == published["components"]["churn"].known == 1
         assert fingerprint(sql) == before
+
+        # Уже записанное native observed T5 не совместимо с регрессировавшим global T3.
+        # Это отдельная defensive проверка, а не публикационный receipt для positive.
+        sql.execute("UPDATE sim_state SET sim_time=%s WHERE id=1", (t3,))
+        try:
+            before = fingerprint(sql)
+            for endpoint in ("cx-index", "overview"):
+                for requested in (str(run), "current", "all"):
+                    response = metrics_client.get("/api/metrics/" + endpoint, params={"run_id": requested})
+                    assert response.status_code == 409, response.text[:300]
+                    assert response.json()["title"] == "temporal_context_conflict"
+            assert fingerprint(sql) == before
+        finally:
+            sql.execute("UPDATE sim_state SET sim_time=%s WHERE id=1", (t5,))
 
         # Два canonical snapshots не позволяют угадать, какой был опубликован receipt.
         sql.execute(
@@ -608,3 +622,59 @@ def test_overview_exact_stored_money_partial_and_foreign_scope(metrics_client, s
     partial = metrics_client.get("/api/metrics/overview", params={"run_id": str(run)}).json()
     assert partial["kpi"]["saved_rub_exact"] is None
     assert partial["coverage"]["incidents"] == 11 and partial["coverage"]["economics_known"] == 10
+
+
+@pytest.mark.parametrize("future_field", ["started_sim", "finished_sim"])
+def test_temporal_metadata_conflict_precedes_both_live_projections(
+    metrics_client, sql, owned_run, monkeypatch, future_field
+):
+    """Old/all fail closed; coherent current и отсутствие pointer не расширяют scope."""
+    from psycopg import sql as sql_builder
+
+    run, now = owned_run
+    saved_pointer = sql.execute("SELECT current_run_id FROM sim_state WHERE id=1").fetchone()[0]
+    other = sql.execute(
+        "INSERT INTO sim_runs(kind,label,seed,started_sim) VALUES('free','T256 coherent current',42,%s) RETURNING id",
+        (now,),
+    ).fetchone()[0]
+    try:
+        sql.execute(
+            sql_builder.SQL("UPDATE sim_runs SET {}=%s WHERE id=%s").format(sql_builder.Identifier(future_field)),
+            (now + dt.timedelta(minutes=2), run),
+        )
+        sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (run,))
+
+        async def bomb(*args, **kwargs):
+            raise AssertionError("Temporal conflict must precede either live projection")
+
+        with monkeypatch.context() as patch:
+            patch.setattr("app.analytics.cx_index_reader.cx_index_snapshot", bomb)
+            patch.setattr("app.analytics.overview.overview_snapshot", bomb)
+            for endpoint in ("cx-index", "overview"):
+                for requested in (str(run), "current", "all"):
+                    before = fingerprint(sql)
+                    response = metrics_client.get("/api/metrics/" + endpoint, params={"run_id": requested})
+                    assert response.status_code == 409, response.text[:300]
+                    assert response.json()["title"] == "temporal_context_conflict"
+                    assert fingerprint(sql) == before
+        sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (other,))
+        before = fingerprint(sql)
+        for endpoint in ("cx-index", "overview"):
+            coherent = metrics_client.get("/api/metrics/" + endpoint).json()
+            assert coherent["scope"]["resolved_run_id"] == other
+        assert fingerprint(sql) == before
+        sql.execute("UPDATE sim_state SET current_run_id=NULL WHERE id=1")
+        for endpoint in ("cx-index", "overview"):
+            response = metrics_client.get("/api/metrics/" + endpoint)
+            assert response.status_code == 200
+            assert response.json()["scope"]["current_missing"] is True
+        # Метаданные в тот же as_of допустимы; глобальную политику часов не меняем.
+        sql.execute(
+            sql_builder.SQL("UPDATE sim_runs SET {}=%s WHERE id=%s").format(sql_builder.Identifier(future_field)),
+            (now, run),
+        )
+        for endpoint in ("cx-index", "overview"):
+            assert metrics_client.get("/api/metrics/" + endpoint, params={"run_id": str(run)}).status_code == 200
+    finally:
+        sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (saved_pointer,))
+        sql.execute("DELETE FROM sim_runs WHERE id=%s", (other,))
