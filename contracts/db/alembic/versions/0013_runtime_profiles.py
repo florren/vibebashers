@@ -15,5 +15,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Аддитивная миграция: старое приложение не должно терять encrypted configuration.
+    # Forward-only: encrypted configuration и scoped legacy-writer blocker сохраняются.
+    # Старое writable приложение несовместимо; recovery требует согласованной конвертации.
     pass
