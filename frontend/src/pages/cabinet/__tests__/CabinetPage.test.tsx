@@ -24,7 +24,7 @@ beforeEach(async () => {
   vi.mocked(api).mockReset().mockImplementation(async path => {
     if (path === '/api/cabinet/overview') { if (failure) throw new ApiError(403, { title: 'Scope forbidden' }, '403 Forbidden'); return overview }
     if (path === '/api/cabinet/signals') return { items: [signal], total: 1, next_offset: null }
-    if (path === '/api/roles') return { default_role: 'cx_lead', items: [{ code: 'cx_lead', name_ru: 'Руководитель CX', name_en: 'CX lead', scope: 'all', default_red_words: false }, { code: 'product_manager', name_ru: 'Менеджер продукта', name_en: 'Product manager', scope: 'one', default_red_words: false }] }
+    if (path === '/api/roles') return { default_role: 'cx_lead', items: [{ code: 'cx_lead', name_ru: 'Руководитель CX', name_en: 'CX lead', scope: 'all', default_red_words: false }, { code: 'product_manager', name_ru: 'Менеджер продукта', name_en: 'Product manager', scope: 'one', default_red_words: false }, { code: 'compliance_officer', name_ru: 'Комплаенс-офицер', name_en: 'Compliance officer', scope: 'all', default_red_words: true }] }
     if (path === '/api/sim/runs') return { items: [] }
     if (path === '/api/settings') return { sla_warn_hours: 4 }
     if (path === '/api/refs/channels') return [{ code: 'review_portal', name_ru: 'Отзывы', name_en: 'Reviews' }]
@@ -81,4 +81,44 @@ it('keeps a strict error visible and never fabricates KPI zeros', async () => {
   failure = true; const { container } = show('/cabinet/deposits')
   await screen.findByText(i18n.t('care.errors.request'))
   expect(container.querySelector('[data-block="cabinet-kpi"]')).toBeNull()
+})
+
+it('restores the full local role/filter/presenter snapshot with Undo', async () => {
+  useViewPreset.setState({ demonstrator: true })
+  show('/cabinet?region=77')
+  await screen.findByText('Главное за период')
+  fireEvent.change(screen.getByLabelText('Пресет роли'), { target: { value: 'compliance_officer' } })
+  await screen.findByText(/Пресет комплаенса/)
+  act(() => useUndo.getState().undo())
+  expect(useViewPreset.getState().role).toBe('cx_lead')
+  expect(useViewPreset.getState().demonstrator).toBe(true)
+  expect(screen.queryByText(/Пресет комплаенса/)).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Регион')).toHaveValue('77')
+  expect(localStorage.getItem('cx.ui.productLine')).toBeNull()
+})
+
+it('keeps the first useful snapshot through a rapid second reset and rejects an old restore after run change', async () => {
+  show('/cabinet?run_id=19&channel=review_portal')
+  await screen.findByText('Главное за период')
+  fireEvent.click(screen.getByText('Сбросить фильтры'))
+  await waitFor(() => expect(screen.getByLabelText('Канал')).toHaveValue(''))
+  fireEvent.click(screen.getByText('Сбросить фильтры'))
+  act(() => useUndo.getState().undo())
+  await waitFor(() => expect(screen.getByLabelText('Канал')).toHaveValue('review_portal'))
+  fireEvent.click(screen.getByText('Сбросить фильтры'))
+  const stale = useUndo.getState().entry!.restore
+  fireEvent.change(screen.getByLabelText('Запуск'), { target: { value: 'all' } })
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/cabinet/overview', expect.objectContaining({ query: expect.objectContaining({ run_id: 'all' }) })))
+  act(stale)
+  expect(screen.getByLabelText('Запуск')).toHaveValue('all')
+  expect(screen.getByLabelText('Канал')).toHaveValue('')
+})
+
+it('never invents an own product line from the first catalog item when a manager preset is unbound', async () => {
+  show('/cabinet')
+  await screen.findByText('Главное за период')
+  fireEvent.change(screen.getByLabelText('Пресет роли'), { target: { value: 'product_manager' } })
+  await waitFor(() => expect(api).toHaveBeenCalledWith('/api/cabinet/overview', expect.objectContaining({ headers: { 'X-Cx-Role': 'product_manager' } })))
+  expect(localStorage.getItem('cx.ui.productLine')).toBeNull()
+  expect(screen.getByLabelText('Направление менеджера (код)')).toBeVisible()
 })

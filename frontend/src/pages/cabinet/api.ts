@@ -7,7 +7,9 @@ import { useWs } from '@/shared/ws/client'
 export type Overview = Schemas['CabinetOverview']
 export type CabinetSignal = Schemas['CabinetSignal']
 export type CabinetScope = NonNullable<paths['/api/cabinet/overview']['get']['parameters']['query']>
-export type SignalFilters = NonNullable<paths['/api/cabinet/signals']['get']['parameters']['query']>
+type GeneratedFilters = NonNullable<paths['/api/cabinet/signals']['get']['parameters']['query']>
+// URL — недоверенная граница: сохраняем raw bool text для серверной422-валидации.
+export type SignalFilters = Omit<GeneratedFilters, 'red_words'> & { red_words?: GeneratedFilters['red_words'] | string }
 export type CabinetHeaders = NonNullable<paths['/api/cabinet/overview']['get']['parameters']['header']>
 
 export function useCabinetOverview(scope: CabinetScope, headers: CabinetHeaders) {

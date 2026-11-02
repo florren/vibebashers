@@ -13,11 +13,11 @@ beforeEach(async () => {
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 it('uses SVG, disables animation, preserves missing money and offers a data table', () => {
-  const { unmount } = render(<CabinetChart data={overview} />)
+  const { unmount } = render(<CabinetChart data={{ ...overview, daily: [{ ...overview.daily[0]!, potential_loss_rub: 1000, prevented_loss_rub: 500 }, { ...overview.daily[0]!, day: '2026-11-08' }] }} />)
   expect(initialize).toHaveBeenCalledWith(expect.any(HTMLElement), undefined, { renderer: 'svg' })
   const option = chart.setOption.mock.calls.at(-1)![0]
   expect(option.animation).toBe(false)
-  expect(option.series[0].data).toEqual([null])
+  expect(option.series[0].data).toEqual([1000, null])
   expect(option.series[0].connectNulls).toBe(false)
   fireEvent.click(screen.getByText('Show chart data as a table'))
   expect(screen.getByRole('table')).toHaveTextContent('2026-11-09')
@@ -34,4 +34,10 @@ it('marks synthetic history and shows safe platform names with an unknown bucket
   expect(screen.getByRole('table')).toHaveTextContent('Unknown platform')
   expect(container.querySelector('a,img')).toBeNull()
   expect(chart.setOption.mock.calls.at(-1)![0].xAxis.data).toEqual(['Customer reviews', 'Unknown platform'])
+})
+
+it('does not draw a zero money chart when every saved calculation is unknown', () => {
+  render(<CabinetChart data={overview} />)
+  expect(screen.getByText('No saved money calculations for these days')).toBeInTheDocument()
+  expect(initialize).not.toHaveBeenCalled()
 })

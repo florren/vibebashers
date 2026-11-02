@@ -17,5 +17,6 @@ it('uses real region data, preloads focus/hover, supports keyboard selection and
   expect(select).toHaveBeenLastCalledWith(null)
   fireEvent.keyDown(container.querySelector('svg')!, { key: 'Escape' }); expect(select).toHaveBeenLastCalledWith(null)
   expect(container.querySelector('[transform*="scale(1.8)"]')).not.toBeNull()
+  expect(container.querySelector('path[opacity="0.35"]')).not.toBeNull()
   expect(container.querySelector('.duration-\\[400ms\\]')).not.toBeNull()
 })

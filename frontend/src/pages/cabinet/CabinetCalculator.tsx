@@ -11,7 +11,7 @@ export function CabinetCalculator({ line, region }: { line: Overview['product_li
   const settings = useEconomicsSettings()
   const [affected, setAffected] = useState<number | null>(null)
   const [rateCode, setRateCode] = useState<string | null>(null)
-  useEffect(() => setRateCode(line?.rate_code ?? null), [line?.code, line?.rate_code])
+  useEffect(() => setRateCode(line ? line.rate_code ?? settings.data?.fallback_rate_code ?? null : null), [line?.code, line?.rate_code, settings.data?.fallback_rate_code])
   useEffect(() => { setAffected(region?.affected_clients ?? null) }, [region?.code, region?.affected_clients])
   const rates = settings.data?.rates ?? []
   const rate = rates.find(row => row.code === rateCode)

@@ -2400,6 +2400,13 @@
       "region": "Region",
       "status": "Routing",
       "date": "Date (MSK)"
-    }
+    },
+    "unknownQuality": "Unknown provenance or coverage",
+    "onlyRedWords": "Red words only",
+    "compliancePresetActive": "Compliance preset: red words, legal issues and linked misselling. Product line totals above remain unchanged.",
+    "clearCompliancePreset": "Clear compliance filter",
+    "restoreCompliancePreset": "Restore compliance preset",
+    "noConfiguredLines": "No product lines are configured for this preset. Choose another preset or configure its product lines.",
+    "noSavedEconomics": "No saved money calculations for these days"
   }
 }
