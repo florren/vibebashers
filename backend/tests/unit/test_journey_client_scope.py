@@ -85,3 +85,43 @@ def test_anonymous_signal_only_sees_its_own_unidentified_delivery():
             }
         )
     assert [m["text_ru"] for m in client_messages(nodes)] == ["Доставка1"]
+
+
+def test_post_subject_uses_native_signal_recipient_instead_of_incident_or_author_hint():
+    post = {"kind": "post", "data": {"id": 7, "signal_id": 1, "author_client_id": 20}}
+    signal = {"kind": "signal", "data": {"id": 1, "client_id": 10, "external_post_id": 7}}
+    nodes = [post, signal]
+    for client in [10, 20]:
+        nodes.append(
+            {
+                "kind": "notification",
+                "data": {
+                    "signal_id": None,
+                    "client_id": client,
+                    "recipient_type": "client",
+                    "status": "sent",
+                    "sent_at": TS,
+                    "channel_code": "chat",
+                    "body": f"Адресат{client}",
+                },
+            }
+        )
+    assert [m["text_ru"] for m in client_messages(nodes)] == ["Адресат10"]
+
+
+def test_unlinked_post_does_not_invent_recipient_for_private_delivery():
+    post = {"kind": "post", "data": {"id": 7, "signal_id": None, "author_client_id": 20}}
+    notice = {
+        "kind": "notification",
+        "data": {
+            "signal_id": None,
+            "client_id": None,
+            "recipient_type": "client",
+            "status": "sent",
+            "sent_at": TS,
+            "channel_code": "chat",
+            "body": "Чужая доставка",
+        },
+    }
+    reply = {"kind": "reply", "data": {"post_id": 7, "author": "agent", "text": "Публичный ответ", "published_at": TS}}
+    assert [m["text_ru"] for m in client_messages([post, notice, reply])] == ["Публичный ответ"]
