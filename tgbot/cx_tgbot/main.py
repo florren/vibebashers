@@ -35,6 +35,8 @@ class Configuration:
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str]) -> Configuration:
+        if env.get("TGBOT_ENABLED", "false").lower() not in {"1", "true", "yes", "on"}:
+            raise InvalidConfiguration("telegram_transport_disabled")
         token = env.get("TELEGRAM_BOT_TOKEN", "").strip()
         secret = env.get("TGBOT_INTERNAL_SECRET", "").encode()
         backend_url = env.get("TGBOT_BACKEND_URL", "http://backend:8000").strip()

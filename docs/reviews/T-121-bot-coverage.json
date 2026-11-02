@@ -1,0 +1,81 @@
+{
+  "source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
+  "targets": "43fakeSDK/HTTP/CLI passed15.12s; no live HTTP",
+  "totals": {
+    "covered_lines": 209,
+    "num_statements": 219,
+    "percent_covered": 95.4337899543379,
+    "percent_covered_display": "95",
+    "missing_lines": 10,
+    "excluded_lines": 0,
+    "percent_statements_covered": 95.4337899543379,
+    "percent_statements_covered_display": "95"
+  },
+  "files": {
+    "tgbot/cx_tgbot/__init__.py": {
+      "blob": "0f43c641b10b3cfff1c852c621dd7de54b8da2d8",
+      "summary": {
+        "covered_lines": 0,
+        "num_statements": 0,
+        "percent_covered": 100.0,
+        "percent_covered_display": "100",
+        "missing_lines": 0,
+        "excluded_lines": 0,
+        "percent_statements_covered": 100.0,
+        "percent_statements_covered_display": "100"
+      }
+    },
+    "tgbot/cx_tgbot/backend.py": {
+      "blob": "2434f60c4551266d93620cab54de6baee222f653",
+      "summary": {
+        "covered_lines": 39,
+        "num_statements": 39,
+        "percent_covered": 100.0,
+        "percent_covered_display": "100",
+        "missing_lines": 0,
+        "excluded_lines": 0,
+        "percent_statements_covered": 100.0,
+        "percent_statements_covered_display": "100"
+      }
+    },
+    "tgbot/cx_tgbot/main.py": {
+      "blob": "11d3ea2e04253b1721e1fef29e678579e0b7ec12",
+      "summary": {
+        "covered_lines": 91,
+        "num_statements": 97,
+        "percent_covered": 93.81443298969072,
+        "percent_covered_display": "94",
+        "missing_lines": 6,
+        "excluded_lines": 0,
+        "percent_statements_covered": 93.81443298969072,
+        "percent_statements_covered_display": "94"
+      }
+    },
+    "tgbot/cx_tgbot/polling.py": {
+      "blob": "52810adf0267f05fcbb242c83f0904a1106c7424",
+      "summary": {
+        "covered_lines": 32,
+        "num_statements": 33,
+        "percent_covered": 96.96969696969697,
+        "percent_covered_display": "97",
+        "missing_lines": 1,
+        "excluded_lines": 0,
+        "percent_statements_covered": 96.96969696969697,
+        "percent_statements_covered_display": "97"
+      }
+    },
+    "tgbot/cx_tgbot/updates.py": {
+      "blob": "c0fd06ff2bab40671b44b1a6bb4e993cceab6c6d",
+      "summary": {
+        "covered_lines": 47,
+        "num_statements": 50,
+        "percent_covered": 94.0,
+        "percent_covered_display": "94",
+        "missing_lines": 3,
+        "excluded_lines": 0,
+        "percent_statements_covered": 94.0,
+        "percent_statements_covered_display": "94"
+      }
+    }
+  }
+}

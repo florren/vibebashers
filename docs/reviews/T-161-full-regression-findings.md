@@ -24,3 +24,12 @@
 **Known whole-World gap до отдельного T037:** этот T161 proof не сохраняет RAM-план TeamEmulator до первого due team_action; из-за этого нельзя заявлять универсальную restart-equivalence World/global RNG на T161 в одиночку. T037 source56e62b9/docs558227d реализован отдельным child candidate с native plan/RNG commit boundary и собственными OS/clone/coverage proofs. Корректная публикация — отдельные stacked PR T161→T037 и итоговая проверка композиции; atomic exception не вводился.
 
 Конкретные event/legacy fail-closed, reset_day и financial-time изменения всё ещё требуют final human review. Исходные policy values и variant A уже одобрены; permission на внешние LLM/TG или рабочую БД не получалось и не использовалось.
+
+
+## Проверенный direct parent P2
+
+Обычный merge P2 `25852b83807f84ec9a9897f806cc7b38ff004c9c` в T161 дал runtime head `cd102579cd2e32221bf1902124458ec1b0550ce1`. Конфликт был только в schema tail: сохранён нормализующий P2 DROP DEFAULT **перед** полным actual0017. Обе schema mirrors совпадают. Source ветки P2 не менялся.
+
+Все **11 behavior source blobs** побайтно совпадают с coverage70e; [parent proof](T-161-parent-composition-proof.json). Штатный `make sync-contracts` создал110ORMклассов и актуальные API types без tracked diff. На этом head: **T23546 passed/10.10s**, актуальные effect-time/Twin/owner/inactive/fault/causality/atomicity guards **55 passed/314.39s**. `make lint` зелёный, включая **366 frontend tests/47files**, backend472Ruff/297mypy, tgbot12Ruff/5mypy, drift192/192. Один унаследованный ESLint warning в DemoMenu,0errors. Contracts45schemas/162paths; licenses550+36.
+
+Полный45-минутный integration на этом head не повторялся; прежний469/2F/4skip не переписан в green. Main364c4fd намеренно не включён по согласованной последовательности stack. T161 публикуется отдельно от T037; final exact CI и concrete human compatibility/financial-time review обязательны. Следующий receipts B packet0019/API27 зависит от0018 и не входит в эти PR.

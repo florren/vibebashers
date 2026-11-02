@@ -214,3 +214,14 @@ async def test_bound_stream_keeps_selected_client_quota_deadline_and_close(monke
     assert original.calls == []
     assert len(bound.calls) == 1 and bound.calls[0][2] == pytest.approx(0.5)
     assert bound.closed and events == ["open", "close"]
+
+
+async def test_durable_provider_uses_rpm_before_stream_but_daily_wire_ledger_owns_rpd():
+    from types import SimpleNamespace
+
+    live = SyntheticProvider(chunks=("durable",))
+    live.accounting = SimpleNamespace(durable=True)
+    limiter = RecordingLimiter()
+    assert await collect(chain([live], limiter)) == "durable"
+    assert limiter.calls == [(PROFILE.code, 10, None)]
+    assert live.closed

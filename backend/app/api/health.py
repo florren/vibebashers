@@ -43,7 +43,7 @@ async def get_health(request: Request, session: AsyncSession = Depends(get_sessi
         "db": db_ok,
         "setup_completed": setup_completed,
         "llm": llm,
-        "tgbot": "disabled" if not s.telegram_bot_token else "running",
+        "tgbot": "disabled" if not (s.tgbot_enabled and s.telegram_bot_token) else "running",
         "sim_running": sim_running,
         "version": __version__,
     }

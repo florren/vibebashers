@@ -11,13 +11,14 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from typing import Any
 from weakref import WeakKeyDictionary
 
 import httpx
 
 from app.contracts.registry import validate_schema
+from app.llm import accounting
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
 from app.llm.credential_boundary import (
     CredentialStreamGuard,
@@ -103,6 +104,9 @@ class GigaChatProvider:
         self.oauth_url = oauth_url
         self.base_url = base_url.rstrip("/")
         self.scope = scope
+        self.accounting = accounting.service()
+        for key in pool.keys:
+            key.durable_accounting = self.accounting.durable
         self._token_locks: dict[str, asyncio.Lock] = {}
         self._auth_task: asyncio.Task[None] | None = None
         from app.llm.tls import context
@@ -304,21 +308,43 @@ class GigaChatProvider:
     async def _chat(
         self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
     ) -> httpx.Response:
-        token = await self._token(key, timeout_s)
-        try:
-            async with generation_slot(self.scope):
-                r = await self._request(
-                    "POST",
-                    key,
-                    f"{self._chat_base(profile)}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                    },
-                    json=payload,
-                    timeout=request_timeout(timeout_s),
+        facts = accounting.KeyFacts(self.name, key.secret, self._chat_base(profile), key.tokens_limit, db_id=key.db_id)
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s) as scope:
+            # OAuth and slot waiting do not consume inference RPD. Unknown quota
+            # is rejected before either, while reservation is immediately before POST.
+            token = await self._token(key, timeout_s)
+            async with generation_slot(self.scope), scope.inference() as ticket:
+                response = await self._post_chat(key, token, payload, profile, timeout_s)
+                try:
+                    body = response.json()
+                except ValueError:
+                    raise ProviderError("bad_output", "chat: некорректный JSON") from None
+                if not isinstance(body, dict) or not isinstance(body.get("usage"), dict):
+                    raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
+                prompt, completion, total = response_token_counts(
+                    body["usage"], [key.secret, key.access_token], coerce=True
                 )
+                await ticket.observe(prompt, completion, total_tokens=total, final=True)
+                self.pool.add_usage(key, total)
+                response.extensions["llm_usage_recorded"] = True
+                return response
+
+    async def _post_chat(
+        self, key: ApiKey, token: str, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
+    ) -> httpx.Response:
+        try:
+            r = await self._request(
+                "POST",
+                key,
+                f"{self._chat_base(profile)}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                json=payload,
+                timeout=request_timeout(timeout_s),
+            )
         except httpx.TimeoutException as e:
             raise ProviderError("timeout", type(e).__name__) from None
         except httpx.HTTPError as e:
@@ -362,7 +388,8 @@ class GigaChatProvider:
             except TimeoutError:
                 raise ProviderError("timeout", "бюджет запроса исчерпан") from None
             except ProviderError as e:
-                self.pool.mark_error(key, e)
+                if not isinstance(e, accounting.AdmissionRefused):
+                    self.pool.mark_error(key, e)
                 last = e
                 tried.add(key.label)
                 if e.kind not in ("rate_limit", "quota", "auth", "timeout", "network"):
@@ -414,7 +441,8 @@ class GigaChatProvider:
             total_usage.prompt_tokens += prompt
             total_usage.completion_tokens += completion
             total_usage.key_label = key.label
-            self.pool.add_usage(key, total)
+            if not r.extensions.get("llm_usage_recorded"):
+                self.pool.add_usage(key, total)
             raw = body["choices"][0]["message"]["content"]
             try:
                 obj = extract_json(raw)
@@ -457,84 +485,100 @@ class GigaChatProvider:
         if profile.provider == "openai_compatible":
             raise ProviderError("miss", "профиль openai_compatible")
         key = self.pool.pick()
-        token = await self._token(key, timeout_s)
-        guard = CredentialStreamGuard([key.secret, token])
-        observed: Usage | None = None
-        payload = {
-            **profile.extra.get("request", {}),
-            "model": profile.model,
-            "messages": self._ordered(messages),
-            "temperature": profile.temperature,
-            "stream": True,
-        }
-        try:
-            async with (
-                generation_slot(self.scope),
-                self._client.stream(
-                    "POST",
-                    f"{self._chat_base(profile)}/chat/completions",
-                    json=payload,
-                    timeout=timeout_s,
-                    headers={
-                        "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json",
-                        "Accept": "text/event-stream",
-                    },
-                ) as r,
-            ):
-                if r.status_code >= 400:
-                    await r.aread()
-                    raise ProviderError(
-                        "rate_limit" if r.status_code == 429 else "unavailable",
-                        f"HTTP {r.status_code}",
-                        status=r.status_code,
+        facts = accounting.KeyFacts(self.name, key.secret, self._chat_base(profile), key.tokens_limit, db_id=key.db_id)
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s, streaming=True) as scope:
+            token = await scope.wait(self._token(key, timeout_s))
+            guard = CredentialStreamGuard([key.secret, token])
+            observed: Usage | None = None
+            observed_total = 0
+            payload = {
+                **profile.extra.get("request", {}),
+                "model": profile.model,
+                "messages": self._ordered(messages),
+                "temperature": profile.temperature,
+                "stream": True,
+            }
+            try:
+                async with AsyncExitStack() as stream_stack:
+                    await scope.wait(stream_stack.enter_async_context(generation_slot(self.scope)))
+                    ticket = await stream_stack.enter_async_context(scope.inference())
+                    r = await scope.wait(
+                        stream_stack.enter_async_context(
+                            self._client.stream(
+                                "POST",
+                                f"{self._chat_base(profile)}/chat/completions",
+                                json=payload,
+                                timeout=timeout_s,
+                                headers={
+                                    "Authorization": f"Bearer {token}",
+                                    "Content-Type": "application/json",
+                                    "Accept": "text/event-stream",
+                                },
+                            )
+                        )
                     )
-                async for line in r.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    data = line[5:].strip()
-                    if data == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data)
-                    except ValueError:
-                        raise ProviderError("bad_output", "stream: некорректный JSON", usage=observed) from None
-                    if not isinstance(chunk, dict):
-                        raise ProviderError("bad_output", "stream: ожидается JSON object", usage=observed)
-                    if chunk.get("usage"):
-                        prompt, completion, total = response_token_counts(
-                            chunk["usage"], [key.secret, token], coerce=True
+                    if r.status_code >= 400:
+                        await scope.wait(r.aread())
+                        raise ProviderError(
+                            "rate_limit" if r.status_code == 429 else "unavailable",
+                            f"HTTP {r.status_code}",
+                            status=r.status_code,
                         )
-                        observed = observe_stream_usage(
-                            observed,
-                            {"prompt_tokens": prompt, "completion_tokens": completion},
-                            profile,
-                            self.name,
-                            key.label,
-                        )
-                        self.pool.add_usage(key, total)
-                    # Usage-only SSE frame может законно иметь choices=[].
-                    choices = chunk.get("choices") or []
-                    if not isinstance(choices, list) or (choices and not isinstance(choices[0], dict)):
-                        raise ProviderError("bad_output", "stream: неверные choices", usage=observed)
-                    delta_data = (choices[0].get("delta") or {}) if choices else {}
-                    if not isinstance(delta_data, dict):
-                        raise ProviderError("bad_output", "stream: неверный delta", usage=observed)
-                    delta = delta_data.get("content")
-                    if delta is not None and not isinstance(delta, str):
-                        raise ProviderError("bad_output", "stream: неверный content", usage=observed)
-                    if delta:
-                        safe = guard.feed(delta)
-                        if safe:
-                            yield safe
-                last = guard.finish()
-                if last:
-                    yield last
-        except ProviderError as exc:
-            if observed is not None:
-                exc.usage = observed
-            raise
-        except httpx.TimeoutException as e:
-            raise ProviderError("timeout", type(e).__name__, usage=observed) from None
-        except httpx.HTTPError as e:
-            raise ProviderError("network", type(e).__name__, usage=observed) from None
+                    async for line in scope.iterate(r.aiter_lines()):
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data)
+                        except ValueError:
+                            raise ProviderError("bad_output", "stream: некорректный JSON", usage=observed) from None
+                        if not isinstance(chunk, dict):
+                            raise ProviderError("bad_output", "stream: ожидается JSON object", usage=observed)
+                        if chunk.get("usage"):
+                            prompt, completion, total = response_token_counts(
+                                chunk["usage"], [key.secret, token], coerce=True
+                            )
+                            previous_total = observed_total
+                            first_usage = observed is None
+                            observed = observe_stream_usage(
+                                observed,
+                                {"prompt_tokens": prompt, "completion_tokens": completion},
+                                profile,
+                                self.name,
+                                key.label,
+                            )
+                            await ticket.observe(prompt, completion, total_tokens=total)
+                            observed_total = total
+                            self.pool.add_usage(key, total - previous_total, request_increment=first_usage)
+                        # Usage-only SSE frame может законно иметь choices=[].
+                        choices = chunk.get("choices") or []
+                        if not isinstance(choices, list) or (choices and not isinstance(choices[0], dict)):
+                            raise ProviderError("bad_output", "stream: неверные choices", usage=observed)
+                        delta_data = (choices[0].get("delta") or {}) if choices else {}
+                        if not isinstance(delta_data, dict):
+                            raise ProviderError("bad_output", "stream: неверный delta", usage=observed)
+                        delta = delta_data.get("content")
+                        if delta is not None and not isinstance(delta, str):
+                            raise ProviderError("bad_output", "stream: неверный content", usage=observed)
+                        if delta:
+                            safe = guard.feed(delta)
+                            if safe:
+                                yield safe
+                    if observed is None:
+                        raise ProviderError("bad_output", "расход stream неизвестен: usage отсутствует")
+                    await ticket.observe(
+                        observed.prompt_tokens, observed.completion_tokens, total_tokens=observed_total, final=True
+                    )
+                    last = guard.finish()
+                    if last:
+                        yield last
+            except ProviderError as exc:
+                if observed is not None:
+                    exc.usage = observed
+                raise
+            except httpx.TimeoutException as e:
+                raise ProviderError("timeout", type(e).__name__, usage=observed) from None
+            except httpx.HTTPError as e:
+                raise ProviderError("network", type(e).__name__, usage=observed) from None

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 import httpx
 import psycopg
@@ -21,6 +22,35 @@ pytestmark = pytest.mark.integration
 
 async def connect(url):
     return await psycopg.AsyncConnection.connect(url.replace("postgresql+psycopg://", "postgresql://"), autocommit=True)
+
+
+async def reconcile_synthetic_fixture(profile, secret, endpoint):
+    from psycopg.rows import dict_row
+
+    from app.db.session import psycopg_dsn
+    from app.llm.accounting import KeyFacts, PostgresAccounting, _utc_now
+    from app.llm.keys import DEFAULT_LIMIT
+
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True, row_factory=dict_row) as clock:
+        as_of = await _utc_now(clock)
+    # This test created the unique synthetic physical key. Explicitly declared0
+    # is a fixture precondition; registration in production remains unknown.
+    await PostgresAccounting().reconcile(
+        profile,
+        KeyFacts(
+            profile.provider,
+            secret,
+            endpoint,
+            DEFAULT_LIMIT if profile.provider == "gigachat" else None,
+            db_id=profile.api_key_id,
+        ),
+        reconciliation_id=uuid.uuid4(),
+        as_of=as_of,
+        tokens_used=0,
+        requests_today=0,
+        confirmed=True,
+        acknowledge_unknown_origin=True,
+    )
 
 
 def preupgrade_legacy_row(conn, items):
@@ -366,11 +396,13 @@ async def test_bound_giga_closing_clients_does_not_reset_key_usage_or_health(see
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     base = "https://synthetic-giga.invalid/v1"
+    secret = f"synthetic-bound-{uuid.uuid4().hex}"
     kid = conn.execute(
-        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope,tokens_limit) values('gigachat','synthetic',pgp_sym_encrypt('synthetic-only',%s),%s,%s,4) returning id",
-        (get_settings().app_secret, base, get_settings().gigachat_scope),
+        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope,tokens_limit) values('gigachat','synthetic',pgp_sym_encrypt(%s,%s),%s,%s,4) returning id",
+        (secret, get_settings().app_secret, base, get_settings().gigachat_scope),
     ).fetchone()[0]
     profile = LLMProfile(code="bounded", provider="gigachat", model="synthetic", base_url=base, api_key_id=kid)
+    await reconcile_synthetic_fixture(profile, secret, base)
     seen = []
 
     def handle(request):
@@ -430,11 +462,24 @@ def test_setup_check_never_returns_upstream_credential_echo(seeded, monkeypatch,
 
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
-    secret = "synthetic-setup-credential"
+    secret = f"synthetic-setup-credential-{uuid.uuid4().hex}"
     actual = gigachat.GigaChatProvider
     clients = []
+    seen = []
+    import asyncio
+
+    asyncio.run(
+        reconcile_synthetic_fixture(
+            LLMProfile(
+                code="setup_test", provider="gigachat", model="synthetic-model", base_url="https://synthetic.invalid/v1"
+            ),
+            secret,
+            "https://synthetic.invalid/v1",
+        )
+    )
 
     def handle(request):
+        seen.append(request.url.path)
         if request.url.path.endswith("oauth"):
             if stage == "oauth_error":
                 return httpx.Response(401, text="Authorization: Basic " + secret)
@@ -470,6 +515,10 @@ def test_setup_check_never_returns_upstream_credential_echo(seeded, monkeypatch,
     assert result.status_code == 200 and result.json()["ok"] is False
     assert secret not in result.text
     assert clients and all(instance._client.is_closed for instance in clients)
+    assert len(seen) == (1 if stage == "oauth_error" else 2)
+    assert seen[0].endswith("oauth")
+    if stage != "oauth_error":
+        assert seen[1].endswith("/chat/completions")
     get_settings.cache_clear()
 
 
@@ -720,3 +769,69 @@ async def test_empty_legacy_row_does_not_block_canonical_metadata(seeded, conn, 
         assert baseline_llm.read_sync(conn.cursor()) == await baseline_llm.read(ac)
         assert await credentials.list_keys(ac) == []
         assert conn.execute("select value from settings where key='llm_keys'").fetchone() is None
+
+
+@pytest.mark.parametrize("provider", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("mutation", ["deactivate", "delete"])
+@pytest.mark.parametrize("explicit", [False, True])
+def test_setup_selected_binding_revalidated_after_selection_before_any_http(
+    seeded, conn, monkeypatch, provider, mutation, explicit
+):
+    import asyncio
+
+    from fastapi.testclient import TestClient
+
+    from app.api import setup
+    from app.llm import gigachat
+    from app.main import create_app
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    monkeypatch.setenv("LLM_CHAIN", "mock")
+    monkeypatch.setenv("GIGACHAT_AUTH_KEY_1", "synthetic-unused-env-giga")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "synthetic-unused-env-router")
+    get_settings.cache_clear()
+    base = "https://synthetic-giga.invalid/v1" if provider == "gigachat" else "https://openrouter.ai/api/v1"
+    secret = f"synthetic-selected-{uuid.uuid4().hex}"
+    kid = conn.execute(
+        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope,tokens_limit) values(%s,'synthetic',pgp_sym_encrypt(%s,%s),%s,%s,20) returning id",
+        (
+            provider,
+            secret,
+            get_settings().app_secret,
+            base,
+            get_settings().gigachat_scope if provider == "gigachat" else None,
+        ),
+    ).fetchone()[0]
+    profile = LLMProfile(code="setup_test", provider=provider, model="synthetic:free", base_url=base, api_key_id=kid)
+    asyncio.run(reconcile_synthetic_fixture(profile, secret, base))
+    seen, clients = [], []
+    actual = gigachat.GigaChatProvider if provider == "gigachat" else setup.OpenAICompatProvider
+
+    def fake(request):
+        seen.append(request.url.path)
+        pytest.fail("invalid selected binding must be rejected before OAuth/models/key/inference HTTP")
+
+    def factory(*args, **kwargs):
+        if mutation == "delete":
+            conn.execute("delete from llm_api_keys where id=%s", (kid,))
+        else:
+            conn.execute("update llm_api_keys set is_active=false where id=%s", (kid,))
+        instance = actual(*args, **kwargs, transport=httpx.MockTransport(fake))
+        clients.append(instance)
+        return instance
+
+    monkeypatch.setattr(
+        gigachat if provider == "gigachat" else setup,
+        "GigaChatProvider" if provider == "gigachat" else "OpenAICompatProvider",
+        factory,
+    )
+    body = {"provider": provider, "model": "synthetic:free", "base_url": base}
+    if explicit:
+        body["api_key_id"] = kid
+    with TestClient(create_app()) as client:
+        result = client.post("/api/setup/test-llm", json=body)
+    assert result.status_code == 200 and result.json()["ok"] is False
+    assert "Выбранный API-ключ" in result.json()["error"]
+    assert seen == [] and clients and all(item._client.is_closed for item in clients)
+    assert secret not in result.text and "synthetic-unused-env" not in result.text
+    get_settings.cache_clear()

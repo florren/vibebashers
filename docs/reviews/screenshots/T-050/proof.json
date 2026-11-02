@@ -1,0 +1,858 @@
+{
+  "source": "9e8ed4e6ee50eda319fdc6cfcd15cdef0f1b3269",
+  "scope": "production UI + actual API; four synthetic operational fixtures, no HTTP mocks; actor-free scratch DB, GET-only browser, network guard; SQL connection allows legacy FOR UPDATE, fingerprints verify unchanged; Telegram disabled",
+  "results": [
+    {
+      "lang": "ru",
+      "theme": "light",
+      "unknownAndZeroDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "ru",
+      "theme": "dark",
+      "unknownAndZeroDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "en",
+      "theme": "light",
+      "unknownAndZeroDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "en",
+      "theme": "dark",
+      "unknownAndZeroDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    }
+  ],
+  "tableCount": 101,
+  "before": {
+    "channel_runtime.telegram_chat_rate": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_client_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_conversations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_deliveries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_inbound": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_signal_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_blobs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_migrations": [
+      10,
+      "63a282a08243f71966a92c9e91b8b367"
+    ],
+    "langgraph.checkpoint_writes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoints": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "llm_runtime.credential_aliases": [
+      3,
+      "b90a11429cd03c4017c83dcad2ccff2e"
+    ],
+    "llm_runtime.credentials": [
+      4,
+      "b9bfd4baf6766516fe91894db4cfd2c1"
+    ],
+    "llm_runtime.daily_usage": [
+      6,
+      "f3e268458c63cd6c0d89866f62f84e4e"
+    ],
+    "llm_runtime.identity_settings": [
+      1,
+      "15e72ff4d601697c257bcd9274f2d538"
+    ],
+    "llm_runtime.profile_scopes": [
+      3,
+      "58b29a262d44ddc314b30d10491c078c"
+    ],
+    "llm_runtime.reconciliations": [
+      3,
+      "e039592487f94b9df78e00599724d916"
+    ],
+    "llm_runtime.wire_attempts": [
+      1,
+      "38ecf47df7658466a95f7013a07c0c6c"
+    ],
+    "public.accounts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_steps": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "b05238760522f0d88d29c563e0993a89"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "55e22e7ddc99c2901e2522dbe0fd119a"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.clients": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      1083,
+      "b55f3d6e88d5e76738da9a0282fd9e8f"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "8753dcfcacf512dea59a48fc5b617ea4"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_posts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_replies": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.faults": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_status_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incidents": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_sources": [
+      8,
+      "fd010ce17034d2b40879b503034de92a"
+    ],
+    "public.ledger_entries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_api_keys": [
+      4,
+      "31d81d72be205a3886085b17d3444585"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "ca1b12bc86917efc35314bf02924456b"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      365,
+      "246fa5e567c9670ccbf0a2ea1d69911c"
+    ],
+    "public.notifications": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.operations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.scenarios": [
+      33,
+      "d0f438ff573c4de4358e450b09084d1e"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "1d72b79e2401d7885e3086f4c719ef99"
+    ],
+    "public.settings": [
+      1,
+      "14cdb3081db562093cd792c2ee424ea3"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_state": [
+      1,
+      "439a3720cbc64014ee733edcdddc79e7"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  },
+  "after": {
+    "channel_runtime.telegram_chat_rate": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_client_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_conversations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_deliveries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_inbound": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_signal_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_blobs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_migrations": [
+      10,
+      "63a282a08243f71966a92c9e91b8b367"
+    ],
+    "langgraph.checkpoint_writes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoints": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "llm_runtime.credential_aliases": [
+      3,
+      "b90a11429cd03c4017c83dcad2ccff2e"
+    ],
+    "llm_runtime.credentials": [
+      4,
+      "b9bfd4baf6766516fe91894db4cfd2c1"
+    ],
+    "llm_runtime.daily_usage": [
+      6,
+      "f3e268458c63cd6c0d89866f62f84e4e"
+    ],
+    "llm_runtime.identity_settings": [
+      1,
+      "15e72ff4d601697c257bcd9274f2d538"
+    ],
+    "llm_runtime.profile_scopes": [
+      3,
+      "58b29a262d44ddc314b30d10491c078c"
+    ],
+    "llm_runtime.reconciliations": [
+      3,
+      "e039592487f94b9df78e00599724d916"
+    ],
+    "llm_runtime.wire_attempts": [
+      1,
+      "38ecf47df7658466a95f7013a07c0c6c"
+    ],
+    "public.accounts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_steps": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "b05238760522f0d88d29c563e0993a89"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "55e22e7ddc99c2901e2522dbe0fd119a"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.clients": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      1083,
+      "b55f3d6e88d5e76738da9a0282fd9e8f"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "8753dcfcacf512dea59a48fc5b617ea4"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_posts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_replies": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.faults": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_status_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incidents": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_sources": [
+      8,
+      "fd010ce17034d2b40879b503034de92a"
+    ],
+    "public.ledger_entries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_api_keys": [
+      4,
+      "31d81d72be205a3886085b17d3444585"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "ca1b12bc86917efc35314bf02924456b"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      365,
+      "246fa5e567c9670ccbf0a2ea1d69911c"
+    ],
+    "public.notifications": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.operations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.scenarios": [
+      33,
+      "d0f438ff573c4de4358e450b09084d1e"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "1d72b79e2401d7885e3086f4c719ef99"
+    ],
+    "public.settings": [
+      1,
+      "14cdb3081db562093cd792c2ee424ea3"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_state": [
+      1,
+      "439a3720cbc64014ee733edcdddc79e7"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  },
+  "backend_external_attempts": 0,
+  "backend_llm_attempts": 0,
+  "sql_read_only_enforced": false
+}

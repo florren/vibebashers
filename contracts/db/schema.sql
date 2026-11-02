@@ -2233,6 +2233,9 @@ CREATE INDEX IF NOT EXISTS wire_attempts_profile_day_idx
 ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_id integer;
 ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_code text NOT NULL DEFAULT '';
 
+-- Normalize a pre-release partially installed checkpoint without changing history.
+ALTER TABLE llm_runtime.wire_attempts ALTER COLUMN profile_code DROP DEFAULT;
+
 -- T-161: durable behavior owner, evidence/receipts/timers; actual parent0016.
 -- Legacy duplicate current states требуют явного согласования, без удаления истории.
 DO $$ BEGIN
