@@ -1428,6 +1428,7 @@
     "scenario8": "Scenario 8 — QR fee",
     "scenario9": "Scenario 9 — misselling",
     "scenario10": "Scenario 10 — red phrases",
+    "scenario13": "Scenario 13 — search and trace",
     "baselineRestore": "Reset to baseline",
     "actionError": "Could not complete the action"
   },
@@ -1451,6 +1452,9 @@
     "breadcrumbs": "Trace navigation",
     "back": "Back",
     "traceError": "Could not load the trace. Check the object and run.",
+    "exportJson": "Download JSON",
+    "exportMarkdown": "Download Markdown",
+    "exportSnapshot": "Snapshot of the loaded trace. Grouped links are kept as summaries.",
     "summary": "before: {{before}} · object · after: {{after}} · outcome",
     "keyOnly": "Key events only",
     "truncated": "Some events are hidden because a traversal limit was reached.",
