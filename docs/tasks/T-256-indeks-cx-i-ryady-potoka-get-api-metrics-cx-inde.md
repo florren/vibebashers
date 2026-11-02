@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Серверные данные для «Обзора» (ТЗ 14.1, 26.4).
@@ -40,4 +40,4 @@ pytest backend/tests/unit/test_cx_index.py backend/tests/integration/test_metric
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-256-cx-index`, база clean T-244 `b971710`. [Source audit и plan](../reviews/T-256-cx-index-design.md). Чистая формула/coverage/unknown/delta реализована: 27 unit passed; Ruff check/format passed. API29, reader, PG/performance и review ещё впереди; приёмка не отмечена. T-255/T-257 будут отдельными stacked ветками.
