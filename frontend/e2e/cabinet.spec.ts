@@ -92,6 +92,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(calc.getByLabel(text.affected)).toBeInViewport()
       await expect.poll(async () => calc.evaluate(element => Math.round(element.getBoundingClientRect().top))).toBe(0)
       expect(await calc.evaluate(element => Math.round(element.getBoundingClientRect().height))).toBe(900)
+      await expect(calc.locator('aside')).toHaveCSS('opacity', '1')
       await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-calculator.png`) })
       await page.keyboard.press('Escape')
       await expect(calc).toHaveCount(0)

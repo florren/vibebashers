@@ -11,7 +11,10 @@ export function CabinetCalculator({ line, region }: { line: Overview['product_li
   const settings = useEconomicsSettings()
   const [affected, setAffected] = useState<number | null>(null)
   const [rateCode, setRateCode] = useState<string | null>(null)
-  useEffect(() => setRateCode(line ? line.rate_code ?? settings.data?.fallback_rate_code ?? null : null), [line?.code, line?.rate_code, settings.data?.fallback_rate_code])
+  const lineCode = line?.code
+  const defaultRate = lineCode ? line?.rate_code ?? settings.data?.fallback_rate_code ?? null : null
+  // Новый scope сбрасывает ручной выбор даже при одинаковой fallback ставке.
+  useEffect(() => setRateCode(defaultRate), [lineCode, defaultRate])
   useEffect(() => { setAffected(region?.affected_clients ?? null) }, [region?.code, region?.affected_clients])
   const rates = settings.data?.rates ?? []
   const rate = rates.find(row => row.code === rateCode)
