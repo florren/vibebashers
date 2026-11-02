@@ -298,7 +298,7 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
                     <span className="font-medium">{t(u.speaker === 'client' ? 'live.clientShort' : 'live.employeeShort')}</span>
                     {u.speaker_source !== 'manual' && <span title={u.speaker_source}>{Math.round(u.speaker_confidence * 100)}%</span>}
                     <span>
-                      {(u.t0_ms / 1000).toFixed(1)}–{(u.t1_ms / 1000).toFixed(1)} с
+                      {t('live.timeRange', { start: (u.t0_ms / 1000).toFixed(1), end: (u.t1_ms / 1000).toFixed(1) })}
                     </span>
                   </div>
                   <div>{u.text}</div>

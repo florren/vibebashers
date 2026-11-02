@@ -617,7 +617,8 @@
       "live": "live",
       "alerted": "alert",
       "closed": "closed"
-    }
+    },
+    "branchLabel": "Branch {{code}}"
   },
   "manager": {
     "title": "Manager device",
@@ -638,7 +639,8 @@
     "counter": "{{n}} of {{m}}",
     "quotes": "Quotes",
     "recommendation": "Recommendation",
-    "ackHelp": "Review — you take it on; False — you dismiss the alert and learn from the error; Incident — you pass it to compliance"
+    "ackHelp": "Review — you take it on; False — you dismiss the alert and learn from the error; Incident — you pass it to compliance",
+    "location": "Branch {{branch}} · desk {{desk}}"
   },
   "quality": {
     "title": "Quality report",
@@ -1319,7 +1321,8 @@
     "report": "Meeting report",
     "reportHint": "The report is stored on the audio session and is available to the branch manager (Manager tab); alerts go to Telegram if the branch has a linked chat.",
     "wsError": "The /ws/audio connection dropped",
-    "speechError": "Browser recognition error: {{e}}"
+    "speechError": "Browser recognition error: {{e}}",
+    "timeRange": "{{start}}–{{end}} s"
   },
   "voice": {
     "start": "Dictate",
