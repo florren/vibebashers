@@ -1,6 +1,7 @@
 # T-161 — concrete decision proposal: hazard и legacy churn_risk
 
-**Предложение для review, не одобренная новая policy.** Текущий код не меняет
+**Variant A одобрен пользователем 02.11.2026 для реализации** (source9700400).
+Исходное предложение/альтернатива ниже сохранены как история решения. Текущий код не меняет
 clients.churn_risk и не записывает туда hazard*100. Одобренные пользователем
 значения demo-policy, intent cadence/care и денежные формулы не меняются.
 
@@ -38,7 +39,8 @@ field/путь для raw hazard сейчас не требуется.
 +   новое probability mapping/калибровка — отдельная T-165 с provenance review.
 ```
 
-Это явное уточнение acceptance, поэтому самостоятельно карточка так не изменена.
+Пользователь явно принял это уточнение acceptance: приведённый точный diff
+применён к карточке T-161 и документирован в ТЗ. Альтернатива B не выбрана.
 Пример различия единиц: raw hazard .02 относится к одному шагу; legacy score 60
 не становится 2 автоматически. Обе цифры здесь иллюстрируют существующие единицы,
 не задают новые defaults или оценку качества/реального банка.
@@ -56,3 +58,18 @@ versioned projection и отдельные tests с существующим ass
 Рекомендовано A для coherent runtime T-161 без скрытого изменения риска/денег;
 B остаётся отдельной concrete policy/calibration задачей. Финальный human review
 DB/API chain и activation остаётся обязательным независимо от выбранного варианта.
+
+
+## Approval metadata
+
+- status: approved_for_implementation
+- approved_by: user_in_chat
+- approved_date: 2026-11-02
+- decision: variant_a
+- source_commit: 9700400
+- scope: separate_raw_per_15min_intent_hazard_preserve_legacy_client_risk_until_T165
+- money_formula_changes: false
+- demo_policy_values_changed: false
+
+Это решение не заменяет финальный конкретный DB/runtime contract review и не
+одобряет live/external вызовы. Исходное approval demo-policy ba5145d сохраняется.
