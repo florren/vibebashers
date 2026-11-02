@@ -108,7 +108,16 @@ async def run(config: Configuration) -> int:
             base_url=config.backend_url, timeout=10, follow_redirects=False, trust_env=False
         ) as http:
             async with Bot(token=config.token) as bot:
-                return await poll(bot, dispatcher(BackendClient(http, config.secret)), stop=stop)
+                me = await bot.get_me()
+                if me.id != bot.id or not me.is_bot or not me.username:
+                    raise InvalidConfiguration("telegram_bot_identity_invalid")
+                backend = BackendClient(http, config.secret)
+
+                async def heartbeat() -> None:
+                    assert me.username is not None
+                    await backend.heartbeat(bot_id=bot.id, username=me.username, token=config.token)
+
+                return await poll(bot, dispatcher(backend), stop=stop, on_poll=heartbeat)
     except asyncio.CancelledError:
         if not stop.is_set():
             raise

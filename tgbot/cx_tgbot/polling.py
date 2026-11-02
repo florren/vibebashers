@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 
 import structlog
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramAPIError, TelegramNetworkError, TelegramRetryAfter, TelegramServerError
 
+from cx_tgbot.backend import BackendUnavailable
 from cx_tgbot.updates import BackendRejected, Sleep
 
 log = structlog.get_logger(__name__)
@@ -19,6 +21,7 @@ async def poll(
     *,
     stop: asyncio.Event,
     sleep: Sleep = asyncio.sleep,
+    on_poll: Callable[[], Awaitable[None]] | None = None,
 ) -> int:
     """Offset живёт на стороне Telegram; после crash незавершённый batch повторяется.
 
@@ -43,6 +46,16 @@ async def poll(
         except TelegramAPIError as exc:
             log.error("telegram_poll_rejected", error_type=type(exc).__name__)
             return 2
+        if on_poll is not None:
+            try:
+                await on_poll()
+            except BackendUnavailable as exc:
+                log.warning("telegram_heartbeat_rejected", status=exc.status)
+                if exc.status is not None and 400 <= exc.status < 500 and exc.status != 429:
+                    return 2
+                # Не продвигаем offset, пока backend не принял health proof.
+                await sleep(2)
+                continue
         for update in updates:
             if stop.is_set():
                 break

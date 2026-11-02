@@ -28,15 +28,26 @@ class BackendClient:
         self.clock = clock
 
     async def submit(self, event: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(INBOUND_PATH, event)
+
+    async def heartbeat(self, *, bot_id: int, username: str, token: str) -> None:
+        ref = hmac.new(self.secret, b"cx-tgbot-credential-v1:" + token.encode(), hashlib.sha256).hexdigest()
+        result = await self._request(
+            "/api/internal/tgbot/heartbeat", {"bot_id": bot_id, "username": username, "credential_ref": ref}
+        )
+        if result.get("accepted") is not True:
+            raise BackendUnavailable(200)
+
+    async def _request(self, path: str, event: dict[str, Any]) -> dict[str, Any]:
         body = json.dumps(event, ensure_ascii=False, separators=(",", ":")).encode()
         if len(body) > 32_768:
             raise ValueError("telegram_update_too_large")
         timestamp = str(int(self.clock()))
-        payload = "\n".join(("cx-tgbot-v1", timestamp, "POST", INBOUND_PATH, hashlib.sha256(body).hexdigest())).encode()
+        payload = "\n".join(("cx-tgbot-v1", timestamp, "POST", path, hashlib.sha256(body).hexdigest())).encode()
         signature = hmac.new(self.secret, payload, hashlib.sha256).hexdigest()
         try:
             response = await self.http.post(
-                INBOUND_PATH,
+                path,
                 content=body,
                 headers={
                     "Content-Type": "application/json",

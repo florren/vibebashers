@@ -8,7 +8,7 @@
 | Волна | 5 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 На экране и в README — QR на бота и короткая инструкция для жюри.
@@ -38,3 +38,19 @@ curl -f localhost:8080/api/public/bot/qr
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+## Ревизия: signed readiness и QR (checkpoint)
+
+Изолированная ветка codex/T-122-bot-qr поверх T1217acce1b. Устранён false-positive
+health по одному token: running требует свежего signed successful-poll proof
+(90реальных секунд) и активного owned delivery task. После restart/rotation/stale
+readiness unknown/error; proof ephemeral, не банковский факт и не delivery receipt.
+QR ведёт на username реального getMe, серверный SVG cache не кэширует readiness.
+UI480px ru/en, hidden disabled/error/no username, loss-ready/image error handled.
+API1.5.23 reserved после22; DDL не добавляется. S2S HMAC применён и кheartbeat.
+
+Проверено:24backend unit/ASGI2.81s, actual public PG1pass8.36s;38bot checkpoint
+7.62s+3 новых actualSDKgetMe identity cases (повтор ещё выполняется),336frontend
+с lint/typegreen. Contracts45/163, drift193, mypy11green. Полный backend/coverage,
+UI screenshots, final contractreview, CI/merge ещё впереди. Реальных Telegram
+запросов нет. 1080p/5м читаемость — ручной критерий, автоматически не подтверждён.

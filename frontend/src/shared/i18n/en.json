@@ -2206,5 +2206,13 @@
     "emptyRows": "No rows in this scope",
     "inspect": "Inspect JSON",
     "inspector": "JSON inspector"
+  },
+  "botQr": {
+    "open": "Telegram bot",
+    "title": "Jury bot",
+    "instructions": "Open Telegram, scan the QR and send /start. Use a fictional client code from the UI or /skip; describe the issue, then provide a demo contact and region.",
+    "fictional": "Use fictional data only. /status checks your case; /lang ru|en changes the language.",
+    "alt": "QR code for the verified Telegram bot",
+    "unavailable": "The bot became unavailable. Close this window and wait for the connection to recover."
   }
 }

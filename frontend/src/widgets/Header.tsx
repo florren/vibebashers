@@ -13,6 +13,7 @@ import { DeviceSelector } from '@/shared/layout/device'
 import { useMobileLayout } from '@/shared/layout/device-store'
 import { Badge, Drawer } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
+import { BotQrButton } from './BotQrButton'
 
 const SPEEDS = [1, 10, 60, 120, 300]
 
@@ -85,6 +86,7 @@ export function Header() {
         <div className="flex flex-wrap gap-2">
           <button className="btn" onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'ru' : 'en')}>{i18n.language === 'en' ? 'RU' : 'EN'}</button>
           <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t('common.jury')}</button>
+          <BotQrButton />
         </div>
         <section className="space-y-2" aria-label={t('sim.clock')}>
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
@@ -183,6 +185,7 @@ export function Header() {
       <button className="btn btn-sm" onClick={() => setJury(true)}>
         <MessageSquarePlus size={13} /> {t('common.jury')}
       </button>
+      <BotQrButton />
       <span className={clsx('flex items-center gap-1 text-xs', wsStatus === 'open' ? 'text-muted' : 'text-danger')} title="WebSocket">
         <span className={clsx('h-1.5 w-1.5 rounded-full', wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-danger')} />
         {t(`ws.${wsStatus}`)}
