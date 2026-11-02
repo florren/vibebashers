@@ -6,6 +6,7 @@ import '@/shared/i18n'
 import { api, post, type HitlItem, type Signal } from '@/shared/api/client'
 import { HitlQueue } from './HitlQueue'
 import { SignalsFeed } from './SignalsFeed'
+import { UndoToast } from '@/shared/components/UndoToast'
 
 vi.mock('@/shared/api/client', async original => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn(), post: vi.fn() }))
 const signal: Signal = { id: 88489, public_id: 'SIG-088489', text: 'Снова неверный тариф', channel_code: 'chat', status: 'deferred', incident_refs: ['INC-000826'] }
@@ -93,4 +94,30 @@ it('показывает связанный INC даже без запроса H
   const related = await screen.findByLabelText('Связанные сущности')
   expect(related).toHaveTextContent('SIG-088489')
   expect(related).toHaveTextContent('INC-000826')
+})
+
+
+it('сброс фильтров отменяется локально и не вызывает серверную мутацию', async () => {
+  mount(<><SignalsFeed runId={11} onOpen={vi.fn()} /><UndoToast /></>)
+  const search = await screen.findByLabelText('Поиск сигнала: код или текст')
+  fireEvent.change(search, { target: { value: 'SIG-088489' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Сбросить' }))
+  expect(search).toHaveValue('')
+  fireEvent.click(screen.getByRole('button', { name: 'Отменить' }))
+  expect(search).toHaveValue('SIG-088489')
+  expect(post).not.toHaveBeenCalled()
+})
+
+it('HITL отправляется только после явного подтверждения с неизменённым payload', async () => {
+  item = { ...item, can_resume: true, process_outcome: 'awaiting_human' }
+  mount(<HitlQueue runId={11} onOpenSignal={vi.fn()} />)
+  const submit = await screen.findByRole('button', { name: 'Отправить решение' })
+  fireEvent.click(submit)
+  expect(screen.getByRole('dialog', { name: 'Подтвердить решение человека' })).toHaveTextContent('Отменить его локально нельзя.')
+  expect(post).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Вернуться' }))
+  expect(post).not.toHaveBeenCalled()
+  fireEvent.click(submit); fireEvent.click(screen.getByRole('button', { name: 'Подтвердить действие' }))
+  await waitFor(() => expect(post).toHaveBeenCalledWith('/api/hitl/1351', { decision: 'accept', comment: undefined, use_as_fewshot: undefined }))
+  expect(vi.mocked(post).mock.calls).toHaveLength(1)
 })

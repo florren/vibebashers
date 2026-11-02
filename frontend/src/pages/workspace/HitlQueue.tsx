@@ -1,3 +1,4 @@
+import { ConfirmAction } from '@/shared/components/ConfirmAction'
 import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { clsx } from 'clsx'
@@ -84,6 +85,7 @@ export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal:
   const team = useRefName('teams')
   const teams = useRefs('teams')
   const decide = useHitlDecide()
+  const [confirm, setConfirm] = useState(false)
   const [mode, setMode] = useState<Mode>('accept')
   const [comment, setComment] = useState('')
   const [fewshot, setFewshot] = useState(false)
@@ -97,7 +99,7 @@ export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal:
   const c = item.signal?.classification
 
   const submit = () => {
-    if (item.id === undefined) return
+    if (item.id === undefined || !canResume || item.decision) { setConfirm(false); return }
     const body: Parameters<typeof decide.mutate>[0]['body'] = { decision: mode, comment: comment || undefined, use_as_fewshot: fewshot || undefined }
     if (mode === 'modify') {
       const mp: Partial<Decision> = {}
@@ -107,6 +109,7 @@ export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal:
       body.modified_proposal = mp as Decision
     }
     if (mode === 'delegate') body.delegate_to = delegateTo || undefined
+    setConfirm(false)
     decide.mutate({ id: item.id, body })
   }
 
@@ -227,12 +230,13 @@ export function HitlCard({ item, onOpenSignal }: { item: HitlItem; onOpenSignal:
               </label>
               <span className="mx-auto" />
               {decide.isError && <ErrorBox error={decide.error} compact />}
-              <button className="btn btn-primary" onClick={submit} disabled={decide.isPending || (mode === 'delegate' && !delegateTo)}>
+              <button className="btn btn-primary" onClick={() => setConfirm(true)} disabled={decide.isPending || (mode === 'delegate' && !delegateTo)}>
                 {t('hitl.submit')}
               </button>
             </div>
           </div>
         )}
+        <ConfirmAction open={confirm} title={t('attention.hitlTitle')} consequence={t('attention.hitlConsequence', { mode: t(`hitl.${mode}`), id: item.public_id ?? item.id })} onCancel={() => setConfirm(false)} onConfirm={submit} pending={decide.isPending} />
         {item.id !== undefined && <HitlFeedback id={item.id} comment={comment} onComment={setComment} />}
       </div>
     </div>

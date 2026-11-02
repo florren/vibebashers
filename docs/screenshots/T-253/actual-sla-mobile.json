@@ -1,0 +1,65 @@
+{
+  "source_revision": "7bbdd1be4543531d4884bd431fdde5064bc7c336",
+  "cases": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "device_timezone": "America/New_York",
+      "actual_deadline_label": "09.11 11:44 МСК",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Срок через 3 ч",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "device_timezone": "America/New_York",
+      "actual_deadline_label": "09.11 11:44 МСК",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Срок через 3 ч",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "device_timezone": "Asia/Tokyo",
+      "actual_deadline_label": "09.11 11:44 MSK",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Due in 3 h",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "device_timezone": "Asia/Tokyo",
+      "actual_deadline_label": "09.11 11:44 MSK",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Due in 3 h",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    }
+  ]
+}

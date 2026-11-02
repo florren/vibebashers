@@ -1,3 +1,5 @@
+import { useUndo } from '@/shared/ui/undo'
+import { ConfirmAction } from '@/shared/components/ConfirmAction'
 import { IdLink } from '@/shared/components/IdLink'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -116,8 +118,8 @@ export function TicketsTab({ runId }: { runId: number | undefined }) {
         </>
       )}
 
-      <TicketDrawer id={ticketId} onClose={() => setTicketId(null)} onOpenEsc={(id) => setEscId(id)} />
-      <EscDrawer id={escId} onClose={() => setEscId(null)} />
+      <TicketDrawer id={ticketId} onClose={() => { const previous = ticketId; setTicketId(null); useUndo.getState().offer(() => setTicketId(previous)) }} onOpenEsc={(id) => setEscId(id)} />
+      <EscDrawer id={escId} onClose={() => { const previous = escId; setEscId(null); useUndo.getState().offer(() => setEscId(previous)) }} />
     </div>
   )
 }
@@ -198,6 +200,7 @@ function EscCard({ e, onOpen }: { e: Escalation; onOpen: () => void }) {
 
 function TicketDrawer({ id, onClose, onOpenEsc }: { id: number | null; onClose: () => void; onOpenEsc: (id: number) => void }) {
   const { t } = useTranslation()
+  const [confirmClose, setConfirmClose] = useState(false)
   const q = useTicket(id)
   const act = useIncidentAction(id)
   const esc = useCreateEscalation()
@@ -249,9 +252,10 @@ function TicketDrawer({ id, onClose, onOpenEsc }: { id: number | null; onClose: 
                 <button className="btn btn-sm" disabled={esc.isPending || closed || text.trim().length < 3} onClick={() => esc.mutate({ incident_id: d.incident_id, reason: text, severity: d.criticality === 'high' ? 'critical' : 'high', actor: 'operator' })}>
                   {t('tickets.act.escalate')}
                 </button>
-                <button className="btn btn-sm btn-primary" disabled={act.isPending || closed} onClick={() => act.mutate({ action: 'close', text: text || undefined })}>
+                <button className="btn btn-sm btn-primary" disabled={act.isPending || closed} onClick={() => setConfirmClose(true)}>
                   {t('tickets.act.close')}
                 </button>
+                <ConfirmAction open={confirmClose} title={t('attention.closeTitle')} consequence={t('attention.closeConsequence')} onCancel={() => setConfirmClose(false)} onConfirm={() => { setConfirmClose(false); act.mutate({ action: 'close', text: text || undefined }) }} pending={act.isPending} />
                 <button className="btn btn-sm" disabled={act.isPending || closed} onClick={() => act.mutate({ action: 'reject', reason: text || undefined })}>
                   {t('tickets.act.reject')}
                 </button>
