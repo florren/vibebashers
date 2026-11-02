@@ -1,0 +1,39 @@
+{
+  "source_revision": "747bd9207616ee658680603deb49c1335392ae9a",
+  "full_suite_source_revision": "59da3d314151d7af16b16eeda31eec74057ab183",
+  "full_backend_passed": 1663,
+  "full_backend_skipped": 22,
+  "full_frontend_at_original_source": 311,
+  "final_frontend_passed": 315,
+  "inherited_browser_passed_at_original_source": 49,
+  "actual_calm_browser_passed": 4,
+  "actual_sla_mobile_cases_passed": 4,
+  "external_attempts": 0,
+  "LLM_calls_during_browser": 0,
+  "business_preparation": "Штатный lite seed200 +4 настоящих обращения через normalizer/Mock graph до browser proof, без ручных fake incident rows",
+  "table_fingerprints": {
+    "compared_tables": 85,
+    "unchanged_tables": 83,
+    "changed_tables": {
+      "db_activity_log": {
+        "before_count": 3534,
+        "after_count": 3638,
+        "before_digest": "1fc1b3b4317b7d54f6eb7b73786f2a2d",
+        "after_digest": "0b726ffa47b50102c06f76bf50164553"
+      },
+      "incident_economics": {
+        "before_count": 154,
+        "after_count": 154,
+        "before_digest": "a83297e79afb2408878b9ba5720c5183",
+        "after_digest": "508ff61a5f5fa5bddcc070b0db9222b9"
+      }
+    },
+    "note": "GET economics выполняет существующую materialization; DB unchanged не утверждается."
+  },
+  "additional_sla_browser_non_GET_attempts": 0,
+  "actual_calm_browser_non_settings_mutation_attempts": 0,
+  "actual_calm_settings_PATCH": "Реальные сохранения ui.attention разрешены и проверены; число PATCH отдельно не фиксировалось.",
+  "theme_frontend_passed": 312,
+  "error_boundary_source_revision": "1f073b615fc4a95fb1afce00f8dada8931eeb385",
+  "error_boundary_target_passed": 13
+}

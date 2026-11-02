@@ -2178,7 +2178,8 @@
       "busy": "There are many requests right now. Please wait a moment and try again.",
       "service": "We could not retrieve the service data. Shall we try again?",
       "request": "We could not complete the action. Check the selected data and try again.",
-      "connection": "We could not reach the service. Check the connection and try again."
+      "connection": "We could not reach the service. Check the connection and try again.",
+      "unknown": "We could not complete the action. Shall we try again? You can expand the details below."
     }
   },
   "shell": {
