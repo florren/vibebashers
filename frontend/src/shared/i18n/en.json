@@ -2242,5 +2242,62 @@
       "connection": "We could not reach the service. Check the connection and try again.",
       "unknown": "We could not complete the action. Shall we try again? You can expand the details below."
     }
+  },
+  "shell": {
+    "navigation": "Navigation",
+    "groups": {
+      "operations": "Operations",
+      "audit": "Control and audit",
+      "demonstration": "Demonstration",
+      "product": "Product and network"
+    },
+    "overview": "Overview",
+    "cabinet": "Product cabinet",
+    "csi": "CSI and branch network",
+    "zones": "Zones",
+    "economics": "Loss calculator",
+    "role": "Role preset",
+    "roles": {
+      "cx_operator": "CX operator",
+      "cx_lead": "CX lead",
+      "product_manager": "Product manager",
+      "product_head": "Product head",
+      "compliance_officer": "Compliance officer",
+      "bank_head": "Bank head",
+      "admin": "Administrator"
+    },
+    "demonstrator": "Presenter context",
+    "presetHint": "The preset changes the view and hints, not access rights. Direct routes remain available.",
+    "layout": "Interface layout",
+    "legacy": "Current layout",
+    "v2": "Sidebar navigation v2",
+    "appearance": "Interface appearance",
+    "pending": "This screen is still being prepared. Available data and actions can be opened in the workspace.",
+    "openWorkspace": "Open workspace",
+    "newSignal": "New signal",
+    "systemStatus": "System status",
+    "statusLoading": "Checking status…",
+    "service": "Service",
+    "ready": "ready",
+    "degraded": "partly ready",
+    "database": "Database",
+    "available": "available",
+    "unavailable": "unavailable",
+    "agent": "Agent · LLM mode",
+    "channels": "Channels",
+    "unknown": "unknown",
+    "telegram": {
+      "running": "enabled",
+      "disabled": "disabled",
+      "error": "unavailable",
+      "unknown": "unknown"
+    },
+    "configurationHint": "Configuration and database readiness; opening this panel does not call an external model.",
+    "openNavigation": "Open navigation",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcutOperations": "Available operations items, in menu order.",
+    "shortcutClose": "Close the top panel or dialog.",
+    "searchTrace": "Search and trace",
+    "live": "LIVE"
   }
 }

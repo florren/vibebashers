@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Каркас прототипа 2.4 (ТЗ 26.4) за флагом без регрессий.
@@ -32,9 +32,9 @@
 4. Регрессия: существующие e2e и vitest зелёные в обоих значениях флага; скриншоты до/после.
 
 ## Критерии приёмки
-- [ ] Без флага интерфейс не изменился; с флагом — каркас v2, все старые маршруты работают.
-- [ ] Меню адаптивно (1920/1440/1024), клавиатурная навигация, `aria-label` на иконках.
-- [ ] Нет внешних ресурсов.
+- [x] Без флага интерфейс не изменился; с флагом — каркас v2, все старые маршруты работают.
+- [x] Меню адаптивно (1920/1440/1024), клавиатурная навигация, `aria-label` на иконках.
+- [x] Нет внешних ресурсов.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,4 +44,4 @@ cd frontend && npx playwright test
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-254-shell-v2`, stacked поверх T-253 `e61ce53`; runtime `18de30f`. Флаг legacy(default)/v2, реальные settings, Sidebar4группы/локальные пресеты+Undo, health/demo, shortcuts, adaptive320–1920, query-preserving routes. Frontend325, make lint/2builds green; source80f legacy49+actual4=53 green, final actual4/4 и legacy3204/4.16PNG+proof: `docs/screenshots/T-254/`. Backend/contracts неизменны, full1663/22skip на идентичном backend source59; повторный full backend не заявляется. Подробный отчёт: [T-254-shell-v2.md](../reviews/T-254-shell-v2.md). T242/T249/T255 availability остаются временными зависимостями all94, без fake KPI/закрытия их приёмки; ждём human UI-HITL review T253 и finalCI. Cross-layer L5: новый `frontend/e2e/shell-v2.spec.ts` (согласовано пользователем); root создаёт PR/push/merge.
