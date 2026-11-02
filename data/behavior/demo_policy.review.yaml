@@ -1,0 +1,197 @@
+# T-161: только синтетическое предложение для review, не runtime-конфигурация.
+# Predicate names ниже — предлагаемая семантика, не объявление готовых API/колонок.
+policy_id: demo_behavior_v0_review
+version: 1
+status: proposed_for_review
+enabled: false
+approved_by: null
+calibrated_on_real_clients: false
+runtime_loader: absent
+scope:
+  runtime_run_kinds: [free, scenario]
+  baseline: historical_seed_only
+  live: excluded_from_sim_clock_hazard
+sources:
+  psychotypes: data/psychotypes.yaml
+  segments: data/segments.yaml
+  gifts: data/gifts.yaml
+  first_response_producer: backend/app/sim/sla.py
+  business_clock: backend/app/sim/clock.py
+  change_existing_values: false
+segment_multiplier:
+  mass: 1.0
+  salary: 1.0
+  social: 1.0
+  youth: 1.0
+  premium: 1.0
+  vip: 1.0
+  ultra_vip: 1.0
+# Все 7 значений явные и нейтральные: различия сегментов не выдумываются.
+retained_threshold: 0.550
+hazard:
+  formula: base_churn_hazard * segment_multiplier * (1 + 0.5 * repeat) * (1 + 0.8 * sla_breach) * (1 - care_sensitivity * care_score)
+  repeat_meaning: boolean_at_least_one_actual_repeat_complaint
+  sla_breach_meaning: recorded_related_incident_report_or_first_response_breach
+  recompute_sla_policy: false
+  raw_domain: [0.0, 1.0]
+  out_of_domain: reject_profile_before_rng_or_db_effects
+  clamp: false
+  scale_to_daily_rate: false
+  cadence_sim_minutes: 15
+  alignment: UTC_epoch_multiples
+  trailing_batch_tick_draw: false
+  paused_wall_clock_catchup: false
+  duplicate_tick_draw: false
+  input_care_score: persisted_3_decimal_value
+  persisted_hazard_scale: existing_4_decimal_column
+  decision_uses: raw_before_storage_rounding
+care:
+  score: sum_catalog_weight_times_component
+  weights_source: unchanged_psychotype_care_weights
+  missing_weights: reject_before_effects
+  normalize_weights_again: false
+  component_range: [0.0, 1.0]
+  initial:
+    proactive: 0.0
+    speed: 0.0
+    sla: 0.0
+    gift_fit: 0.0
+    tone: 0.0
+    explanation: 0.0
+  # 0 означает отсутствие подтверждённой положительной заботы, не доказанный негатив.
+  components:
+    proactive:
+      positive: sent_customer_notice_for_actual_affected_client_strictly_before_first_complaint
+      value: 1.0
+      equality_at_complaint_time: 0.0
+      duplicate_credit: false
+      absent_first_complaint: eligible_if_causal_notice_after_episode_start
+      unrelated_pre_episode_notice: no_credit
+    speed:
+      source: first_delivered_eligible_customer_notification
+      on_time_value: 1.0
+      late_curve: max(0, 2 - delay_minutes / segment_first_response_min)
+      late_curve_after_due_only: true
+      delay_clock: elapsed_sim_minutes_as_existing_first_response_deadline
+      rewrite_first_reply_on_later_message: false
+      absent_actual_customer_signal: no_speed_credit
+    sla:
+      known_unbreached_related_deadline: 1.0
+      breached_or_missing_required_report: 0.0
+      absent_or_unknown_deadline: 0.0
+      breach_is_sticky_for_episode: true
+      progress_cannot_erase_breach: true
+    gift_fit:
+      source: existing_done_gift_task_with_issued_payload_and_sent_gift_offer
+      bonus_points: existing_psychotype_gift_elasticity
+      partner_privilege: existing_psychotype_privilege_elasticity
+      personal_call: no_gift_credit_observe_communication_facts_only
+      several_grants: maximum_eligible_fit_not_sum
+      pending_rejected_or_proposed_gift: 0.0
+      new_grant_refund_or_hitl_action: forbidden
+    tone:
+      delivered_valid_customer_message: 1.0
+      forbidden_phrase_or_internal_leak: 0.0
+      violation_is_sticky_for_episode: true
+      initial_absence_of_message: 0.0
+    explanation:
+      # Только известный корректно заполненный шаблон, не внутренняя reasoning агента.
+      eligible_template_score:
+        ack_received: 0.5
+        clarify_request: 0.5
+        proactive_fault: 1.0
+        progress_update: 1.0
+        resolved: 1.0
+        refund_done: 1.0
+        closure_ack: 0.5
+        public_reply: 0.5
+        dm_invite: 0.0
+        gift_offer: 0.0
+        team_notice: 0.0
+      unknown_template_or_missing_customer_visible_fields: 0.0
+      use_internal_incident_reasoning: false
+      aggregation: maximum_verified_explanation
+  communication_gate:
+    eligible_recipient: client_or_linked_public_reply
+    public_attribution: explicit_same_run_client_id_only_no_broadcast_guess
+    eligible_statuses: [sent, delivered]
+    invalid_or_forbidden_message_adds_positive_credit: false
+    tone_violation_can_reduce_score: true
+    validate_against_approved_T015_catalog: required_before_wire
+  first_reply_excluded_templates: [dm_invite, gift_offer, team_notice]
+  repeated_notification_score: replace_facts_do_not_add_reward
+  elapsed_time_decay: none_in_demo_v0
+  numeric_score_storage:
+    scale: 3
+    rounding: ROUND_HALF_UP_after_full_weighted_sum
+  twin_satisfaction:
+    direct_care_score_overwrite: false
+    keep_as: client_reactions_satisfaction_observation
+    state_reaction_owner: same_durable_behavior_writer
+complaint:
+  p_complain: unchanged_catalog
+  delay_minutes: unchanged_catalog_inclusive_bounds
+  draw_once_per_client_episode: true
+  no_complaint_state: waiting_without_fabricated_signal
+  silent_decline_probability: conditional_on_no_complaint
+  silent_decline_probability_source: unchanged_catalog
+  silent_decline_activity_multiplier: 0.5
+  activity_application_owner: T162_after_separate_interface_review
+  eligible_inbound_channels: [social, call, chat, email, branch, landing, telegram_bot]
+  exclude_outbound_proactive_weight_from_complaint: true
+  remaining_inbound_weights: normalize_explicitly
+  no_eligible_channel: reject_before_effects
+repeat_complaint:
+  probability: unchanged_repeat_prob
+  opportunity: once_for_each_actual_unanswered_signal_first_response_deadline
+  unsuccessful_draw: no_automatic_periodic_retry
+  escalation_probability: unchanged_escalation_prob_conditional_on_repeat
+  actual_external_repeat: consume_as_fact_no_extra_repeat_draw
+patience:
+  range_source: unchanged_psychotype_patience_days
+  sample: uniform_once_per_episode
+  units: working_days_of_9_hours
+  calendar: existing_Monday_Friday_09_18_Europe_Moscow
+  deadline: existing_add_working_hours_sampled_days_times_9
+  official_holiday_calendar: not_claimed
+  additional_failure_extends_deadline: false
+  restart_resamples: false
+  expired_unresolved_episode: mark_eligibility_for_T164_review
+  expired_resolved_episode: no_automatic_account_closure
+closure:
+  resolved_and_score_at_least_threshold: retained
+  resolved_below_threshold: satisfied_without_retained_or_churned_claim
+  automatic_transition_to_churned: false
+  account_closure_owner: T164_separate_review
+  financial_formula_or_hitl_changes: forbidden
+dedup:
+  current_client_state_scope: [run_id, client_id]
+  cause_key_preference: [known_fault_id, known_operation_id]
+  same_fault_and_failed_operation: one_cause_membership
+  same_fault_multiple_failed_ops: one_cause_multiple_operation_links
+  different_cause_while_waiting: append_to_same_open_client_episode
+  missing_causal_link: do_not_merge_by_time_or_region_guess
+  new_regression_fault: separate_cause_keep_explicit_regression_link
+  new_episode_after_closed_or_satisfied: reset_components_keep_history
+  receipt_key: [run_id, client_id, source_kind, source_id, action]
+  receipt_checked_before_rng: true
+  logical_hazard_tick_receipt_key: [run_id, client_id, logical_tick_sim_time]
+  evidence_order: [sim_time, phase_priority, source_kind, source_id]
+  phase_priority: [facts_and_resolution, due_complaint, repeat_opportunity, logical_hazard_tick]
+  persistence: one_transaction_state_components_timers_receipts_signals_rng
+  private_memory_timer: forbidden
+  policy_version_and_hash: pin_for_episode_no_hot_reinterpretation
+  commit_owner: simulator_transaction_only
+implementation_review_before_wire:
+  care_component_snapshot_and_result: explicit_typed_state_not_hidden_closure
+  domain_validation: all_catalog_psychotype_segment_extremes
+  current_pure_core_behavior: unchanged
+  ddl: none_in_this_proposal
+  migration_reservation: '0017'
+  must_reconcile_existing_TwinService_care_write: true
+review_only_sensitivity:
+  care_scores: [0.0, 0.5, 1.0]
+  threshold_sweep: [0.45, 0.55, 0.65]
+  segment_multiplier_sweep: [0.8, 1.0, 1.2]
+  fixed_exposure_sim_hours: 24
+  interpret_as: waiting_churn_intent_trigger_probability_not_real_churn_or_money

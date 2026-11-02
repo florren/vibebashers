@@ -50,3 +50,13 @@ venv не менялся. Полный regression пока не выполнял
 policy/ADR/storage, durable integration и process-restart/full-suite proof.
 
 Предложение и границы: [T-161 pure core / policy / storage](../reviews/T-161-pure-core-policy-storage.md).
+
+
+По новому запросу пользователя подготовлено **предложение**, не активация:
+[data/behavior/demo_policy.review.yaml](../../data/behavior/demo_policy.review.yaml),
+[ADR-0024](../adr/ADR-0024-demo-client-behavior-policy.md) и
+[sensitivity JSON](../reviews/T-161-demo-policy-sensitivity.json).
+Все новые значения явно синтетические, enabled=false/approved_by=null;
+исходные psychotype/segment/gift параметры и runtime не менялись.
+60 pure tests passed; до wire нужны человеческий review и отдельная реализация/
+проверка durable state/receipt/timer границы. T161 остаётся in_progress.

@@ -69,7 +69,7 @@ care_strategy. Defaults отсутствуют. Стратегия получа�
 
 ## Предлагаемая storage/ownership граница (не DDL)
 
-После P1/schema chain review: provisional migration 0015 (0014 резерв P2), если
+После P1/schema chain review: provisional migration 0017 (0014 — T240, 0015 — T121, 0016 — P2), если
 будет принята необходимость следующих таблиц. Номер не закреплён файлом.
 
 - Runtime row UNIQUE(run_id, client_id): текущий state ID, episode/related source
@@ -142,3 +142,10 @@ sla_breached — bool. Policy/care отвергают bool и нечисловы
 
 Повторная проверка: **70 passed** (52 behavior + 4 textgen + 14 baseline),
 Ruff check/format и mypy ядра green. Runtime/БД по-прежнему не подключены.
+
+
+Подготовлено отдельное неактивное предложение по новому запросу пользователя:
+[ADR-0024](../adr/ADR-0024-demo-client-behavior-policy.md),
+[demo YAML](../../data/behavior/demo_policy.review.yaml),
+[offline sensitivity](T-161-demo-policy-sensitivity.json).
+Это не одобрение значений/семантики и не изменение действующего pure core.
