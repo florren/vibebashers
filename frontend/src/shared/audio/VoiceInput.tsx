@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
 import { Mic, Square } from 'lucide-react'
 import { useSttProviders } from '@/shared/api/hooks'
-import { micSupported, startMic, type MicHandle } from './mic'
+import { micSupported, microphoneOriginAllowed, startMic, type MicHandle } from './mic'
 import { startWebSpeech, webSpeechSupported } from './webSpeech'
 import type { Schemas } from '@/shared/api/client'
 
@@ -30,6 +30,9 @@ export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly =
     micRef.current?.stop()
     speechRef.current?.stop()
   }, [])
+  if (!microphoneOriginAllowed(window.location, window.isSecureContext === true)) {
+    return <span className="text-xs text-muted">{t('voice.secureRequired')}</span>
+  }
   if (!mode) return null
 
   const start = async () => {

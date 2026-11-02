@@ -419,19 +419,34 @@
     "empty": "No deferred checks"
   },
   "jury": {
-    "title": "Jury mode — enter a request",
+    "title": "New signal",
     "text": "Client request text",
     "channel": "Channel",
     "client": "Client (empty — anonymous)",
     "segment": "Segment",
-    "anySegment": "enter an ID manually",
+    "anySegment": "All segments",
     "handle": "Handle / contact (for anonymous channels)",
     "send": "Send to the agent",
     "sending": "The agent is thinking…",
-    "result": "Done: signal #{{id}}, run #{{run}}",
+    "result": "Signal #{{id}} accepted, agent run #{{run}}.",
     "openRun": "Open under the hood",
     "openSignal": "Open signal",
-    "placeholder": "For example: Paid 3 200 ₽ by QR and was charged a 138 ₽ fee. Instant payments were supposed to be free. Refund it."
+    "placeholder": "For example: Paid 3 200 ₽ by QR and was charged a 138 ₽ fee. Instant payments were supposed to be free. Refund it.",
+    "unknownClient": "Unknown client",
+    "manualClient": "Enter an ID manually",
+    "clientId": "Client ID",
+    "invalidClient": "Enter a positive integer client ID that can be represented exactly.",
+    "city": "City",
+    "unspecifiedCity": "Not specified",
+    "unavailableCity": "City #{{id}} is unavailable. Choose another city or “Not specified”.",
+    "optionalFilters": "Refine client and source",
+    "clientListHint": "The first 30 clients in the selected segment are shown. Enter a known ID manually for another client.",
+    "agentHint": "The agent will determine the message sentiment and choose its processing route.",
+    "privacyHint": "Do not enter real personal data, card numbers, passwords or codes. Use fictional training data only.",
+    "lengthHint": "{{count}} / 5000 characters · 3 to 5000 required",
+    "resultTitle": "Signal accepted",
+    "openTrace": "Show trace",
+    "clientLabel": "Client"
   },
   "engine": {
     "title": "Under the hood",
@@ -1424,7 +1439,8 @@
     "busy": "Recognizing…",
     "nothing": "Speech was not recognized — try again",
     "hintServer": "The microphone recording is recognized offline on the server (Vosk) and added to the text",
-    "hintBrowser": "The browser recognizes speech (Web Speech API) — text is added as you speak"
+    "hintBrowser": "The browser recognizes speech (Web Speech API) — text is added as you speak",
+    "secureRequired": "Microphone input requires a secure HTTPS or localhost context."
   },
   "demoMenu": {
     "title": "Demonstrator menu",

@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Единая точка ручного ввода сигнала (канал, город, текст) с подсказкой, напоминанием о ПДн и переходом на экран пути (ТЗ 12.2 п. 7, 27.4).
@@ -41,4 +41,4 @@ cd frontend && npx playwright test e2e/new-signal-modal.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-257-new-signal-modal`, отдельный implementation checkpoint от T255192267b. Прежний POSTsignals/DTO сохранён; добавлены city/unknown client/manualID, agent/PII hints, actual result Journey+Trace, typed voice_meta. Native secure context обязателен для VoiceInput; label textarea отделён от кнопки микрофона. Unicode codepoint3..5000 без truncation, существующий Journey label сохранён отдельным ключом. Source-qualified локально498frontend/67files green14.20s,43adjacent green, typecheck/lint и обеproductionbuilds green. Actual browser/HTTP/screenshots и финальная parent composition ещё выполняются; DoD/приёмка не отмечены завершёнными. Денежные/HITL/серверные политики, public API/DDL не менялись.
