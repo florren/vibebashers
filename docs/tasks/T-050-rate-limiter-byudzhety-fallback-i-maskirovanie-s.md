@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Симуляция не останавливается при лимитах и сбоях провайдеров; расход прозрачен.
@@ -40,3 +40,17 @@ pytest backend/tests/unit/test_ratelimit.py
 
 ## Отчёт субагента
 Доработка 29.10.2026: если все активные неизрасходованные ключи временно на cooldown после 429, KeyPool сообщает rate_limit с retry_after_s, а не исчерпанную quota. Существующее поведение смешанных quota/cooldown и авторизации сохранено. Ошибки ресурса не инициируют повтор той же операцией через другую модель.
+
+
+## Ревизия application secret logging, 2026-11-02
+
+Добавлена единая pure redaction boundary после format_exc_info перед console/JSONL и до HttpStats error retention. Маскируются известные credential fields/labeled strings без чтения env/реальных ключей; nonmutating/idempotent, hints/counters/business IDs сохранены. Подтверждённый T119 unknown-route capability leak закрыт тем же существующим regex/helper и safe_public_path ДО counter keys/ring buffer; API shape/публичные error responses не менялись.
+
+Targeted 37 passed; lint зелёный, coverage redactor/app.logging 100%. Полные evidence/границы: `docs/reviews/T-050-secret-redaction.md`. Нет новых dependencies/DB/live/credential probes или изменений money/HITL. T050 остаётся in_progress; durable counters/rate-policy очередь и fallback требуют отдельных пакетов. Streaming-enforcement реализован отдельно и не смешан с этой веткой.
+
+Полный unit: 953 passed / 18 skipped, exit 0; make lint и license gate 526 прошли. Новый redactor и app.logging имеют 100% statement coverage по stdlib trace. Полный DB/integration suite не запускался: согласованный no-DB packet.
+
+
+Follow-up parent review: named credential containers внутри diagnostic repr теперь маскируются целиком (list/dict/tuple/nested/quoted/escaped), без eval. Truncated/malformed container скрывает остаток строки; outside IDs после balanced container сохраняются. Targeted 59 passed; lint/100% coverage прошли. Подробности и итог полного unit — в `docs/reviews/T-050-secret-redaction.md`.
+
+Follow-up полный unit: 975 passed / 18 skipped, exit 0; source и credentials/environment boundaries сохранены.

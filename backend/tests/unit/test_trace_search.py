@@ -59,7 +59,8 @@ def test_relations_complete():
     assert {"notification", "task", "followup", "economics", "reaction"} <= set(MATRIX["incident"]["after"])
 
 
-def test_no_raw_prompts_or_contacts():
+@pytest.mark.parametrize("model", ["replay/GigaChat-3-Pro", "replay:GigaChat-3-Pro", "replay:unknown"])
+def test_no_raw_prompts_or_contacts(model):
     e = project(
         node(
             "step",
@@ -69,7 +70,7 @@ def test_no_raw_prompts_or_contacts():
             prompt="secret",
             response_raw="secret",
             output={"prompt": "secret"},
-            model="replay/GigaChat-3-Pro",
+            model=model,
             latency_ms=20,
         ),
         "after",

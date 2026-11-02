@@ -1,0 +1,28 @@
+{
+  "version": 4,
+  "source_revision": "3c1c12ce52aed6b2ab8d0a76542953eafb994440",
+  "files": {
+    "golden_v1.jsonl": "ab3ae974358f38e98621bd08edfba2bc70242cc1f38c4dc7babbca405fa54ae6",
+    "lite_v1.jsonl": "b17e9de81b781f8b8730a17973f04963221ffe08cbb20f1f36264d293be3fb8c"
+  },
+  "policy_sources": {
+    "data/error_codes.yaml": "e9915fbfbf685b979469d579c522cd28d95fd44f45778f2cc1b20281e5346c3f",
+    "data/sla.yaml": "90bb4ec69c176311dbb84cfee9f0e367604522047a5fa55abe9820368b5f92ba",
+    "backend/app/agent/policies.py": "32aa5dc07ca0fd46e205b3371fcfb1dbf095eb024d691bdcd8b7186613ca0ed9"
+  },
+  "previous_golden_sha256": "4a703aa454566817f6942f55bc9cd09129c5526855052b41da1ae032d6240bb9",
+  "text_changes": 0,
+  "gold_changed_case_ids": [
+    "GOLD-0010",
+    "GOLD-0011",
+    "GOLD-0063"
+  ],
+  "author": "audit_foundation_data",
+  "review_report": "data/golden/review_v1.json",
+  "reviewed_v2_revision": "f1090e7",
+  "label_review_files": {
+    "golden_v1.jsonl": "3605d751d7ad05d13a64481422f49feea2d89b734c175da0e58f8d56ede69bc8",
+    "lite_v1.jsonl": "38d29696905378db7ed2f8d0646ddeb712e94b779a48aa9e237b76e70157bbc7"
+  },
+  "provenance_only_v4": "policies.py:human_reason -> policies.py:needs_human"
+}

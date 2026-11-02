@@ -96,7 +96,9 @@ class BenchService:
             if dataset is None:
                 raise Problem(404, "набор не найден")
             rows = await fetch_all(
-                conn, "select id,channel_code,text,gold from bench_cases where dataset_id=%s order by id", (dataset_id,)
+                conn,
+                "select id,channel_code,text,gold,tags from bench_cases where dataset_id=%s order by id",
+                (dataset_id,),
             )
             if not rows or any("signal_type" not in r["gold"] for r in rows):
                 raise Problem(422, "ожидается непустой classify-набор с gold.signal_type")
@@ -108,7 +110,10 @@ class BenchService:
             for row in profiles:
                 await credentials.validate_binding(conn, self.profile(row))
             keys = await load_keys(conn)
-        cases = [runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"]) for r in rows]
+        cases = [
+            runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"], r.get("tags", []))
+            for r in rows
+        ]
         return dataset["code"], cases, profiles, keys
 
     @staticmethod
@@ -450,7 +455,7 @@ class BenchService:
         async with db() as conn:
             results = await fetch_all(
                 conn,
-                "select br.*,c.text,c.gold from bench_results br join bench_cases c on c.id=br.case_id where br.run_id=%s order by br.repeat_no,br.case_id",
+                "select br.*,c.text,c.gold,c.tags from bench_results br join bench_cases c on c.id=br.case_id where br.run_id=%s order by br.repeat_no,br.case_id",
                 (id_,),
             )
         return {**row, "results": results}
@@ -504,13 +509,14 @@ class BenchService:
             "fallback_mock",
             "prompt_tokens",
             "completion_tokens",
+            "tags",
         ]
         writer = csv.DictWriter(out, fieldnames=fields)
         writer.writeheader()
         for result in detail["results"]:
             writer.writerow(
                 {
-                    k: json.dumps(result[k], ensure_ascii=False) if isinstance(result[k], dict) else result[k]
+                    k: json.dumps(result[k], ensure_ascii=False) if isinstance(result[k], (dict, list)) else result[k]
                     for k in fields
                 }
             )
