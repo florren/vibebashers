@@ -3,6 +3,7 @@ import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ThemeClock } from '@/shared/theming/ThemeClock'
 import { ThemeRuntime } from '@/shared/theming/ThemeRuntime'
 import { connectWs } from '@/shared/ws/client'
 import { Shell } from '@/widgets/Shell'
@@ -32,6 +33,7 @@ export function App() {
   return (
     <QueryClientProvider client={qc}>
       <DeviceLayoutRuntime />
+      <ThemeClock />
       <BrowserRouter>
         <Routes>
           <Route element={<PublicLayout />}>
