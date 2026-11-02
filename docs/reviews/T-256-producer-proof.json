@@ -1,5 +1,5 @@
 {
-  "status": "local_full_green_pending_parent_review_ci",
+  "status": "historical_full196_and_final_bounded_composition_green_pending_exact_ci",
   "scope": "T256 API1.5.29, noDDL/noLLM/no monetary writes",
   "functional": {
     "passed": 91,
@@ -253,13 +253,13 @@
     "make_lint": "green 429frontend/505format/311mypy/bot12format5mypy/drift194"
   },
   "temporal_defensive_followup": {
-    "status": "composed_fence_native_functional_green_pending_native_performance_parent_ci",
+    "status": "composed_fence_native_functional_performance_green_pending_parent_ci",
     "historical_full_runtime": "1968631",
     "pg_http_passed": 28,
     "pg_http_seconds": 17.86,
     "pure_unit_passed": 65,
-    "coverage_not_repeated_yet": true,
-    "performance_not_repeated_yet": true,
+    "coverage_not_repeated_yet": false,
+    "performance_not_repeated_yet": false,
     "limitation": "No universal publication receipt; positive native classification requires upstream stale-controller fence",
     "runtime_sha256": "4e7e40bd3c81706fc97c24d986d31e4d647a36a8b66b564eedb5588b9faf6959"
   },
@@ -287,9 +287,120 @@
       ]
     },
     "timing_instrumented": false,
-    "performance_pending_quiet_window": true,
+    "performance_pending_quiet_window": false,
     "full_proof_still_runtime": "1968631",
     "native_publication_tests_sha256": "2d53afddbe0b1a745470420977c822ab500d226ef7bd5ca536d87744eb5e0f4b",
-    "reader_sha256": "5b499db71396bd52493093b72ecaa65ad56fa0b04cc9143dcd55900a88c9cb45"
+    "reader_sha256": "5b499db71396bd52493093b72ecaa65ad56fa0b04cc9143dcd55900a88c9cb45",
+    "latest_upstream_fence": "c47d2784a3953452a9bc154c9048eae0416cd3cb",
+    "latest_ordinary_merge": "ad33c825f8275c82763ef97b0f526c2d8257880e",
+    "latest_native_control_publication_shutdown": {
+      "passed": 9,
+      "seconds": 44.11
+    },
+    "native_performance": {
+      "passed": 1,
+      "seconds": 32.92,
+      "samples": {
+        "cx-index": {
+          "p95_ms": 27.997192984912544,
+          "samples_ms": [
+            27.997192984912544,
+            25.367045018356293,
+            161.24477802077308,
+            22.529661015141755,
+            22.082655981648713,
+            23.283351969439536,
+            23.95176002755761,
+            23.655784025322646,
+            22.29243697365746,
+            23.64205801859498,
+            22.46793295489624,
+            21.86980895930901,
+            24.9332960229367,
+            23.13157101161778,
+            22.471839969512075,
+            21.78570901742205,
+            22.030105988960713,
+            22.4792740191333,
+            21.994106995407492,
+            23.140999022871256,
+            23.384774976875633,
+            24.619416042696685,
+            24.19859095243737,
+            23.871976998634636,
+            24.055738002061844,
+            24.280729005113244,
+            25.54908295860514,
+            24.521920015104115,
+            24.2677130154334,
+            23.95628794329241
+          ],
+          "clients": 5000,
+          "first_get_included": true
+        },
+        "overview": {
+          "p95_ms": 25.81477101193741,
+          "samples_ms": [
+            25.303603964857757,
+            24.50838399818167,
+            25.163816986605525,
+            23.57587101869285,
+            25.775465997867286,
+            25.013089005369693,
+            24.651848012581468,
+            24.09050497226417,
+            24.60855501703918,
+            24.44048400502652,
+            25.220545008778572,
+            25.937395985238254,
+            24.666394980158657,
+            24.973071995191276,
+            25.81477101193741,
+            24.400638008955866,
+            24.47245502844453,
+            23.715707997325808,
+            24.17039795545861,
+            25.101326988078654,
+            24.605188984423876,
+            23.622260021511465,
+            25.025943003129214,
+            25.739147036802024,
+            23.917704995255917,
+            24.794930999632925,
+            24.439701985102147,
+            24.48955801082775,
+            24.998170032631606,
+            24.056067981291562
+          ],
+          "clients": 5000,
+          "first_get_included": true
+        }
+      },
+      "threshold_ms": 300,
+      "warmup": false,
+      "tracer": false,
+      "first_get_included": true,
+      "public_fingerprints_unchanged": true
+    },
+    "guard_readonly_plans_after_benchmark": {
+      "all": {
+        "total_cost": 0.22,
+        "execution_ms": 0.021,
+        "jit": false
+      },
+      "current": {
+        "total_cost": 19.47,
+        "execution_ms": 0.035,
+        "jit": false
+      }
+    },
+    "latest_runtime_sha256": {
+      "backend/app/analytics/cx_index.py": "b68c52c2a203522000993addbd3f12898951c5b27062b81d0dad6db33719daa8",
+      "backend/app/analytics/cx_index_reader.py": "5b499db71396bd52493093b72ecaa65ad56fa0b04cc9143dcd55900a88c9cb45",
+      "backend/app/analytics/overview.py": "b09a71b9aa7537a2b6525e048e7ec97b018f9f55693218854e7f28cf1f60a2b8",
+      "backend/app/api/metrics.py": "b941d7e060eb75230247f6c3daeaf0ea1342eb5f086c8d6453021e72b0f1a7a2",
+      "backend/app/sim/engine.py": "c9707f9883a11cc91a48577d05bc57a72728556276063ee40b5b41e904852655",
+      "contracts/api/openapi.yaml": "ba250d6b84e063fe59850171becb1dcbbecea5a2e65904f27b43d93c73c113f9"
+    }
   }
 }
