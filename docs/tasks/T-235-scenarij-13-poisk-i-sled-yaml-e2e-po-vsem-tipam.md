@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L5` Качество (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Автоматическая приёмка поиска и следа (ТЗ 18, сценарий 13; критерии 44–45).
@@ -43,3 +43,32 @@ cd frontend && npx playwright test e2e/trace-scenario.spec.ts
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+## Ревизия: проверка записанных объектов и scope алертов
+
+Ветка `codex/T-235-search-trace-acceptance`. CLI больше не считает HTTP 501 успехом.
+Прогон `all` продолжает остальные сценарии и возвращает код 1 при любой ошибке.
+Для `search_and_trace` выполняются настоящие GET search/trace вместо запуска
+агента: 17 префиксов и 9 форматов из manifest, с явным `run_id=all`. Отсутствующие
+объекты, неверные DTO/совпадения, HTTP/network failures и отражённый tracking token
+дают FAIL. Контакты и capability tokens не выводятся в диагностике. Объекты
+выбираются SQL в READ ONLY REPEATABLE READ с `statement_timeout=3s`.
+
+Actual ASGI/PG проверка обнаружила ошибку `scope("alert")`: у `compliance_alerts`
+нет `run_id`. Теперь scope берётся через родительскую `audio_sessions`. Проверены
+собственный/чужой запуск и 404 для чужого алерта. API, DDL и денежные политики
+не меняются.
+
+Checkpoint: 20 адресных unit/PG тестов прошли за 11.93s под coverage. Все 43 actual
+API requests — GET (26 search + 17 trace); вызовов LLM нет. Зарегистрированные
+search/trace/journey routes допускают только GET/HEAD. Контрольный INSERT внутри
+Trace отклоняется PostgreSQL с ReadOnlySqlTransaction, строка не создаётся.
+Граф теста явно помечен `synthetic-search-fixture`/`deferred`; он не изображает
+завершённый LLM run. Сигналы проходят normalizer, проводки — штатный Mock-АБС helper.
+Ruff/formatter изменённых файлов прошли; assertions не ослаблены.
+
+Карточка остаётся `in_progress`: rich traces, fanout, pending, performance,
+расширенные проверки ПДн, браузер, screenshots/export, DEMO-SCRIPT и полный
+suite/CI/merge ещё требуются. Реальных LLM/Telegram вызовов нет. Cross-layer
+L1 scripts/docs, L3 trace, L5 tests согласован общим поручением пользователя;
+нового contract-change нет.

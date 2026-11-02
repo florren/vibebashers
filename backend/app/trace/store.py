@@ -25,6 +25,8 @@ def scope(kind: str, alias: str = "t") -> str:
         return f"(SELECT run_id FROM incidents WHERE id={alias}.incident_id)"
     if kind == "csi":
         return f"(SELECT run_id FROM signals WHERE id={alias}.signal_id)"
+    if kind == "alert":
+        return f"(SELECT run_id FROM audio_sessions WHERE id={alias}.session_id)"
     if kind in ("agent_run", "human_decision", "followup"):
         return f"{alias}.sim_run_id"
     if kind not in ("client", "branch", "employee", "rule", "error_code"):
