@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
+import { requireRunScope } from '@/shared/api/runScope'
 import { api, type Signal } from '@/shared/api/client'
 import { EntityFilter } from '@/shared/components/EntityFilter'
 import { ErrorBox } from '@/shared/ui'
 
-export function SignalPicker({ onSelect }: { onSelect: (ref: string) => void }) {
+export function SignalPicker({ onSelect, runId }: { onSelect: (ref: string) => void; runId?: string }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
-  const result = useQuery({ queryKey: ['signals', 'journey-picker', query], queryFn: () => api<{ items?: Signal[] }>('/api/signals', { query: { q: query, run_id: 'all', limit: 30 } }), enabled: !!query })
+  const result = useQuery({ queryKey: ['signals', 'journey-picker', query, runId], queryFn: () => api<{ items?: Signal[] }>('/api/signals', { query: { q: query, run_id: requireRunScope(runId ?? 'all'), limit: 30 } }), enabled: !!query })
   return <div className="border-b border-line p-3">
     <EntityFilter onChange={setQuery} />
     {query && result.isPending && <p role="status">{t('common.loading')}</p>}

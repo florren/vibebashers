@@ -1,5 +1,6 @@
 # ТЗ 3.7 — адаптеры источников
 ingest_sources:
+  - {code: fault_monitor, kind: rest, channel_code: proactive, enabled: true, interval_s: 5, is_external: false, config: {internal: true, co_team_codes: [team_cx], note: "ТЗ6.9: native fault → команда подсистемы и CX; не публичный HTTP-источник"}}
   - {code: rest_messages,        kind: rest,    channel_code: social,        enabled: true,  interval_s: 5, is_external: true,  config: {endpoint: "/api/ingest/messages", dedupe_by: external_id}}
   - {code: rest_transcripts,     kind: rest,    channel_code: branch_audio,  enabled: true,  interval_s: 5, is_external: true,  config: {endpoint: "/api/ingest/transcripts", formats: [json, txt]}}
   - {code: mock_social_polling,  kind: polling, channel_code: social,        enabled: false, interval_s: 10,   is_external: false, config: {adapter: mock, batch: 5, corpus: "data/corpus/mock_feed.yaml"}}

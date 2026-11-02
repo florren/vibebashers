@@ -37,6 +37,11 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
     if len(items) > 500:
         raise HTTPException(status_code=422, detail="не больше 500 сообщений за запрос")
     source = request.headers.get("x-source-code") or "api"
+    if source == "fault_monitor" or any(msg.get("origin") == "proactive" for msg in items):
+        raise HTTPException(
+            status_code=422,
+            detail="origin=proactive и fault_monitor зарезервированы для native producer; используйте origin=api",
+        )
     results = []
     async with db() as conn:
         run_id, sim_time = await run_context(request, conn) if items else (None, None)

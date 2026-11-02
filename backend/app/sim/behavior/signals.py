@@ -12,7 +12,7 @@ from app.contracts.registry import validate
 from app.economics.calibration import PIPELINE
 
 
-async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, signal: int) -> dict[str, Any] | None:
+async def classified(conn: psycopg.AsyncConnection[Any], run: int, client: int, signal: int) -> dict[str, Any] | None:
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(
             "select s.*,st.node canonical_node,st.output canonical_output from signals s "
@@ -35,10 +35,20 @@ async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, s
             return None
     elif output.get("classification_snapshot") != classification:
         return None
-    flags = classification.get("flags") or []
-    if classification.get("sentiment") != "negative" and not ({"churn_intent", "repeat"} & set(flags)):
-        return None
     return row
+
+
+async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, signal: int) -> dict[str, Any] | None:
+    row = await classified(conn, run, client, signal)
+    if row is None:
+        return None
+    return row if is_complaint(row["classification"]) else None
+
+
+def is_complaint(classification: dict[str, Any]) -> bool:
+    """Прежний predicate после canonical schema/output validation."""
+    flags = classification.get("flags") or []
+    return classification.get("sentiment") == "negative" or bool({"churn_intent", "repeat"} & set(flags))
 
 
 async def record_classified(ctx: ToolContext, signal_id: int) -> None:

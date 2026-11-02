@@ -193,7 +193,8 @@ def render(
         if terminal_node and after_limit:
             event = project(terminal_node, "after")
             visible_after = [*visible_after[: after_limit - 1], event]
-            visible.add(event["id"])
+            # Replacement вытесняет прежний event: edges видят только FINAL page.
+            visible = {subj["id"], *(e["id"] for e in visible_before), *(e["id"] for e in visible_after)}
     return {
         "subject": {
             "kind": subject["kind"],

@@ -8,7 +8,7 @@ import contextlib
 import copy
 import datetime as dt
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psycopg
 
@@ -27,9 +27,16 @@ from app.sim.generators import World
 from app.sim.maintenance import start_daemon, writer
 from app.sim.rng import SimRng
 
+if TYPE_CHECKING:
+    from app.sim.proactive_scenario import Plan
+
 log = get_logger(__name__)
 REAL_TICK_S = 0.5
 MAX_BATCH_MIN = 60.0  # за один тик генерируем не больше часа сим-времени (защита от «догоняния» после паузы)
+
+
+class StaleSimulatorError(ValueError):
+    """Устаревший контроллер не вправе перезаписывать native state."""
 
 
 class Simulator:
@@ -151,15 +158,32 @@ class Simulator:
                 raise
         return self.world
 
-    async def _require_current(self, conn: psycopg.AsyncConnection[Any], *, lock: bool = True) -> None:
+    async def _require_current(
+        self, conn: psycopg.AsyncConnection[Any], *, lock: bool = True, check_state: bool = False
+    ) -> None:
         """Контроллер фиксирует current до эффектов; чужой pointer не возвращает."""
-        query = "select current_run_id from sim_state where id=1"
+        query = (
+            "select current_run_id,sim_time,rng_state from sim_state where id=1"
+            if check_state
+            else "select current_run_id from sim_state where id=1"
+        )
         if lock:
             query += " for update"
         row = await (await conn.execute(query)).fetchone()
         if row is None or row[0] != self.run_id:
             await conn.rollback()
-            raise ValueError("Simulator устарел: загрузите текущий run перед управлением")
+            raise StaleSimulatorError("Simulator устарел: загрузите текущий run перед управлением")
+        # Один и тот же pointer не доказывает актуальность контроллера: чужой
+        # tick мог уже зафиксировать новое время/RNG. Проверка до create_run не
+        # позволяет stale start остановить старый run и записать прежние часы.
+        if check_state and (row[1] != self.clock.sim_time or (row[2] is not None and row[2] != self.rng.dump_state())):
+            await conn.rollback()
+            raise StaleSimulatorError("Simulator устарел: загрузите актуальные time/run/RNG перед управлением")
+        if check_state:
+            status = await (await conn.execute("select status from sim_runs where id=%s", (self.run_id,))).fetchone()
+            if (status[0] if status else None) != self.run_status:
+                await conn.rollback()
+                raise StaleSimulatorError("Simulator устарел: загрузите актуальный status текущего run")
 
     async def persist(self) -> None:
         conn = await self.connect()
@@ -179,7 +203,7 @@ class Simulator:
         )
         if result.rowcount != 1:
             await conn.rollback()
-            raise ValueError("Simulator устарел: текущий run изменён, state не сохранён")
+            raise StaleSimulatorError("Simulator устарел: текущий run изменён, state не сохранён")
 
     # --- один шаг сим-времени ---------------------------------------------------------------------------------------
     @writer("sim-step")
@@ -192,107 +216,185 @@ class Simulator:
 
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
+            await self._reject_scripted_control()
+            await self._step_chunk_locked(minutes)
+        await self._publish_tick()
+
+    async def _reject_scripted_control(self) -> None:
+        from app.sim.proactive_scenario import prepared
+
+        conn = await self.connect()
+        if self.run_id is not None and await prepared(conn, self.run_id) is not None:
+            await conn.rollback()
+            raise ValueError("Scripted-сценарий владеет часами; дождитесь фаз либо выполните Stop/новый запуск")
+
+    @writer("sim-scripted-prepare")
+    async def prepare_scenario(self, spec: Plan) -> None:
+        from app.sim.proactive_scenario import prepare
+
+        async with self._lock:
             conn = await self.connect()
-            policy = await effective_policy(conn, self.run_id, self.behavior_policy)
-            if (
-                policy is not None
-                and self.run_id is not None
-                and self.run_status not in ("completed", "stopped", "archived")
-            ):
-                try:
-                    await self._require_current(conn)
-                    if self.run_status == "interrupted":
-                        raise ValueError("Прерванный behavior run сначала нужно возобновить")
-                    # До _ensure_world: legacy отказ не меняет даже memory cache.
-                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
-                except BaseException:
-                    await conn.rollback()
-                    raise
-            world = await self._ensure_world()
-            policy = world.behavior_policy
-            if policy is not None:
-                assert self.run_id is not None
-                try:
-                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
-                    row = await (
-                        await conn.execute(
-                            "select current_run_id,sim_time,rng_state from sim_state where id=1 for update"
-                        )
-                    ).fetchone()
-                    if (
-                        row is None
-                        or row[0] != self.run_id
-                        or row[1] != self.clock.sim_time
-                        or (row[2] is not None and row[2] != self.rng.dump_state())
-                    ):
-                        raise ValueError("Behavior tick owner устарел: загрузите актуальные time/run/RNG")
-                except BaseException:
-                    await conn.rollback()
-                    raise
-            t0 = self.clock.sim_time
-            day_before = self.clock.day_no
-            rng_before = self.rng.dump_state()
-            stats_before = dict(self.stats)
-            pending_before = copy.deepcopy(world.pending)
-            faults_before = copy.deepcopy(world.active_faults)
-            minutes = min(minutes, MAX_BATCH_MIN)
             try:
+                if self.run_id is None:
+                    raise ValueError("Сначала создайте paused scenario run")
+                await self._require_current(conn, lock=False)
+                await prepare(conn, self.run_id, spec)
+                await conn.commit()
+            except BaseException:
+                await conn.rollback()
+                raise
+
+    @writer("sim-scripted-step")
+    async def prepared_step(self, run_id: int, before: dt.datetime, target: dt.datetime) -> bool:
+        """Exactly-once native target для validated prepared case, без второго clock path."""
+        from app.sim.proactive_scenario import ScriptedScenarioError, validate_step
+
+        if before.utcoffset() is None or target.utcoffset() is None:
+            raise ScriptedScenarioError("phase_clock_changed")
+        minutes = (target - before).total_seconds() / 60
+        if not 0 < minutes <= MAX_BATCH_MIN:
+            raise ScriptedScenarioError("phase_clock_changed")
+        async with self._lock:
+            conn = await self.connect()
+            try:
+                await validate_step(conn, run_id, before, target)
+                row = await (
+                    await conn.execute(
+                        "select st.current_run_id,st.sim_time,st.rng_state,st.running,r.kind,r.status "
+                        "from sim_state st join sim_runs r on r.id=st.current_run_id where st.id=1 "
+                        "for update of st for share of r"
+                    )
+                ).fetchone()
+                if (
+                    row is None
+                    or row[0] != run_id
+                    or row[3]
+                    or row[4:] != ("scenario", "paused")
+                    or self.run_id != run_id
+                    or self.run_status != "paused"
+                    or self.clock.running
+                    or row[2] != self.rng.dump_state()
+                    or row[1] != self.clock.sim_time
+                ):
+                    raise ScriptedScenarioError("owner_changed")
+                if row[1] == target:
+                    await conn.rollback()
+                    return False
+                if row[1] != before:
+                    raise ScriptedScenarioError("phase_clock_changed")
+                await self._step_chunk_locked(minutes)
+            except BaseException:
+                await conn.rollback()
+                raise
+        await self._publish_tick()
+        return True
+
+    async def _step_chunk_locked(self, minutes: float) -> None:
+        conn = await self.connect()
+        policy = await effective_policy(conn, self.run_id, self.behavior_policy)
+        if (
+            policy is not None
+            and self.run_id is not None
+            and self.run_status not in ("completed", "stopped", "archived")
+        ):
+            try:
+                await self._require_current(conn)
+                if self.run_status == "interrupted":
+                    raise ValueError("Прерванный behavior run сначала нужно возобновить")
+                # До _ensure_world: legacy отказ не меняет даже memory cache.
+                await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
+            except BaseException:
+                await conn.rollback()
+                raise
+        world = await self._ensure_world()
+        policy = world.behavior_policy
+        if policy is not None:
+            assert self.run_id is not None
+            try:
+                await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
+                row = await (
+                    await conn.execute("select current_run_id,sim_time,rng_state from sim_state where id=1 for update")
+                ).fetchone()
+                if (
+                    row is None
+                    or row[0] != self.run_id
+                    or row[1] != self.clock.sim_time
+                    or (row[2] is not None and row[2] != self.rng.dump_state())
+                ):
+                    raise ValueError("Behavior tick owner устарел: загрузите актуальные time/run/RNG")
+            except BaseException:
+                await conn.rollback()
+                raise
+        t0 = self.clock.sim_time
+        day_before = self.clock.day_no
+        rng_before = self.rng.dump_state()
+        stats_before = dict(self.stats)
+        pending_before = copy.deepcopy(world.pending)
+        faults_before = copy.deepcopy(world.active_faults)
+        minutes = min(minutes, MAX_BATCH_MIN)
+        try:
+            from app.sim.proactive_scenario import prepared_source
+
+            scripted = self.run_id is not None and await prepared_source(conn, self.run_id)
+            if not scripted:
                 self.stats["faults"] += await world.gen_faults(t0, minutes)
                 self.stats["ops"] += await world.gen_operations(t0, minutes)
                 self.stats["client_errors"] += await world.gen_client_errors(t0, minutes)
-                self.clock.sim_time = t0 + dt.timedelta(minutes=minutes)
-                if self.clock.sim_time.astimezone(MSK).date() != t0.astimezone(MSK).date():
-                    self.clock.day_no += 1
+            self.clock.sim_time = t0 + dt.timedelta(minutes=minutes)
+            if self.clock.sim_time.astimezone(MSK).date() != t0.astimezone(MSK).date():
+                self.clock.day_no += 1
+            if scripted:
+                self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes, ambient_noise=False)
+            else:
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes)
-                execution = await configuration(conn, self.run_id) if self.run_id else {}
-                if not execution.get("enabled"):
-                    await world.team_emulator.tick(self.clock.sim_time, world)
-                await world.sla_engine.tick(t0, self.clock.sim_time)
-                self.stats["ticks"] += 1
-                await self.persist()
-                if policy is not None:
-                    assert self.run_id is not None
-                    await capture(conn, self.run_id)
-                    owner = BehaviorOwner(conn, policy)
-                    next_rng = await owner.advance(
-                        run_id=self.run_id, to_sim=self.clock.sim_time, allow_paused=self.run_status == "paused"
-                    )
-                    self.rng.load_state(next_rng)
-                    self.stats["signals"] += owner.generated_signals
-                    await self.persist()
-                await conn.commit()
-            except BaseException as error:
-                # Любая незафиксированная попытка отменяется вместе с logical
-                # time/RNG/stats. Частично изменённый World нельзя reuse при retry.
-                self.clock.sim_time = t0
-                self.clock.day_no = day_before
-                self.rng.load_state(rng_before)
-                self.stats = stats_before
-                restored = World(
-                    conn,
-                    EventBus(conn),
-                    self.rng,
-                    world.run_id,
-                    world.intensities,
-                    behavior_policy=policy,
+            execution = await configuration(conn, self.run_id) if self.run_id else {}
+            if not execution.get("enabled"):
+                await world.team_emulator.tick(self.clock.sim_time, world)
+            await world.sla_engine.tick(t0, self.clock.sim_time)
+            self.stats["ticks"] += 1
+            await self.persist()
+            if policy is not None:
+                assert self.run_id is not None
+                await capture(conn, self.run_id)
+                owner = BehaviorOwner(conn, policy)
+                next_rng = await owner.advance(
+                    run_id=self.run_id, to_sim=self.clock.sim_time, allow_paused=self.run_status == "paused"
                 )
-                restored.pending = pending_before
-                restored.active_faults = faults_before
-                self.world = restored
+                self.rng.load_state(next_rng)
+                self.stats["signals"] += owner.generated_signals
+                await self.persist()
+            await conn.commit()
+        except BaseException as error:
+            # Любая незафиксированная попытка отменяется вместе с logical
+            # time/RNG/stats. Частично изменённый World нельзя reuse при retry.
+            self.clock.sim_time = t0
+            self.clock.day_no = day_before
+            self.rng.load_state(rng_before)
+            self.stats = stats_before
+            restored = World(
+                conn,
+                EventBus(conn),
+                self.rng,
+                world.run_id,
+                world.intensities,
+                behavior_policy=policy,
+            )
+            restored.pending = pending_before
+            restored.active_faults = faults_before
+            self.world = restored
+            await conn.rollback()
+            try:
+                await restored.load()
+            except Exception as reload_error:
+                # Existing pending остаётся в restored; loaded=False заставит
+                # следующий step повторить DB reload, а не использовать partial cache.
                 await conn.rollback()
-                try:
-                    await restored.load()
-                except Exception as reload_error:
-                    # Existing pending остаётся в restored; loaded=False заставит
-                    # следующий step повторить DB reload, а не использовать partial cache.
-                    await conn.rollback()
-                    log.error("sim_world_reload_failed", error_type=type(reload_error).__name__)
-                else:
-                    await conn.rollback()  # reload только читает committed DB.
-                if not isinstance(error, asyncio.CancelledError):
-                    log.exception("sim_step_failed")
-                raise
-        await self._publish_tick()
+                log.error("sim_world_reload_failed", error_type=type(reload_error).__name__)
+            else:
+                await conn.rollback()  # reload только читает committed DB.
+            if not isinstance(error, asyncio.CancelledError):
+                log.exception("sim_step_failed")
+            raise
 
     async def _publish_tick(self) -> None:
         minute = self.clock.sim_time.replace(second=0, microsecond=0)
@@ -326,7 +428,7 @@ class Simulator:
                 conn = await self.connect()
                 previous_status = self.run_status
                 try:
-                    await self._require_current(conn)
+                    await self._require_current(conn, check_state=True)
                     execution = await configuration(conn, self.run_id) if self.run_id else {}
                     if self.run_id and (
                         self.run_status == "running"
@@ -352,12 +454,14 @@ class Simulator:
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
         conn = await self.connect()
-        await self._require_current(conn, lock=False)
+        await self._require_current(conn, lock=False, check_state=True)
         creates_new = action == "start" and (
             self.run_id is None
             or self.run_status in ("stopped", "completed", "archived", None)
             or bool(kw.get("label"))
         )
+        if not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
+            await self._reject_scripted_control()
         if (
             self.behavior_policy is not None
             and self.run_id is not None
@@ -378,7 +482,7 @@ class Simulator:
             and not kw.get("label")
         ):
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 execution.update(status="running", enabled=True)
                 await save(conn, self.run_id, execution)
                 self.clock.running = True
@@ -392,7 +496,7 @@ class Simulator:
             raise ValueError("Изолированный сценарий использует событийное время; доступны запуск, пауза и остановка")
         if action == "start":
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 previous = (
                     self.run_id,
                     self.run_status,
@@ -453,7 +557,7 @@ class Simulator:
             return self.state_dict()
         elif action in ("set_speed", "set_preset"):
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 previous_speed = self.clock.speed
                 try:
                     if action == "set_speed":
@@ -478,7 +582,7 @@ class Simulator:
                 await self.step((target - self.clock.sim_time).total_seconds() / 60)
             else:
                 async with self._lock:
-                    await self._require_current(conn)
+                    await self._require_current(conn, check_state=True)
                     self.clock.sim_time = target
                     self.clock.day_no += 1
                     if self.world:
@@ -498,7 +602,7 @@ class Simulator:
             raise ValueError(f"неизвестное действие: {action}")
         if self.run_id:
             async with self._lock:
-                await self._require_current(conn)
+                await self._require_current(conn, check_state=True)
                 execution = await configuration(conn, self.run_id)
                 if not execution and self.full_execution and action in ("start", "resume"):
                     execution = await ensure(conn, self.run_id, running=True)
@@ -514,6 +618,7 @@ class Simulator:
     async def resume_run(self) -> dict[str, Any]:
         """Resume продолжает только последний paused/interrupted, не создаёт новый run."""
         async with self._lock:
+            await self._reject_scripted_control()
             conn = await self.connect()
             row = await (
                 await conn.execute(
@@ -573,10 +678,20 @@ class Simulator:
     async def shutdown(self) -> None:
         await self._stop_loop()
         if self.conn and not self.conn.closed:
-            with contextlib.suppress(Exception):
-                await self.persist()
-                await self.conn.commit()
-            await self.conn.close()
+            try:
+                async with self._lock:
+                    await self._require_current(self.conn, check_state=True)
+                    await self.persist()
+                    await self.conn.commit()
+            except StaleSimulatorError:
+                await self.conn.rollback()
+                log.info("sim_shutdown_stale_skipped", run_id=self.run_id)
+            except Exception:
+                await self.conn.rollback()
+                log.exception("sim_shutdown_failed", run_id=self.run_id)
+                raise
+            finally:
+                await self.conn.close()
 
     async def reload_after_restore(self) -> None:
         """Перечитать sim_state после pg_restore (новое соединение, сброс World)."""

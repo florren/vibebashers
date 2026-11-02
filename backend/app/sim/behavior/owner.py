@@ -1,8 +1,7 @@
-"""Единственный transactional behavior writer; пока только явный scratch/proposal.
+"""Единственный transactional behavior writer внутри существующей Sim tick TX.
 
-Actor wiring отсутствует. Внешний tick открывает TX и сохраняет состояние своего
-RNG до advance; owner блокирует sim_state и возвращает следующий RNG snapshot.
-Ни connect, ни commit, ни runtimeDDL, ни память очереди здесь не используются.
+Внешний tick сохраняет состояние своего RNG; owner блокирует sim_state и
+возвращает следующий snapshot. Здесь нет connect/commit/runtimeDDL или RAM-очереди.
 """
 
 from __future__ import annotations
@@ -67,6 +66,7 @@ class BehaviorOwner:
     async def advance(self, *, run_id: int, to_sim: dt.datetime, allow_paused: bool = False) -> dict[str, Any]:
         self.store.require_transaction()
         self.generated_signals = 0
+        self.cancellation_observed_at = to_sim
         if not isinstance(allow_paused, bool):
             raise ValueError("allow_paused должен быть явным bool")
         positive_ids(run_id)
@@ -771,10 +771,9 @@ class BehaviorOwner:
             "update behavior_runtime set closed_sim=%s where run_id=%s and client_id=%s",
             (at, current["run_id"], current["client_id"]),
         )
-        await self.conn.execute(
-            "update behavior_work set status='cancelled',consumed_sim=%s where run_id=%s and client_id=%s and episode_no=%s and status='pending'",
-            (at, current["run_id"], current["client_id"], current["episode_no"]),
-        )
+        from app.sim.behavior.cancellation import cancel_pending
+
+        await cancel_pending(self.conn, current, evidence, at=at, observed_at=self.cancellation_observed_at)
 
     async def _agent_intent(self, evidence: Any, at: dt.datetime, rng: SimRng) -> None:
         from app.sim.behavior.signals import canonical
@@ -827,9 +826,15 @@ class BehaviorOwner:
                 "update behavior_runtime set first_complaint_sim=%s,next_hazard_sim=%s where run_id=%s and client_id=%s",
                 (first, self.next_tick(when), intent["run_id"], intent["client_id"]),
             )
-            await self.conn.execute(
-                "update behavior_work set status='cancelled',consumed_sim=%s where run_id=%s and client_id=%s and episode_no=%s and kind='complaint' and status='pending'",
-                (when, intent["run_id"], intent["client_id"], current["episode_no"]),
+            from app.sim.behavior.cancellation import cancel_pending
+
+            await cancel_pending(
+                self.conn,
+                current,
+                evidence,
+                at=when,
+                observed_at=self.cancellation_observed_at,
+                canonical_signal_id=signal["id"],
             )
         flags = signal["classification"].get("flags") or []
         if "repeat" in flags:

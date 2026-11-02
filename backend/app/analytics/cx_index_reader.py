@@ -34,14 +34,47 @@ async def metrics_scope(conn: Conn, requested: str) -> MetricsScope:
     if state is None:
         raise HTTPException(503, "Симуляционные часы не инициализированы")
     if requested == "all":
-        return MetricsScope(requested, None, state["sim_time"])
-    if requested == "current":
+        scope = MetricsScope(requested, None, state["sim_time"])
+    elif requested == "current":
         current = state["current_run_id"]
-        return MetricsScope(requested, int(current) if current is not None else -1, state["sim_time"], current is None)
-    rid = int(requested)
-    if await fetch_one(conn, "SELECT id FROM sim_runs WHERE id=%s", (rid,)) is None:
-        raise HTTPException(404, "Запуск не найден")
-    return MetricsScope(requested, rid, state["sim_time"])
+        scope = MetricsScope(requested, int(current) if current is not None else -1, state["sim_time"], current is None)
+    else:
+        rid = int(requested)
+        if await fetch_one(conn, "SELECT id FROM sim_runs WHERE id=%s", (rid,)) is None:
+            raise HTTPException(404, "Запуск не найден")
+        scope = MetricsScope(requested, rid, state["sim_time"])
+    if not scope.current_missing:
+        await _validate_temporal_context(conn, scope)
+    return scope
+
+
+async def _validate_temporal_context(conn: Conn, scope: MetricsScope) -> None:
+    """Защитная граница известных future evidence, не реконструкция истории.
+
+    Отсутствие complaint receipt не доказывает публикацию классификации:
+    положительные классификации не создают такой receipt. Корректность native
+    start дополнительно требует upstream stale-controller fence (T-041).
+    """
+    run_filter = " AND id=%s" if scope.run_id is not None else ""
+    receipt_filter = " AND run_id=%s" if scope.run_id is not None else ""
+    args: list[Any] = [scope.now, scope.now]
+    if scope.run_id is not None:
+        args.append(scope.run_id)
+    args.append(scope.now)
+    if scope.run_id is not None:
+        args.append(scope.run_id)
+    conflict = await fetch_one(
+        conn,
+        f"""SELECT EXISTS (
+          SELECT 1 FROM sim_runs WHERE (started_sim>%s OR finished_sim>%s) {run_filter}
+        ) OR EXISTS (
+          SELECT 1 FROM behavior_agent_intents WHERE observed_sim>%s {receipt_filter}
+        ) AS conflict""",
+        args,
+    )  # noqa: S608 — predicates внутренние, scope и время параметризованы.
+    assert conflict is not None
+    if conflict["conflict"]:
+        raise HTTPException(409, "temporal_context_conflict")
 
 
 def _signal_selection(scope: MetricsScope, historical: bool) -> tuple[str, list[Any]]:
