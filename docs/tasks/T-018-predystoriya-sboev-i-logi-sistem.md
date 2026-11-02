@@ -95,3 +95,12 @@ checkout/БД — 1272 passed, 24 skipped; aggregate проверил одина
 trace/финансовые fixtures — 89 passed, 2 skipped (358.50s); frontend 144 passed.
 Исходные assertions сохранены. Финансовые исправления получены только обычным
 merge зависимости T-017, без новых policy-правок в T-018.
+
+### Проверка с актуальным T-042/main
+
+Новый исторический след добавил74baseline fault events; прежняя CSV-фикстура
+T-042 ошибочно предполагала пустую sim_events и ожидала1001 вместо1075.
+Теперь тест сначала сверяет экспорт всей исходной истории с реальным count,
+затем очищает только собственные тестовые baseline events для контролируемых1001строк.
+Все исходные assertions CSV escaping/pagination/run isolation/read-only сохранены.
+Targeted1PG passed6.03s; runtime/export не изменялся. Полный текущий CI повторяется.

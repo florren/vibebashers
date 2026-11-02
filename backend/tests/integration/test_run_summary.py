@@ -74,6 +74,19 @@ def test_stop_summary_matches_metrics_and_profiles(seeded, conn):
 
 def test_readonly_json_csv_and_run_isolation(seeded, conn):
     rid = baseline(conn)
+    historical_count = conn.execute("select count(*) from sim_events where run_id=%s", (rid,)).fetchone()[0]
+    assert historical_count > 0
+
+    async def check_seed_history():
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as ac:
+            await ac.execute("set transaction isolation level repeatable read read only")
+            exported = await export_json(ac, rid)
+            assert sum(row["events"] for row in exported["aggregates"]["hours"]) == historical_count
+
+    asyncio.run(check_seed_history())
+    # Контролируемые 1001 строки ниже проверяют CSV/pagination; события истории
+    # T-018 уже проверены выше и не должны менять размер этой тестовой фикстуры.
+    conn.execute("delete from sim_events where run_id=%s", (rid,))
     other = conn.execute(
         "insert into sim_runs(kind,label,seed,status,started_sim) values('free','other',5,'completed',now()) returning id"
     ).fetchone()[0]
