@@ -17,3 +17,9 @@ Discovery SQL работает в read-only транзакции; отсутст
 Это промежуточная реализация T-235. Приёмка rich traces, веера, pending,
 производительности, Playwright/export, ru/en × themes и DEMO-SCRIPT остаётся
 незакрытой. На неполной БД checker завершится FAIL, не создавая недостающих данных.
+
+Источник `c4d53ab`: новые исполняемые строки 97/100 (97.00%);
+сам checker — 88/90 (97.8%). Показатели и hashes файлов сохранены в
+`T-235-checkpoint-coverage.json`. Соседние search/trace regressions: 118 passed
+за 1.55s. Первый sandbox запуск завис на TestClient и был остановлен;
+успешный повтор выполнен без ограничивающего TestClient sandbox.
