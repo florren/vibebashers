@@ -44,4 +44,4 @@ cd frontend && npx playwright test e2e/calm-mode.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-253-attention-modes`; код `59da3d3` + `747bd92`, обычная композиция `bd649f2`. Полный backend1663/22skip и frontend311 на59; финальный frontend312 +actual4calm/4SLA-mobile. Backend/contracts не менялись. Подробности и безопасный GET materialization finding: [T-253-attention-modes.md](../reviews/T-253-attention-modes.md). Снимки: `docs/screenshots/T-253/`. Human review UI HITL confirmation и применение budget к реальным T242/T255 остаются открыты; done не выставлен.
+Ветка `codex/T-253-attention-modes`; код `59da3d3` + `747bd92`, обычная композиция `bd649f2`. Полный backend1663/22skip и frontend311 на59; финальный frontend315 (`1f073b6` добавляет typed fetch marker/generic unknown; target13/13) +actual4calm/4SLA-mobile. Backend/contracts не менялись. Подробности и безопасный GET materialization finding: [T-253-attention-modes.md](../reviews/T-253-attention-modes.md). Снимки: `docs/screenshots/T-253/`. Human review UI HITL confirmation и применение budget к реальным T242/T255 остаются открыты; done не выставлен.
