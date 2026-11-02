@@ -5,9 +5,7 @@ from pathlib import Path
 from alembic import op
 
 revision = "0020"
-# Локальная foundation до появления clean0019. Перед PR заменить на0019
-# и проверить цепочку19→20; не применять эту ветку к рабочей БД.
-down_revision = "0018"
+down_revision = "0019"
 branch_labels = None
 depends_on = None
 
