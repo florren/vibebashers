@@ -18,7 +18,7 @@ async def canonical(conn: psycopg.AsyncConnection[Any], run: int, client: int, s
             "select s.*,st.node canonical_node,st.output canonical_output from signals s "
             "join agent_runs a on a.signal_id=s.id and a.sim_run_id=s.run_id and a.kind='agent' "
             "join agent_steps st on st.run_id=a.id and st.node in ('classify','instant_decide') and st.status in ('ok','fallback') "
-            "where s.id=%s and s.run_id=%s and s.client_id=%s order by st.id desc limit 1",
+            "where s.id=%s and s.run_id=%s and s.client_id=%s and s.origin<>'proactive' order by st.id desc limit 1",
             (signal, run, client),
         )
         row = await cur.fetchone()
