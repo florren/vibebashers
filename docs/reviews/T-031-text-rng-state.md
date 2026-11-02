@@ -27,3 +27,17 @@ RNG в БД отсутствовал, поэтому его неизвестно
 Не утверждается, что этот небольшой diff сам по себе завершает восстановление
 всех доменных процессов. Откат — обычный revert без изменения схемы; он вернёт
 исходный дефект private RNG. Рабочая БД и реальные внешние сервисы не менялись.
+
+## Итог локальных проверок
+
+Выполнены все цели make test последовательно: unit1056/18skip, integration236/4skip
+и два первоначальных отказа, затем оба исправленных теста2passed16.95s; scenarios42/2skip,
+compliance31passed, frontend173passed. Суммарно1367 backend cases прошли,24skipped;
+это результаты последовательных фаз и targeted rerun, не один повторный монолитный run.
+Единый RNG изменил реализацию seed42: за первые120мин получилось0случайных жалоб
+при190операциях. Два теста теперь проверяют полный рабочий день480мин с теми же
+production rates; исходные positive-generation, restore/determinism assertions сохранены.
+Runtime интенсивности/вероятности не корректировались ради теста.
+
+make lint exit0: Ruff/format350,mypy250,frontend173,drift191. Finalfixture format и
+diff-check green. Exact-head remote CI остаётся gate до merge.
