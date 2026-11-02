@@ -50,18 +50,27 @@ async def signals(
         + " NULLS LAST,f.id "
         + ("ASC" if direction == "asc" else "DESC")
     )
+    # При stale stats selected может оцениваться как одна строка: materialized
+    # edges исключают декартово run-соединение. Индексируемый JSONB map заменяет
+    # повторный nested scan агрегированных связей на каждый сигнал при той же ошибке оценки.
     rows = await fetch_all(
         conn,
         f"""
       WITH selected AS MATERIALIZED (SELECT f.* FROM v_cabinet_signal_facts f WHERE {where}
-        ORDER BY {order} LIMIT %s OFFSET %s), linked AS (
+        ORDER BY {order} LIMIT %s OFFSET %s), selected_edges AS MATERIALIZED (
+        SELECT x.signal_id,x.incident_id,f.run_id FROM selected f
+        JOIN incident_signals x ON x.signal_id=f.id
+      ), linked AS MATERIALIZED (
         SELECT x.signal_id,min(i.sla_due_sim) FILTER(WHERE i.status NOT IN ('closed','resolved','rejected','duplicate')) AS sla_due_sim,
           jsonb_agg(jsonb_build_object('id',i.id,'public_id',i.public_id,'status',i.status) ORDER BY i.id) AS incidents
-        FROM selected f JOIN incident_signals x ON x.signal_id=f.id
-        JOIN incidents i ON i.id=x.incident_id AND i.run_id=f.run_id GROUP BY x.signal_id)
+        FROM selected_edges x JOIN incidents i ON i.id=x.incident_id AND i.run_id=x.run_id GROUP BY x.signal_id
+      ), link_map AS MATERIALIZED (
+        SELECT jsonb_object_agg(signal_id,jsonb_build_object('sla_due_sim',sla_due_sim,'incidents',incidents)) AS by_signal FROM linked
+      )
       SELECT f.*,s.classification->>'problem_summary' AS problem_summary,
-        coalesce(s.classification->>'summary_ru',s.text) AS summary,l.sla_due_sim,l.incidents
-      FROM selected f JOIN signals s ON s.id=f.id LEFT JOIN linked l ON l.signal_id=f.id ORDER BY {order}
+        coalesce(s.classification->>'summary_ru',s.text) AS summary,
+        (m.by_signal->f.id::text->>'sla_due_sim')::timestamptz AS sla_due_sim,m.by_signal->f.id::text->'incidents' AS incidents
+      FROM selected f JOIN signals s ON s.id=f.id CROSS JOIN link_map m ORDER BY {order}
     """,
         [*args, limit, offset],
     )  # noqa: S608 — сортировка из закрытого allowlist, значения только params.
