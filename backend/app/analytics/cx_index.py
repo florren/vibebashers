@@ -33,14 +33,32 @@ class Observation:
         return self.value if self.known == self.total else None
 
 
+def validated_weights(value: object) -> dict[str, float]:
+    """Граница settings: четыре явных finite coefficients, без тихой нормировки."""
+    if not isinstance(value, Mapping) or set(value) != set(COMPONENTS):
+        raise ValueError("Нужны ровно четыре явных веса CX")
+    result: dict[str, float] = {}
+    for key in COMPONENTS:
+        raw = value[key]
+        if type(raw) not in (int, float):
+            raise ValueError("Веса CX должны быть конечными неотрицательными числами")
+        try:
+            weight = float(raw)
+        except OverflowError as exc:
+            raise ValueError("Вес CX не представим конечным числом") from exc
+        if not math.isfinite(weight) or weight < 0:
+            raise ValueError("Веса CX должны быть конечными неотрицательными числами")
+        result[key] = weight
+    if not any(result.values()):
+        raise ValueError("Хотя бы один вес CX должен быть положительным")
+    return result
+
+
 def weighted_index(*, components: Mapping[str, Observation], weights: Mapping[str, float]) -> float | None:
     """CX=clamp(100−Σwᵢxᵢ); веса обязательны и никогда не перенормируются."""
-    if set(components) != set(COMPONENTS) or set(weights) != set(COMPONENTS):
-        raise ValueError("Нужны ровно четыре компонента и четыре явных веса")
-    if any(isinstance(w, bool) or not math.isfinite(w) or w < 0 for w in weights.values()):
-        raise ValueError("Веса должны быть конечными неотрицательными числами")
-    if not any(weights.values()):
-        raise ValueError("Хотя бы один вес должен быть положительным")
+    if set(components) != set(COMPONENTS):
+        raise ValueError("Нужны ровно четыре компонента CX")
+    weights = validated_weights(weights)
     values = {key: value.complete_value for key, value in components.items()}
     # Даже нулевой вес не позволяет скрыть unknown-компонент исходной модели.
     if any(value is None for value in values.values()):

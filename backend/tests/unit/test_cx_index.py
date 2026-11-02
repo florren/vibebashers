@@ -4,7 +4,14 @@ import math
 
 import pytest
 
-from app.analytics.cx_index import COMPONENTS, DEFAULT_WEIGHTS, Observation, hourly_delta, weighted_index
+from app.analytics.cx_index import (
+    COMPONENTS,
+    DEFAULT_WEIGHTS,
+    Observation,
+    hourly_delta,
+    validated_weights,
+    weighted_index,
+)
 
 
 def observations(values):
@@ -85,3 +92,26 @@ def test_unknown_previous_is_not_current_classification_backdated():
 
 def test_large_finite_weights_saturate_without_overflow():
     assert weighted_index(components=observations((100,) * 4), weights={key: 1e308 for key in COMPONENTS}) == 0
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        [],
+        {},
+        {"negativity": 1},
+        {**DEFAULT_WEIGHTS, "unknown": 1},
+        {**DEFAULT_WEIGHTS, "sla": "0.2"},
+        {**DEFAULT_WEIGHTS, "sla": 10**1000},
+    ],
+)
+def test_settings_weights_boundary_rejects_malformed_without_fallback(value):
+    with pytest.raises(ValueError):
+        validated_weights(value)
+
+
+def test_settings_weights_do_not_normalize_explicit_coefficients():
+    configured = {key: 1 for key in COMPONENTS}
+    assert validated_weights(configured) == configured
+    assert configured == {key: 1 for key in COMPONENTS}
