@@ -31,3 +31,11 @@ export async function loadScenarioJourney(scenarioId: string) {
   if (!journey.stages.some((s) => s.events.some((e) => numericRef(e.run_id ?? undefined, 'SR') === run.id))) throw new Error(i18n.t('journeyModes.noScenario'))
   return journey.subject.ref
 }
+
+/** Сохраняет явный run при переходе из аналитики; legacy href не меняется. */
+export function scopedJourneyHref(path: string, runId?: string): string {
+  if (runId === undefined) return path
+  const url = new URL(path, 'http://cx.local')
+  url.searchParams.set('run_id', runId)
+  return url.pathname + url.search + url.hash
+}

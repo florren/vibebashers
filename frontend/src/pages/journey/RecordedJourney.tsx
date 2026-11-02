@@ -7,11 +7,11 @@ import { EventCard } from '@/pages/trace/components/EventCard'
 import { ErrorBox } from '@/shared/ui'
 import { frameDelay, initialPlayback, playbackReducer, presenterNotes, timeline, visibleJourney } from './playback'
 
-export function RecordedJourney({ reference, mode }: { reference: string; mode: 'replay' | 'presenter' }) {
+export function RecordedJourney({ reference, mode, runId }: { reference: string; mode: 'replay' | 'presenter'; runId?: string }) {
   const { t, i18n } = useTranslation()
   const result = useQuery({
-    queryKey: ['journey-recording', reference, mode],
-    queryFn: () => getJourney(reference, 'any', mode === 'presenter'),
+    queryKey: ['journey-recording', reference, mode, runId],
+    queryFn: () => runId === undefined ? getJourney(reference, 'any', mode === 'presenter') : getJourney(reference, 'any', mode === 'presenter', runId),
     staleTime: Infinity,
     gcTime: 0,
     refetchOnWindowFocus: false,
