@@ -17,10 +17,8 @@
 §6, §8.4, §18 сц. 6
 
 ## Контракты
-
-`contract-change`: API1.5.25/native scenario events и dependency DDL0019;
-final API/DDL/financial/HITL human review обязателен до merge.
-
+- `api/openapi.yaml 1.5.25: native scenario journal/control; contract-change`
+- `db/migrations/0019_behavior_cancellation_receipts.sql: prevention provenance (dependency)`
 - `events/sim/fault.schema.json`
 - `events/agent/decision.schema.json (client_action.kind=proactive_notice)`
 
@@ -135,3 +133,12 @@ focused35tests/15of18newlines83.33% отдельно; старый expanded145pa
 in_progress до проверки final head. Proof/review: docs/reviews/T-039-proactive-fault.md
 и T-039-composition-proof.json. Пользовательское недеструктивное окно до07:00
 03.11.2026МСК не включает внешние платные вызовы/production/PR180 cutover block.
+
+### Генератор карточки
+
+Источник scripts/gen_tasks.py теперь сохраняет actual mass_notifications и
+API1.5.25/DDL0019 contract-change при повторной генерации. Повтор byte-identical,
+AST valid, diff check green; явная дополнительная проверка Ruff самого исторического
+генератора даёт те же169 замечаний до/после (он вне штатной backend lint цели).
+Runtime/контракты не изменены; новый exact-head CI обязателен. Финальные review
+API/DDL/financial/HITL и parent prerequisites остаются обязательными до merge.
