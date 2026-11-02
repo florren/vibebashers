@@ -21,3 +21,9 @@ API1.5.25: внешний origin=proactive и новый reserved source fault_m
 - Полный unit на этом checkpoint:1787 passed/18 skipped (50.49s); contracts45 schemas/162 paths.
 
 Это НЕ завершение карточки: фоновые wakeup/recovery/late recipients, actual120/90/30 и care proof ещё в работе. Общий effect-time/active-run fence ждёт отдельного committed T161 checkpoint; WIP другого автора не копируется. T241 customer-view filter принадлежит agent3. Счётчик prevented complaints пока null/not_modelled: Sent не доказывает профилактический эффект, native cancellation не содержит достаточной attribution. После proof будет отдельный provenance proposal с T161 owner; новые policy числа/коэффициенты не вводятся. Full lint/test/coverage/final CI и human review готовой композиции остаются обязательными.
+
+## Native routing / T161 ownership checkpoint
+
+Обычным merge включён committed T16189f61b5. Producer и короткая effects transaction используют его active_run SHARE/current gate; lock через LLM не удерживается. Native system/error routing имеет приоритет над product_line модели только для подтверждённого service signal, customer routing сохраняется. Дополнительная CX команда из ТЗ6.9 хранится в fault_monitor config.co_team_codes; отсутствие/невалидный source, неизвестная команда или отсутствующий native routing rule завершаются диагностикой, без подстановки команды.
+
+9 actual PG passed (49.42s): в том числе schema-valid Fake model с неверным product_line, фактический team_notifications+team_cx и unchanged DCLTV affected_count=3; четыре негативных конфигурации не создают signal. Новые immediate Sent outcomes явно отражаются как emulated, queued не выдаётся за доставку. Критерии всей карточки по-прежнему не закрыты. Отдельный regression выявил отсутствующий metadata link identified customer до реального HITL; его исправление будет отдельным focused commit с неизменными human/act guards.

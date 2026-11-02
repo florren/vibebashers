@@ -709,12 +709,24 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
     return state
 
 
+async def _native_service_scope(state: AgentState, deps: Deps, *, for_effect: bool = False) -> dict[str, Any] | None:
+    if not proactive.is_service(state["signal"]):
+        return None
+    native = await proactive.service_scope(deps.ctx.conn, state["signal"], deps.ctx.run_id, for_effect=for_effect)
+    if native is None or not native["affected_count"]:
+        raise ValueError("служебный fault scope устарел или не подтверждён native producer/current run")
+    previous = state["context"].get("proactive_fault")
+    if for_effect and previous and previous.get("co_team_codes") != native["co_team_codes"]:
+        raise ValueError("служебный маршрут изменился после решения; требуется повторная обработка")
+    state["context"]["proactive_fault"] = proactive.summary(native)
+    deps.ctx.sim_time = native["as_of"]
+    return native
+
+
 async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     sig, client = state["signal"], state.get("client")
     ctx: dict[str, Any] = {}
-    native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id) if proactive.is_service(sig) else None
-    if proactive.is_service(sig) and (native is None or not native["affected_count"]):
-        raise ValueError("служебный fault scope не подтверждён native producer/current run")
+    native = await _native_service_scope(state, deps)
     if native:
         ctx["proactive_fault"] = proactive.summary(native)
         deps.ctx.sim_time = native["as_of"]
@@ -1497,9 +1509,13 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
     c["signal_type"] = stype
     # продукт ↔ система
     product = (
-        c.get("product")
-        or norm.get("entities", {}).get("product")
-        or (ctx["products"][0]["product"] if ctx.get("products") else None)
+        native["product_code"]
+        if native
+        else (
+            c.get("product")
+            or norm.get("entities", {}).get("product")
+            or (ctx["products"][0]["product"] if ctx.get("products") else None)
+        )
     )
     system = c.get("system")
     if product and system and system not in PRODUCT_SYSTEMS.get(product, [system]):
@@ -1659,8 +1675,16 @@ def route_team(c: dict[str, Any], state: AgentState, deps: Deps) -> tuple[str, l
         facts["signal_type"] = "churn"
     for rule_id, match, teams in deps.routing_rules:
         if all(facts.get(k) == v for k, v in match.items()):
+            if state.get("context", {}).get("proactive_fault") and (
+                not teams or any(team not in deps.teams for team in teams)
+            ):
+                raise ValueError("native fault routing rule содержит неизвестную команду")
             teams = [t for t in teams if t in deps.teams] or ["team_cx"]
+            if state.get("context", {}).get("proactive_fault"):
+                teams = list(dict.fromkeys([*teams, *state["context"]["proactive_fault"]["co_team_codes"]]))
             return teams[0], teams[1:], rule_id
+    if state.get("context", {}).get("proactive_fault"):
+        raise ValueError("для native fault отсутствует правило маршрутизации")
     return "team_cx", [], None
 
 
@@ -1961,6 +1985,14 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         state["errors"].append(f"decide: {exc}")
     d: dict[str, Any] = dict(obj)
     checks: list[dict[str, Any]] = []
+    if ctx.get("proactive_fault"):
+        checks.append(
+            {
+                "rule": "native_service_system_routing",
+                "passed": True,
+                "note": "Маршрут по native system/error rule; product_line модели не назначает владельца служебного сбоя.",
+            }
+        )
     # --- детерминированные поля ---
     rules = ctx.get("rules_matched") or []
     fee_rule = next((r for r in rules if r["action"] == "refund_fee"), None)
@@ -2325,12 +2357,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
 async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     """Создаёт запрос HITL и прерывает граф (outcome awaiting_human); чекпоинт — вход этого шага."""
     d, sig = state["decision"], state["signal"]
-    if proactive.is_service(sig):
-        native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id)
-        if native is None or not native["affected_count"]:
-            raise ValueError("служебный fault scope устарел перед HITL effects")
-        deps.ctx.sim_time = native["as_of"]
-        state["context"]["proactive_fault"] = proactive.summary(native)
+    native = await _native_service_scope(state, deps, for_effect=True)
+    if native:
         d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     incident_id = await _hitl_incident_id(deps, d)
     if not state.get("client") and not sig.get("client_id") and d.get("incident_action") in ("create", "link_existing"):
@@ -2467,6 +2495,7 @@ def _act_spec(
         "problem_summary": c.get("problem_summary"),
         "followup_hours": float(follow.get("wake_in_sim_hours") or 4.0),
         "lang": lang,
+        "proactive_service": bool(state["context"].get("proactive_fault")),
     }
 
 
@@ -2496,7 +2525,11 @@ def _router_matches(action: str, names: list[str]) -> bool:
 async def _act_route(deps: Deps, d: dict[str, Any], c: dict[str, Any], mark: Callable[..., None]) -> int:
     summary = _route_summary(d, c)
     product_line = c.get("product_line")
-    if product_line and product_line != "other":
+    if (
+        product_line
+        and product_line != "other"
+        and not (deps.ctx.act_frame and deps.ctx.act_frame.spec.get("proactive_service"))
+    ):
         routed = await router_tools.route_to_product_team(deps.ctx, str(product_line), deps.ctx.act_frame.signal_id)  # type: ignore[union-attr]
     else:
         routed = await router_tools.route_to_department(deps.ctx, str(d["route"]["team"]), int(d["priority"]), summary)
@@ -2604,6 +2637,7 @@ async def _notify_proactive(
     )
     known = {row[0] for row in existing}
     skipped = 0
+    new_delivery: dict[str, int] = {}
     for person in scope["clients"]:
         if person["client_id"] in known:
             continue
@@ -2612,7 +2646,7 @@ async def _notify_proactive(
         if channel is None:
             skipped += 1
             continue
-        await wt.notify_client(
+        notice = await wt.notify_client(
             deps.ctx,
             person["client_id"],
             sig["id"],
@@ -2628,6 +2662,11 @@ async def _notify_proactive(
             consents=consents,
             lang=lang,
         )
+        if not notice.get("deduplicated"):
+            # notify_client создаёт Sent только для имитации; real Telegram
+            # начинается с queued/failed и не объявляется доставленным здесь.
+            mode = "emulated" if notice["status"] == "sent" else str(notice["status"])
+            new_delivery[mode] = new_delivery.get(mode, 0) + 1
     statuses = await deps.ctx.fetchall(
         "select status,count(distinct client_id) from notifications where run_id=%s and signal_id=%s "
         "and template_code='proactive_fault' and recipient_type='client' group by status",
@@ -2637,6 +2676,7 @@ async def _notify_proactive(
         "affected_clients": scope["affected_count"],
         "skipped_no_consent_or_channel": skipped,
         "statuses": dict(statuses),
+        "new_delivery": new_delivery,
     }
 
 
@@ -2645,12 +2685,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     validate_refund_decision(state)
     await _require_mass_refund_approval(state, deps, "act")
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
-    native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id) if proactive.is_service(sig) else None
-    if proactive.is_service(sig) and (native is None or not native["affected_count"]):
-        raise ValueError("служебный fault scope устарел перед effects")
+    native = await _native_service_scope(state, deps, for_effect=True)
     if native:
-        deps.ctx.sim_time = native["as_of"]
-        state["context"]["proactive_fault"] = proactive.summary(native)
         d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]

@@ -6,11 +6,23 @@ import datetime as dt
 
 import psycopg
 import pytest
+from psycopg.types.json import Jsonb
 
 from app.agent import nodes, proactive
 from app.agent.graph import process_signal
-from app.sim.events import EventBus
+from app.llm.failover import ProviderChain
+from app.llm.mock import MockProvider
+from app.sim.events import EventBus, dumps
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
+
+
+class WrongProductLineMock(MockProvider):
+    async def complete_structured(self, *args, **kwargs):
+        obj, usage, raw = await super().complete_structured(*args, **kwargs)
+        if "signal_type" in obj:
+            obj = {**obj, "product_line": "deposits", "product_line_confidence": 0.99}
+            raw = dumps(obj)
+        return obj, usage, raw
 
 
 async def fault(conn, run, at, *, emit=True):
@@ -137,7 +149,12 @@ async def test_one_native_service_uses_normal_graph_and_per_client_consented_fan
             )
         [sid] = await proactive.produce(conn)
         await conn.commit()
-        state = await process_signal(conn, signal_id=sid, chain=mock_chain(), profile=MOCK_PROFILE)
+        state = await process_signal(
+            conn,
+            signal_id=sid,
+            chain=ProviderChain([WrongProductLineMock()], offline_mode="mock"),
+            profile=MOCK_PROFILE,
+        )
         assert state is not None and state["client"] is None
         assert state["classification"]["signal_type"] == "tech_fault"
         assert state["classification"]["system"] == "notification_gw"
@@ -155,6 +172,12 @@ async def test_one_native_service_uses_normal_graph_and_per_client_consented_fan
             await conn.execute("select fault_id,mass_impact,primary_client_id from incidents where run_id=%s", (run,))
         ).fetchall()
         assert incident == [(fid, 3, None)]
+        assert await (
+            await conn.execute("select team_code,co_team_codes from incidents where run_id=%s", (run,))
+        ).fetchone() == ("team_notifications", ["team_cx"])
+        assert await (
+            await conn.execute("select affected_count from incident_economics where run_id=%s", (run,))
+        ).fetchone() == (3,)
         steps = await (
             await conn.execute("select node from agent_steps where run_id=%s order by seq", (state["agent_run_id"],))
         ).fetchall()
@@ -207,3 +230,23 @@ async def test_delayed_service_rechecks_native_clock_and_fault_after_model(seede
             assert not await (await conn.execute("select 1 from incidents where run_id=%s", (run,))).fetchone()
         else:
             assert sent == [(later,)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "config", [None, {}, {"internal": True, "co_team_codes": []}, {"internal": True, "co_team_codes": ["not_a_team"]}]
+)
+async def test_invalid_native_routing_configuration_never_falls_back(seeded, config):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run = await new_run(conn, "T039 invalid routing catalog")
+        at = await sim_now(conn)
+        client = (await (await conn.execute("select id from clients order by id limit 1")).fetchone())[0]
+        fid = await fault(conn, run, at)
+        await operation(conn, run, fid, client, at)
+        if config is None:
+            await conn.execute("delete from ingest_sources where code='fault_monitor'")
+        else:
+            await conn.execute("update ingest_sources set config=%s where code='fault_monitor'", (Jsonb(config),))
+        with pytest.raises(ValueError, match="fault_monitor"):
+            await proactive.produce(conn)
+        assert not await (await conn.execute("select 1 from signals where run_id=%s", (run,))).fetchone()

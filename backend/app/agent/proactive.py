@@ -13,6 +13,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.ingest.normalizer import create_signal
+from app.sim.behavior.store import BehaviorStore
 
 SOURCE = "fault_monitor"
 
@@ -39,6 +40,38 @@ async def current_clock(
         (run_id, run_id),
     )
     return (int(found[0]["id"]), found[0]["sim_time"]) if found else None
+
+
+async def configuration(conn: psycopg.AsyncConnection[Any]) -> dict[str, Any]:
+    """Назначение CX — данные ТЗ6.9, существующие teams; никакого silent fallback."""
+    found = await rows(
+        conn, "select config,enabled,is_external,kind,channel_code from ingest_sources where code=%s", (SOURCE,)
+    )
+    if not found:
+        raise ValueError("fault_monitor source отсутствует")
+    source = found[0]
+    config = source["config"]
+    if (
+        not source["enabled"]
+        or source["is_external"]
+        or source["kind"] != "rest"
+        or source["channel_code"] != "proactive"
+        or not isinstance(config, dict)
+        or config.get("internal") is not True
+    ):
+        raise ValueError("fault_monitor source неактивен или невалиден")
+    teams = config.get("co_team_codes")
+    if (
+        not isinstance(teams, list)
+        or not teams
+        or any(not isinstance(team, str) or not team for team in teams)
+        or len(set(teams)) != len(teams)
+    ):
+        raise ValueError("fault_monitor.co_team_codes должен содержать уникальные команды каталога")
+    known = await rows(conn, "select code from teams where code=any(%s)", (teams,))
+    if {row["code"] for row in known} != set(teams):
+        raise ValueError("fault_monitor.co_team_codes содержит неизвестную команду")
+    return {"co_team_codes": teams}
 
 
 async def fault_scope(
@@ -105,7 +138,7 @@ async def pending_delivery(
 
 
 async def service_scope(
-    conn: psycopg.AsyncConnection[Any], signal: dict[str, Any], run_id: int
+    conn: psycopg.AsyncConnection[Any], signal: dict[str, Any], run_id: int, *, for_effect: bool = False
 ) -> dict[str, Any] | None:
     """Origin сам по себе не даёт operational authority; проверяем producer lineage."""
     fault_id = signal.get("source_fault_id")
@@ -129,7 +162,14 @@ async def service_scope(
         (signal["id"], run_id, SOURCE, f"fault-{run_id}-{fault_id}"),
     )
     clock = await current_clock(conn, run_id) if provenance else None
-    return await fault_scope(conn, run_id, fault_id, clock[1]) if clock else None
+    if for_effect and clock:
+        if not await BehaviorStore(conn).active_run(run_id):
+            return None
+        clock = await current_clock(conn, run_id)
+    if clock is None:
+        return None
+    scope = await fault_scope(conn, run_id, fault_id, clock[1])
+    return {**scope, **await configuration(conn)} if scope else None
 
 
 async def causal_fault(
@@ -159,6 +199,12 @@ async def produce(conn: psycopg.AsyncConnection[Any]) -> list[int]:
     if clock is None:
         return []
     run_id, at = clock
+    if not await BehaviorStore(conn).active_run(run_id):
+        return []
+    clock = await current_clock(conn, run_id)
+    if clock is None:
+        return []
+    _, at = clock
     faults = await rows(
         conn,
         "select id from faults where run_id=%s and started_sim<=%s "
@@ -172,6 +218,7 @@ async def produce(conn: psycopg.AsyncConnection[Any]) -> list[int]:
         scope = await fault_scope(conn, run_id, fault_id, at)
         if not scope or not scope["affected_count"]:
             continue
+        await configuration(conn)
         result = await create_signal(
             conn,
             {
