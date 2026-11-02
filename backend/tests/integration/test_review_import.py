@@ -179,3 +179,85 @@ def test_cli_apply_json_then_csv_same_dataset_is_duplicate(
         monkeypatch.setattr(sys, "argv", ["import_reviews.py", str(path), "--apply", "--run-id", str(run_id)])
         cli.main()
         assert json.loads(capsys.readouterr().out) == expected
+
+
+@pytest.mark.asyncio
+async def test_cli_respects_durable_marker_and_exclusive_restore_before_effects(seeded: str, monkeypatch) -> None:
+    from scripts.import_reviews import apply
+
+    from app.sim.maintenance import MaintenanceBusy
+    from app.sim.maintenance_control import MaintenanceControl
+    from app.sim.maintenance_db import DatabaseBoundary
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    path = ROOT / "data/import/messages/product_lines_sample.json"
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), autocommit=True) as conn:
+        run_id = await new_run(conn, "T240 maintenance rejection", kind="free")
+        before = await (await conn.execute("select count(*) from signals where run_id=%s", (run_id,))).fetchone()
+        control = MaintenanceControl()
+        control.write("restoring", "t240-test-job")
+        try:
+            with pytest.raises(MaintenanceBusy):
+                await apply(path, run_id=run_id, source_code="t240_busy", timezone=None)
+        finally:
+            control.write("idle")
+        boundary = DatabaseBoundary(dsn=seeded)
+        await boundary.acquire()
+        try:
+            with pytest.raises(MaintenanceBusy):
+                await apply(path, run_id=run_id, source_code="t240_busy", timezone=None)
+        finally:
+            await boundary.release()
+        after = await (await conn.execute("select count(*) from signals where run_id=%s", (run_id,))).fetchone()
+        assert after == before == (0,)
+        assert await apply(path, run_id=run_id, source_code="t240_busy", timezone=None) == {
+            "accepted": 3,
+            "duplicates": 0,
+        }
+
+
+def test_signal_api_projects_catalog_only_and_never_exposes_source_url(seeded: str, monkeypatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import create_app
+
+    async def prepare():
+        async with await psycopg.AsyncConnection.connect(dsn(seeded), autocommit=True) as conn:
+            run = await new_run(conn, "T240 platform API", kind="free")
+            await import_reviews(conn, parse_reviews(CORPUS)[:1], run_id=run, source_code="t240_api")
+            signal = await (await conn.execute("select id from signals where run_id=%s", (run,))).fetchone()
+            return run, signal[0]
+
+    run_id, signal_id = asyncio.run(prepare())
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    get_settings.cache_clear()
+    client = TestClient(create_app())  # Только HTTP read, без фоновых сервисов lifespan.
+    try:
+        expected = {
+            "code": "client_voice",
+            "name_ru": "Отзывы клиентов",
+            "name_en": "Customer reviews",
+            "type": "review_portal",
+        }
+        detail = client.get(f"/api/signals/{signal_id}")
+        listing = client.get("/api/signals", params={"run_id": run_id})
+        assert detail.status_code == listing.status_code == 200
+        assert detail.json()["source_platform"] == expected
+        assert listing.json()["items"][0]["source_platform"] == expected
+        for response in (detail, listing):
+            assert "source_url" not in response.text and "_source_platform_code" not in response.text
+            assert "generator_hint" not in response.text and "seed_annotation" not in response.text
+        with psycopg.connect(dsn(seeded)) as conn:
+            from psycopg.types.json import Jsonb
+
+            conn.execute(
+                "update signals set meta=meta||%s where id=%s",
+                (Jsonb({"source_platform": "https://unknown.invalid"}), signal_id),
+            )
+        unknown = client.get(f"/api/signals/{signal_id}")
+        assert unknown.status_code == 200 and unknown.json()["source_platform"] is None
+        assert "https://unknown.invalid" not in unknown.text
+    finally:
+        client.close()
+        get_settings.cache_clear()

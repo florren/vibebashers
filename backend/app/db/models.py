@@ -1376,27 +1376,6 @@ class ComplianceTriggers(Base):
     utterance: Mapped['Utterances'] = relationship('Utterances', back_populates='compliance_triggers')
 
 
-class ProductSignalHistory(Base):
-    __tablename__ = 'product_signal_history'
-    __table_args__ = (
-        ForeignKeyConstraint(['product_line_code'], ['product_lines.code'], name='product_signal_history_product_line_code_fkey'),
-        PrimaryKeyConstraint('id', name='product_signal_history_pkey'),
-        UniqueConstraint('product_line_code', 'month', name='product_signal_history_product_line_code_month_key')
-    )
-
-    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
-    product_line_code: Mapped[str] = mapped_column(Text, nullable=False)
-    month: Mapped[datetime.date] = mapped_column(Date, nullable=False)
-    signal_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
-    negative_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
-    critical_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
-    by_source: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
-    loss_rub: Mapped[decimal.Decimal] = mapped_column(Numeric(14, 2), nullable=False, server_default=text('0'))
-    is_synthetic: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
-
-    product_lines: Mapped['ProductLines'] = relationship('ProductLines', back_populates='product_signal_history')
-
-
 class SimRuns(Base):
     __tablename__ = 'sim_runs'
     __table_args__ = (
@@ -1452,6 +1431,7 @@ class SimRuns(Base):
     checkpoint_writes: Mapped[list['CheckpointWrites']] = relationship('CheckpointWrites', back_populates='run')
     checkpoints: Mapped[list['Checkpoints']] = relationship('Checkpoints', back_populates='run')
     personal_chat_sessions: Mapped[list['PersonalChatSessions']] = relationship('PersonalChatSessions', back_populates='run')
+    product_signal_history: Mapped[list['ProductSignalHistory']] = relationship('ProductSignalHistory', back_populates='run')
     rule_evaluations: Mapped[list['RuleEvaluations']] = relationship('RuleEvaluations', back_populates='run')
     sim_events: Mapped[list['SimEvents']] = relationship('SimEvents', back_populates='run')
     sim_state: Mapped[list['SimState']] = relationship('SimState', back_populates='current_run')
@@ -1807,6 +1787,34 @@ class PersonalChatSessions(Base):
 
     run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='personal_chat_sessions')
     personal_chat_messages: Mapped[list['PersonalChatMessages']] = relationship('PersonalChatMessages', back_populates='session')
+
+
+class ProductSignalHistory(Base):
+    __tablename__ = 'product_signal_history'
+    __table_args__ = (
+        ForeignKeyConstraint(['product_line_code'], ['product_lines.code'], name='product_signal_history_product_line_code_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='product_signal_history_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='product_signal_history_pkey'),
+        UniqueConstraint('run_id', 'product_line_code', 'month', name='product_signal_history_run_line_month_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    product_line_code: Mapped[str] = mapped_column(Text, nullable=False)
+    month: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    signal_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    negative_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    critical_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text('0'))
+    by_source: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    loss_rub: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(14, 2), comment='NULL: потери не наблюдались; synthetic history не выдумывает деньги')
+    run_id: Mapped[Optional[int]] = mapped_column(BigInteger, comment='NULL только для legacy неизвестного запуска; чтение только явным all')
+    sentiment_known_count: Mapped[Optional[int]] = mapped_column(Integer, comment='NULL legacy: качество неизвестно; unknown не считается neutral')
+    is_partial: Mapped[Optional[bool]] = mapped_column(Boolean)
+    coverage_start: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    coverage_end: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    product_lines: Mapped['ProductLines'] = relationship('ProductLines', back_populates='product_signal_history')
+    run: Mapped[Optional['SimRuns']] = relationship('SimRuns', back_populates='product_signal_history')
 
 
 class RuleEvaluations(Base):

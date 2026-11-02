@@ -21,6 +21,8 @@ import psycopg  # noqa: E402
 from app.corpus.importer import import_reviews  # noqa: E402
 from app.corpus.reviews import CorpusError, parse_reviews  # noqa: E402
 from app.db.session import psycopg_dsn  # noqa: E402
+from app.sim.maintenance import MaintenanceBusy  # noqa: E402
+from app.sim.maintenance_db import public_operation  # noqa: E402
 from pydantic import ValidationError  # noqa: E402
 
 
@@ -30,8 +32,9 @@ async def apply(path: Path, *, run_id: int, source_code: str, timezone: str | No
     url = os.environ.get("DATABASE_URL")
     if not url:
         raise CorpusError("для --apply требуется DATABASE_URL")
-    async with await psycopg.AsyncConnection.connect(psycopg_dsn(url)) as conn:
-        return await import_reviews(conn, rows, run_id=run_id, source_code=source_code, timezone=timezone)
+    async with public_operation(url):
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn(url)) as conn:
+            return await import_reviews(conn, rows, run_id=run_id, source_code=source_code, timezone=timezone)
 
 
 def main() -> None:
@@ -51,7 +54,7 @@ def main() -> None:
             )
         else:
             result = {"validated": len(parse_reviews(args.path, timezone=args.timezone))}
-    except (CorpusError, ValidationError, OSError, psycopg.Error) as exc:
+    except (CorpusError, ValidationError, OSError, psycopg.Error, MaintenanceBusy) as exc:
         # Ошибки библиотеки могут содержать URL, SQL или строку файла — не печатаем их.
         detail = str(exc) if isinstance(exc, CorpusError) else type(exc).__name__
         parser.exit(1, detail + "\n")

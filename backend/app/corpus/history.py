@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from app.contracts.enums import Criticality, ProductLine
+from app.contracts.enums import Criticality, ProductLine, Sentiment
 from app.sim.rng import SimRng
 
 MSK = ZoneInfo("Europe/Moscow")
@@ -27,7 +27,7 @@ class ActualSignal:
     at: dt.datetime
     source_platform: str | None
     criticality: Criticality | None
-    negative: bool
+    sentiment: Sentiment | None
 
     def __post_init__(self) -> None:
         if isinstance(self.run_id, bool) or not isinstance(self.run_id, int) or self.run_id <= 0:
@@ -40,8 +40,8 @@ class ActualSignal:
             raise ValueError("неизвестный тип criticality")
         if self.source_platform is not None and not isinstance(self.source_platform, str):
             raise ValueError("source_platform должен быть строкой или None")
-        if not isinstance(self.negative, bool):
-            raise ValueError("negative должен быть bool")
+        if self.sentiment is not None and not isinstance(self.sentiment, Sentiment):
+            raise ValueError("sentiment должен быть Sentiment или None")
 
 
 @dataclass(frozen=True)
@@ -67,6 +67,7 @@ class HistoryRow:
     month: dt.date
     signal_count: int
     negative_count: int
+    sentiment_known_count: int
     critical_count: int
     by_source: dict[str, dict[str, int]]
     is_synthetic: bool
@@ -141,8 +142,10 @@ def build_history(
     for line in sorted(product_lines):
         observed = [row for row in tail if row.product_line == line]
         counts = _buckets(observed, known_platforms)
+        # На точной границе месяца ещё нет текущего интервала наблюдений.
+        last_month = now.date() if now.day != 1 or now.time() != dt.time() else _month(now.date(), -1)
         for offset in range(-11, 1):
-            month = _month(now.date(), offset)
+            month = _month(last_month, offset)
             start = dt.datetime.combine(month, dt.time(), MSK)
             finish = dt.datetime.combine(_month(month, 1), dt.time(), MSK)
             real = finish > tail_start and start < now
@@ -150,7 +153,8 @@ def build_history(
                 selected = [row for row in observed if start <= row.at.astimezone(MSK) < finish]
                 total = len(selected)
                 by_source = _distribute(total, _buckets(selected, known_platforms))
-                negative = sum(row.negative for row in selected)
+                negative = sum(row.sentiment == Sentiment.NEGATIVE for row in selected)
+                known = sum(row.sentiment is not None for row in selected)
                 critical = sum(row.criticality == Criticality.HIGH for row in selected)
                 coverage_start, coverage_end = max(start, tail_start), min(finish, now)
             else:
@@ -161,7 +165,14 @@ def build_history(
                 factor *= 1 + rng.uniform(-config.jitter_ratio, config.jitter_ratio)
                 total = round(len(observed) / 14 * calendar.monthrange(month.year, month.month)[1] * factor)
                 by_source = _distribute(total, counts)
-                negative = round(total * sum(row.negative for row in observed) / len(observed)) if observed else 0
+                known = (
+                    round(total * sum(row.sentiment is not None for row in observed) / len(observed)) if observed else 0
+                )
+                negative = (
+                    round(total * sum(row.sentiment == Sentiment.NEGATIVE for row in observed) / len(observed))
+                    if observed
+                    else 0
+                )
                 critical = sum(parts.get("high", 0) for parts in by_source.values())
                 coverage_start, coverage_end = start, finish
             rows.append(
@@ -171,6 +182,7 @@ def build_history(
                     month,
                     total,
                     negative,
+                    known,
                     critical,
                     by_source,
                     not real,

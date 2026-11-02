@@ -8300,7 +8300,16 @@ export interface components {
             city_id?: number;
             telegram_chat_id?: number;
         };
+        /** @description Известная площадка из catalog; только текст, без URL и внешних ссылок */
+        SourcePlatform: {
+            code: string;
+            name_ru: string;
+            name_en: string;
+            /** @enum {string} */
+            type: "review_portal" | "telegram_channel" | "app_store" | "forum" | "other";
+        };
         Signal: {
+            source_platform?: components["schemas"]["SourcePlatform"] | null;
             tags?: string[];
             run_id?: number;
             run_public_id?: string;
