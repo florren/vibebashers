@@ -8,7 +8,7 @@
 | Волна | 1 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `in_progress` |
+| Статус | `review` |
 
 ## Цель
 Тексты коммуникаций по сегментам и каналам, подарки, ставки калькулятора.
@@ -42,3 +42,30 @@ pytest backend/tests/unit/test_templates.py backend/tests/unit/test_rates.py
 
 ## Отчёт субагента
 Сверка 27.10.2026 (T-261): `data/templates/notifications.yaml` (вместо `*.j2`), `data/gifts.yaml`, `data/dcltv_rates.csv` (30 ставок, `bank_average` 4 050) и `economics_settings` существуют и используются. Остаток: список запрещённых формулировок живёт в коде `app/agent/policies.py` (`forbidden_phrases`), а не в `data/forbidden_phrases.yaml` — при следующем касании вынести в данные (правило: бизнес-правила — данные).
+
+Ревизия `codex/T-015-communication-catalogs`:
+- Прежние18 фраз перенесены в `data/forbidden_phrases.yaml`; сопоставление/порядок сохранены. Добавлен отдельный список10 однозначных технических идентификаторов из `systems.yaml`; проверяются границы токена, регистр не важен. Обычное processing и клиентские error codes не блокируются. Неисправная конфигурация завершает загрузку ошибкой, без отключения фильтра молча. Каталог загружается при старте backend.
+- Добавлены ru/en dm_invite/closure_ack и csi_survey в существующий wildcard seed. SQL fallback теперь допускает только заданный сегмент либо общий шаблон, не чужой сегмент. Денежные/HITL функции и лимиты не менялись; rule.requires_hitl=true для трёх партнёрских подарков отражает уже существующую проверку runtime.
+- Существующий YAML каталог сохраняется: проверена эквивалентность всех его subject/body строгому Jinja rendering с полным набором переменных. Полная матрица9 кодов×12 канонических каналов×7 сегментов×2 языков и fallback push/sms/social_reply/tracking_page проверена без расширения channel enum/FK. Эти четыре legacy delivery-name не являются каноническими каналами текущего контракта.
+- Проверены Decimal значения30 исходных ставок ТЗ0.4 без потери долей копейки; CSV дополнительно сохраняет существующий notifications alias. Маппинг ставок и economics_settings не менялись.
+
+Финансовая граница вынесена в отдельный последующий review commit: только
+`misselling_case_cost_rub: 25000 → 4050` и удаление привязок notification_gw /
+promo_engine к notifications / loyalty. Все 30 исходных ставок и alias сохранены,
+формулы, HITL и лимиты не менялись. ТЗ §14.4 / §20.3 и DDL default явно задают
+4050; ADR-0012/0013 сохраняют настраиваемый механизм, не задавая числового 25000.
+Трактовка ADR требует явного подтверждения человека **до merge**. Подробные
+основания, точный эффект, риск повторного seed и откат описаны в
+[финансовом review](../T015-FINANCIAL-REVIEW.md). Production не изменялся,
+автоматического reseed/исторического пересчёта нет; карточка не объявляется done.
+
+Проверки финансового proposal: 14 адресных unit и 2 PostgreSQL tests проходят;
+реальная cx_t015_catalogs подтверждает seeded default 4050, fallback систем,
+сохранённый расчёт стоимости мисселлинга и работающую ручную настройку 7777.
+Полный unit suite после proposal: 775 passed / 18 skipped за 21.42s.
+Ruff/format (319 файлов), mypy (242 source files), contracts (44 схемы/161 путь)
+и OpenAPI drift (191/191) — success. Тесты используют только собственный scratch
+DSN, mock LLM и свою worktree. Первоначальная SQL fixture была исправлена под
+обязательные sla_due_sim/take_due_sim; финальный PostgreSQL запуск зелёный.
+
+Проверки: адресные unit и настоящая PostgreSQL-регрессия на отдельной cx_t015_catalogs проходят; PostgreSQL проверяет seed, ru/en×4 основных сегмента, fallback и partner rule. Ruff/format/mypy проходят. Полный unit suite собственного worktree: 770 passed / 18 skipped (37 новых unit-тестов); адресная PostgreSQL-регрессия: 1 passed. contracts_check:44 схемы/161 путь, ruff/format/mypy и git diff --check — success. Полный CI/merge выполняет основной агент.
