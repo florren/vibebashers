@@ -37,3 +37,8 @@ Exact absolute-file changed-line trace относительно 83e0cf8: **31/31
 [T-039 temporal proof](T-039-temporal-cause-proof.json).
 Full make test/CI, proactive notifications/incident grouping, предотвращённые
 жалобы и полная acceptance сценария 6 этим узким исправлением не доказаны.
+
+Финальный `make lint` exit 0 после agent/T-039 source: frontend eslint/typecheck
+и 225 vitest, Ruff 427 файлов, mypy 283 source files, OpenAPI drift192/192.
+Полный backend make test здесь не выполнялся; integration/full CI остаётся
+за итоговой actor/schema composition.

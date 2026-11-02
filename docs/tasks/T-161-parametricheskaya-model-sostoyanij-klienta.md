@@ -87,3 +87,11 @@ Policy значения уже одобрены; прежние требован
 исправление временной fault причинности в World, явное churn_risk отображение,
 tick/RNG adapter, OS restart/archive/baseline/full-suite proof. Новых денежных
 правил, выдачи подарков, внешнего LLM/TG и production DB операций нет.
+
+
+Agent writer/read-scope follow-up 83e0cf8: opt-in graph TX evidence sink, truthful
+pending/actual trace, scoped legacy writer и baseline+ctx reader; 193 regression
+passed, extra actual load_deps 1 passed; changed-line coverage94.59%. Runtime
+не включён. [Concrete churn_risk decision proposal](../reviews/T-161-churn-risk-decision-proposal.md)
+сохраняет legacy projection и предлагает явное acceptance уточнение вместо
+неодобренного hazard*100; решение/калибровка не подменяются молчаливой формулой.
