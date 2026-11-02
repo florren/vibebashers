@@ -63,7 +63,9 @@ async def ensure_registered(conn: Any, scenario: dict[str, Any]) -> None:
 
 
 def is_runnable(s: dict[str, Any]) -> bool:
-    return bool(s.get("inject") or s.get("file"))
+    from app.sim.scenario_acceptance import is_acceptance
+
+    return bool(s.get("inject") or s.get("file")) or is_acceptance(s)
 
 
 def is_transcript(s: dict[str, Any]) -> bool:
@@ -396,6 +398,10 @@ def _check(code: str, ok: bool | None, detail: str) -> dict[str, Any]:
 
 async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any], run_id: int) -> dict[str, Any]:
     """Сверяет `expected` сценария с данными запуска. ok=None — проверка ещё не реализована (см. NOT_YET)."""
+    from app.sim.scenario_acceptance import evaluate_native, is_acceptance
+
+    if is_acceptance(scenario):
+        return await evaluate_native(conn, scenario, run_id)
     d = await _run_data(conn, run_id)
     exp = dict(scenario.get("expected") or {})
     checks: list[dict[str, Any]] = []

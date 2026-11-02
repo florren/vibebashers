@@ -1,0 +1,76 @@
+{
+  "scope": "native Mock foundation; mandatory UI/replay not_verified; overall passed=false",
+  "runtime_sha256": {
+    "backend/app/agent/classification_store.py": "8a6997d482ddd79f0cd5f3326c573b3ef04a965f6fa94cf17f5b17bb075ffa96",
+    "backend/app/agent/nodes.py": "153242d0202615c6639a525c034d742e801e38e2fa750c92ba857d24a6042f6d",
+    "backend/app/sim/scenario_acceptance.py": "5739c5f4a493bfb5d4fd8a5321e33e569aabb3f1363a32ed251b2ecf8c0f171a",
+    "backend/app/api/scenarios.py": "2018ab9a8291e90d5711ad2bac2c23e2c3285d6235a6195bee741e773fc5f80c",
+    "backend/app/sim/scenarios.py": "7ad7307802c22f57f2aea7648cc3ad3d5770930df2efbbb0e497591e32325271",
+    "backend/app/llm/mock.py": "588af306a4a93abd620622c236f15f2e119d0f00c8f26921656e15f124cf1c38",
+    "scripts/acceptance_check.py": "063383f1317b290f7f41a9f40d8c1b61b63f8953f1ba8c01a21169a856867379",
+    "scripts/scenario_check.py": "fb7117162e865968eb6eb7d1e2790a05847e2602cb06b712c888a9afd65d1da8",
+    "scripts/scenario_prepare.py": "18a300532e23de1a0bb70033c305371854c252ae6ef6d6eeaaff696c428b6ecf",
+    "data/scenarios/cabinet_red_words_report.yaml": "bb66ae388395daed28be7a48248b0c708f41f3bb8469199e89b8eeffc009e409",
+    "data/scenarios/csi_and_branches.yaml": "c5f246f56e1f084174cd9e1b019c8872760d542e4c9487306ab01528b91b639d"
+  },
+  "verification": {
+    "focused_coverage": {
+      "passed": 25,
+      "seconds": 148.85,
+      "line_coverage": {
+        "covered_lines": 175,
+        "num_statements": 189,
+        "percent_covered": 92.5925925925926,
+        "percent_covered_display": "93",
+        "missing_lines": 14,
+        "excluded_lines": 0,
+        "percent_statements_covered": 92.5925925925926,
+        "percent_statements_covered_display": "93"
+      },
+      "data": "/tmp/T262-focused-final.data.db"
+    },
+    "focused_pure": {
+      "passed": 110,
+      "seconds": 1.96
+    },
+    "frontend_vitest_via_make_lint": {
+      "passed": 429,
+      "files": 61
+    },
+    "lint": {
+      "backend_ruff_files": 520,
+      "backend_mypy_files": 316,
+      "tgbot_ruff_files": 12,
+      "tgbot_mypy_files": 5,
+      "openapi_operations": 195,
+      "missing": 0,
+      "extra": 0,
+      "contracts_schemas": 47,
+      "contracts_paths": 165,
+      "licenses_backend": 550,
+      "licenses_tgbot": 36
+    },
+    "schema_check": "No new upgrade operations detected.",
+    "native_lock_race": {
+      "before": "DeadlockDetected",
+      "before_seconds": 10.56,
+      "after_passed": 1,
+      "after_seconds": 9.82
+    }
+  },
+  "untested": [
+    "full backend suite pending resource window/root review",
+    "UI/Playwright dependent composition",
+    "real compatible replay cassettes",
+    "manual legal HITL continuation"
+  ],
+  "safety": {
+    "production": false,
+    "external_llm": false,
+    "telegram_email": false,
+    "manual_human_accept": false,
+    "new_dependencies": false,
+    "new_public_api_or_schema_contract": false,
+    "synthetic_pg_only": true
+  }
+}

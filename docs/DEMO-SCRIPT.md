@@ -152,3 +152,34 @@ FAIL, а не успешный пропуск. Новых запусков аг�
 словом replay. Для финальной приёмки нужны проверенные кассеты всех трёх
 траекторий. Новую ограниченную запись согласовать отдельно.
 Синтетический Mock fixture в unit/PG проверках не является live/replay evidence.
+
+### Дополнительная репетиция блока F: кабинет и CSI (T262, Mock foundation)
+
+Это подготовка на выделенном synthetic snapshot, а не завершённая UI/replay приёмка.
+Новые catalog entries34/35 соответствуют ТЗ§18 сценариям14/15; старые entries1..33
+сохраняются. В Mock/offline окружении запускайте по ID, а не по старому номеру14/15.
+
+1. Убедитесь, что все effective main/fast/twin используют Mock и справочник ВСП
+   соответствует canonical synthetic snapshot. Runtime сам не переключает profiles.
+   Входы этих двух сценариев готовятся на паузе; часы не сбрасываются.
+2. `make scenario ID=cabinet_red_words_report`: две отдельные жалобы во вкладах.
+   Для роли `product_manager`/deposits покажите legal input с «суд»/«налоговая»,
+   high и pending HITL. **Не принимать решение автоматически.** Только после
+   отдельного ручного QA решения допустимо демонстрировать continuation этого input.
+   Обычная техническая жалоба независимо проверяет product facade и team_deposits.
+3. Проверьте preview canonical deposit961 и загрузите настоящий XLSX отчёт;
+   оба native refs должны присутствовать в product-scoped JSON/XLSX. Новых денежных
+   правил или выполненного возврата этот показ не подразумевает.
+4. `make scenario ID=csi_and_branches`: real XLSX → parser → normalizer,
+   canonical scoped300 + одна явная synthetic жалоба в native closed ВСП.
+   Показать registered sample300/2400, top10 и uncohorted1. Для extra1 неизвестны
+   wait/employee/denominator; их нельзя показывать нулями или делать sampled probability.
+5. Повтор import использует сохранённые namespaces/hashes без дублей. После failed
+   preparation явный операторский retry: `python scripts/scenario_prepare.py --run-id <ID>`
+   в том же окружении. Не править clock/branch dates/consents или чужие CSI identities.
+6. Экран `/csi`, слой ВСП/тихая closed метка, box plot и обе темы/языка требуют
+   отдельного UI proof T249/T250. Replay требует настоящей совместимой записи после
+   отдельного разрешения, без rekey. Пока обязательные UI/replay checks `not_verified`,
+   итог сценария **passed=False**, даже если все native Mock проверки зелёные.
+
+Точные границы, rollback и план записи: [T262 foundation review](reviews/T-262-scenario-foundation.md).
