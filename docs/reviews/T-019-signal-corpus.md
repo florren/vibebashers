@@ -48,5 +48,12 @@ Make lint exit0:360format,mypy252,163frontend,drift191; последующие �
 
 Тестовые БД/контейнер собственные, исходные рабочие данные/архивы не менялись.
 Контейнер остановлен; source/proof сохранены. Exact-head CI остаётся обязательным
-gate доmerge. T031 RNG continuation — отдельный PR173; после его merge нужен
-обычный merge/проверка совместимости optionalchannel и общегоSimRng.
+gate доmerge. T031 RNG continuation слит PR173. После обычного merge main1df0024
+88 corpus/RNG/redaction unit passed2.09s. Новая регрессия канального корпуса
+проверяет восстановление World после dump/load RNG: совпадают160текстов,
+random/poisson draws и конечный state, включая предшествующий расход160текстов.
+Первый запуск этой группы прерван из-за зависшего ASGI TestClient в sandbox;
+успешный повтор выполнен с разрешённым ASGI окружением, без внешних сервисов.
+
+На объединённом составе main1df0024 дополнительно20 integration passed126.14s:
+corpus seed, first install/bootstrap и synthetic ingest с реальным World.

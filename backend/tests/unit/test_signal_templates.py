@@ -125,3 +125,34 @@ def test_invalid_selection_fails_explicitly_and_corpus_rejects_invalid_shares(tm
     path.write_text("english_share: -0.01\nnoise_share: 0.03\n")
     with pytest.raises(ValueError, match="доли"):
         SignalCorpus(path)
+
+
+def test_channel_corpus_continues_from_persisted_world_rng() -> None:
+    from unittest.mock import Mock
+
+    from app.sim.generators import World
+    from app.sim.rng import SimRng
+
+    rng = SimRng(1729)
+    original = World(Mock(), Mock(), rng, 1)
+
+    def sample(world: World) -> list[tuple[object, float, int]]:
+        return [
+            (
+                world.textgen.generate(kind, product, channel=channel, psychotype="public_emotional"),
+                world.rng.random(),
+                world.rng.poisson(4),
+            )
+            for kind, product in world.textgen.all_combinations()
+            for channel in ("chat", "call", "email", "social")
+        ]
+
+    sample(original)
+    checkpoint = rng.dump_state()
+    expected = sample(original)
+    expected_end = rng.dump_state()
+    restored_rng = SimRng(0)
+    restored_rng.load_state(checkpoint)
+    restored = World(Mock(), Mock(), restored_rng, 1)
+    assert sample(restored) == expected
+    assert restored_rng.dump_state() == expected_end
