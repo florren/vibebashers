@@ -25,7 +25,7 @@ class PreventionSummary:
 
 
 def eligible(details: CancellationDetails) -> bool:
-    """Только доказанный primary timer до due и до первого customer complaint."""
+    """Кандидат из logical snapshot; summarize ещё проверяет observation fence."""
     return (
         details.work_kind == "complaint"
         and details.action == "cancelled_by_resolution"
@@ -98,7 +98,7 @@ async def summarize(conn: psycopg.AsyncConnection[Any], *, run_id: int) -> Preve
                     "opened_sim": dt.datetime.min.replace(tzinfo=dt.UTC),
                     "first_complaint_sim": details.first_complaint_sim_at_cancellation,
                 },
-                details.cancellation_sim,
+                details.cancellation_observed_sim,
             )
             if not complete:
                 unknown += 1

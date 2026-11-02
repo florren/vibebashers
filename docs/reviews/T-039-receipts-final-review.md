@@ -16,6 +16,8 @@ Actual0019 после0018 добавляет только nullable behavior_rece
 
 Modelled credit получает только ранее запланированный primary complaint, отменённый verified resolution строго раньше due и без первой связанной canonical complaint. Already-complained/repeat/patience, равенство due, Sent/care, unknown resolution/completeness/legacy NULL не кредитуются. При неполной provenance общий modelled_prevented_by_resolution=NULL; recorded_eligible_count — только подтверждённая часть, не подмена неизвестного total нулём. Отдельно видны unknown cancellations, recorded receipts и pending primary timers; эти технические счётчики не объявляются взаимоисключающим разбиением.
 
+Logical snapshot.first ограничен cancellation_sim: future относительно T5 факт T8 не помещается в это поле, а сохраняется в runtime. Это не даёт credit при horizon T9: reader перепроверяет actual связанные native inputs до cancellation_observed_sim включительно; known complaint T8 исключает credit, unclassified T8 оставляет unknown. Уже consumed/already-complained primary не переатрибутируется resolution. Codec first≤logical и прежняя cancellation behavior не меняются.
+
 Reader перепроверяет связанные native inputs: ранее невидимая concurrent TX с prior received signal не оставляет вечный credit. Immutable receipt не переписывается; summary отражает доступные факты чтения и может консервативно стать unknown/не дать credit после появления таких фактов. Никакого attribution уведомлению, prevented_loss_rub или нового отображения churn_risk нет.
 
 ## Неизменённая policy
@@ -25,12 +27,18 @@ Reader перепроверяет связанные native inputs: ранее �
 ## Доказательства
 
 - Storage: actual0018→0019 сохраняет PK/row hash и SQL NULL legacy receipt; повтор DDL дважды идемпотентен. [Storage proof](T-039-receipts-storage-proof.json), исходный checkpoint27a8956; actual19→20 отдельно проверен root на собственной CSI БД.
-- Runtime/codec/storage + исходные canonical-signal/owner-resolution regressions под coverage: **76 passed,142.69s** (`/tmp/t039-receipts-runtime-coverage-tests.log`). Включены native last-cause time, unknown/neutral/actual negative, partial-write rollback, unchanged RNG, two-owner/reconnect/retry, foreign-client evidence, forged rich lineage и late committed prior input из другой connection.
-- Changed executable runtime coverage **127/136=93.38%**: cancellation64/72, prevention49/50, изменённые owner5/5 и signals9/9; codec отдельно86/87. Это line coverage, не branch coverage. [Source-qualified proof](T-039-receipts-runtime-proof.json).
+- Исторический source5445: runtime/codec/storage + исходные canonical-signal/owner-resolution regressions под coverage: **76 passed,142.69s** (`/tmp/t039-receipts-runtime-coverage-tests.log`). Включены native last-cause time, unknown/neutral/actual negative, partial-write rollback, unchanged RNG, two-owner/reconnect/retry, foreign-client evidence, forged rich lineage и late committed prior input из другой connection.
+- Исторический source5445 changed executable runtime coverage **127/136=93.38%**: cancellation64/72, prevention49/50, изменённые owner5/5 и signals9/9; codec отдельно86/87. Это line coverage, не branch coverage. [Source-qualified proof](T-039-receipts-runtime-proof.json).
 - Полный unit suite того же runtime source: **1900 passed,18 skipped,57.00s** (`/tmp/t039-receipts-full-unit.log`).
 - Ruff/formatter и mypy четырёх runtime файлов — green на проверенном source. Authoritative make sync-contracts:110ORM, без tracked generator delta. make lint green: backend489Ruff/307mypy, bot12Ruff/5mypy, frontend366Vitest/47files/typecheck; inherited DemoMenu1warning,0errors. Contracts47schemas/163paths/drift193=193, licenses550+36 green. Остальные regression фиксируются отдельно после завершения; targeted76 не объявляется полным suite.
 
 Данные — собственная synthetic scratch PG16 cx_prevention_receipts_revision. Production, реальные LLM/Telegram/email не использовались. Coverage взят из уже подготовленного изолированного scratch tool без установки dependencies в project/shared venv; pure Python tracer (C extension недоступна), успешный data file и source hashes сохранены.
+
+## Cutoff follow-up и расширенный regression
+
+Actual PG counterexample с настоящим incident_signals link: resolution T5, native complaint T8, observation T9. Три случая до исправления **3 failed,18.75s**: processed complaint выявляет future-first codec error, а unprocessed canonical/unknown inputs — ложный1 в summary. Узкий logical/observation cutoff fix дал **65 passed,88.28s**; новый source под coverage вместе с исходными owner/canonical regressions — **79 passed,193.14s**, changed executable **129/138=93.48%**. Два новых runtime модуля115/124; codec86/87, изменённые owner5/5 и signals9/9. Новый full unit: **1900 passed,18 skipped,63.91s**; Ruff/format/mypy изменённых файлов green. SQL19/codec не менялись.
+
+Frozen5445 full integration был остановлен только своему runner через SIGINT после повторяющихся setup errors: **173 passed,1 skipped,36 errors,958.25s**. Все36errors — literal0018 в cabinet fixture против actual0019, не disk/connection exhaustion. Отдельный test-only c7c0554 проверяет exact ScriptDirectory.current_head в обоих местах; все36 cabinet cases прошли96.86s, прежние0018reapply/downgrade/data/audit assertions сохранены. Частичный прогон не fullgreen; финальная композиция/остальные sequential phases/CI ещё впереди. Source hashes/исторические значения сохранены в proof JSON.
 
 ## Rollback и операционная граница
 
