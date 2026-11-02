@@ -3,7 +3,7 @@ import { useDialogFocus } from '@/shared/layout/useDialogFocus'
 import { X } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '@/shared/api/client'
+import { ApiConnectionError, ApiError } from '@/shared/api/client'
 
 import type { Tone } from './tones'
 
@@ -59,7 +59,7 @@ export function ErrorBox({ error, compact }: { error: unknown; compact?: boolean
     return <Empty title={t('common.notImplemented')} hint={t('common.notImplementedCard', { card: error.problem?.card ?? '—' })} />
   }
   const msg = error instanceof Error ? error.message : String(error)
-  const kind = error instanceof ApiError ? (error.status === 429 ? 'busy' : error.status >= 500 ? 'service' : 'request') : 'connection'
+  const kind = error instanceof ApiError ? (error.status === 429 ? 'busy' : error.status >= 500 ? 'service' : 'request') : error instanceof ApiConnectionError ? 'connection' : 'unknown'
   return (
     <div className={clsx('rounded-lg border border-danger/30 bg-danger/5 text-danger', compact ? 'px-2 py-1 text-xs' : 'm-3 p-3 text-sm')}>
       <p role="status">{t(`care.errors.${kind}`)}</p>
