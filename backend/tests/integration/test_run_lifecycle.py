@@ -250,38 +250,47 @@ async def test_behavior_composite_fk_closure_and_foreign_guard(seeded, conn, tmp
         assert (
             await (await ac.execute("select count(*) from behavior_runtime where run_id=%s", (rid,))).fetchone()
         ) == (2,)
-        if external:
-            await ac.execute(
-                "create table lifecycle_composite_probe(run_id bigint references sim_runs(id) on delete cascade,target_run bigint,target_client bigint,foreign key(target_run,target_client) references behavior_runtime(run_id,client_id) on delete cascade)"
-            )
-            await ac.execute("insert into lifecycle_composite_probe values(%s,%s,%s)", (other, rid, client))
-            with pytest.raises(run_lifecycle.RunConflict, match="вне его области"):
-                await getattr(run_lifecycle, action)(ac, rid)
-            assert (
-                await (await ac.execute("select count(*) from behavior_runtime where run_id=%s", (rid,))).fetchone()
-            ) == (2,)
-            assert (await (await ac.execute("select count(*) from lifecycle_composite_probe")).fetchone()) == (1,)
-            assert not (tmp_path / f"{rid}.json").exists()
-            # Только собственная synthetic foreign ссылка явно удаляется для
-            # retry; guard не отключается и CASCADE не разрешается через чужой run.
-            await ac.execute("delete from lifecycle_composite_probe")
-        await getattr(run_lifecycle, action)(ac, rid)
-        for table in (
-            "behavior_runtime",
-            "behavior_work",
-            "behavior_causes",
-            "behavior_evidence",
-            "behavior_receipts",
-            "client_states",
-        ):
-            from psycopg import sql
+        probe_created = False
+        try:
+            if external:
+                await ac.execute(
+                    "create table lifecycle_composite_probe(run_id bigint references sim_runs(id) on delete cascade,target_run bigint,target_client bigint,foreign key(target_run,target_client) references behavior_runtime(run_id,client_id) on delete cascade)"
+                )
+                probe_created = True
+                await ac.execute("insert into lifecycle_composite_probe values(%s,%s,%s)", (other, rid, client))
+                with pytest.raises(run_lifecycle.RunConflict, match="вне его области"):
+                    await getattr(run_lifecycle, action)(ac, rid)
+                assert (
+                    await (await ac.execute("select count(*) from behavior_runtime where run_id=%s", (rid,))).fetchone()
+                ) == (2,)
+                assert (await (await ac.execute("select count(*) from lifecycle_composite_probe")).fetchone()) == (1,)
+                assert not (tmp_path / f"{rid}.json").exists()
+                # Только собственная synthetic foreign ссылка явно удаляется для
+                # retry; guard не отключается и CASCADE не разрешается через чужой run.
+                await ac.execute("delete from lifecycle_composite_probe")
+            await getattr(run_lifecycle, action)(ac, rid)
+            for table in (
+                "behavior_runtime",
+                "behavior_work",
+                "behavior_causes",
+                "behavior_evidence",
+                "behavior_receipts",
+                "client_states",
+            ):
+                from psycopg import sql
 
-            assert (
-                await (
-                    await ac.execute(
-                        sql.SQL("select count(*) from {} where run_id=%s").format(sql.Identifier(table)), (rid,)
-                    )
-                ).fetchone()
-            ) == (0,)
-        assert (await (await ac.execute("select id from sim_runs where id=%s", (other,))).fetchone()) == (other,)
-        assert (await (await ac.execute("select count(*) from clients")).fetchone()) == (200,)
+                assert (
+                    await (
+                        await ac.execute(
+                            sql.SQL("select count(*) from {} where run_id=%s").format(sql.Identifier(table)), (rid,)
+                        )
+                    ).fetchone()
+                ) == (0,)
+            assert (await (await ac.execute("select id from sim_runs where id=%s", (other,))).fetchone()) == (other,)
+            assert (await (await ac.execute("select count(*) from clients")).fetchone()) == (200,)
+        finally:
+            if probe_created:
+                await ac.execute("drop table lifecycle_composite_probe")
+            assert (await (await ac.execute("select to_regclass('public.lifecycle_composite_probe')")).fetchone()) == (
+                None,
+            )
