@@ -57,3 +57,10 @@ random/poisson draws и конечный state, включая предшест�
 
 На объединённом составе main1df0024 дополнительно20 integration passed126.14s:
 corpus seed, first install/bootstrap и synthetic ingest с реальным World.
+
+После ordinary merge обновлённого parent T018 `00c9370` и main `8b225d5`:
+source `9d2659f`, corpus/RNG/stream-limit unit **45 passed2.26s**;
+actual PostgreSQL signal-corpus + synthetic-ingest **13 passed105.11s**
+на собственной `cx_signal_corpus_revision` с PG16 tools.
+Это новая composition-targeted проверка; прежние full/coverage/demo показатели
+выше относятся к своим frozen источникам. Дополнительных внешних вызовов нет.
