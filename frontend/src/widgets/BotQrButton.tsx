@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { QrCode } from 'lucide-react'
 import { api } from '@/shared/api/client'
 import type { paths } from '@/shared/api/types'
 import { Modal } from '@/shared/ui'
 
 type Health = paths['/api/health']['get']['responses'][200]['content']['application/json']
 
-export function BotQrButton() {
+export function BotQrButton({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -15,7 +16,7 @@ export function BotQrButton() {
   const username = q.data?.tgbot_username
   if (q.isError || q.data?.tgbot !== 'running' || !username) return null
   return <>
-    <button className="btn btn-sm" onClick={() => { setFailed(false); setOpen(true) }}>{t('botQr.open')}</button>
+    <button className={compact ? 'btn mobile-icon' : 'btn btn-sm'} aria-label={t('botQr.open')} title={t('botQr.open')} onClick={() => { setFailed(false); setOpen(true) }}>{compact ? <QrCode size={20} /> : t('botQr.open')}</button>
     <Modal open={open} onClose={() => setOpen(false)} title={t('botQr.title')} width="max-w-2xl">
       <div className="space-y-3 p-5 text-center">
         <p className="text-sm text-muted">{t('botQr.instructions')}</p>

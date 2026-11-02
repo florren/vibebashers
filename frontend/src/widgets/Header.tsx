@@ -69,6 +69,7 @@ export function Header() {
         <button type="button" className="btn btn-primary mobile-icon" aria-label={t('app.title')} onPointerDown={onLogoDown} onPointerUp={onLogoUp} onPointerLeave={clearPress} onPointerCancel={clearPress}><Activity size={20} /></button>
         <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
         <GlobalSearch compact />
+        <BotQrButton compact />
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
       <div className="flex items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
@@ -86,7 +87,6 @@ export function Header() {
         <div className="flex flex-wrap gap-2">
           <button className="btn" onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'ru' : 'en')}>{i18n.language === 'en' ? 'RU' : 'EN'}</button>
           <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t('common.jury')}</button>
-          <BotQrButton />
         </div>
         <section className="space-y-2" aria-label={t('sim.clock')}>
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>

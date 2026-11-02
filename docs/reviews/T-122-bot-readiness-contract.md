@@ -61,3 +61,9 @@ Final-head fullbackend, screenshots, contractreview, CI и merge ещё не з�
 1080p projector на5м и настоящий Telegram jury сценарий остаются ручными критериями;
 fake SDK, image build и UI screenshots не подтверждают их. Live запросы требуют
 отдельного разрешения и здесь не выполняются.
+
+Compact mobile trigger расположен непосредственно в Header, не внутри Drawer:
+QR modal не вкладывается во второй modal/focus trap. Desktop сохраняет text button.
+После credential binding26backendunit/PG passed26.36s;41bot7.95s;
+network-none container smoke прошёл с Python CLI. Полный unit1647 выше относится
+к предшествующему checkpoint; final full/backend UI доказательства версионируются отдельно.
