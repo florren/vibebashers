@@ -72,3 +72,44 @@ async def test_agent_service_rechecks_zero_impact_and_resumes_after_lost_notify_
             1,
         )
         await restarted.stop()
+
+
+@pytest.mark.asyncio
+async def test_failed_service_run_is_not_automatically_retried_after_restart(seeded):
+    service = AgentService(mock_chain(), MOCK_PROFILE, dsn=dsn(seeded))
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run = await new_run(conn, "T039 failed остаётся manual")
+        at = await sim_now(conn)
+        client = (
+            await (
+                await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+            ).fetchone()
+        )[0]
+        fid = await fault(conn, run, at)
+        await operation(conn, run, fid, client, at)
+        await conn.commit()
+        await service._proactive_cycle()
+        await asyncio.gather(*list(service._inflight))
+        ar = await (
+            await conn.execute("select id,prompt_tokens,completion_tokens from agent_runs where sim_run_id=%s", (run,))
+        ).fetchone()
+        assert ar is not None
+        # Synthetic durable failure marker: никаких реальных provider calls.
+        await conn.execute("update agent_runs set outcome='failed',error='synthetic failure' where id=%s", (ar[0],))
+        await conn.commit()
+        await service.stop()
+        restarted = AgentService(mock_chain(), MOCK_PROFILE, dsn=dsn(seeded))
+        try:
+            for _ in range(3):
+                await restarted._proactive_cycle()
+                assert not restarted._inflight
+            assert await (
+                await conn.execute(
+                    "select id,prompt_tokens,completion_tokens from agent_runs where sim_run_id=%s", (run,)
+                )
+            ).fetchall() == [ar]
+            assert (await (await conn.execute("select outcome from agent_runs where id=%s", (ar[0],))).fetchone()) == (
+                "failed",
+            )
+        finally:
+            await restarted.stop()

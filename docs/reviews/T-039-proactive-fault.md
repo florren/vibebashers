@@ -146,3 +146,24 @@ incident и stored economics; после обычного API input customer cou
 base по-прежнему использует прежний default refresh=True. Read-only proof относится
 к явному dashboard(...refresh_economics=False); глобальный readonly HTTP claim
 этим пакетом не делается. T241 view18 принадлежит другому owner и здесь не менялся.
+
+### Scripted atomic clock prerequisite
+
+`prepared_step` использует тот же native `_step_chunk_locked`, что ordinary
+Simulator.step; Python owner lock/clock/RNG validation и existing rollback
+сохранены. Только validated persisted prepared source заменяет ambient
+fault/operation/client_error/noise inputs; native pending timers, teams, SLA и
+BehaviorOwner работают штатно. Старые free/live/scenario без journal unchanged.
+Reader проверяет exact script hash, native operation/fault lineage и typed phase
+refs. Нет произвольного clock target или автоматического исправления changed RNG.
+
+Actual own-PG: 3 passed/30.01 s (120 native episodes, no early anchor, reload
+idempotence, owner failure rollback clock/RNG/episodes, changed script rejection).
+Fixture сохраняет initial RNG через Simulator.persist, как API start, не
+ослабляет strict equality для пустого RNG. Adjacent existing Simulator и runner:
+7 passed/32.65 s; failed service AR теперь остаётся diagnostic/manual даже после
+restart/трёх polls, новый AR автоматически не создаётся. Ruff и mypy4 green.
+
+Это prerequisite, не успешный production scenario6: API/YAML/phase coordinator,
+scoped paused recovery и evaluator ещё не подключены. Modelled prevention B
+остаётся отдельной owner implementation/review; текущий prevented=null честен.

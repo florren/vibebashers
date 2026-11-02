@@ -100,7 +100,7 @@ class AgentService:
                     "select s.id,a.id,a.outcome from signals s left join lateral "
                     "(select ar.id,ar.outcome from agent_runs ar where ar.signal_id=s.id "
                     "and ar.sim_run_id=s.run_id and ar.kind='agent' "
-                    "and ar.outcome is distinct from 'failed' order by ar.id desc limit 1) a on true "
+                    "order by ar.id desc limit 1) a on true "
                     "where s.id=any(%s::bigint[]) order by s.id",
                     (signal_ids,),
                 )
@@ -110,6 +110,8 @@ class AgentService:
                 self.submit(int(signal_id))
             elif outcome == "deferred":
                 self._submit_proactive_resume(int(signal_id))
+            # failed — диагностический результат для ручного разбора; poll не
+            # создаёт новый AR/платные вызовы каждые две секунды.
 
     def _submit_proactive_resume(self, signal_id: int) -> asyncio.Task[Any]:
         existing = self._by_signal.get(signal_id)

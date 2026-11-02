@@ -179,7 +179,9 @@ async def rows(conn: psycopg.AsyncConnection[Any], query: str, args: tuple[Any, 
 async def prepared(conn: psycopg.AsyncConnection[Any], run_id: int) -> Prepared | None:
     found = await rows(
         conn,
-        "select id,payload,sim_time,correlation_id from sim_events where run_id=%s and event_type=%s order by id",
+        "with eligible as materialized(select id from sim_runs where id=%s and kind='scenario') "
+        "select v.id,v.payload,v.sim_time,v.correlation_id from eligible r join sim_events v on v.run_id=r.id "
+        "where v.event_type=%s order by v.id",
         (run_id, PREFIX + "prepared"),
     )
     if not found:
@@ -364,3 +366,134 @@ async def prepare(conn: psycopg.AsyncConnection[Any], run_id: int, spec: Plan) -
     result = await prepared(conn, run_id)
     assert result is not None
     return result
+
+
+@dataclass(frozen=True)
+class Case:
+    spec: Plan
+    prepared: Prepared
+    operations: list[dict[str, Any]]
+    events: dict[str, dict[str, Any]]
+
+    @property
+    def initial_at(self) -> dt.datetime:
+        return self.prepared.at + dt.timedelta(minutes=float(self.spec.script.initial_step_min))
+
+    @property
+    def complaints_at(self) -> dt.datetime:
+        return self.initial_at + dt.timedelta(minutes=float(self.spec.script.complaint_step_min))
+
+    @property
+    def observed_at(self) -> dt.datetime:
+        return self.complaints_at + dt.timedelta(minutes=float(self.spec.script.owner_observation_step_min))
+
+
+async def case(conn: psycopg.AsyncConnection[Any], run_id: int) -> Case | None:
+    """Same native refs, не origin flag; missing/changed facts не заменяем новым cohort."""
+    record = await prepared(conn, run_id)
+    if record is None:
+        return None
+    run = await rows(conn, "select kind,scenario_id from sim_runs where id=%s", (run_id,))
+    if len(run) != 1 or run[0]["kind"] != "scenario" or run[0]["scenario_id"] != record.payload["scenario_id"]:
+        raise ScriptedScenarioError("owner_changed")
+    from app.sim import scenarios
+
+    spec = plan(scenarios.get(run[0]["scenario_id"]) or {})
+    if spec is None or spec.sha256 != record.payload["script_sha256"]:
+        raise ScriptedScenarioError("script_changed")
+    evidence = await rows(
+        conn,
+        "select o.id operation_id,o.client_id,c.region_code,c.segment_code,c.consents,c.contacts,"
+        "(o.run_id=%s and o.fault_id=%s and o.started_sim=%s and o.finished_sim<=%s "
+        "and o.product_code=%s and o.op_type=%s and o.method=%s and o.system_path=%s "
+        "and o.error_code=%s and o.amount_rub=%s and o.fee_amount=0 "
+        "and behavior_valid_failed_operation(o.id,%s)) valid "
+        "from operations o join clients c on c.id=o.client_id where o.id=any(%s)",
+        (
+            run_id,
+            record.payload["fault_id"],
+            record.at,
+            record.at,
+            spec.operation.product_code.value,
+            spec.operation.op_type.value,
+            spec.operation.method.value,
+            [system.value for system in spec.operation.system_path],
+            spec.fault.error_code,
+            spec.operation.amount_rub,
+            run_id,
+            record.payload["operation_ids"],
+        ),
+    )
+    indexed = {row["operation_id"]: row for row in evidence}
+    if (
+        set(indexed) != set(record.payload["operation_ids"])
+        or not all(row["valid"] is True for row in evidence)
+        or len({row["client_id"] for row in evidence}) != spec.fault.affected_clients
+    ):
+        raise ScriptedScenarioError("cohort_changed")
+    native_fault = await rows(
+        conn,
+        "select 1 from faults f join error_codes e on e.code=f.error_code and e.system_code=f.system_code "
+        "where f.id=%s and f.run_id=%s and f.started_sim=%s and f.system_code=%s and f.error_code=%s "
+        "and exists(select 1 from sim_events v where v.run_id=f.run_id and v.event_type='fault.started' "
+        "and v.payload->>'fault_id'=f.id::text and v.sim_time=f.started_sim)",
+        (record.payload["fault_id"], run_id, record.at, spec.fault.system.value, spec.fault.error_code),
+    )
+    if not native_fault:
+        raise ScriptedScenarioError("inconsistent_evidence")
+    journal = await rows(
+        conn,
+        "select id,event_type,payload,sim_time from sim_events where run_id=%s and left(event_type,%s)=%s order by id",
+        (run_id, len(PREFIX), PREFIX),
+    )
+    events: dict[str, dict[str, Any]] = {}
+    for entry in journal:
+        payload = entry["payload"]
+        kind = entry["event_type"].removeprefix(PREFIX)
+        if (
+            validate(payload, "sim/scenario_proactive")
+            or payload.get("event_type") != entry["event_type"]
+            or payload.get("script_sha256") != record.payload["script_sha256"]
+            or payload.get("fault_id") != record.payload["fault_id"]
+            or payload.get("scenario_id") != spec.id
+            or kind in events
+            or (kind != "prepared" and payload.get("prepared_event_id") != record.id)
+        ):
+            raise ScriptedScenarioError("inconsistent_evidence")
+        events[kind] = entry
+    for kind, parent, reference in (
+        ("complaints", "notified", "notified_event_id"),
+        ("completed", "complaints", "complaints_event_id"),
+    ):
+        if kind in events and (
+            parent not in events
+            or events[kind]["payload"][reference] != events[parent]["id"]
+            or events[kind]["id"] <= events[parent]["id"]
+        ):
+            raise ScriptedScenarioError("inconsistent_evidence")
+    if "completed" in events and (
+        "failed" in events or events["completed"]["payload"]["notified_event_id"] != events["notified"]["id"]
+    ):
+        raise ScriptedScenarioError("inconsistent_evidence")
+    return Case(spec, record, [indexed[op] for op in record.payload["operation_ids"]], events)
+
+
+async def prepared_source(conn: psycopg.AsyncConnection[Any], run_id: int) -> bool:
+    """Только persisted native case меняет источник; старые free/live/scenario unchanged."""
+    return await case(conn, run_id) is not None
+
+
+async def validate_step(
+    conn: psycopg.AsyncConnection[Any], run_id: int, before: dt.datetime, target: dt.datetime
+) -> None:
+    context = await case(conn, run_id)
+    if context is None or "failed" in context.events or "completed" in context.events:
+        raise ScriptedScenarioError("phase_incomplete")
+    expected = {
+        (context.prepared.at, context.initial_at): None,
+        (context.initial_at, context.complaints_at): "notified",
+        (context.complaints_at, context.observed_at): "complaints",
+    }
+    pair = (before, target)
+    if pair not in expected or (expected[pair] is not None and expected[pair] not in context.events):
+        raise ScriptedScenarioError("phase_clock_changed")
