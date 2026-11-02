@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LONG_PRESS_MS, useDemoMenu } from './DemoMenu'
 import { useSimControl, useSimState } from '@/shared/api/hooks'
-import { fmtSim } from '@/shared/lib/format'
+import { fmtSimMoscow } from '@/shared/lib/format'
 import { ThemeSelector } from '@/shared/theme'
 import { useWs } from '@/shared/ws/client'
 import { DeviceSelector } from '@/shared/layout/device'
@@ -71,7 +71,7 @@ export function Header() {
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
       <div className="flex items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
-        <span className="num font-mono">{fmtSim(sim?.sim_time, 'dd.MM HH:mm')}</span>
+        <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}</span>
         <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{t(`sim.status.${runStatus ?? 'none'}`)}</span>
       </div>
     </header>
@@ -87,7 +87,7 @@ export function Header() {
           <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t('common.jury')}</button>
         </div>
         <section className="space-y-2" aria-label={t('sim.clock')}>
-          <p className="text-xs text-muted">{t('sim.clock')} · {fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
+          <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
           <div className="flex flex-wrap gap-2">
             <button className="btn" disabled={ctl.isPending} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
             <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
@@ -137,7 +137,7 @@ export function Header() {
         <div className="flex h-8 items-center gap-2 rounded-lg border border-line bg-raised px-2.5">
           <span className={clsx('h-2 w-2 rounded-full', running ? 'bg-ok animate-pulse' : 'bg-faint')} />
           <span className="text-xs text-muted">{t('sim.clock')}</span>
-          <span className="num font-mono text-sm">{fmtSim(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
+          <span className="num font-mono text-sm">{fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</span>
           <span className="hidden text-xs text-muted md:inline">
             {sim?.day_no !== undefined && t('sim.day', { n: sim.day_no + 1 })} · {sim?.phase ? t(`sim.phase.${sim.phase}`) : '—'}
           </span>
