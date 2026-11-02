@@ -44,4 +44,14 @@ pytest backend/tests/unit/test_clock.py backend/tests/integration/test_determini
 ```
 
 ## Отчёт субагента
+
+### Ревизия: сохраняемый RNG текста
+
+Ветка `codex/T-031-text-rng-state`: private RNG `TextGen` заменён общим `SimRng`
+мира, восстановление не делает лишний draw. Старый int-seed API сохранён.
+Targeted7 passed0.39s, full unit1056 passed/18skip29.01s. Оставшиеся проверки и
+ограничения совместимости: `docs/reviews/T-031-text-rng-state.md`.
+Отдельный пробел volatile `World.pending` передан в T-161; восстановление всех
+процессов одним этим изменением не заявляется. Контракты/DDL/политики не менялись.
+
 Ветка main, коммит B03. `app/sim/clock.py` (SimClock, пресеты demo_5min=144 сим-с/с, day_12min=60, realtime=1; фазы morning/day/evening/night; рабочие дни пн–пт 09:00–18:00; add_working_days/add_working_hours), `app/sim/rng.py` (SimRng: Пуассон, взвешенный выбор, dump/load состояния → sim_state.rng_state на каждом тике), `app/sim/engine.py` (Simulator: tick 0,5 с, блоки ≤ 60 сим-мин, персистентность sim_state, восстановление после рестарта и перевод running→interrupted при устаревшем last_tick_at; control: start/pause/resume/stop/step/reset_day/set_speed/set_preset/jump_to только вперёд с быстрым прогоном; публикация sim.tick в WS раз в сим-минуту), `app/api/sim.py`: реальные GET /api/sim/state, POST /api/sim/control (pydantic-валидация тела по openapi), GET /api/sim/events (фильтры run_id/type/since_sim, курсор), GET /api/sim/runs, /runs/current, /runs/{id}, POST /runs/{id}/stop|resume. Инициализация в lifespan (`app.state.sim`), в APP_ENV=test не стартует (503). Отклонение: sim.tick публикуется напрямую в hub (не через NOTIFY); события op.* идут в топик sim без агрегации (может превышать 4 сообщения/с на demo_5min). Тесты: `tests/integration/test_sim.py`. Время: ~70 мин.
