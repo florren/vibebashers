@@ -10,3 +10,17 @@
 Оба исходных failures + новый transaction regression: **3 passed, 19.05 s** (`/tmp/t161-full-findings-focused.log`). Все affected effect-time/Twin/repeat/inactive/demo-live модули: **24 passed, 142.56 s** (`/tmp/t161-full-findings-affected.log`). Повтор всего 45-минутного integration не объявляется выполненным; exact final composition CI остаётся обязательной.
 
 Отдельный T037 candidate `56e62b9`/docs `558227d` из другого checkout имеет собственные scoped PG/OS/clone/coverage и sequential scenarios/compliance proofs. Эти результаты не приписываются этому T161 runtime head. Новые event/legacy recovery и reset_day/financial timestamp границы по-прежнему требуют уже описанного concrete final human review. Утверждённые demo-policy/variant A повторно не согласуются и не менялись.
+
+
+## Frozen runtime70e4b00: актуальные дополнительные доказательства
+
+- Full unit: **1725 passed /18 skipped,96.45s** (`/tmp/t161-runtime-final-coverage-tests.log`, первая завершённая pytest session).
+- Fresh single pytest invocation: пять pure behavior unit modules + все семь behavior integration modules: **167 passed,357.70s** (`/tmp/t161-runtime-package-coverage-tests.log`).
+- Весь новый `app/sim/behavior` package: **1657/1772 executable lines,93.51%**; по модулям90.12–100%. Это line coverage, не branch coverage; source SHA256 и missing lines сохранены в [coverage JSON](T-161-runtime-package-coverage.json). Процент раннего proposal checkpoint не использован.
+- Обновлённый bounded OS SIGKILL/restart aggregate: [proof](T-161-runtime-process-final-proof.json). Исходные raw wall-clock hashes сохраняются; разрешённая нормализация ровно declared `review.posted.posted_at` проверяет равенство native timestamp и wall bounds.
+
+Первая версия coverage harness ошибочно вызвала `pytest.main` дважды в одном процессе. После успешного unit cached structlog PrintLogger ссылался на закрытый global capture stream первой session;13PG failures были `ValueError: I/O operation on closed file` в logging Simulator.load_state. Эту прерванную PG попытку и её trace в финальное покрытие **не включали**. Fresh one-invocation прогон выше прошёл; source не менялся.
+
+**Known whole-World gap до отдельного T037:** этот T161 proof не сохраняет RAM-план TeamEmulator до первого due team_action; из-за этого нельзя заявлять универсальную restart-equivalence World/global RNG на T161 в одиночку. T037 source56e62b9/docs558227d реализован отдельным child candidate с native plan/RNG commit boundary и собственными OS/clone/coverage proofs. Корректная публикация — отдельные stacked PR T161→T037 и итоговая проверка композиции; atomic exception не вводился.
+
+Конкретные event/legacy fail-closed, reset_day и financial-time изменения всё ещё требуют final human review. Исходные policy values и variant A уже одобрены; permission на внешние LLM/TG или рабочую БД не получалось и не использовалось.

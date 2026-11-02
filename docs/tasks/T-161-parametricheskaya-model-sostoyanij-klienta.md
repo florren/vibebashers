@@ -123,3 +123,12 @@ pass. [Причины и границы](../reviews/T-161-full-regression-findin
 performance и конкретный human event/runtime/reset_day/financial-time review
 ещё нужны. Два ранее одобренных решения demo-policy/variant A не запрашиваются
 повторно. Карточка остаётся in_progress.
+
+
+Frozen runtime70e4b00: full unit1725/18skip; fresh pure-core+все7behaviorPG
+167passed, новый package line coverage1657/1772=93.51% (каждый модуль≥90.12%).
+[Актуальный source-qualified отчёт](../reviews/T-161-full-regression-findings.md).
+Known whole-World Team plan/RNG gap устраняется отдельной T037 child карточкой;
+T161 отдельно не объявляет универсальную restart-equivalence. Карточки/PR не
+смешиваются без atomic exception; конечная composition CI и final human review
+остаются обязательными.
