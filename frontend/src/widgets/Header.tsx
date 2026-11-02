@@ -1,3 +1,7 @@
+import { useUndo } from '@/shared/ui/undo'
+import { RoleSelector } from '@/shared/layout/RoleSelector'
+import { type ReactNode } from 'react'
+import { useDemoStatus } from '@/shared/api/hooks'
 import { GlobalSearch } from '@/shared/components/GlobalSearch'
 import { clsx } from 'clsx'
 import { Activity, Gauge, Menu, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
@@ -17,7 +21,7 @@ import { BotQrButton } from './BotQrButton'
 
 const SPEEDS = [1, 10, 60, 120, 300]
 
-export function Header() {
+export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = false, onOpenSidebar, navigation }: { v2?: boolean; showSidebarToggle?: boolean; sidebarOpen?: boolean; onOpenSidebar?: () => void; navigation?: (close: () => void) => ReactNode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const setDemoOpen = useDemoMenu((s) => s.setOpen)
@@ -38,7 +42,8 @@ export function Header() {
     ['/engine', t('nav.engine')], ['/compliance', t('nav.compliance')], ['/manager', t('nav.manager')],
     ['/feed', t('nav.feed')], ['/trace', t('traceUi.title')], ['/claim', t('nav.claim')], ['/setup', t('nav.settings')],
   ]
-  const title = links.find(([path]) => path !== '/' && location.pathname.startsWith(path))?.[1] ?? t('nav.workspace')
+  const contextualTitle = v2 ? (location.pathname.startsWith('/overview') ? t('shell.overview') : location.pathname.startsWith('/cabinet') ? t('shell.cabinet') : location.pathname.startsWith('/csi') ? t('shell.csi') : null) : null
+  const title = contextualTitle ?? links.find(([path]) => path !== '/' && location.pathname.startsWith(path))?.[1] ?? t('nav.workspace')
 
   const running = !!sim?.running
   const runStatus = sim?.current_run_status ?? null
@@ -60,7 +65,7 @@ export function Header() {
 
   const onLogoUp = () => {
     clearPress()
-    if (!longTriggered.current) navigate('/')
+    if (!longTriggered.current) navigate(v2 ? '/overview' : '/')
   }
 
   if (mobile) return <>
@@ -72,24 +77,26 @@ export function Header() {
         <BotQrButton compact />
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
-      <div className="flex items-center justify-between gap-2 px-3 pb-2 text-xs text-muted">
-        <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}</span>
-        <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{t(`sim.status.${runStatus ?? 'none'}`)}</span>
+      <div className={clsx('flex items-center justify-between px-3 text-muted', v2 ? 'flex-wrap gap-x-2 gap-y-0 pb-1 text-[12px] leading-tight' : 'gap-2 pb-2 text-xs')}>
+        <span className="num font-mono">{fmtSimMoscow(sim?.sim_time, 'dd.MM HH:mm')}{v2 && sim?.phase ? ` · ${t(`sim.phase.${sim.phase}`)}` : ''}{v2 && sim?.current_run_id != null ? ` · #${sim.current_run_id}` : ''}</span>
+        <span className="flex items-center gap-2"><span className={clsx('h-2 w-2 rounded-full', wsStatus === 'open' ? 'bg-ok' : 'bg-warn')} />{v2 && wsStatus === 'open' ? `${t('shell.live')} · ` : ''}{t(`sim.status.${runStatus ?? 'none'}`)}</span>
       </div>
     </header>
-    <Drawer open={menu} onClose={() => setMenu(false)} title={t('device.menu')} width="w-[360px]">
-      <nav className="mobile-nav grid grid-cols-2 gap-2 p-3" aria-label={t('device.navigation')}>
+    <Drawer open={menu} onClose={() => { setMenu(false); if (v2) useUndo.getState().offer(() => setMenu(true)) }} title={t('device.menu')} width="w-[360px]">
+      {v2 && navigation ? navigation(() => setMenu(false)) : <nav className="mobile-nav grid grid-cols-2 gap-2 p-3" aria-label={t('device.navigation')}>
         {links.map(([path, label]) => <NavLink key={path} to={path} end={path === '/'} onClick={() => setMenu(false)} className={({ isActive }) => clsx('flex min-h-11 items-center rounded-lg border px-3 py-2 text-sm', isActive ? 'border-brand bg-brand-soft font-semibold' : 'border-line')}>{label}</NavLink>)}
-      </nav>
+      </nav>}
       <div className="space-y-4 border-t border-line p-4">
+        {v2 && <RoleSelector />}
         <DeviceSelector />
         <ThemeSelector className="grid gap-2" />
         <div className="flex flex-wrap gap-2">
           <button className="btn" onClick={() => void i18n.changeLanguage(i18n.language === 'en' ? 'ru' : 'en')}>{i18n.language === 'en' ? 'RU' : 'EN'}</button>
-          <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t('common.jury')}</button>
+          <button className="btn" onClick={() => { setMenu(false); setJury(true) }}><MessageSquarePlus size={16} />{t(v2 ? 'shell.newSignal' : 'common.jury')}</button>
         </div>
         <section className="space-y-2" aria-label={t('sim.clock')}>
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
+          {v2 && sim?.current_run_id != null && <p className="break-words font-mono text-xs"><RunLabel id={sim.current_run_id} /></p>}
           <div className="flex flex-wrap gap-2">
             <button className="btn" disabled={ctl.isPending} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
             <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
@@ -116,12 +123,13 @@ export function Header() {
         >
           <Activity size={16} strokeWidth={2.4} />
         </button>
-        <NavLink to="/" className="hidden text-sm font-semibold sm:block">
+        <NavLink to={v2 ? '/overview' : '/'} className="hidden text-sm font-semibold sm:block">
           {t('app.title')}
         </NavLink>
       </div>
 
-      <nav className="ml-2 flex flex-wrap items-center gap-0.5">
+      {v2 && showSidebarToggle && <button className="btn btn-sm" aria-label={t('shell.openNavigation')} aria-expanded={sidebarOpen} onClick={onOpenSidebar}><Menu size={18} /></button>}
+      {!v2 && <nav className="ml-2 flex flex-wrap items-center gap-0.5">
         <Nav to="/" label={t('nav.workspace')} end />
         <Nav to="/finance" label={t('finance.title')} />
         <Nav to="/engine" label={t('nav.engine')} />
@@ -132,7 +140,7 @@ export function Header() {
         <Nav to="/trace" label={t("traceUi.title")} />
         <Nav to="/claim" label={t('nav.claim')} />
         <Nav to="/setup" label={t('nav.settings')} />
-      </nav>
+      </nav>}
 
       <GlobalSearch />
       <div className="mx-auto flex flex-wrap items-center gap-2">
@@ -143,6 +151,7 @@ export function Header() {
           <span className="hidden text-xs text-muted md:inline">
             {sim?.day_no !== undefined && t('sim.day', { n: sim.day_no + 1 })} · {sim?.phase ? t(`sim.phase.${sim.phase}`) : '—'}
           </span>
+          {v2 && sim?.current_run_id != null && <span className="font-mono text-xs"><RunLabel id={sim.current_run_id} /></span>}
           {sim && !sim.is_working_day && <Badge tone="warn">{t('sim.weekend')}</Badge>}
           <Badge tone={runStatus === 'running' ? 'ok' : runStatus === 'paused' ? 'warn' : 'neutral'}>{t(`sim.status.${runStatus ?? 'none'}`)}</Badge>
         </div>
@@ -183,12 +192,12 @@ export function Header() {
       </div>
 
       <button className="btn btn-sm" onClick={() => setJury(true)}>
-        <MessageSquarePlus size={13} /> {t('common.jury')}
+        <MessageSquarePlus size={13} /> {t(v2 ? 'shell.newSignal' : 'common.jury')}
       </button>
       <BotQrButton />
       <span className={clsx('flex items-center gap-1 text-xs', wsStatus === 'open' ? 'text-muted' : 'text-danger')} title="WebSocket">
         <span className={clsx('h-1.5 w-1.5 rounded-full', wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-danger')} />
-        {t(`ws.${wsStatus}`)}
+        {v2 && wsStatus === 'open' ? t('shell.live') : t(`ws.${wsStatus}`)}
       </span>
       <button
         type="button"
@@ -198,6 +207,7 @@ export function Header() {
       >
         {i18n.language === 'en' ? 'RU' : 'EN'}
       </button>
+      {v2 && <RoleSelector />}
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <DeviceSelector />
       <JuryModal open={jury} onClose={() => setJury(false)} />
@@ -217,4 +227,10 @@ function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {
       {label}
     </NavLink>
   )
+}
+
+
+function RunLabel({ id }: { id: number }) {
+  const demo = useDemoStatus()
+  return <span>#{id}{demo.data?.current_run?.label ? ` · ${demo.data.current_run.label}` : ''}</span>
 }

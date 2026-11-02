@@ -650,7 +650,8 @@
       "live": "live",
       "alerted": "alert",
       "closed": "closed"
-    }
+    },
+    "branchLabel": "Branch {{code}}"
   },
   "manager": {
     "title": "Manager device",
@@ -671,7 +672,8 @@
     "counter": "{{n}} of {{m}}",
     "quotes": "Quotes",
     "recommendation": "Recommendation",
-    "ackHelp": "Review — you take it on; False — you dismiss the alert and learn from the error; Incident — you pass it to compliance"
+    "ackHelp": "Review — you take it on; False — you dismiss the alert and learn from the error; Incident — you pass it to compliance",
+    "location": "Branch {{branch}} · desk {{desk}}"
   },
   "quality": {
     "title": "Quality report",
@@ -1407,7 +1409,8 @@
     "report": "Meeting report",
     "reportHint": "The report is stored on the audio session and is available to the branch manager (Manager tab); alerts go to Telegram if the branch has a linked chat.",
     "wsError": "The /ws/audio connection dropped",
-    "speechError": "Browser recognition error: {{e}}"
+    "speechError": "Browser recognition error: {{e}}",
+    "timeRange": "{{start}}–{{end}} s"
   },
   "voice": {
     "start": "Dictate",
@@ -2248,5 +2251,62 @@
     "fictional": "Use fictional data only. /status checks your case; /lang ru|en changes the language.",
     "alt": "QR code for the verified Telegram bot",
     "unavailable": "The bot became unavailable. Close this window and wait for the connection to recover."
+  },
+  "shell": {
+    "navigation": "Navigation",
+    "groups": {
+      "operations": "Operations",
+      "audit": "Control and audit",
+      "demonstration": "Demonstration",
+      "product": "Product and network"
+    },
+    "overview": "Overview",
+    "cabinet": "Product cabinet",
+    "csi": "CSI and branch network",
+    "zones": "Zones",
+    "economics": "Loss calculator",
+    "role": "Role preset",
+    "roles": {
+      "cx_operator": "CX operator",
+      "cx_lead": "CX lead",
+      "product_manager": "Product manager",
+      "product_head": "Product head",
+      "compliance_officer": "Compliance officer",
+      "bank_head": "Bank head",
+      "admin": "Administrator"
+    },
+    "demonstrator": "Presenter context",
+    "presetHint": "The preset changes the view and hints, not access rights. Direct routes remain available.",
+    "layout": "Interface layout",
+    "legacy": "Current layout",
+    "v2": "Sidebar navigation v2",
+    "appearance": "Interface appearance",
+    "pending": "This screen is still being prepared. Available data and actions can be opened in the workspace.",
+    "openWorkspace": "Open workspace",
+    "newSignal": "New signal",
+    "systemStatus": "System status",
+    "statusLoading": "Checking status…",
+    "service": "Service",
+    "ready": "ready",
+    "degraded": "partly ready",
+    "database": "Database",
+    "available": "available",
+    "unavailable": "unavailable",
+    "agent": "Agent · LLM mode",
+    "channels": "Channels",
+    "unknown": "unknown",
+    "telegram": {
+      "running": "enabled",
+      "disabled": "disabled",
+      "error": "unavailable",
+      "unknown": "unknown"
+    },
+    "configurationHint": "Configuration and database readiness; opening this panel does not call an external model.",
+    "openNavigation": "Open navigation",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcutOperations": "Available operations items, in menu order.",
+    "shortcutClose": "Close the top panel or dialog.",
+    "searchTrace": "Search and trace",
+    "live": "LIVE"
   }
 }

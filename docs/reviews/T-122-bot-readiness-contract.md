@@ -98,3 +98,6 @@ regressions green; прежние source-qualified coverage/build/UI artifacts �
 Контракт меняется только вперёд: API1.5.23, optional health username + HMAC heartbeat;
 нового DDL нет. Требуется final review техлида по AGENTS§7. Оговорка об одобренной
 S2S проверке не выдаётся за одобрение конкретного нового heartbeat контракта.
+
+
+Композиция с T121 b85d377 (main73425): сохранены обе группы locale botQr/shell и compact QR trigger вне mobile Drawer. После merge:361frontend tests, lint/typecheck,50fake bot tests(7.18s) green. Новых Telegram-вызовов нет; full backend проверяется CI текущего head.
