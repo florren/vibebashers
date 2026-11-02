@@ -50,12 +50,12 @@ types:
     sentiment: negative
     negativity: 65
     ru:
-      - {text: 'Продукт «{product}»: экран загрузки стоит без движения, повторный вход ничего не меняет.', style: plain}
+      - {text: 'Продукт «{product}»: подтверждаю операцию на {amount} ₽, экран стоит без движения. Уже {days} дня повторный вход ничего не меняет.', style: plain}
       - {text: 'Раздел «{product}» закрывается при каждом подтверждении. Вчера тот же шаг проходил.', style: plain}
       - {text: 'Открыл «{product}» и любуюсь вечным кружочком. Зато тренирую терпение, ага.', style: sarcasm}
       - {text: '«{product}» опять делает вид, что кнопка нажалась, а дальше тишина. Круто придумано ))', style: sarcasm}
     en:
-      - 'The {product} screen freezes after confirmation. Signing in again does not help.'
+      - 'The {product} screen freezes while confirming a transaction for {amount} RUB. Signing in again does not help.'
       - 'My {product} page keeps loading forever; I cannot complete the action.'
   client_error:
     sentiment: neutral
@@ -72,7 +72,7 @@ types:
     sentiment: negative
     negativity: 65
     ru:
-      - {text: 'Продукт «{product}»: при оформлении показали одни условия обслуживания, в документе другие. Объясните расхождение.', style: plain}
+      - {text: 'Продукт «{product}»: при оформлении {days} дня назад показали промо {promo_rate} %, в документе {rate} %. Объясните расхождение условий.', style: plain}
       - {text: 'По продукту «{product}» удержали плату {fee} ₽, о которой при подключении не предупредили.', style: plain}
       - {text: '«{product}»: сначала крупно «бесплатно», потом сюрприз на {fee} ₽. Чудеса мелкого шрифта, ага.', style: sarcasm}
       - {text: '«{product}»: на витрине одно, в бумажке другое. Это такой квест на внимательность? ))', style: sarcasm}

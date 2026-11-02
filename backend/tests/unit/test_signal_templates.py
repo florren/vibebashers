@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from pathlib import Path
+from string import Formatter
 
 import pytest
 import yaml
@@ -21,6 +22,14 @@ def test_entire_corpus_covers_actual_reference_matrix_without_duplicate_texts() 
     expected = {(t, p, c, lang) for t in types for p in products for c in channels for lang in ("ru", "en")}
     assert set(gen.corpus.templates) == expected
     rows = [r for group in gen.corpus.templates.values() for r in group]
+    source_texts = [
+        row["text"] if isinstance(row, dict) else row
+        for spec in gen.corpus.data["types"].values()
+        for language in ("ru", "en")
+        for row in spec[language]
+    ] + [value for wrapper in gen.corpus.data["channels"].values() for value in wrapper.values()]
+    fields = {field for text in source_texts for _, field, _, _ in Formatter().parse(text) if field}
+    assert {"amount", "days", "product", "promo_rate", "rate", "city"} <= fields
     assert len({r.id for r in rows}) == len({r.text for r in rows}) == len(rows) >= 400
     for (t, p, c, language), group in gen.corpus.templates.items():
         assert len(group) >= (3 if language == "ru" else 1)
