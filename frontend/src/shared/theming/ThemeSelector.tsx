@@ -10,6 +10,8 @@ const MODES: ThemeMode[] = ['light', 'dark', 'auto', 'circadian']
 export function ThemeSelector({ className }: { className?: string }) {
   const { t } = useTranslation()
   const id = useId()
+  const attention = useUiTheme((s) => s.attention)
+  const setAttention = useUiTheme((s) => s.setAttention)
   const density = useUiTheme((s) => s.density)
   const setDensity = useUiTheme((s) => s.setDensity)
   const syncError = useUiTheme((s) => s.syncError)
@@ -47,6 +49,11 @@ export function ThemeSelector({ className }: { className?: string }) {
       <select className="input h-7 py-0 text-xs" aria-label={t('theme.densityLabel')} value={density} onChange={(e) => setDensity(e.target.value as ThemeDensity)}>
         <option value="comfortable">{t('theme.density.comfortable')}</option>
         <option value="compact">{t('theme.density.compact')}</option>
+      </select>
+      <select className="input h-7 py-0 text-xs" aria-label={t('attention.label')} value={attention ?? 'auto'} onChange={e => setAttention(e.target.value === 'auto' ? null : e.target.value as 'calm' | 'control_room')}>
+        <option value="auto">{t('attention.auto')}</option>
+        <option value="calm">{t('attention.calm')}</option>
+        <option value="control_room">{t('attention.control_room')}</option>
       </select>
       {mode === 'circadian' && <CircadianControls />}
       {syncError && <span role="status" className="text-xs text-danger">{t('theme.syncError')}</span>}

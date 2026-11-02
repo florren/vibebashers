@@ -84,15 +84,15 @@ it('pending не отправляется повторно, WS/cache invalidatio
   hold!(); await screen.findByRole('region', { name: 'Результаты сравнения' })
 })
 it('429 и сбойtrace видны, ошибка не запускает автоматический повтор', async () => {
-  status = 429; show(); enter(); send(); await screen.findByText('Ошибка: Не больше 20 запросов жюри в минуту')
+  status = 429; show(); enter(); send(); await screen.findByText('Не больше 20 запросов жюри в минуту')
   expect(calls.filter(call => call.path === '/api/agent/compare')).toHaveLength(1)
   expect(screen.queryByRole('region', { name: 'Результаты сравнения' })).not.toBeInTheDocument()
   status = 200; traceError = true; send(); await screen.findByRole('region', { name: 'Результаты сравнения' })
-  await waitFor(() => expect(screen.getAllByText('Ошибка: trace unavailable')).toHaveLength(2))
+  await waitFor(() => expect(screen.getAllByText('trace unavailable')).toHaveLength(2))
   expect(screen.getByText(selectedClassification.summary_ru)).toBeVisible()
 })
 it('пустой HTTP200 не маскируется как классификация', async () => {
-  result = {}; show(); enter(); send(); await screen.findByText('Ошибка: API не вернул обе классификации.')
+  result = {}; show(); enter(); send(); await screen.findByText('API не вернул обе классификации.')
   expect(screen.queryByRole('region', { name: 'Результаты сравнения' })).not.toBeInTheDocument()
 })
 it('английская форма сохраняет язык ответа и очищает старый результат при новом входе', async () => {
