@@ -51,3 +51,14 @@ Visual proof показал старое UTC отображение `sla_due_sim
 frontend/e2e/calm-mode.spec.ts (L5), product frontend (L4); merge владельцем L1.
 CI owners читает marker из title/body, а не label: marker добавлен в PR title
 перед повторным CI, проверки не изменялись.
+
+## CI regression: доступ к night digest
+
+CI на4dd538d: backend4shards/contracts/db/lint green,101browser passed,
+1failed: открытый CircadianControls popover перехватывал click по дайджесту.
+Тест теперь закрывает popover обычным summary click, перед следующей фазой
+открывает снова. Helper проверяет наличие boolean open attribute через null
+(его значение при открытом details — пустая строка). Content/contrast assertions,
+таймауты и product code не ослаблены. Все5circadian production Playwright cases
+ru/en, WCAG/reduced-motion/geo/MSK прошли15.6s наlocalhostpreview с прежними
+HTTP/WS fixtures; preview после проверки остановлен. Currentmain33c6f88 merged.
