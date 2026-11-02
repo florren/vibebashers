@@ -23,8 +23,6 @@ from app.sim.events import EventBus
 from app.sim.generators import World
 from app.sim.maintenance import start_daemon, writer
 from app.sim.rng import SimRng
-from app.sim.sla import SlaEngine
-from app.sim.teams import TeamEmulator
 
 log = get_logger(__name__)
 REAL_TICK_S = 0.5
@@ -125,9 +123,24 @@ class Simulator:
             )
             self.run_status = "running"
             await conn.commit()
-        if self.world is None or self.world.run_id != self.run_id:
-            self.world = World(conn, EventBus(conn), self.rng, self.run_id, getattr(self, "_intensities", None))
-            await self.world.load()
+        if self.world is None or self.world.run_id != self.run_id or self.world.conn is not conn:
+            old = self.world if self.world is not None and self.world.run_id == self.run_id else None
+            self.world = World(
+                conn,
+                EventBus(conn),
+                self.rng,
+                self.run_id,
+                old.intensities if old is not None else getattr(self, "_intensities", None),
+            )
+            if old is not None:
+                self.world.pending = old.pending
+                self.world.active_faults = old.active_faults
+        if not self.world.loaded:
+            try:
+                await self.world.load()
+            except BaseException:
+                await conn.rollback()
+                raise
         return self.world
 
     async def persist(self) -> None:
@@ -165,7 +178,6 @@ class Simulator:
             stats_before = dict(self.stats)
             pending_before = copy.deepcopy(world.pending)
             faults_before = copy.deepcopy(world.active_faults)
-            text_rng_before = world.textgen.rnd.getstate()
             minutes = min(minutes, MAX_BATCH_MIN)
             try:
                 self.stats["faults"] += await world.gen_faults(t0, minutes)
@@ -182,24 +194,29 @@ class Simulator:
                 self.stats["ticks"] += 1
                 await self.persist()
                 await conn.commit()
-            except asyncio.CancelledError:
-                # Пауза/стоп отменяют незавершённый тик целиком, включая RNG и кеш World.
-                await conn.rollback()
+            except BaseException as error:
+                # Любая незафиксированная попытка отменяется вместе с logical
+                # time/RNG/stats. Частично изменённый World нельзя reuse при retry.
                 self.clock.sim_time = t0
                 self.clock.day_no = day_before
                 self.rng.load_state(rng_before)
                 self.stats = stats_before
-                world.pending = pending_before
-                world.active_faults = faults_before
-                world.textgen.rnd.setstate(text_rng_before)
-                world.team_emulator = TeamEmulator(self.rng, conn, world.bus, world.run_id)
-                world.sla_engine = SlaEngine(conn, world.bus, world.run_id)
-                await world.team_emulator.load()
-                await world.sla_engine.load()
-                raise
-            except Exception:
+                restored = World(conn, EventBus(conn), self.rng, world.run_id, world.intensities)
+                restored.pending = pending_before
+                restored.active_faults = faults_before
+                self.world = restored
                 await conn.rollback()
-                log.exception("sim_step_failed")
+                try:
+                    await restored.load()
+                except Exception as reload_error:
+                    # Existing pending остаётся в restored; loaded=False заставит
+                    # следующий step повторить DB reload, а не использовать partial cache.
+                    await conn.rollback()
+                    log.error("sim_world_reload_failed", error_type=type(reload_error).__name__)
+                else:
+                    await conn.rollback()  # reload только читает committed DB.
+                if not isinstance(error, asyncio.CancelledError):
+                    log.exception("sim_step_failed")
                 raise
         await self._publish_tick()
 

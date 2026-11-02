@@ -1,3 +1,4 @@
+import { NightDigest } from '@/shared/theming/NightDigest'
 import { Outlet } from 'react-router-dom'
 import { useDemoStatus } from '@/shared/api/hooks'
 import { DemoMenu } from './DemoMenu'
@@ -18,6 +19,7 @@ export function Shell() {
   return (
     <div className="app-shell flex h-full min-w-0 flex-col">
       <Header />
+      <NightDigest />
       <main className="app-content min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>

@@ -203,7 +203,38 @@
       "comfortable": "Comfortable",
       "compact": "Compact"
     },
-    "syncError": "Theme saved locally; settings sync unavailable"
+    "syncError": "Theme saved locally; settings sync unavailable",
+    "circadian": {
+      "settings": "Day cycle",
+      "sourceLabel": "Time source",
+      "source": {
+        "sim": "Simulation",
+        "real": "Device clock",
+        "fixed": "Fixed phase"
+      },
+      "phaseLabel": "Phase",
+      "phase": {
+        "dawn": "Dawn",
+        "morning": "Morning",
+        "noon": "Noon",
+        "sunset": "Sunset",
+        "twilight": "Twilight",
+        "night": "Night"
+      },
+      "geoExplanation": "Sunrise and sunset are calculated offline. Your location is requested only after you press Allow; coordinates stay in this browser and are never sent to the server.",
+      "localLocation": "Using location saved in this browser",
+      "moscow": "Using Moscow (default)",
+      "allowLocation": "Allow location",
+      "locating": "Locating…",
+      "forgetLocation": "Use Moscow",
+      "geoError": "Location unavailable. The previous location or Moscow remains in use.",
+      "digest": "Night digest · high priority signals",
+      "loading": "Loading…",
+      "digestError": "Signals unavailable; retry in the workspace.",
+      "empty": "No high priority signals in the current run.",
+      "more": "Showing the latest 10. All signals are available in the workspace.",
+      "openWorkspace": "Open workspace"
+    }
   },
   "signal": {
     "sourcePlatform": "Source platform",

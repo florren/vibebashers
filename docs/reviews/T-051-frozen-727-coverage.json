@@ -1,0 +1,575 @@
+{
+  "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+  "base_revision": "85fcbaa",
+  "tool": "stdlib trace with absolute co_filename filtering; no basename ignore cache",
+  "exit_code": 0,
+  "changed": {
+    "covered": 2260,
+    "statements": 2516,
+    "percent": 89.83,
+    "files": {
+      "backend/app/agent/comparison.py": {
+        "covered": 2,
+        "statements": 3,
+        "missing_lines": [
+          216
+        ]
+      },
+      "backend/app/agent/graph.py": {
+        "covered": 5,
+        "statements": 5,
+        "missing_lines": []
+      },
+      "backend/app/agent/operator_feedback.py": {
+        "covered": 14,
+        "statements": 17,
+        "missing_lines": [
+          209,
+          212,
+          213
+        ]
+      },
+      "backend/app/agent/runner.py": {
+        "covered": 84,
+        "statements": 117,
+        "missing_lines": [
+          119,
+          296,
+          299,
+          300,
+          302,
+          303,
+          304,
+          305,
+          306,
+          308,
+          309,
+          310,
+          311,
+          312,
+          313,
+          314,
+          315,
+          326,
+          327,
+          328,
+          329,
+          330,
+          331,
+          332,
+          333,
+          334,
+          336,
+          337,
+          338,
+          339,
+          340,
+          341,
+          342
+        ]
+      },
+      "backend/app/api/_compliance_support.py": {
+        "covered": 2,
+        "statements": 2,
+        "missing_lines": []
+      },
+      "backend/app/api/compliance.py": {
+        "covered": 1,
+        "statements": 5,
+        "missing_lines": [
+          225,
+          280,
+          281,
+          282
+        ]
+      },
+      "backend/app/api/engine.py": {
+        "covered": 2,
+        "statements": 2,
+        "missing_lines": []
+      },
+      "backend/app/api/ingest.py": {
+        "covered": 1,
+        "statements": 3,
+        "missing_lines": [
+          138,
+          279
+        ]
+      },
+      "backend/app/api/scenarios.py": {
+        "covered": 7,
+        "statements": 9,
+        "missing_lines": [
+          65,
+          66
+        ]
+      },
+      "backend/app/api/settings.py": {
+        "covered": 119,
+        "statements": 163,
+        "missing_lines": [
+          45,
+          58,
+          61,
+          63,
+          75,
+          77,
+          86,
+          87,
+          88,
+          89,
+          93,
+          94,
+          96,
+          135,
+          138,
+          139,
+          140,
+          141,
+          142,
+          155,
+          156,
+          158,
+          284,
+          285,
+          371,
+          372,
+          373,
+          374,
+          400,
+          409,
+          410,
+          411,
+          427,
+          428,
+          429,
+          435,
+          440,
+          448,
+          511,
+          522,
+          523,
+          524,
+          525,
+          547
+        ]
+      },
+      "backend/app/api/setup.py": {
+        "covered": 25,
+        "statements": 45,
+        "missing_lines": [
+          165,
+          253,
+          256,
+          257,
+          258,
+          259,
+          260,
+          261,
+          262,
+          263,
+          265,
+          267,
+          270,
+          271,
+          272,
+          273,
+          274,
+          275,
+          276,
+          490
+        ]
+      },
+      "backend/app/api/signals.py": {
+        "covered": 3,
+        "statements": 3,
+        "missing_lines": []
+      },
+      "backend/app/api/sim.py": {
+        "covered": 40,
+        "statements": 42,
+        "missing_lines": [
+          178,
+          224
+        ]
+      },
+      "backend/app/api/trace.py": {
+        "covered": 20,
+        "statements": 20,
+        "missing_lines": []
+      },
+      "backend/app/bench/datasets.py": {
+        "covered": 175,
+        "statements": 194,
+        "missing_lines": [
+          29,
+          52,
+          80,
+          114,
+          117,
+          119,
+          126,
+          130,
+          134,
+          147,
+          150,
+          159,
+          165,
+          176,
+          183,
+          208,
+          214,
+          220,
+          235
+        ]
+      },
+      "backend/app/bench/metrics.py": {
+        "covered": 7,
+        "statements": 7,
+        "missing_lines": []
+      },
+      "backend/app/bench/runner.py": {
+        "covered": 23,
+        "statements": 24,
+        "missing_lines": [
+          87
+        ]
+      },
+      "backend/app/bench/service.py": {
+        "covered": 41,
+        "statements": 42,
+        "missing_lines": [
+          254
+        ]
+      },
+      "backend/app/compliance/llm_detector.py": {
+        "covered": 13,
+        "statements": 13,
+        "missing_lines": []
+      },
+      "backend/app/config.py": {
+        "covered": 1,
+        "statements": 1,
+        "missing_lines": []
+      },
+      "backend/app/demo/execution.py": {
+        "covered": 44,
+        "statements": 55,
+        "missing_lines": [
+          612,
+          613,
+          627,
+          628,
+          629,
+          630,
+          631,
+          632,
+          633,
+          634,
+          636
+        ]
+      },
+      "backend/app/demo/history.py": {
+        "covered": 0,
+        "statements": 5,
+        "missing_lines": [
+          3,
+          14,
+          98,
+          99,
+          106
+        ]
+      },
+      "backend/app/demo/recovery.py": {
+        "covered": 0,
+        "statements": 1,
+        "missing_lines": [
+          67
+        ]
+      },
+      "backend/app/errors.py": {
+        "covered": 4,
+        "statements": 4,
+        "missing_lines": []
+      },
+      "backend/app/ingest/sources.py": {
+        "covered": 10,
+        "statements": 17,
+        "missing_lines": [
+          160,
+          161,
+          162,
+          163,
+          164,
+          165,
+          166
+        ]
+      },
+      "backend/app/llm/base.py": {
+        "covered": 14,
+        "statements": 17,
+        "missing_lines": [
+          62,
+          64,
+          74
+        ]
+      },
+      "backend/app/llm/credential_boundary.py": {
+        "covered": 129,
+        "statements": 132,
+        "missing_lines": [
+          73,
+          74,
+          146
+        ]
+      },
+      "backend/app/llm/credentials.py": {
+        "covered": 135,
+        "statements": 146,
+        "missing_lines": [
+          65,
+          76,
+          77,
+          128,
+          135,
+          137,
+          148,
+          219,
+          223,
+          224,
+          228
+        ]
+      },
+      "backend/app/llm/failover.py": {
+        "covered": 28,
+        "statements": 32,
+        "missing_lines": [
+          86,
+          123,
+          152,
+          279
+        ]
+      },
+      "backend/app/llm/gigachat.py": {
+        "covered": 32,
+        "statements": 42,
+        "missing_lines": [
+          168,
+          318,
+          329,
+          468,
+          471,
+          489,
+          490,
+          491,
+          497,
+          499
+        ]
+      },
+      "backend/app/llm/openai_compat.py": {
+        "covered": 38,
+        "statements": 43,
+        "missing_lines": [
+          158,
+          159,
+          179,
+          181,
+          387
+        ]
+      },
+      "backend/app/llm/run_profiles.py": {
+        "covered": 91,
+        "statements": 99,
+        "missing_lines": [
+          142,
+          217,
+          221,
+          222,
+          223,
+          260,
+          270,
+          282
+        ]
+      },
+      "backend/app/llm/runtime_provider.py": {
+        "covered": 86,
+        "statements": 91,
+        "missing_lines": [
+          56,
+          71,
+          74,
+          85,
+          119
+        ]
+      },
+      "backend/app/logging.py": {
+        "covered": 3,
+        "statements": 3,
+        "missing_lines": []
+      },
+      "backend/app/main.py": {
+        "covered": 135,
+        "statements": 136,
+        "missing_lines": [
+          126
+        ]
+      },
+      "backend/app/observability/http.py": {
+        "covered": 3,
+        "statements": 3,
+        "missing_lines": []
+      },
+      "backend/app/observability/redaction.py": {
+        "covered": 72,
+        "statements": 72,
+        "missing_lines": []
+      },
+      "backend/app/public_chat.py": {
+        "covered": 2,
+        "statements": 2,
+        "missing_lines": []
+      },
+      "backend/app/sim/baseline.py": {
+        "covered": 120,
+        "statements": 130,
+        "missing_lines": [
+          244,
+          245,
+          247,
+          273,
+          295,
+          329,
+          402,
+          403,
+          404,
+          405
+        ]
+      },
+      "backend/app/sim/baseline_contract.py": {
+        "covered": 26,
+        "statements": 26,
+        "missing_lines": []
+      },
+      "backend/app/sim/baseline_llm.py": {
+        "covered": 57,
+        "statements": 57,
+        "missing_lines": []
+      },
+      "backend/app/sim/engine.py": {
+        "covered": 31,
+        "statements": 31,
+        "missing_lines": []
+      },
+      "backend/app/sim/generators.py": {
+        "covered": 1,
+        "statements": 1,
+        "missing_lines": []
+      },
+      "backend/app/sim/maintenance.py": {
+        "covered": 248,
+        "statements": 266,
+        "missing_lines": [
+          95,
+          97,
+          98,
+          102,
+          120,
+          121,
+          141,
+          157,
+          162,
+          177,
+          231,
+          232,
+          233,
+          234,
+          240,
+          241,
+          242,
+          260
+        ]
+      },
+      "backend/app/sim/maintenance_control.py": {
+        "covered": 70,
+        "statements": 70,
+        "missing_lines": []
+      },
+      "backend/app/sim/maintenance_db.py": {
+        "covered": 56,
+        "statements": 61,
+        "missing_lines": [
+          39,
+          62,
+          63,
+          74,
+          75
+        ]
+      },
+      "backend/app/sim/run_summary.py": {
+        "covered": 6,
+        "statements": 6,
+        "missing_lines": []
+      },
+      "backend/app/sim/teams.py": {
+        "covered": 27,
+        "statements": 33,
+        "missing_lines": [
+          557,
+          558,
+          559,
+          561,
+          562,
+          563
+        ]
+      },
+      "backend/app/sim/textgen.py": {
+        "covered": 2,
+        "statements": 2,
+        "missing_lines": []
+      },
+      "backend/app/sim/twins.py": {
+        "covered": 37,
+        "statements": 46,
+        "missing_lines": [
+          84,
+          90,
+          91,
+          94,
+          96,
+          98,
+          100,
+          101,
+          102
+        ]
+      },
+      "backend/app/stt/live.py": {
+        "covered": 2,
+        "statements": 2,
+        "missing_lines": []
+      },
+      "backend/app/trace/assembler.py": {
+        "covered": 9,
+        "statements": 9,
+        "missing_lines": []
+      },
+      "backend/app/trace/fanout.py": {
+        "covered": 156,
+        "statements": 158,
+        "missing_lines": [
+          88,
+          147
+        ]
+      },
+      "backend/app/trace/projections.py": {
+        "covered": 1,
+        "statements": 1,
+        "missing_lines": []
+      }
+    }
+  },
+  "exclusions": [
+    "backend/app/db/models.py",
+    "backend/app/contracts/**",
+    "CPython line0"
+  ]
+}

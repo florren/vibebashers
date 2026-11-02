@@ -1,0 +1,58 @@
+{
+  "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+  "scope": "frozen pre-security-followup composition",
+  "external_services": "mock/Fake transports only; no live calls",
+  "checks": {
+    "lint": {
+      "frontend_passed": 220,
+      "ruff_files": 387,
+      "mypy_sources": 266,
+      "openapi_spec_methods": 192,
+      "openapi_code_methods": 192
+    },
+    "contracts": {
+      "schemas": 45,
+      "paths": 162
+    },
+    "unit": {
+      "passed": 1298,
+      "skipped": 18,
+      "seconds": 51.44
+    },
+    "integration": {
+      "passed": 320,
+      "skipped": 2,
+      "seconds": 1749.14,
+      "warnings": 4
+    },
+    "scenarios": {
+      "passed": 41,
+      "failed": 1,
+      "skipped": 2,
+      "seconds": 197.64,
+      "failure": "test_scenario_09_transcript_on_replay: fixture retained forced global mock instead of explicitly selecting replay/recorded Pro roles before new SimRun"
+    },
+    "compliance": {
+      "passed": 31,
+      "seconds": 95.56
+    },
+    "frontend": {
+      "passed": 220
+    },
+    "production_and_personal_build": "passed",
+    "licenses_distributions": 550,
+    "i18n_keys": 1804,
+    "generated_api_types": "fresh"
+  },
+  "coverage": {
+    "passed": 1442,
+    "skipped": 18,
+    "seconds": 1082.62,
+    "changed_statements": 2516,
+    "covered_changed_statements": 2260,
+    "percent": 89.83,
+    "base_revision": "85fcbaa"
+  },
+  "full_make_green": false,
+  "next_required": "explicit replay fixture; unsafe upstream causes/SDK logging/usage security followup; final exact-source CI and human review"
+}

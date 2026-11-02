@@ -147,8 +147,13 @@ async def test_setup_accepts_keyless_local_without_forwarding_openrouter_key(mon
 
 async def test_startup_missing_default_model_deactivates_profile_without_stopping(monkeypatch):
     from app import main
+    from app.config import Settings
+    from app.llm.failover import ProviderChain
     from app.llm.openai_compat import DEFAULT_MODEL_IDS, PREFERRED_REPLACEMENT
 
+    settings = Settings(_env_file=None, app_env="dev", llm_provider="openai_compat")
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
+    monkeypatch.setattr(main, "refresh_roles", AsyncMock())
     conn = AsyncMock()
     conn.__aenter__.return_value = conn
     monkeypatch.setattr(main.psycopg.AsyncConnection, "connect", AsyncMock(return_value=conn))
@@ -162,7 +167,8 @@ async def test_startup_missing_default_model_deactivates_profile_without_stoppin
         ),
     )
     try:
-        await main._sync_openrouter_models(SimpleNamespace(providers=[provider]))
+        chain = ProviderChain([provider], append_mock=False)
+        await main._prepare_runtime_profiles(SimpleNamespace(state=SimpleNamespace(llm_chain=chain)))
         conn.commit.assert_awaited_once()
         assert conn.execute.await_count == 1
         params = conn.execute.await_args.args[1]
@@ -236,3 +242,56 @@ async def test_malformed_catalog_does_not_deactivate_or_stop_startup(body):
         assert await openrouter_deactivation_plan(provider) == []
     finally:
         await provider.aclose()
+
+
+@pytest.mark.parametrize(
+    "configured,forced",
+    [("mock", None), ("replay", None), ("openai_compat", "mock"), ("gigachat", "replay")],
+)
+async def test_automatic_offline_startup_never_warms_or_syncs_catalog(monkeypatch, configured, forced):
+    from app import main
+    from app.config import Settings
+    from app.llm.failover import ProviderChain
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import KeyPool
+    from app.llm.mock import MockProvider
+
+    settings = Settings(_env_file=None, app_env="dev", llm_provider=configured)
+    monkeypatch.setattr(main, "get_settings", lambda: settings)
+    requests = []
+
+    def handle(request):
+        requests.append(request.url.path)
+        return httpx.Response(200, json={"data": []})
+
+    async def connect_bomb(*args, **kwargs):
+        pytest.fail("offline catalog must never connect to DB")
+
+    monkeypatch.setattr(main.psycopg.AsyncConnection, "connect", connect_bomb)
+    provider = OpenAICompatProvider(
+        "synthetic-startup-key", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(handle)
+    )
+    giga = GigaChatProvider(
+        KeyPool([]),
+        oauth_url="https://synthetic.invalid/oauth",
+        base_url="https://synthetic.invalid/v1",
+        transport=httpx.MockTransport(handle),
+    )
+    giga.prepare = AsyncMock(side_effect=AssertionError("offline Giga warmup"))
+    chain = ProviderChain([provider, giga, MockProvider()], offline_mode=forced)
+    app = SimpleNamespace(state=SimpleNamespace(llm_chain=chain))
+    # Replay продолжает читать локальную config; запрет здесь касается warmup/sync.
+    if configured != "mock":
+        monkeypatch.setattr(main, "refresh_roles", AsyncMock())
+    try:
+        await main._prepare_runtime_profiles(app)
+        await main._sync_openrouter_models(chain)
+        assert requests == []
+        giga.prepare.assert_not_awaited()
+        if configured == "mock":
+            assert {p.provider for p in chain.role_profiles.values()} == {"mock"}
+        else:
+            main.refresh_roles.assert_awaited_once_with(app, settings)
+    finally:
+        await provider.aclose()
+        await giga.aclose()
