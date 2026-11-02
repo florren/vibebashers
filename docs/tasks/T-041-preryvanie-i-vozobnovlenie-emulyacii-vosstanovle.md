@@ -64,3 +64,11 @@ interrupted_at до/после того же AR Resume; refund1/normalization1/t
 [машинные результаты](../reviews/T-041-maintenance-compose-proof.json).
 Optional API1.5.17 и деньги/HITL атомарность требуют human review поAGENTS§5;
 последующая SDK/P1 интеграция не включена в эти цифры. Общий DoD не закрыт.
+
+### Stale control fence
+
+Найдена и исправлена перезапись новых часов/RNG устаревшимконтроллером того же
+currentrun: typed409 до effects, freshreload сохраняетT5. Native3RED→4GREEN26.00с,
+allpublic table hashes unchanged после отказа, межпроверочнаягонка проверена.
+[Review/границы](../reviews/T-041-stale-control.md). Broader checks/CI впереди,
+общий DoD/карточка целиком не закрыты.
