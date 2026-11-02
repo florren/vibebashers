@@ -579,3 +579,222 @@ async def test_unknown_origin_ack_and_legacy_hint_provenance_are_explicit(accoun
         assert facts.secret not in str(audit)
         after = await service.snapshot(profile, facts, timeout_s=3)
         assert after.usage_known and after.tokens_used == 0 and after.tokens_remaining == 20
+
+
+async def test_gigachat_counts_inference_repair_but_not_oauth(accounting_case):
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        if request.url.path == "/oauth":
+            return httpx.Response(200, json={"access_token": "synthetic-access", "expires_at": 9999999999999})
+        return httpx.Response(
+            200,
+            json={
+                "model": profile.model,
+                "choices": [
+                    {"message": {"content": '{"x":1}' if requests.count("/v1/chat/completions") == 2 else "{}"}}
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
+            },
+        )
+
+    key = ApiKey("synthetic", facts.secret, tokens_limit=20)
+    provider = GigaChatProvider(
+        KeyPool([key]),
+        oauth_url="https://synthetic.invalid/oauth",
+        base_url=facts.endpoint,
+        transport=httpx.MockTransport(fake),
+    )
+    try:
+        result, usage, _ = await provider.complete_structured(
+            [], {"type": "object", "required": ["x"], "properties": {"x": {"type": "integer"}}}, profile, timeout_s=5
+        )
+        assert result == {"x": 1} and usage.total_tokens == 6 and usage.request_count == 2
+        assert requests == ["/oauth", "/v1/chat/completions", "/v1/chat/completions"]
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.tokens_used == 6 and observed.requests_today == 2 and observed.usage_known
+        assert key.tokens_used == 6  # Outer structured parser must not double-account.
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize(
+    "status,usage_payload,expected",
+    [
+        (503, None, "unavailable"),
+        (200, None, "bad_output"),
+        (200, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, None),
+        (400, None, "quota"),
+    ],
+)
+async def test_sdk_wire_failures_unknown_and_validated_zero(accounting_case, status, usage_payload, expected):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider="openai_compatible")
+    facts = replace(original_facts, provider="openai_compatible")
+    await confirm((service, profile, facts))
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        if status != 200:
+            return httpx.Response(status, json={"error": {"message": "synthetic failure"}})
+        response = {
+            "id": "synthetic",
+            "object": "chat.completion",
+            "created": 1,
+            "model": profile.model,
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": '{"x":1}'}, "finish_reason": "stop"}],
+        }
+        if usage_payload is not None:
+            response["usage"] = usage_payload
+        return httpx.Response(200, json=response)
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    try:
+        if expected is not None:
+            with pytest.raises(ProviderError) as rejected:
+                await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+            # A native-schema400 makes the first attempt unknown; the alternate
+            # format cannot bypass the unknown profile budget and never reaches HTTP.
+            assert rejected.value.kind == expected and rejected.value.usage is None
+        else:
+            result, usage, _ = await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+            assert result == {"x": 1} and usage.total_tokens == 0
+        assert requests == ["/v1/chat/completions"]
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.requests_today == 1 and observed.tokens_used == 0
+        assert observed.usage_known is (expected is None)
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("mode", ["cumulative", "missing", "cancel"])
+async def test_stream_accounts_once_cumulative_unknown_or_consumer_close(accounting_case, provider_name, mode):
+    import json
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider=provider_name)
+    facts = replace(original_facts, provider=provider_name)
+    await confirm((service, profile, facts))
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        frames = [
+            {
+                "id": "synthetic",
+                "object": "chat.completion.chunk",
+                "created": 1,
+                "model": profile.model,
+                "choices": [{"index": 0, "delta": {"content": "plain-prefix"}, "finish_reason": None}],
+            }
+        ]
+        if mode == "cumulative":
+            for prompt, completion in [(1, 1), (1, 1), (1, 3)]:
+                frames.append(
+                    {
+                        "id": "synthetic",
+                        "object": "chat.completion.chunk",
+                        "created": 1,
+                        "model": profile.model,
+                        "choices": [],
+                        "usage": {
+                            "prompt_tokens": prompt,
+                            "completion_tokens": completion,
+                            "total_tokens": prompt + completion,
+                        },
+                    }
+                )
+        payload = "".join("data: " + json.dumps(frame) + "\n\n" for frame in frames) + "data: [DONE]\n\n"
+        return httpx.Response(200, content=payload, headers={"Content-Type": "text/event-stream"})
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    iterator = provider.stream([], profile, timeout_s=5)
+    try:
+        if mode == "cancel":
+            assert await anext(iterator) == "plain-prefix"
+            await iterator.aclose()
+        elif mode == "missing":
+            chunks = []
+            with pytest.raises(ProviderError) as error:
+                async for chunk in iterator:
+                    chunks.append(chunk)
+            assert chunks == ["plain-prefix"] and error.value.usage is None
+        else:
+            assert "".join([chunk async for chunk in iterator]) == "plain-prefix"
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert requests == ["/v1/chat/completions"]
+        assert observed.requests_today == 1
+        assert observed.tokens_used == (4 if mode == "cumulative" else 0)
+        assert observed.usage_known is (mode == "cumulative")
+    finally:
+        await iterator.aclose()
+        await provider.aclose()
+
+
+async def test_durable_quota_health_never_fabricates_spent_tokens(accounting_case):
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    requests = []
+
+    def fake(request):
+        requests.append(request.url.path)
+        return httpx.Response(403, json={"error": "quota"})
+
+    key = ApiKey(
+        "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+    )
+    provider = GigaChatProvider(
+        KeyPool([key]),
+        oauth_url="https://synthetic.invalid/oauth",
+        base_url=facts.endpoint,
+        transport=httpx.MockTransport(fake),
+    )
+    try:
+        for _ in range(2):
+            with pytest.raises(ProviderError):
+                await provider.complete_structured([], {"type": "object"}, profile, timeout_s=5)
+        assert requests == ["/v1/chat/completions"]
+        assert key.tokens_used == 0  # HTTP quota denial is not token expenditure=limit.
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.tokens_used == 0 and not observed.usage_known and observed.requests_today == 1
+    finally:
+        await provider.aclose()

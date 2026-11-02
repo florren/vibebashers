@@ -26,6 +26,7 @@ class ApiKey:
     last_error: str | None = None
     cooldown_until: float = 0.0  # monotonic; после 429 ключ временно не выбирается
     db_id: int | None = None
+    durable_accounting: bool = field(default=False, repr=False)
     # кэш access token (GigaChat OAuth)
     access_token: str | None = None
     token_expires_at: float = 0.0
@@ -35,7 +36,11 @@ class ApiKey:
         return (self.tokens_limit if self.tokens_limit is not None else 10**12) - self.tokens_used
 
     def available(self) -> bool:
-        return self.is_active and self.remaining > 0 and time.monotonic() >= self.cooldown_until
+        return (
+            self.is_active
+            and (self.durable_accounting or self.remaining > 0)
+            and time.monotonic() >= self.cooldown_until
+        )
 
 
 class KeyPool:
@@ -54,7 +59,7 @@ class KeyPool:
         cands = [k for k in self.keys if k.available() and k.label not in (exclude or set())]
         if not cands:
             active = [k for k in self.keys if k.is_active and k.label not in (exclude or set())]
-            cooling = [k for k in active if k.remaining > 0]
+            cooling = [k for k in active if k.durable_accounting or k.remaining > 0]
             # Транспортная пауза мягкая: если других ключей нет, пробуем самый
             # давно отказавший. 429/auth/quota по-прежнему не обходятся.
             transient = [k for k in cooling if (k.last_error or "").startswith(("timeout:", "network:"))]
@@ -66,12 +71,12 @@ class KeyPool:
             raise ProviderError("quota", "нет доступных ключей (все исчерпаны, неактивны или на паузе после 429)")
         return max(cands, key=lambda k: k.remaining)
 
-    def add_usage(self, key: ApiKey, tokens: int) -> None:
+    def add_usage(self, key: ApiKey, tokens: int, *, request_increment: bool = True) -> None:
         today = dt.datetime.now(dt.UTC).date()
         if key.requests_day != today:
             key.requests_day, key.requests_today = today, 0
         key.tokens_used += tokens
-        key.requests_today += 1
+        key.requests_today += int(request_increment)
         if not (key.cooldown_until > time.monotonic() and (key.last_error or "").startswith("rate_limit:")):
             key.last_error = None
             key.cooldown_until = 0.0
@@ -92,7 +97,10 @@ class KeyPool:
             # Нужна и после внешней отмены: резервная модель должна сменить ключ.
             key.cooldown_until = time.monotonic() + 10.0
         elif err.kind == "quota":
-            key.tokens_used = key.tokens_limit or key.tokens_used
+            if not key.durable_accounting:
+                key.tokens_used = key.tokens_limit or key.tokens_used
+            # Durable unknown usage blocks further admission until reconciliation;
+            # an upstream health observation is never fictional token expenditure.
         elif err.kind == "auth":
             key.is_active = False
             key.access_token = None

@@ -130,6 +130,8 @@ class BudgetSnapshot:
 
 
 class PostgresAccounting:
+    durable = True
+
     async def _identity(self, conn: psycopg.AsyncConnection[Any], facts: KeyFacts) -> dict[str, Any]:
         tag = _mac(b"cx.llm.identity-key.v1", "stable")
         await conn.execute(
@@ -589,9 +591,14 @@ class Ticket:
     id: uuid.UUID
     terminal: bool = False
 
-    async def observe(self, prompt: int, completion: int, *, final: bool = False) -> None:
+    async def observe(
+        self, prompt: int, completion: int, *, total_tokens: int | None = None, final: bool = False
+    ) -> None:
         prompt, completion = _counter(prompt), _counter(completion)
-        total = _counter(prompt + completion)
+        subtotal = _counter(prompt + completion)
+        total = subtotal if total_tokens is None else _counter(total_tokens)
+        if total < subtotal:
+            raise AdmissionRefused("bad_output", "total usage меньше суммы prompt/completion")
         conn = self.scope.conn
         async with conn.transaction():
             account = await (
