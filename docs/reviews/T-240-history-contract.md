@@ -89,3 +89,14 @@ Ruff413files/mypy275modules, OpenAPI192/192; licenses550 green. Выполнен
 make sync-contracts с own scratch DB; canonical0013 downgrade comment согласован
 с существующим forward-only mirror, исполняемый SQL не менялся.
 Четыре browser language/theme screenshots и полный make test ещё обязательны.
+
+Полный последовательный make test на source15e0264: unit1523passed/18skip;
+integration358passed/4skip,6failed за2181.90s. Все6 failures — setup/старый размер
+fixture: DELETEchat/call задел normalizer-owned reviews; COPY setup вернул старое
+DELETEопераций с FK logs; summary hardcode800 после намеренного роста до1162.
+Исправлены только тесты: CSI gap удаляет исходный generator_hint cohort, оставляя
+T240 signals/receipts; COPY снова выполняется в отдельном run и доказывает
+неизменность исходной истории; summary сверяется с точным SELECTcount(run).
+CSV/formula/read-only/run-isolation/recalculation assertions сохранены.
+Affected9tests passed55.34s; runtime source не менялся. Это source-qualified
+regression union, не утверждение одного успешного полного make test.
