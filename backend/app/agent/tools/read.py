@@ -96,12 +96,12 @@ async def get_system_logs(ctx: ToolContext, systems: list[str], hours: int = 2, 
     """Активные сбои и логи по системам в окне ±hours от sim_time."""
     since, until = ctx.sim_time - dt.timedelta(hours=hours), ctx.sim_time + dt.timedelta(hours=hours)
     faults = await ctx.fetchall(
-        "select id, system_code, error_code, started_sim, resolved_sim, impact_count, affected_clients from faults where system_code = any(%s) and started_sim <= %s and (resolved_sim is null or resolved_sim >= %s) order by started_sim desc limit %s",
-        (systems or [], until, since, limit),
+        "select id, system_code, error_code, started_sim, resolved_sim, impact_count, affected_clients from faults where (run_id = %s or run_id in (select id from sim_runs where kind='baseline')) and system_code = any(%s) and started_sim <= %s and (resolved_sim is null or resolved_sim >= %s) order by started_sim desc limit %s",
+        (ctx.run_id, systems or [], until, since, limit),
     )
     logs = await ctx.fetchall(
-        "select system_code, level, error_code, message, logged_sim from system_logs where system_code = any(%s) and logged_sim between %s and %s and level in ('error','critical') order by logged_sim desc limit %s",
-        (systems or [], since, until, limit),
+        "select system_code, level, error_code, message, logged_sim from system_logs where (run_id = %s or run_id in (select id from sim_runs where kind='baseline')) and system_code = any(%s) and logged_sim between %s and %s and level in ('ERROR','FATAL') order by logged_sim desc limit %s",
+        (ctx.run_id, systems or [], since, until, limit),
     )
     return {
         "active_faults": [

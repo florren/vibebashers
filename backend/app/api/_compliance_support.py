@@ -13,6 +13,7 @@ from app.compliance.transcripts import analyze_transcript
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
+from app.sim.maintenance import writer
 from app.sim.runs import ensure_live_run
 
 log = get_logger(__name__)
@@ -36,6 +37,7 @@ async def run_context(request: Request, conn: psycopg.AsyncConnection[dict[str, 
     return int(rid or row["current_run_id"]), row["sim_time"]
 
 
+@writer("transcript")
 async def analyze_in_background(request: Request, transcript_id: int, *, pacing_delay_s: float = 0.0) -> dict[str, Any]:
     """Отдельное соединение; сигнал клиента отдаём AgentService, если он поднят."""
     app = request.app

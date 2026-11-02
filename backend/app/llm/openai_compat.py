@@ -21,6 +21,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
 from app.llm.budget import budget_value
+from app.llm.credential_boundary import CredentialStreamGuard, observe_stream_usage, reject_reflection, retry_after
 from app.llm.gigachat import JSON_INSTRUCTION, schema_for_model
 from app.logging import get_logger
 
@@ -150,7 +151,12 @@ class OpenAICompatProvider:
 
     async def list_models(self, timeout_s: float = 10.0) -> list[str]:
         """GET /models — мастер настройки проверяет доступность моделей профиля."""
-        r = await self._client.get(f"{self.base_url}/models", headers=self._headers(self.base_url), timeout=timeout_s)
+        try:
+            r = await self._client.get(
+                f"{self.base_url}/models", headers=self._headers(self.base_url), timeout=timeout_s
+            )
+        except httpx.HTTPError as exc:
+            raise ProviderError("unavailable", f"models: {type(exc).__name__}") from exc
         if r.status_code >= 400:
             raise ProviderError("unavailable", f"models {r.status_code}", status=r.status_code)
         try:
@@ -170,9 +176,9 @@ class OpenAICompatProvider:
         try:
             r = await self._client.get(f"{base}/key", headers=self._headers(base), timeout=timeout_s)
         except httpx.TimeoutException as e:
-            raise ProviderError("quota", f"key timeout: {e}") from e
+            raise ProviderError("quota", f"key timeout: {type(e).__name__}") from e
         except httpx.HTTPError as e:
-            raise ProviderError("quota", f"key: {e}") from e
+            raise ProviderError("quota", f"key: {type(e).__name__}") from e
         if r.status_code >= 400:
             raise ProviderError("quota", f"key {r.status_code}", status=r.status_code)
         try:
@@ -241,11 +247,12 @@ class OpenAICompatProvider:
             if status == 402:
                 return ProviderError("quota", "HTTP 402", status=status)
             if status == 429:
-                try:
-                    retry = float(exc.response.headers.get("Retry-After", "20"))
-                except ValueError:
-                    retry = 20.0
-                return ProviderError("rate_limit", "HTTP 429", status=status, retry_after_s=retry)
+                return ProviderError(
+                    "rate_limit",
+                    "HTTP 429",
+                    status=status,
+                    retry_after_s=retry_after(exc.response.headers.get("Retry-After")),
+                )
             return ProviderError("unavailable", f"HTTP {status}", status=status)
         return ProviderError("bad_output", "некорректный ответ OpenAI-совместимого endpoint")
 
@@ -317,6 +324,13 @@ class OpenAICompatProvider:
                 errors = validate_schema(obj, schema)
             except ProviderError as e:
                 obj, errors = {}, [e.detail]
+            try:
+                reject_reflection([raw, obj], [self._key(base_url)])
+            except ProviderError as exc:
+                if usage_observed:
+                    usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
+                    exc.usage = usage
+                raise
             if not errors:
                 usage.latency_ms = int((time.perf_counter() - t0) * 1000)
                 usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
@@ -339,6 +353,7 @@ class OpenAICompatProvider:
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         base_url = (profile.base_url or self.base_url).rstrip("/")
         await self._before_chat(profile, base_url)
+        observed: Usage | None = None
         try:
             response = await self._chat_client(base_url, timeout_s).chat.completions.create(
                 model=profile.model,
@@ -349,15 +364,37 @@ class OpenAICompatProvider:
                 stream_options={"include_usage": True} if self._paid(profile, base_url) else {},
             )
             usage_seen = False
+            guard = CredentialStreamGuard([self._key(base_url)])
             async with response:
                 async for chunk in response:
                     usage_seen = usage_seen or (chunk.usage is not None and self._usage_known(chunk.usage))
+                    if chunk.usage is not None:
+                        observed = observe_stream_usage(
+                            observed,
+                            {
+                                "prompt_tokens": chunk.usage.prompt_tokens,
+                                "completion_tokens": chunk.usage.completion_tokens,
+                            },
+                            profile,
+                            self.name,
+                        )
                     if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
+                        safe = guard.feed(chunk.choices[0].delta.content)
+                        if safe:
+                            yield safe
+            last = guard.finish()
+            if last:
+                yield last
             if self._paid(profile, base_url) and not usage_seen:
                 raise ProviderError("bad_output", "расход платного stream неизвестен: usage отсутствует")
+        except ProviderError as exc:
+            if observed is not None:
+                exc.usage = observed
+            raise
         except APIError as exc:
-            raise self._provider_error(exc) from exc
+            error = self._provider_error(exc)
+            error.usage = observed
+            raise error from exc
 
 
 async def openrouter_deactivation_plan(provider: OpenAICompatProvider) -> list[dict[str, Any]]:

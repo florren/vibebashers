@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from time import perf_counter
@@ -103,17 +104,30 @@ async def test_search_variants_and_explicit_scope(seeded):
         assert max(times) < 300
 
 
-async def test_scenario_12_13_replay(seeded):
+async def test_scenario_12_13_replay(replay_bank, monkeypatch, request):
+    seeded = replay_bank
+    from app.config import get_settings
     from app.llm.base import LLMProfile
     from app.llm.failover import ProviderChain
     from app.replay.provider import ReplayProvider
     from app.replay.store import CassetteStore
 
+    # Новый запуск явно фиксирует offline replay и ту модель всех ролей,
+    # чьи реальные ответы сохранены в кассете; default Mock не переопределяется.
+    monkeypatch.setenv("LLM_PROVIDER", "replay")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     store = CassetteStore(Path(__file__).resolve().parents[3] / "data/cassettes")
     store.load()
     profile = LLMProfile(code="gigachat_main", provider="gigachat", model="GigaChat-3-Pro", role="main")
     scenario = sc.get("qr_fee_public_review")
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as writer:
+        await writer.execute(
+            "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
+            "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
+            "from llm_profiles where model='GigaChat-3-Pro' and is_active order by id limit 1 "
+            "on conflict(key) do update set value=excluded.value"
+        )
         rid = await new_run(writer, "journey replay", scenario_id=scenario["id"])
         now = await sim_now(writer)
         items = await sc.inject(writer, scenario, rid, sim_time=now)
@@ -132,6 +146,13 @@ async def test_scenario_12_13_replay(seeded):
         ref = f"SIG-{items[0]['signal_id']:06d}"
         model = await journey(conn, ref, str(rid))
         assert model["summary"]["llm_source"] == "replay"
+        fallback_count = await (
+            await conn.execute(
+                "select count(*) n from agent_steps st join agent_runs ar on ar.id=st.run_id where ar.signal_id=%s and st.status in ('fallback','error')",
+                (items[0]["signal_id"],),
+            )
+        ).fetchone()
+        assert fallback_count["n"] == 0
         assert model["client_lane"]
         for n in (await assemble(conn, "signal", ref))[1]:
             if n["kind"] in (
@@ -150,7 +171,6 @@ async def test_scenario_12_13_replay(seeded):
 
 
 async def test_fanout_and_query_budget(seeded):
-    import datetime as dt
 
     from app.ingest.normalizer import create_signal, from_api_signal
 

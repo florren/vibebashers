@@ -21,6 +21,17 @@ def compute_coverage(cur: psycopg.Cursor[Any], run_id: int, *, persist: bool = T
         ).fetchall()
     }
     missing = [f"{t}×{p}×{c}" for t in types for p in products for c in channels if (t, p, c) not in have]
+    lines = [row[0] for row in cur.execute("select code from product_lines order by code").fetchall()]
+    direction_have = {
+        (row[0], row[1])
+        for row in cur.execute(
+            "select distinct product_line_code,channel_code from signals where run_id=%s and product_line_code is not null",
+            (run_id,),
+        ).fetchall()
+    }
+    direction_missing = [
+        f"{line}×{channel}" for line in lines for channel in channels if (line, channel) not in direction_have
+    ]
     sla_have = {
         (r[0], r[1]): int(r[2])
         for r in cur.execute(
@@ -48,6 +59,9 @@ def compute_coverage(cur: psycopg.Cursor[Any], run_id: int, *, persist: bool = T
     total = sum(styles.values()) or 1
     cov = {
         "run_id": run_id,
+        "direction_channel_total": len(lines) * len(channels),
+        "direction_channel_covered": len(lines) * len(channels) - len(direction_missing),
+        "direction_channel_missing": direction_missing,
         "signal_combos_total": len(types) * len(products) * len(channels),
         "signal_combos_covered": len(types) * len(products) * len(channels) - len(missing),
         "signal_combos_missing": missing[:50],

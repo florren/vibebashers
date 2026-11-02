@@ -17,6 +17,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.logging import get_logger
+from app.observability.redaction import redact_text
 
 log = get_logger("http")
 
@@ -44,6 +45,7 @@ class HttpStats:
     def record(
         self, method: str, route: str, status: int, ms: int, *, path: str, request_id: str, error: str | None
     ) -> None:
+        route, path = safe_public_path(route), safe_public_path(path)
         key = (method, route)
         self.by_route_status[(method, route, status)] += 1
         self.latency_sum_ms[key] += ms
@@ -60,7 +62,7 @@ class HttpStats:
                     "path": path,
                     "status": status,
                     "latency_ms": ms,
-                    "error": error,
+                    "error": redact_text(error) if error is not None else None,
                 }
             )
 

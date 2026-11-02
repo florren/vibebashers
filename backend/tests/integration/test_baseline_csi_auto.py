@@ -82,7 +82,14 @@ async def test_old_archive_is_repaired_before_finished_and_never_duplicates(
             await listener.execute("listen runs")
             assert await restore(seeded)
             messages = [json.loads(n.payload)["type"] async for n in listener.notifies(timeout=0.1)]
-        assert messages == ["baseline_restore_started", "baseline_restore_finished"]
+        assert [m for m in messages if m.startswith("baseline_restore_")] == [
+            "baseline_restore_started",
+            "baseline_restore_finished",
+        ]
+        assert all(m == "stopped" for m in messages[:-2])
+        # Первый restore честно завершает прежний активный run до экспорта;
+        # повторный restore не создаёт второе lifecycle-событие.
+        assert messages.count("stopped") == (1 if len(reports) == 1 else 0)
         assert reports[-1]["before"] == 440 and reports[-1]["added"] == 40 and reports[-1]["after"] == 480
         assert conn.execute("select count(*),count(distinct csi_no) from csi_responses").fetchone() == (40, 40)
         assert conn.execute(

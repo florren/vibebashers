@@ -139,6 +139,7 @@ def render(
 ) -> dict[str, Any]:
     # BFS guarantees causal depth first; timestamps only order independent siblings.
     groups = []
+    anchors = {node_key(node): node for node in [subject, *before, *after]}
     phases: dict[str, list[dict[str, Any]]] = {"before": [], "after": []}
     counts = {"before": len(before), "after": len(after)}
     for phase, nodes in (("before", before), ("after", after)):
@@ -146,7 +147,7 @@ def render(
         for node in nodes:
             buckets[(node.get("parent", ""), project(node, phase)["kind"])].append(node)
         collapsed: set[str] = set()
-        for (_, kind), values in buckets.items():
+        for (parent, kind), values in buckets.items():
             if len(values) > fanout and kind in ("signal_created", "notification"):
                 count = max(len(values), *(int(n.get("total", 0)) for n in values))
                 counts[phase] += count - len(values)
@@ -158,6 +159,14 @@ def render(
                         "expand_hint_ru": "Откройте след образца для подробностей",
                     }
                 )
+                anchor = anchors.get(parent)
+                if anchor is not None:
+                    groups[-1]["phase"] = phase
+                    groups[-1]["anchor"] = {
+                        "kind": anchor["kind"],
+                        "ref": reference(anchor),
+                        "event_id": "EVT-" + node_key(anchor),
+                    }
                 collapsed.update(node_key(n) for n in values[3:])
         ordered = causal_order(nodes, edges)
         for node in ordered:

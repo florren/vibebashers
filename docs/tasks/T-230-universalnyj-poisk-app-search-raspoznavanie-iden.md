@@ -51,3 +51,7 @@ curl -s 'localhost:8000/api/search?q=sig%20123' | jq '.parsed, .hits[0]'
 Проверки: `make lint`, `make test` (461 unit / 86 integration / 22 scenario passed; 20 skipped), contracts, OpenAPI drift, owners --allow-cross и i18n — успешно. Новые backend-пакеты: coverage 94% (45 targeted tests). Frontend: typecheck, lint, build, 39 vitest и 4 Playwright — успешно. Скриншоты ru/en × light/dark: `docs/screenshots/trace-journey/`. Локальная тестовая PostgreSQL 18.6 с UTC; PostgreSQL 16 проверяется CI. Node 26 требует `NODE_OPTIONS=--no-experimental-webstorage` для существующих jsdom-тестов; CI использует Node 22.
 
 Сценарии 12/13 добавлены как YAML-манифесты модели чтения; проверки сценариев 1/8/11 на записанных mock-данных и отдельный replay сценария 8 проходят. Эти YAML не создают новый запуск агента из UI. Новый live-прогон GigaChat не выполнялся. Полная приёмка дополнительных требований карточек за пределами указанного пользователем среза не заявляется.
+
+
+### Audit followup T-234 (2026-11-02)
+Подтверждено: `app.search.grammar.parse('²')` вызывает `ValueError`, потому что `str.isdigit()` шире множества символов, принимаемых `int()`. Это общий parser gap для Search/legacy Trace, требует согласованной контролируемой обработки malformed numeric input и regressions decimalUnicode/overflow/empty; новую карточку не создавали, статус T-230 не закрывается этой правкой. В T-234 защищён только новый `/relations` boundary до DB/LLM; общий parser и старые API намеренно не менялись. Подробности: `docs/reviews/T-234-trace-graph-verification.md`.

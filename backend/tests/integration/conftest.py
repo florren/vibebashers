@@ -34,7 +34,7 @@ def db_url() -> str:
 def migrated_db(db_url: str) -> str:
     """Чистая схема → alembic upgrade head. Возвращает URL."""
     with psycopg.connect(_dsn(db_url), autocommit=True) as c:
-        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+        c.execute("DROP SCHEMA IF EXISTS langgraph CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
     env = {**os.environ, "DATABASE_URL": db_url}
     r = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -68,7 +68,7 @@ def _seed(url: str, *args: str) -> subprocess.CompletedProcess[str]:
 def seeded(migrated_db: str) -> str:
     """Изолированный baseline на 200 клиентов: изменения одного теста не переходят в другой."""
     with psycopg.connect(_dsn(migrated_db), autocommit=True) as c:
-        c.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+        c.execute("DROP SCHEMA IF EXISTS langgraph CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
     r = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=ROOT / "backend",

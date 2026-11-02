@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.13
+  version: 1.5.19
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -398,7 +398,10 @@ paths:
                 provider: { $ref: "#/components/schemas/LlmProvider" }
                 label: { type: string }
                 key: { type: string, writeOnly: true }
-                tokens_limit: { type: integer }
+                tokens_limit: { type: [integer, "null"], minimum: 0 }
+                rpd_limit: { type: [integer, "null"], minimum: 0 }
+                endpoint_url: { type: [string, "null"], description: Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. }
+                scope: { type: [string, "null"], description: GigaChat OAuth scope; по умолчанию configured scope }
       responses:
         "201": { description: Создан, content: { application/json: { schema: { $ref: "#/components/schemas/LlmApiKey" } } } }
   /api/settings/llm-keys/{id}:
@@ -408,6 +411,7 @@ paths:
       summary: Удалить ключ
       responses:
         "204": { description: Удалён }
+        "409": { description: Ключ привязан к профилю; сначала требуется явный unbind }
   /api/settings/templates:
     get:
       tags: [settings]
@@ -517,7 +521,7 @@ paths:
       summary: "История запусков эмуляции (ТЗ 4.6)"
       parameters:
         - { name: status, in: query, schema: { type: array, items: { type: string, enum: [running, paused, interrupted, completed, stopped, archived] } }, style: form, explode: false }
-        - { name: kind, in: query, schema: { type: string, enum: [baseline, free, scenario] } }
+        - { name: kind, in: query, schema: { type: string, enum: [baseline, free, scenario, live] } }
         - { $ref: "#/components/parameters/Limit" }
         - { $ref: "#/components/parameters/Cursor" }
       responses:
@@ -596,9 +600,11 @@ paths:
     get:
       tags: [sim]
       summary: "Экспорт запуска (JSON с summary и агрегатами или CSV событий)"
+      description: "После archive JSON читается из сохранённого файла; CSV событий недоступен (409), поскольку строки запуска удалены."
       parameters: [{ name: format, in: query, schema: { type: string, enum: [json, csv], default: json } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, additionalProperties: true } }, text/csv: { schema: { type: string } } } }
+        "409": { $ref: "#/components/responses/Problem" }
   /api/sim/runs/compare:
     get:
       tags: [sim]
@@ -642,7 +648,7 @@ paths:
       summary: "Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)"
       description: "Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409."
       requestBody:
-        content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string } } } } }
+        content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string }, seed: { type: integer }, llm_profile_id: { type: integer } } } } }
       responses:
         "202": { description: Запущен, content: { application/json: { schema: { type: object, properties: { run: { $ref: "#/components/schemas/SimRun" }, client_id: { type: integer } } } } } }
         "409": { $ref: "#/components/responses/Problem" }
@@ -1117,14 +1123,15 @@ paths:
     get:
       tags: [engine]
       summary: Счётчики строк по таблицам (реальное время)
+      parameters: [{ $ref: "#/components/parameters/RunId" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { table: { type: string }, rows: { type: integer }, last_change_at: { type: string, format: date-time } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { table: { type: string }, rows: { type: integer }, exact: { type: boolean, description: Точный счётчик; false — оценка pg_stat_user_tables }, last_change_at: { type: [string, "null"], format: date-time } } } } } } }
   /api/engine/db/tables/{name}/rows:
     parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
     get:
       tags: [engine]
       summary: Последние записи таблицы (только чтение, allow-list таблиц)
-      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/RunId" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } } } }
         "403": { $ref: "#/components/responses/Problem", description: Таблица вне allow-list }
@@ -1132,7 +1139,7 @@ paths:
     get:
       tags: [engine]
       summary: Лента INSERT/UPDATE/DELETE из db_activity_log
-      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }]
+      parameters: [{ $ref: "#/components/parameters/Limit" }, { $ref: "#/components/parameters/Cursor" }, { $ref: "#/components/parameters/RunId" }, { name: table, in: query, schema: { type: string }, description: Фильтр имени из allow-list; неизвестное имя — 403 }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DbActivity" } } } } }
 
@@ -2211,6 +2218,25 @@ paths:
           description: OK
           content: { application/json: { schema: { $ref: "../events/trace/trace_response.schema.json" } } }
         "404": { $ref: "#/components/responses/Problem" }
+  /api/trace/{kind}/{ref}/relations:
+    get:
+      tags: [trace]
+      summary: "[АРХ] Полное постраничное раскрытие веера реальных связей (T-234)"
+      description: Только чтение. kind/ref — anchor из группы; include=detail исходного trace не меняет смысл. Cursor привязан к anchor/family/direction/эффективному run scope и ограничивает поздние вставки upper-PK fence. Удаления/изменение связей между страницами могут менять total; это не неизменяемый исторический snapshot.
+      parameters:
+        - { name: kind, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 40 } }
+        - { name: ref, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - { name: direction, in: query, required: true, schema: { type: string, enum: [before, after] } }
+        - { name: event_kind, in: query, required: true, schema: { type: string, enum: [signal_created, notification] } }
+        - { name: run_id, in: query, schema: { type: string, maxLength: 32, default: current }, description: "Область исходного trace: current (по умолчанию; также пустая строка), явный all или положительный bigint 1..9223372036854775807. Числовой ввод не длиннее 32 символов нормализуется к ID; переполнение/неположительный ID даёт 422 до DB. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all." }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, schema: { type: string, maxLength: 1024 }, description: "Непрозрачный keyset cursor; ASCII, не более 1024 байт" }
+      responses:
+        "200":
+          description: Реальные события/рёбра текущей страницы; total относится ко всему доступному вееру в scope/fence
+          content: { application/json: { schema: { $ref: "../events/trace/trace_relation_page.schema.json" } } }
+        "404": { $ref: "#/components/responses/Problem", description: Anchor отсутствует в выбранном запуске }
+        "422": { $ref: "#/components/responses/Problem", description: Неверные типы/пределы параметров или cursor/context }
   /api/journey/{ref}:
     get:
       tags: [journey]
@@ -2849,13 +2875,17 @@ components:
         supports_tools: { type: boolean }
         supports_stream: { type: boolean }
         is_active: { type: boolean }
-        api_key_id: { type: [integer, "null"] }
+        api_key_id: { type: [integer, "null"], minimum: 1 }
     LlmApiKey:
       type: object
       properties:
         id: { type: integer }
         provider: { $ref: "#/components/schemas/LlmProvider" }
         label: { type: string }
+        key_hint: { type: [string, "null"] }
+        endpoint_url: { type: [string, "null"] }
+        scope: { type: [string, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
         tokens_used: { type: integer }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
@@ -2958,7 +2988,7 @@ components:
       required: [id, kind, label, status, seed, started_sim]
       properties:
         id: { type: integer, format: int64 }
-        kind: { type: string, enum: [baseline, free, scenario] }
+        kind: { type: string, enum: [baseline, free, scenario, live] }
         label: { type: string }
         scenario_id: { type: [string, "null"] }
         seed: { type: integer }
@@ -3022,6 +3052,8 @@ components:
         title_en: { type: string }
         description_ru: { type: string }
         duration_sim_hours: { type: number }
+        reset_mode_required: { type: [string, "null"], enum: [baseline, null], description: "Обязательный reset из YAML сценария; null — режим выбирает пользователь" }
+        runnable: { type: boolean, description: "В текущем коде есть исполняемый вход inject/file; UI не предлагает недоступный запуск" }
         last_run_at: { type: [string, "null"], format: date-time }
         last_result: { type: [object, "null"], properties: { passed: { type: boolean }, checks: { type: array, items: { type: object } } } }
     ExternalContact:
@@ -3034,9 +3066,19 @@ components:
         region_code: { type: string }
         city_id: { type: integer }
         telegram_chat_id: { type: integer }
+    SourcePlatform:
+      type: object
+      required: [code, name_ru, name_en, type]
+      properties:
+        code: { type: string }
+        name_ru: { type: string }
+        name_en: { type: string }
+        type: { type: string, enum: [review_portal, telegram_channel, app_store, forum, other] }
+      description: Известная площадка из catalog; только текст, без URL и внешних ссылок
     Signal:
       type: object
       properties:
+        source_platform: { anyOf: [{ $ref: "#/components/schemas/SourcePlatform" }, { type: "null" }] }
         tags: { type: array, items: { type: string } }
         run_id: { type: integer }
         run_public_id: { type: string }
@@ -3406,6 +3448,8 @@ components:
         llm_profile_code: { type: string }
         prompt_version: { type: string }
         outcome: { type: [string, "null"] }
+        status: { type: string, enum: [running, interrupted, completed, awaiting_human, deferred, failed, fallback_mock, cancelled], description: "Состояние исполнения; interrupted не подменяет бизнес-исход outcome." }
+        interrupted_at: { type: [string, "null"], format: date-time, description: "Реальное время обнаруженного прерывания; очищается при Resume." }
         needed_human: { type: boolean }
         total_tokens: { type: integer }
         total_latency_ms: { type: integer }
@@ -3452,6 +3496,7 @@ components:
       type: object
       properties:
         id: { type: integer }
+        run_id: { type: [integer, "null"], description: Запуск эмуляции; null — legacy или глобальное изменение }
         table_name: { type: string }
         op: { type: string, enum: [INSERT, UPDATE, DELETE] }
         pk: { type: string }

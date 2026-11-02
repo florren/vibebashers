@@ -78,6 +78,8 @@ def to_api(s: dict[str, Any], row: tuple[Any, ...] | None = None) -> dict[str, A
         desc = f"{desc} (запуск появится с пакетом {s.get('requires', 'B07')})".strip()
     return {
         "id": s["id"],
+        "reset_mode_required": s.get("reset_mode_required"),
+        "runnable": is_runnable(s),
         "title_ru": s.get("title_ru") or s["id"],
         "title_en": s.get("title_en") or s["id"],
         "description_ru": desc,

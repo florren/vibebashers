@@ -10,6 +10,8 @@ import {
   useGifts,
   useImportSettings,
   useLlmProfiles,
+  useLlmKeys,
+  useEnv,
   useLlmProfileOps,
   usePsychotypes,
   useRefs,
@@ -30,11 +32,13 @@ import type { EconomicsSettingsT, GiftCatalogItem, LlmProfileT, NotificationTemp
 import { tEnum } from '@/shared/i18n'
 import { Badge, ErrorBox, Section, SkeletonRows } from '@/shared/ui'
 import { EnvEditor } from './EnvEditor'
+import { LlmKeysPanel } from './LlmKeysPanel'
+import { ProfileKeySelect } from './ProfileKeySelect'
+import { bindingIssue, profileUpdate, profileCheck } from './llmBinding'
 
 const STEP_KEYS = ['llm', 'bank', 'sim', 'channels', 'policies', 'sla', 'economics', 'templates', 'generate'] as const
 type StepKey = (typeof STEP_KEYS)[number]
 const ALL_CHANNELS = ['chat', 'call', 'email', 'telegram', 'social', 'branch', 'review_portal', 'abs']
-const GIGACHAT_DEFAULT_BASE_URL = 'https://api.giga.chat/v1'
 
 export function SetupPage() {
   const { t } = useTranslation()
@@ -128,6 +132,9 @@ function Field({ label, children, hint }: { label: string; children: React.React
 function StepLlm({ p }: { p: SetupPayload }) {
   const { t } = useTranslation()
   const profiles = useLlmProfiles()
+  const keys = useLlmKeys()
+  const env = useEnv()
+  const context = { openaiEndpoint: env.data?.items?.find((item) => item.key === 'OPENROUTER_BASE_URL')?.value || undefined, gigaScope: env.data?.items?.find((item) => item.key === 'GIGACHAT_SCOPE')?.value || undefined }
   const profOps = useLlmProfileOps()
   const test = useTestLlm()
   const save = useSaveSetup()
@@ -135,6 +142,13 @@ function StepLlm({ p }: { p: SetupPayload }) {
   const [newProf, setNewProf] = useState<LlmProfileT>({ code: '', provider: 'openai_compatible', model: '', role: 'bench_only', base_url: null })
   const [testId, setTestId] = useState<number | null>(null)
   const [urlById, setUrlById] = useState<Record<number, string>>({})
+  const [keyById, setKeyById] = useState<Record<number, { value: number | null; dirty: boolean }>>({})
+  const draft = (profile: LlmProfileT) => ({ ...profile, base_url: profile.id != null ? urlById[profile.id] ?? profile.base_url : profile.base_url,
+    ...(profile.id != null && keyById[profile.id] ? { api_key_id: keyById[profile.id]!.value } : {}) })
+  useEffect(() => {
+    // После подтверждения сервером снимаем только сохранённые drafts; чужой refresh не стирает выбор пользователя.
+    setKeyById((previous) => Object.fromEntries(Object.entries(previous).filter(([, item]) => item.dirty)))
+  }, [profiles.data])
   const byRole = (role: string) => (profiles.data ?? []).find((x) => x.role === role && x.is_active)
   useEffect(() => {
     if (profiles.data && !llm.main_profile_id) setLlm({ main_profile_id: byRole('main')?.id, fast_profile_id: byRole('fast')?.id, twin_profile_id: byRole('twin')?.id })
@@ -178,12 +192,13 @@ function StepLlm({ p }: { p: SetupPayload }) {
               <th className="px-3 py-1">{t('setup.llm.model')}</th>
               <th className="px-3 py-1">{t('setup.llm.role')}</th>
               <th className="px-3 py-1">{t('setup.llm.baseUrl')}</th>
+              <th className="px-3 py-1">{t('setup.keys.binding')}</th>
               <th className="px-3 py-1" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {(profiles.data ?? []).map((x) => (
-              <tr key={x.id} className={clsx(!x.is_active && 'opacity-50')}>
+              <tr key={x.id} className={clsx(!x.is_active && 'bg-raised')}>
                 <td className="px-3 py-1 font-mono">{x.code}</td>
                 <td className="px-3 py-1">{x.provider}</td>
                 <td className="px-3 py-1">{x.model}</td>
@@ -192,34 +207,38 @@ function StepLlm({ p }: { p: SetupPayload }) {
                   <div className="flex min-w-[12rem] flex-col gap-1">
                     <input
                       className="input h-7 w-full text-xs"
+                      aria-label={t('setup.keys.urlLabel', { code: x.code })}
                       value={x.id != null ? (urlById[x.id] ?? '') : ''}
                       onChange={(e) => x.id != null && setUrlById({ ...urlById, [x.id]: e.target.value })}
                     />
                     <button
                       className="btn btn-sm self-start"
-                      disabled={profOps.save.isPending || x.id == null}
-                      onClick={() => profOps.save.mutate({ ...x, id: x.id ?? 0, base_url: (urlById[x.id!] ?? '').trim() || null })}
+                      disabled={profOps.save.isPending || x.id == null || !!bindingIssue(draft(x), keys.data, context)}
+                      onClick={() => {
+                        const selected = draft(x).api_key_id ?? null
+                        profOps.save.mutate({ ...profileUpdate(x, urlById[x.id!] ?? x.base_url ?? '', !!keyById[x.id!]?.dirty, selected), id: x.id! }, { onSuccess: () => setKeyById((previous) => ({ ...previous, [x.id!]: { value: selected, dirty: false } })) })
+                      }}
                     >
-                      {t('setup.llm.saveUrl')}
+                      {t('setup.keys.saveProfile')}
                     </button>
                   </div>
                 </td>
+                <td className="px-3 py-1"><ProfileKeySelect profile={draft(x)} keys={keys.data} context={context} label={t('setup.keys.bindingLabel', { code: x.code })} onChange={(value) => x.id != null && setKeyById((previous) => ({ ...previous, [x.id!]: { value, dirty: true } }))} /></td>
                 <td className="flex justify-end gap-1 px-3 py-1">
                   <button
                     className="btn btn-sm"
-                    disabled={test.isPending}
+                    disabled={test.isPending || !!bindingIssue(draft(x), keys.data, context)}
                     onClick={() => {
                       setTestId(x.id ?? null)
-                      const base_url = (x.id != null ? urlById[x.id] : x.base_url) ?? x.base_url
-                      test.mutate({ provider: x.provider, model: x.model, base_url: base_url?.trim() || undefined })
+                      test.mutate(profileCheck(draft(x)))
                     }}
                   >
                     {t('setup.llm.test')}
                   </button>
-                  <button className="btn btn-sm" onClick={() => profOps.save.mutate({ ...x, id: x.id ?? 0, is_active: !x.is_active })}>
+                  <button className="btn btn-sm" onClick={() => profOps.save.mutate({ ...profileUpdate(x, x.base_url ?? '', false, null), id: x.id ?? 0, is_active: !x.is_active })}>
                     {x.is_active ? t('setup.llm.deactivate') : t('setup.llm.activate')}
                   </button>
-                  <button className="btn btn-sm" onClick={() => profOps.remove.mutate(x.id ?? 0)}>
+                  <button className="btn btn-sm" aria-label={t('setup.keys.deleteProfile', { code: x.code })} onClick={() => profOps.remove.mutate(x.id ?? 0)}>
                     ×
                   </button>
                 </td>
@@ -229,10 +248,11 @@ function StepLlm({ p }: { p: SetupPayload }) {
         </table></div>
         {test.data && (
           <div className={clsx('mx-3 my-2 rounded border px-2 py-1 text-xs', test.data.ok ? 'border-ok/40 bg-ok/10' : 'border-danger/40 bg-danger/10')}>
-            {t('setup.llm.testResult', { id: testId ?? '' })}: {test.data.ok ? `OK · ${test.data.latency_ms} мс · ${test.data.model_reported ?? ''}` : test.data.error}
-            {test.data.quota && Object.keys(test.data.quota).length > 0 && <span className="text-muted"> · {JSON.stringify(test.data.quota)}</span>}
+            {t('setup.llm.testResult', { id: testId ?? '' })}: {test.data.ok ? t('setup.keys.checkOk', { ms: test.data.latency_ms, model: test.data.model_reported ?? '' }) : t('setup.keys.checkFailed')}
           </div>
         )}
+        {test.error && <p role="alert" className="m-3 text-xs text-danger">{t('setup.keys.checkFailed')}</p>}
+        {profOps.save.error && <ErrorBox error={profOps.save.error} compact />}
         {profOps.remove.error && <ErrorBox error={profOps.remove.error} compact />}
         <div className="flex flex-wrap items-end gap-2 border-t border-line p-3">
           <Field label="code"><input className="input h-8 w-32 text-xs" value={newProf.code} onChange={(e) => setNewProf({ ...newProf, code: e.target.value })} /></Field>
@@ -242,11 +262,7 @@ function StepLlm({ p }: { p: SetupPayload }) {
               value={newProf.provider}
               onChange={(e) => {
                 const provider = e.target.value as LlmProfileT['provider']
-                setNewProf((p) => ({
-                  ...p,
-                  provider,
-                  base_url: provider === 'gigachat' && !(p.base_url?.trim()) ? GIGACHAT_DEFAULT_BASE_URL : p.base_url,
-                }))
+                setNewProf((p) => ({ ...p, provider }))
               }}
             >
               <option value="openai_compatible">openai_compatible</option>
@@ -263,13 +279,15 @@ function StepLlm({ p }: { p: SetupPayload }) {
               {['main', 'fast', 'twin', 'bench_only'].map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </Field>
-          <button className="btn btn-sm" disabled={!newProf.code || !newProf.model || profOps.add.isPending} onClick={() => profOps.add.mutate(newProf)}>
+          <ProfileKeySelect profile={newProf} keys={keys.data} context={context} label={t('setup.keys.newBinding')} onChange={(api_key_id) => setNewProf({ ...newProf, api_key_id })} />
+          <button className="btn btn-sm" disabled={!newProf.code || !newProf.model || profOps.add.isPending || !!bindingIssue(newProf, keys.data, context)} onClick={() => profOps.add.mutate(newProf)}>
             {t('setup.llm.addProfile')}
           </button>
           {profOps.add.error && <ErrorBox error={profOps.add.error} compact />}
         </div>
       </Section>
 
+      <LlmKeysPanel />
       <EnvEditor
         keys={['LLM_PROVIDER', 'LLM_CHAIN', 'GIGACHAT_AUTH_KEY_1', 'GIGACHAT_AUTH_KEY_2', 'GIGACHAT_MODEL', 'GIGACHAT_SCOPE', 'GIGACHAT_VERIFY_SSL', 'GIGACHAT_CA_BUNDLE_FILE', 'OPENROUTER_API_KEY', 'OPENROUTER_BASE_URL', 'LOCAL_LLM_BASE_URL', 'LLM_RECORD']}
         title={t('setup.llm.env')}

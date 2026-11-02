@@ -1,4 +1,5 @@
 id: silent_churn_regression
+reset_mode_required: baseline
 number: 7
 title_ru: Молчаливый уход и регрессия
 title_en: Silent churn and regression

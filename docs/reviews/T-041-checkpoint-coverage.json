@@ -1,0 +1,109 @@
+{
+  "revision": "5758e2df7ea9c27391db1f6018a5cb38f88c6cd9",
+  "tests": [
+    "tests/integration/test_durable_graph.py",
+    "tests/integration/test_resume_process.py",
+    "tests/integration/test_agent.py",
+    "tests/integration/test_run_lifecycle.py"
+  ],
+  "covered": 241,
+  "executable": 275,
+  "percent": 87.64,
+  "files": [
+    {
+      "file": "backend/app/agent/checkpoints.py",
+      "covered": 36,
+      "executable": 36,
+      "missing": []
+    },
+    {
+      "file": "backend/app/agent/graph.py",
+      "covered": 84,
+      "executable": 91,
+      "missing": [
+        281,
+        282,
+        306,
+        318,
+        441,
+        453,
+        457
+      ]
+    },
+    {
+      "file": "backend/app/agent/runner.py",
+      "covered": 51,
+      "executable": 66,
+      "missing": [
+        100,
+        102,
+        124,
+        125,
+        160,
+        173,
+        188,
+        189,
+        198,
+        199,
+        200,
+        204,
+        205,
+        206,
+        207
+      ]
+    },
+    {
+      "file": "backend/app/agent/state.py",
+      "covered": 0,
+      "executable": 1,
+      "missing": [
+        23
+      ]
+    },
+    {
+      "file": "backend/app/api/sim.py",
+      "covered": 0,
+      "executable": 4,
+      "missing": [
+        285,
+        286,
+        287,
+        288
+      ]
+    },
+    {
+      "file": "backend/app/main.py",
+      "covered": 11,
+      "executable": 12,
+      "missing": [
+        129
+      ]
+    },
+    {
+      "file": "backend/app/sim/engine.py",
+      "covered": 44,
+      "executable": 50,
+      "missing": [
+        85,
+        86,
+        87,
+        88,
+        89,
+        365
+      ]
+    },
+    {
+      "file": "backend/app/sim/run_lifecycle.py",
+      "covered": 15,
+      "executable": 15,
+      "missing": []
+    }
+  ],
+  "base_branch": "codex/T-040-run-lifecycle",
+  "scope": "added executable lines in backend/app excluding generated models; unmeasured modified modules counted as missing",
+  "test_result": {
+    "passed": 21,
+    "seconds": 192.57
+  },
+  "external_calls": false
+}

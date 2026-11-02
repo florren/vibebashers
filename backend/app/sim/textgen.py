@@ -11,6 +11,8 @@ from typing import Any
 
 import yaml
 
+from app.sim.signal_corpus import SignalCorpus
+
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "data"
 
@@ -38,10 +40,11 @@ class Generated:
 
 
 class TextGen:
-    def __init__(self, seed: int) -> None:
-        self.rnd = random.Random(seed)
+    def __init__(self, seed: int | random.Random) -> None:
+        self.rnd = seed if isinstance(seed, random.Random) else random.Random(seed)
         self.c = load_yaml("corpus/signal_templates.yaml")
         self.templates: dict[str, dict[str, list[dict[str, Any]]]] = self.c["templates"]
+        self.corpus = SignalCorpus(DATA / "signal_templates" / "catalog.yaml")
 
     def _fill(self, text: str, product: str, city: str, card4: str) -> str:
         r = self.rnd
@@ -106,7 +109,13 @@ class TextGen:
         city: str = "Москва",
         card4: str = "4512",
         style: str | None = None,
+        channel: str | None = None,
+        language: str | None = None,
     ) -> Generated:
+        if channel is not None:
+            return self._channel_text(signal_type, product, channel, language, psychotype, city, card4, style)
+        if language is not None:
+            raise ValueError("для выбора языка нужен channel")
         tpl = self.rnd.choice(self.templates[signal_type][product])
         style = style or self.pick_style(psychotype)
         if (
@@ -122,6 +131,55 @@ class TextGen:
             gold["flags"] = sorted({*gold.get("flags", []), "sarcasm"})
             gold["negativity"] = max(int(gold.get("negativity", 50)), 60)
         return Generated(text, signal_type, product, style, gold)
+
+    def _channel_text(
+        self,
+        signal_type: str,
+        product: str,
+        channel: str,
+        language: str | None,
+        psychotype: str,
+        city: str,
+        card4: str,
+        style: str | None,
+    ) -> Generated:
+        language = language or ("en" if self.rnd.random() < self.corpus.english_share else "ru")
+        rows = self.corpus.for_channel(signal_type, product, channel, language)
+        style = style or self.pick_style(psychotype)
+        if language == "en" or (
+            signal_type in ("gratitude", "info_request", "suggestion", "legal_regulatory", "fraud_suspicion")
+            and style == "sarcasm"
+        ):
+            style = "plain"
+        choices = [row for row in rows if row.style == style]
+        row = self.rnd.choice(choices or [row for row in rows if row.style == "plain"])
+        text = self._fill(row.body, product, city, card4)
+        if row.style != style:
+            text = self._style(text, style)
+        text = row.wrapper.format(text=text, city=city)
+        gold = {
+            **row.gold,
+            "signal_type": signal_type,
+            "product": product,
+            "style": style,
+            "template_id": row.id,
+            "channel": channel,
+            "language": language,
+        }
+        if style == "sarcasm":
+            gold.update(sentiment="negative", hidden_negativity=True, flags=["sarcasm"])
+            gold["negativity"] = max(int(gold["negativity"]), 60)
+        return Generated(text, signal_type, product, style, gold)
+
+    def noise(self, *, language: str | None = None) -> Generated:
+        language = language or ("en" if self.rnd.random() < self.corpus.english_share else "ru")
+        if language not in ("ru", "en"):
+            raise ValueError("язык должен быть ru или en")
+        text = self.rnd.choice(self.corpus.data["noise"][language])
+        # Шум не имеет истинного банковского типа/продукта; пустые поля не публикуются в generator_hint.
+        return Generated(
+            text, "", "", "plain", {"noise": True, "language": language, "sentiment": "neutral", "negativity": 0}
+        )
 
     def all_combinations(self) -> list[tuple[str, str]]:
         return [(st, p) for st, by_p in self.templates.items() for p in by_p]

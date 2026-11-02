@@ -103,10 +103,13 @@ def test_manual_mock_obeys_run_pause_resume_and_never_fakes_url(seeded, conn):
 
 
 @pytest.mark.parametrize("kind", ["free", "live"])
-def test_restart_recovers_true_input_but_leaves_legacy_and_history_untouched(seeded, conn, monkeypatch, kind):
+@pytest.mark.parametrize("run_status", ["running", "paused", "interrupted"])
+def test_restart_recovers_true_input_but_leaves_legacy_and_history_untouched(
+    seeded, conn, monkeypatch, kind, run_status
+):
     rid = conn.execute(
-        "insert into sim_runs(kind,label,seed,started_sim,status) values(%s,'recover-scope',42,%s,'paused') returning id",
-        (kind, NOW),
+        "insert into sim_runs(kind,label,seed,started_sim,status) values(%s,'recover-scope',42,%s,%s) returning id",
+        (kind, NOW, run_status),
     ).fetchone()[0]
     conn.execute("update sim_state set current_run_id=%s,running=false,sim_time=%s where id=1", (rid, NOW))
 
@@ -135,8 +138,15 @@ def test_restart_recovers_true_input_but_leaves_legacy_and_history_untouched(see
     service = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
     service.submit = Mock()
     before = counts(conn)
-    asyncio.run(service._recover())
-    assert [c.args[0] for c in service.submit.call_args_list] == [real]
+
+    async def recover_and_drain():
+        await service._recover()
+        if service._inflight:
+            await asyncio.gather(*list(service._inflight))
+
+    asyncio.run(recover_and_drain())
+    assert [c.args[0] for c in service.submit.call_args_list] == ([real] if run_status == "running" else [])
+    assert conn.execute("select interrupted_at from agent_runs where id=%s", (ar,)).fetchone() == (None,)
     assert conn.execute("select outcome from agent_runs where id=%s", (ar,)).fetchone()[0] is None
     assert conn.execute("select status from signals where id=%s", (old_processing,)).fetchone()[0] == "processing"
     assert conn.execute("select status from signals where id=%s", (old,)).fetchone()[0] == "new"
@@ -315,8 +325,10 @@ async def test_fixed_seed_world_repeats_after_restore(seeded, conn, tmp_path):
         sim = Simulator(dsn=seeded)
         try:
             await sim.load_state()
-            await sim.step(60)
-            await sim.step(60)
+            # Детерминизм сравнивается на рабочем дне, включая тексты; короткий
+            # двухчасовой поток при общем RNG может не содержать ни одного сигнала.
+            for _ in range(8):
+                await sim.step(60)
             await sim.conn.commit()
             events = conn.execute(
                 "select event_type,sim_time from sim_events where run_id=%s order by id", (sim.run_id,)

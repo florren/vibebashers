@@ -156,7 +156,8 @@ class World:
         self.active_faults: list[dict[str, Any]] = []
         self.pending: list[PendingSignal] = []
         self.error_codes: dict[str, dict[str, Any]] = {}
-        self.textgen = TextGen(rng.randrange(1 << 30))
+        # Текст и мир разделяют сохраняемый sim_state.rng_state; второго RNG нет.
+        self.textgen = TextGen(rng)
         self.scale = 1.0
         self.team_emulator = TeamEmulator(rng, conn, bus, run_id)
         self.sla_engine = SlaEngine(conn, bus, run_id)
@@ -505,9 +506,6 @@ class World:
         return str(row[0]) if row else None
 
     async def _emit_signal(self, p: PendingSignal) -> None:
-        g = self.textgen.generate(
-            p.signal_type, p.product, psychotype=p.client.psychotype, city=p.client.city, card4=p.client.card_last4
-        )
         channel = self.rng.weighted(p.client.channel_weights or {"chat": 1.0})
         if channel not in (
             "social",
@@ -521,9 +519,17 @@ class World:
             "review_portal",
         ):
             channel = "chat"
+        g = self.textgen.generate(
+            p.signal_type,
+            p.product,
+            psychotype=p.client.psychotype,
+            city=p.client.city,
+            card4=p.client.card_last4,
+            channel=channel,
+        )
         identified = channel not in ("social", "review_portal") or self.rng.random() < 0.3
         cur = await self.conn.execute(
-            "insert into signals (run_id, channel_code, client_id, external_contact, text, received_sim, status, origin, source_operation_id, source_fault_id, sentiment, geo) values (%s, %s, %s, %s::jsonb, %s, %s, 'new', 'sim', %s, %s, %s, %s::jsonb) returning id",
+            "insert into signals (run_id, channel_code, client_id, external_contact, text, received_sim, status, origin, source_operation_id, source_fault_id, sentiment, geo, lang) values (%s, %s, %s, %s::jsonb, %s, %s, 'new', 'sim', %s, %s, %s, %s::jsonb, %s) returning id",
             (
                 self.run_id,
                 channel,
@@ -535,6 +541,7 @@ class World:
                 p.source_fault_id,
                 g.gold.get("sentiment"),
                 dumps({"region_code": p.client.region_code, "city": p.client.city, "source": "client_profile"}),
+                g.gold["language"],
             ),
         )
         sid = (await cur.fetchone())[0]  # type: ignore[index]

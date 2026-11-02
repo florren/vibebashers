@@ -70,6 +70,13 @@ def prepare(
         runs_ddl = schema[schema.index("CREATE TABLE sim_runs (") :]
         runs_ddl = runs_ddl[: runs_ddl.index("\n);") + 3]
         conn.execute(runs_ddl)
+        # sim_runs отсутствует в старом dump: восстанавливаем и её контрактный комментарий.
+        runs_comment = next(
+            (line for line in schema.splitlines() if line.startswith("COMMENT ON TABLE sim_runs IS ")), None
+        )
+        if runs_comment is None:
+            raise BaselineToolingError("В контракте отсутствует COMMENT ON TABLE sim_runs")
+        conn.execute(runs_comment)
         with tempfile.TemporaryDirectory(prefix="cx-baseline-") as directory:
             for section in ("pre-data", "data", "post-data"):
                 raw = Path(directory) / f"{section}.sql"
