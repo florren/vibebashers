@@ -947,6 +947,7 @@ class Signals(Base):
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='signal')
     csi_responses: Mapped['CsiResponses'] = relationship('CsiResponses', uselist=False, back_populates='signal')
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='signal')
+    csi_cohort_members: Mapped[list['CsiCohortMembers']] = relationship('CsiCohortMembers', back_populates='signals')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='signal')
 
 
@@ -1351,6 +1352,7 @@ class ProductLines(Base):
     teams: Mapped['Teams'] = relationship('Teams', back_populates='product_lines')
     dcltv_rates: Mapped['DcltvRates'] = relationship('DcltvRates', back_populates='product_lines')
     product_signal_history: Mapped[list['ProductSignalHistory']] = relationship('ProductSignalHistory', back_populates='product_lines')
+    csi_cohorts: Mapped[list['CsiCohorts']] = relationship('CsiCohorts', back_populates='product_lines')
 
 
 class Regions(Base):
@@ -1715,11 +1717,14 @@ class SimRuns(Base):
     behavior_tick_receipts: Mapped[list['BehaviorTickReceipts']] = relationship('BehaviorTickReceipts', back_populates='run')
     churn_events: Mapped[list['ChurnEvents']] = relationship('ChurnEvents', back_populates='run')
     client_states: Mapped[list['ClientStates']] = relationship('ClientStates', back_populates='run')
+    csi_cohorts: Mapped[list['CsiCohorts']] = relationship('CsiCohorts', back_populates='run')
     notifications: Mapped[list['Notifications']] = relationship('Notifications', back_populates='run')
     tasks: Mapped[list['Tasks']] = relationship('Tasks', back_populates='run')
     behavior_runtime: Mapped[list['BehaviorRuntime']] = relationship('BehaviorRuntime', back_populates='run')
     client_reactions: Mapped[list['ClientReactions']] = relationship('ClientReactions', back_populates='run')
+    csi_cohort_visits: Mapped[list['CsiCohortVisits']] = relationship('CsiCohortVisits', back_populates='run')
     human_decisions: Mapped[list['HumanDecisions']] = relationship('HumanDecisions', back_populates='sim_run')
+    csi_cohort_members: Mapped[list['CsiCohortMembers']] = relationship('CsiCohortMembers', back_populates='run')
     escalations: Mapped[list['Escalations']] = relationship('Escalations', back_populates='run')
     ledger_entries: Mapped[list['LedgerEntries']] = relationship('LedgerEntries', back_populates='run')
     financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='run')
@@ -1799,6 +1804,7 @@ class Branches(Base):
     transcripts: Mapped[list['Transcripts']] = relationship('Transcripts', back_populates='branch')
     city: Mapped['Cities'] = relationship('Cities', back_populates='branches')
     regions: Mapped['Regions'] = relationship('Regions', back_populates='branches')
+    csi_cohorts: Mapped[list['CsiCohorts']] = relationship('CsiCohorts', back_populates='branch')
     csi_visits_agg: Mapped[list['CsiVisitsAgg']] = relationship('CsiVisitsAgg', back_populates='branch')
     employees: Mapped[list['Employees']] = relationship('Employees', back_populates='branch')
     csi_responses: Mapped[list['CsiResponses']] = relationship('CsiResponses', back_populates='branch')
@@ -2451,6 +2457,47 @@ class ClientStates(Base):
     behavior_runtime: Mapped[list['BehaviorRuntime']] = relationship('BehaviorRuntime', back_populates='state')
 
 
+class CsiCohorts(Base):
+    __tablename__ = 'csi_cohorts'
+    __table_args__ = (
+        CheckConstraint("dataset_code ~ '^[a-z][a-z0-9_]{2,63}$'::text", name='csi_cohorts_dataset_code_check'),
+        CheckConstraint("dataset_digest ~ '^[0-9a-f]{64}$'::text", name='csi_cohorts_dataset_digest_check'),
+        CheckConstraint("directory_digest ~ '^[0-9a-f]{64}$'::text", name='csi_cohorts_directory_digest_check'),
+        CheckConstraint('isfinite(window_start) AND isfinite(window_end) AND window_start < window_end', name='csi_cohorts_check'),
+        CheckConstraint('member_count >= 1 AND member_count <= 300', name='csi_cohorts_member_count_check'),
+        CheckConstraint("members_digest ~ '^[0-9a-f]{64}$'::text", name='csi_cohorts_members_digest_check'),
+        CheckConstraint("visits_digest ~ '^[0-9a-f]{64}$'::text", name='csi_cohorts_visits_digest_check'),
+        ForeignKeyConstraint(['branch_id'], ['branches.id'], name='csi_cohorts_branch_id_fkey'),
+        ForeignKeyConstraint(['product_line_code'], ['product_lines.code'], name='csi_cohorts_product_line_code_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='csi_cohorts_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='csi_cohorts_pkey'),
+        UniqueConstraint('id', 'run_id', 'branch_id', name='csi_cohorts_id_run_id_branch_id_key'),
+        UniqueConstraint('id', 'run_id', name='csi_cohorts_id_run_id_key'),
+        UniqueConstraint('run_id', 'dataset_code', 'branch_id', name='csi_cohorts_run_id_dataset_code_branch_id_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    dataset_code: Mapped[str] = mapped_column(Text, nullable=False)
+    dataset_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    directory_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    visits_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    members_digest: Mapped[str] = mapped_column(Text, nullable=False)
+    branch_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    product_line_code: Mapped[str] = mapped_column(Text, nullable=False)
+    window_start: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    window_end: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    member_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    registered_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+    branch: Mapped['Branches'] = relationship('Branches', back_populates='csi_cohorts')
+    product_lines: Mapped['ProductLines'] = relationship('ProductLines', back_populates='csi_cohorts')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='csi_cohorts')
+    csi_cohort_visits: Mapped[list['CsiCohortVisits']] = relationship('CsiCohortVisits', back_populates='csi_cohorts')
+    csi_cohort_members: Mapped[list['CsiCohortMembers']] = relationship('CsiCohortMembers', back_populates='csi_cohorts')
+
+
 class CsiVisitsAgg(Base):
     __tablename__ = 'csi_visits_agg'
     __table_args__ = (
@@ -2695,6 +2742,30 @@ class ClientReactions(Base):
     signal: Mapped[Optional['Signals']] = relationship('Signals', back_populates='client_reactions')
 
 
+class CsiCohortVisits(Base):
+    __tablename__ = 'csi_cohort_visits'
+    __table_args__ = (
+        CheckConstraint("redirects_bucket = ANY (ARRAY['0'::text, '1'::text, '2+'::text])", name='csi_cohort_visits_redirects_bucket_check'),
+        CheckConstraint('visits >= 0', name='csi_cohort_visits_visits_check'),
+        CheckConstraint("wait_bucket = ANY (ARRAY['0-5'::text, '5-15'::text, '15-30'::text, '30+'::text])", name='csi_cohort_visits_wait_bucket_check'),
+        ForeignKeyConstraint(['cohort_id', 'run_id'], ['csi_cohorts.id', 'csi_cohorts.run_id'], ondelete='CASCADE', name='csi_cohort_visits_cohort_id_run_id_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='csi_cohort_visits_run_id_fkey'),
+        PrimaryKeyConstraint('id', name='csi_cohort_visits_pkey'),
+        UniqueConstraint('cohort_id', 'wait_bucket', 'redirects_bucket', name='csi_cohort_visits_cohort_id_wait_bucket_redirects_bucket_key')
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=9223372036854775807, cycle=False, cache=1), primary_key=True, autoincrement=True)
+    cohort_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    wait_bucket: Mapped[str] = mapped_column(Text, nullable=False)
+    redirects_bucket: Mapped[str] = mapped_column(Text, nullable=False)
+    visits: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    csi_cohorts: Mapped['CsiCohorts'] = relationship('CsiCohorts', back_populates='csi_cohort_visits')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='csi_cohort_visits')
+    csi_cohort_members: Mapped[list['CsiCohortMembers']] = relationship('CsiCohortMembers', back_populates='csi_cohort_visits')
+
+
 class CsiResponses(Base):
     __tablename__ = 'csi_responses'
     __table_args__ = (
@@ -2727,6 +2798,7 @@ class CsiResponses(Base):
     branch: Mapped[Optional['Branches']] = relationship('Branches', back_populates='csi_responses')
     employee: Mapped[Optional['Employees']] = relationship('Employees', back_populates='csi_responses')
     signal: Mapped['Signals'] = relationship('Signals', back_populates='csi_responses')
+    csi_cohort_members: Mapped[list['CsiCohortMembers']] = relationship('CsiCohortMembers', back_populates='csi_responses')
 
 
 class HumanDecisions(Base):
@@ -2851,6 +2923,33 @@ class ComplianceAlerts(Base):
     session: Mapped['AudioSessions'] = relationship('AudioSessions', back_populates='compliance_alerts')
     transcript: Mapped[Optional['Transcripts']] = relationship('Transcripts', back_populates='compliance_alerts')
     financial_evidence: Mapped[list['FinancialEvidence']] = relationship('FinancialEvidence', back_populates='alert')
+
+
+class CsiCohortMembers(Base):
+    __tablename__ = 'csi_cohort_members'
+    __table_args__ = (
+        CheckConstraint('isfinite(response_at)', name='csi_cohort_members_response_at_check'),
+        ForeignKeyConstraint(['cohort_id', 'run_id', 'branch_id'], ['csi_cohorts.id', 'csi_cohorts.run_id', 'csi_cohorts.branch_id'], ondelete='CASCADE', name='csi_cohort_members_cohort_id_run_id_branch_id_fkey'),
+        ForeignKeyConstraint(['cohort_id', 'wait_bucket', 'redirects_bucket'], ['csi_cohort_visits.cohort_id', 'csi_cohort_visits.wait_bucket', 'csi_cohort_visits.redirects_bucket'], ondelete='CASCADE', name='csi_cohort_members_cohort_id_wait_bucket_redirects_bucket_fkey'),
+        ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='csi_cohort_members_run_id_fkey'),
+        ForeignKeyConstraint(['signal_id', 'branch_id'], ['csi_responses.signal_id', 'csi_responses.branch_id'], ondelete='CASCADE', name='csi_cohort_members_signal_id_branch_id_fkey'),
+        ForeignKeyConstraint(['signal_id', 'run_id'], ['signals.id', 'signals.run_id'], ondelete='CASCADE', name='csi_cohort_members_signal_id_run_id_fkey'),
+        PrimaryKeyConstraint('signal_id', name='csi_cohort_members_pkey')
+    )
+
+    signal_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    cohort_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    branch_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    wait_bucket: Mapped[str] = mapped_column(Text, nullable=False)
+    redirects_bucket: Mapped[str] = mapped_column(Text, nullable=False)
+
+    csi_cohorts: Mapped['CsiCohorts'] = relationship('CsiCohorts', back_populates='csi_cohort_members')
+    csi_cohort_visits: Mapped['CsiCohortVisits'] = relationship('CsiCohortVisits', back_populates='csi_cohort_members')
+    run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='csi_cohort_members')
+    csi_responses: Mapped['CsiResponses'] = relationship('CsiResponses', back_populates='csi_cohort_members')
+    signals: Mapped['Signals'] = relationship('Signals', back_populates='csi_cohort_members')
 
 
 class Escalations(Base):
