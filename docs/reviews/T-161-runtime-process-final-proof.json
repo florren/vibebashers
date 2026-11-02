@@ -1,0 +1,63 @@
+{
+  "runtime_head": "70e4b00248b8ac0bf6adcaf9d69d6065edb46042",
+  "scope": "bounded seeded complaint and durable World timer; not universal World/team-plan restart-equivalence",
+  "fixture_sha256": "fcf3133a49ef0ad9f6dd6ce99d4ea7915242ec851b009a375c58ef7e3dd6511d",
+  "proof": {
+    "prime_equal": true,
+    "recovered_equal": true,
+    "sigkill_returncode": -9,
+    "comparison": {
+      "stage": "complete",
+      "digest": {
+        "clock": {
+          "count": 1,
+          "sha256": "05916c408560a68e95e7ace4cb46bd49acf22590345813fd0bd89b3202ffa29d"
+        },
+        "runtime": {
+          "count": 1,
+          "sha256": "208bf865d7185737aa09faff6c66639ecf53faeddce9af89dabc753cf9f8acc1"
+        },
+        "states": {
+          "count": 2,
+          "sha256": "5aa78e5323eac70f1924a1ced3270777b8073cd43bf4a52b05c53f53365e3939"
+        },
+        "signals": {
+          "count": 2,
+          "sha256": "b8609eec995b49174c63a01f392fe81b8eee95b3965cae1c1fc0204a4596d072"
+        },
+        "events": {
+          "count": 8,
+          "sha256": "792c63ba5850a3bbcbf265c806a08c80e12892bacba3048d09881d0b820f9bbd"
+        },
+        "work": {
+          "count": 3,
+          "sha256": "7d02742636c2c4aa9105c66a5223e2d2200b17b25ef7446226344e9fc59491cc"
+        },
+        "world_timers": {
+          "count": 1,
+          "sha256": "3010ef7cb415b0eab7c37cf508938df7f519a0b98261a551ce6ea533cd57b94e"
+        },
+        "receipts": {
+          "count": 3,
+          "sha256": "031173456306b39692d125932fb653659eeb066dec32caa9930506541fb34440"
+        },
+        "ticks": {
+          "count": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "declared_wall_clock": {
+        "events_raw_sha256": "cdbd6836b813f8e21d001460b7e790763ec0eb8fc1a477cb16a5644efc0e6607",
+        "validated_review_fields": [
+          {
+            "event_type": "review.posted",
+            "post_id": 164,
+            "native_equal": true,
+            "within_wall_bounds": true
+          }
+        ]
+      }
+    },
+    "control_raw_events_sha256": "9da2fd1136962cdf009a958e04e2ddec2d910e27e8bb89a33768d2db0cf12662"
+  }
+}

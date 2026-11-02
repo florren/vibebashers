@@ -152,8 +152,8 @@ class BehaviorStore:
 
     async def current_effect_time(self, run_id: int, *, include_live: bool = False) -> dt.datetime | None:
         """Native clock только своего current run; SHARE фиксирует status до commit."""
-        if self.conn.autocommit:
-            raise ValueError("effect fence требует внешнюю transaction без autocommit")
+        if self.conn.autocommit and self.conn.info.transaction_status != TransactionStatus.INTRANS:
+            raise ValueError("effect fence требует внешнюю transaction")
         # Первая statement легитимно открывает implicit caller TX; commit здесь нет.
         row = await self._one("select kind,status from sim_runs where id=%s for share", (run_id,))
         self.require_transaction()
