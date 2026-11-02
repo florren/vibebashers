@@ -47,3 +47,9 @@ Ordinary merge сохраняет maintenance coordinator, DB boundary/marker и
 Новые подтверждения:191 directed pure tests прошли до последних actor-role изменений;4 PG case (metadata-no-decrypt, fingerprint, approved static resume with inactive/deleted key) прошли16.09s. Полные проверки окончательного состава ещё не запускались; их результаты будут добавлены отдельно.
 
 Проверка composed backend: полный `tests/unit` —1145passed/18skipped26.82s; targeted baseline/maintenance/benchmark46passed, caller-role/no-LLM17passed. Первый полный прогон обнаружил9 fixture несовместимостей: AsyncMock transaction/preflight protocol и совпадение слишком общего fake credential `synthetic` с suffix имени fake модели. Исправлены только fixtures/доступность отсутствующего baseline проверяется до открытия DB; исходные assertions preserved, reflection guard не ослаблен. PG/full composite и UI ещё не являются доказанными на этом checkpoint.
+
+## Полный составной прогон11f152
+
+`make lint` зелёный:195 frontend tests, ruff375files, mypy260sources, OpenAPI191/191. Production+personal build прошли, licenses550, i18n1697/fresh API types. `make test`: contracts44/161; unit1145passed/18skipped26.90s; integration291passed/2failed/2skipped1148.03s. До scenarios/compliance/frontend этот make не дошёл. Это НЕ full green.
+
+Два подтверждённых отказа: durable process записал recover/graceful reports, но child превысил45s при завершении; первая установка упала ДО seed/assertions на FK старого `langgraph.checkpoints`→новая пустая `sim_runs`, потому что отдельная test fixture сбрасывает только public namespace. Assertions/timeouts не ослаблены; причина shutdown ещё исследуется.
