@@ -89,3 +89,23 @@ schema в CassetteStore. Старому ответу новый hash не наз
 **3 passed за 15,33 с**. Первый локальный audit script потребовал исправления
 порядка imports; runtime не менялся, дополнительных HTTP не было.
 `CassetteStore.get` и `request_hash` не изменены. Full make / CI обязательны до merge.
+
+## Полная офлайн-проверка и композиция
+
+На source `97ecc329` после штатной регенерации JSON schemas полный `make test`
+завершился exit 0: **1619 backend passed / 24 skipped** (1284/18 unit,
+261/4 integration, 43/2 scenarios, 31 compliance), **188 frontend passed**.
+`make lint` exit 0: Ruff 362, mypy 257, OpenAPI drift 192/192.
+Логи: `/tmp/t198-approved-full-test-v2.log`, `/tmp/t198-approved-full-lint-v2.log`.
+После ordinary merge main `4667161` на `42b6d3e` прошли 4 strict replay/COPY
+проверки за 14,15 с; contracts 45 schemas / 162 paths.
+
+CI выявил ещё одну старую предпосылку в unit `test_operation_history`:
+ожидался historical hash prefix6 при lookup с текущей prefix9 schema.
+Проверка теперь вычисляет актуальный hash и дополнительно сравнивает исходные
+messages; changed operation context по-прежнему обязан дать настоящий miss.
+Это не rekey: старая запись неизменна, текущий ответ взят из отдельной реальной
+кассеты. После ordinary merge согласованного PR171 (`8b225d5`) 69 targeted unit
+(operation history, bounded recorder, stream limiter) passed за 2,09 с.
+Полный локальный прогон выше относится к `97ecc329`; для финального head требуется
+зелёный CI. Дополнительных внешних запросов после одобренной записи не было.

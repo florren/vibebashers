@@ -60,3 +60,5 @@ make cassettes-record SCENARIO=qr_fee_public_review
 ## Одобренная запись 02.11.2026
 
 Пользователь подтвердил contract prefix9 и bounded GigaChat record. Один запуск:2HTTP (1OAuth+1inference),3213+506tokens, costunknown. Новый отдельный реальный JSONL и provenance добавлены после schema/credential/promise проверки, исторический JSONL byte-for-byte неизменён. После честного miss на текущемseed stricttests используют immutable записанныйbank, без rekey/изменения ответов/ослабления assertions; changedseed отдельно обязан датьmiss.3targeted replay/miss passed15.33s;68fake transport/auth guards passed2.01s. Подробности docs/reviews/T-198-bounded-record.md. Fullmake/CI выполняются, остальной live/cassette scope этим не объявляется закрытым.
+
+Полная офлайн-проверка source97ecc329: make test1619backend/24skip и188frontend, make lint exit0. После main466 четыре replay/COPY теста зелёные; CI обнаружил отдельный старый unit assert исторического hash, исправлен на вычисление актуальной schema при неизменных messages и обязательном changed-context miss. После merge8b225d5:69targetunit passed2.09s. Финальный CI обязателен; дополнительного live не было.
