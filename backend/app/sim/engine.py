@@ -227,6 +227,38 @@ class Simulator:
             action == "start" and not kw.get("label") and self.run_status in ("paused", "interrupted")
         ):
             return await self.resume_run()
+        if action in {"pause", "stop"}:
+            await self._stop_loop()
+            # Сначала Python lock, затем sim_runs row lock: demo worker использует
+            # тот же порядок. Иначе pause держит row и ждёт worker, который ждёт row.
+            async with self._lock:
+                conn = await self.connect()
+                previous_status = self.run_status
+                try:
+                    execution = await configuration(conn, self.run_id) if self.run_id else {}
+                    if self.run_id and (
+                        self.run_status == "running"
+                        or (action == "stop" and self.run_status in ("paused", "interrupted"))
+                    ):
+                        halt_status = "paused" if action == "pause" else "stopped"
+                        await run_svc.set_run_status(
+                            conn, self.run_id, halt_status, self.clock.sim_time if action == "stop" else None
+                        )
+                        self.run_status = halt_status
+                    if execution and self.run_id is not None:
+                        if action == "pause" and execution.get("enabled"):
+                            execution["status"] = "paused"
+                        elif action == "stop":
+                            execution.update(enabled=False, status="stopped")
+                        await save(conn, self.run_id, execution)
+                    await self.persist()
+                    await conn.commit()
+                except BaseException:
+                    self.run_status = previous_status
+                    await conn.rollback()
+                    raise
+            await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+            return self.state_dict()
         conn = await self.connect()
         execution = await configuration(conn, self.run_id) if self.run_id else {}
         if (
@@ -288,16 +320,6 @@ class Simulator:
                     await ensure(conn, self.run_id, running=True)
                     await conn.commit()
                 self._start_loop()
-        elif action == "pause":
-            await self._stop_loop()
-            if self.run_id and self.run_status == "running":
-                await run_svc.set_run_status(conn, self.run_id, "paused")
-                self.run_status = "paused"
-        elif action == "stop":
-            await self._stop_loop()
-            if self.run_id and self.run_status in ("running", "paused", "interrupted"):
-                await run_svc.set_run_status(conn, self.run_id, "stopped", self.clock.sim_time)
-                self.run_status = "stopped"
         elif action == "step":
             await self.step(float(kw.get("step_minutes") or 15))
         elif action == "set_speed":
@@ -328,10 +350,6 @@ class Simulator:
                 if execution:
                     if action in ("start", "resume"):
                         execution.update(enabled=True, status="running")
-                    elif action == "pause" and execution.get("enabled"):
-                        execution["status"] = "paused"
-                    elif action == "stop":
-                        execution.update(enabled=False, status="stopped")
                     await save(conn, self.run_id, execution)
         await self.persist()
         await conn.commit()

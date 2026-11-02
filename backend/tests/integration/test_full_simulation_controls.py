@@ -492,3 +492,109 @@ async def test_shared_information_request_gets_team_final(seeded, monkeypatch):
         await svc.stop()
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("action,target", [("pause", "paused"), ("stop", "stopped")])
+async def test_halt_takes_python_lock_before_row_write_against_manual_worker(seeded, monkeypatch, action, target):
+    from app.demo.settings import save
+    from app.sim import runs as run_svc
+
+    class OwnedLock(asyncio.Lock):
+        owner = None
+
+        async def __aenter__(self):
+            await super().__aenter__()
+            self.owner = asyncio.current_task()
+            return self
+
+        async def __aexit__(self, *args):
+            self.owner = None
+            await super().__aexit__(*args)
+
+    sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    await sim.control("start", label="synthetic lock order", start_paused=True)
+    rid, now, rng = sim.run_id, sim.clock.sim_time, sim.rng.dump_state()
+    conn = await sim.connect()
+    await save(conn, rid, {"mode": "full", "enabled": True, "status": "running"})
+    await conn.execute("update sim_runs set status='running' where id=%s", (rid,))
+    await conn.commit()
+    sim.run_status, sim.clock.running = "running", True
+    sim._lock = OwnedLock()
+    stopped, worker_locked = asyncio.Event(), asyncio.Event()
+    stop_loop = sim._stop_loop
+
+    async def stop():
+        await stop_loop()
+        stopped.set()
+
+    set_status = run_svc.set_run_status
+
+    async def set_status_owned(*args, **kwargs):
+        # Обе реальные DB connections используют lock→row, а не row→lock.
+        # Старый control нарушает эту инварианту детерминированно, без sleep.
+        assert sim._lock.owner is asyncio.current_task()
+        return await set_status(*args, **kwargs)
+
+    monkeypatch.setattr(sim, "_stop_loop", stop)
+    monkeypatch.setattr(run_svc, "set_run_status", set_status_owned)
+
+    async def worker():
+        async with sim._lock:
+            worker_locked.set()
+            await stopped.wait()
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as other:
+                await other.execute("update sim_runs set notes='synthetic worker committed' where id=%s", (rid,))
+                await other.commit()
+
+    task = asyncio.create_task(worker())
+    try:
+        await worker_locked.wait()
+        await asyncio.wait_for(asyncio.gather(task, sim.control(action)), timeout=5)
+        row = await (
+            await conn.execute("select status,notes,finished_sim from sim_runs where id=%s", (rid,))
+        ).fetchone()
+        assert row[:2] == (target, "synthetic worker committed")
+        assert row[2] == (now if action == "stop" else None)
+        assert sim.clock.sim_time == now and sim.rng.dump_state() == rng
+        assert sim.clock.running is False
+        assert (await (await conn.execute("select running from sim_state where id=1")).fetchone())[0] is False
+        config = await configuration(conn, rid)
+        assert config["status"] == target and config["enabled"] == (action == "pause")
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await sim.shutdown()
+
+
+@pytest.mark.parametrize("action", ["pause", "stop"])
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_halt_failure_rolls_back_status_metadata_and_finished_time(seeded, monkeypatch, action, cancel):
+    from unittest.mock import AsyncMock
+
+    from app.demo.settings import save
+
+    sim = Simulator(dsn=seeded)
+    await sim.load_state()
+    await sim.control("start", label="synthetic halt rollback", start_paused=True)
+    conn = await sim.connect()
+    await save(conn, sim.run_id, {"mode": "full", "enabled": True, "status": "running"})
+    await conn.execute("update sim_runs set status='running' where id=%s", (sim.run_id,))
+    await conn.commit()
+    sim.run_status, sim.clock.running = "running", True
+    before = (await (await conn.execute("select to_jsonb(r) from sim_runs r where id=%s", (sim.run_id,))).fetchone())[0]
+    await conn.commit()
+    persist = sim.persist
+    error = asyncio.CancelledError if cancel else RuntimeError
+    try:
+        monkeypatch.setattr(sim, "persist", AsyncMock(side_effect=error("synthetic persistence failure")))
+        with pytest.raises(error):
+            await sim.control(action)
+        assert sim.run_status == "running" and sim.clock.running is False
+        after = (
+            await (await conn.execute("select to_jsonb(r) from sim_runs r where id=%s", (sim.run_id,))).fetchone()
+        )[0]
+        assert after == before
+    finally:
+        monkeypatch.setattr(sim, "persist", persist)
+        await sim.shutdown()
