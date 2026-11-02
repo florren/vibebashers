@@ -182,6 +182,9 @@ def create_app() -> FastAPI:
     app.include_router(ws_module.router)
     app.include_router(audio_ws.router)
     mount_frontend(app, s.frontend_dist)
+    # FastAPI лениво компилирует included routes при первом HTTP. Готовим только
+    # route/dependency/schema metadata до readiness, без вызова handlers/DB/LLM.
+    app.openapi()
     return app
 
 
