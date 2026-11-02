@@ -53,6 +53,17 @@ def test_grammar(q, kind, mode):
     assert parse(q)["mode"] == mode
 
 
+@pytest.mark.parametrize("query", ["²", "①", "1²", "፩"])
+def test_non_decimal_digits_remain_text(query):
+    assert query.isdigit() and not query.isdecimal()
+    assert parse(query) == {"mode": "text", "kind": None, "ref": None, "normalized": query}
+
+
+@pytest.mark.parametrize("query", ["٠٠٤٢", "００４２", "0042"])
+def test_unicode_decimal_digits_normalize_as_number(query):
+    assert parse(query) == {"mode": "id", "kind": "number", "ref": "42", "normalized": "42"}
+
+
 def test_relations_complete():
     assert set(MATRIX) == set(TYPES)
     assert {"post", "transcript", "operation", "fault", "ledger", "ingest"} <= set(MATRIX["signal"]["before"])
