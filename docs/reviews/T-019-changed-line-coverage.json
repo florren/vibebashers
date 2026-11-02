@@ -1,0 +1,31 @@
+{
+  "base": "codex/T-018-fault-history",
+  "source_sha": "96caa2a596828ccf442a45160246a5bdbb56d082",
+  "files": {
+    "backend/app/sim/generators.py": {
+      "covered": 1,
+      "executable": 1,
+      "missing": []
+    },
+    "backend/app/sim/signal_corpus.py": {
+      "covered": 44,
+      "executable": 44,
+      "missing": []
+    },
+    "backend/app/sim/textgen.py": {
+      "covered": 29,
+      "executable": 29,
+      "missing": []
+    },
+    "scripts/seed/clients.py": {
+      "covered": 8,
+      "executable": 8,
+      "missing": []
+    }
+  },
+  "covered": 82,
+  "executable": 82,
+  "percent": 100.0,
+  "base_sha": "424cf2eaa02f0372d813f538b3a53b0da3e8ac9d",
+  "method": "coverage timid, child startup instrumentation; added executable Python lines, excluding non-executable SQL literals/continuations; 30 targeted unit/PG tests passed40.09s"
+}
