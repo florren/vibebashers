@@ -13,7 +13,7 @@ from app.economics.calibration import PIPELINE
 from app.llm.mock import MockProvider
 from app.sim.behavior.owner import BehaviorOwner
 from app.sim.behavior.signals import record_classified
-from app.sim.behavior.store import record_agent_state_intent
+from app.sim.behavior.store import BehaviorStore, record_agent_state_intent
 from app.sim.rng import SimRng
 from tests.helpers import MOCK_PROFILE, dsn, run_agent_on
 
@@ -33,6 +33,7 @@ async def source(
     canonical=True,
     unknown_product=False,
     known_product=False,
+    origin="sim",
 ):
     # Полный schema-valid controlled fixture; это не LLM accuracy claim.
     obj, _, _ = await MockProvider().complete_structured(
@@ -50,8 +51,15 @@ async def source(
     signal = (
         await (
             await conn.execute(
-                "insert into signals(run_id,client_id,channel_code,text,received_sim,classification,meta) values(%s,%s,'chat','Синтетический проверочный запрос',%s,%s,%s) returning id",
-                (run, client, now, Jsonb(obj), Jsonb({"gold": {"sentiment": "negative", "flags": ["churn_intent"]}})),
+                "insert into signals(run_id,client_id,channel_code,text,received_sim,classification,meta,origin) values(%s,%s,'chat','Синтетический проверочный запрос',%s,%s,%s,%s) returning id",
+                (
+                    run,
+                    client,
+                    now,
+                    Jsonb(obj),
+                    Jsonb({"gold": {"sentiment": "negative", "flags": ["churn_intent"]}}),
+                    origin,
+                ),
             )
         ).fetchone()
     )[0]
@@ -334,3 +342,43 @@ async def test_resolved_signal_episode_reopens_on_new_connection_without_old_car
                     )
                 ).fetchone()
             ) == (1,)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("flags", [(), ("churn_intent", "repeat")])
+async def test_native_proactive_service_is_not_customer_complaint_even_with_negative_flags(seeded, monkeypatch, flags):
+    from app.sim.behavior.signals import canonical
+
+    from .test_behavior_runtime import failed
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, client, now, sim = await setup(conn, monkeypatch, seeded)
+        signal, _ = await source(conn, run, client, now, sentiment="negative", flags=flags, origin="proactive")
+        await conn.commit()
+        assert await canonical(conn, run, client, signal) is None
+        rng = sim.rng.dump_state()
+        owner = BehaviorOwner(conn, POLICY)
+        assert await owner.advance(run_id=run, to_sim=now) == rng
+        assert await owner.episode(run, client) is None
+        assert (
+            await (await conn.execute("select count(*) from behavior_agent_intents where run_id=%s", (run,))).fetchone()
+        ) == (0,)
+        assert (
+            await (await conn.execute("select count(*) from behavior_work where run_id=%s", (run,))).fetchone()
+        ) == (0,)
+        await conn.commit()
+        # Реальная failed operation независимо открывает affected/таймеры:
+        # service-origin guard не запрещает native causal care episode.
+        _, op = await failed(conn, run, client, now)
+        async with conn.transaction():
+            await BehaviorStore(conn).enqueue_operation(run_id=run, operation_id=op)
+            await owner.advance(run_id=run, to_sim=now)
+            episode = await owner.episode(run, client)
+            assert episode is not None and episode["first_complaint_sim"] is None
+            assert episode["signal_id"] is None
+            assert (
+                await (
+                    await conn.execute("select count(*) from behavior_work where run_id=%s and kind='patience'", (run,))
+                ).fetchone()
+            ) == (1,)
+        await sim.conn.close()
