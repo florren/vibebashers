@@ -46,3 +46,9 @@ pytest backend/tests/unit/test_cx_index.py backend/tests/integration/test_metric
 
 
 Дополнение проверки temporal scope: defensive409 для future started/finished/native observed evidence, upstream T041 c47 ordinary composition,9native/HTTPcontrol+shutdown tests green44.11s; functional95green42.38s/224of226coverage (source-qualified c92). Finalad33native demo5000 p95 CX27.997ms/Overview25.815ms,30GET×2firstincluded, no warmup/tracer,300msguard unchanged, GETfingerprints unchanged. API29 до exactheadCI/parentchain/review остаётся in_progress; исторический fullbackend относится к1968631. Полные raw samples/hash/границы — producer-proof/design docs.
+
+Root composition PR199+PR200: API28/29 schemas и переводы сохранены строгим union,
+internal service fixture использует native authority. 102functional60.43s
+source-qualified byte-identical **весьbackend/app**; root make lint444frontend,
+Ruff550/mypy323,bot12/5,drift196/196,contracts48/166. Старый full196 не переносится
+на новый source; новый exact CI/merge dependency ещё обязательны, карточка не done.
