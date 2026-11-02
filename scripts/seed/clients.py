@@ -377,6 +377,9 @@ def seed_history_signals(
     plan = combos[:]
     while len(plan) < n_signals:
         plan.append(rnd.choice(combos))
+    # Первые combos гарантируют покрытие; шум занимает только последующие строки.
+    noise_count = min(round(len(plan) * tg.corpus.noise_share), len(plan) - len(combos))
+    noise_positions = set(rnd.sample(range(len(combos), len(plan)), noise_count))
     team_by_type = {
         "tech_fault": "team_processing",
         "client_error": "team_contact_center",
@@ -420,15 +423,20 @@ def seed_history_signals(
         identified = (
             ch not in ("social", "landing", "review_portal", "voice_input", "branch_audio") or rnd.random() < 0.3
         )
-        g = tg.generate(st, product, psychotype=pt, city=city, card4=cards.get(client_id, "4512"))
+        is_noise = n in noise_positions
+        g = (
+            tg.noise()
+            if is_noise
+            else tg.generate(st, product, psychotype=pt, city=city, card4=cards.get(client_id, "4512"), channel=ch)
+        )
         styles[g.style] += 1
         received = sim_now - dt.timedelta(minutes=rnd.randrange(60, 14 * 24 * 60))
-        creates_incident = st not in ("info_request", "gratitude", "suggestion", "client_error") and inc_i < len(
+        creates_incident = not is_noise and st not in ("info_request", "gratitude", "suggestion", "client_error") and inc_i < len(
             incident_plan
         )
         classification = {
-            "signal_type": st,
-            "product": product,
+            "signal_type": None if is_noise else st,
+            "product": None if is_noise else product,
             "criticality": incident_plan[inc_i][1] if creates_incident else "low",
             "sentiment": g.gold.get("sentiment", "neutral"),
             "negativity": g.gold.get("negativity", 30),
@@ -437,6 +445,7 @@ def seed_history_signals(
             "error_code": g.gold.get("error_code"),
             "llm_source": "seed",
             "style": g.style,
+            "generator_hint": g.gold,
         }
         signal_status = (
             "closed"
@@ -445,6 +454,8 @@ def seed_history_signals(
                 ["answered", "closed", "noise" if st == "suggestion" and rnd.random() < 0.1 else "answered"]
             )
         )
+        if is_noise:
+            signal_status = "noise"
         if ch == "csi_survey":
             from app.ingest.normalizer import from_csi
             from app.ingest.sync_bridge import create_signal_sync
