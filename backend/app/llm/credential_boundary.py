@@ -162,3 +162,29 @@ def retry_after(value: str | None) -> float:
     except ValueError:
         return 20.0
     return parsed if math.isfinite(parsed) and parsed >= 0 else 20.0
+
+
+def response_token_counts(raw: Any, secrets: Iterable[str | None], *, coerce: bool = False) -> tuple[int, int, int]:
+    """Подтверждённые counts; invalid/missing metadata не становится нулевым расходом."""
+    reject_reflection(raw, secrets)
+
+    def count(value: Any) -> int:
+        if isinstance(value, bool) or not isinstance(value, int | float | str):
+            raise ValueError
+        if not coerce and type(value) is not int:
+            raise ValueError
+        result = int(value)
+        if result < 0 or (isinstance(value, float) and (not math.isfinite(value) or value != result)):
+            raise ValueError
+        return result
+
+    try:
+        if not isinstance(raw, dict):
+            raise ValueError
+        prompt = count(raw["prompt_tokens"])
+        completion = count(raw["completion_tokens"])
+        # Giga ранее использовал сумму, когда total отсутствует или явно равен0.
+        total = count(raw.get("total_tokens", prompt + completion)) or prompt + completion
+    except (KeyError, TypeError, ValueError, OverflowError):
+        raise ProviderError("bad_output", "usage содержит неполные или неверные token counts") from None
+    return prompt, completion, total

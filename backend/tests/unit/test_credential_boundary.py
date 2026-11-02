@@ -442,3 +442,255 @@ async def test_structured_overflow_closes_provider_iterator_and_keeps_usage_unkn
         assert body.closed and refused.value.usage is None
     finally:
         await provider.aclose()
+
+
+@pytest.mark.parametrize("mode", ["sdk_http", "sdk_network", "sdk_json", "giga_network", "giga_json"])
+def test_upstream_causes_and_sdk_debug_never_reach_console_or_jsonl(mode, tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    path = tmp_path / "events.jsonl"
+    result = subprocess.run(
+        [sys.executable, str(root / "tests/fixtures/provider_error_logging.py"), mode, str(path)],
+        cwd=root,
+        env={**os.environ, "ENV_FILE": "/dev/null", "APP_ENV": "test", "LLM_PROVIDER": "mock", "OPENAI_LOG": "debug"},
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = "synthetic-upstream-exception-credential" in (result.stdout + result.stderr + path.read_text())
+    assert leaked is False
+    assert json.loads(result.stdout.splitlines()[-1]) == {"calls": 1, "safe": True}
+    events = [json.loads(line) for line in path.read_text().splitlines()]
+    assert any(item["event"] == "synthetic_provider_failure" and item.get("kind") for item in events)
+
+
+@pytest.mark.parametrize("provider_kind", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("field", ["prompt_tokens", "completion_tokens", "total_tokens"])
+async def test_usage_credential_reflection_is_rejected_before_numeric_parse(provider_kind, stream, field):
+    import traceback
+
+    counts = {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7, field: SECRET}
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        if stream:
+            value = {"choices": [], "usage": counts}
+            return httpx.Response(
+                200,
+                text="data: " + json.dumps(value) + "\n\ndata: [DONE]\n\n",
+                headers={"Content-Type": "text/event-stream"},
+            )
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": '{"ok":true,"note":"safe"}'}}], "usage": counts}
+        )
+
+    provider = (
+        giga(handler)
+        if provider_kind == "gigachat"
+        else OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    )
+    profile = LLMProfile(code="usage", provider=provider_kind, model="synthetic:free")
+    try:
+        with pytest.raises(ProviderError) as refused:
+            if stream:
+                assert [part async for part in provider.stream(MESSAGES, profile, timeout_s=1)] == []
+            else:
+                await provider.complete_structured(MESSAGES, SCHEMA, profile, timeout_s=1)
+        assert refused.value.kind == "bad_output" and refused.value.usage is None
+        assert SECRET not in "".join(traceback.format_exception(refused.value))
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("provider_kind", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("value", ["invalid-count", True, False, -1, 1.5, None])
+async def test_invalid_usage_is_unknown_instead_of_zero_or_unsafe_valueerror(provider_kind, value):
+    import traceback
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": '{"ok":true,"note":"safe"}'}}],
+                "usage": {"prompt_tokens": value, "completion_tokens": 4},
+            },
+        )
+
+    provider = (
+        giga(handler)
+        if provider_kind == "gigachat"
+        else OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    )
+    try:
+        with pytest.raises(ProviderError) as refused:
+            await provider.complete_structured(
+                MESSAGES, SCHEMA, LLMProfile(code="usage", provider=provider_kind, model="synthetic:free"), timeout_s=1
+            )
+        assert refused.value.kind == "bad_output" and refused.value.usage is None
+        assert "invalid-count" not in "".join(traceback.format_exception(refused.value))
+    finally:
+        await provider.aclose()
+
+
+def test_usage_numeric_compatibility_and_zero_are_explicit_not_missing_defaults():
+    from app.llm.credential_boundary import response_token_counts
+
+    assert response_token_counts({"prompt_tokens": 0, "completion_tokens": 0}, []) == (0, 0, 0)
+    assert response_token_counts(
+        {"prompt_tokens": " 3 ", "completion_tokens": 4.0, "total_tokens": 0}, [], coerce=True
+    ) == (3, 4, 7)
+    for raw in (None, {}, {"prompt_tokens": 3}, {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": False}):
+        with pytest.raises(ProviderError) as refused:
+            response_token_counts(raw, [], coerce=True)
+        assert refused.value.usage is None
+
+
+@pytest.mark.parametrize("prior_validated", [False, True])
+async def test_giga_wire_failure_usage_is_unknown_and_prior_key_observations_remain(prior_validated):
+    chats = []
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        chats.append(request.url.path)
+        if prior_validated and len(chats) == 1:
+            # Known charged response, but invalid schema triggers the existing retry.
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [{"message": {"content": "{}"}}],
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 4},
+                },
+            )
+        return httpx.Response(503, json={"error": SECRET})
+
+    provider = giga(handler)
+    try:
+        with pytest.raises(ProviderError) as refused:
+            await provider.complete_structured(
+                MESSAGES, SCHEMA, LLMProfile(code="wire", provider="gigachat", model="synthetic"), timeout_s=1
+            )
+        assert refused.value.kind == "unavailable" and refused.value.status == 503
+        assert refused.value.usage is None
+        assert provider.pool.keys[0].tokens_used == (7 if prior_validated else 0)
+        assert len(chats) == (2 if prior_validated else 1)
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("surface", ["models", "key"])
+async def test_public_provider_metadata_refuses_consumed_credential_and_keeps_unused_private_fields(surface):
+    reflected = True
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        if surface == "models":
+            return httpx.Response(
+                200, json={"data": [{"id": SECRET if reflected else "safe-model", "private_unused": SECRET}]}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "label": SECRET,
+                    "usage": 2,
+                    "limit": 10,
+                    "limit_remaining": SECRET if reflected else 8,
+                    "is_free_tier": False,
+                }
+            },
+        )
+
+    provider = OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    try:
+        method = provider.list_models if surface == "models" else provider.fetch_key
+        with pytest.raises(ProviderError, match=REFLECTION) as refused:
+            await method()
+        assert refused.value.kind == "bad_output"
+        reflected = False
+        result = await method()
+        assert SECRET not in json.dumps(result)
+        if surface == "models":
+            assert result == ["safe-model"]
+        else:
+            assert result["usage"] == 2 and result["balance_usd"] == 8 and result["rpd_limit"] == 1000
+        assert len(calls) == 2
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("known_usage", [False, True])
+async def test_error_attempt_count_is_separate_from_unknown_tokens_and_never_counted_twice(known_usage):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.llm.base import Usage
+    from app.llm.failover import ProviderChain
+    from app.llm.mock import MockProvider
+
+    class Failed:
+        name = "gigachat"
+
+        async def complete_structured(self, *args, **kwargs):
+            raise ProviderError(
+                "auth",
+                "synthetic",
+                request_count=2,
+                usage=Usage(prompt_tokens=3, completion_tokens=4, request_count=2) if known_usage else None,
+            )
+
+    chain = ProviderChain(
+        [Failed(), MockProvider()], append_mock=False, rate_limiter=SimpleNamespace(acquire=AsyncMock())
+    )
+    result = await chain.complete_structured(
+        MESSAGES, SCHEMA, LLMProfile(code="attempts", provider="gigachat", model="synthetic")
+    )
+    assert result.usage.request_count == 3
+
+
+def test_sdk_policy_is_local_and_preserves_existing_stricter_levels():
+    import logging
+
+    from app.llm.openai_compat import _SDK_LOGGERS, _enforce_sdk_logging
+
+    loggers = [logging.getLogger(name) for name in _SDK_LOGGERS]
+    previous = [logger.level for logger in loggers]
+    root = logging.getLogger().level
+    httpx_level = logging.getLogger("httpx").level
+    try:
+        for logger in loggers:
+            logger.setLevel(logging.DEBUG)
+        _enforce_sdk_logging()
+        assert all(logger.getEffectiveLevel() >= logging.WARNING for logger in loggers)
+        for logger in loggers:
+            logger.setLevel(logging.ERROR)
+        _enforce_sdk_logging()
+        assert all(logger.level == logging.ERROR for logger in loggers)
+        assert logging.getLogger().level == root and logging.getLogger("httpx").level == httpx_level
+    finally:
+        for logger, level in zip(loggers, previous, strict=True):
+            logger.setLevel(level)
+
+
+async def test_pool_admission_no_http_has_proven_zero_usage():
+    provider = giga(lambda request: pytest.fail("cooldown admission must not do HTTP"))
+    provider.pool.keys[0].cooldown_until = time.monotonic() + 60
+    try:
+        with pytest.raises(ProviderError) as refused:
+            await provider.complete_structured(
+                MESSAGES, SCHEMA, LLMProfile(code="cooldown", provider="gigachat", model="synthetic"), timeout_s=1
+            )
+        assert refused.value.kind == "rate_limit" and refused.value.request_count == 0
+        assert refused.value.usage is not None and refused.value.usage.total_tokens == 0
+    finally:
+        await provider.aclose()

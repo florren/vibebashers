@@ -146,6 +146,83 @@ class BenchDatasets(Base):
     bench_runs: Mapped[list['BenchRuns']] = relationship('BenchRuns', back_populates='dataset')
 
 
+class TelegramChatRate(Base):
+    __tablename__ = 'telegram_chat_rate'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_chat_rate_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_chat_rate_chat_id_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_chat_rate_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    last_claimed_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+
+
+class TelegramConversations(Base):
+    __tablename__ = 'telegram_conversations'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_conversations_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_conversations_chat_id_check'),
+        CheckConstraint('revision >= 0', name='telegram_conversations_revision_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_conversations_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    state_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramDeliveries(Base):
+    __tablename__ = 'telegram_deliveries'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_deliveries_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_deliveries_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_deliveries_chat_id_check'),
+        CheckConstraint("status <> 'sent'::text OR external_ref IS NOT NULL AND completed_at IS NOT NULL", name='telegram_deliveries_check'),
+        CheckConstraint("status = ANY (ARRAY['queued'::text, 'claimed'::text, 'sent'::text, 'failed'::text, 'unknown'::text, 'suppressed'::text])", name='telegram_deliveries_status_check'),
+        PrimaryKeyConstraint('delivery_key', name='telegram_deliveries_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    bot_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    notification_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    claimed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    external_ref: Mapped[Optional[str]] = mapped_column(Text)
+    error_code: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class TelegramInbound(Base):
+    __tablename__ = 'telegram_inbound'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_inbound_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_inbound_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_inbound_chat_id_check'),
+        CheckConstraint('update_id >= 0', name='telegram_inbound_update_id_check'),
+        PrimaryKeyConstraint('bot_id', 'update_id', name='telegram_inbound_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    update_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    response_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
 class Channels(Base):
     __tablename__ = 'channels'
     __table_args__ = (
@@ -472,6 +549,77 @@ class LlmCassettes(Base):
     recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
     scenario_id: Mapped[Optional[str]] = mapped_column(Text)
     prompt_version: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class Credentials(Base):
+    __tablename__ = 'credentials'
+    __table_args__ = (
+        CheckConstraint('confirmed_tokens >= 0', name='credentials_confirmed_tokens_check'),
+        CheckConstraint('legacy_tokens_hint >= 0', name='credentials_legacy_tokens_hint_check'),
+        CheckConstraint('octet_length(verifier) = 32', name='credentials_verifier_check'),
+        CheckConstraint("provider = ANY (ARRAY['gigachat'::text, 'openai_compatible'::text])", name='credentials_provider_check'),
+        PrimaryKeyConstraint('uid', name='credentials_pkey'),
+        UniqueConstraint('verifier', name='credentials_verifier_key'),
+        {'schema': 'llm_runtime'}
+    )
+
+    uid: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, server_default=text('gen_random_uuid()'))
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    verifier: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    confirmed_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    legacy_tokens_hint: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    usage_known: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    usage_source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'unknown'::text"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    usage_as_of: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+    credential_aliases: Mapped[list['CredentialAliases']] = relationship('CredentialAliases', back_populates='credentials')
+    reconciliations: Mapped[list['Reconciliations']] = relationship('Reconciliations', back_populates='credentials')
+    wire_attempts: Mapped[list['WireAttempts']] = relationship('WireAttempts', back_populates='credentials')
+
+
+class DailyUsage(Base):
+    __tablename__ = 'daily_usage'
+    __table_args__ = (
+        CheckConstraint('requests_today >= 0', name='daily_usage_requests_today_check'),
+        CheckConstraint("scope_type = ANY (ARRAY['key'::text, 'profile'::text])", name='daily_usage_scope_type_check'),
+        PrimaryKeyConstraint('scope_type', 'scope_id', 'utc_day', name='daily_usage_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    scope_type: Mapped[str] = mapped_column(Text, primary_key=True)
+    scope_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    utc_day: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
+    requests_today: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    requests_known: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    usage_source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'unknown'::text"))
+    usage_as_of: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+
+
+class IdentitySettings(Base):
+    __tablename__ = 'identity_settings'
+    __table_args__ = (
+        CheckConstraint('octet_length(secret_tag) = 32', name='identity_settings_secret_tag_check'),
+        CheckConstraint('singleton', name='identity_settings_singleton_check'),
+        PrimaryKeyConstraint('singleton', name='identity_settings_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    singleton: Mapped[bool] = mapped_column(Boolean, primary_key=True, server_default=text('true'))
+    secret_tag: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+
+
+class ProfileScopes(Base):
+    __tablename__ = 'profile_scopes'
+    __table_args__ = (
+        PrimaryKeyConstraint('scope', name='profile_scopes_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    scope: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
 
 
 class MissellingPatterns(Base):
@@ -1047,7 +1195,8 @@ class LlmProfiles(Base):
         CheckConstraint("role = ANY (ARRAY['main'::text, 'fast'::text, 'twin'::text, 'bench_only'::text])", name='llm_profiles_role_check'),
         ForeignKeyConstraint(['api_key_id'], ['llm_api_keys.id'], ondelete='RESTRICT', name='llm_profiles_api_key_fk'),
         PrimaryKeyConstraint('id', name='llm_profiles_pkey'),
-        UniqueConstraint('code', name='llm_profiles_code_key')
+        UniqueConstraint('code', name='llm_profiles_code_key'),
+        UniqueConstraint('quota_uid', name='llm_profiles_quota_uid_key')
     )
 
     id: Mapped[int] = mapped_column(Integer, Identity(always=True, start=1, increment=1, minvalue=1, maxvalue=2147483647, cycle=False, cache=1), primary_key=True, autoincrement=True)
@@ -1062,6 +1211,7 @@ class LlmProfiles(Base):
     supports_stream: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('true'))
     extra: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    quota_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=text('gen_random_uuid()'), comment='Private budget configuration identity; no API/AR/export projection; not usage')
     base_url: Mapped[Optional[str]] = mapped_column(Text)
     rpm_limit: Mapped[Optional[int]] = mapped_column(Integer)
     rpd_limit: Mapped[Optional[int]] = mapped_column(Integer)
@@ -1071,6 +1221,42 @@ class LlmProfiles(Base):
     api_key: Mapped[Optional['LlmApiKeys']] = relationship('LlmApiKeys', back_populates='llm_profiles')
     bench_runs: Mapped[list['BenchRuns']] = relationship('BenchRuns', back_populates='llm_profile')
     sim_runs: Mapped[list['SimRuns']] = relationship('SimRuns', back_populates='llm_profile')
+
+
+class CredentialAliases(Base):
+    __tablename__ = 'credential_aliases'
+    __table_args__ = (
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='credential_aliases_credential_uid_fkey'),
+        PrimaryKeyConstraint('config_uid', name='credential_aliases_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    config_uid: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='credential_aliases')
+
+
+class Reconciliations(Base):
+    __tablename__ = 'reconciliations'
+    __table_args__ = (
+        CheckConstraint("jsonb_typeof(observation) = 'object'::text", name='reconciliations_observation_check'),
+        CheckConstraint("source = 'operator_declared_app_usage'::text", name='reconciliations_source_check'),
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='reconciliations_credential_uid_fkey'),
+        PrimaryKeyConstraint('id', name='reconciliations_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    as_of: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    recorded_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    observation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='reconciliations')
+    wire_attempts: Mapped[list['WireAttempts']] = relationship('WireAttempts', back_populates='reconciliation')
 
 
 class NotificationTemplates(Base):
@@ -1374,6 +1560,42 @@ class ComplianceTriggers(Base):
     misselling_patterns: Mapped['MissellingPatterns'] = relationship('MissellingPatterns', back_populates='compliance_triggers')
     session: Mapped['AudioSessions'] = relationship('AudioSessions', back_populates='compliance_triggers')
     utterance: Mapped['Utterances'] = relationship('Utterances', back_populates='compliance_triggers')
+
+
+class WireAttempts(Base):
+    __tablename__ = 'wire_attempts'
+    __table_args__ = (
+        CheckConstraint('completion_tokens >= 0', name='wire_attempts_completion_tokens_check'),
+        CheckConstraint('observed_tokens >= 0', name='wire_attempts_observed_tokens_check'),
+        CheckConstraint('prompt_tokens >= 0', name='wire_attempts_prompt_tokens_check'),
+        CheckConstraint("state <> 'known'::text OR prompt_tokens IS NOT NULL AND completion_tokens IS NOT NULL AND finished_at IS NOT NULL", name='wire_attempts_check'),
+        CheckConstraint("state = ANY (ARRAY['reserved'::text, 'known'::text, 'unknown'::text, 'reconciled'::text])", name='wire_attempts_state_check'),
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='wire_attempts_credential_uid_fkey'),
+        ForeignKeyConstraint(['reconciliation_id'], ['llm_runtime.reconciliations.id'], name='wire_attempts_reconciliation_id_fkey'),
+        PrimaryKeyConstraint('id', name='wire_attempts_pkey'),
+        {'schema': 'llm_runtime'}
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    profile_scope: Mapped[str] = mapped_column(Text, nullable=False)
+    profile_code: Mapped[str] = mapped_column(Text, nullable=False)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    utc_day: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    admitted_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    deadline_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    state: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'reserved'::text"))
+    observed_tokens: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    profile_id: Mapped[Optional[int]] = mapped_column(Integer)
+    finished_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    prompt_tokens: Mapped[Optional[int]] = mapped_column(BigInteger)
+    completion_tokens: Mapped[Optional[int]] = mapped_column(BigInteger)
+    error_kind: Mapped[Optional[str]] = mapped_column(Text)
+    reconciliation_id: Mapped[Optional[uuid.UUID]] = mapped_column(Uuid)
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='wire_attempts')
+    reconciliation: Mapped[Optional['Reconciliations']] = relationship('Reconciliations', back_populates='wire_attempts')
 
 
 class SimRuns(Base):
@@ -2086,6 +2308,7 @@ class Notifications(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=text('gen_random_uuid()'))
     client_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     team_code: Mapped[Optional[str]] = mapped_column(Text)
     signal_id: Mapped[Optional[int]] = mapped_column(BigInteger)
