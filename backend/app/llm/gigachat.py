@@ -399,6 +399,7 @@ class GigaChatProvider:
                 # Новый wire не подтвердил usage: initial0 или прежний partial
                 # не являются общим расходом. Per-key known observations сохранены.
                 exc.usage = None
+                exc.request_count = total_usage.request_count
                 raise
             try:
                 body = r.json()

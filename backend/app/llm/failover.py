@@ -202,6 +202,8 @@ class ProviderChain:
                         failed_usage.cost_rub += exc.usage.cost_rub
                         failed_usage.request_count += exc.usage.request_count
                         failed_usage.structured_retries += exc.usage.structured_retries
+                    else:
+                        failed_usage.request_count += exc.request_count
                     (log.info if exc.kind == "miss" else log.warning)(
                         "llm_provider_error", provider=candidate.name, model=selected.model, kind=exc.kind, ms=ms
                     )

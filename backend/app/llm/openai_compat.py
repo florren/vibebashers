@@ -188,7 +188,9 @@ class OpenAICompatProvider:
             not isinstance(model, dict) or not isinstance(model.get("id"), str) or not model["id"] for model in data
         ):
             raise ProviderError("unavailable", "models: некорректный каталог")
-        return [model["id"] for model in data]
+        model_ids = [model["id"] for model in data]
+        reject_reflection(model_ids, [self._key(self.base_url)])
+        return model_ids
 
     async def fetch_key(self, timeout_s: float = 10.0, *, base_url: str | None = None) -> dict[str, Any]:
         """GET {base}/key. Ошибка запроса — ProviderError quota, без chat/completions."""
@@ -207,7 +209,10 @@ class OpenAICompatProvider:
             raise ProviderError("quota", "key: некорректный JSON") from None
         if not isinstance(body, dict):
             raise ProviderError("quota", "key: не объект")
-        return parse_key_payload(body)
+        public = parse_key_payload(body)
+        # Только consumed projection; private unused provider labels не публикуются.
+        reject_reflection(public, [self._key(base)])
+        return public
 
     async def _before_chat(self, profile: LLMProfile, base_url: str) -> None:
         if profile.provider != "openai_compatible":

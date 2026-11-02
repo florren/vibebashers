@@ -28,3 +28,5 @@ Regression subprocess запускается с настоящим `OPENAI_LOG=d
 ## Проверки checkpoint
 
 193 provider/SDK/budget/benchmark tests прошли8.56s; отдельный85-test boundary/benchmark прогон прошёл6.45s после согласованной None-vs0 wire guard. Composed financial/runtime/durable/bench/replay target58passed249.38s до последней narrow wire guard; новый итоговый head будет проверен отдельно. Числа frozen727 в соседнем отчёте не объявляются full green этого изменённого source.
+
+Bounded audit завершён: known credential также проверяется в публично потребляемых model IDs и GET/key projection до передачи вызывающему коду; private unused labels не проверяются/не возвращаются, default limits и valid metadata сохранены. Internal `ProviderError.request_count` сохраняет прежний adapter generation-attempt counter независимо от UsageNone. Chain добавляет его только при неизвестном usage; known usage count не удваивается. Это не all-HTTP/durable counter и не P2 ledger. Согласованный target197passed7.73s; отдельные no-doublecount и прежний backup-count cases3passed0.76s.

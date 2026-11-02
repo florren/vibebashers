@@ -110,6 +110,7 @@ class ProviderError(Exception):
         retry_after_s: float | None = None,
         status: int | None = None,
         usage: Usage | None = None,
+        request_count: int = 0,
     ):
         super().__init__(f"{kind}: {detail}" if detail else kind)
         self.kind: ErrorKind = kind
@@ -117,6 +118,8 @@ class ProviderError(Exception):
         self.retry_after_s = retry_after_s
         self.status = status
         self.usage = usage
+        # Существующий adapter generation-attempt counter, не all-HTTP ledger.
+        self.request_count = request_count
 
 
 class Provider(Protocol):

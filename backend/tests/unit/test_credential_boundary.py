@@ -585,3 +585,74 @@ async def test_giga_wire_failure_usage_is_unknown_and_prior_key_observations_rem
         assert len(chats) == (2 if prior_validated else 1)
     finally:
         await provider.aclose()
+
+
+@pytest.mark.parametrize("surface", ["models", "key"])
+async def test_public_provider_metadata_refuses_consumed_credential_and_keeps_unused_private_fields(surface):
+    reflected = True
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        if surface == "models":
+            return httpx.Response(
+                200, json={"data": [{"id": SECRET if reflected else "safe-model", "private_unused": SECRET}]}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "label": SECRET,
+                    "usage": 2,
+                    "limit": 10,
+                    "limit_remaining": SECRET if reflected else 8,
+                    "is_free_tier": False,
+                }
+            },
+        )
+
+    provider = OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    try:
+        method = provider.list_models if surface == "models" else provider.fetch_key
+        with pytest.raises(ProviderError, match=REFLECTION) as refused:
+            await method()
+        assert refused.value.kind == "bad_output"
+        reflected = False
+        result = await method()
+        assert SECRET not in json.dumps(result)
+        if surface == "models":
+            assert result == ["safe-model"]
+        else:
+            assert result["usage"] == 2 and result["balance_usd"] == 8 and result["rpd_limit"] == 1000
+        assert len(calls) == 2
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("known_usage", [False, True])
+async def test_error_attempt_count_is_separate_from_unknown_tokens_and_never_counted_twice(known_usage):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.llm.base import Usage
+    from app.llm.failover import ProviderChain
+    from app.llm.mock import MockProvider
+
+    class Failed:
+        name = "gigachat"
+
+        async def complete_structured(self, *args, **kwargs):
+            raise ProviderError(
+                "auth",
+                "synthetic",
+                request_count=2,
+                usage=Usage(prompt_tokens=3, completion_tokens=4, request_count=2) if known_usage else None,
+            )
+
+    chain = ProviderChain(
+        [Failed(), MockProvider()], append_mock=False, rate_limiter=SimpleNamespace(acquire=AsyncMock())
+    )
+    result = await chain.complete_structured(
+        MESSAGES, SCHEMA, LLMProfile(code="attempts", provider="gigachat", model="synthetic")
+    )
+    assert result.usage.request_count == 3
