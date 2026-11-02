@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Синтетические CSI-данные, на которых корреляции ЕТЗ FR-8.4–8.5 осмысленны (ТЗ 25.1, 20.7 № 52).
@@ -42,3 +42,12 @@ pytest backend/tests/unit/test_csi_corpus.py backend/tests/unit/test_no_pii.py
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+
+## Ревизия корпуса CSI
+
+Ветка `codex/T-247-csi-corpus`, cross-layer согласован пользователем. Добавлены YAML-дизайн, генератор SimRng, 300 жалоб/2400 визитов/60 fixture employees, детерминированные JSON/XLSX. Все 300 жалоб импортированы штатным T-246 endpoint в собственной PG fixture, 30 сотрудников/10 ВСП подтверждены; повторный XLSX даёт 300 дублей. Preflight проверяет branch/desk/public_id/position/стаж read-only.
+
+11 unit/actual-PG tests passed; coverage generator 41/41 statements, CLI79/80. Correlations на corpus выше критериев, synthetic/no-PII checks и побайтовая регенерация проходят. Runtime probabilities, API/DDL и рабочие данные не менялись. Подробности: `docs/reviews/T-247-csi-corpus.md`.
+
+Статус in_progress: безопасная загрузка `csi_visits_agg` требует run/cohort provenance вместе с T-248. Нельзя считать корпус полной runtime CSI-аналитикой или выдавать unknown знаменатель за ноль. Полные проверки текущего PR ещё выполняются.

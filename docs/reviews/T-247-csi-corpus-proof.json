@@ -1,0 +1,38 @@
+{
+  "runtime_files": {
+    "backend/app/sim/csi_corpus.py": "deb694a781ab927ec596fe07fe5761d75351687aa718cfb6f53c1ed9f228a450",
+    "scripts/seed/gen_csi_corpus.py": "2a65e74b5ed9ebf4fe8d51980de0e2878b43f710406a985a2629cf0dfe5357c2"
+  },
+  "checks": {
+    "target_tests_passed": 11,
+    "seconds": 25.23,
+    "core_coverage": {
+      "covered_lines": 41,
+      "num_statements": 41,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    },
+    "script_coverage": {
+      "covered_lines": 79,
+      "num_statements": 80,
+      "percent_covered": 98.75,
+      "percent_covered_display": "99",
+      "missing_lines": 1,
+      "excluded_lines": 0,
+      "percent_statements_covered": 98.75,
+      "percent_statements_covered_display": "99"
+    }
+  },
+  "artifacts": {
+    "data/corpus/csi_v1/metadata.json": "6881b8881b05fa53e50b59a48e931c88e64b6cdd47eb8da03b22f79ac320be0e",
+    "data/corpus/csi_v1/complaints.json": "a9209199e066b30c294090c9ed83ce7087cef920a0cc6aaf626a2928dda85672",
+    "data/corpus/csi_v1/visits.json": "08a91d1d8f26805a96add433f212f071132a308777c0d41f981a9e3ab5f8a605",
+    "data/corpus/csi_v1/employees.json": "1007df36c67c8d62221d9751bbad98a56c2aacf7c1b3cf403d1f449fb92391d2",
+    "data/corpus/csi_v1/complaints.xlsx": "c2842948c157e1d93e8818b870f322c0a5b0722778f3521226a561dbe1eafc8b"
+  },
+  "scope": "isolated actual PG fixture; no real LLM/external delivery; denominator DB loading is not implemented"
+}
