@@ -89,3 +89,19 @@ T262 canonical `cabinet_red_words_report` scenario14 ещё todo и отсутс
 Existing number14 `demo20_branch_queue` — другой сюжет и не подменяет приёмку
 кабинета/отчёта/HITL. До T262/CI/human API24financial review карточка остаётся
 in_progress; реализация calculator/map/31existingrates функционально проверена.
+
+## Финальная композиция T241 и CI isolation
+
+Обычные merges: T24119135 (customer-only view18) →1acc686, затем T241f987591
+(exactPR186CI test-isolation corrections) →38d969c. ВерсияAPI24 сохранена,
+поздний T039/T161runtimeWIP не втянут. Coherent service-view/API24 target18green
+38.78s; после test-fixture correction14affected unit/actualPGgreen12.34s;
+shared18frontendtests/typecheck green. Production runtime tree не менялся
+относительно1acc686; T241 source83order-regression green110.84s.
+
+T242833690 включает эту customer-view/API24composition: обеproductionbuilds и
+actual5/5passed27.7s (включаяactual0region→prefill0→server0 и31selectorcodes).
+Последующийtest-onlymerge не меняет runtime. 35GET/107fingerprints повторены на
+coherent preview, unchanged; markerLLM/externalfalse. СамыйпоследнийPR186CI
+f15failed не выдаётся заsuccess: rootпубликуетf987/newheadCI; T243/T242CI и
+humanreview всё ещё обязательны. Ни одинfailedCIcase не skip/ослаблен.
