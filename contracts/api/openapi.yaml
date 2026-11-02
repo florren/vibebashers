@@ -2361,6 +2361,7 @@ paths:
           type: string
       - name: red_words
         in: query
+        description: "true — только red_word; false — без presentation preset; отсутствие — OR preset для compliance_officer, остальные роли без фильтра. Overview не меняется."
         schema:
           type: boolean
       - name: sort
@@ -2833,6 +2834,8 @@ components:
     CabinetRegion:
       type: object
       required:
+      - identified_signals
+      - identified_clients
       - lat
       - lon
       - code
@@ -2862,8 +2865,11 @@ components:
           type: integer
         critical:
           type: integer
+        identified_signals: { type: integer, description: "Сигналы с известным client_id" }
+        identified_clients: { type: integer, description: "Различные известные клиенты; не весь охват при partial coverage" }
         affected_clients:
-          type: integer
+          type: [integer, "null"]
+          description: "NULL если хотя бы один сигнал не идентифицирован; 0 только для действительно пустой группы"
         negativity_index:
           type:
           - number
@@ -2885,6 +2891,7 @@ components:
     CabinetSignal:
       type: object
       required:
+      - signal_type
       - client_public_id
       - id
       - public_id
@@ -2904,6 +2911,7 @@ components:
       - sla_due_sim
       - incidents
       properties:
+        signal_type: { type: [string, "null"] }
         client_public_id: { type: [string, "null"] }
         id:
           type: integer
@@ -3228,14 +3236,18 @@ components:
         csi:
           type: object
           required:
+          - branch_known
+          - wait_known
           - responses
           - branches
           - average_wait_min
           properties:
+            branch_known: { type: integer }
+            wait_known: { type: integer }
             responses:
               type: integer
             branches:
-              type: integer
+              type: [integer, "null"]
             average_wait_min:
               type:
               - number
@@ -3270,6 +3282,7 @@ components:
             - name_en
             - scope
             - default_red_words
+            - default_compliance_filter
             properties:
               code:
                 type: string
@@ -3291,6 +3304,7 @@ components:
                 - one
                 - configured
                 - all
+              default_compliance_filter: { type: boolean, description: "OR: red_word, legal_regulatory, связанный incident_type misselling; только фильтр списка" }
               default_red_words:
                 type: boolean
     DemoExecutionRequest:

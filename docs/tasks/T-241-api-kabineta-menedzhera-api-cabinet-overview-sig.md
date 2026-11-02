@@ -48,5 +48,9 @@ curl -s -H 'X-Cx-Role: product_manager' -H 'X-Cx-Product-Line: deposits' localho
 nullable coverage, saved economics и новый actor_role audit без изменения HITL/денежной политики.
 Конкретный contract/DDL proposal: `docs/reviews/T-241-contract-review.md`.
 52 targeted unit/actualPG green на временном0014+proposal; это НЕ окончательная migration proof.
-До full DoD: normal merge фактического0017 → DDL18, fresh upgrade/idempotence/downgrade,
-полный lint/test/coverage, demo p95/EXPLAIN, human contract/audit review. T242 отдельной веткой.
+Фактическая0017 normal-merged;0018 canonical/mirror/ORM110, fresh/reapply/downgrade→upgrade
+сохраняют audit. Полный исходный gate выявил11producer incompatibilities; focused
+corrections и15lifecycle targets green. Новый API22quality/preset target65green,
+actualdemo5000/p95<300/GETfingerprints, ранняя newmodule coverage97%.
+До full DoD: оставшиеся phases/composed checks, final main compatibility и CI,
+human contract/audit review. T242 — отдельная stacked ветка.

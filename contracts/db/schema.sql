@@ -2406,7 +2406,8 @@ SELECT s.id,s.public_id,s.run_id,s.product_line_code,s.received_sim,s.sentiment,
   s.classification->>'criticality' AS criticality,
   coalesce(s.geo->>'region_code',c.region_code) AS region_code,
   s.channel_code,s.meta->>'source_platform' AS source_platform,
-  s.client_id,s.flags,s.red_words,s.status,c.public_id AS client_public_id
+  s.client_id,s.flags,s.red_words,s.status,c.public_id AS client_public_id,
+  s.classification->>'signal_type' AS signal_type
 FROM signals s LEFT JOIN clients c ON c.id=s.client_id;
 -- Сначала distinct соответствия, затем сохранённая экономика: без compute/write.
 CREATE OR REPLACE VIEW v_cabinet_incident_facts AS

@@ -89,6 +89,7 @@ async def list_roles() -> Any:
                 "name_en": names[1],
                 "scope": "one" if code == "product_manager" else "configured" if code == "product_head" else "all",
                 "default_red_words": code == "compliance_officer",
+                "default_compliance_filter": code == "compliance_officer",
             }
             for code, names in ROLES.items()
         ],

@@ -32,3 +32,47 @@ actor_role. Coverage actual18:200/207 executable lines (97%),53tests55.92s.
 Верхняя оценка производительности на demo и full suite остаются отдельным незакрытым этапом.
 
 После bounded config guards:58targeted tests passed16.73s; malformed cabinet visibility/product_head config возвращает409, неизвестный binding422. Ранее coverage97% относится предшествующему source, точные полные проверки следуют после freeze.
+
+## Финальные уточнения API22 до публикации
+
+- `CabinetRegion.identified_clients` и `identified_signals` — известная часть наблюдений.
+  `affected_clients` nullable при хотя бы одном неидентифицированном сигнале;
+  настоящий пустой cohort сохраняет известный0. Никакой записи/пересчёта денег.
+- CSI: `branch_known`, `wait_known`, nullable `branches`, среднее только по заполненным
+  ожиданиям. Общие visits не приписываются направлению, новый индекс CSI не выдумывается.
+- Неизвестные platform codes агрегируются в один `platform=null` bucket, без URL.
+- Compliance officer по отсутствующему `red_words` получает OR по существующим
+  `red_word`, `classification.signal_type=legal_regulatory`, связанному same-run
+  `incidents.incident_type=misselling`. `red_words=true` — только красные слова,
+  `false` явно снимает presentation preset. Overview остаётся статистикой направления.
+  DTO роли сообщает `default_compliance_filter`. Это не RBAC и не новый бизнес-класс.
+- Полный audit manual writers включает compliance `ack_alert`: nullable actor_role
+  из validated `X-Cx-Role`, прежний `X-Role`/actor_ref/decided_by не меняются.
+  Прямые automatic service calls оставляют actor_role=NULL. Поле — **заявленный UI
+  preset, не проверенная личность**. FSM, решения HITL, платежи и формулы не меняются.
+
+## Версионные проверки и границы доказательства
+
+- Полный gate на frozen8c7801e: unit1738passed/18skip; integration423passed/4skip,
+  11failed за2432.05s. Причины:10 lifecycle/durable tests не поддерживали новые
+  composite FK actual17;1 legacyfixture пыталась создать дубликат уже под unique17.
+  Это **не** зелёный полный `make test`.
+- Root разрешил узкие producer corrections без всего T161 runtime WIP:
+  `25ee046` cherry→ad57cbe (ordered composite pairs, AND joins, один purge statement),
+  legacyfixture exact6lines→ed565b3. T1218line run lease guard сохранён до metadata
+  и проверен новым guard-before-metadata case (7132aad). Target15passed77.31s,
+  включая исходные10 lifecycle failures и4новых composite/foreign/двухклиентных case.
+- API22quality/manual+automatic compliance/demo5000/legacy target65passed79.12s;
+  после OR preset следующий target65passed72.29s (legacy case проверялся отдельно).
+  demo fixture проверяет реальные5000clients,25GET p95<300 с первым GET, read-only
+  table fingerprints, NULL→known coverage, три ветки OR и explicitfalse.
+- Ранний actual route benchmark на byte-identical backend8c7801e из UIa3868b3:
+  demo5000/2813signals,25GETeach, bank p95 38.42ms, direction22.46ms,
+  maxpayload40607B,107table fingerprints неизменны, BombLLM0.
+  Networkguard запрещал внешние соединения; отдельный counter попыток не измерялся.
+  После quality полей benchmark/EXPLAIN повторяются, ранние числа не выдаются за новые.
+
+Откат release: сначала откатить/выключить cabinet code, затем downgrade18 убирает
+только views/indexes. Auditcolumns и их значения остаются; upgrade возвращает views.
+Физический drop audit данных не входит в rollback и требует отдельного решения.
+Полные оставшиеся scenarios/compliance/bot phases, composed lint и CI ещё ожидаются.
