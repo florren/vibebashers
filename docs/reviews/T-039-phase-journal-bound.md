@@ -36,3 +36,26 @@ Compatibility: existing families/fields сохранены, новых API paths
 требует согласованного обновления contracts/backend consumers. LLM
 classification/decision schemas не менялись; новые live recordings не нужны.
 Полные T039 lint/test/CI/coverage остаются за final phase/runtime composition.
+
+## Prepared-source functional checkpoint (ещё без API/worker activation)
+
+Typed YAML plan/preflight + atomic prepare создают ровно120 actual own-run
+failed operations, native fault.started/op.failed и один prepared receipt.
+Реальные active YuFO/product rows/consents читаются, не изменяются. Нет service
+signal/AR/LLM/ledger на этом этапе; anchor появится после initial native clock
+boundary. Source hash включает case/templates, changed script не переисполняется.
+Correlation deterministic UUID5 от native run/fault/script; дополнительных RNG
+или randomUUID draws в producer нет. Explicit duration обязателен, без default90.
+
+Данные проверяются до native effects: insufficient cohort/consent, unsupported
+protocol counts, invalid templates/timings. Весь заданный YAML clock window
+обязан быть раньше неизменного native minimum complaint due и конца fault,
+иначе отказ — не сокращение delays/рабочих дней/порога модели.
+Caller TX обязательна; autocommit=True допускается только внутри реальной
+explicit transaction. Idempotent repeat не создаёт второй fault/cohort/journal.
+Interrupt на60-й операции откатывает все native rows/events, clock/RNG неизменны;
+следующий retry безопасен. Ни bank payments, ни p/delay/care/thresholds не менялись.
+
+6 actual-PG cases passed/48.84s; после добавления deterministic correlation
+idempotent/rollback targets2 passed/18.20s. Config unit11 passed/0.37s;
+Ruff/mypy new module зелёные. Полный phase/runtime workflow всё ещё в реализации.
