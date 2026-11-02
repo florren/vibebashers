@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from app.agent.prompts import load as load_prompt
+from app.bench import datasets as dataset_sources
 from app.bench.metrics import aggregate
 from app.contracts.enums import Team
 from app.contracts.registry import deref, validate_schema
@@ -41,6 +42,7 @@ class BenchCase:
     channel: str
     text: str
     gold: dict[str, Any]
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -77,16 +79,12 @@ _NEXT_RUN_ID = 1
 
 
 def dataset_path(code: str) -> Path:
-    for folder in (BENCH_DIR, GOLDEN_DIR):
-        path = folder / f"{code}.jsonl"
-        if path.is_file():
-            return path
-    return BENCH_DIR / f"{code}.jsonl"
+    return dataset_sources.dataset_path(code)
 
 
 def list_datasets() -> list[dict[str, Any]]:
     found: dict[str, Path] = {}
-    for folder in (BENCH_DIR, GOLDEN_DIR):
+    for folder in (GOLDEN_DIR, BENCH_DIR):
         if not folder.is_dir():
             continue
         for path in sorted(folder.glob("*.jsonl")):
@@ -107,24 +105,14 @@ def dataset_code_by_id(dataset_id: int) -> str:
 
 
 def load_dataset(code: str) -> list[BenchCase]:
-    path = dataset_path(code)
-    if not path.is_file():
-        raise FileNotFoundError(f"набор {code!r} не найден: {path}")
-    cases: list[BenchCase] = []
-    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        cases.append(
-            BenchCase(
-                case_id=len(cases) + 1,
-                external_id=str(row.get("id") or f"case-{i}"),
-                channel=str(row["channel"]),
-                text=str(row["text"]),
-                gold=dict(row["gold"]),
-            )
-        )
-    return cases
+    if code in dataset_sources.CLASSIFICATION_CODES:
+        dataset_sources.check_canonical()
+        dataset_sources.validate_review()
+    rows = dataset_sources.load_rows(code)
+    return [
+        BenchCase(i, str(row.get("id") or f"case-{i}"), row["channel"], row["text"], row["gold"], row.get("tags", []))
+        for i, row in enumerate(rows, 1)
+    ]
 
 
 def build_classify_prompt(case: BenchCase) -> str:
@@ -138,7 +126,11 @@ def build_classify_prompt(case: BenchCase) -> str:
     )
 
 
-def compute_correct(gold: dict[str, Any], predicted: dict[str, Any]) -> dict[str, bool]:
+def compute_correct(
+    gold: dict[str, Any], predicted: dict[str, Any], *, tags: list[str] | None = None
+) -> dict[str, bool]:
+    if "ambiguous" in (tags or []):
+        return {}
     correct: dict[str, bool] = {}
     if "signal_type" in gold:
         correct["signal_type"] = predicted.get("signal_type") == gold["signal_type"]
@@ -227,8 +219,11 @@ async def _invoke_classify(
         "external_id": case.external_id,
         "text": case.text,
         "gold": case.gold,
+        "tags": case.tags,
         "predicted": predicted,
-        "correct": {k: v if tool_ok else False for k, v in compute_correct(case.gold, predicted).items()},
+        "correct": {
+            k: v if tool_ok else False for k, v in compute_correct(case.gold, predicted, tags=case.tags).items()
+        },
         "latency_ms": latency_ms,
         "json_valid_first_try": json_valid_first_try,
         "retries": retries,
@@ -314,8 +309,9 @@ async def run(
                     "case_id": case.case_id,
                     "text": case.text,
                     "gold": case.gold,
+                    "tags": case.tags,
                     "predicted": {"_benchmark_error": {"kind": exc.kind}},
-                    "correct": {k: False for k in compute_correct(case.gold, {}).keys()},
+                    "correct": {k: False for k in compute_correct(case.gold, {}, tags=case.tags).keys()},
                     "latency_ms": int((time.perf_counter() - started) * 1000),
                     "json_valid_first_try": False,
                     "retries": max(0, usage.request_count - 1) if usage else 0,
@@ -410,6 +406,7 @@ def export_run(run_id: int, fmt: Literal["csv", "json"] = "csv") -> str:
                 "repeat_no": r["repeat_no"],
                 "text": r["text"],
                 "gold": r["gold"],
+                "tags": r.get("tags", []),
                 "predicted": r["predicted"],
                 "correct": r["correct"],
                 "latency_ms": r["latency_ms"],
@@ -438,6 +435,7 @@ def export_run(run_id: int, fmt: Literal["csv", "json"] = "csv") -> str:
         "correct_signal_type",
         "correct_product",
         "correct_system",
+        "tags",
     ]
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
@@ -451,6 +449,7 @@ def export_run(run_id: int, fmt: Literal["csv", "json"] = "csv") -> str:
                 "correct_signal_type": r["correct"].get("signal_type"),
                 "correct_product": r["correct"].get("product"),
                 "correct_system": r["correct"].get("system"),
+                "tags": json.dumps(r.get("tags", []), ensure_ascii=False),
             }
         )
         writer.writerow(row)

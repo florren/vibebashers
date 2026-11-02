@@ -1,0 +1,3090 @@
+{
+  "candidate_sha256": "4a703aa454566817f6942f55bc9cd09129c5526855052b41da1ae032d6240bb9",
+  "candidate_dir": "/tmp/t021-review-candidate-v2",
+  "reviewer": "root (independent of corpus author audit_foundation_data)",
+  "review_scope_main": "3c1c12ce52aed6b2ab8d0a76542953eafb994440",
+  "method": "All 200 inputs and all eight gold fields read independently in four batches; linguistic tags reviewed; runtime routing and deterministic red-word flags cross-checked separately. No field-average substitution.",
+  "cases_total": 200,
+  "agreed_cases": 197,
+  "disputed_cases": 3,
+  "case_agreement_pct": 98.5,
+  "required_agreement_pct": 95,
+  "threshold_met": true,
+  "ready_to_merge": false,
+  "reason_not_ready": "Corpus findings resolved; code/upgrade/CI checks still required before PR merge.",
+  "checks": {
+    "unique_texts": 200,
+    "lite_exact_subset": true,
+    "runtime_crosscheck": "/tmp/t021-runtime-crosscheck-v2.json",
+    "hard_case_count": 64,
+    "hard_case_pct": 32.0,
+    "baseline_policy_context": "mass / confidence1 / repeat_count1 / no gift; all fraud cases >50000; legal cases explicit."
+  },
+  "decisions": [
+    {
+      "id": "GOLD-0001",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0002",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0003",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0004",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0005",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0006",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0007",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0008",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0009",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0010",
+      "verdict": "disputed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": [
+        {
+          "field": "team",
+          "proposed": "team_promo",
+          "reason_ru": "После T014 код PROMO-CODE-REJECTED имеет явный маршрут владельцу promo_engine. V2 сохранил устаревший fallback team_debit из f594c43."
+        }
+      ]
+    },
+    {
+      "id": "GOLD-0011",
+      "verdict": "disputed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": [
+        {
+          "field": "team",
+          "proposed": "team_antifraud",
+          "reason_ru": "После T014 код AF-FALSE-BLOCK имеет явный маршрут владельцу antifraud. V2 сохранил устаревший fallback team_debit из f594c43."
+        }
+      ]
+    },
+    {
+      "id": "GOLD-0012",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0013",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0014",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0015",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0016",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0017",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0018",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0019",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0020",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0021",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0022",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0023",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0024",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0025",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0026",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0027",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0028",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0029",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0030",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0031",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0032",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0033",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0034",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0035",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0036",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0037",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0038",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0039",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0040",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0041",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0042",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0043",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0044",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0045",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0046",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0047",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0048",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0049",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0050",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0051",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0052",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0053",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0054",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0055",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0056",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0057",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0058",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0059",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0060",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0061",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0062",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0063",
+      "verdict": "disputed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": [
+        {
+          "field": "system",
+          "proposed": null,
+          "reason_ru": "В тексте есть сотрудник и прерванный разговор, но не указан контакт-центр/телефон. Источник жалобы не определяется каналом chat; contact_center необоснован. Вариант: null либо явно назвать контакт-центр в input."
+        }
+      ]
+    },
+    {
+      "id": "GOLD-0064",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0065",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0066",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0067",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0068",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0069",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0070",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0071",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0072",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0073",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0074",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0075",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0076",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0077",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0078",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0079",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0080",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0081",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0082",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0083",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0084",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0085",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0086",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0087",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0088",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0089",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0090",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0091",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0092",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0093",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0094",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0095",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0096",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0097",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0098",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0099",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0100",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0101",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0102",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0103",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0104",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0105",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0106",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0107",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0108",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0109",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0110",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0111",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0112",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0113",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0114",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0115",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0116",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0117",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0118",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0119",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0120",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0121",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0122",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0123",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0124",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0125",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0126",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0127",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0128",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0129",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0130",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0131",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0132",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0133",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0134",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0135",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0136",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0137",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0138",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0139",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0140",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0141",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0142",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0143",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0144",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0145",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0146",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0147",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0148",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0149",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0150",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0151",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0152",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0153",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0154",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0155",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0156",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0157",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0158",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0159",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0160",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0161",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0162",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0163",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0164",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0165",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0166",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0167",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0168",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0169",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0170",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0171",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0172",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0173",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0174",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0175",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0176",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0177",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0178",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0179",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0180",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0181",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0182",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0183",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0184",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0185",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0186",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0187",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0188",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0189",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0190",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0191",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0192",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0193",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0194",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0195",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0196",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0197",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0198",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0199",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    },
+    {
+      "id": "GOLD-0200",
+      "verdict": "agreed",
+      "reviewed_fields": [
+        "signal_type",
+        "product",
+        "system",
+        "criticality",
+        "complexity",
+        "team",
+        "flags",
+        "needs_hitl"
+      ],
+      "issues": []
+    }
+  ],
+  "follow_up": {
+    "candidate_sha256": "3605d751d7ad05d13a64481422f49feea2d89b734c175da0e58f8d56ede69bc8",
+    "delta_verified": [
+      {
+        "id": "GOLD-0010",
+        "edits": [
+          [
+            "team",
+            "team_debit",
+            "team_promo"
+          ]
+        ]
+      },
+      {
+        "id": "GOLD-0011",
+        "edits": [
+          [
+            "team",
+            "team_debit",
+            "team_antifraud"
+          ]
+        ]
+      },
+      {
+        "id": "GOLD-0063",
+        "edits": [
+          [
+            "system",
+            "contact_center",
+            null
+          ]
+        ]
+      }
+    ],
+    "result": "approved_after_exact_delta_review",
+    "raw_v2_agreement_pct_unchanged": 98.5,
+    "all_known_findings_resolved": true,
+    "lite_exact_subset": true
+  },
+  "corpus_review_approved": true,
+  "provenance_follow_up": {
+    "version": "v4",
+    "golden_sha256": "ab3ae974358f38e98621bd08edfba2bc70242cc1f38c4dc7babbca405fa54ae6",
+    "lite_sha256": "b17e9de81b781f8b8730a17973f04963221ffe08cbb20f1f36264d293be3fb8c",
+    "change": "Only policies.py:human_reason→policies.py:needs_human in annotation sources; text/gold/tags/IDs/channel unchanged",
+    "approved": true
+  }
+}
