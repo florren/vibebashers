@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+import yaml
 
 DEFAULT_POLICIES: dict[str, Any] = {
     "confidence_threshold": 0.75,
@@ -18,25 +22,36 @@ DEFAULT_POLICIES: dict[str, Any] = {
     "dedup_window_sim_hours": 4,
 }
 PARTNER_PRIVILEGES = {"lounge_pass", "restaurant_special", "business_class_discount"}
-FORBIDDEN_PHRASES = (
-    "вы сами виноваты",
-    "ваша ошибка",
-    "вы неправильно",
-    "гарантируем",
-    "в течение часа",
-    "сегодня же",
-    "немедленно вернём",
-    "компенсируем все",
-    "100%",
-    "your fault",
-    "your mistake",
-    "you incorrectly",
-    "guarantee",
-    "within the hour",
-    "this very day",
-    "refund immediately",
-    "immediate refund",
-    "compensate everything",
+
+
+def _load_phrase_catalog(path: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Ошибка конфигурации не отключает защиту молча; загрузка при старте."""
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise ValueError("forbidden_phrases.yaml: ожидается объект")
+
+    def group(key: str) -> tuple[str, ...]:
+        values = document.get(key)
+        if not isinstance(values, list) or not values:
+            raise ValueError(f"forbidden_phrases.yaml: ожидается непустой список {key}")
+        if any(not isinstance(value, str) or not value.strip() or value != value.strip().lower() for value in values):
+            raise ValueError(f"forbidden_phrases.yaml: {key} должен содержать непустые строки в нижнем регистре")
+        if len(set(values)) != len(values):
+            raise ValueError(f"forbidden_phrases.yaml: повторяющиеся строки {key}")
+        return tuple(values)
+
+    phrases, identifiers = group("phrases"), group("technical_identifiers")
+    if any(re.fullmatch(r"[a-z][a-z0-9_]*", identifier) is None for identifier in identifiers):
+        raise ValueError("forbidden_phrases.yaml: недопустимый технический идентификатор")
+    return phrases, identifiers
+
+
+FORBIDDEN_PHRASES, TECHNICAL_IDENTIFIERS = _load_phrase_catalog(
+    Path(__file__).resolve().parents[3] / "data/forbidden_phrases.yaml"
+)
+# Дефисы входят в границу кода: клиентские error codes не разбиваются на внутренние имена.
+_TECHNICAL_PATTERN = re.compile(
+    r"(?<![\w-])(?:" + "|".join(re.escape(identifier) for identifier in TECHNICAL_IDENTIFIERS) + r")(?![\w-])"
 )
 HUMAN_OPTIONS: dict[str, list[dict[str, str]]] = {
     "_default": [
@@ -175,7 +190,10 @@ def human_recommendation(reason: str, classification: dict[str, Any] | None = No
 
 def forbidden_phrases(text: str | None) -> list[str]:
     t = (text or "").lower()
-    return [ph for ph in FORBIDDEN_PHRASES if ph in t]
+    matches = set(_TECHNICAL_PATTERN.findall(t))
+    return [ph for ph in FORBIDDEN_PHRASES if ph in t] + [
+        identifier for identifier in TECHNICAL_IDENTIFIERS if identifier in matches
+    ]
 
 
 def fast_path_allowed(
