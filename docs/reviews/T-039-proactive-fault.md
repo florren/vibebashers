@@ -247,3 +247,35 @@ historical guard/unchanged stored result и ordinary paused free interrupted AR 
 [Native phase proof](T-039-native-phased-proof.json) сохраняет реальные typed
 receipts и один service AR/step statuses из Mock graph, без prompts/PII/secrets.
 Это controlled native proof; не live Telegram и не предотвращённые90 жалоб.
+
+### Stable foundation19 composition и actual main CLI proof
+
+Ordinary merge8ec10e8→0bd91b3: API25 preserved, additive18/19 SQL и все
+scenario/team.plan/team.runtime_started guards (generic team exclusions retained).
+Authoritative own generators110models, contracts48/163, Ruff/format512/mypy310
+прошли. 22 actual PG composition cases passed199.81s: phases/recovery/API,
+BehaviorOwner atomic retry/restart, native effect time и autocommit actual TX,
+public enrollment, team-plan fresh-owner/rollback/two-owner/owned OS SIGKILL.
+Runtime auto-merge сам по себе доказательством не считался.
+
+c7c0554 применён только focused cherry-pick как1e4a016 (cabinet exact dynamic
+migration head через ScriptDirectory), без ancestor B5445/runtime. Main + cabinet
+consumer5PG passed60.86s: actual main lifespan держит Agent/Twins/poll/demo/public
+actors/full_execution, raw31/customer-view30, ≥90nativeSent/30links/care, pending
+human и ledger0. Новая проверка test_proactive_runtime затем прошла через
+настоящий scripts.scenario_check.run_one/default30s wait/save_result,1PG29.50s.
+CLI transport подменён только собственным ASGI reference, остальные workers
+остаются под network guards; source YAML/evaluator/worker настоящие.
+
+Перед seed/import env credential fields явно пустые; в тесте повторно overridden,
+TG/email выключены, APP_SECRET synthetic, endpoints synthetic, maintenance/log
+paths в tmp. Async/sync HTTP, SMTP, urllib, DNS/socket запрещены кроме ASGI и
+own PostgreSQL. Проверка нулевого egress включает lifespan cleanup. Реальные
+ключи/.env/registry values не загружались, real LLM/TG/email не вызывались.
+
+[Native phased proof](T-039-native-phased-proof.json) обновлён под0bd/schema19
+storage-only: delivery/care/causal native rows, реальный Mock service AR/steps;
+B prevention actor не подтянут и prevented остаётся null. Whole make/CI и final
+coverage/source composition с исправленным B reader ещё не выполнены. Из parent
+унаследован один trailing-space warning в T-241-contract-review.md:112; чужой
+frozen report не переписывался, runtime/DDL это не меняет.

@@ -4,7 +4,7 @@
   "basis": "synthetic5000metadata/no consent edits; Mock; native Sent emulated",
   "phases": {
     "prepared": {
-      "id": 359,
+      "id": 360,
       "at": "2026-11-09T06:00:00+00:00",
       "payload": {
         "version": 1,
@@ -137,7 +137,7 @@
       }
     },
     "notified": {
-      "id": 551,
+      "id": 552,
       "at": "2026-11-09T06:01:00+00:00",
       "payload": {
         "version": 1,
@@ -269,11 +269,11 @@
           119,
           120
         ],
-        "prepared_event_id": 359
+        "prepared_event_id": 360
       }
     },
     "complaints": {
-      "id": 712,
+      "id": 714,
       "at": "2026-11-09T06:01:06+00:00",
       "payload": {
         "version": 1,
@@ -281,8 +281,8 @@
         "event_type": "scenario.proactive_complaints",
         "scenario_id": "mass_notifications",
         "script_sha256": "d180b1765ebeae07bc722e17e28ae8f487adde51b0e2d534df2a4afedf363659",
-        "notified_event_id": 551,
-        "prepared_event_id": 359,
+        "notified_event_id": 552,
+        "prepared_event_id": 360,
         "complaint_signal_ids": [
           1164,
           1165,
@@ -318,7 +318,7 @@
       }
     },
     "completed": {
-      "id": 793,
+      "id": 795,
       "at": "2026-11-09T06:01:12+00:00",
       "payload": {
         "version": 1,
@@ -328,9 +328,9 @@
         "scenario_id": "mass_notifications",
         "care_positive": 120,
         "script_sha256": "d180b1765ebeae07bc722e17e28ae8f487adde51b0e2d534df2a4afedf363659",
-        "notified_event_id": 551,
-        "prepared_event_id": 359,
-        "complaints_event_id": 712
+        "notified_event_id": 552,
+        "prepared_event_id": 360,
+        "complaints_event_id": 714
       }
     }
   },
@@ -407,9 +407,9 @@
     ]
   ],
   "agent_ledger_count": 0,
-  "runtime_base": "7108cad1f794ab74e62f839a40fa70d8ecd1e1c2",
-  "pending_diff": "historical-map guard/evidence-reader distinction + proof metadata, subsequently committed separately",
-  "junit_result": "2 passed,6 deselected,24.04s; property xunit2 warning only",
+  "runtime_base": "0bd91b3bdc356836bbac17e3d396e5d60c1f8b8e",
+  "runtime_schema": "0019 storage-only; no B actor",
+  "junit_result": "22 passed199.81s composition targets; own PG",
   "whole_task_complete": false,
   "limitations": [
     "Own synthetic5000-client metadata fixture; production lite preflight may reject",
