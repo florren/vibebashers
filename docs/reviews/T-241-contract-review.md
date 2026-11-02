@@ -129,3 +129,28 @@ view SQL над nullable CTE shape, без DROP NOT NULL и записиNULL в 
 Новый p95 demo guard <300 входит в69target; прежние40.49/24.15ms относятся
 42f2488 и не переименовываются в новый source. OwnUI5000fixture originproactive0,
 её старые screenshots не выдаются за synthetic-service regression.
+
+## PR186 exact-head CI triage и исправление isolation
+
+CI run41439452901, headf15b02d: это новые CI failures, не прежние11локальных.
+- backend shard2/job125257357127:587passed/21skip/**32setupERROR** — всеcabinet_db.
+Production CorpusError корректно запретил несовместимый receipt: предыдущий
+shard module test_behavior_owner::prepare меняет sim_state.seed на1, затем
+cabinet_db запускал seed поверх общейDB (receiptseed42). Сообщение общее для
+sha/seed/anchor, изменениеcorpusSHA не утверждается.
+- backend shard1/job125257357195:572passed/**7failed** schema cases.
+`lifecycle_composite_probe` оставался public после DELETErows:94вместо93,
+Alembic remove_table drift, затем cascade failures после прерванногоdowngrade.
+Остальные checks, включая e2e-smoke, успешны; aggregate tests правильно failed.
+
+Test-only correction: существующий fresh-schema/upgrade код migrated_db/seeded
+вынесен в один test helper rebuild_schema; cabinet module теперь явно получает
+freshschema и точно5000clients перед demo seed. Production corpus guard, T017
+immutable bank, productionseed/schema counts не менялись. Synthetic composite
+probe удаляется вfinally **после** foreignguard/retry/purge assertions; DROP не
+заменяет проверку внешней ссылки, strict93/no-drift assertions сохранены.
+
+Точное order regression: BehaviorOwner seed1 → cabinetdemo5000 всеcases +scope
+units →4populated compositeFK lifecycle cases →все9schema tests: **83passed,
+110.84s**,2existing Alembic deprecation warnings. Это воспроизводит оба CI
+state boundaries без ослабления проверок; exact new-head CI требуется повторно.
