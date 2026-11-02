@@ -100,3 +100,10 @@ T240 signals/receipts; COPY снова выполняется в отдельн�
 CSV/formula/read-only/run-isolation/recalculation assertions сохранены.
 Affected9tests passed55.34s; runtime source не менялся. Это source-qualified
 regression union, не утверждение одного успешного полного make test.
+
+Scenarios:42passed/2skip,1failed251.50s на source7652b4e. Scenario09 имел старый
+implicit Mock snapshot, поэтому ReplayProvider честно получал model=mock-rules-v1
+и давал miss. Fixture теперь явно фиксирует offline replay и Pro роли до new_run
+(как уже принятые08/12); responses/hash/messages кассет и assertions не менялись.
+Affected09passed7.42s; compliance31passed115.37s. Полный scenarios union43/2skip
+покрывает прежние42 и исправленный09, без замены mock на replay в отчёте.
