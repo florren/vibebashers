@@ -58,7 +58,6 @@ export function CabinetPage() {
   const recent = useQuery(signalsOptions({ ...scope, region: region ?? undefined, red_words: filters.red_words, limit: 20, sort: 'date', direction: 'desc' }, headers))
   const regional = useQuery({ ...signalsOptions({ ...scope, region: region ?? undefined, red_words: filters.red_words, limit: 20, sort: 'date', direction: 'desc' }, headers), enabled: Boolean(region) })
   const visibility = useMutation({ mutationFn: (value: 'soft' | 'strict') => patch('/api/settings', { cabinet: { visibility: value } }), onSuccess: () => cache.invalidateQueries({ queryKey: ['cabinet'] }) })
-  const report = useMutation({ mutationFn: () => api('/api/cabinet/report', { query: { ...scope, product_line: selectedLine?.code }, headers }) })
   useCabinetEvents()
   useEffect(() => { setSelectedSignal(null); setCalculator(false) }, [line, role, binding, runId])
   const update = (key: string, value: string | null) => {
@@ -100,10 +99,10 @@ export function CabinetPage() {
           <label className="text-sm">{t('cabinet.visibility')}<select className="input mt-1 w-full" value={headerData?.scope.visibility ?? ''} disabled={!headerData || visibility.isPending} onChange={event => visibility.mutate(event.target.value as 'soft' | 'strict')}><option value="" disabled>—</option><option value="soft">{t('cabinet.soft')}</option><option value="strict">{t('cabinet.strict')}</option></select></label>
         </div>
         {role === 'product_manager' && (!bound || overview.isError) && <label className="block text-sm">{t('cabinet.bindDirection')}<input className="input mt-1" value={bindingDraft} onChange={event => setBindingDraft(event.target.value)} onBlur={() => { setBinding(bindingDraft); localStorage.setItem('cx.ui.productLine', bindingDraft) }} onKeyDown={event => { if (event.key === 'Enter') { setBinding(bindingDraft); localStorage.setItem('cx.ui.productLine', bindingDraft) } }} /></label>}
-        <button className="btn" disabled={!selectedLine || overview.isError || report.isPending} onClick={() => report.mutate()}>{t('cabinet.report')}</button>
+        <button className="btn" disabled={!selectedLine || overview.isError} onClick={() => navigate({ pathname: `/cabinet/${encodeURIComponent(selectedLine!.code)}/report`, search: new URLSearchParams({ period: period ?? "week", run_id: runId }).toString() })}>{t('cabinet.report')}</button>
         {headerData?.scope.product_lines?.length === 0 && role === 'product_head' && <p className="text-sm text-muted">{t('cabinet.noConfiguredLines')}</p>}
         {headerData && <p className="text-sm text-muted">{t('cabinet.periodBounds', { from: fmtSimMoscow(headerData.scope.since_sim), to: fmtSimMoscow(headerData.scope.sim_time) })}</p>}
-        {visibility.isError && <ErrorBox error={visibility.error} />}{report.isError && <ErrorBox error={report.error} />}{roles.isError && <ErrorBox error={roles.error} />}
+        {visibility.isError && <ErrorBox error={visibility.error} />}{roles.isError && <ErrorBox error={roles.error} />}
       </section>
       {overview.isPending ? <Skeleton className="h-52" /> : overview.isError ? <ErrorBox error={overview.error} /> : <>
         <section className="card p-4" data-block="cabinet-kpi"><h2 className="mb-3 font-semibold">{t('cabinet.kpi')}</h2><dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">

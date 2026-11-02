@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.24
+  version: 1.5.26
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2315,11 +2315,20 @@ paths:
           in: query
           schema: { type: string, enum: [json, xlsx], default: json }
         - { $ref: "#/components/parameters/RunId" }
+        - name: lang
+          in: query
+          schema: { type: string, enum: [ru, en], default: ru }
       responses:
-        "200": { description: OK }
+        "200":
+          description: "Один scoped read-only snapshot; <=10000 signals/incidents/runs each, <=5 MiB JSON и XLSX; превышение — 413 без усечения. Сравнение периодов — только наблюдения, полнота не подтверждена."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CabinetReport' }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
         "403": { $ref: "#/components/responses/Problem" }
         "422": { $ref: "#/components/responses/Problem" }
-        "501": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
   /api/roles:
     get:
       tags: [cabinet]
@@ -3003,6 +3012,268 @@ components:
           type:
           - integer
           - 'null'
+    CabinetReport:
+      type: object
+      required:
+      - lang
+      - overview
+      - summary_ru
+      - summary
+      - kpi
+      - charts
+      - previous
+      - signals
+      - top_problems
+      - attention
+      - attention_total
+      - red_phrase_signals
+      - red_phrase_action
+      - method
+      - money_exact
+      - red_phrase_attention
+      properties:
+        lang:
+          type: string
+          enum:
+          - ru
+          - en
+        overview:
+          $ref: '#/components/schemas/CabinetOverview'
+        summary_ru:
+          type: array
+          items: &id001
+            type: string
+        summary:
+          type: array
+          items: *id001
+        kpi:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - label
+            - value
+            - unit
+            - delta
+            - verdict
+            properties:
+              code: *id001
+              label: *id001
+              value: &id002
+                type:
+                - number
+                - 'null'
+              unit: *id001
+              delta: *id002
+              verdict: *id001
+        charts:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - title_insight
+            - note
+            properties:
+              code:
+                type: string
+                enum:
+                - daily
+                - monthly
+                - sources
+              title_insight: *id001
+              note: *id001
+        previous:
+          type: object
+          required:
+          - since_sim
+          - sim_time
+          - signals
+          - note
+          properties:
+            since_sim:
+              type: string
+              format: date-time
+            sim_time:
+              type: string
+              format: date-time
+            signals:
+              type: integer
+            note: *id001
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetSignal'
+        top_problems:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            properties:
+              public_id: *id001
+              problem: *id001
+              clients: &id003
+                type:
+                - integer
+                - 'null'
+              identified_clients: &id004
+                type: integer
+              region: *id001
+              status: *id001
+              team: *id001
+              action: *id001
+        attention:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            - recommendation
+            properties:
+              public_id: *id001
+              problem: *id001
+              clients: *id003
+              identified_clients: *id004
+              region: *id001
+              status: *id001
+              team: *id001
+              action: *id001
+              recommendation: *id001
+        attention_total:
+          type: integer
+        red_phrase_signals:
+          type: integer
+        red_phrase_action: *id001
+        method:
+          type: object
+          required:
+          - formula_ru
+          - formula_note
+          - rules_version
+          - rules_note
+          - app_version
+          - run_public_id
+          - requested_run
+          - synthetic
+          - terms
+          - generated_sim
+          - signal_limit
+          - byte_limit
+          properties:
+            formula_ru:
+              type: array
+              items: *id001
+            formula_note: *id001
+            rules_version:
+              type: array
+              items:
+                type: object
+                required:
+                - code
+                - version
+                properties:
+                  code: *id001
+                  version:
+                    type: integer
+            rules_note: *id001
+            app_version: *id001
+            run_public_id:
+              type: array
+              items: *id001
+            requested_run: *id001
+            synthetic: *id001
+            terms: *id001
+            generated_sim:
+              type: string
+              format: date-time
+            signal_limit:
+              type: integer
+              const: 10000
+            byte_limit:
+              type: integer
+              const: 5242880
+        money_exact:
+          type: object
+          required:
+          - kpi
+          - daily
+          - monthly
+          properties:
+            kpi:
+              type: object
+              required:
+              - potential_loss_rub
+              - prevented_loss_rub
+              properties:
+                potential_loss_rub: &id005
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_rub: *id005
+            daily:
+              type: array
+              items:
+                type: object
+                required:
+                - day
+                - potential_loss_rub
+                - prevented_loss_rub
+                properties:
+                  day:
+                    type: string
+                    format: date
+                  potential_loss_rub: *id005
+                  prevented_loss_rub: *id005
+            monthly:
+              type: array
+              items:
+                type: object
+                required:
+                - month
+                - potential_loss_rub
+                properties:
+                  month:
+                    type: string
+                    format: date
+                  potential_loss_rub: *id005
+        red_phrase_attention:
+          type: array
+          maxItems: 10
+          description: До 10 первых по времени red-word сигналов; полный набор в signals,
+            общее число red_phrase_signals. Только записанные связанные команды, иначе
+            unknown.
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - team
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              team:
+                type: string
     CabinetOverview:
       description: Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются.
       type: object

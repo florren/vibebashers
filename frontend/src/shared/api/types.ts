@@ -7156,6 +7156,7 @@ export interface paths {
                     format?: "json" | "xlsx";
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
+                    lang?: "ru" | "en";
                 };
                 header?: {
                     /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
@@ -7168,16 +7169,19 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /** @description Один scoped read-only snapshot; <=10000 signals/incidents/runs each, <=5 MiB JSON и XLSX; превышение — 413 без усечения. Сравнение периодов — только наблюдения, полнота не подтверждена. */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["CabinetReport"];
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
                 };
                 403: components["responses"]["Problem"];
+                413: components["responses"]["Problem"];
                 422: components["responses"]["Problem"];
-                501: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -8040,6 +8044,108 @@ export interface components {
             items: components["schemas"]["CabinetSignal"][];
             total: number;
             next_offset: number | null;
+        };
+        CabinetReport: {
+            /** @enum {string} */
+            lang: "ru" | "en";
+            overview: components["schemas"]["CabinetOverview"];
+            summary_ru: string[];
+            summary: string[];
+            kpi: {
+                code: string;
+                label: string;
+                value: number | null;
+                unit: string;
+                delta: number | null;
+                verdict: string;
+            }[];
+            charts: {
+                /** @enum {string} */
+                code: "daily" | "monthly" | "sources";
+                title_insight: string;
+                note: string;
+            }[];
+            previous: {
+                /** Format: date-time */
+                since_sim: string;
+                /** Format: date-time */
+                sim_time: string;
+                signals: number;
+                note: string;
+            };
+            signals: components["schemas"]["CabinetSignal"][];
+            top_problems: {
+                public_id: string;
+                problem: string;
+                clients: number | null;
+                identified_clients: number;
+                region: string;
+                status: string;
+                team: string;
+                action: string;
+            }[];
+            attention: {
+                public_id: string;
+                problem: string;
+                clients: number | null;
+                identified_clients: number;
+                region: string;
+                status: string;
+                team: string;
+                action: string;
+                recommendation: string;
+            }[];
+            attention_total: number;
+            red_phrase_signals: number;
+            red_phrase_action: string;
+            method: {
+                formula_ru: string[];
+                formula_note: string;
+                rules_version: {
+                    code: string;
+                    version: number;
+                }[];
+                rules_note: string;
+                app_version: string;
+                run_public_id: string[];
+                requested_run: string;
+                synthetic: string;
+                terms: string;
+                /** Format: date-time */
+                generated_sim: string;
+                /** @constant */
+                signal_limit: 10000;
+                /** @constant */
+                byte_limit: 5242880;
+            };
+            money_exact: {
+                kpi: {
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                };
+                daily: {
+                    /** Format: date */
+                    day: string;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                }[];
+                monthly: {
+                    /** Format: date */
+                    month: string;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                }[];
+            };
+            /** @description До 10 первых по времени red-word сигналов; полный набор в signals, общее число red_phrase_signals. Только записанные связанные команды, иначе unknown. */
+            red_phrase_attention: {
+                public_id: string;
+                problem: string;
+                team: string;
+            }[];
         };
         /** @description Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются. */
         CabinetOverview: {

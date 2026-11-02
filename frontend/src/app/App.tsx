@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { ReportPage } from '@/pages/cabinet/ReportPage'
 import { CabinetPage } from '@/pages/cabinet/CabinetPage'
 import { PendingScreen, WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
 import { DeviceLayoutRuntime } from '@/shared/layout/device'
@@ -45,6 +46,7 @@ export function App() {
             <Route path="landing" element={<ClaimPage />} />
             <Route path="track/:token" element={<TrackingPage />} />
           </Route>
+          <Route path="cabinet/:productLine/report" element={<ReportPage />} />
           <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspaceEntry />} />
             <Route path="workspace" element={<WorkspacePage />} />

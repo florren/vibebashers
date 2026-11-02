@@ -9,7 +9,7 @@
 
 ### CSI import (T-246)
 
-- openpyxl 3.1.5 — MIT, [PyPI / upstream](https://pypi.org/project/openpyxl/); чтение XLSX read-only.
+- openpyxl 3.1.5 — MIT, [PyPI / upstream](https://pypi.org/project/openpyxl/); чтение XLSX read-only и запись XLSX-отчётов T-244.
 - et-xmlfile 2.0.0 — MIT, [upstream](https://pypi.org/project/et-xmlfile/); зависимость openpyxl.
 - defusedxml 0.7.1 — PSF License, [upstream](https://pypi.org/project/defusedxml/); защита XML при чтении пользовательских XLSX (рекомендация upstream openpyxl).
 
