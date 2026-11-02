@@ -72,3 +72,15 @@ Composed unit1145/18 прошли до этого уточнения, полны
 модули:100%44/44 и97%101/104 coverage; это не покрытие всех изменённых seed/runtimeстрок.
 Существующая частичная historical classification — отдельный пробел T020: этот пакет
 не выдаёт её за полный валидированный результат Mock-графа.
+
+Финальные фазы проверки:1145unit/18skip +269integration/4skip и единственный
+исправленный CSV fixture test→1passed6.36s; scenarios43/2skip,compliance31,
+frontend163. После последней параметризации sums/days/promo29corpus unit passed;
+ещё30targetedunit/PG подcoverage (с дочерним seed и реальнымWorld) passed40.09s.
+Это последовательные фазы/targeted reruns, не один повторный монолитныйfullrun.
+Added executable Python coverage82/82=100% относительноT018424cf2e.
+Finaldemo5000 на96caa2a:21.502s includingdump,4CPU/PG2GB,600000operations,
+2500signals,75noise,118en,0langmismatch,480/480coverage,31.8%hardtext;
+proof docs/reviews/T-019-demo-seed-proof.json. Originalbenchmark24.813s/a9fdedd
+относился к предыдущим трём строкам текста; финальная новая версия измерена отдельно.
+Текущий exact-head CI остаётся gate; карточка in_progress.
