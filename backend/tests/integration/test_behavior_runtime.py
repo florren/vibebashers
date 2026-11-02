@@ -210,6 +210,11 @@ async def test_fresh_marker_and_tick_rollback_retry_are_atomic(seeded, monkeypat
 
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run, client, now, sim = await setup(conn, monkeypatch, seeded)
+        # Моделируем действительно пустой legacy run, а не историю с journal marker.
+        assert (await (await conn.execute("select event_type from sim_events where run_id=%s", (run,))).fetchall()) == [
+            ("team.runtime_started",)
+        ]
+        await conn.execute("delete from sim_events where run_id=%s and event_type='team.runtime_started'", (run,))
         await conn.execute("delete from behavior_runs where run_id=%s", (run,))
         await conn.commit()
         before = (sim.clock.sim_time, sim.rng.dump_state(), dict(sim.stats))
