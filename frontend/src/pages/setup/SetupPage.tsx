@@ -1,3 +1,4 @@
+import { LayoutControl } from '@/shared/layout/LayoutControl'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -59,6 +60,7 @@ export function SetupPage() {
         {status.data?.completed ? <Badge tone="ok">{t('setup.completed')}</Badge> : <Badge tone="warn">{t('setup.notCompleted')}</Badge>}
         <ExportImport />
       </div>
+      <details className="rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm">{t('shell.appearance')}</summary><div className="pt-3"><LayoutControl /></div></details>
       <ol className="flex flex-wrap gap-1 text-xs">
         {STEP_KEYS.map((k, i) => (
           <li key={k}>
