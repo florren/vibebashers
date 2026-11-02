@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Найти объект по любому идентификатору или тексту (ТЗ 28.2) быстро и без ПДн.
@@ -55,3 +55,7 @@ curl -s 'localhost:8000/api/search?q=sig%20123' | jq '.parsed, .hits[0]'
 
 ### Audit followup T-234 (2026-11-02)
 Подтверждено: `app.search.grammar.parse('²')` вызывает `ValueError`, потому что `str.isdigit()` шире множества символов, принимаемых `int()`. Это общий parser gap для Search/legacy Trace, требует согласованной контролируемой обработки malformed numeric input и regressions decimalUnicode/overflow/empty; новую карточку не создавали, статус T-230 не закрывается этой правкой. В T-234 защищён только новый `/relations` boundary до DB/LLM; общий parser и старые API намеренно не менялись. Подробности: `docs/reviews/T-234-trace-graph-verification.md`.
+
+## Ревизия: Unicode digits
+
+Ветка codex/T-230-unicode-search. Устранён ValueError на²/①/1²/፩: isdecimal вместоisdigit сохраняет Unicode decimal и оставляет прочие строки текстом.7новых unit cases и actualPG regression, все прежние assertions сохранены. Полный make test на33de487:1433backend/24skip +173frontend, make lint green; grammar coverage28/28=100%. После merge main d2a4026:103unit+5PGgreen. Подробности/версии:docs/reviews/T-230-unicode-search.md. API/DDL/SQL не меняются; самостоятельная полная приёмка10000сигналов ещё не заявлена.
