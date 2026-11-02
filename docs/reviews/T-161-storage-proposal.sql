@@ -135,3 +135,26 @@ CREATE TABLE IF NOT EXISTS behavior_agent_intents (
   observed_sim timestamptz NOT NULL,
   UNIQUE NULLS NOT DISTINCT(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger)
 );
+
+-- Только новые или действительно пустые run; legacy timers не восстанавливаем догадкой.
+CREATE TABLE IF NOT EXISTS behavior_runs (
+  run_id bigint PRIMARY KEY REFERENCES sim_runs(id) ON DELETE CASCADE,
+  policy_hash text NOT NULL CHECK(length(policy_hash)=64),
+  activated_sim timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS behavior_pending_signals (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  due_sim timestamptz NOT NULL,
+  client_snapshot jsonb NOT NULL CHECK(jsonb_typeof(client_snapshot)='object' AND octet_length(client_snapshot::text)<=16384),
+  signal_type text NOT NULL,
+  product_code text NOT NULL REFERENCES products(code),
+  source_operation_id bigint REFERENCES operations(id) ON DELETE CASCADE,
+  source_fault_id bigint REFERENCES faults(id) ON DELETE CASCADE,
+  error_code text REFERENCES error_codes(code),
+  system_code text REFERENCES systems(code),
+  correlation_id uuid NOT NULL,
+  consumed_sim timestamptz
+);
+CREATE INDEX IF NOT EXISTS behavior_pending_due_idx ON behavior_pending_signals(run_id,due_sim,id) WHERE consumed_sim IS NULL;
