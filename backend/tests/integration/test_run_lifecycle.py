@@ -213,3 +213,75 @@ async def test_baseline_restore_preserves_prior_run_export_summary(seeded, conn,
     assert conn.execute(
         "select current_run_id=(select id from sim_runs where kind='baseline' order by id limit 1) from sim_state where id=1"
     ).fetchone() == (True,)
+
+
+@pytest.mark.parametrize("action", ["archive", "delete"])
+@pytest.mark.parametrize("external", [False, True])
+async def test_behavior_composite_fk_closure_and_foreign_guard(seeded, conn, tmp_path, monkeypatch, action, external):
+    from app.sim.behavior.owner import BehaviorOwner
+    from app.sim.behavior.store import BehaviorStore
+    from tests.helpers import new_run
+
+    from .test_behavior_owner import POLICY, prepare
+
+    monkeypatch.setattr(baseline, "runs_export_dir", lambda: tmp_path)
+    async with await _connect(seeded) as ac:
+        rid, client, now, _, operations = await prepare(ac)
+        other_client = (
+            await (await ac.execute("select id from clients where id<>%s order by id limit 1", (client,))).fetchone()
+        )[0]
+        fault = (await (await ac.execute("select fault_id from operations where id=%s", (operations[0],))).fetchone())[
+            0
+        ]
+        second = (
+            await (
+                await ac.execute(
+                    "insert into operations(run_id,client_id,product_code,op_type,system_path,status,error_code,fault_id,started_sim) values(%s,%s,'deposit','deposit_open',ARRAY['sub_deposits'],'failed','DEP-TIMEOUT-503',%s,%s) returning id",
+                    (rid, other_client, fault, now),
+                )
+            ).fetchone()
+        )[0]
+        async with ac.transaction():
+            store = BehaviorStore(ac)
+            await store.enqueue_operation(run_id=rid, operation_id=operations[0])
+            await store.enqueue_operation(run_id=rid, operation_id=second)
+            await BehaviorOwner(ac, POLICY).advance(run_id=rid, to_sim=now)
+        other = await new_run(ac, "composite foreign owner", kind="free")
+        assert (
+            await (await ac.execute("select count(*) from behavior_runtime where run_id=%s", (rid,))).fetchone()
+        ) == (2,)
+        if external:
+            await ac.execute(
+                "create table lifecycle_composite_probe(run_id bigint references sim_runs(id) on delete cascade,target_run bigint,target_client bigint,foreign key(target_run,target_client) references behavior_runtime(run_id,client_id) on delete cascade)"
+            )
+            await ac.execute("insert into lifecycle_composite_probe values(%s,%s,%s)", (other, rid, client))
+            with pytest.raises(run_lifecycle.RunConflict, match="вне его области"):
+                await getattr(run_lifecycle, action)(ac, rid)
+            assert (
+                await (await ac.execute("select count(*) from behavior_runtime where run_id=%s", (rid,))).fetchone()
+            ) == (2,)
+            assert (await (await ac.execute("select count(*) from lifecycle_composite_probe")).fetchone()) == (1,)
+            assert not (tmp_path / f"{rid}.json").exists()
+            # Только собственная synthetic foreign ссылка явно удаляется для
+            # retry; guard не отключается и CASCADE не разрешается через чужой run.
+            await ac.execute("delete from lifecycle_composite_probe")
+        await getattr(run_lifecycle, action)(ac, rid)
+        for table in (
+            "behavior_runtime",
+            "behavior_work",
+            "behavior_causes",
+            "behavior_evidence",
+            "behavior_receipts",
+            "client_states",
+        ):
+            from psycopg import sql
+
+            assert (
+                await (
+                    await ac.execute(
+                        sql.SQL("select count(*) from {} where run_id=%s").format(sql.Identifier(table)), (rid,)
+                    )
+                ).fetchone()
+            ) == (0,)
+        assert (await (await ac.execute("select id from sim_runs where id=%s", (other,))).fetchone()) == (other,)
+        assert (await (await ac.execute("select count(*) from clients")).fetchone()) == (200,)
