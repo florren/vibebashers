@@ -33,7 +33,14 @@ def dialogue(seeded, monkeypatch):
     monkeypatch.setattr(settings, "app_secret", APP_SECRET)
     dsn = seeded.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(dsn, autocommit=True) as conn:
-        for table in ("telegram_inbound", "telegram_conversations", "telegram_deliveries", "telegram_chat_rate"):
+        for table in (
+            "telegram_inbound",
+            "telegram_conversations",
+            "telegram_deliveries",
+            "telegram_chat_rate",
+            "telegram_signal_bindings",
+            "telegram_client_bindings",
+        ):
             conn.execute(f"delete from channel_runtime.{table} where bot_id=%s", (BOT,))
     return dsn
 
@@ -169,3 +176,70 @@ def test_synthetic_client_code_binding_cannot_replace_other_chat_and_is_revalida
         accepted(send(client, 103, "/unbind"))
     with psycopg.connect(dialogue) as conn:
         assert conn.execute("select telegram_chat_id from clients where id=%s", (client_id,)).fetchone()[0] is None
+
+
+async def test_real_agent_reply_returns_to_verified_telegram_outbox_before_physical_ack(dialogue):
+    from app.agent.graph import process_signal
+    from app.tgbot.configuration import configured
+    from app.tgbot.delivery import deliver_once
+    from tests.helpers import MOCK_PROFILE, mock_chain, sim_now
+
+    with TestClient(create_app()) as client:
+        accepted(send(client, 141, "/start", language="ru"))
+        accepted(send(client, 142, kind="callback", payload={"callback_data": "not_client"}, language="ru"))
+        accepted(send(client, 143, "Отказали в кредитной карте без объяснений. Почему?", language="ru"))
+        accepted(send(client, 144, "visitor@example.com", language="ru"))
+        with psycopg.connect(dialogue) as conn:
+            region = conn.execute("select code from regions order by code limit 1").fetchone()[0]
+        response = accepted(send(client, 145, region, language="ru"))
+    async with await psycopg.AsyncConnection.connect(dialogue) as conn:
+        now = await sim_now(conn)
+        state = await process_signal(
+            conn, signal_id=response["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+        )
+        assert state is not None
+        await conn.commit()
+        rows = await (
+            await conn.execute(
+                "select id,channel_code,status,sent_at,external_ref from notifications where signal_id=%s and recipient_type='client' and template_code<>'bot_dialogue'",
+                (response["signal_id"],),
+            )
+        ).fetchall()
+        assert rows and all(
+            row[1] == "telegram_bot" and row[2] == "queued" and row[3] is None and row[4] is None for row in rows
+        ), rows
+        count = await (
+            await conn.execute(
+                "select count(*) from channel_runtime.telegram_deliveries where bot_id=%s and notification_id=any(%s)",
+                (BOT, [row[0] for row in rows]),
+            )
+        ).fetchone()
+        assert count[0] == len(rows)
+
+    class FakeSender:
+        def __init__(self):
+            self.calls = []
+
+        async def send(self, payload):
+            self.calls.append(payload)
+            return "telegram:77"
+
+    sender = FakeSender()
+    config = configured(get_settings())
+    assert config is not None
+    # Все сообщения этого диалога проходят то же per-chat admission, без скрытого bypass.
+    for _ in range(10):
+        with psycopg.connect(dialogue) as conn:
+            conn.execute(
+                "update channel_runtime.telegram_chat_rate set last_claimed_at=clock_timestamp()-interval '2 seconds' where bot_id=%s",
+                (BOT,),
+            )
+        if not await deliver_once(config, sender, dsn=dialogue):
+            break
+    with psycopg.connect(dialogue) as conn:
+        for nid, *_ in rows:
+            assert conn.execute("select status,external_ref from notifications where id=%s", (nid,)).fetchone() == (
+                "sent",
+                "telegram:77",
+            )
+    assert sender.calls and all(item["chat_id"] == 424243 for item in sender.calls)

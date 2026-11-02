@@ -113,6 +113,10 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
             from app.demo.execution import public_worker
 
             app.state.public_task = start_daemon(lambda: public_worker(app), name="public-execution")
+        if "tgbot" in components:
+            from app.tgbot.delivery import worker as telegram_worker
+
+            app.state.tgbot_task = start_daemon(telegram_worker, name="telegram-delivery")
     app.state.runtime_components = components
 
 
@@ -127,7 +131,7 @@ async def _park_runtime(app: FastAPI) -> None:
         if sim.clock.running or getattr(sim, "run_status", None) == "running":
             await sim.control("pause")
         await sim.shutdown()
-    for name in ("demo_task", "public_task"):
+    for name in ("demo_task", "public_task", "tgbot_task"):
         task = getattr(app.state, name, None)
         if task is not None:
             task.cancel()
@@ -232,7 +236,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.sim = Simulator(seed=s.sim_seed)
         app.state.sim.full_execution = True
         app.state.maintenance_saved_components = (
-            {"agent", "twins", "poll", "demo", "public"} if not s.is_test else set()
+            ({"agent", "twins", "poll", "demo", "public"} | ({"tgbot"} if s.tgbot_enabled else set()))
+            if not s.is_test
+            else set()
         )
         app.state.maintenance_startup_recovery = True
     if not s.is_test and not recovering:
@@ -246,7 +252,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     if not s.is_test and not recovering:
-        await _start_runtime(app, {"agent", "twins", "poll", "demo", "public"}, startup_recovery=True)
+        components = {"agent", "twins", "poll", "demo", "public"}
+        if s.tgbot_enabled:
+            components.add("tgbot")
+        await _start_runtime(app, components, startup_recovery=True)
     yield
     try:
         await app.state.maintenance.join_restore()

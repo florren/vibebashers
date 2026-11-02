@@ -222,6 +222,7 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
         assert hidden.status_code == 404
         secret = "123456:" + "A" * 35
         monkeypatch.setattr(settings, "telegram_bot_token", secret)
+        monkeypatch.setattr(settings, "tgbot_enabled", True)
         qr = client.get("/api/public/bot/qr")
         assert qr.status_code == 200
         assert qr.headers["content-type"].startswith("image/svg+xml")
@@ -233,7 +234,14 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(settings, "tgbot_public_base_url", "https://bank.invalid")
         monkeypatch.setattr(settings, "app_secret", "public-test-storage-vector-000000000000")
         with psycopg.connect(_dsn(dsn), autocommit=True) as clean:
-            for table in ("telegram_inbound", "telegram_conversations", "telegram_deliveries", "telegram_chat_rate"):
+            for table in (
+                "telegram_inbound",
+                "telegram_conversations",
+                "telegram_deliveries",
+                "telegram_chat_rate",
+                "telegram_signal_bindings",
+                "telegram_client_bindings",
+            ):
                 clean.execute(f"delete from channel_runtime.{table} where bot_id=123456")
         update_id = 0
 

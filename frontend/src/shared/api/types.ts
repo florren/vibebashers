@@ -8532,6 +8532,7 @@ export interface components {
             template_code?: string | null;
             subject?: string | null;
             body?: string;
+            /** @description unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет */
             status?: string;
             /** Format: date-time */
             sent_sim?: string | null;

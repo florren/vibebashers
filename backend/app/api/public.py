@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import re
 import secrets
@@ -622,8 +623,9 @@ async def post_public_track_token(request: Request, token: str, body: TrackAppen
 
 @router.get("/api/public/bot/qr", summary="QR-код на Telegram-бота для жюри-режима и README")
 async def get_public_bot_qr() -> Response:
-    token = (get_settings().telegram_bot_token or "").strip()
-    if not token:
+    settings = get_settings()
+    token = (settings.telegram_bot_token or "").strip()
+    if not token or not settings.tgbot_enabled:
         raise Problem(404, "Бот выключен", "Telegram-бот не настроен")
     svg = _qr_svg(_BOT_URL)
     return Response(content=svg, media_type="image/svg+xml")
@@ -709,9 +711,13 @@ async def _bot_dispatch(request: Request, conn: Any, body: InboundBody, draft: d
                 return _bot_reply("Language: English." if command[1] == "en" else "Язык: русский.")
             return _bot_reply("/lang ru | /lang en")
         elif command and command[0] == "/bind":
-            return await _bot_bind(conn, body.chat_id, command[1] if len(command) == 2 else "", draft)
+            return await _bot_bind(conn, body.bot_id, body.chat_id, command[1] if len(command) == 2 else "", draft)
         elif text == "/unbind":
             await conn.execute("update clients set telegram_chat_id=null where telegram_chat_id=%s", (body.chat_id,))
+            await conn.execute(
+                "delete from channel_runtime.telegram_client_bindings where bot_id=%s and chat_id=%s",
+                (body.bot_id, body.chat_id),
+            )
             for key in ("client_id", "client_code", "active_signal_id", "active_tracking_token", "active_run_id"):
                 draft.pop(key, None)
             draft["stage"] = "role"
@@ -741,7 +747,7 @@ async def _bot_dispatch(request: Request, conn: Any, body: InboundBody, draft: d
                 if text == "/skip":
                     draft["stage"] = "text"
                     return _bot_reply("Describe the issue." if draft["lang"] == "en" else "Опишите проблему.")
-                return await _bot_bind(conn, body.chat_id, text, draft)
+                return await _bot_bind(conn, body.bot_id, body.chat_id, text, draft)
             kind = {"text": "free_text", "contact": "contact", "region": "region", "active": "append"}.get(
                 str(draft.get("stage"))
             )
@@ -753,7 +759,7 @@ async def _bot_dispatch(request: Request, conn: Any, body: InboundBody, draft: d
     return await _bot_turn(request, conn, body, draft)
 
 
-async def _bot_bind(conn: Any, chat_id: int, code: str, draft: dict[str, Any]) -> dict[str, Any]:
+async def _bot_bind(conn: Any, bot_id: int, chat_id: int, code: str, draft: dict[str, Any]) -> dict[str, Any]:
     en = draft.get("lang") == "en"
     if draft.get("active_signal_id"):
         return _bot_reply("Send /start before a new binding." if en else "Перед новой привязкой отправьте /start.")
@@ -780,6 +786,15 @@ async def _bot_bind(conn: Any, chat_id: int, code: str, draft: dict[str, Any]) -
             "This chat is already bound. Use /unbind first." if en else "Чат уже привязан. Сначала /unbind."
         )
     await conn.execute("update clients set telegram_chat_id=%s where id=%s", (chat_id, row["id"]))
+    await conn.execute(
+        "delete from channel_runtime.telegram_client_bindings where bot_id=%s and chat_id=%s and client_id<>%s",
+        (bot_id, chat_id, row["id"]),
+    )
+    await conn.execute(
+        "insert into channel_runtime.telegram_client_bindings(bot_id,chat_id,client_id,client_code) values(%s,%s,%s,%s) "
+        "on conflict(bot_id,client_id) do update set chat_id=excluded.chat_id,client_code=excluded.client_code,created_at=now()",
+        (bot_id, chat_id, row["id"], code),
+    )
     draft.update(client_id=int(row["id"]), client_code=code, role="is_client", stage="text")
     return _bot_reply(
         f"Synthetic client {code} bound. Describe the issue."
@@ -923,6 +938,10 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody, draft: dic
         return _bot_reply(res.get("error") or "Не удалось принять обращение")
     public_id = str(res.get("public_id") or "")
     track = str(res.get("tracking_token") or token)
+    await conn.execute(
+        "insert into channel_runtime.telegram_signal_bindings(bot_id,chat_id,signal_id,run_id,token_hash) values(%s,%s,%s,%s,%s) on conflict do nothing",
+        (body.bot_id, body.chat_id, int(res["signal_id"]), run_id, hashlib.sha256(track.encode()).hexdigest()),
+    )
     role = draft.get("role", "")
     kept: dict[str, Any] = {
         key: draft[key] for key in ("client_id", "client_code", "language_selected") if key in draft

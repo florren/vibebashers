@@ -12,10 +12,11 @@ from typing import Any
 import psycopg
 from psycopg import sql
 from psycopg.pq import TransactionStatus
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 
 from app.sim import baseline, run_summary, runs
 from app.sim.events import dumps
+from app.tgbot.storage import lock_id
 
 
 class RunConflict(ValueError):
@@ -91,6 +92,11 @@ def _owner(alias: str, path: tuple[ForeignKey, ...]) -> sql.Composable:
 
 
 async def _lock_and_guard(conn: psycopg.AsyncConnection[Any], run_id: int) -> tuple[dict[str, Any], list[Table]]:
+    async with conn.cursor(row_factory=tuple_row) as guard:
+        await guard.execute("select pg_try_advisory_xact_lock(%s)", (lock_id("run", 0, run_id),))
+        acquired = await guard.fetchone()
+    if not acquired or not acquired[0]:
+        raise RunConflict("Дождитесь завершения Telegram доставки запуска")
     keys = await _foreign_keys(conn)
     paths = _ownership(keys)
     # Блокируем записи на короткое время до проверки FK и purge. Иначе новая

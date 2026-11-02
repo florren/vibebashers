@@ -59,6 +59,25 @@ services:
       timeout: 3s
       retries: 12
 
+  tgbot:
+    image: cx-pulse-tgbot:latest
+    profiles: ["telegram"]
+    build:
+      context: .
+      dockerfile: tgbot/Dockerfile
+    environment:
+      TGBOT_ENABLED: ${TGBOT_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TGBOT_INTERNAL_SECRET: ${TGBOT_INTERNAL_SECRET:-}
+      TGBOT_BACKEND_URL: http://backend:8000
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: "no"
+    stop_grace_period: 35s
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
   mailpit:
     image: axllent/mailpit:latest
     profiles: ["tools"]

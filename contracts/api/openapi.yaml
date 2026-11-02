@@ -3252,7 +3252,7 @@ components:
         template_code: { type: [string, "null"] }
         subject: { type: [string, "null"] }
         body: { type: string }
-        status: { type: string }
+        status: { type: string, description: "unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет" }
         sent_sim: { type: [string, "null"], format: date-time }
         client_id: { type: [integer, "null"] }
         incident_id: { type: [integer, "null"] }

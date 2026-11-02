@@ -167,3 +167,15 @@ def test_performance_connection_failure_is_reported(monkeypatch):
     report = compose.performance("http://127.0.0.1:18080", 1)
     assert report["violations"] == ["simulator start: OSError"]
     assert report["samples"] == {}
+
+
+def test_browser_candidate_excludes_telegram_egress_service(tmp_path, monkeypatch):
+    monkeypatch.setattr(compose, "ROOT", tmp_path)
+    config = candidate_config(tmp_path)
+    config["services"]["tgbot"] = {
+        "profiles": ["telegram"],
+        "environment": {"TGBOT_ENABLED": "true", "TELEGRAM_BOT_TOKEN": "synthetic-only"},
+    }
+    isolated = compose.isolate(config, "cx-ci-test", "cx-pulse-backend:ci", 18080, tmp_path / "candidate")
+    assert "tgbot" not in isolated["services"]
+    assert isolated["services"]["backend"]["environment"]["TGBOT_ENABLED"] == "false"
