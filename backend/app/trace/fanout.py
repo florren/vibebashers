@@ -176,9 +176,14 @@ async def relation_page(
     result["total"] = int(count["total"])
     upper = cursor.upper if cursor else int(count["upper"])
     last = cursor.last if cursor else None
+    # До auto-ANALYZE planner может недооценить веер и вычислить to_jsonb для
+    # всех соседей перед Sort/LIMIT. Сначала фиксируем не более limit+1 IDs.
     rows = await fetch_all(
         conn,
-        f"WITH related AS ({related}) SELECT to_jsonb(c) AS data,{scope(target, 'c')} AS scope_id FROM related r JOIN {TYPES[target].table} c ON c.id=r.id WHERE c.id<=%s AND (%s::bigint IS NULL OR c.id>%s) ORDER BY c.id LIMIT %s",
+        f"WITH related AS ({related}), page_ids AS MATERIALIZED ("
+        "SELECT id FROM related WHERE id<=%s AND (%s::bigint IS NULL OR id>%s) ORDER BY id LIMIT %s) "
+        f"SELECT to_jsonb(c) AS data,{scope(target, 'c')} AS scope_id FROM page_ids r "
+        f"JOIN {TYPES[target].table} c ON c.id=r.id ORDER BY c.id",
         [*args, upper, last, last, limit + 1],
     )
     page = rows[:limit]

@@ -143,7 +143,7 @@ describe('demo-menu', () => {
     expect(baseline?.body).toBeUndefined()
   })
 
-  it('сценарий 13 открывает записанный след без запуска агента или сброса', async () => {
+  it.each([[12, '/journey'], [13, '/trace']])('сценарий %s открывает read-only экран без запуска агента или сброса', async (number, path) => {
     const methods: string[] = []
     installFetch((_url, init) => {
       methods.push(init?.method ?? 'GET')
@@ -154,8 +154,8 @@ describe('demo-menu', () => {
     }
     render(qcWrap(<><DemoMenu /><Location /></>))
     useDemoMenu.setState({ open: true })
-    fireEvent.click(await screen.findByRole('button', { name: i18n.t('demoMenu.scenario13') }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/trace')
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t(`demoMenu.scenario${number}`) }))
+    expect(screen.getByTestId('location')).toHaveTextContent(path)
     expect(useDemoMenu.getState().open).toBe(false)
     expect(methods.every(method => method === 'GET')).toBe(true)
   })
