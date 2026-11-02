@@ -6,7 +6,7 @@ import { api } from '@/shared/api/client'
 import { CabinetCalculator } from '../CabinetCalculator'
 import { overview } from './fixtures'
 
-vi.mock('@/shared/api/hooks', () => ({ useEconomicsSettings: () => ({ data: { detractor_share: .1, no_return_share: .5, rates: [{ code: 'deposit', name_ru: 'Вклады', name_en: 'Deposits', rate_rub: 961 }, { code: 'credit_card', name_ru: 'Кредитные карты', name_en: 'Credit cards', rate_rub: 305 }] }, dataUpdatedAt: 1, isPending: false, isError: false }) }))
+vi.mock('@/shared/api/hooks', () => ({ useEconomicsSettings: () => ({ data: { detractor_share: .1, no_return_share: .5, rates: [{ code: 'deposit', name_ru: 'Вклады', name_en: 'Deposits', rate_rub: 961 }, { code: 'credit_card', name_ru: 'Кредитные карты', name_en: 'Credit cards', rate_rub: 305 }, { code: 'id_service', name_ru: 'ID-сервис', name_en: 'ID service', rate_rub: .405 }] }, dataUpdatedAt: 1, isPending: false, isError: false }) }))
 vi.mock('@/shared/api/client', async original => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn() }))
 let client: QueryClient
 beforeEach(async () => {
@@ -65,4 +65,9 @@ it('hides a cached result when a same-input server refetch fails', async () => {
   await client.invalidateQueries({ queryKey: ['economics-preview'] })
   await screen.findByText(i18n.t('care.errors.unknown'))
   expect(container.querySelector('[aria-live]')).toHaveTextContent('—')
+})
+
+it('shows existing three-decimal catalog rates without rounding their inputs to cents', () => {
+  show(undefined)
+  expect(screen.getByRole('option', { name: /ID-сервис/ })).toHaveTextContent(/0,405/)
 })
