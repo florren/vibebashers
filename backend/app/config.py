@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_budget_usd: float = 10  # OPENROUTER_BUDGET_USD: платные модели, не :free
     local_llm_base_url: str | None = None
+    local_llm_api_key: str | None = None
     cassettes_dir: str = "../data/cassettes"
 
     # интеграции
