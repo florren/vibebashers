@@ -45,3 +45,29 @@ CREATE TABLE IF NOT EXISTS channel_runtime.telegram_chat_rate (
     last_claimed_at timestamptz NOT NULL,
     PRIMARY KEY (bot_id, chat_id)
 );
+
+-- Сеть могла принять sendMessage до потери ответа: это не definite failed/sent.
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_status_check;
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_status_check
+ CHECK (status IN ('queued','sent','delivered','failed','suppressed','unknown'));
+
+ALTER TABLE channel_runtime.telegram_deliveries ADD COLUMN IF NOT EXISTS sent_sim timestamptz;
+
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_signal_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    signal_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    token_hash text NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, signal_id, run_id, token_hash)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_client_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    client_id bigint NOT NULL,
+    client_code text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, client_id),
+    UNIQUE (bot_id, chat_id)
+);
