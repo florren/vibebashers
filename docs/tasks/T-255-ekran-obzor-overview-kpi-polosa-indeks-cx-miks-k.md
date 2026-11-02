@@ -32,7 +32,7 @@
 5. vitest, e2e, скриншоты обеих тем и пакетов.
 
 ## Критерии приёмки
-- [ ] Ровно блоки ТЗ 26.4; значения совпадают с API; индекс CX считается по формуле 14.1.
+- [x] Ровно блоки ТЗ 26.4; значения совпадают с API; индекс CX считается по формуле 14.1.
 - [x] В «Тихом» режиме не более 9 блоков и нет мигания.
 - [x] Скриншоты `brand` и `ops`, две темы, два языка.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
@@ -45,3 +45,6 @@ cd frontend && npx playwright test e2e/overview.spec.ts
 
 ## Отчёт субагента
 Ветка `codex/T-255-overview`, отдельный consumer от T256. Реализованы9реальных блоков, scoped drilldowns/WS/unknown/exact money; подробности и границы — `docs/reviews/T-255-overview.md`, source/proof — `T-255-overview-proof.json`,24PNG — `docs/screenshots/T-255/`. Локально make lint470frontend+backend/bot/type/drift green, обе production builds,8/8actual browser; отдельный6route read-only walk111table hashes unchanged. Исторический fullbackend относится к1968631. Полная приёмка/DoD ждут API29+T041 composition, root Journey consumerfix и exactheadCI; новые backend/contract/money/HITL policy изменения в этом UI пакете отсутствуют.
+
+
+Final composition1c9: make lint485/69green, обеbuilds,102actual20targets60.43s,8/8native production browser9.1s и24PNG; explicitJourneyFollow+Replay входят в8routeGETwalk114tablehashesunchanged. Backend/app tree идентичен parent API29 PR2011d248. Исторический192proof сохранён Git; final machine evidence обновлён. ExactheadCI/parentreview/merge остаются pending, in_progress/общийDoD не закрыт.

@@ -21,3 +21,13 @@ Machine proof `T-255-overview-proof.json` содержит per-file sourceSHA256
 ## Остаточные зависимости и rollback
 
 До публикации нужны ordinary composition API29 defensive409+root T041 stale-controller fence и native probes/p95 producer; root T249 explicit-run readonly Journey consumer (в этом checkpoint проверены scoped href, сам Journey не изменён), parentreview/CI точного composed head. T257 не включена. Карточка in_progress, общий DoD не отмечен закрытым. Откат: revert scoped T255 commit; никакие DB/schema migrations/сохранённые деньги не меняются. API29 producer откатывается отдельно своим PR.
+
+## Окончательная composed проверка
+
+Source `1c9c365` включает ordinary API29/T041c47 + clean root Journey/CSI/API28/receipts27 stack. При объединении двух real routes убраны только уже неиспользуемые PendingScreen/t вApp; обоим словарям сохранён lossless union. Backend/app tree побайтно совпадает с parent API29 PR201 head1d248; metadata/DTO/types не откатывают API27/28.
+
+Final make lint485frontend/69files,550format/323mypy,bot12/5,drift196/196 green; обе production builds green. Actual0020/demo5000 scoped102unit/PG/HTTP/control/shutdown tests green60.43s. Первый101/1fixtureF не был runtime дефектом: T039 правильно запрещает proactive origin черезapi; focused1c9 создаёт internal service fixture через существующую normalizer authority fault_monitor/system_logs, customer asserts сохранены.
+
+Final8/8actual production browser9.1s,24PNG в том же curated каталоге обновлены с этого source (прежние остаются в Git192267b). Новый read-only8route walkthrough включает explicit-run JourneyFollow/Replay, в дополнение к Overview/Workspace dashboard/signals/HITL/Economics/Engine.114public/private table hashes unchanged;0nonGETattempts/0external/0legacyglobalmoneyKPI/0pageerrors. Schema20/newseed/nativeMockrun2 и startup abs_backfill завершены ДОfingerprint; настройки fixture PATCH/import вне read-only фазы. Native recorded latency0ms допускается, если действительно записан finished step: это измеренный Mock execution, не неизвестное время.
+
+Machine proof обновлён на finalsource; старый192/6f proof доступен в истории Git. Публикация остаётся через parent draft/точный CI; нового полного backend green здесь не заявлено. T257 отдельная ветка и в этот consumer diff не включена.
