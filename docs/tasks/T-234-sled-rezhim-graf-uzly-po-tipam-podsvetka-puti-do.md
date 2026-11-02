@@ -53,3 +53,6 @@ cd frontend && npx playwright test e2e/trace-graph.spec.ts
 Подробности и артефакты: `docs/reviews/T-234-trace-fanout-contract.md`, `docs/reviews/T-234-trace-graph-verification.md`. Полный backend после ограниченного guard не повторялся по согласованному плану; требуется полный PR CI. Generic DoD real GigaChat и human contract review ещё не выполнены, поэтому статус `in_progress` и последний критерий не закрыт. Собственные test servers остановлены; push/PR/merge выполняет родитель.
 
 Перед публикацией: normal merge main `d1710be`; scoped112 tests =53 T-234 +59 redaction passed40,08с, Ruff355/mypy255/frontend ESLint/typecheck green. Четыре actual UI PNG ru/en ×light/dark отслеживаются в `docs/screenshots/T-234/`. Path bounds kind/ref1..40/1..200 и run_id maxLength32/positive bigint явно согласованы в OpenAPI1.5.16/docs, старый Trace не изменён. Полный backend повторно не запускался.
+
+
+CI perf followup PR172: p95344мс на runner исправляется production eager route metadata compilation через public `app.openapi()` после всехroutes; SQL/testthreshold300/10001/page50/первыйGET не менялись.70startup/ref/fullN/health/WS/real-scenario targets green; неизменённый perf p9554,19мс локально. CI exacthead остаётсяgate. Детали: `docs/reviews/T-234-cold-route-performance.md`.

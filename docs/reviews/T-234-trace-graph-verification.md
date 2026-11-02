@@ -43,3 +43,7 @@ Keyboard: стрелки/[ ] — roving selection + pan/focus; Home — subject,
 ## Оставшиеся gates
 
 Human contract review по AGENTS.md §7, полный PR CI и оформление/merge родителем. Generic DoD realGigaChat не заявлен выполненным: Graph строго read-only и проверялся с BombLLM, fixture generation — только Mock; внешние LLM/email/TG calls не выполнялись. Эти ограничения не являются отсутствующим UI-функционалом и не замаскированы отметкой done. Общий parser `parse('²')` записан как followup существующей T-230; новый relations endpoint защищён отдельно.
+
+
+## Followup CI PR172: cold route compilation
+CI shard2 нашёл p95344,19мс, поэтому прежние локальные цифры не считались окончательным SLO. Подробный профиль/исправление: `T-234-cold-route-performance.md`. SQL не менялся: проблема — lazy compilation191FastAPIroute contexts в первом GET. Public `app.openapi()` в концеcreate_app готовит metadata до readiness, без HTTPwarmup/DB/LLM.70targetpassed, strict unchanged10001/page50 p9554,19мс; startup135–266мс/firstcoldGET13–14мс, healthy/degraded/dynamicroute/dependencyoverride regressions green. CI exacthead повторно обязателен; fullbackend не повторялся.
