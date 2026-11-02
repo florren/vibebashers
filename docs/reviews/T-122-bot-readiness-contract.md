@@ -103,3 +103,8 @@ S2S проверке не выдаётся за одобрение конкре�
 Композиция с T121 b85d377 (main73425): сохранены обе группы locale botQr/shell и compact QR trigger вне mobile Drawer. После merge:361frontend tests, lint/typecheck,50fake bot tests(7.18s) green. Новых Telegram-вызовов нет; full backend проверяется CI текущего head.
 
 Actual production composition proof ed987d5:12 cases legacy/v2×ru/en×themes+mobile320 прошли,94table fingerprints unchanged,0external/nonGET/pageerrors. QR cold503→signed local synthetic heartbeat→200, Escape возвращаетfocus; compact trigger внеDrawer. Evidence:docs/screenshots/T-122/composed-v2/. Первый setup не задавал обязательный public origin, поэтому fail-closed503; повтор с localhost origin прошёл без runtime изменений. No liveTelegram.
+
+
+## Композиция с актуальным main и исправлением TraceGraph
+
+После CI failure76c1624 (Trace fanout p95 315,50 мс) включён обычным merge mainbe49a8d с PR192. Исправлена production JSON projection, порог300 мс и samples не ослаблены. На source7b54d51:95 unit/actualPG tests passed86,08 с (fanout/plan budget/journey/bot readiness), p95 существующего10k gate15,54 мс; frontend366tests, ESLint/types и backend Ruff/format/mypy/drift зелёные. Evidence: T-122-be49-composition.json. Это локальная проверка композиции; новый exact-head CI обязателен. Ранее согласованный API23/heartbeat/QR контракт не меняется; реальные Telegram вызовы не выполнялись.
