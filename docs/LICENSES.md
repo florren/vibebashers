@@ -42,3 +42,18 @@ psycopg 3.3.6, psycopg-binary 3.3.6 и psycopg-pool 3.3.3 объявляют **L
 - Иконки lucide-react, d3-geo/topojson-client, ECharts: точные версии и SPDX берутся из npm inventory; внешние CDN не используются.
 - Vosk Python package: Apache-2.0 по METADATA classifier; SHA license notice сохранён в Python evidence. Модели STT учитываются отдельно в `data/models/stt/README.md`; inventory wheel не является проверкой скачанного model archive.
 - Синтетические корпуса и справочники: происхождение в [data/README](../data/README.md); публичные TLS-сертификаты и PostgreSQL client tools описаны выше.
+
+### Telegram transport (T-121)
+
+`aiogram 3.31.0` — MIT. Его aiogram/aiohttp окружение изолировано в
+`tgbot/pyproject.toml` и `tgbot/uv.lock`: aiogram требует Pydantic <2.14,
+backend сохраняет собственный Pydantic 2.14.1. Не понижаем зависимости backend.
+Все36 runtime/dev/platform-only distributions проверены по version-bound METADATA
+и license notices: `docs/licenses/tgbot-metadata.json`,
+[`tgbot/THIRD_PARTY_LICENSES.md`](../tgbot/THIRD_PARTY_LICENSES.md).
+`make licenses-check` проверяет оба Python окружения и npm, без сетевых запросов.
+Повтор сбора: `tgbot/.venv/bin/python scripts/collect_license_metadata.py --project tgbot --wheel-dir /path/to/wheels`,
+затем `tgbot/.venv/bin/python scripts/licenses_check.py --project tgbot --write`.
+Wheel fallback проверяет SHA256 в соответствующем lock; версия из другого
+окружения не принимается за доказательство. CI устанавливает bot через
+`uv sync --frozen` и запускает его lint/types/fake tests отдельно.
