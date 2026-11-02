@@ -108,6 +108,8 @@ async def load_deps(
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
     state_evidence_sink: StateEvidenceSink | None = None,
 ) -> Deps:
+    from app.sim.behavior.runtime import refresh_effect_time
+
     if not dry_run:
         from app.sim.behavior.runtime import require_run
 
@@ -127,6 +129,7 @@ async def load_deps(
         dry_run=dry_run,
         trace_conn=trace_conn,
         state_evidence_sink=state_evidence_sink,
+        effect_time_fence=None if dry_run else refresh_effect_time,
     )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [

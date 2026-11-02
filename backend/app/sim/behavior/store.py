@@ -150,14 +150,27 @@ class BehaviorStore:
             return False
         return await self._enqueue(run_id, client_id, "resolution", incident_id, incident[0])
 
-    async def active_run(self, run_id: int) -> bool:
-        """SHARE удерживает status до commit, не беря SimState после money locks."""
-        self.require_transaction()
+    async def current_effect_time(self, run_id: int, *, include_live: bool = False) -> dt.datetime | None:
+        """Native clock только своего current run; SHARE фиксирует status до commit."""
+        if self.conn.autocommit:
+            raise ValueError("effect fence требует внешнюю transaction без autocommit")
+        # Первая statement легитимно открывает implicit caller TX; commit здесь нет.
         row = await self._one("select kind,status from sim_runs where id=%s for share", (run_id,))
-        if row is None or row[0] not in ("free", "scenario") or row[1] not in ("running", "paused", "interrupted"):
-            return False
-        current = await self._one("select current_run_id from sim_state where id=1", ())
-        return bool(current and current[0] == run_id)
+        self.require_transaction()
+        kinds = ("free", "scenario", "live") if include_live else ("free", "scenario")
+        if row is None or row[0] not in kinds or row[1] not in ("running", "paused", "interrupted"):
+            return None
+        current = await self._one("select sim_time from sim_state where id=1 and current_run_id=%s", (run_id,))
+        if not current:
+            return None
+        at = current[0]
+        if not isinstance(at, dt.datetime) or at.utcoffset() is None:
+            raise ValueError("current SimTime должен быть aware timestamp")
+        return at
+
+    async def active_run(self, run_id: int) -> bool:
+        """SHARE/current gate без SimState lock после money locks."""
+        return await self.current_effect_time(run_id) is not None
 
     async def _enqueue(self, run_id: int, client_id: int, kind: str, source_id: int, at: dt.datetime) -> bool:
         row = await self._one("select kind,status from sim_runs where id=%s", (run_id,))
@@ -224,7 +237,8 @@ async def record_agent_state_intent(
     )
     if actual is None:
         raise ValueError("agent state intent не принадлежит signal/client/run")
-    if not await store.active_run(intent.run_id):
+    observed_at = await store.current_effect_time(intent.run_id)
+    if observed_at is None:
         return StateEvidenceResult(False, None, "inactive_run")
     # Проверка policy/legacy выполняется повторно в write TX после status pin.
     from app.sim.behavior.runtime import require_run
@@ -242,9 +256,9 @@ async def record_agent_state_intent(
             intent.incident_id,
             intent.requested_state,
             intent.trigger,
-            intent.at,
+            observed_at,
         ),
     )
     assert row is not None
-    await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], intent.at)
+    await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], observed_at)
     return StateEvidenceResult(True, int(row[0]))

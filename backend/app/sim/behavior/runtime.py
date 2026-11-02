@@ -9,7 +9,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import tuple_row
 
-from app.agent.tools.base import StateEvidenceSink
+from app.agent.tools.base import StateEvidenceSink, ToolContext
 from app.sim.behavior.policy import DemoPolicy
 from app.sim.behavior.store import BehaviorStore, record_agent_state_intent
 
@@ -31,6 +31,13 @@ async def effective_policy(
     if run is None:
         raise ValueError("behavior run отсутствует")
     return policy if run[0] in ("free", "scenario") else None
+
+
+async def refresh_effect_time(ctx: ToolContext) -> None:
+    """После LLM берём write time своего active run; historical context неизменен."""
+    at = await BehaviorStore(ctx.conn).current_effect_time(ctx.run_id, include_live=True)
+    if at is not None:
+        ctx.sim_time = at
 
 
 async def prepare_run(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime, policy: DemoPolicy) -> None:
