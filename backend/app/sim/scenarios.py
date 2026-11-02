@@ -63,6 +63,10 @@ async def ensure_registered(conn: Any, scenario: dict[str, Any]) -> None:
 
 
 def is_runnable(s: dict[str, Any]) -> bool:
+    if "script" in s:
+        from app.sim.proactive_scenario import plan
+
+        return plan(s) is not None
     return bool(s.get("inject") or s.get("file"))
 
 
@@ -396,6 +400,10 @@ def _check(code: str, ok: bool | None, detail: str) -> dict[str, Any]:
 
 async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any], run_id: int) -> dict[str, Any]:
     """Сверяет `expected` сценария с данными запуска. ok=None — проверка ещё не реализована (см. NOT_YET)."""
+    if "script" in scenario:
+        from app.sim.proactive_phases import evaluate as evaluate_scripted
+
+        return await evaluate_scripted(conn, scenario, run_id)
     d = await _run_data(conn, run_id)
     exp = dict(scenario.get("expected") or {})
     checks: list[dict[str, Any]] = []
@@ -632,6 +640,8 @@ def _check_transcript(key: str, want: Any, tr: dict[str, Any]) -> dict[str, Any]
 
 
 async def save_result(conn: psycopg.AsyncConnection[Any], scenario_id: str, result: dict[str, Any]) -> None:
+    if result.get("counts", {}).get("map_basis") == "historical_unavailable":
+        return  # Read-only ограничение карты не заменяет stored completion result.
     await conn.execute(
         "update scenarios set last_run_at = now(), last_result = %s::jsonb where id = %s",
         (dumps({"passed": result["passed"], "checks": result["checks"]}), scenario_id),

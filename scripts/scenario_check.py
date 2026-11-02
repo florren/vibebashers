@@ -58,6 +58,24 @@ async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
             await asyncio.sleep(0.5)
 
 
+async def _wait_scripted(dsn: str, run_id: int, timeout: float) -> None:
+    # Existing --wait bound, no HTTP/provider retries. Missing/failed phase
+    # evaluator ниже оставит FAIL, в том числе после timeout.
+    deadline = time.monotonic() + timeout
+    async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
+        while time.monotonic() < deadline:
+            row = await (
+                await conn.execute(
+                    "select 1 from sim_events where run_id=%s and event_type in "
+                    "('scenario.proactive_completed','scenario.proactive_failed') limit 1",
+                    (run_id,),
+                )
+            ).fetchone()
+            if row:
+                return
+            await asyncio.sleep(0.5)
+
+
 async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
     if scenario.get("kind") == "read_model" and scenario["id"] == "customer_journey":
         from scripts.journey_check import run_journeys
@@ -77,7 +95,9 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
             return False
         r.raise_for_status()
         run_id = int(r.json()["run"]["id"])
-    if sc.is_transcript(scenario):
+    if "script" in scenario:
+        await _wait_scripted(dsn, run_id, wait)
+    elif sc.is_transcript(scenario):
         await _wait_transcript(dsn, run_id, wait)
     else:
         await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)

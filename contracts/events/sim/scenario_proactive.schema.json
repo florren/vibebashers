@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/scenario_proactive.schema.json",
+  "title": "Сценарий 6 — version1, bounded native phase journal, не LLM/gold данные",
+  "$defs": {
+    "id": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    }
+  },
+  "oneOf": [
+    {
+      "title": "ProactiveScenarioPrepared",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scenario_id",
+        "script_sha256",
+        "fault_id",
+        "event_type",
+        "operation_ids"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "scenario_id": {
+          "const": "mass_notifications"
+        },
+        "script_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "const": "scenario.proactive_prepared"
+        },
+        "operation_ids": {
+          "type": "array",
+          "minItems": 120,
+          "maxItems": 120,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    {
+      "title": "ProactiveScenarioNotified",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scenario_id",
+        "script_sha256",
+        "fault_id",
+        "event_type",
+        "prepared_event_id",
+        "agent_run_id",
+        "notification_ids",
+        "anchor_signal_id"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "scenario_id": {
+          "const": "mass_notifications"
+        },
+        "script_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "const": "scenario.proactive_notified"
+        },
+        "prepared_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "agent_run_id": {
+          "$ref": "#/$defs/id"
+        },
+        "notification_ids": {
+          "type": "array",
+          "minItems": 90,
+          "maxItems": 120,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "anchor_signal_id": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    {
+      "title": "ProactiveScenarioComplaints",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scenario_id",
+        "script_sha256",
+        "fault_id",
+        "event_type",
+        "prepared_event_id",
+        "notified_event_id",
+        "complaint_signal_ids"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "scenario_id": {
+          "const": "mass_notifications"
+        },
+        "script_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "const": "scenario.proactive_complaints"
+        },
+        "prepared_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "notified_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "complaint_signal_ids": {
+          "type": "array",
+          "minItems": 30,
+          "maxItems": 30,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    {
+      "title": "ProactiveScenarioCompleted",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scenario_id",
+        "script_sha256",
+        "fault_id",
+        "event_type",
+        "prepared_event_id",
+        "notified_event_id",
+        "complaints_event_id",
+        "incident_id",
+        "care_positive"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "scenario_id": {
+          "const": "mass_notifications"
+        },
+        "script_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "const": "scenario.proactive_completed"
+        },
+        "prepared_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "notified_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "complaints_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "incident_id": {
+          "$ref": "#/$defs/id"
+        },
+        "care_positive": {
+          "type": "integer",
+          "minimum": 90,
+          "maximum": 120
+        }
+      }
+    },
+    {
+      "title": "ProactiveScenarioFailed",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scenario_id",
+        "script_sha256",
+        "fault_id",
+        "event_type",
+        "prepared_event_id",
+        "reason"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "scenario_id": {
+          "const": "mass_notifications"
+        },
+        "script_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_id": {
+          "$ref": "#/$defs/id"
+        },
+        "event_type": {
+          "const": "scenario.proactive_failed"
+        },
+        "prepared_event_id": {
+          "$ref": "#/$defs/id"
+        },
+        "reason": {
+          "enum": [
+            "script_changed",
+            "owner_changed",
+            "cohort_changed",
+            "early_complaint",
+            "fault_resolved",
+            "delivery_incomplete",
+            "inconsistent_evidence",
+            "phase_incomplete",
+            "phase_clock_changed",
+            "service_graph_failed",
+            "customer_graph_failed"
+          ]
+        }
+      }
+    }
+  ]
+}

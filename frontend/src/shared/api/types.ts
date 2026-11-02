@@ -1981,7 +1981,7 @@ export interface paths {
         put?: never;
         /**
          * Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)
-         * @description Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409.
+         * @description Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409. Сценарий6 mass_notifications — scripted/deferred: проверка actual cohort/consents до нового run (409 insufficient_cohort/consents), native prepared source и paused часы, затем bounded journal phases без inject3. Для journal-owned run Resume/step/jump/reset отклоняются409; Stop/новый run доступны. Только native interrupted AR из его journal восстанавливается по существующему strict checkpoint, без обхода awaiting_human/pinned profiles. Failed AR требует ручного разбора. Lite не обещает120 подходящих клиентов. Отчёт использует только owner modelled_prevented_by_resolution с quality/provenance: complete допускает честный0, legacy NULL/incomplete остаются unknown; Sent/care/already-complained не считаются предотвращёнными жалобами.
          */
         post: {
             parameters: {
@@ -2009,7 +2009,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Запущен */
+                /** @description Запущен (scripted — paused) */
                 202: {
                     headers: {
                         [name: string]: unknown;
@@ -2017,7 +2017,8 @@ export interface paths {
                     content: {
                         "application/json": {
                             run?: components["schemas"]["SimRun"];
-                            client_id?: number;
+                            /** @description null для internal service anchor, без вымышленного клиента */
+                            client_id?: number | null;
                         };
                     };
                 };
@@ -3126,6 +3127,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute. */
+                    rate_code?: string;
                     affected?: number;
                     product?: string;
                     system?: string;
@@ -3148,6 +3151,7 @@ export interface paths {
                         "application/json": components["schemas"]["IncidentEconomics"];
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -5893,7 +5897,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** [ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала */
+        /**
+         * [ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала
+         * @description Внешний origin=proactive и X-Source-Code=fault_monitor возвращают 422 до prepare/записей: это служебный native producer. Внешние интеграции должны передавать origin=api. Enum UnifiedMessage сохраняет proactive для внутреннего DTO; channel=proactive с внешним origin=api остаётся допустимым.
+         */
         post: {
             parameters: {
                 query?: {

@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
+import { useUndo } from '@/shared/ui/undo'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import '@/shared/i18n'
 import { api } from '@/shared/api/client'
@@ -15,9 +17,9 @@ import { navigationFor, itemActive } from '../Sidebar/navigation'
 vi.mock('@/shared/api/client', async original => ({ ...await original<typeof import('@/shared/api/client')>(), api: vi.fn() }))
 const clients: QueryClient[] = []
 function Location() { const { pathname, search } = useLocation(); return <output data-testid="location">{pathname}{search}</output> }
-function show(path = '/') {
+function show(path = '/', extra?: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); clients.push(client)
-  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Location /><Routes><Route element={<Shell />}>
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Location />{extra}<Routes><Route element={<Shell />}>
     <Route index element={<WorkspaceEntry />} /><Route path="workspace" element={<><input aria-label="Draft" /><p>WORKSPACE</p></>} /><Route path="overview" element={<p>OVERVIEW</p>} />
     <Route path="engine" element={<p>ENGINE</p>} /><Route path="trace" element={<p>TRACE</p>} /><Route path="*" element={<p>DETAIL</p>} />
   </Route></Routes></MemoryRouter></QueryClientProvider>)
@@ -101,4 +103,32 @@ it('query-aware active links distinguish map from zones and preserve independent
   expect(itemActive(items[5]!, '/workspace', '?tab=map&map_mode=zones')).toBe(true)
   expect(itemActive(items[1]!, '/workspace', '?tab=signals&q=SIG-1')).toBe(true)
   expect(itemActive(items[1]!, '/incidents/5', '?tab=signals')).toBe(false)
+})
+
+it.each(['legacy', 'v2'] as const)('cabinet %s never mounts the unscoped global priority query', async layout => {
+  useUiTheme.setState({ layout })
+  document.documentElement.dataset.circadian = 'true'; document.documentElement.dataset.phase = 'night'
+  show('/cabinet/deposits')
+  await screen.findByText('DETAIL')
+  expect(screen.queryByRole('region', { name: 'Приоритеты' })).not.toBeInTheDocument()
+  expect(vi.mocked(api).mock.calls.filter(([path]) => path === '/api/incidents' || path === '/api/signals')).toEqual([])
+  delete document.documentElement.dataset.circadian; delete document.documentElement.dataset.phase
+})
+
+function QueryUndoProbe() {
+  const [params, setParams] = useSearchParams()
+  return <><button onClick={() => { const previous = params.toString(); setParams(''); useUndo.getState().offer(() => setParams(previous)) }}>Reset probe</button><button onClick={() => setParams('run_id=19')}>Run probe</button></>
+}
+it('cabinet query filters retain local Undo, while a run scope change invalidates it', async () => {
+  useUiTheme.setState({ layout: 'v2' })
+  show('/cabinet/deposits?region=77', <QueryUndoProbe />)
+  await screen.findByText('DETAIL')
+  fireEvent.click(screen.getByText('Reset probe'))
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/cabinet/deposits'))
+  expect(useUndo.getState().entry).not.toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Отменить' }))
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('region=77'))
+  act(() => useUndo.getState().offer(() => {}))
+  fireEvent.click(screen.getByText('Run probe'))
+  await waitFor(() => expect(useUndo.getState().entry).toBeNull())
 })

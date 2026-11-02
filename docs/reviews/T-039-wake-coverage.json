@@ -1,0 +1,29 @@
+{
+  "source": "9f370816fefdb224d19767304de074d995a1827d",
+  "base": "8a7a5a860be5f07d28f2d18bf2393aec810bc0f1",
+  "scope": "focused committed-progress runner diff only; not whole T039 coverage",
+  "tests": "35 passed in25.00s (33unit+2PG), PostgreSQL16 tools",
+  "changed_statements": 18,
+  "covered_changed_statements": 15,
+  "missing_changed_lines": [
+    193,
+    196,
+    636
+  ],
+  "changed_coverage_percent": 83.33,
+  "module_summary": {
+    "covered_lines": 280,
+    "num_statements": 415,
+    "percent_covered": 67.46987951807229,
+    "percent_covered_display": "67",
+    "missing_lines": 135,
+    "excluded_lines": 3,
+    "percent_statements_covered": 67.46987951807229,
+    "percent_statements_covered_display": "67"
+  },
+  "limitations": [
+    "hard native CLI30 verified separately in7PG/ASGI target; not under broad timid tracing",
+    "whole final make and exact-head CI pending",
+    "earlier frozen8a expanded run145pass3F remains diagnostic only"
+  ]
+}
