@@ -140,7 +140,7 @@ def project(node: dict[str, Any], phase: str) -> dict[str, Any]:
             "mock"
             if "mock" in sources or model.startswith("mock")
             else "replay"
-            if "replay" in sources or model.startswith("replay/")
+            if "replay" in sources or model.startswith(("replay:", "replay/"))
             else "live"
             if model
             else None

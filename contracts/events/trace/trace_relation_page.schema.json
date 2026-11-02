@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/trace/trace_relation_page.schema.json",
+  "title": "TraceRelationPage — полное постраничное раскрытие веера (T-234, OpenAPI 1.5.16)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["anchor", "direction", "event_kind", "total", "items", "edges", "next_cursor"],
+  "properties": {
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref", "event_id"],
+      "properties": {
+        "kind": { "type": "string" },
+        "ref": { "type": "string" },
+        "event_id": { "type": "string" }
+      }
+    },
+    "direction": { "type": "string", "enum": ["before", "after"] },
+    "event_kind": { "type": "string", "enum": ["signal_created", "notification"] },
+    "total": { "type": "integer", "minimum": 0, "description": "Число доступных объектов в выбранном scope и upper-PK fence; не длина текущей страницы" },
+    "items": { "type": "array", "maxItems": 100, "items": { "$ref": "trace_event.schema.json" } },
+    "edges": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to", "relation_ru"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "relation_ru": { "type": "string", "maxLength": 120 }
+        }
+      }
+    },
+    "next_cursor": { "type": ["string", "null"], "maxLength": 1024 }
+  },
+  "examples": [
+    {
+      "anchor": { "kind": "client", "ref": "CL-000001", "event_id": "EVT-client:1" },
+      "direction": "after",
+      "event_kind": "signal_created",
+      "total": 0,
+      "items": [],
+      "edges": [],
+      "next_cursor": null
+    }
+  ]
+}
