@@ -46,3 +46,5 @@ _Заполняется исполнителем: ветка/PR, что сдел
 Проверки:35catalogunit passed0.52s, actualPGseedtemplate1passed5.84s, actualMockscenario09 1passed6.05s. make lint green(173frontend/Ruff352/mypy251/drift191), i18n1690, productionbuild green. Browser12desktop+2narrowEnglish сочетания,0external/0mutation/0pageerror,85tablefingerprints unchanged. PNG/provenance:docs/screenshots/T-203/; proof:docs/reviews/T-203-browser-proof.json.
 
 Full make test выполняется; exact-head CI/окончательный отчёт ещёобязательны. Узкий320px viewport не выдаётся за отдельную реализацию устройства-часовT188. ЖивойGigaChat/Telegram не вызывались, genericliveDoD этим не закрыт.
+
+Финальный локальный full77fd5c4:1115unit/18skip +240integration/2skip +42scenario/2skip +31compliance +173frontend, exit0(1428backend/22skip). После ordinarymerge maindfbf47a: make lint188frontend/Ruff360/mypy256/drift192,85targetunit2.92s, i18n1728/TSidempotent green. Review:docs/reviews/T-203-localization.md. ExactheadCI ещёобязателен доmerge.
