@@ -1,0 +1,482 @@
+[
+  {
+    "branch_code": "0042",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00001",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0042",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00002",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0042",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00003",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0042",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00004",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0042",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00005",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0042",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00006",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00007",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00008",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00009",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00010",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00011",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0107",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00012",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00013",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00014",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00015",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00016",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00017",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0211",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00018",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00019",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00020",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00021",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00022",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00023",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0315",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00024",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00025",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00026",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00027",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00028",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00029",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0418",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00030",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00031",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00032",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00033",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00034",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00035",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0520",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00036",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00037",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00038",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00039",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00040",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00041",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0633",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00042",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00043",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00044",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00045",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00046",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00047",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0741",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00048",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00049",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00050",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00051",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00052",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00053",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0856",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00054",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 1,
+    "employee_public_id": "EMP-00055",
+    "position": "старший менеджер",
+    "tenure_position_days": 348,
+    "tenure_org_days": 438
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 2,
+    "employee_public_id": "EMP-00056",
+    "position": "менеджер по продажам",
+    "tenure_position_days": 421,
+    "tenure_org_days": 511
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 3,
+    "employee_public_id": "EMP-00057",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 494,
+    "tenure_org_days": 584
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 4,
+    "employee_public_id": "EMP-00058",
+    "position": "финансовый консультант",
+    "tenure_position_days": 567,
+    "tenure_org_days": 657
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 5,
+    "employee_public_id": "EMP-00059",
+    "position": "операционист",
+    "tenure_position_days": 640,
+    "tenure_org_days": 730
+  },
+  {
+    "branch_code": "0962",
+    "desk_no": 6,
+    "employee_public_id": "EMP-00060",
+    "position": "менеджер по обслуживанию",
+    "tenure_position_days": 713,
+    "tenure_org_days": 803
+  }
+]
