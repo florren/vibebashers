@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom'
 import type { IncidentBrief } from '@/shared/api/client'
 import { useIncidents, useRefName } from '@/shared/api/hooks'
 import { tEnum } from '@/shared/i18n'
-import { fmtSim } from '@/shared/lib/format'
+import { fmtSim, fmtSimMoscow } from '@/shared/lib/format'
 import { Badge, Empty, ErrorBox, SkeletonRows, SlaBar } from '@/shared/ui'
 import { criticalityTone, incidentStatusTone } from '@/shared/ui/tones'
 
@@ -110,6 +110,7 @@ function Board({ items, teamName }: { items: IncidentBrief[]; teamName: (c?: str
 }
 
 export function IncidentCard({ i, teamName }: { i: IncidentBrief; teamName: (c?: string | null) => string }) {
+  const { t } = useTranslation()
   return (
     <article className="card block p-2.5 transition hover:ring-1 hover:ring-brand/40">
       <div className="mb-1 flex items-center gap-1.5">
@@ -122,7 +123,7 @@ export function IncidentCard({ i, teamName }: { i: IncidentBrief; teamName: (c?:
       <Link to={`/incidents/${i.id}`} className="line-clamp-2 text-[13px] leading-snug hover:underline">{i.title}</Link>
       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted">
         <span className="truncate">{teamName(i.team_code)}</span>
-        <span className="ml-auto num font-mono">{fmtSim(i.sla_due_sim)}</span>
+        <span className="ml-auto num font-mono">{fmtSimMoscow(i.sla_due_sim)} {t('attention.slaTimezone')}</span>
       </div>
       <SlaWarning due={i.sla_due_sim} status={i.status} />
       <SlaBar className="mt-1.5" pct={i.sla_remaining_pct} breached={i.sla_breached} />
