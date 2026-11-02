@@ -1,0 +1,15 @@
+# T-014: каталог и error_code event contract
+
+Требуется review техлида по AGENTS.md §7 до merge.
+
+Подтверждённая ошибка: существующий ANTIFRAUD-FALSE-BLOCK имеет префикс9символов, а common.schema.json разрешала максимум6. Его fault.* events отвергаются до записи. Routing tests T014 проверяли владельцев, но не реальную event validation.
+
+Совместимый diff: `^[A-Z]{2,6}(-[A-Z0-9]{2,12}){1,3}$` → `^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$`. Минимум2, верхний регистр,1–3суффикса длиной2–12 и прочие ограничения сохранены. Title общей схемы обновлён доv1.5.1; имя/$id/пути и OpenAPI не меняются. Все старые допустимые сообщения остаются допустимыми. Все25каталогных кодов теперь проверяются реальной fault schema; seed validator отвергает рассогласованный каталог.
+
+Потребители: EventBus и JSON Schema/Pydantic consumers классификации/fault events. Миграция данных не нужна. Внешний consumer со старой schema должен обновить её до получения ANTIFRAUD-FALSE-BLOCK. Откат вернёт прежний отказ; каталог переименовывать не предлагается.
+
+Финансовые правила, ставки и HITL не меняются.
+
+Проверки:65целевых unit passed (25каталогных fault events,6негативных границ и validator). Полный набор:822unit/18skip,200integration/4skip passed, затем strict replay trace12 получил miss; полный make test не зелёный. Доказано: для двух instant_decision записей старый schema hash совпадает с recorded request_hash, новая схема даёт другой hash; normalization hashes неизменны. Старые кассеты/ответы/usage не rekeyed и не изменялись. Нужна новая реальная запись по фиксированному synthetic контексту после отдельного ограниченного разрешения пользователя (T198). Этот checkpoint не готов к merge.
+
+02.11.2026: контрактPR167 и ограниченнаязаписьодобрены. Новыйреальныйответ дляcurrent schema получен(2HTTP,3213+506tokens,costunknown). Старыекассеты неизменны; frozenbank3strictreplay/miss tests passed15.33s. Итогfullsuite/CIфиксируетсяотдельно.

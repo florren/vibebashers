@@ -58,12 +58,14 @@ def test_invalid_planner_input_is_explicit(faults, invalid):
 
 
 def test_catalog_contract_gap_is_rejected_before_any_fault_generation(faults):
-    # T-014 follow-up: каталог содержит long prefix, но текущий event contract его запрещает.
+    # Согласованный T-014 допускает ANTIFRAUD (9 букв); более длинный prefix запрещён.
     from scripts.seed.common import load_yaml
 
     row = next(row for row in load_yaml("error_codes.yaml")["error_codes"] if row["code"] == "ANTIFRAUD-FALSE-BLOCK")
+    planned = faults.plan_faults(random.Random(42), NOW, [(row["code"], row["system"])], [])
+    assert planned and all(fault.error_code == row["code"] for fault in planned)
     with pytest.raises(ValueError, match="event contract"):
-        faults.plan_faults(random.Random(42), NOW, [(row["code"], row["system"])], [])
+        faults.plan_faults(random.Random(42), NOW, [("ANTIFRAUDX-FALSE-BLOCK", row["system"])], [])
     configured = load_yaml("op_paths.yaml")["failure_codes"]
     assert "AF-FALSE-BLOCK" in configured and "ANTIFRAUD-FALSE-BLOCK" not in configured
 
