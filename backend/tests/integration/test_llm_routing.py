@@ -47,9 +47,11 @@ def test_graph_main_fast_and_twin_reaction_idempotency(seeded, conn):
     dsn = seeded.replace("postgresql+psycopg://", "postgresql://", 1)
     provider = RecordingProvider()
     chain = ProviderChain([provider], append_mock=False)
-    cid = conn.execute(
-        "select o.client_id from operations o join clients c on c.id=o.client_id where o.error_code='PROC-QR-FEE-CHARGED' and c.segment_code<>'ultra_vip' order by o.started_sim desc limit 1"
-    ).fetchone()[0]
+    operation = conn.execute(
+        "select o.client_id,o.amount_rub,o.fee_amount from operations o join clients c on c.id=o.client_id where o.error_code='PROC-QR-FEE-CHARGED' and c.segment_code='mass' and o.started_sim between (select sim_time-interval '72 hours' from sim_state where id=1) and (select sim_time from sim_state where id=1) order by (select count(*) from signals s where s.client_id=c.id),o.started_sim desc limit 1"
+    ).fetchone()
+    assert operation is not None and 0 < operation[2] <= 5000
+    cid = operation[0]
 
     async def run():
         async with await psycopg.AsyncConnection.connect(dsn) as c:
@@ -63,7 +65,7 @@ def test_graph_main_fast_and_twin_reaction_idempotency(seeded, conn):
                     {
                         "channel_code": "chat",
                         "client_id": cid,
-                        "text": "Оплатил по QR 3200 рублей, списали комиссию. Верните комиссию.",
+                        "text": f"Оплатил по QR {operation[1]} рублей, списали комиссию {operation[2]} руб. Верните комиссию.",
                     }
                 ),
                 source_code="api",
