@@ -18,7 +18,9 @@ export function AgentExecution({
   selection,
   onSelectStep,
   onFollowCurrent,
+  readOnly = false,
 }: {
+  readOnly?: boolean
   events: TraceEvent[]
   selection: StepSelection | null
   onSelectStep: (selection: StepSelection) => void
@@ -220,7 +222,7 @@ export function AgentExecution({
       {human.data && (
         <details className="mt-3 rounded-xl border border-warn p-2">
           <summary>{t('journeyLive.humanDecision')}</summary>
-          <HitlCard item={human.data} onOpenSignal={onOpenSignal} />
+          {readOnly ? <p className="p-2 text-sm text-muted">{t('journeyLive.scopedReadOnly')}</p> : <HitlCard item={human.data} onOpenSignal={onOpenSignal} />}
         </details>
       )}
     </section>

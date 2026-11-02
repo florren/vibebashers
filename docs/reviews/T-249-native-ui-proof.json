@@ -1,0 +1,182 @@
+{
+  "signal": "SIG-001370",
+  "requests": [
+    {
+      "url": "/csi?run_id=2",
+      "method": "GET"
+    },
+    {
+      "url": "/assets/index-XNjjyumh.js",
+      "method": "GET"
+    },
+    {
+      "url": "/assets/index-C6WB7GoY.css",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-latin-400.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-latin-600.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-cyrillic-400.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-cyrillic-500.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/jetbrains-mono-latin-500.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/jetbrains-mono-latin-400.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-latin-500.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-cyrillic-600.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/api/sim/state",
+      "method": "GET"
+    },
+    {
+      "url": "/api/settings",
+      "method": "GET"
+    },
+    {
+      "url": "/api/refs/channels",
+      "method": "GET"
+    },
+    {
+      "url": "/api/refs/segments",
+      "method": "GET"
+    },
+    {
+      "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+      "method": "GET"
+    },
+    {
+      "url": "/api/csi/analytics?run_id=2&period=month&offset=0&limit=50&scatter_limit=1000",
+      "method": "GET"
+    },
+    {
+      "url": "/api/branches?limit=200",
+      "method": "GET"
+    },
+    {
+      "url": "/api/cabinet/overview?run_id=current",
+      "method": "GET"
+    },
+    {
+      "url": "/api/refs/regions",
+      "method": "GET"
+    },
+    {
+      "url": "/api/sim/runs?limit=20",
+      "method": "GET"
+    },
+    {
+      "url": "/api/demo/status",
+      "method": "GET"
+    },
+    {
+      "url": "/api/health",
+      "method": "GET"
+    },
+    {
+      "url": "/api/csi/analytics?run_id=2&period=month&offset=0&limit=50&scatter_limit=1000",
+      "method": "GET"
+    },
+    {
+      "url": "/api/branches?limit=200",
+      "method": "GET"
+    },
+    {
+      "url": "/api/cabinet/overview?run_id=current",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-cyrillic-700.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/fonts/inter-latin-700.woff2",
+      "method": "GET"
+    },
+    {
+      "url": "/api/csi/analytics?run_id=2&period=week&offset=0&limit=50&scatter_limit=1000",
+      "method": "GET"
+    },
+    {
+      "url": "/api/agent/graph",
+      "method": "GET"
+    },
+    {
+      "url": "/api/refs/products",
+      "method": "GET"
+    },
+    {
+      "url": "/api/refs/teams",
+      "method": "GET"
+    },
+    {
+      "url": "/api/journey/SIG-001370?run_id=2",
+      "method": "GET"
+    },
+    {
+      "url": "/api/signals/1370",
+      "method": "GET"
+    },
+    {
+      "url": "/api/journey/SIG-001370?run_id=2",
+      "method": "GET"
+    }
+  ],
+  "forbidden": [],
+  "errors": [],
+  "fingerprints": {
+    "tables": 97,
+    "unchanged": true,
+    "changed": [],
+    "browser_exit": 0,
+    "output": ""
+  },
+  "checks": {
+    "frontend": "435 passed/62files13.35s",
+    "native_browser": "5passed5.5s; actual production ru/en light/dark/mobile",
+    "build": "both production builds green",
+    "lint": "0errors/1 inherited DemoMenu FastRefreshwarning; motion green",
+    "typecheck": "green"
+  },
+  "source_sha256": {
+    "frontend/src/pages/csi/api.ts": "11b52e3069fffbc25bf3c67a47cfa3d134a28b0456e06c9b59524e98ac7291f6",
+    "frontend/src/pages/csi/Chart.tsx": "fa5ab5e720f00e0e41978d429c325d592f77b85d19afe3a9d6d6c12a42d7ab6c",
+    "frontend/src/pages/csi/options.ts": "8154c9b504a9495a7fcc9ab448a4753f28feb88ca75da4c669853679dcfc5cbe",
+    "frontend/src/pages/csi/RegionHeatmap.tsx": "1bb2fd83308e9e5d0753c42e4eca5ac7b055878712a187d824d18f73a8410453",
+    "frontend/src/pages/csi/palette.ts": "936cb54bb4316e50a869f27b22da8dda356a173ae352eb0f19b7c1c0c678d2de",
+    "frontend/src/pages/csi/CsiPage.tsx": "8b6a962c42d924128bfc8f8c6b44b45cf6eae04fee6e6c08851b0934b366659f",
+    "frontend/src/pages/journey/AgentExecution.tsx": "005f5e852f8dd6c50b3baccb41e8982aaba940f3c2d9e912870236c0a10c19f6",
+    "frontend/src/pages/journey/DemoExecution.tsx": "889e9ca27a5b77f4333438a0b29b149b9744d4c1186173718eb33db922118bd5",
+    "frontend/src/pages/journey/LiveJourney.tsx": "90747464332fdad275e85e4d4ca1acb22e424d1bb002f4efdedb75d0b3141b64",
+    "frontend/src/pages/journey/RecordedJourney.tsx": "1ed23647c1e1efe672b9a12b178cf6f57bab721b6e89c2a7f8756ba69f4fc8e8",
+    "frontend/src/pages/journey/SignalPicker.tsx": "1c6f7dac38a2036f5dc349b436d7a28b1312323a24d8f70c8c7ed9c83a395bb5",
+    "frontend/src/pages/journey/api.ts": "1ac95bc6ff580e17784d27b0c2af6a8215a468fe4864a9ec00a4baaadd67fcfe",
+    "frontend/src/pages/journey/index.tsx": "05fe90fc31daacfc4042d590bf0463fd052a4ea39abf6e7948c85047754d282c",
+    "frontend/src/pages/journey/playback.ts": "ec02233db88dd27f956c1df62f79422cdf345159aec37bc8406cab1ea25f0589",
+    "frontend/src/pages/journey/stepSelection.ts": "1167eed2477c54660927ea8ee3802de621feaa02f41054c21aaf7ff25ef2e741",
+    "frontend/src/pages/journey/timing.ts": "71f5613c985596f5079724ee6cefc98832876891da22b50b01923a9cf8201764",
+    "frontend/src/shared/api/runScope.ts": "510cea9ace7c13216a288efcfc078754947430b0ab026a009a54825bc4983b74",
+    "frontend/src/shared/api/trace.ts": "54b2e1fe74502ccc068e98591a3f726be6af22f709021afe14806c1724d0cd00"
+  },
+  "source_note": "После runtime/browser proof удалена только лишняя пустая строка EOF palette.ts; executable source не менялся."
+}

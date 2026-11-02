@@ -1,0 +1,54 @@
+{
+  "source": "65a83c9817e0c15853b9c2d81ee36f1907434664",
+  "scope": "read-only foundation/data review T248; parent worktree/DB not modified",
+  "findings": [
+    {
+      "id": "T248-R1",
+      "priority": "P2",
+      "file": "backend/app/analytics/branches.py",
+      "line": 57,
+      "trigger": "scoped network, 12 months, PG session Etc/UTC, as_of2026-11-09T09+03",
+      "actual": "month labels Dec1,Dec31,Jan31,Mar1,Mar29,...Oct29 and wrong month-end boundaries",
+      "expected": "local calendar first-of-month Dec1..Nov1, correct next-local-month bounds",
+      "evidence": "/tmp/t248-network-month-oracle.json",
+      "root_status": "accepted; root implements local timestamp series before AT TIME ZONE"
+    },
+    {
+      "id": "T248-R2",
+      "priority": "P2",
+      "file": "backend/app/analytics/branches.py",
+      "line": 60,
+      "trigger": "nullable legacy branch_status=NULL, opened_sim known in past, closed_sim=NULL",
+      "actual": {
+        "open_count": 1,
+        "closed_count": 0
+      },
+      "expected": "unknown lifecycle open/closed counts when status/closure is not known; explicit known closure dates remain usable",
+      "evidence": "/tmp/t248-network-unknown-oracle.json",
+      "root_status": "reported; interpretation consistent with existing pressure unknown-status behavior"
+    }
+  ],
+  "verified_readonly": {
+    "migration_chain": "actual0020 down_revision0019; new tables additive, no changes to0019 or legacy csi_visits_agg in0020",
+    "ownership": "member signal/run, CSI signal/branch, cohort/run/branch, visit/cohort bucket composite FKs cover same-run and branch/bucket ownership",
+    "integrity": "UPDATE immutable triggers on three snapshot tables; DELETE intentionally allowed and missing membership/visits detected by digest/count completeness; SQL UTC6us/C ordering matches Python codec structure",
+    "scope": "both observations and cohort probabilities filter explicit run,direction,branch,region; current pointer absent gives empty run_ids, not all; current excludes baseline explicitly",
+    "denominators": "only complete cohorts fully within observation window; legacy/partial/zero denominator not converted into probability0; source_date response_at distinct from native_received_sim",
+    "read_boundary": "GET uses shared read_db: REPEATABLE READ READ ONLY +3s statement timeout; fixed projections, no LLM/seed/normalizer call inGET",
+    "privacy": "employee FIO/contacts and raw CSI payload not selected; complaint/position text contact-masked, bounded; canonical CSI label orNULL",
+    "tenure": "current active branch roster once per employee; same known nonfuture age sample feeds min/max and R7; complete boxplot fields inAPI28",
+    "math_oracle": {
+      "literal_vectors": 5,
+      "R7_ties_missing_singleton_agree": true,
+      "tied_spearman_n": 6,
+      "evidence": "/tmp/t248-math-independent-oracle.json"
+    }
+  },
+  "limits": [
+    "No parent DB access or schema/data writes",
+    "No parent source edits",
+    "No fullroot suite/benchmark repeated; root coverage/performance artifacts are not generalized",
+    "Review is of65a only; root follow-up calendar/status fixes need separate validation",
+    "Untracked API review/coverage/performance files were not treated as approved source"
+  ]
+}

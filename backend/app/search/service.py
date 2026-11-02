@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import quote
 
 from app.api.common import fetch_all
-from app.search.grammar import PREFIXES, parse
+from app.search.grammar import PREFIXES, csi_storage_ref, parse
 from app.trace.privacy import mask
 from app.trace.relations import TYPES
 from app.trace.store import Conn, allowed_run, scope
@@ -70,6 +70,8 @@ async def search_objects(conn: Conn, q: str, run_id: str = "current", limit: int
                 if k != kind:
                     continue
                 predicate = f"t.{spec.public}=%s"
+                if k == "csi":
+                    values = [csi_storage_ref(q)]
                 if k == "branch":
                     predicate = "t.code=ANY(%s)"
                     values = [[normalized, normalized.removeprefix("VSP-")]]

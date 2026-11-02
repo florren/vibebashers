@@ -182,7 +182,8 @@
     "table": "Table",
     "board": "Board",
     "items": "{{n}} items",
-    "hide": "Hide"
+    "hide": "Hide",
+    "emptyRunScope": "An explicit run_id cannot be empty. Select a run."
   },
   "theme": {
     "appearance": "Appearance",
@@ -1582,7 +1583,9 @@
     "product": "Product",
     "unknownProduct": "Not identified",
     "team": "Responsible team",
-    "routingPending": "Determining route"
+    "routingPending": "Determining route",
+    "scopedReadOnly": "Selected run context: read only; no messages are created or economics recalculated.",
+    "savedContextOnly": "Economics is not recalculated in this context; unknown values remain unknown."
   },
   "journeyModes": {
     "modes": "Journey mode",
@@ -2554,5 +2557,86 @@
     "agentOutsideScope": "This agent run was not found in the selected scope",
     "invalidScope": "Choose current, all, or a positive run number.",
     "invalidScopeShort": "Invalid run"
+  },
+  "csi": {
+    "title": "CSI and branch network",
+    "description": "Descriptive complaint analytics; unknown values are not treated as zero.",
+    "unknown": "Unknown",
+    "run": "Run",
+    "current": "Current run",
+    "allRuns": "All history",
+    "period": "Period",
+    "direction": "Product line",
+    "region": "Region",
+    "branch": "Branch",
+    "all": "All",
+    "binding": "UI preset product line (code)",
+    "moreBranches": "More branches",
+    "table": "CSI complaints",
+    "ids": "Identifiers",
+    "position": "Position",
+    "wait": "Wait, min",
+    "service": "Service, min",
+    "summary": "Summary",
+    "path": "Show journey",
+    "previous": "Previous",
+    "next": "Next",
+    "scatter": "Waiting and service",
+    "positions": "Complaints by position",
+    "employees": "Employees",
+    "anonymous": "Unattributed",
+    "tenure": "Tenure in current position",
+    "tenureDays": "Tenure, days",
+    "groupLabel": "Group",
+    "heatmap": "Complaints by region",
+    "top": "Top 10 branches",
+    "complaints": "Complaints",
+    "criticality": "Criticality",
+    "chartData": "Chart data table",
+    "sample": "Probability sample",
+    "synthetic": "Synthetic demonstration sample",
+    "observed": "Registered sample",
+    "sourceUnknown": "Sample source: mixed / unknown",
+    "bucket": "Bucket",
+    "visits": "Visits",
+    "probabilityLabel": "Probability",
+    "empty": "No complaints in this scope yet",
+    "emptyHint": "Choose another period, run, region or branch. Opening this screen does not create data.",
+    "scopeTime": "From {{since}} to {{until}} (simulation time)",
+    "coverage": "Complaints: {{count}}; known employee: {{employee}}; outside cohorts: {{uncohorted}}",
+    "shown": "Showing {{shown}} of {{total}} eligible points",
+    "roster": "Current active roster at {{time}}; R7 quartiles, whiskers show observed min/max.",
+    "sampleSize": "Sample complaints: {{complaints}}, visits: {{visits}}, complete cohorts: {{cohorts}}",
+    "sampleNote": "Only complete registered cohorts and their observation windows. Spearman is calculated across buckets, not visitors; this is not causal evidence. Missing denominators remain unknown.",
+    "exclusions": "Incomplete cohorts: {{incomplete}}; partial period windows: {{partial}}",
+    "correlation": "Spearman ρ: {{rho}}; eligible buckets: {{count}}",
+    "regionCount": "{{name}}: {{count}} complaints",
+    "unplaced": "No matching map polygon: {{count}} complaints (see table).",
+    "periods": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "quarter": "Quarter"
+    },
+    "level": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "unknown": "Unknown"
+    },
+    "group": {
+      "with_complaints": "With complaints",
+      "without_complaints": "Without complaints"
+    },
+    "probability": {
+      "wait": "Complaint probability by wait",
+      "redirects": "Complaint probability by redirects"
+    },
+    "directionSource": {
+      "cohort_declared": "Cohort product line",
+      "classified": "Classification",
+      "unknown": "Unknown product line"
+    },
+    "selectedId": "Selected ID: {{id}}"
   }
 }

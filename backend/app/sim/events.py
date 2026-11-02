@@ -25,6 +25,7 @@ FAMILY_SCHEMA = {
     "abs": "sim/abs",
     "escalation": "sim/escalation",
     "zone": "sim/zone",
+    "scenario": "sim/scenario_proactive",
 }
 
 

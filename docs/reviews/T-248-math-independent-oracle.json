@@ -1,0 +1,93 @@
+{
+  "source": "65a83c9817e0c15853b9c2d81ee36f1907434664",
+  "quartiles": [
+    {
+      "values": [
+        10,
+        20
+      ],
+      "known_n": 2,
+      "quartiles": [
+        12.5,
+        15.0,
+        17.5
+      ],
+      "minimum": "10",
+      "maximum": "20",
+      "sql_oracle_agrees": true
+    },
+    {
+      "values": [
+        50,
+        10,
+        40,
+        20,
+        30
+      ],
+      "known_n": 5,
+      "quartiles": [
+        20.0,
+        30.0,
+        40.0
+      ],
+      "minimum": "10",
+      "maximum": "50",
+      "sql_oracle_agrees": true
+    },
+    {
+      "values": [
+        0,
+        0,
+        0,
+        1,
+        1
+      ],
+      "known_n": 5,
+      "quartiles": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "minimum": "0",
+      "maximum": "1",
+      "sql_oracle_agrees": true
+    },
+    {
+      "values": [
+        17
+      ],
+      "known_n": 1,
+      "quartiles": [
+        17.0,
+        17.0,
+        17.0
+      ],
+      "minimum": "17",
+      "maximum": "17",
+      "sql_oracle_agrees": true
+    },
+    {
+      "values": [
+        null,
+        2,
+        5,
+        9,
+        null
+      ],
+      "known_n": 3,
+      "quartiles": [
+        3.5,
+        5.0,
+        7.0
+      ],
+      "minimum": "2",
+      "maximum": "9",
+      "sql_oracle_agrees": true
+    }
+  ],
+  "spearman_ties": {
+    "rho": -0.8508410434878083,
+    "n": 6,
+    "sql_oracle_agrees": true
+  }
+}

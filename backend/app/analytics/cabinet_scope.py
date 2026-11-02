@@ -74,12 +74,10 @@ class CabinetScope:
         return " AND ".join(parts), args
 
 
-async def resolve_scope(
-    conn: Conn, request: Request, product_line: str | None, period: str, run_id: str
-) -> CabinetScope:
-    validate_run(run_id)
-    if period not in PERIODS:
-        raise HTTPException(422, "period: day | week | month | quarter")
+async def resolve_preset(
+    conn: Conn, request: Request, product_line: str | None = None
+) -> tuple[str, str, list[str] | None, list[dict[str, Any]]]:
+    """Общий presentation preset кабинета/CSI/справочника, без выдуманных часов."""
     role = actor_role(request)
     rows = await fetch_all(
         conn,
@@ -121,12 +119,22 @@ async def resolve_scope(
         catalog = [p for p in catalog if p["code"] in allowed]
     else:
         selected = None if product_line == "all" else [product_line] if product_line else allowed
+    return role, visibility, selected, catalog
+
+
+async def resolve_scope(
+    conn: Conn, request: Request, product_line: str | None, period: str, run_id: str, *, include_baseline: bool = True
+) -> CabinetScope:
+    validate_run(run_id)
+    if period not in PERIODS:
+        raise HTTPException(422, "period: day | week | month | quarter")
+    role, visibility, selected, catalog = await resolve_preset(conn, request, product_line)
     clock = await fetch_one(conn, "select sim_time,current_run_id from sim_state where id=1")
     if not clock:
         raise HTTPException(409, "Симуляционное время не инициализировано")
     run_ids = None
     if run_id != "all":
-        baseline = await fetch_all(conn, "select id from sim_runs where kind='baseline'")
+        baseline = await fetch_all(conn, "select id from sim_runs where kind='baseline'") if include_baseline else []
         current = clock["current_run_id"] if run_id == "current" else int(run_id)
         run_ids = sorted({int(r["id"]) for r in baseline} | ({int(current)} if current else set()))
     now = clock["sim_time"]

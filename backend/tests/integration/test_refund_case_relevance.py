@@ -9,7 +9,7 @@ from app.abs.service import ensure_operation_posted
 from app.agent.graph import process_signal
 from app.agent.tools.abs import find_affected_clients
 from app.agent.tools.base import ToolContext
-from app.ingest.normalizer import create_signal, from_api_signal
+from app.ingest.normalizer import IngestError, create_signal, from_api_signal
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
 
 pytestmark = pytest.mark.integration
@@ -157,22 +157,48 @@ async def test_ambiguous_fee_claim_does_not_choose_or_refund_all_operations(seed
         assert await count(conn, "select count(*) from ledger_entries where run_id=%s and kind='refund'", (rid,)) == 0
 
 
-async def test_explicit_proactive_fee_case_does_not_close_existing_deposit_claim(seeded):
+@pytest.mark.parametrize("source_mode", ["pre_api25_legacy", "external_migrated"])
+async def test_explicit_proactive_fee_case_does_not_close_existing_deposit_claim(seeded, source_mode):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         rid, cid, now = await setup(conn)
         op = await qr(conn, rid, cid, now)
         sid, _deposit = await run(conn, rid, cid, now, "Не открывается вклад в мобильном приложении, ошибка503")
         iid = await count(conn, "select incident_id from incident_signals where signal_id=%s", (sid,))
         before = await count(conn, "select status from incidents where id=%s", (iid,))
-        _fee_sid, state = await run(
-            conn,
-            rid,
-            cid,
-            now,
-            "Обнаружена ошибочно списанная комиссия54.72руб за QR оплату3200руб.",
-            channel="proactive",
-            origin="proactive",
-        )
+        text = "Обнаружена ошибочно списанная комиссия54.72руб за QR оплату3200руб."
+        if source_mode == "pre_api25_legacy":
+            # Только controlled persisted pre-API25 state. Новый runtime вход
+            # проходит normalizer как api; UPDATE восстанавливает исторические
+            # origin/payload, не выдаёт несуществующему fee producer authority.
+            accepted = await create_signal(
+                conn,
+                from_api_signal({"channel_code": "proactive", "client_id": cid, "text": text}, origin="api"),
+                source_code="api",
+                run_id=rid,
+                sim_time=now,
+                emit_event=False,
+            )
+            assert accepted["status"] == "accepted"
+            _fee_sid = accepted["signal_id"]
+            await conn.execute("update signals set origin='proactive' where id=%s and run_id=%s", (_fee_sid, rid))
+            legacy = await (
+                await conn.execute(
+                    "update ingest_messages set payload=jsonb_set(payload,'{origin}','\"proactive\"'::jsonb) "
+                    "where signal_id=%s and run_id=%s and source_code='api' and status='accepted' returning id",
+                    (_fee_sid, rid),
+                )
+            ).fetchall()
+            assert len(legacy) == 1
+            await conn.commit()
+            state = await process_signal(
+                conn, signal_id=int(_fee_sid), chain=mock_chain(), profile=MOCK_PROFILE, sim_time=now
+            )
+            assert state is not None and not state["errors"]
+            assert state["signal"]["origin"] == "proactive"
+        else:
+            # Разрешённая API25 migration для внешнего caller, channel сохранён.
+            _fee_sid, state = await run(conn, rid, cid, now, text, channel="proactive", origin="api")
+            assert state["signal"]["origin"] == "api"
         assert state["context"]["fast_path"]["allowed"] and state["outcome"] == "completed"
         assert await count(
             conn, "select sum(amount) from ledger_entries where operation_id=%s and kind='refund'", (op,)
@@ -383,3 +409,28 @@ async def test_explicit_nonfinancial_hint_routes_diagnostic_operation_without_re
             )
             == 0
         )
+
+
+async def test_external_reserved_proactive_fee_origin_is_rejected_before_ingest_or_financial_writes(seeded):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid, cid, now = await setup(conn)
+        await qr(conn, rid, cid, now)
+        await conn.commit()
+        query = "select (select count(*) from signals where run_id=%s),(select count(*) from ingest_messages where run_id=%s),(select count(*) from agent_runs where sim_run_id=%s),(select count(*) from ledger_entries where run_id=%s)"
+        before = await (await conn.execute(query, (rid, rid, rid, rid))).fetchone()
+        with pytest.raises(IngestError, match="зарезервированы для native producer"):
+            await create_signal(
+                conn,
+                from_api_signal(
+                    {
+                        "channel_code": "proactive",
+                        "client_id": cid,
+                        "text": "Обнаружена ошибочная QR комиссия54.72руб за оплату3200руб",
+                    },
+                    origin="proactive",
+                ),
+                source_code="api",
+                run_id=rid,
+                sim_time=now,
+            )
+        assert await (await conn.execute(query, (rid, rid, rid, rid))).fetchone() == before
