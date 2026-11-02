@@ -7,12 +7,12 @@
 - Типизированные `CabinetOverview`, `CabinetSignals`, `CabinetRoles`; новый read-only `GET /api/cabinet/signals` (sort/date/region, filters, limit≤200, bounded offset). `run_id=current` включает baseline + current; отсутствие current не снимает scope. `all` — явное действие. Период от sim_time, группировка Europe/Moscow.
 - Preset headers — фильтр, не RBAC: cx_lead по умолчанию; product_manager с обязательным направлением, product_head с настроенным набором. Soft можно снять явным `product_line=all`; strict возвращает 403 при попытке выйти из набора, включая report T244. Unknown role/run/filter syntax — 422 до запросов данных.
 - Nullable деньги и доли при неизвестном покрытии, рядом числитель/знаменатель; никакого вызова compute_incident. Источники — только catalog projection T240; текст маскируется shared privacy helper. Неопределённое направление не выводится из текста/gold.
-- SQL proposal: `T-241-ddl-proposal.sql`, пока НЕ migration. Два fact views без размножения; два индекса; nullable actor_role с CHECK семи presets, legacy NULL без backfill. Старый v_cabinet_kpi неизменен (runtime consumers не найдены).
+- SQL review copy: `T-241-ddl-proposal.sql`; canonical migration — actual0018 после0017. Два fact views без размножения; два индекса; nullable actor_role с CHECK семи presets, legacy NULL без backfill. Старый v_cabinet_kpi неизменен (runtime consumers не найдены).
 - `actor_role` для новых human_decisions/incident_status_history: header preset при решении/ручном переходе; actor_ref/decided_by остаются исходной меткой сотрудника. Ошибочная роль не приводит к записи. GET отдаёт nullable поле. Это происхождение ручного действия, не утверждение личности. Автоматические действия не получают человеческий preset задним числом.
 
 ## Зависимости и временная схема
 
-Normal merge T240 5d128ac, P1 98f57eb и T254 39d21074. API22 зарезервирован root. Фактическая DDL17 ещё не получена: Alembic chain остаётся0014, DDL18 будет только после normal merge реального0017. По отдельному разрешению root targeted PG выполняется на собственной cx_cabinet_revision: upgrade0014 + предложение SQL, без фиктивной Alembic revision. Финальная проверка обязательна повторно на настоящем0018.
+Normal merge T240 5d128ac, P1 98f57eb и T254 39d21074. API22 зарезервирован root. На раннем checkpoint фактическая DDL17 ещё не была получена: Alembic chain остаётся0014, DDL18 будет только после normal merge реального0017. По отдельному разрешению root targeted PG выполняется на собственной cx_cabinet_revision: upgrade0014 + предложение SQL, без фиктивной Alembic revision. Финальная проверка обязательна повторно на настоящем0018.
 
 ## Проверки
 
@@ -75,4 +75,21 @@ actor_role. Coverage actual18:200/207 executable lines (97%),53tests55.92s.
 Откат release: сначала откатить/выключить cabinet code, затем downgrade18 убирает
 только views/indexes. Auditcolumns и их значения остаются; upgrade возвращает views.
 Физический drop audit данных не входит в rollback и требует отдельного решения.
-Полные оставшиеся scenarios/compliance/bot phases, composed lint и CI ещё ожидаются.
+Оставшиеся локальные phases и composed проверки завершены ниже; полный CI и human review ещё ожидаются.
+
+## Финальный локальный checkpoint после main 73425c9
+
+Source `42f2488` (обычный merge main, без изменения кабинетного backend):
+- оставшиеся фазы на предшествующем byte-identical cabinet source `e4ac976`: unit **1747 passed / 18 skipped** (51.15 s), scenarios **43 / 2 skipped** (255.03 s), compliance **31** (122.36 s), tgbot **33** (6.17 s);
+- composed `make lint` green: frontend **354**, Ruff **444** formatted, mypy **292** source files, bot **11** formatted / **5** mypy, OpenAPI drift **193 / 193**, missing/extra 0;
+- actual0018 cabinet API/PG + scope target **65 passed** (139.35 s с coverage): **213 / 217 lines, 98%** пяти новых модулей, manual/automatic audit и anonymous/CSI coverage проверены;
+- `make sync-contracts contracts-check`: ORM110, **45 схем / 163 paths**, source generation без diff; `gen_tasks.py` дважды — **205** cards, второй запуск без нового diff (нормализована одна пустая строка отчёта T240);
+- повторный final backend benchmark на собственной demo5000/2813signals DB: 25 actual GET каждого scope с первым GET; bank p95 **40.49 ms**, direction **24.15 ms**, payload max **45 291 B**; **107** public/private fingerprints unchanged, BombLLM **0**, внешних попыток **0**. `T-241-demo-performance.json` содержит безопасный EXPLAIN ANALYZE/BUFFERS read-only proof.
+
+Это составное локальное доказательство, а не утверждение, что весь `make test`
+одним финальным запуском зелёный: исходные 11 failures и их адресные corrections
+сохранены выше. CI exact head остаётся gate. Реальный GigaChat не вызывался по
+заданию родителя; его сценарная проверка DoD здесь не заявляется.
+
+Перед merge требуется human approval API1.5.22 / DDL0018 / actor_role semantics.
+T244 report остаётся 501 по своей карточке; guarded report scope проверен (403/422).
