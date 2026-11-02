@@ -264,3 +264,5 @@ html[data-attention='calm'] .app-content :where(p, blockquote, .signal-row .line
 @media (min-width: 1024px) and (max-width: 1699px) {
   html[data-attention='calm'][data-device='desktop'] .shell-v2 .kpi-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+.shell-v2 summary:focus-visible { outline: 2px solid rgb(var(--focus-ring)); outline-offset: 2px; }

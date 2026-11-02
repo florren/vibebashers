@@ -53,6 +53,8 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await role.selectOption('cx_lead')
       await page.goto('/engine')
       await expect(page.getByRole('tab', { name: lang === 'ru' ? 'Шаги' : 'Steps', exact: true })).toBeVisible()
+      await page.getByRole('navigation', { name: navName }).getByRole('link', { name: lang === 'ru' ? 'Финансовый эффект' : 'Financial impact', exact: true }).click()
+      await expect(page).toHaveURL(/\/finance$/)
       for (const width of [1920, 1440, 1024, 768, 360]) {
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/workspace?tab=signals')

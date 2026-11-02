@@ -47,6 +47,7 @@ it('v2 redirects only the index, preserving all legacy tab query arguments', asy
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/workspace?tab=hitl&q=SIG-000001&scope=all'))
   expect(screen.getByRole('navigation', { name: 'Навигация' })).toBeVisible()
   expect(screen.getByRole('region', { name: 'Состояние системы' })).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Финансовый эффект' })).toHaveAttribute('href', '/finance')
   fireEvent.click(screen.getByText('Состояние системы', { selector: 'summary span' }))
   expect(await screen.findByText('Агент · режим LLM:')).toBeVisible()
   expect(screen.getByText('#7 · Mock local run')).toBeVisible()

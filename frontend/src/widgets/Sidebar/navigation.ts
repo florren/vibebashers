@@ -25,6 +25,7 @@ const GROUPS: NavGroup[] = [
     { id: 'cabinet', label: 'shell.cabinet', href: '/cabinet' },
     { id: 'csi', label: 'shell.csi', href: '/csi' },
     { id: 'economics', label: 'shell.economics', href: '/economics' },
+    { id: 'finance', label: 'finance.title', href: '/finance' },
   ] },
 ]
 /** Скрываем нерелевантные пункты пресета; прямые адреса доступны, это не RBAC. */
