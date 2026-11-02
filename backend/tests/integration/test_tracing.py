@@ -92,8 +92,9 @@ def test_cost_estimate_and_llm_profile_id(seeded: str, conn: psycopg.Connection)
 def _client_with_qr_fee(conn: psycopg.Connection) -> int:
     row = conn.execute(
         "select o.client_id from operations o join clients c on c.id = o.client_id "
-        "where o.error_code = 'PROC-QR-FEE-CHARGED' and c.segment_code <> 'ultra_vip' "
-        "order by o.started_sim desc limit 1"
+        "where o.error_code = 'PROC-QR-FEE-CHARGED' and c.segment_code = 'mass' "
+        "and o.started_sim between (select sim_time-interval '72 hours' from sim_state where id=1) and (select sim_time from sim_state where id=1) "
+        "order by (select count(*) from signals s where s.client_id=c.id),o.started_sim desc limit 1"
     ).fetchone()
     if row:
         return int(row[0])
@@ -102,7 +103,12 @@ def _client_with_qr_fee(conn: psycopg.Connection) -> int:
 
 def test_api_agent_runs_list_and_detail(seeded: str, conn: psycopg.Connection) -> None:
     cid = _client_with_qr_fee(conn)
-    signal_text = "Оплатил по QR 3 200 рублей, а с карты списали комиссию 138 руб. СБП же бесплатно! Верните комиссию."
+    operation = conn.execute(
+        "select amount_rub,fee_amount from operations where client_id=%s and error_code='PROC-QR-FEE-CHARGED' order by started_sim desc limit 1",
+        (cid,),
+    ).fetchone()
+    assert operation is not None and 0 < operation[1] <= 5000
+    signal_text = f"Оплатил по QR {operation[0]} рублей, а с карты списали комиссию {operation[1]} руб. СБП же бесплатно! Верните комиссию."
 
     async def run() -> tuple[int, int]:
         async with await psycopg.AsyncConnection.connect(_dsn(seeded)) as db:
