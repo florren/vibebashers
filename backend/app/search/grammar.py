@@ -76,3 +76,17 @@ def parse(query: str) -> dict[str, str | None]:
                 kind = "tracking"
     mode = "id" if kind else "hints" if q.startswith(("@", "+", "*")) else "text"
     return {"mode": mode, "kind": kind, "ref": ref if kind else None, "normalized": ref}
+
+
+def csi_storage_ref(query: str) -> str:
+    """Публичный CSI номер хранится со своей шириной; accepted IDs не rekey.
+
+    parse() сохраняет прежнюю canonical grammar, но точный lookup значения
+    из DTO не должен терять ведущие нули реального external_id.
+    """
+    normalized = re.sub(r"[‐‑‒–—−]", "-", query.strip())
+    match = re.fullmatch(r"CSI[\s-]*(\d+)", normalized, re.I)
+    if match is None:
+        return normalized
+    number = match.group(1)
+    return f"CSI-{int(number):0{len(number)}d}"

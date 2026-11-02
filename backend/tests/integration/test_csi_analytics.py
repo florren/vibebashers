@@ -47,6 +47,13 @@ def test_complete_native_sample_schema_bounds_and_read_only(seeded):
     with psycopg.connect(dsn(seeded), autocommit=True) as sql, TestClient(create_app()) as client:
         before = fingerprint(sql)
         result = get(client, limit=17, scatter_limit=19)
+        csi_no = result["complaints"]["items"][0]["csi_no"]
+        traced = client.get("/api/trace/csi/" + csi_no, params={"run_id": "current"})
+        assert traced.status_code == 200, traced.text
+        assert traced.json()["subject"]["ref"] == csi_no
+        found = client.get("/api/search", params={"q": csi_no, "run_id": run_id})
+        assert found.status_code == 200, found.text
+        assert any(hit["kind"] == "csi" and hit["ref"] == csi_no for hit in found.json()["hits"])
         assert result["scope"]["run_ids"][-1] == run_id
         assert result["coverage"]["complaints"] == result["coverage"]["cohort_bound"] == 300
         assert result["coverage"]["uncohorted"] == 0

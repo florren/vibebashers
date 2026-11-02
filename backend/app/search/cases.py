@@ -18,7 +18,7 @@ async def case_search(conn: Conn, query: str) -> tuple[str, list[Any], str]:
     if kind in (None, "number"):
         return "", [], pattern
     try:
-        root = await resolve(conn, str(kind), str(parsed["ref"]), "all")
+        root = await resolve(conn, str(kind), query if kind == "csi" else str(parsed["ref"]), "all")
     except HTTPException as exc:
         if exc.status_code == 404:
             return "", [], pattern
