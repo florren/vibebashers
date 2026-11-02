@@ -2312,6 +2312,8 @@ paths:
         - { $ref: "#/components/parameters/RunId" }
       responses:
         "200": { description: OK }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
         "501": { $ref: "#/components/responses/Problem" }
   /api/roles:
     get:
