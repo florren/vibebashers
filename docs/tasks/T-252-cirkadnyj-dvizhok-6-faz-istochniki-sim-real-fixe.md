@@ -39,17 +39,19 @@
 
 ## Как проверить
 ```bash
-cd frontend && npx vitest run src/shared/theming
+cd frontend && npx vitest run src/shared/theming/circadian
 cd frontend && npx playwright test e2e/circadian.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-252-circadian`; implementation `af8f063`, ordinary merge main `d2a4026`. PR/merge выполняет родительский агент после gates.
+Ветка `codex/T-252-circadian`; runtime/source 8747523, окончательная tested composition 18ad9fd (ordinary merge main dfbf47a и user-approved PR167 dependency42b6d3e). Push/PR/merge выполняет родитель после gates.
 
-Реализованы sim/real/fixed, сезонный offline NOAA расчёт для даты источника, Москва/polar cases, explicit local-only geolocation, общий inline/runtime bootstrap, 8s contrast-guarded interpolation/reduced motion/manual override, ночной декоративный слой и read-only current-run digest с исключениями manager/compliance. Header отдельно исправлен на Europe/Moscow без изменения общего UTC fmtSim.
+Реализованы все 5 пунктов: sim/real/fixed, сезонный offline NOAA расчёт даты источника, Москва/polar/midnight cases, explicit local-only geolocation, единый inline/runtime bootstrap, 8s WCAG-guarded interpolation, reduced motion/manualinstant/persistence, ночной слой и current-run digest с manager/compliance exceptions. Header отдельно показывает Europe/Moscow без изменения общего UTC fmtSim. Late settings GET не обрывает WS-переход; cache digest не показывает прежний run и хранит только public IDs.
 
-Контракты/БД/зависимости не меняются; generic settings поддерживает ui.circadian. T-253/T-254 отдельно. Необходимая дискретная смена полярности текста согласована; поверхности переходят непрерывно, foreground guard сохраняет WCAG.
+Собственных backend/DDL/contract изменений и новых npm-зависимостей нет; существующий generic settings поддерживает ui.circadian. PR167 prefix 9 — отдельная одобренная dependency; обходов валидации нет. T253/T254 отдельно. Необходимая дискретная смена полярности foreground согласована; поверхности переходят непрерывно.
 
-Production synthetic Playwright5/5, actual API/WS Mock-only9 естественных sim.tick ×60; ночь проверена отдельным явным API jump_to, не выдана за естественный переход. Фазовый WCAG36cases +72 directed transitions×101 samples; actual475frames за7924ms, mintext4.500018/control3.0000002. Четыре actual API ru/en light/dark PNG просмотрены и tracked в docs/screenshots/T-252/.
+Проверки versioned: полный c71make test backend 1486/22 skipped + frontend 286; после bounded fixes/source 18 make lint frontend: 292/292+Ruff 365+mypy 257+drift 192, обе production сборки; contracts: 45/162, i18n: 1750, TS/tasks: 205 idempotent. Production synthetic5/5(14.8s), реальный Mock-only API/WS complete:9 natural×60ticks morning→noon, затем отдельно pause+jump_to→night,0errors/external/geo. 473 frames / 7906 ms min text 4.5000129 / control 3.0000002. Все 36staticcases/72directedtransitions×101samples и более200000solarboundaries проходят.
 
-Подробности, границы доказательств, команды и итог полного прогона: [T-252-circadian-verification](../reviews/T-252-circadian-verification.md). Статус остаётся in_progress до полного make test, CI/review/merge; незавершённая приёмка не объявляется готовой.
+4 новых actual API ru/en light/dark PNG source 18 просмотрены и tracked в docs/screenshots/T-252/. Исторические c71/874 не подменяют новые доказательства. Отдельный общий rollback/cache defect передан родителю/P1 и не включён в T252.
+
+Подробности, точные границы доказательств и воспроизведение: [T-252-circadian-verification](../reviews/T-252-circadian-verification.md). Статус in_progress до dependency merge, exact-head CI/review/merge; общий liveGiga DoD — родительский gate.

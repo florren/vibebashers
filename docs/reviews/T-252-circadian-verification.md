@@ -2,7 +2,7 @@
 
 ## Реализация
 
-Ветка `codex/T-252-circadian`, база `1df0024`, ordinary merge main `d2a4026` (T-234). Backend, SQL, миграции, OpenAPI и зависимости не изменяются. T-253/T-254 не включены.
+Ветка `codex/T-252-circadian`, база `1df0024`, ordinary merge main `d2a4026`/`dfbf47a` и одобренной dependency PR167 `42b6d3e`. В собственном diff T-252 относительно одобренной dependency не меняются backend, SQL, миграции, OpenAPI или npm-зависимости. T-253/T-254 не включены.
 
 `frontend/src/shared/theming/circadian.ts` — один исходник для runtime и inline bootstrap. Vite использует свой публичный `transformWithEsbuild` для встраивания classic IIFE до первого paint в `index.html` и `personal.html`; формулы не копируются и generated JS вручную не редактируется. Ручные light/dark, auto и плотность сохраняют прежние интерфейсы.
 
@@ -28,41 +28,53 @@ Geolocation вызывается в единственной точке посл
 
 В `night` отображаются неподвижные звёзды/луна opacity 0.06 с `aria-hidden` и pointer-events:none, а также inline «Ночной дайджест». Он читает существующий GET signals `criticality=high, run_id=current, limit=10`, обновляется существующими WS invalidations и polling. Показываются только public_id-ссылки, без raw text/контактов; наличие следующей страницы явно сообщается. Панель не является popup. Глобального toast-сервиса в исходной реализации нет; существующие живые алерты `/manager` и `/compliance` не изменяются, слой/digest там не включаются.
 
-## Проверено: источники доказательств разделены
+## Проверено: версии и источники разделены
 
-### Unit и статические проверки
+### Полный замороженный checkpoint c71a918
 
-- 36 существующих pack × mode × phase contrast cases теперь читают также настоящие фазовые CSS-токены.
-- 72 направленных перехода (оба пакета, все пары 6 фаз) × 101 samples: text/status ≥4.5, focus/control ≥3, button text ≥4.5. Дополнительно проверяется ровно 8000 ms.
-- Seasonal/leap/polar/UTC/date-boundaries, sim/real/fixed, координаты и bootstrap, ручной приоритет, settings race/offline и отсутствие координат в PATCH; explicit consent/denial/forget, digest/PII/run isolation/exceptions.
-- Header: `06:00Z→09:00` Москвы, ru/en, invalid/null; общий UTC fmtSim test сохранён.
-- `make lint` после ordinary merge: frontend ESLint/typecheck/full Vitest 286/286, Ruff 357 files, mypy 255 modules, OpenAPI drift 192/192 — зелёные. Прежнее предупреждение react-refresh в DemoMenu не добавлено этой задачей.
+`make lint && make test` на собственной scratch-БД: backend: 1486 passed / 22 skipped (unit: 1168 / 18 skipped, integration: 245 / 2 skipped, scenarios: 42 / 2 skipped, compliance: 31), frontend: 286 passed. Source/tests во время полного прогона не менялись. Это исторический full-result c71, а не подмена проверки последующих frontend изменений.
+
+### Окончательный source 18ad9fd
+
+После bounded frontend fixes выполнены обычные merge main dfbf47a и user-approved PR167 dependency42b6d3e. Собственных backend/DDL/contract изменений в T252 нет; prefix 9 взят из отдельного одобренного PR.
+
+- `make lint`: весь frontend: 292/292, ESLint/typecheck; Ruff: 365 files, mypy: 257 modules, OpenAPI drift: 192/192 — зелёные. Прежнее предупреждение react-refresh DemoMenu этой задачей не добавлено.
 - Обе production сборки operator/personal проходят.
+- Contracts45schemas/162paths, i18n: 1750keys, TS generation и205 task headers — идемпотентны.
+- 36 pack×mode×phase cases читают реальные CSS токены; circadian faint также проверяется. Все 72 направленных перехода обоих пакетов×101 samples проверяют text/status≥4.5, control/focus≥3, button text≥4.5; decorative line/brand интерполируются.
+- Seasonal/leap/polar, sim/real/fixed, ручной приоритет, consent/denial/forget, settings race/offline, digest PII/run-cache/exceptions. Годовой sweep lat±60..89, lon−179/0/179 проверяет более200000 границ; четыре midnight edge cases закреплены отдельной регрессией.
+- Bootstrap и runtime одинаково обрабатывают повреждённый mode и валидный legacy fallback. Late GET settings с идентичными prefs сохраняет текущий WS-переход; контролы при manual/reduced motion применяют цвета сразу, без запаздывающих CSS transitions.
+- NightDigest scope key учитывает real runs events и live current_run_id; запоздалый ответ предыдущего scope не показывается. В кеше только id/public_id, без полного Signal DTO. Ссылка ведёт в существующее рабочее место `/`.
 
-### Production Playwright с синтетическим локальным transport
+### Production browser: synthetic transport
 
-`frontend/e2e/circadian.spec.ts`: 5/5 passed, 15.7s. HTTP/WS fixtures отмечены как synthetic и не подменяют actual API proof ниже. Покрытие: оба пакета × все 6 фаз × ru/en; ручной выбор/reload; bootstrap без смены mode после гидратации; реальный 8s requestAnimationFrame; reduced motion; real clock; explicit consent; exceptions; 390×844; три browser timezones (UTC/New_York/Auckland), ru/en, ноябрь и US DST boundary 8 марта.
+`frontend/e2e/circadian.spec.ts`:5/5 passed, 14.8 s на final source 18. Покрытие:2packs×6phases×ru/en; manualinstant/reload/no-flash; controlled late-settings GET во время8s; reduced motion; realclock/explicit geo; manager/compliance exceptions;390×844;3 browser timezones UTC/New_York/Auckland×ru/en×ноябрь/US DST boundary8марта. Общий UTC fmtSim test сохранён, Header06Z→09MSK проверен отдельно.
 
-475 samples реально отрисованных кадров за 7924 ms: минимальный текстовый контраст 4.5000182677, control/focus 3.0000002153. Тест сохраняет frame JSON; 0 page errors/внешних запросов, геолокация только после тестового явного клика.
+473 samples реально отрисованных кадров за 7906 ms: min text 4.5000129458, min control 3.0000002153. Source интерполяции использует 8000 ms; sampled window начинается после первого наблюдаемого кадра. Ошибок/внешних запросов: 0, geo только по явному тестовому клику.
 
-### Production браузер с настоящим backend API/WS
+### Production browser: настоящий API/WS
 
-`frontend/e2e/circadian-actual-proof.mjs`, localhost:18153, отдельная `cx_circadian_revision`, PostgreSQL 16, штатный lite seed 200 синтетических клиентов. Все API и WebSocket настоящие; route mocks отсутствуют. Runtime chain и все три роли проверены как Mock, внешний socket/DNS запрещён тестовым wrapper. Browser timezone America/New_York.
+`frontend/e2e/circadian-actual-proof.mjs`, localhost18153, source 18ad9fd, отдельная cx_circadian_revision, fresh seed200/schema 0010/baseline1/completed/06Z. Actors до seed 0; новый process строго после seed. API/WS настоящие, route mocks нет; runtime chain/roles толькоMock, внешний socket/DNS запрещён wrapper. Browser timezone America/New_York.
 
-1. До автоматического запуска API `set_speed=60` и явный `jump_to` ставят сим-часы перед seasonal границей `morning/noon`.
-2. Настоящий API `start`: состояние `08:29:36.337Z→08:38:06.337Z`, 9 естественных `sim.tick` с `running=true`, `speed=60`, UI `morning→noon`. До отдельного ночного jump_to наблюдались 11 sim.tick: 9 естественных и 2 предварительных command-driven. В полном WS proof записано 20 sim.tick, включая 9 chunk-ticks отдельного ночного jump_to. Новая фаза наблюдалась через 118.4 ms после start; переход палитры затем завершился отдельно за штатные 8s.
-3. Настоящие API `pause` и **явный `jump_to=17:30Z`** дают night и Header20:30 Москвы. Это отдельное управление сим-часами, не естественное наступление ночи за 11 тиков и не fixed-источник.
-4. Header сопоставлен реальному UTC-часу через независимый Intl Europe/Moscow; после паузы показывает11:38 Москвы. 0 browser errors, внешних запросов, запросов геолокации по умолчанию. Ночная панель показывает public_id настоящих сигналов scratch-прогона.
+1. APIset_speed 60 и явный preparation jump_to ставят часы перед seasonal morning/noon.
+2. Настоящий APIstart:08:29:36.337Z→08:38:06.337Z;9 естественных running sim.tick, speed 60. UI morning→noon наблюдался через 108.7 ms после start, затем завершился штатный 8 s переход.
+3. Отдельные APIpause и **явный jump_to17:30Z** дают night и Header20:30. Это не естественная ночь за9тиков и не fixed-источник. В полном сценарии21 sim.tick: 3 prepare + 9 natural + 9 night chunks.
+4. Header сопоставлен независимому Intl Europe/Moscow: initial06Z→09:00, после pause08:38Z→11:38, night17:30Z→20:30. Errors/external/geo по умолчанию0. Ночная панель показывает настоящие public_id текущего scratch-прогона.
 
-Четыре actual API PNG в `docs/screenshots/T-252/`, light/dark ru/en, просмотрены. Сырой proof JSON, providers assertion и frame JSON сохранены в `/tmp/vibebashers-t252-*`; полный backend test затем использует только эту же scratch-БД, после остановки сервера.
+4 actual API PNG просмотрены и tracked в `docs/screenshots/T-252/`; там же `proof-summary.json`. Полные JSON и логи final source — `/tmp/vibebashers-t252-actual-prefix9/`, `prefix9-browser.log`, `prefix9-lint.log`, `prefix9-meta.log`, `prefix9-browser-regression.log`.
 
-## Оставшиеся gates
+## Зависимость и выявленная отдельная неисправность
 
-Полный `make test` на собственной scratch-БД завершился exit0 на замороженном `c71a918`: unit1168 passed/18skip, integration245 passed/2skip, scenarios42 passed/2skip, compliance31 passed; суммарно backend1486 passed/22skip и frontend286 passed. После этого bounded frontend-only исправления проходят отдельные полные frontend/production проверки; backend на этих последующих шагах не меняется. Реальный GigaChat в этом пакете не вызывается по явному ограничению родительского задания; общий live DoD составного стенда остаётся у родительского агента. До полного результата, CI, PR/review и merge карточка остаётся `in_progress`; полная приёмка не заявляется.
+На историческом874, где error-code prefix ещё ограничен6, тот же night jump дал 409: ANTIFRAUD-FALSE-BLOCK не соответствовал regex. Это уже одобренная правка PR167 prefix 9; она обычным merge добавлена как dependency, после чего полный actual сценарий проходит. T252 не обходил валидацию и не менял backend. Исторический automatic9tick proof874 и safe409 metadata сохранены отдельно, c71 также не выдаётся за новый source.
 
+Повтор после обычного backend exception выявлял повреждённый World/RNG cache и operations_fault_fk500. Родитель подтвердил общий rollback gap и передал отдельному P1 producer; T252 его не исправляет. В final prefix 9 actual сценарии exception не возникает и обходов/внутренних monkeypatch World нет.
 
-## Проверка краевых случаев после полного checkpoint
+## Воспроизведение и оставшиеся gates
 
-При read-only self-review найдены и исправлены: совпадение bootstrap/runtime fallback при повреждённом новом mode и валидном legacy mode; near-polar dawn/twilight через солнечную полночь (проверяются соседние солнечные даты, explicit polar day/night сохранены); cache scope NightDigest по реальным runs-событиям и live current_run_id, включая запоздалый ответ предыдущего scope. В кеше digest теперь только id/public_id, без полного Signal DTO. NightDigest ссылается на существующее рабочее место `/`, а не на несуществующую отдельную страницу сигналов.
+Стандартные команды: `cd frontend && npm test -- --run`, `npm run build`; production preview localhost18152; `E2E_BASE_URL=http://127.0.0.1:18152 npx playwright test e2e/circadian.spec.ts --project=settings --no-deps`.
 
-Также интерполируются декоративные border/brand tokens; faint/placeholder в circadian использует читаемый muted, ручные legacy палитры не изменены. Sweep всех дней2026 у обеих полярных областей (lat±60..89, lon−179/0/179) проверяет более200000 границ. Четыре ранее ошибочных midnight boundary зафиксированы отдельной регрессией. Узкий набор после исправлений:147passed; окончательные composed/frontend/browser результаты будут добавлены после ordinary merge main dfbf47a.
+Для actual proof сначала остановить акторов **только выделенной scratch-БД**; существующий `test_coverage.py::test_seed_is_idempotent` пересоздаёт её public и готовит200syntheticclients. Затем новый backend с APP_ENVdev, LLM_PROVIDERmock, LLM_CHAINmock, FRONTEND_DIST из своей сборки, host127.0.0.1/port18153; `cd frontend && node e2e/circadian-actual-proof.mjs`. Локально использовался Node26 и PLAYWRIGHT_BROWSERS_PATH=/tmp/cx-playwright-142-node22; NODE_OPTIONS=--no-experimental-webstorage. Никакие production БД не используются.
+
+Реальный GigaChat в этом UI-пакете не вызывается по явному ограничению родительского задания; общий live DoD составного стенда остаётся у родителя. Dependency PR167 учтена; до exact-head CI/review и merge T252 карточка остаётся in_progress. Push/PR выполняет родительский агент.
+
+Ownership check относительно dependency42b6d3e проходит с user-authorized `--allow-cross`: L1 review/screenshots и L5 browser proofs перечисляются в PR, нужен cross-layer label. Собственный diff относительно dependency не содержит backend/contract файлов.
