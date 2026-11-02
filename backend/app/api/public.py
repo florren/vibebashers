@@ -106,7 +106,6 @@ _ROLE_BUTTONS = [
 
 _captchas: dict[str, int] = {}
 _claim_hits: dict[str, list[float]] = {}
-_bot_drafts: dict[int, dict[str, str]] = {}
 
 
 class ClaimContact(BaseModel):
@@ -138,10 +137,12 @@ class TrackAppendBody(BaseModel):
 
 
 class InboundBody(BaseModel):
-    chat_id: int
+    chat_id: int = Field(gt=0, le=2**63 - 1, strict=True)
+    bot_id: int = Field(gt=0, le=2**63 - 1, strict=True)
+    update_id: int = Field(ge=0, le=2**63 - 1, strict=True)
     username: str | None = None
-    kind: Literal["start", "is_client", "not_client", "free_text", "contact", "region", "append"]
-    text: str
+    kind: Literal["start", "is_client", "not_client", "free_text", "contact", "region", "append", "message", "callback"]
+    text: str = Field(max_length=4000)
     payload: dict[str, Any] | None = None
 
 
@@ -632,34 +633,204 @@ async def get_public_bot_qr() -> Response:
     "/api/internal/tgbot/inbound", summary="Внутренний приём сообщений от сервиса tgbot (только из docker-сети)"
 )
 async def post_internal_tgbot_inbound(request: Request, body: InboundBody) -> dict[str, Any]:
-    async with db() as conn:
-        return await _bot_turn(request, conn, body)
+    from app.sim.runs import ensure_live_run
+    from app.tgbot.configuration import configured
+    from app.tgbot.outbox import enqueue_reply
+    from app.tgbot.storage import InboundStore, ReceiptConflict
+
+    config = configured(get_settings())
+    if config is None:
+        raise Problem(503, "Бот выключен", "Telegram transport не настроен")
+    if body.bot_id != config.bot_id:
+        raise Problem(409, "Другой бот", "telegram_bot_namespace_mismatch")
+    try:
+        async with db() as conn:
+            async with InboundStore(config.app_secret).turn(
+                conn, bot_id=body.bot_id, update_id=body.update_id, chat_id=body.chat_id, body=await request.body()
+            ) as turn:
+                if not turn.duplicate:
+                    # Создание live run и все последующие side effects — в той же TX.
+                    current = await fetch_one(conn, "select current_run_id from sim_state where id=1")
+                    run_id = (
+                        int(current["current_run_id"])
+                        if current and current["current_run_id"]
+                        else await ensure_live_run(conn)
+                    )
+                    reply = await _bot_dispatch(request, conn, body, turn.state)
+                    token = reply.get("tracking_token")
+                    if token:
+                        reply["reply_text"] = reply["reply_text"].replace(
+                            f"/track/{token}", f"{config.public_origin}/track/{token}"
+                        )
+                    notification_id = await enqueue_reply(
+                        conn,
+                        config,
+                        run_id=run_id,
+                        chat_id=body.chat_id,
+                        reply=reply,
+                        signal_id=reply.get("signal_id"),
+                        client_id=turn.state.get("client_id"),
+                    )
+                    turn.response = {
+                        **reply,
+                        "accepted": True,
+                        "update_id": body.update_id,
+                        "notification_id": notification_id,
+                    }
+                result = turn.response
+            assert result is not None
+            return result
+    except ReceiptConflict:
+        raise Problem(409, "Повтор update_id", "telegram_update_id_conflict") from None
 
 
-async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
-    chat_id = body.chat_id
+async def _bot_dispatch(request: Request, conn: Any, body: InboundBody, draft: dict[str, Any]) -> dict[str, Any]:
+    payload = body.payload or {}
+    draft.setdefault("lang", "en" if payload.get("language_code") == "en" else "ru")
+    draft.setdefault(
+        "language_selected", body.kind in {"message", "callback"} and payload.get("language_code") in {"ru", "en"}
+    )
+    text = body.text.strip()
+    if body.kind == "callback":
+        kind = payload.get("callback_data")
+        if kind not in {"is_client", "not_client"}:
+            return _bot_reply(
+                "Unknown button. Send /start." if draft["lang"] == "en" else "Неизвестная кнопка. Отправьте /start."
+            )
+        body = body.model_copy(update={"kind": kind})
+    elif body.kind == "message":
+        command = text.split(maxsplit=1)
+        if text == "/start":
+            body = body.model_copy(update={"kind": "start"})
+        elif command and command[0] == "/lang":
+            if len(command) == 2 and command[1] in {"ru", "en"}:
+                draft["lang"] = command[1]
+                draft["language_selected"] = True
+                return _bot_reply("Language: English." if command[1] == "en" else "Язык: русский.")
+            return _bot_reply("/lang ru | /lang en")
+        elif command and command[0] == "/bind":
+            return await _bot_bind(conn, body.chat_id, command[1] if len(command) == 2 else "", draft)
+        elif text == "/unbind":
+            await conn.execute("update clients set telegram_chat_id=null where telegram_chat_id=%s", (body.chat_id,))
+            for key in ("client_id", "client_code", "active_signal_id", "active_tracking_token", "active_run_id"):
+                draft.pop(key, None)
+            draft["stage"] = "role"
+            return _bot_reply(
+                "Binding removed. Send /start." if draft["lang"] == "en" else "Привязка удалена. Отправьте /start."
+            )
+        elif text == "/status":
+            row = await fetch_one(
+                conn,
+                "select public_id,status from signals where id=%s and tracking_token=%s and run_id=%s and external_contact->>'telegram_chat_id'=%s",
+                (
+                    draft.get("active_signal_id"),
+                    draft.get("active_tracking_token"),
+                    draft.get("active_run_id"),
+                    str(body.chat_id),
+                ),
+            )
+            if row:
+                return _bot_reply(f"{row['public_id']}: {_status_label(row['status'], draft['lang'])}")
+            return _bot_reply(
+                "No current request. Send /start."
+                if draft["lang"] == "en"
+                else "Актуальное обращение не найдено. Отправьте /start."
+            )
+        else:
+            if draft.get("stage") == "code":
+                if text == "/skip":
+                    draft["stage"] = "text"
+                    return _bot_reply("Describe the issue." if draft["lang"] == "en" else "Опишите проблему.")
+                return await _bot_bind(conn, body.chat_id, text, draft)
+            kind = {"text": "free_text", "contact": "contact", "region": "region", "active": "append"}.get(
+                str(draft.get("stage"))
+            )
+            if kind is None:
+                return _bot_reply(
+                    "Choose a role with /start." if draft["lang"] == "en" else "Выберите роль через /start."
+                )
+            body = body.model_copy(update={"kind": kind})
+    return await _bot_turn(request, conn, body, draft)
+
+
+async def _bot_bind(conn: Any, chat_id: int, code: str, draft: dict[str, Any]) -> dict[str, Any]:
+    en = draft.get("lang") == "en"
+    if draft.get("active_signal_id"):
+        return _bot_reply("Send /start before a new binding." if en else "Перед новой привязкой отправьте /start.")
+    if re.fullmatch(r"CL-[0-9]{6,19}", code) is None:
+        return _bot_reply(
+            "Send the synthetic CL code from the UI, or /skip."
+            if en
+            else "Пришлите синтетический CL-код из интерфейса или /skip."
+        )
+    row = await fetch_one(
+        conn, "select id,public_id,telegram_chat_id from clients where public_id=%s and is_active for update", (code,)
+    )
+    if not row or row["telegram_chat_id"] not in (None, chat_id):
+        return _bot_reply(
+            "Code unavailable. Use /skip for an unidentified request."
+            if en
+            else "Код недоступен. /skip — обращение без идентификации."
+        )
+    other = await fetch_one(
+        conn, "select id from clients where telegram_chat_id=%s and id<>%s limit 1", (chat_id, row["id"])
+    )
+    if other:
+        return _bot_reply(
+            "This chat is already bound. Use /unbind first." if en else "Чат уже привязан. Сначала /unbind."
+        )
+    await conn.execute("update clients set telegram_chat_id=%s where id=%s", (chat_id, row["id"]))
+    draft.update(client_id=int(row["id"]), client_code=code, role="is_client", stage="text")
+    return _bot_reply(
+        f"Synthetic client {code} bound. Describe the issue."
+        if en
+        else f"Привязан вымышленный клиент {code}. Опишите проблему."
+    )
+
+
+async def _bot_turn(request: Request, conn: Any, body: InboundBody, draft: dict[str, Any]) -> dict[str, Any]:
     kind = body.kind
     if kind == "start":
-        _bot_drafts[chat_id] = {"lang": "ru"}
+        lang = draft.get("lang", "ru")
+        selected = bool(draft.get("language_selected"))
+        draft.clear()
+        draft.update(version=1, lang=lang, language_selected=selected, stage="role")
         return _bot_reply(
-            "Здравствуйте! Это помощник Банка. Выберите, кто вы. Используйте только вымышленные данные.",
-            buttons=_ROLE_BUTTONS,
+            "Hello! This is the Bank assistant. Choose your role. Use fictional data only."
+            if lang == "en"
+            else "Здравствуйте! Это помощник Банка. Выберите, кто вы. Используйте только вымышленные данные.",
+            buttons=[
+                {"text": "I am a client", "data": "is_client"},
+                {"text": "I am not a client yet", "data": "not_client"},
+            ]
+            if lang == "en"
+            else _ROLE_BUTTONS,
         )
     if kind in {"is_client", "not_client"}:
-        draft = _bot_drafts.setdefault(chat_id, {})
         draft.setdefault("lang", "ru")
         draft["role"] = kind
-        return _bot_reply("Запомнил. Опишите проблему своими словами, не короче 10 символов.")
+        draft["stage"] = "code" if kind == "is_client" else "text"
+        if kind == "is_client":
+            return _bot_reply(
+                "Send the synthetic CL code from the UI, or /skip."
+                if _draft_lang(draft) == "en"
+                else "Пришлите синтетический CL-код из интерфейса или /skip."
+            )
+        return _bot_reply(
+            "Please describe the issue in at least 10 characters."
+            if _draft_lang(draft) == "en"
+            else "Запомнил. Опишите проблему своими словами, не короче 10 символов."
+        )
     if kind == "free_text":
         text = body.text.strip()
-        draft = _bot_drafts.setdefault(chat_id, {})
-        lang = communication_lang(text)
+        lang = _draft_lang(draft) if draft.get("language_selected") else communication_lang(text)
         draft["lang"] = lang
         if len(text) < 10:
             if lang == "en":
                 return _bot_reply("Please write more: at least 10 characters.")
             return _bot_reply("Напишите подробнее: нужно хотя бы 10 символов.")
         draft["text"] = text
+        draft["stage"] = "contact"
         if lang == "en":
             return _bot_reply(
                 "Please share a phone in the range +7 900 000-00-00 … +7 900 009-99-99 "
@@ -669,7 +840,6 @@ async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str,
             "Укажите телефон в диапазоне +7 900 000-00-00 … +7 900 009-99-99 или почту @example.ru / @example.com."
         )
     if kind == "contact":
-        draft = _bot_drafts.setdefault(chat_id, {})
         lang = _draft_lang(draft)
         phone, email = _inbound_contact(body)
         error = _contact_error(phone, email, lang)
@@ -682,12 +852,13 @@ async def _bot_turn(request: Request, conn: Any, body: InboundBody) -> dict[str,
             draft["email"] = email
             if not phone:
                 draft.pop("phone", None)
+        draft["stage"] = "region"
         if lang == "en":
             return _bot_reply("Please share a region: the region code or its name.")
         return _bot_reply("Укажите регион: код субъекта или название.")
     if kind == "region":
-        return await _bot_region(request, conn, body)
-    return await _bot_append(request, conn, body)
+        return await _bot_region(request, conn, body, draft)
+    return await _bot_append(request, conn, body, draft)
 
 
 def _inbound_contact(body: InboundBody) -> tuple[str | None, str | None]:
@@ -704,7 +875,7 @@ def _inbound_contact(body: InboundBody) -> tuple[str | None, str | None]:
     return phone_s or None, email_s or None
 
 
-async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
+async def _bot_region(request: Request, conn: Any, body: InboundBody, draft: dict[str, Any]) -> dict[str, Any]:
     payload = body.payload or {}
     raw = str(payload.get("region_code") or body.text).strip()
     row = await fetch_one(
@@ -712,7 +883,6 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[st
         "select code from regions where code = %s or lower(name_ru) = lower(%s) limit 1",
         (raw, raw),
     )
-    draft = _bot_drafts.setdefault(body.chat_id, {})
     lang = _draft_lang(draft)
     if not row:
         if lang == "en":
@@ -731,8 +901,21 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[st
         email=draft.get("email"),
         region_code=draft["region_code"],
         tracking_token=token,
-        external_id=f"tg-{body.chat_id}-{uuid.uuid4().hex[:12]}",
+        external_id=f"tg-{body.bot_id}-{body.update_id}",
     )
+    if draft.get("client_id"):
+        bound = await fetch_one(
+            conn,
+            "select id from clients where id=%s and public_id=%s and telegram_chat_id=%s and is_active",
+            (draft["client_id"], draft.get("client_code"), body.chat_id),
+        )
+        if not bound:
+            return _bot_reply(
+                "Binding expired. Send /start and bind again."
+                if lang == "en"
+                else "Привязка устарела. Отправьте /start и привяжите код заново."
+            )
+        msg["client"]["client_id"] = int(bound["id"])
     res = await create_signal(conn, msg, source_code="telegram_bot", run_id=run_id, sim_time=sim_time)
     if res.get("status") != "accepted":
         if lang == "en":
@@ -741,10 +924,21 @@ async def _bot_region(request: Request, conn: Any, body: InboundBody) -> dict[st
     public_id = str(res.get("public_id") or "")
     track = str(res.get("tracking_token") or token)
     role = draft.get("role", "")
-    kept = {"lang": lang}
+    kept: dict[str, Any] = {
+        key: draft[key] for key in ("client_id", "client_code", "language_selected") if key in draft
+    }
+    kept["lang"] = lang
     if role:
         kept["role"] = role
-    _bot_drafts[body.chat_id] = kept
+    draft.clear()
+    draft.update(kept)
+    draft.update(
+        version=1,
+        stage="active",
+        active_signal_id=int(res["signal_id"]),
+        active_tracking_token=track,
+        active_run_id=run_id,
+    )
     return _bot_reply(
         _accepted_reply(public_id, track, lang),
         signal_id=int(res["signal_id"]) if res.get("signal_id") is not None else None,
@@ -775,17 +969,22 @@ def _draft_missing(draft: dict[str, str]) -> str:
     return "Сначала укажите вымышленный телефон или почту."
 
 
-async def _bot_append(request: Request, conn: Any, body: InboundBody) -> dict[str, Any]:
+async def _bot_append(request: Request, conn: Any, body: InboundBody, draft: dict[str, Any]) -> dict[str, Any]:
     text = body.text.strip()
-    lang = communication_lang(text)
+    lang = _draft_lang(draft) if draft.get("language_selected") else communication_lang(text)
     if not text:
         return _bot_reply("Напишите текст дополнения.")
     parent = await fetch_one(
         conn,
         "select id, public_id, channel_code, external_contact from signals "
-        "where channel_code = 'telegram_bot' and external_contact->>'telegram_chat_id' = %s "
-        "and parent_signal_id is null order by id desc limit 1",
-        (str(body.chat_id),),
+        "where id=%s and tracking_token=%s and run_id=%s and channel_code='telegram_bot' "
+        "and external_contact->>'telegram_chat_id'=%s and parent_signal_id is null",
+        (
+            draft.get("active_signal_id"),
+            draft.get("active_tracking_token"),
+            draft.get("active_run_id"),
+            str(body.chat_id),
+        ),
     )
     if not parent:
         if lang == "en":

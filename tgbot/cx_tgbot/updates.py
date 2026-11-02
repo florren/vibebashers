@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import structlog
-from aiogram import Dispatcher, Router
+from aiogram import Bot, Dispatcher, Router
 from aiogram.enums import ChatType
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery, Message, Update
@@ -52,7 +52,7 @@ def dispatcher(client: BackendClient, *, sleep: Sleep = asyncio.sleep) -> Dispat
     router = Router(name="backend_transport")
 
     @router.message()
-    async def message_turn(message: Message, event_update: Update) -> None:
+    async def message_turn(message: Message, event_update: Update, bot: Bot) -> None:
         if message.chat.type != ChatType.PRIVATE or (message.from_user and message.from_user.is_bot):
             return
         language = message.from_user.language_code if message.from_user else None
@@ -60,6 +60,7 @@ def dispatcher(client: BackendClient, *, sleep: Sleep = asyncio.sleep) -> Dispat
             client,
             {
                 "chat_id": message.chat.id,
+                "bot_id": bot.id,
                 "kind": "message",
                 "text": message.text or "",
                 "payload": {
@@ -72,7 +73,7 @@ def dispatcher(client: BackendClient, *, sleep: Sleep = asyncio.sleep) -> Dispat
         )
 
     @router.callback_query()
-    async def callback_turn(callback: CallbackQuery, event_update: Update) -> None:
+    async def callback_turn(callback: CallbackQuery, event_update: Update, bot: Bot) -> None:
         message = callback.message
         if (
             message is None
@@ -85,6 +86,7 @@ def dispatcher(client: BackendClient, *, sleep: Sleep = asyncio.sleep) -> Dispat
             client,
             {
                 "chat_id": message.chat.id,
+                "bot_id": bot.id,
                 "kind": "callback",
                 "text": "",
                 "update_id": event_update.update_id,

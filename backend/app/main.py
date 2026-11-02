@@ -40,6 +40,8 @@ from app.sim.maintenance_control import ControlError, MaintenanceControl
 from app.sim.maintenance_db import DatabaseBoundary
 from app.sim.twins import TwinService
 from app.stt import audio_ws
+from app.tgbot.configuration import configured as tgbot_configuration
+from app.tgbot.middleware import BotSignatureMiddleware
 
 log = get_logger(__name__)
 
@@ -292,6 +294,15 @@ def create_app() -> FastAPI:
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )
     app.add_middleware(RequestLogMiddleware)
+
+    def bot_secret() -> bytes | None:
+        try:
+            config = tgbot_configuration(get_settings())
+        except ValueError:
+            return None
+        return config.secret if config is not None else None
+
+    app.add_middleware(BotSignatureMiddleware, secret=bot_secret)
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)
