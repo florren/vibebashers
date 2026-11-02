@@ -163,7 +163,7 @@
     "frontend/src/pages/csi/Chart.tsx": "fa5ab5e720f00e0e41978d429c325d592f77b85d19afe3a9d6d6c12a42d7ab6c",
     "frontend/src/pages/csi/options.ts": "8154c9b504a9495a7fcc9ab448a4753f28feb88ca75da4c669853679dcfc5cbe",
     "frontend/src/pages/csi/RegionHeatmap.tsx": "1bb2fd83308e9e5d0753c42e4eca5ac7b055878712a187d824d18f73a8410453",
-    "frontend/src/pages/csi/palette.ts": "4737a797a77a5a11ef120e52c358149506b566ab7c176f8834f8313b043575c6",
+    "frontend/src/pages/csi/palette.ts": "936cb54bb4316e50a869f27b22da8dda356a173ae352eb0f19b7c1c0c678d2de",
     "frontend/src/pages/csi/CsiPage.tsx": "8b6a962c42d924128bfc8f8c6b44b45cf6eae04fee6e6c08851b0934b366659f",
     "frontend/src/pages/journey/AgentExecution.tsx": "005f5e852f8dd6c50b3baccb41e8982aaba940f3c2d9e912870236c0a10c19f6",
     "frontend/src/pages/journey/DemoExecution.tsx": "889e9ca27a5b77f4333438a0b29b149b9744d4c1186173718eb33db922118bd5",
@@ -177,5 +177,6 @@
     "frontend/src/pages/journey/timing.ts": "71f5613c985596f5079724ee6cefc98832876891da22b50b01923a9cf8201764",
     "frontend/src/shared/api/runScope.ts": "510cea9ace7c13216a288efcfc078754947430b0ab026a009a54825bc4983b74",
     "frontend/src/shared/api/trace.ts": "54b2e1fe74502ccc068e98591a3f726be6af22f709021afe14806c1724d0cd00"
-  }
+  },
+  "source_note": "После runtime/browser proof удалена только лишняя пустая строка EOF palette.ts; executable source не менялся."
 }
