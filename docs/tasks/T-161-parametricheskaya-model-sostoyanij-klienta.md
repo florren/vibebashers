@@ -44,7 +44,7 @@ pytest backend/tests/unit/test_behavior_model.py
 Pure checkpoint в `codex/T-161-behavior-model`: типизированные переходы,
 p_complain/delay/repeat через SimRng, точная формула hazard и обязательные policy
 inputs без defaults. Runtime не включён; DB/DDL, параметры и финансы не менялись.
-46 unit passed (28 behavior + 4 textgen + 14 baseline), Ruff/mypy green.
+70 unit passed (52 behavior + 4 textgen + 14 baseline), Ruff/mypy green.
 После initial collection gap использован разрешённый frozen SDK venv; общий
 venv не менялся. Полный regression пока не выполнялся. Полные критерии T161 **не выполнены**: ожидаются решения по
 policy/ADR/storage, durable integration и process-restart/full-suite proof.

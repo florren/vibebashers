@@ -21,7 +21,12 @@ CareKind = Literal["agent_reply", "proactive_notice", "progress_update", "gift",
 
 
 def _unit(name: str, value: float) -> None:
-    if not math.isfinite(value) or not 0 <= value <= 1:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or not 0 <= value <= 1
+    ):
         raise ValueError(f"{name} must be finite and within [0,1]")
 
 
@@ -32,12 +37,18 @@ class CareEvidence:
     at: dt.datetime
 
     def __post_init__(self) -> None:
-        if self.source_id <= 0 or self.at.utcoffset() is None:
+        if (
+            isinstance(self.source_id, bool)
+            or not isinstance(self.source_id, int)
+            or self.source_id <= 0
+            or not isinstance(self.at, dt.datetime)
+            or self.at.utcoffset() is None
+        ):
             raise ValueError("care evidence requires positive source_id and aware timestamp")
 
 
 class CareStrategy(Protocol):
-    """ADR-reviewed scoring; weights alone do not define component observations."""
+    """Согласуемая через ADR оценка: веса сами по себе не определяют наблюдения."""
 
     def __call__(self, previous: float, evidence: CareEvidence, weights: Mapping[str, float]) -> float: ...
 
@@ -49,7 +60,12 @@ class BehaviorPolicy:
     care_strategy: CareStrategy
 
     def __post_init__(self) -> None:
-        if not math.isfinite(self.segment_multiplier) or self.segment_multiplier < 0:
+        if (
+            isinstance(self.segment_multiplier, bool)
+            or not isinstance(self.segment_multiplier, (int, float))
+            or not math.isfinite(self.segment_multiplier)
+            or self.segment_multiplier < 0
+        ):
             raise ValueError("segment_multiplier must be finite and nonnegative")
         _unit("retained_threshold", self.retained_threshold)
         if not callable(self.care_strategy):
@@ -65,8 +81,12 @@ class Snapshot:
 
     def __post_init__(self) -> None:
         _unit("care_score", self.care_score)
-        if self.repeat_count < 0:
-            raise ValueError("repeat_count must be nonnegative")
+        if not isinstance(self.state, ClientState):
+            raise ValueError("state must be ClientState")
+        if isinstance(self.repeat_count, bool) or not isinstance(self.repeat_count, int) or self.repeat_count < 0:
+            raise ValueError("repeat_count must be a nonnegative integer")
+        if not isinstance(self.sla_breached, bool):
+            raise ValueError("sla_breached must be boolean")
 
 
 @dataclass(frozen=True)
@@ -87,12 +107,12 @@ class ComplaintDecision:
 class HazardDecision:
     transition: Transition
     raw_hazard: float
-    closure_requested: bool
+    triggered: bool
 
 
 def hazard(params: PsychotypeParams, policy: BehaviorPolicy, snapshot: Snapshot, *, repeat: float) -> float:
     """Точная формула ТЗ 4.5. Raw hazard не обрезается под контракт [0,1]."""
-    if not math.isfinite(repeat) or repeat < 0:
+    if not isinstance(repeat, (int, float)) or not math.isfinite(repeat) or repeat < 0:
         raise ValueError("repeat must be explicit, finite and nonnegative")
     return (
         params.base_churn_hazard
@@ -167,9 +187,7 @@ class BehaviorModel:
         # Бернулли при hazard >= 1 достоверно срабатывает; исходная величина остаётся явной.
         selected = rng.random() < value
         current = replace(previous, state=ClientState.CHURN_INTENT) if selected else previous
-        return HazardDecision(
-            Transition(previous, current, "timer"), value, selected and previous.state == ClientState.CHURN_INTENT
-        )
+        return HazardDecision(Transition(previous, current, "timer"), value, selected)
 
     def closure(self, previous: Snapshot) -> Transition | None:
         """Закрытие проблемы, не счёта. Исход ниже порога пока не определён policy."""

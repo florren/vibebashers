@@ -1,4 +1,4 @@
-"""Pure core: реальные справочники, явная тестовая policy, без БД/LLM/runtime wiring."""
+"""Чистое ядро: реальные справочники, явная тестовая policy, без БД/LLM/runtime wiring."""
 
 from __future__ import annotations
 
@@ -68,9 +68,9 @@ def test_hazard_exact_formula_without_silent_clamp() -> None:
     result = BehaviorModel(p, high).sla_tick(state, SimRng(1), repeat=3)
     assert result.raw_hazard > 1
     assert result.transition.after.state == ClientState.CHURN_INTENT
-    assert not result.closure_requested
+    assert result.triggered
     second = BehaviorModel(p, high).sla_tick(result.transition.after, SimRng(1), repeat=3)
-    assert second.closure_requested
+    assert second.triggered
     assert second.transition.after.state != ClientState.CHURNED
 
 
@@ -82,7 +82,7 @@ def test_care_strategy_explicit_growth_and_sla_decline() -> None:
     assert first.care_score > initial.care_score
     assert second.care_score < first.care_score
     assert second.sla_breached
-    assert initial.care_score == 0.5  # immutable input
+    assert initial.care_score == 0.5  # Вход не изменяется.
 
 
 def test_state_journey_and_retention_threshold() -> None:
@@ -206,3 +206,49 @@ def test_hazard_repeat_interpretation_is_required() -> None:
     with pytest.raises(ValueError):
         hazard(p, policy, state, repeat=-1)
     assert hazard(p, policy, state, repeat=3) > hazard(p, policy, state, repeat=1)
+
+
+@pytest.mark.parametrize("value", [True, False, 1.5, "1", None, 0, -1])
+def test_evidence_requires_positive_integer_source(value: object) -> None:
+    with pytest.raises(ValueError):
+        CareEvidence("gift", value, NOW)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [True, False, 1.5, "1", None, -1])
+def test_snapshot_requires_integer_repeat_count(value: object) -> None:
+    with pytest.raises(ValueError):
+        Snapshot(ClientState.WAITING, 0.5, value, False)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", ["calm", "unknown", None, True, 1])
+def test_snapshot_requires_generated_state(value: object) -> None:
+    with pytest.raises(ValueError, match="ClientState"):
+        Snapshot(value, 0.5, 0, False)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [True, False, "0.5", None])
+def test_policy_and_care_reject_boolean_or_nonnumeric(value: object) -> None:
+    with pytest.raises(ValueError):
+        BehaviorPolicy(value, 0.7, scoring)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        BehaviorPolicy(1, value, scoring)  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        Snapshot(ClientState.WAITING, value, 0, False)  # type: ignore[arg-type]
+    core = BehaviorModel(params(), BehaviorPolicy(1, 0.7, lambda *_: value))  # type: ignore[arg-type,return-value]
+    with pytest.raises(ValueError):
+        core.observe_care(snapshot(), CareEvidence("gift", 1, NOW))
+
+
+def test_explicit_repeat_boolean_supported_pending_policy_review() -> None:
+    p, policy, state = params(), BehaviorPolicy(1, 0.7, scoring), snapshot(ClientState.WAITING)
+    assert hazard(p, policy, state, repeat=True) == hazard(p, policy, state, repeat=1)
+    assert hazard(p, policy, state, repeat=False) == hazard(p, policy, state, repeat=0)
+
+
+def test_zero_hazard_in_intent_requests_no_account_closure() -> None:
+    core = BehaviorModel(params(), BehaviorPolicy(0, 0.7, scoring))
+    initial = snapshot(ClientState.CHURN_INTENT)
+    result = core.sla_tick(initial, SimRng(1), repeat=0)
+    assert not result.triggered
+    assert result.transition.after == initial
+    assert not hasattr(result, "closure_requested")

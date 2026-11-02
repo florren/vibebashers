@@ -60,10 +60,10 @@ care_strategy. Defaults отсутствуют. Стратегия получа�
    time-normalized hazard с изменением ТЗ. Raw hazard > 1 и контракт [0,1] также
    требуют review: ограничение разрешённого входа или явная вероятность отдельно
    от raw величины. Pure core формулу не меняет.
-7. **churn_intent → closure**: pure candidate возвращает closure_requested при
-   повторном hazard в churn_intent; это предложение, не side effect/принятая
-   политика. Терпение patience_days и business-calendar deadline должны войти
-   в согласованное правило before account closure. Ни один счёт не закрывается.
+7. **churn_intent → closure**: HazardDecision возвращает только triggered,
+   raw_hazard и переход в churn_intent. Повторный hazard не запрашивает закрытие.
+   Терпение patience_days и business-calendar deadline должны войти в будущую
+   согласованную policy/T164. Ни один счёт не закрывается.
 8. **clients.churn_risk**: диапазон БД 0..100 не доказывает линейную шкалу hazard.
    Нужна утверждённая проекция, не умножение на 100 по догадке.
 
@@ -130,3 +130,15 @@ PYTHONPATH своей backend/root. Initial missing-openai gap устранён 
 разрешённого готового окружения, без установки/изменения общих dependencies.
 Остаётся существующий Starlette TestClient deprecation warning. Полный suite
 не запускался: runtime не подключён; карточка остаётся in_progress.
+
+### Узкий quality follow-up
+
+Строгие guards: source_id — положительный int, не bool; Snapshot.state —
+сгенерированный ClientState; repeat_count — неотрицательный int, не bool;
+sla_breached — bool. Policy/care отвергают bool и нечисловые значения.
+Явный repeat в формуле пока допускает bool: трактовка bool/count не выбрана.
+Удалено предположение о закрытии после второго hazard. Комментарии/docstrings
+нового ядра и тестов приведены к русскому языку.
+
+Повторная проверка: **70 passed** (52 behavior + 4 textgen + 14 baseline),
+Ruff check/format и mypy ядра green. Runtime/БД по-прежнему не подключены.
