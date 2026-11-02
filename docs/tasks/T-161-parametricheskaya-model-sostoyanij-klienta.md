@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Машина состояний ТЗ 4.5 для всех клиентов: переходы по событиям и таймерам, care_score, hazard.
@@ -41,4 +41,12 @@ pytest backend/tests/unit/test_behavior_model.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Pure checkpoint в `codex/T-161-behavior-model`: типизированные переходы,
+p_complain/delay/repeat через SimRng, точная формула hazard и обязательные policy
+inputs без defaults. Runtime не включён; DB/DDL, параметры и финансы не менялись.
+46 unit passed (28 behavior + 4 textgen + 14 baseline), Ruff/mypy green.
+После initial collection gap использован разрешённый frozen SDK venv; общий
+venv не менялся. Полный regression пока не выполнялся. Полные критерии T161 **не выполнены**: ожидаются решения по
+policy/ADR/storage, durable integration и process-restart/full-suite proof.
+
+Предложение и границы: [T-161 pure core / policy / storage](../reviews/T-161-pure-core-policy-storage.md).
