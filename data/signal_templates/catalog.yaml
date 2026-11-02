@@ -1,0 +1,167 @@
+# T-019: исходная грамматика. Полные шаблоны = смысл × продукт × канал;
+# счётчик публикуется по уникальному развёрнутому тексту, не по числу placeholders.
+version: 1
+english_share: 0.05
+noise_share: 0.03
+products:
+  deposit: {ru: 'вклад', en: 'deposit'}
+  debit_card: {ru: 'дебетовая карта', en: 'debit card'}
+  credit: {ru: 'кредит', en: 'loan'}
+  credit_card: {ru: 'кредитная карта', en: 'credit card'}
+channels:
+  social:
+    ru: '{text} #Банк #ОбратнаяСвязь 💬'
+    en: '{text} #Bank #Feedback 💬'
+  call:
+    ru: "00:00 Оператор: Здравствуйте, слушаю вас.\n00:04 Клиент: {text}\n00:20 Оператор: Зафиксировал обращение."
+    en: "00:00 Operator: Hello, how can I help?\n00:04 Customer: {text}\n00:20 Operator: I have recorded your message."
+  chat:
+    ru: "Клиент: {text}\nОператор: Сообщение принято."
+    en: "Customer: {text}\nOperator: Message received."
+  email:
+    ru: "Тема: Обращение — {product}\nЗдравствуйте. {text}\nПрошу ответить письменно. Клиент Банка."
+    en: "Subject: Feedback — {product}\nHello. {text}\nPlease reply in writing. Bank customer."
+  branch:
+    ru: 'Запись обращения в отделении, город {city}. Слова клиента: «{text}»'
+    en: 'Branch feedback, city {city}. Customer statement: “{text}”'
+  landing:
+    ru: 'Текст обращения через форму: {text}'
+    en: 'Web form message: {text}'
+  telegram_bot:
+    ru: 'Сообщение в чат-бот: {text}'
+    en: 'Chatbot message: {text}'
+  proactive:
+    ru: 'Синтетическое наблюдение по продукту «{product}»: {text}'
+    en: 'Synthetic observation for {product}: {text}'
+  review_portal:
+    ru: 'Отзыв о Банке. {text} #ОбратнаяСвязь'
+    en: 'Bank review. {text} #Feedback'
+  voice_input:
+    ru: 'Расшифровка диктовки клиента: {text}'
+    en: 'Customer dictation transcript: {text}'
+  branch_audio:
+    ru: "00:00 Сотрудник: Я вас слушаю.\n00:03 Клиент: {text}"
+    en: "00:00 Employee: I am listening.\n00:03 Customer: {text}"
+  csi_survey:
+    ru: 'Комментарий к опросу обслуживания: {text}'
+    en: 'Service survey comment: {text}'
+types:
+  tech_fault:
+    sentiment: negative
+    negativity: 65
+    ru:
+      - {text: 'Продукт «{product}»: подтверждаю операцию на {amount} ₽, экран стоит без движения. Уже {days} дня повторный вход ничего не меняет.', style: plain}
+      - {text: 'Раздел «{product}» закрывается при каждом подтверждении. Вчера тот же шаг проходил.', style: plain}
+      - {text: 'Открыл «{product}» и любуюсь вечным кружочком. Зато тренирую терпение, ага.', style: sarcasm}
+      - {text: '«{product}» опять делает вид, что кнопка нажалась, а дальше тишина. Круто придумано ))', style: sarcasm}
+    en:
+      - 'The {product} screen freezes while confirming a transaction for {amount} RUB. Signing in again does not help.'
+      - 'My {product} page keeps loading forever; I cannot complete the action.'
+  client_error:
+    sentiment: neutral
+    negativity: 30
+    ru:
+      - {text: 'Продукт «{product}»: сам выбрал не тот вариант при оформлении. Как исправить мой выбор?', style: plain}
+      - {text: 'В заявке на «{product}» я перепутал цифры и уже подтвердил. Помогите исправить мои данные.', style: plain}
+      - {text: '«{product}»: ткнул не туда, не дочитал экран. Мой косяк, есть кнопка откатить?', style: slang}
+      - {text: '«{product}»: сама всё перепутола при заполнении, теперь не панимаю как поправить.', style: typos}
+    en:
+      - 'I chose the wrong option for my {product} myself. How can I correct my selection?'
+      - 'I entered the wrong details for my {product}. The mistake was mine; can you help fix it?'
+  tariff_terms:
+    sentiment: negative
+    negativity: 65
+    ru:
+      - {text: 'Продукт «{product}»: при оформлении {days} дня назад показали промо {promo_rate} %, в документе {rate} %. Объясните расхождение условий.', style: plain}
+      - {text: 'По продукту «{product}» удержали плату {fee} ₽, о которой при подключении не предупредили.', style: plain}
+      - {text: '«{product}»: сначала крупно «бесплатно», потом сюрприз на {fee} ₽. Чудеса мелкого шрифта, ага.', style: sarcasm}
+      - {text: '«{product}»: на витрине одно, в бумажке другое. Это такой квест на внимательность? ))', style: sarcasm}
+    en:
+      - 'The advertised terms for my {product} differ from the agreement. Please explain the discrepancy.'
+      - 'My {product} includes a fee that was not disclosed when I signed up.'
+  service_quality:
+    sentiment: negative
+    negativity: 65
+    ru:
+      - {text: 'При обсуждении продукта «{product}» сотрудник перебивал меня и завершил разговор, не выслушав.', style: plain}
+      - {text: 'С вопросом по продукту «{product}» меня переводят между сотрудниками, никто не берёт обращение.', style: plain}
+      - {text: '«{product}»: стою у пустого окошка, сотрудники обсуждают обед. Наверное, я тут элемент интерьера.', style: sarcasm}
+      - {text: '«{product}»: специалист общался так, будто я ему лично должен. Ну и манеры, жесть.', style: slang}
+    en:
+      - 'The employee interrupted me while I was asking about my {product} and ended the conversation.'
+      - 'I keep being transferred between employees about my {product}; nobody takes ownership.'
+  fraud_suspicion:
+    sentiment: negative
+    negativity: 80
+    ru:
+      - {text: 'По продукту «{product}» вижу подтверждение действия, которого не совершал. Проверьте чужой доступ.', style: plain}
+      - {text: 'Позвонивший просит код для продукта «{product}» и торопит. Подозреваю попытку обмана.', style: plain}
+      - {text: '«{product}»: какой-то левый тип просит одноразовый код. Я ничего ему не дал, разберитесь.', style: slang}
+      - {text: '«{product}»: прилитело подтверждение, хотя телефон лежал рядом. Кто-то лезет в мой кабинет?', style: typos}
+    en:
+      - 'I see an action on my {product} that I did not authorize. Please check for unauthorized access.'
+      - 'A caller is asking for a one-time code for my {product}. I suspect fraud and have not shared it.'
+  legal_regulatory:
+    sentiment: negative
+    negativity: 75
+    ru:
+      - {text: 'По продукту «{product}» прошу зарегистрировать официальную претензию. При отсутствии ответа обращусь к регулятору.', style: plain}
+      - {text: 'По продукту «{product}» мои письменные требования игнорируются. Готовлю обращение в надзорный орган.', style: plain}
+      - {text: '«{product}»: раз обычный разговор не действует, пакет документов уедет в надзор. Там, надеюсь, прочитают.', style: sarcasm}
+      - {text: '«{product}»: хватит гонять меня по кругу. Следующее письмо будет с приложениями в контролирующий орган.', style: slang}
+    en:
+      - 'Please register my formal complaint about my {product}. I will contact the regulator if there is no response.'
+      - 'My written requests about my {product} have been ignored; I am preparing a regulatory complaint.'
+  info_request:
+    sentiment: neutral
+    negativity: 10
+    ru:
+      - {text: 'Интересует «{product}»: какие документы нужно подготовить для оформления?', style: plain}
+      - {text: 'Продукт «{product}»: где посмотреть порядок обслуживания и список доступных действий?', style: plain}
+      - {text: '«{product}»: потерялся в меню, киньте нормальную памятку для новичка, пожалуйста.', style: slang}
+      - {text: 'Хачу разобраться с продуктом «{product}». Где пачитать инструкцию до оформления?', style: typos}
+    en:
+      - 'Which documents do I need to apply for a {product}?'
+      - 'Where can I read the service instructions for a {product} before applying?'
+  gratitude:
+    sentiment: positive
+    negativity: 5
+    ru:
+      - {text: 'Благодарю специалиста: подробно объяснил продукт «{product}» и помог спокойно разобраться.', style: plain}
+      - {text: 'С вопросом про «{product}» помогли с первого обращения. Спасибо за внимательное отношение.', style: plain}
+      - {text: '«{product}»: всё разложили по полочкам без заумных слов. Респект специалисту!', style: slang}
+      - {text: '«{product}»: пасибо за терпение, теперь всё панятно. Очень приятно такое отношение.', style: typos}
+    en:
+      - 'Thank you for patiently explaining my {product}. The employee was clear and attentive.'
+      - 'My question about my {product} was resolved on the first contact. Thank you for your help.'
+  suggestion:
+    sentiment: neutral
+    negativity: 15
+    ru:
+      - {text: 'Для продукта «{product}» предлагаю добавить короткую памятку прямо на главный экран.', style: plain}
+      - {text: 'Было бы удобно сохранять настройки уведомлений по продукту «{product}» отдельно от остальных.', style: plain}
+      - {text: '«{product}»: запилите, пожалуйста, кнопку с понятным объяснением каждого пункта. Новичкам зайдёт.', style: slang}
+      - {text: 'Есть идея для продукта «{product}»: сабрать все справки в одном месте, а не искать по меню.', style: typos}
+    en:
+      - 'Please consider adding a short guide to the main screen for the {product}.'
+      - 'It would help to manage notification preferences for the {product} separately.'
+  churn:
+    sentiment: negative
+    negativity: 80
+    ru:
+      - {text: 'Продукт «{product}» больше не нужен: решил прекратить отношения с Банком. Сообщите порядок закрытия.', style: plain}
+      - {text: 'Хочу закрыть «{product}» и перенести обслуживание в другую организацию. Решение уже принято.', style: plain}
+      - {text: '«{product}»: всё, чемодан собран. Дальше будем обслуживаться у других, хватит с меня.', style: slang}
+      - {text: '«{product}»: терпение кончилось, сворачиваю наше сотрудничество. Пора прощаться, ребят.', style: slang}
+    en:
+      - 'I have decided to close my {product} and move my banking elsewhere. What is the procedure?'
+      - 'I no longer wish to continue with the Bank. Please explain how to close my {product}.'
+noise:
+  ru:
+    - 'Продам комнатные растения, самовывоз вечером. Объявление не связано с Банком.'
+    - 'Кто потерял синий зонт у остановки? Это сообщение не про банковское обслуживание.'
+    - 'Расписание дворового турнира изменилось, встречаемся в субботу у площадки.'
+    - 'Рекламное объявление: скидка на ремонт велосипедов. Банковских вопросов нет.'
+  en:
+    - 'Community notice: the neighbourhood picnic has moved to Saturday. This is not a banking request.'
+    - 'A blue umbrella was found near the bus stop. This message is unrelated to banking.'
