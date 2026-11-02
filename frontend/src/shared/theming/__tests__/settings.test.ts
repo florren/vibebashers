@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import { api, patch } from '@/shared/api/client'
 import { PHASES, phaseAt, resolveMode } from '../apply'
+import { DEFAULT_CIRCADIAN, MOSCOW, solarBoundaries } from '../circadian'
 import { connectThemeSettings } from '../settings'
 import { useUiTheme } from '../store'
 
@@ -12,7 +13,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false })))
-  useUiTheme.setState({ theme_pack: 'brand', mode: 'light', density: 'comfortable', simTime: null, syncError: false })
+  useUiTheme.setState({ theme_pack: 'brand', mode: 'light', density: 'comfortable', simTime: null, syncError: false, circadian: { ...DEFAULT_CIRCADIAN } })
 })
 afterEach(() => { disconnect(); vi.unstubAllGlobals() })
 
@@ -61,20 +62,19 @@ it('keeps unsaved choices and exposes errors, then retries on reconnect', async 
   expect(JSON.parse(localStorage.getItem('cx.ui.pending')!)).toEqual({})
 })
 
-it('maps all Moscow simulation phase boundaries independently of OS theme', () => {
-  const hours = [5, 7, 11, 16, 19, 21]
-  for (const [index, hour] of hours.entries()) {
-    const phase = phaseAt(`2026-11-09T${String(hour).padStart(2, '0')}:00:00+03:00`)
-    expect(phase).toBe(PHASES[index])
-    expect(resolveMode('circadian', phase)).toBe(hour >= 19 ? 'dark' : 'light')
+it('maps every seasonal Moscow boundary independently of OS theme', () => {
+  const { boundaries } = solarBoundaries(Date.parse('2026-11-09T12:00:00+03:00'), MOSCOW)
+  for (const [index, time] of boundaries.entries()) {
+    expect(phaseAt(new Date(time).toISOString())).toBe(PHASES[index])
+    expect(phaseAt(new Date(time - 1).toISOString())).toBe(PHASES[(index + 5) % 6])
+    expect(resolveMode('circadian', PHASES[index])).toBe(index >= 4 ? 'dark' : 'light')
   }
-  expect(phaseAt('2026-11-09T04:59:59+03:00')).toBe('night')
   expect(resolveMode('auto')).toBe('light')
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
   expect(resolveMode('auto')).toBe('dark')
   expect(resolveMode('circadian', 'noon')).toBe('light')
   useUiTheme.getState().setMode('circadian')
-  useUiTheme.getState().setSimTime('2026-11-09T21:00:00+03:00')
+  useUiTheme.getState().setSimTime('2026-11-09T23:00:00+03:00')
   expect(document.documentElement.dataset.mode).toBe('dark')
   expect(document.documentElement.dataset.phase).toBe('night')
 })
@@ -93,4 +93,33 @@ it('preserves an acknowledged user choice when the initial GET arrives later', a
   expect(useUiTheme.getState()).toMatchObject({ theme_pack: 'ops', mode: 'dark', density: 'compact' })
   expect(localStorage.getItem('cx.ui.mode')).toBe('dark')
   expect(document.documentElement.dataset.mode).toBe('dark')
+})
+
+it('synchronizes only the complete circadian preference, never local coordinates', async () => {
+  vi.mocked(api).mockResolvedValue({ ui: { circadian: { source: 'real', fixed_phase: 'dawn' }, lang: 'en' } })
+  vi.mocked(patch).mockResolvedValue(undefined)
+  localStorage.setItem('cx.ui.location', JSON.stringify({ latitude: 12, longitude: 34 }))
+  disconnect = connectThemeSettings()
+  await flush()
+  expect(useUiTheme.getState().circadian).toEqual({ source: 'real', fixed_phase: 'dawn' })
+  useUiTheme.getState().setCircadian({ source: 'fixed', fixed_phase: 'night' })
+  await flush()
+  expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { circadian: { source: 'fixed', fixed_phase: 'night' } } })
+  expect(localStorage.getItem('cx.ui.location')).toBe('{"latitude":12,"longitude":34}')
+})
+
+it('does not cancel an in-flight clock transition when a late GET repeats the same preferences', async () => {
+  let finishGet!: (data: unknown) => void
+  vi.mocked(api).mockReturnValue(new Promise((resolve) => { finishGet = resolve }))
+  useUiTheme.getState().setMode('circadian')
+  useUiTheme.getState().setSimTime('2026-11-09T06:00:00Z')
+  disconnect = connectThemeSettings()
+  useUiTheme.getState().setSimTime('2026-11-09T18:00:00Z')
+  // jsdom не рисует CSS; running моделирует уже запущенный runtime RAF.
+  document.documentElement.dataset.themeTransition = 'running'
+  finishGet({ ui: { theme_pack: 'brand', mode: 'circadian', density: 'comfortable', circadian: { ...DEFAULT_CIRCADIAN } } })
+  await flush()
+  expect(document.documentElement.dataset.phase).toBe('night')
+  expect(document.documentElement.dataset.themeTransition).toBe('running')
+  expect(patch).not.toHaveBeenCalled()
 })
