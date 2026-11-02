@@ -139,7 +139,7 @@ def main() -> int:
         seed_clients(cur, rnd, n_clients, sim_now)
         conn.commit()
         run_id = ensure_history_run(cur, seed, sim_now, a.profile)
-        seed_operations(cur, rnd, run_id, sim_now)
+        seed_operations(cur, rnd, run_id, sim_now, profile=a.profile)
         conn.commit()
         seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()
