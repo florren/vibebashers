@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 const runId = process.env.E2E_REPORT_RUN_ID ?? 'current'
 
@@ -37,6 +38,16 @@ for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] a
       }).map(text => text.textContent)
     }))
     expect(clipped).toEqual([])
+    for (const format of ['json', 'xlsx'] as const) {
+      const button = root.getByRole('button', { name: (lang === 'ru' ? 'Скачать ' : 'Download ') + format.toUpperCase(), exact: true })
+      const [download] = await Promise.all([page.waitForEvent('download'), button.click()])
+      expect(download.suggestedFilename()).toBe(`cabinet-report.${format}`)
+      const destination = info.outputPath(`report-${lang}-${mode}.${format}`)
+      await download.saveAs(destination)
+      const bytes = await readFile(destination)
+      if (format === 'json') { const exported = JSON.parse(bytes.toString()); expect(exported.lang).toBe(lang); expect(exported.overview.scope.run_ids).toEqual(report.overview.scope.run_ids) }
+      else expect(bytes.subarray(0, 2).toString()).toBe('PK')
+    }
     await page.screenshot({ path: info.outputPath(`report-${lang}-${mode}.png`) })
     await page.emulateMedia({ media: 'print' })
     for (const control of await root.locator('.report-controls').all()) await expect(control).toBeHidden()
