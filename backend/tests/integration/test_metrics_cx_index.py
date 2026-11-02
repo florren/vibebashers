@@ -55,9 +55,26 @@ def classification(negativity=50, criticality="low", flags=None):
 async def put(url, run, at, value, *, origin="api"):
     async with await psycopg.AsyncConnection.connect(url.replace("postgresql+psycopg:", "postgresql:")) as conn:
         message = from_api_signal(
-            {"channel_code": "chat", "text": "Учебный сигнал для проверки индекса CX"}, origin=origin
+            {
+                "channel_code": "proactive" if origin == "proactive" else "chat",
+                "text": "Учебный сигнал для проверки индекса CX",
+            },
+            origin=origin,
         )
-        result = await create_signal(conn, message, source_code="api", emit_event=False, run_id=run, sim_time=at)
+        if origin == "proactive":
+            # Внутренний service fixture использует native authority, не поддельный API origin.
+            message["channel_subtype"] = "system_logs"
+            result = await create_signal(
+                conn,
+                message,
+                source_code="fault_monitor",
+                emit_event=False,
+                run_id=run,
+                sim_time=at,
+                _internal_producer="fault_monitor",
+            )
+        else:
+            result = await create_signal(conn, message, source_code="api", emit_event=False, run_id=run, sim_time=at)
         if value is not None:
             await conn.execute("UPDATE signals SET classification=%s WHERE id=%s", (Jsonb(value), result["signal_id"]))
         return result["signal_id"]
