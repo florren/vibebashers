@@ -115,7 +115,7 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
         }}>
           <svg width={model.width * zoom} height={model.height * zoom} viewBox={`0 0 ${model.width} ${model.height}`}
             role="group" aria-label={t('traceGraph.graph')} data-node-count={model.nodes.length}>
-            <defs><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="currentColor" /></marker></defs>
+            <defs><clipPath id={`${marker}-text`}><rect x={16} y={8} width={NODE_WIDTH - 32} height={NODE_HEIGHT - 12} /></clipPath><marker id={marker} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="currentColor" /></marker></defs>
             {(['before', 'subject', 'after'] as const).map((phase, i) => <text key={phase} x={32 + i * 340} y={24} className="fill-ink text-sm font-semibold">{t(`traceUi.${phase}`)}</text>)}
             {visibleEdges.map((edge) => {
               const a = nodes.get(edge.from)!, b = nodes.get(edge.to)!
@@ -133,9 +133,9 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
               className={`trace-graph-node ${selectedId === node.id ? 'selected' : ''} ${visited.has(node.id) ? 'visited' : ''} ${model.path.has(node.id) ? 'on-path' : ''}`}
               onFocus={() => { if (selectedId !== node.id) focusNode(node) }} onKeyDown={(event) => keyboard(event, node)} onClick={() => center(node)}>
               <title>{node.title} · {node.ref}</title><Shape family={node.family} />
-              <text x={18} y={27} className="fill-ink text-sm"><tspan>{icons[node.family]} </tspan>{node.title.slice(0, 20)}</text>
+              <g clipPath={`url(#${marker}-text)`}><text x={18} y={27} className="fill-ink text-sm"><tspan>{icons[node.family]} </tspan>{node.title.slice(0, 20)}</text>
               <text x={18} y={49} className="fill-muted font-mono text-[11px]">{node.ref.slice(0, 25)}</text>
-              <text x={18} y={65} className="fill-muted text-[10px]">{node.event?.badges.llm_source ?? t(`traceGraph.family.${node.family}`)}{visited.has(node.id) ? ' ✓' : ''}{node.id === model.terminalId ? ' ⚑' : ''}</text>
+              <text x={18} y={65} className="fill-muted text-[10px]">{node.event?.badges.llm_source ?? t(`traceGraph.family.${node.family}`)}{visited.has(node.id) ? ' ✓' : ''}{node.id === model.terminalId ? ' ⚑' : ''}</text></g>
             </g>)}
           </svg>
         </div>

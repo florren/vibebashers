@@ -50,7 +50,7 @@ export function buildGraph(trace: Trace, page?: TraceRelationPage) {
   for (const event of events.values()) {
     if (event.id === subjectId) continue
     const phase = event.phase
-    nodes.push({ id: event.id, phase, family: nodeFamily(event.object_ref?.kind ?? event.kind), title: event.title_ru,
+    nodes.push({ id: event.id, phase, family: nodeFamily(event.kind), title: event.title_ru,
       ref: event.object_ref?.ref ?? '', event, x: 32 + (phase === 'before' ? 0 : phase === 'subject' ? 1 : 2) * COLUMN_GAP,
       y: 56 + counts[phase]++ * ROW_GAP })
   }

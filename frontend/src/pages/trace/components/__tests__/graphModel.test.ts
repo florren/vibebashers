@@ -39,6 +39,13 @@ describe('trace graph uses only recorded topology', () => {
     expect(model.nodes.every((node) => node.phase === 'subject' || node.phase === 'after')).toBe(true)
     expect(model.nodes.every((node) => node.x >= 372)).toBe(true)
   })
+  it('renders event semantics rather than an implementation step as its family', () => {
+    const trace = traceFixture(1)
+    trace.after[0] = { ...trace.after[0]!, kind: 'public_reply', object_ref: { kind: 'step', ref: 'AS-000001' } }
+    expect(buildGraph(trace).nodes[1]?.family).toBe('message')
+    trace.after[0] = { ...trace.after[0]!, kind: 'refund' }
+    expect(buildGraph(trace).nodes[1]?.family).toBe('money')
+  })
   it('uses cycle-safe directed paths and refuses unreachable or absent terminals', () => {
     const edges = [{ from: 'a', to: 'b', relation_ru: '' }, { from: 'b', to: 'a', relation_ru: '' }, { from: 'b', to: 'c', relation_ru: '' }]
     expect([...directedPath(edges, 'a', 'c')]).toEqual(['c', 'b', 'a'])
