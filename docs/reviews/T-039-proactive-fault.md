@@ -307,3 +307,38 @@ Composed whole unit e318:1955 passed/19 skipped66.28s с credential/transport
 variables удалёнными через env -u. Первый safe-blank/false environment дал
 2expected-precedence failures ('' вместо None и override synthetic _env_file
 TG enabled); code/assertions для этого не менялись, это не runtime fix.
+
+### Corrected B consumer: observed-current0, не90/120 prevented
+
+Ordinary dependency merge5920c42 ← corrected B0e0db416 (cutoff child bc80aec,
+codec/DDL19 unchanged) сохранил оба additive отчёта карточки; чужой WIP не брался.
+A1 полный integration ещё не считался пройденным при merge. Consumer вызывает
+только app.sim.behavior.prevention.summarize после verified native completed
+phase; missing/failed phase остаётся unverified/None. Count и quality берутся
+напрямую из reader. Invalid native receipts — явный failed report check/unknown,
+не silent0. Legacy NULL/incomplete не заменяется Sent/care. Partial recorded и
+unknown счётчики не следует суммировать: rich incomplete receipt может быть в
+обеих категориях.
+
+50 actual targeted PG/unit passed211.57s: phases/main CLI/cancel runtime/storage/
+cutoff (T5/T8/T9) и consumer. Native observed-current snapshot: affected120,
+Sent/emulated120 до first, complaints/links30, care120, incident1, AR31,
+modelled_prevented_by_resolution0/qualitycomplete, eligible0/unknown0,
+recorded_cancellations10 (already-complained), pending_primary40. **Complete
+относится к provenance уже отменённых work, не к завершению всех40 primary
+trajectories.** YAML не продлевался ради positive count, p/delay/care/rates и
+платежи не менялись. Native fault остаётся в работе на scripted срезе1.2min;
+Sent/care не отменяет primary complaint по утверждённой модели.
+
+В consumer regression один actual receipt превращается в synthetic legacy NULL
+в rollback-only setup: counts=None/qualityincomplete, Sent≥90 остаётся отдельно,
+passed=False; completed journal/исходные receipts не изменяются.
+API25 description/types обновлены; финальный concrete review включает receipt19
+и эту analytical completeness семантику. Новых API numeric caps/денежных формул нет.
+
+Последовательный frontend:367/367 (47files,14.00s), typecheck и lint+motion green.
+Один inherited DemoMenu.tsx18 FastRefresh warning,0errors; UI source не менялся.
+Final source coverage/full make/CI ещё не заявлены. Рекомендуемый runtime dataset
+— новый изолированный demo profile5000 (`install.sh --profile demo --offline`),
+затем `make scenario ID=mass_notifications`. Существующие datasets/baselines ради
+cohort не удалять: preflight должен честно отказать при недостатке фактов/consents.

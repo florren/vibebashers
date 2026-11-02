@@ -335,8 +335,13 @@
     }
   },
   "counts": {
-    "prevented_complaints": null,
-    "prevention_basis": "not_modelled",
+    "prevented_complaints": 0,
+    "prevention_basis": "modelled_prevented_by_resolution",
+    "prevention_quality": "complete",
+    "recorded_eligible_count": 0,
+    "unknown_cancelled_work_count": 0,
+    "recorded_cancellation_count": 10,
+    "pending_primary_count": 40,
     "affected": 120,
     "notified": 120,
     "notified_before_first_complaint": 120,
@@ -407,14 +412,22 @@
     ]
   ],
   "agent_ledger_count": 0,
-  "runtime_base": "0bd91b3bdc356836bbac17e3d396e5d60c1f8b8e",
-  "runtime_schema": "0019 storage-only; no B actor",
-  "junit_result": "22 passed199.81s composition targets; own PG",
+  "runtime_base": "5920c42",
+  "owner_dependency": "0e0db416c10b2761d24637086974b70247874676",
+  "runtime_schema": "0019 corrected B writer/reader",
+  "junit_result": "50 targeted passed211.57s including B storage/runtime/cutoff/consumer/main; own PG",
   "whole_task_complete": false,
+  "tested_files_sha256": {
+    "backend/app/sim/proactive_phases.py": "fa84fcddec18cc0f476fff097946f13f211155a38f5dd752cac3c2cb05546f48",
+    "backend/app/sim/behavior/prevention.py": "f03353baa78f34d211306e95432489129f5dcfb308fa62c23b95e775262eaf80",
+    "backend/app/sim/behavior/cancellation.py": "0df3bde24d284f60c139e648d50e93900ec9a15bec7423ec8b12aa12f043a3bb",
+    "backend/tests/integration/test_proactive_phases.py": "7127c8a1c2e7e2b1906785474520df88d791a66dead39f601c83120095b8eb95"
+  },
   "limitations": [
     "Own synthetic5000-client metadata fixture; production lite preflight may reject",
     "Mock graph/native Sent emulated; no real Telegram/LLM HTTP",
-    "Receipt B not composed; prevented_complaints null/not_modelled",
-    "Coverage7108 is separate frozen source; no full make test/CI claim"
+    "Modelled prevented-by-resolution0 is observed complete provenance, not a Sent/care conversion",
+    "Whole make test/final coverage/CI/human API25+DDL19+financial/HITL review pending",
+    "Complete describes provenance of cancelled work at this observed-current snapshot;40 pending primary trajectories remain unsettled, not predicted prevented"
   ]
 }

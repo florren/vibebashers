@@ -9,6 +9,7 @@ import psycopg
 
 from app.agent import proactive
 from app.ingest.normalizer import create_signal, from_api_signal
+from app.sim.behavior.prevention import summarize as summarize_prevention
 from app.sim.behavior.runtime import require_run
 from app.sim.behavior.store import BehaviorStore
 from app.sim.events import EventBus
@@ -408,7 +409,11 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
     from app.sim import scenarios
 
     checks: list[dict[str, Any]] = []
-    counts: dict[str, Any] = {"prevented_complaints": None, "prevention_basis": "not_modelled"}
+    counts: dict[str, Any] = {
+        "prevented_complaints": None,
+        "prevention_basis": "unverified_native_phase",
+        "prevention_quality": None,
+    }
 
     def check(code: str, ok: bool, detail: str) -> None:
         checks.append({"code": code, "ok": ok, "detail": detail})
@@ -420,6 +425,32 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
         if context is None or not complete:
             return {"passed": False, "checks": checks, "counts": counts}
         await journal_inputs(conn, context, active=False)
+        try:
+            prevention = await summarize_prevention(conn, run_id=run_id)
+        except ValueError:
+            # Несогласованные native receipts — диагностируемый unknown,
+            # не число Sent и не zero. Immutable completed event не меняется.
+            counts.update(prevention_basis="invalid_native_receipts")
+            check(
+                "prevention_provenance",
+                False,
+                "Native cancellation receipts требуют проверки; modelled count неизвестен",
+            )
+        else:
+            counts.update(
+                prevented_complaints=prevention.modelled_prevented_by_resolution,
+                prevention_basis="modelled_prevented_by_resolution",
+                prevention_quality=prevention.quality,
+                recorded_eligible_count=prevention.recorded_eligible_count,
+                unknown_cancelled_work_count=prevention.unknown_cancelled_work_count,
+                recorded_cancellation_count=prevention.recorded_cancellation_count,
+                pending_primary_count=prevention.pending_primary_count,
+            )
+            check(
+                "prevention_provenance",
+                prevention.quality == "complete",
+                f"Modelled prevented-by-resolution: {prevention.modelled_prevented_by_resolution}; quality={prevention.quality}; pending_primary={prevention.pending_primary_count}. Complete — provenance уже отменённых work, не завершение всех primary trajectories. Sent/care/already-complained не credit",
+            )
         notified = context.events["notified"]["payload"]
         completed = context.events["completed"]["payload"]
         complaints = context.events["complaints"]["payload"]["complaint_signal_ids"]

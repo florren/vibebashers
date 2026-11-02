@@ -72,7 +72,11 @@ async def test_scripted_worker_runs_native_120_notice_care_30_dedupe_without_clo
             result = await scenarios.evaluate(conn, scenarios.get("mass_notifications"), run)
             assert result["passed"], result["checks"]
             assert all(check["ok"] is True for check in result["checks"])
-            assert result["counts"]["prevented_complaints"] is None
+            assert result["counts"]["prevented_complaints"] == 0
+            assert result["counts"]["prevention_quality"] == "complete"
+            assert result["counts"]["prevention_basis"] == "modelled_prevented_by_resolution"
+            assert result["counts"]["recorded_eligible_count"] == 0
+            assert result["counts"]["unknown_cancelled_work_count"] == 0
             assert result["counts"]["notified_before_first_complaint"] >= 90
             assert (
                 await (
@@ -153,6 +157,24 @@ async def test_scripted_worker_runs_native_120_notice_care_30_dedupe_without_clo
                     ensure_ascii=False,
                 ),
             )
+            receipt = await (
+                await conn.execute(
+                    "select r.source_id from behavior_receipts r join behavior_work w on w.id=r.source_id and w.run_id=r.run_id where r.run_id=%s and r.source_kind='work' and r.details is not null and w.kind='complaint' and w.status='cancelled' order by r.source_id limit 1",
+                    (run,),
+                )
+            ).fetchone()
+            assert receipt is not None, "native already-complained cancellation должен иметь receipt"
+            await conn.execute(
+                "update behavior_receipts set details=null where run_id=%s and source_kind='work' and source_id=%s",
+                (run, receipt[0]),
+            )
+            legacy = await scenarios.evaluate(conn, scenarios.get("mass_notifications"), run)
+            assert legacy["passed"] is False
+            assert legacy["counts"]["prevented_complaints"] is None
+            assert legacy["counts"]["prevention_quality"] == "incomplete"
+            assert legacy["counts"]["unknown_cancelled_work_count"] >= 1
+            assert legacy["counts"]["notified"] >= 90  # Не подменяем unknown числом Sent.
+            await conn.rollback()  # Только synthetic legacy setup, native receipts восстановлены.
             other = await new_run(conn, "historical map cannot borrow this run clock", kind="free")
             bomb = AsyncMock(side_effect=AssertionError("historical map не использует чужие часы"))
             monkeypatch.setattr(map_api, "get_map_zones", bomb)

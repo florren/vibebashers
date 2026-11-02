@@ -17,6 +17,10 @@
 §6, §8.4, §18 сц. 6
 
 ## Контракты
+
+`contract-change`: API1.5.25/native scenario events и dependency DDL0019;
+final API/DDL/financial/HITL human review обязателен до merge.
+
 - `events/sim/fault.schema.json`
 - `events/agent/decision.schema.json (client_action.kind=proactive_notice)`
 
@@ -101,3 +105,15 @@ modelled resolution до primary due/first complaint от Sent/care/already-comp
 и unknown. Сам proactive subscriber/controlled scenario находится в отдельной
 ветке T039; эта композиция не помечает карточку целиком done. Проверки и границы
 будут зафиксированы в [финальном review receipts](../reviews/T-039-receipts-final-review.md).
+
+
+### Current native B consumer candidate
+
+Corrected owner dependency0e0db416 подключён обычным merge5920c42; report читает
+единственный summarize, без Sent fallback/новой p/delay/care/money policy.
+50 targeted PG/unit прошли211.57s: current native120/120Sentдоfirst/30dedup,
+care120, modelled prevented-by-resolution0 при complete provenance,
+10 уже отменённых already-complained work и40 pending primary. Complete не
+означает завершение всех trajectories; это observed-current snapshot.
+Legacy NULL receipt даёт None/incomplete, даже при Sent120; immutable phase не
+переписывается. Final coverage/full/CI/API25+receipt19 review ещё впереди.
