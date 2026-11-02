@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from pathlib import Path
 from string import Formatter
@@ -12,6 +13,31 @@ import yaml
 from app.llm.mock import analyze
 from app.sim.signal_corpus import SignalCorpus
 from app.sim.textgen import DATA, TextGen
+
+
+def test_corpus_has_only_generic_bank_references_and_no_contacts() -> None:
+    gen = TextGen(31)
+    texts = [row.text for group in gen.corpus.templates.values() for row in group]
+    texts.extend(text for group in gen.corpus.data["noise"].values() for text in group)
+    bank_words = {
+        "банк",
+        "банка",
+        "банку",
+        "банком",
+        "банке",
+        "банковских",
+        "банковское",
+        "bank",
+        "banking",
+        "non-banking",
+    }
+    for text in texts:
+        assert not re.search(r"https?://|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text)
+        assert not re.search(r"(?<!\w)\+?\d[\d ()-]{9,}\d(?!\w)", text)
+        assert not re.search(r"(?<!\d)\d{12,19}(?!\d)", text)
+        # Названия банков с bank/банк и аббревиатуры заменены нейтральным «Банк».
+        assert set(re.findall(r"\b[\w-]*(?:банк|bank)[\w-]*\b", text.casefold())) <= bank_words
+        assert set(re.findall(r"\b[A-ZА-ЯЁ]{2,}\b", text)) <= {"RUB"}
 
 
 def test_entire_corpus_covers_actual_reference_matrix_without_duplicate_texts() -> None:
@@ -99,3 +125,34 @@ def test_invalid_selection_fails_explicitly_and_corpus_rejects_invalid_shares(tm
     path.write_text("english_share: -0.01\nnoise_share: 0.03\n")
     with pytest.raises(ValueError, match="доли"):
         SignalCorpus(path)
+
+
+def test_channel_corpus_continues_from_persisted_world_rng() -> None:
+    from unittest.mock import Mock
+
+    from app.sim.generators import World
+    from app.sim.rng import SimRng
+
+    rng = SimRng(1729)
+    original = World(Mock(), Mock(), rng, 1)
+
+    def sample(world: World) -> list[tuple[object, float, int]]:
+        return [
+            (
+                world.textgen.generate(kind, product, channel=channel, psychotype="public_emotional"),
+                world.rng.random(),
+                world.rng.poisson(4),
+            )
+            for kind, product in world.textgen.all_combinations()
+            for channel in ("chat", "call", "email", "social")
+        ]
+
+    sample(original)
+    checkpoint = rng.dump_state()
+    expected = sample(original)
+    expected_end = rng.dump_state()
+    restored_rng = SimRng(0)
+    restored_rng.load_state(checkpoint)
+    restored = World(Mock(), Mock(), restored_rng, 1)
+    assert sample(restored) == expected
+    assert restored_rng.dump_state() == expected_end

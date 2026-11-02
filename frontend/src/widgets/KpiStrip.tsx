@@ -20,7 +20,7 @@ export function KpiStrip({ runId }: { runId: number | undefined }) {
   const hitlN = hitl.data?.items?.length ?? 0
 
   return (
-    <div className="kpi-strip grid grid-cols-4 gap-2 px-3 py-2 lg:grid-cols-8">
+    <div data-block="kpis" className="kpi-strip grid grid-cols-4 gap-2 px-3 py-2 lg:grid-cols-8">
       <Kpi label={t('kpi.signals')} value={d?.signals_today ?? '—'} />
       <Kpi label={t('kpi.incidents')} value={d?.incidents_open ?? '—'} />
       <Kpi label={t('kpi.critical')} value={critical} tone={critical ? 'danger' : undefined} />

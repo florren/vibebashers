@@ -150,9 +150,9 @@ it('highlights WS node only from the selected run', async () => {
   mount()
   await screen.findByText(/Обработка:/)
   act(() => useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 10, node: 'classify' } }))
-  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.animate-pulse')?.parentElement?.textContent).toContain('Классификация')
+  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.status-indicator')?.parentElement?.textContent).toContain('Классификация')
   act(() => useWs.getState().push({ topic: 'agent', type: 'step_started', ts: new Date().toISOString(), data: { run_id: 99, node: 'normalize' } }))
-  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.animate-pulse')?.parentElement?.textContent).toContain('Классификация')
+  expect(screen.getByRole('group', { name: 'Граф' }).querySelector('.status-indicator')?.parentElement?.textContent).toContain('Классификация')
 })
 it('keeps composer available for an empty journey without fictitious monetary zeros', async () => {
   vi.mocked(getJourney).mockRejectedValue(new ApiError(404, null, 'not found'))
