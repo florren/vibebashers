@@ -1,0 +1,13 @@
+{
+  "source_revision": "f05b3b0576dd6213d79dd6b53eec0390ef74190b",
+  "base_revision": "7f96646",
+  "exit_code": 0,
+  "scope": "startup offline patch only; backend/app/main.py",
+  "covered": 16,
+  "statements": 17,
+  "percent": 94.12,
+  "missing_lines": [
+    214
+  ],
+  "no_external_calls": true
+}

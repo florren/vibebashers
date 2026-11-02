@@ -8,6 +8,10 @@ Frozen runtime43af7af прошёл все компоненты проверки,
 
 Машинные доказательства: [frozen43 proof](T-051-frozen-43-proof.json), [coverage](T-051-final-coverage.json), [actual legacy upgrade](T-051-legacy-upgrade-proof.json). Postmerge027fd27:30 affected PostgreSQL cases прошли133.96s, включая исправленный T108, binding/restore/static HITL и step atomicity; make lint220/Ruff398/mypy268/drift192 green.
 
+## Последний startup checkpoint
+
+После7f96646 root Fake review выявил automatic GET /models в explicit mock startup. Sourcef05b3b0 закрывает warmup/sync для explicit Settings mock/replay и chain.offline_mode, сохраняя локальную replay role metadata и intentional diagnostic APIs.45targetpassed, scoped16/17=94.12%, make lint220/Ruff398/mypy268/drift192 green. [Startup report](T-051-startup-offline.md). Frozen43 proof и90.55% whole-packet coverage выше относятся к прежнему source; их нельзя объявлять полным green нового head. Final exact CI обязателен.
+
 ## Профили и выполнение
 
 Новый AgentRun получает secret-free snapshot актуальных main/fast/twin до первого LLM. Начатый/HITL/recovered AR использует свой snapshot. SimRun initial snapshot остаётся воспроизводимой metadata; explicit SimRun main ID фиксирует INITIAL main parameters, а не позднее изменённую строку с тем же ID. Только main переопределён; fast/twin актуальны для следующих AR. Legacy AR не получает выдуманную историю.
