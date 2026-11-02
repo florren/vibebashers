@@ -1,0 +1,57 @@
+{
+  "source_revision": "747bd9207616ee658680603deb49c1335392ae9a",
+  "cases": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Срок через 3 ч",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Срок через 3 ч",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Due in 3 h",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "public_id": "INC-000144",
+      "actual_sla_hours": 2.7333333333333334,
+      "visible_sla": "Due in 3 h",
+      "board_and_detail": true,
+      "mobile_width": 360,
+      "menu_escape_restores_focus": true,
+      "errors": [],
+      "remote": [],
+      "writes": []
+    }
+  ]
+}
