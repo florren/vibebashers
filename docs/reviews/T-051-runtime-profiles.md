@@ -67,3 +67,11 @@ Target guard+baseline/maintenance unit50passed16.19s. В новом PG case пр
 Ordinary merge PR172/db4c286 сохраняет API1.5.18 со всеми T234 optional fields/relations paths, UI key bindings, DB/Compare tabs и TraceGraph. WS runs инвалидирует db и trace вместе. Public `app.openapi()` выполняется после регистрации routes/mount_frontend, без вызовов DB/LLM. Generated API types пересозданы source generator, diff отсутствует. Composed frontend220passed.
 
 Directed metadata/profile/Trace run:98passed/1failed184.06s. Единственный отказ — synthetic GET cache probe после локального production build попадал в существующий SPA fallback и получал HTML. Probe меняет только synthetic cache; теперь POST `/api/synthetic-runtime-state`, исходные stored/loop-cleanup assertions сохранены. Exact regression1passed1.85s. Продуктовый GET routing этим не изменялся.
+
+## Frozen727: завершённые проверки
+
+Unit1298passed/18skipped51.44s; PostgreSQL320passed/2skipped1749.14s; scenarios41passed/1failed/2skipped197.64s. Единственный scenario09 replay fixture сохраняла global mock и не выбирала записанную Pro модель до создания SimRun; все actual model/replay assertions сохранены, correction согласована отдельно. Поэтому `make test` НЕ объявляется green. Оставшиеся targets выполнены отдельно на том же frozen source: compliance31passed95.56s, frontend220passed.
+
+Coverage выполнен в отдельном checkout/venv/DB того же727, без общей генерации/БД:1442passed/18skipped1082.62s; изменённые executable statements2260/2516=89.83% относительно85fcbaa, generated DB/models/contracts и line0 исключены. Per-file missing lines и source SHA в `T-051-frozen-727-coverage.json`, сводка в `T-051-frozen-727-proof.json`.
+
+Дополнительные synthetic counterexamples подтвердили SDK raw exception cause в formatted traceback и Giga exact credential в usage до int parsing. Эти данные НЕ означают, что provider boundary уже полностью защищена. Согласован отдельный followup после frozen proof: fromNone, minimumWARNING exact installed SDK loggers и безопасный pre-parse usage boundary. Приведённые числа относятся727, не будущему изменённому source.
