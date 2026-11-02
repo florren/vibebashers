@@ -152,3 +152,48 @@ Ruff check/format и mypy ядра green. Runtime/БД по-прежнему н�
 подтвердил значения/семантику `ba5145d` для реализации; approval metadata теперь
 записана в YAML/ADR, enabled=false. Pure core/runtime и действующие defaults пока
 не менялись. Новые API/DB contracts требуют финального конкретного review.
+
+## Typed care checkpoint после одобрения demo-policy
+
+Пользователь одобрил значения/семантику `ba5145d`; approval metadata зафиксированы
+в `b6cdb5c`, enabled=false. Новое чистое ядро `behavior/care.py` реализует явные
+CareComponents/CareState/CareContext/CareResult и Communication/SLA/Gift evidence.
+В snapshot входят first_reply_at, sticky tone violation и SLA breach; стратегия
+не хранит частную память в closure. Score округляется ROUND_HALF_UP один раз после
+полной weighted sum, веса не нормализуются повторно.
+
+Статусы совпадают с существующим notifications.status: queued/sent/delivered/
+failed/suppressed. Только sent/delivered дают credit; queued не трактуется как
+физически отправленное сообщение или gift offer. Атрибуция клиенту и валидность
+T015 обязательны и не выводятся из наличия произвольного текста. Invalid message
+не даёт положительный credit и может обнулить tone sticky; последующее правильное
+сообщение нарушение не стирает. Gift требует done+issued+sent offer; personal_call
+не создаёт gift fit, несколько подарков берут максимум, а не сумму.
+
+First reply выбирается по самому раннему допустимому факту после реальной жалобы;
+позднейшее по sim_time сообщение не переписывает delay. Более ранний исходный
+факт, доставленный writer позже, восстанавливает истинное first_reply_at.
+Это конкретная обработка evidence ordering, не новая probability/policy цифра;
+перед wiring writer обязан получать исходные timestamps и подтверждённые связи.
+
+### Граница durable writer (пока не реализована)
+
+Будущая 0017 имеет actual parent0016 после T2400014/T1210015/P2, но файл миграции
+здесь отсутствует. Commit owner — одна tick transaction: lock(run,client), receipt
+по реальному source_kind/id/action ДО RNG, typed component snapshot, timers,
+state/events/signals и SimRng.dump_state атомарно. Episode хранит immutable policy
+hash/version и реальный набор fault/operation cause membership. Нет private queue,
+модель не делает commit и не подтверждает причинность сама.
+
+Коммуникационный producer должен читать настоящий transport status, run/client,
+включая явно привязанный public reply; queued outbox и глобальная рассылка без
+атрибуции не дают care. Синтетический bool от клиента не является evidence.
+TwinService direct care_score UPDATE подлежит переносу в единственного владельца;
+client_reactions.satisfaction остаётся наблюдением, а не заменой care. До этой
+композиции runtime loader/actor wiring отсутствует, enabled=false сохраняется.
+Долговечность World.pending текущим checkpoint не утверждается.
+
+Проверено:89 pure tests (60 прежних+29 новых) passed0.37s; changed Ruff/mypy green.
+Care module executable coverage177/190=93.16% exact absolute-file trace; raw proof
+`T-161-care-components-proof.json`. Внешних вызовов, БД, DDL и финансовых/HITL
+изменений нет. Это scoped checkpoint, не done всей T161.
