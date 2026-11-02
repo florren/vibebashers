@@ -170,7 +170,6 @@ class World:
 
     async def load(self) -> None:
         self.loaded = False
-        previous_faults = {fault["id"]: fault for fault in self.active_faults}
         cur = await self.conn.execute(
             "select c.id, c.segment_code, c.psychotype_code, c.region_code, ci.name_ru, p.params, "
             "array_agg(cp.product_code order by cp.product_code) filter (where cp.status = 'active'), max(cp.card_last4) "
@@ -204,30 +203,9 @@ class World:
             r[0]: {"system": r[1], "product": r[2], "criticality": r[3], "client_visible": r[4]}
             for r in await ec.fetchall()
         }
-        af = await self.conn.execute(
-            "select id, system_code, error_code, started_sim from faults where run_id = %s and resolved_sim is null",
-            (self.run_id,),
-        )
-        self.active_faults = [
-            {
-                "id": r[0],
-                "system": r[1],
-                "error_code": r[2],
-                "started_sim": r[3],
-                "expected_end": r[3] + dt.timedelta(minutes=90),
-                "impact": 0,
-                "clients": set(),
-                "corr": uuid.uuid4(),
-            }
-            for r in await af.fetchall()
-        ]  # после рестарта: добиваем 90 мин
-        # При rollback reload сохраняем volatile metadata только тех старых
-        # fault IDs, которые действительно остались active в committed DB.
-        for fault in self.active_faults:
-            old = previous_faults.get(fault["id"], {})
-            for name in ("expected_end", "impact", "clients", "corr"):
-                if name in old:
-                    fault[name] = old[name]
+        from app.sim.fault_recovery import load_faults
+
+        self.active_faults = await load_faults(self.conn, self.run_id)
         await self.team_emulator.load()
         await self.sla_engine.load()
         self.loaded = True

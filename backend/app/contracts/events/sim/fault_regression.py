@@ -569,3 +569,6 @@ class FaultRegression(BaseModel):
     delay_min: int | None = Field(None, description="Через сколько сим-минут после релиза", ge=0)
     impact_count: int | None = Field(None, ge=0)
     started_sim: SimTime
+    expected_duration_min: int | None = Field(
+        None, description="Явный запланированный срок нового сбоя; отсутствует в legacy событиях.", ge=1
+    )

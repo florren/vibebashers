@@ -731,8 +731,10 @@ class TeamEmulator:
                 (self.run_id, pr.system, pr.error_code, sim_time, pr.incident_id, []),
             )
             fid = int((await cur.fetchone())[0])  # type: ignore[index]
+            duration_min = 90  # Существующая длительность закрепляется в native event.
             payload = {
                 "fault_id": fid,
+                "expected_duration_min": duration_min,
                 "caused_by_incident_id": pr.incident_id,
                 "release_action_id": pr.release_action_id,
                 "origin_system": pr.origin_system,
@@ -743,17 +745,17 @@ class TeamEmulator:
                 "impact_count": 0,
                 "started_sim": sim_time.isoformat(),
             }
-            await self.bus.emit(self.run_id, "fault.regression", payload, sim_time)
+            correlation = await self.bus.emit(self.run_id, "fault.regression", payload, sim_time)
             world.active_faults.append(
                 {
                     "id": fid,
                     "system": pr.system,
                     "error_code": pr.error_code,
                     "started_sim": sim_time,
-                    "expected_end": sim_time + dt.timedelta(minutes=90),
+                    "expected_end": sim_time + dt.timedelta(minutes=duration_min),
                     "impact": 0,
                     "clients": set(),
-                    "corr": __import__("uuid").uuid4(),
+                    "corr": correlation,
                 }
             )
             self._regressed_incidents.add(pr.incident_id)
