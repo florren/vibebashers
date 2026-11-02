@@ -8,51 +8,38 @@ fault:
   system: notification_gw
   affected_clients: 120
   district: yufo
+  expected_duration_min: 90
 expected:
   complaints: 30
   dedupe_to_one_incident: true
   flag: mass_impact
   preventive_notice: true
   map_zone: red
-description_ru: 'Массовая задержка смс и push в одном округе: несколько жалоб склеиваются в один инцидент с флагом массовости.'
-inject:
+description_ru: 'Scripted/deferred сценарий: 120 native failed operations в ЮФО, служебный
+  сигнал, ≥90 уведомлений до 30 жалоб. Часы paused, фазы из YAML. Требует demo cohort
+  и фактические согласия; lite может вернуть insufficient_cohort/consents.'
+operation:
+  product_code: debit_card
+  op_type: transfer
+  method: online
+  system_path:
+  - mobile_app
+  - processing
+  - core_abs
+  - notification_gw
+  amount_rub: 4500
+  fee_amount: 0
+script:
+  source_mode: prepared_native
+  initial_step_min: 1
+  complaint_step_min: 0.1
+  owner_observation_step_min: 0.1
+  complaints: 30
+  minimum_notices: 90
+complaint_templates:
 - channel: chat
-  client:
-    district: yufo
-    operation:
-      error_code: NOTIF-DELAY
-      product_code: debit_card
-      op_type: transfer
-      method: online
-      system_path: &id001
-      - mobile_app
-      - processing
-      - core_abs
-      - notification_gw
-      amount_rub: 4500
-      fee_amount: 0
   text: Не приходит смс-код для подтверждения перевода уже час, push тоже не работает.
 - channel: call
-  client:
-    district: yufo
-    operation:
-      error_code: NOTIF-DELAY
-      product_code: debit_card
-      op_type: transfer
-      method: online
-      system_path: *id001
-      amount_rub: 4500
-      fee_amount: 0
   text: Смс с кодом не приходит, не могу оплатить. Сбой у вас?
 - channel: social
-  client:
-    district: yufo
-    operation:
-      error_code: NOTIF-DELAY
-      product_code: debit_card
-      op_type: transfer
-      method: online
-      system_path: *id001
-      amount_rub: 4500
-      fee_amount: 0
   text: У кого ещё не приходят push и смс от банка? Полчаса жду код, ошибка.

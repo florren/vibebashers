@@ -8,7 +8,7 @@ import pytest
 
 from app.contracts.events.trace.journey import Journey as JourneyResponse
 from app.contracts.events.trace.trace_response import TraceResponse
-from app.search.grammar import PREFIXES, parse
+from app.search.grammar import PREFIXES, csi_storage_ref, parse
 from app.trace.assembler import causal_order, pending_steps, render, terminal_for
 from app.trace.journey import build_journey, client_messages
 from app.trace.privacy import mask
@@ -224,3 +224,23 @@ def test_pending_human_prevents_a_closed_summary_for_the_related_path():
     assert result["summary"]["outcome_ru"] == "Ожидаем решения человека"
     assert result["stages"][4]["status"] == "waiting_human"
     assert result["stages"][7]["status"] != "done"
+
+
+@pytest.mark.parametrize(
+    "query,expected",
+    [
+        ("CSI-030001", "CSI-030001"),
+        ("csi — 000123", "CSI-000123"),
+        ("CSI ００１", "CSI-001"),
+        ("CSI-001", "CSI-001"),
+        ("CSI-1", "CSI-1"),
+    ],
+)
+def test_exact_csi_lookup_retains_accepted_identifier_width(query, expected):
+    assert csi_storage_ref(query) == expected
+    assert parse(query)["kind"] == "csi"
+
+
+def test_distinct_accepted_csi_ids_are_not_collapsed_by_storage_lookup():
+    assert csi_storage_ref("CSI-001") != csi_storage_ref("CSI-000001")
+    assert parse("CSI-001") == parse("CSI-000001")

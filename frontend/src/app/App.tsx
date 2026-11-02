@@ -24,6 +24,7 @@ import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { TracePage } from '@/pages/trace'
 import { JourneyPage } from '@/pages/journey'
 import { FinancePage } from '@/pages/finance/FinancePage'
+import { CsiPage } from '@/pages/csi/CsiPage'
 import { SetupPage } from '@/pages/setup/SetupPage'
 
 function OperatorRuntime() {
@@ -53,7 +54,7 @@ export function App() {
             <Route path="overview" element={<PendingScreen title={t('shell.overview')} />} />
             <Route path="cabinet" element={<CabinetPage />} />
             <Route path="cabinet/:productLine" element={<CabinetPage />} />
-            <Route path="csi" element={<PendingScreen title={t('shell.csi')} />} />
+            <Route path="csi" element={<CsiPage />} />
             <Route path="clients/:id" element={<Client360Page />} />
             <Route path="incidents/:id" element={<IncidentPage />} />
             <Route path="engine" element={<EnginePage />} />

@@ -1,0 +1,40 @@
+{
+  "source": "c54f6d813a17759c19d048a78ed5e8ebaf514742",
+  "parent_base": "5b34a5fbe6c3a06c8ada116f3806d88d4fdfe41f",
+  "api_version": "1.5.25",
+  "schema_head": "0019",
+  "checks": {
+    "targeted_unit": {
+      "passed": 53,
+      "seconds": 4.38,
+      "scope": "explicit rates, cabinet scope, proactive runner"
+    },
+    "targeted_postgres": {
+      "passed": 9,
+      "seconds": 105.37,
+      "scope": "actual calculator catalog/persisted no-write and all proactive phase guards"
+    },
+    "frontend": {
+      "passed": 420,
+      "files": 58,
+      "seconds": 12.79,
+      "typecheck": "passed",
+      "lint_motion": "passed; inherited DemoMenu.tsx18 warning only"
+    },
+    "contracts": "48 schemas,163 paths validated"
+  },
+  "byte_equality": {
+    "runner_before": "4cba0f7a397463084ccb052eb3da3ae8df5e73b6",
+    "runner_composed": "4cba0f7a397463084ccb052eb3da3ae8df5e73b6",
+    "metrics_parent": "d825adacecfb3c92fe828293516d83164991682d",
+    "metrics_composed": "d825adacecfb3c92fe828293516d83164991682d",
+    "all_existing_agent_sim_proactive_dcltv": "git diff65d177d HEAD for these paths empty"
+  },
+  "coverage": "T-039-wake-coverage.json (source9f runtime runner byte-equal composed)",
+  "limitations": [
+    "whole final make and exact-head CI pending",
+    "expanded frozen8a coverage had145passed3failed, preserved as diagnostic",
+    "native main CLI default30s separately verified before dependency-only parent merge; runner unchanged",
+    "no real LLM/Telegram/email or production calls"
+  ]
+}

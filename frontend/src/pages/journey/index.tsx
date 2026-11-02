@@ -12,6 +12,13 @@ export function JourneyPage() {
   const { t } = useTranslation()
   const { ref } = useParams()
   const [params] = useSearchParams()
+  const runId = params.get('run_id') ?? undefined
+  const href = (reference?: string, mode: JourneyMode = 'follow') => {
+    const query = new URLSearchParams()
+    if (runId !== undefined) query.set('run_id', runId)
+    if (mode !== 'follow') query.set('mode', mode)
+    return `${reference ? ROUTES.journeyObject(reference) : ROUTES.journey}${query.size ? '?' + query.toString() : ''}`
+  }
   const nav = useNavigate()
   const requestedMode = params.get('mode')
   const mode: JourneyMode = requestedMode === 'replay' || requestedMode === 'presenter' ? requestedMode : 'follow'
@@ -26,7 +33,7 @@ export function JourneyPage() {
             aria-current={mode === m ? 'page' : undefined}
             aria-disabled={m !== 'follow' && !reference}
             className={`btn btn-sm ${mode === m ? 'border-brand text-brand' : ''}`}
-            to={`${reference ? ROUTES.journeyObject(reference) : ROUTES.journey}${m === 'follow' ? '' : `?mode=${m}`}`}
+            to={href(reference, m)}
             onClick={(e) => {
               if (m !== 'follow' && !reference) e.preventDefault()
             }}
@@ -40,19 +47,19 @@ export function JourneyPage() {
               type="checkbox"
               checked={!ref}
               disabled={!reference}
-              onChange={(e) => nav(e.target.checked ? ROUTES.journey : ROUTES.journeyObject(reference!))}
+              onChange={(e) => nav(href(e.target.checked ? undefined : reference))}
             />
             {t('journeyModes.autoFollow')}
           </label>
         )}
       </nav>
-      <DemoExecution onStarted={reference => nav(ROUTES.journeyObject(reference))} />
-      <SignalPicker onSelect={reference => nav(`${ROUTES.journeyObject(reference)}${mode === 'follow' ? '' : `?mode=${mode}`}`)} />
+      {runId === undefined && <DemoExecution onStarted={reference => nav(ROUTES.journeyObject(reference))} />}
+      <SignalPicker runId={runId} onSelect={reference => nav(href(reference, mode))} />
       {mode === 'follow' ? (
-        <LiveJourney onSubject={setSubject} />
+        <LiveJourney key={runId ?? 'legacy'} onSubject={setSubject} runId={runId} />
       ) : reference ? (
         <div className="min-h-0 flex-1 overflow-auto">
-          <RecordedJourney key={`${mode}:${reference}`} reference={reference} mode={mode} />
+          <RecordedJourney key={`${mode}:${reference}:${runId ?? 'legacy'}`} reference={reference} mode={mode} runId={runId} />
         </div>
       ) : (
         <p className="p-5">{t('journeyModes.choose')}</p>

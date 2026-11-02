@@ -304,3 +304,30 @@ it('links the exact retry to bank events, keeps manual selection on refresh, and
   expect(screen.queryByLabelText('Выбранный шаг')).not.toBeInTheDocument()
   expect(sendJourneyMessage).not.toHaveBeenCalled()
 })
+
+it('preserves an explicit run in follow/replay navigation and disables writes and economic computation', async () => {
+  mount('/journey/SIG-000001?run_id=19')
+  expect(await screen.findByText(/Запрошено решение/)).toBeInTheDocument()
+  expect(getJourney).toHaveBeenCalledWith('SIG-000001', 'jury', false, '19')
+  expect(loadEconomics).not.toHaveBeenCalled()
+  expect(screen.queryByRole('textbox', { name: 'Сообщение клиента' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Отправить' })).not.toBeInTheDocument()
+  expect(screen.getByText(/Контекст выбранного запуска: только просмотр/)).toBeInTheDocument()
+  const replay = screen.getByRole('link', { name: 'Повтор' })
+  expect(replay).toHaveAttribute('href', '/journey/SIG-000001?run_id=19&mode=replay')
+  fireEvent.click(replay)
+  expect(getJourney).toHaveBeenCalledWith('SIG-000001', 'any', false, '19')
+  expect(sendJourneyMessage).not.toHaveBeenCalled()
+})
+
+it('does not load an unrelated signal agent run outside an explicit scoped trace', async () => {
+  const scoped = structuredClone(journey)
+  scoped.stages[0]!.events[0]!.links.engine_step = '/engine/10?seq=1'
+  vi.mocked(getJourney).mockResolvedValue(scoped)
+  vi.mocked(loadSignal).mockResolvedValue({ id: 1, agent_runs: [{ id: 99 }, { id: 10 }], incidents: [] })
+  vi.mocked(loadRun).mockImplementation(async id => ({ id, outcome: 'completed', steps: [] }))
+  mount('/journey/SIG-000001?run_id=19')
+  await screen.findByRole('group', { name: 'Граф' })
+  expect(loadRun).toHaveBeenCalledWith(10)
+  expect(loadRun).not.toHaveBeenCalledWith(99)
+})

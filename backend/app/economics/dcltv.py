@@ -202,6 +202,55 @@ async def _retention_factor(
     return manual, "manual"
 
 
+async def _native_service_affected(
+    conn: psycopg.AsyncConnection[Any], inc: dict[str, Any], sim_time: dt.datetime | None
+) -> tuple[int, dt.datetime] | None:
+    """Canonical fault-monitor cohort — actual clients, не service rows/payload counters."""
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute(
+            "select bool_and(coalesce(s.run_id=%s and s.source_fault_id=%s and s.client_id is null "
+            "and s.origin='proactive' and s.channel_code='proactive' and s.channel_subtype='system_logs' "
+            "and m.run_id=s.run_id and m.status='accepted' "
+            "and m.external_id='fault-'||s.run_id::text||'-'||s.source_fault_id::text "
+            "and m.payload->>'origin'='proactive' and m.payload->>'channel'='proactive' "
+            "and m.payload#>>'{meta,source_fault_id}'=s.source_fault_id::text "
+            "and m.payload#>>'{client,client_id}' is null,false)) as valid, count(*) as anchors "
+            "from incident_signals x join signals s on s.id=x.signal_id "
+            "left join ingest_messages m on m.signal_id=s.id and m.source_code='fault_monitor' "
+            "where x.incident_id=%s and (m.id is not null or "
+            "(s.origin='proactive' and s.channel_code='proactive' and s.channel_subtype='system_logs'))",
+            (inc["run_id"], inc["fault_id"], inc["id"]),
+        )
+        provenance = await cur.fetchone()
+        if not provenance or provenance["anchors"] == 0:
+            return None  # Legacy/noncanonical incident сохраняет прежний расчёт.
+        await cur.execute(
+            "select case when st.current_run_id=r.id then st.sim_time else r.finished_sim end as own_time "
+            "from sim_runs r left join sim_state st on st.id=1 where r.id=%s",
+            (inc["run_id"],),
+        )
+        clock = await cur.fetchone()
+        own_time = clock["own_time"] if clock else None
+        at = sim_time or own_time
+        if provenance["valid"] is not True or own_time is None or at is None or at.utcoffset() is None or at > own_time:
+            raise ValueError("fault_monitor economics: проверьте native producer lineage и часы своего запуска")
+        await cur.execute(
+            "select count(distinct o.client_id) as affected from operations o "
+            "join faults f on f.id=o.fault_id and f.run_id=o.run_id "
+            "join error_codes e on e.code=f.error_code and e.system_code=f.system_code "
+            "where o.run_id=%s and f.id=%s and f.system_code=%s and f.error_code=%s "
+            "and o.started_sim<=%s and behavior_valid_failed_operation(o.id,o.run_id) "
+            "and exists(select 1 from sim_events v where v.run_id=f.run_id and v.event_type='fault.started' "
+            "and v.payload->>'fault_id'=f.id::text and v.sim_time<=%s)",
+            (inc["run_id"], inc["fault_id"], inc["system_code"], inc["error_code"], at, at),
+        )
+        cohort = await cur.fetchone()
+    affected = int(cohort["affected"]) if cohort else 0
+    if affected <= 0 or int(inc["mass_impact"] or 0) != affected:
+        raise ValueError("fault_monitor economics: cohort/mass не согласованы; повторите native scope validation")
+    return affected, at
+
+
 async def compute_incident(
     conn: psycopg.AsyncConnection[Any], incident_id: int, *, sim_time: dt.datetime | None = None
 ) -> dict[str, Any] | None:
@@ -209,11 +258,11 @@ async def compute_incident(
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute(
             """
-            select i.id, i.run_id, i.status, i.incident_type, i.product_code, i.system_code, i.mass_impact, i.fault_id, i.primary_client_id,
+            select i.id, i.run_id, i.status, i.incident_type, i.product_code, i.system_code, i.error_code, i.mass_impact, i.fault_id, i.primary_client_id,
                    i.sla_due_sim, i.resolved_sim, i.closed_sim, i.sla_breached, i.outcome_class, i.flags,
                    c.segment_code as segment, f.affected_clients as fault_clients, f.impact_count as fault_ops,
                    (select s.channel_code from incident_signals isg join signals s on s.id = isg.signal_id where isg.incident_id = i.id order by isg.linked_sim limit 1) as channel,
-                   (select count(*) from incident_signals isg where isg.incident_id = i.id) as signals_count,
+                   (select count(*) from incident_signals isg join signals s on s.id=isg.signal_id where isg.incident_id = i.id and s.origin is distinct from 'proactive') as signals_count,
                    exists (select 1 from tasks t where t.incident_id = i.id and t.kind = 'gift' and t.status in ('done','completed')) as gift_given,
                    exists (select 1 from client_states cs where cs.incident_id = i.id and cs.state = 'churned') as churned,
                    coalesce((select sum(l.amount) from ledger_entries l join agent_runs ar on ar.id = l.agent_run_id where ar.incident_id = i.id and l.kind = 'refund'), 0) as refund_rub,
@@ -228,13 +277,18 @@ async def compute_incident(
         inc = await cur.fetchone()
     if not inc:
         return None
+    native = await _native_service_affected(conn, inc, sim_time)
     cfg = await load_settings(conn)
     s, rates = cfg["settings"], cfg["rates"]
     flags = inc.get("flags") or []
     regression = "regression" in flags or "churn_regression" in flags
     outcome = outcome_of(inc, gift_given=bool(inc["gift_given"]), regression=regression, churned=bool(inc["churned"]))
-    affected = max(
-        int(inc.get("fault_clients") or 0), int(inc.get("mass_impact") or 1), int(inc.get("signals_count") or 1)
+    affected = (
+        native[0]
+        if native
+        else max(
+            int(inc.get("fault_clients") or 0), int(inc.get("mass_impact") or 1), int(inc.get("signals_count") or 1)
+        )
     )
     if inc["incident_type"] == "misselling":
         rate = Rate("misselling_case", float(s.get("misselling_case_cost_rub") or 4050), "стоимость случая мисселлинга")
@@ -267,7 +321,7 @@ async def compute_incident(
         refund_rub=float(inc.get("refund_rub") or 0),
     )
     res["retention_source"] = source
-    res["computed_sim"] = sim_time or inc.get("now_sim") or dt.datetime.now(dt.UTC)
+    res["computed_sim"] = native[1] if native else sim_time or inc.get("now_sim") or dt.datetime.now(dt.UTC)
     breakdown = {k: v for k, v in res.items() if k not in ("computed_sim",)}
     if inc.get("outcome_class") != outcome:
         await conn.execute(
