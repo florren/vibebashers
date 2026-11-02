@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Реалистичная предыстория операций с путями по системам — основа для связывания жалоб с логами.
@@ -42,4 +42,36 @@ python scripts/seed/operations.py --profile lite --check
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-017-operation-history`, ревизия01.11.2026. Данные генератора вынесены
+в `data/op_paths.yaml`: пики10–12/18–21, веса дней/сегментов, lognormal суммы,
+пути существующих систем. Failed1% имеют совместимый error_code. Отдельная модель
+BRD4% ошибочной комиссии успешных QR сохраняется; refund/HITL политики не меняются.
+`seed_operations` сохранён как совместимый импорт из clients.py; реализация использует
+потоковый COPY, существующая история не перезаписывается. Устранены клиенты без
+продуктов (ветка youth), добавлен masked_number в карточные terms. Контракты не меняются.
+
+Замер на отдельной PostgreSQL16 `cx_operation_history`, demo5000/seed42:
+Финальный demo5000/seed42 наcx_operation_demo_final:600000 операций за16.814с,
+5930failed(0.9883%),102170QR/4097сошибочнойкомиссией. Полныйseedс2500signals/
+400incidentsиbaseline dump16.95MB —30.2с при параллельной тестовой нагрузке.
+Порог операции≤60с/весьseed≤90с выполнен на этой машине, CI timing ожидается.
+Адресные15unit+3реальныеDBрегрессии —18passed; χ² по часам/дням,
+распределение логарифмов сумм, интенсивность сегментов, детерминизм/границы,
+masked_number/промо/идемпотентность. Финальное покрытие изменённых исполняемых строк128/145=88.28%.
+Replay read-model тест переведён на immutable context записанной live кассеты
+(backend/tests/fixtures/replay_bank_v1.json); исходные assertions усилены отсутствием
+fallback/error steps. Изменение контекста по-прежнему даёт miss: кассета не rekeyed.
+Автономный agent test выбирает заявленный segment и72h окно, текст соответствует
+реальной операции; больше не зависит от произвольного старого размера138руб.
+Явный failure_codes pool не создаёт PROC-QR-FEE-CHARGED без fee; этот код остаётся
+только у успешного QR с ошибочной комиссией. Финальный16case unit+agent regression green.
+Полный regression/lint запущен;
+финальное покрытие/DoD и live GigaChat пока не заявлены.
+
+Фиксация зависимости T-018 (02.11.2026): текущий commit — подготовленный пакет T-017, не готовый к merge. Последний полный прогон:748 unit passed/18 skipped; integration остановлен на неизменённом customer_messages gift-approval regression. Подтверждена корневая причина вне генератора: агент мог вернуть несвязанную QR-комиссию по жалобе на вклад, закрыть обращение и выдать подарок. Исправляется отдельно в codex/fix-refund-case-relevance с финансовым review; после интеграции обязателен повтор полного make test. Никакие исходные assertions этой ошибки не ослаблены. Финальные targeted18passed и benchmark600000ops16.814s/fullseed30.2s сохраняются.
+
+Replay follow-up: из T0187ca1467 перенесён общий immutable recorded-bank fixture для read-model12/13 и replay08, sourcehash174508...; исходные assertions completed/replay/ledger/clientlane сохранены, кассеты/usage/rekey не менялись. Negative case подтверждает honest miss при новом seed-контексте. Корневая причина — T017 сменил случайный client/products/operation context, а не defect T018 logs. Часть нового общей event schema требует отдельного live rerecord T198; эта ветка пока на прежнем event contract. После финансовой dependency интеграции полный regression повторяется.
+
+Интеграционный follow-up: финансовый guard из PR #165 влит локально (1bfeec2), отдельная replay fixture из7ca перенесена. Оригинальный customer_messages теперь не делает несвязанногоrefund (ledger пуст), начальный state deposit/deferred. Оставшийся отказline74 был коллизией fixture: тест создавал второй HITLgift1000, а close законно выдавал первый autonomousgift1000 после seedrepeat2. Fixture теперь переводит существующую единственную pendinggift в HITL вместо дубликата; все исходные assertions1000/issued/awaitapproval/report сохранены и добавлен one-task invariant. После этого customer_messages+COPY+replay12/13+replay08 —6passed21.19s. Production gift/refund policy не менялась. Полный состав повторно проверяется.
+
+Итог составного source3c782ace (после financial79f0462): полный make test EXIT0 —944unit/18skip,231integration/2skip,43scenarios/2skip,31compliance; всего1249backend passed22skip,144frontend passed. make lint EXIT0: Ruff,332format,244mypy,191/191OpenAPI,frontend144. Предыдущие ошибки сохранены в истории, затем устранены в финансовом parent и корректных фикстурах без ослабления assertions. Следующий normal merge financial2728709 изменил только review/card docs, production source совпадает с проверенным. Target47scenarios/customer/COPY passed2skip. Нужны PR/CI актуального main, review financial parent165; liveGiga ещё не выполнен, done не заявлен.
