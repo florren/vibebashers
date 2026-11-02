@@ -43,3 +43,11 @@ stale signal/client binding, чужой чат и explicit unbind. Fake aiogram 
 фиксируется отдельно). Mypy9backend и5bot files green.
 Это ещё не проверка настоящей физической доставки, fullmake, OS-restart процесса,
 worker drain или contract approval. Ничего из этого не объявляется завершённым.
+
+Полный backend unit после main0011/schema9 и исправления private-unit setup:
+**1562 passed /18 skipped за46,39с** (`/tmp/t121-post-inbound-full-unit-v2.log`).
+Первый сборочный прогон остановился при collection: старый T157 unit импортировал
+удалённый process-global `_bot_drafts`. Его setup переведён на явный draft и новые
+обязательные identifiers; прежние assertions ru start/en free text сохранены,
+14template unit passed1.02s. Не сохраняем мёртвую global state ради private test.
+Физическая доставка и общий fullmake всё ещё впереди.
