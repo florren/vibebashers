@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
+import uuid
 from typing import Any
 
 import psycopg
@@ -46,6 +48,36 @@ def finished(client: TestClient, ids: list[int]) -> list[dict[str, Any]]:
             return rows
         time.sleep(0.02)
     pytest.fail("benchmark did not finish within 15 s")
+
+
+def reconcile_synthetic_key(conn, profile_id, key_id):
+    from app.llm.accounting_cli import execute, parser
+
+    # Explicit fixture declaration: this brand-new synthetic physical credential
+    # has no previous wire usage. The production registry never auto-certifies0.
+    now = conn.execute("select clock_timestamp()").fetchone()[0]
+    args = parser().parse_args(
+        [
+            "reconcile",
+            "--profile-id",
+            str(profile_id),
+            "--key-id",
+            str(key_id),
+            "--reconciliation-id",
+            str(uuid.uuid4()),
+            "--as-of",
+            now.isoformat(),
+            "--tokens-used",
+            "0",
+            "--requests-today",
+            "0",
+            "--profile-requests-today",
+            "0",
+            "--confirm",
+            "--reviewed-unknown-origin",
+        ]
+    )
+    assert not asyncio.run(execute(args))["idempotent"]
 
 
 def test_selected_profiles_background_ws_persistence_export(
@@ -194,29 +226,73 @@ def test_dataset_list_excludes_empty_and_mixed(bench_db: str, conn: psycopg.Conn
 def test_key_usage_persists_exactly_once(
     bench_db: str, conn: psycopg.Connection, monkeypatch: pytest.MonkeyPatch, fail_first_commit: bool
 ) -> None:
+    import json
+
+    import httpx
+
     from app.bench import service
+    from app.llm.base import LLMProfile
+    from app.llm.openai_compat import OpenAICompatProvider
 
-    class SyntheticOpenAI(MockProvider):
-        def __init__(self, *args, **kwargs):
-            super().__init__()
+    requests = []
+    physical_secret = f"synthetic-test-only-{uuid.uuid4().hex}"
+    base = "https://synthetic-bench-accounting.invalid/v1"
 
-        async def aclose(self):
-            pass
+    async def fake_http(request):
+        requests.append(request.url.path)
+        body = json.loads(request.content)
+        schema = body["response_format"]["json_schema"]["schema"]
+        obj, usage, _ = await MockProvider().complete_structured(
+            body["messages"], schema, LLMProfile(code="synthetic", provider="mock", model="mock-rules-v1"), timeout_s=1
+        )
+        return httpx.Response(
+            200,
+            json={
+                "id": "synthetic",
+                "object": "chat.completion",
+                "created": 1,
+                "model": body["model"],
+                "choices": [
+                    {"index": 0, "message": {"role": "assistant", "content": json.dumps(obj)}, "finish_reason": "stop"}
+                ],
+                "usage": {
+                    "prompt_tokens": usage.prompt_tokens,
+                    "completion_tokens": usage.completion_tokens,
+                    "total_tokens": usage.total_tokens,
+                },
+            },
+        )
 
-    monkeypatch.setattr(service, "OpenAICompatProvider", SyntheticOpenAI)
+    def factory(*args, **kwargs):
+        return OpenAICompatProvider(*args, **kwargs, transport=httpx.MockTransport(fake_http))
+
+    monkeypatch.setattr(service, "OpenAICompatProvider", factory)
     pid = profiles(conn, "bench_key_accounting")[0]
-    conn.execute("update llm_profiles set provider='openai_compatible' where id=%s", (pid,))
-    set_setting = service.set_setting
+    conn.execute(
+        "update llm_profiles set provider='openai_compatible',base_url=%s,model='synthetic:free' where id=%s",
+        (base, pid),
+    )
+    record_key_usage = service.record_key_usage
     failures = 0
+    durable_before_rollback = []
 
     async def flaky_save(*args, **kwargs):
         nonlocal failures
         if fail_first_commit and failures == 0:
             failures += 1
+            observed = await service.fetch_one(
+                args[0],
+                "select count(*) as attempts,coalesce(sum(w.observed_tokens),0) as tokens "
+                "from llm_runtime.wire_attempts w join llm_runtime.credential_aliases a on a.credential_uid=w.credential_uid "
+                "join llm_api_keys k on k.credential_uid=a.config_uid where k.id=%s",
+                (args[1],),
+            )
+            assert observed["attempts"] == 1 and observed["tokens"] > 0
+            durable_before_rollback.append(observed)
             raise psycopg.OperationalError("synthetic rollback")
-        await set_setting(*args, **kwargs)
+        await record_key_usage(*args, **kwargs)
 
-    monkeypatch.setattr(service, "set_setting", flaky_save)
+    monkeypatch.setattr(service, "record_key_usage", flaky_save)
     app = create_app()
     with TestClient(app) as client:
         key = client.post(
@@ -224,11 +300,13 @@ def test_key_usage_persists_exactly_once(
             json={
                 "provider": "openai_compatible",
                 "label": "synthetic",
-                "key": "synthetic-test-only",
+                "key": physical_secret,
                 "tokens_limit": 10000000,
+                "endpoint_url": base,
             },
         )
         assert key.status_code == 201, key.text
+        reconcile_synthetic_key(conn, pid, key.json()["id"])
         response = client.post("/api/bench/runs", json={"dataset_id": dataset(conn), "llm_profile_ids": [pid]})
         assert response.status_code == 202, response.text
         row = finished(client, response.json()["run_ids"])[0]
@@ -239,9 +317,83 @@ def test_key_usage_persists_exactly_once(
             else conn.execute("select count(*) from bench_cases where dataset_id=%s", (dataset(conn),)).fetchone()[0]
         )
         tokens = sum(r["prompt_tokens"] + r["completion_tokens"] for r in row["results"])
-        stored = conn.execute("select value from settings where key='llm_keys'").fetchone()[0][0]
-        assert stored["tokens_used"] == tokens
-        assert stored["requests_today"] == len(row["results"])
+        stored = conn.execute(
+            "select tokens_used,requests_today from llm_api_keys where id=%s", (key.json()["id"],)
+        ).fetchone()
+        assert stored[0] == tokens
+        assert stored[1] == len(row["results"])
+        assert len(requests) == len(row["results"])
+        physical = conn.execute(
+            "select count(*) from llm_runtime.wire_attempts w join llm_runtime.credential_aliases a on a.credential_uid=w.credential_uid join llm_api_keys k on k.credential_uid=a.config_uid where k.id=%s",
+            (key.json()["id"],),
+        ).fetchone()[0]
+        assert physical == len(requests)  # Failed bench-result transaction never refunds an HTTP attempt.
+        assert len(durable_before_rollback) == int(fail_first_commit)
+        assert conn.execute("select value from settings where key='llm_keys'").fetchone() is None
         cached = next(iter(app.state.bench.keys.values()))
         assert cached.tokens_used == tokens
         assert cached.requests_today == len(row["results"])
+
+
+def test_bench_refuses_credential_in_valid_200_and_never_persists_or_exports_it(bench_db, conn, monkeypatch):
+    import json
+
+    import httpx
+
+    from app.bench import service
+    from app.llm.gigachat import GigaChatProvider
+
+    secret = f"synthetic-bench-credential-{uuid.uuid4().hex}"
+    base = "https://synthetic-bench.invalid/v1"
+    clients = []
+
+    def handle(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(
+                200, json={"access_token": "synthetic-bench-access", "expires_at": (time.time() + 3600) * 1000}
+            )
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": json.dumps({"problem_summary": secret})}}],
+                "usage": {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7},
+            },
+        )
+
+    def factory(*args, **kwargs):
+        provider = GigaChatProvider(*args, **kwargs, transport=httpx.MockTransport(handle))
+        clients.append(provider)
+        return provider
+
+    monkeypatch.setattr(service, "GigaChatProvider", factory)
+    pid = profiles(conn, "bench-secret-reflection")[0]
+    conn.execute(
+        "update llm_profiles set provider='gigachat',model='synthetic-model',base_url=%s where id=%s", (base, pid)
+    )
+    with TestClient(create_app()) as client:
+        key = client.post(
+            "/api/settings/llm-keys",
+            json={
+                "provider": "gigachat",
+                "label": "synthetic-bench",
+                "key": secret,
+                "endpoint_url": base,
+                "tokens_limit": 1000000,
+            },
+        )
+        assert key.status_code == 201
+        conn.execute("update llm_profiles set api_key_id=%s where id=%s", (key.json()["id"], pid))
+        reconcile_synthetic_key(conn, pid, key.json()["id"])
+        started = client.post("/api/bench/runs", json={"dataset_id": dataset(conn), "llm_profile_ids": [pid]})
+        assert started.status_code == 202, started.text
+        row = finished(client, started.json()["run_ids"])[0]
+        assert row["status"] == "done" and row["results"]
+        assert all(result["predicted"] == {"_benchmark_error": {"kind": "bad_output"}} for result in row["results"])
+        assert all(result["prompt_tokens"] == 3 and result["completion_tokens"] == 4 for result in row["results"])
+        assert secret not in json.dumps(row)
+        assert secret not in client.get("/api/bench/runs").text
+        assert secret not in client.get(f"/api/bench/runs/{row['id']}/export?format=json").text
+        assert secret not in client.get(f"/api/bench/runs/{row['id']}/export?format=csv").text
+        stored = conn.execute("select predicted from bench_results where run_id=%s", (row["id"],)).fetchall()
+        assert stored and secret not in json.dumps(stored)
+    assert clients and all(provider._client.is_closed for provider in clients)

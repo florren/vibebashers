@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
+from app.analytics.cabinet_scope import actor_role
 from app.api._compliance_support import analyze_in_background, run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.compliance import taxonomy
@@ -21,6 +22,7 @@ from app.compliance.transcripts import create_transcript, load_file
 from app.config import get_settings
 from app.search.cases import entity_filter
 from app.sim.events import dumps
+from app.sim.maintenance import spawn_writer
 from app.stt import registry
 from app.stt.live import play_wav, request_stop, set_file_speaker
 
@@ -221,7 +223,7 @@ async def _start_file_session(request: Request, body: dict[str, Any]) -> Any:
             store_audio=bool(body.get("store_audio", False)),
         )
         row = await fetch_one(conn, f"select {SESSION_COLS} {SESSION_FROM} where s.id = %s", (sess.id,))  # noqa: S608
-    asyncio.create_task(play_wav(request.app, sess.id, str(path), provider_code=code, channels=channels))
+    spawn_writer(play_wav(request.app, sess.id, str(path), provider_code=code, channels=channels), kind="audio")
     return JSONResponse(
         _json({**(row or {}), "audio_ws_url": None, "sample_rate": 16000, "channels": channels}),
         status_code=201,
@@ -276,8 +278,9 @@ async def post_compliance_sessions(request: Request, body: dict[str, Any]) -> An
             conn, doc, run_id=run_id, sim_time=sim_time, source="scenario", fmt=fmt, filename=path.name
         )
     pacing = body.get("pacing") or "realtime"
-    asyncio.create_task(
-        analyze_in_background(request, int(tr["id"]), pacing_delay_s=1.5 if pacing == "realtime" else 0.0)
+    spawn_writer(
+        analyze_in_background(request, int(tr["id"]), pacing_delay_s=1.5 if pacing == "realtime" else 0.0),
+        kind="transcript",
     )
     # ждём появления сессии (создаётся в начале анализа)
     for _ in range(40):
@@ -432,6 +435,7 @@ async def get_compliance_alerts(
 
 @router.post("/api/compliance/alerts/{id}/ack", summary="Решение руководителя по алерту")
 async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[str, Any]) -> Any:
+    preset_role = actor_role(request)
     decision = body.get("decision")
     if decision not in ("go", "false_positive", "open_incident"):
         raise HTTPException(status_code=422, detail="decision: go | false_positive | open_incident")
@@ -445,7 +449,7 @@ async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[st
             chain=request.app.state.llm_chain,
             profile=request.app.state.llm_chain.profile_for("fast", request.app.state.llm_profile),
         )
-        res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"))
+        res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"), actor_role=preset_role)
         if not res:
             raise HTTPException(status_code=404, detail="алерт не найден")
         from app.demo.execution import compliance_customer_case, configuration

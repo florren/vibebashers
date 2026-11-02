@@ -942,7 +942,12 @@ export interface paths {
                         provider: components["schemas"]["LlmProvider"];
                         label: string;
                         key: string;
-                        tokens_limit?: number;
+                        tokens_limit?: number | null;
+                        rpd_limit?: number | null;
+                        /** @description Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. */
+                        endpoint_url?: string | null;
+                        /** @description GigaChat OAuth scope; по умолчанию configured scope */
+                        scope?: string | null;
                     };
                 };
             };
@@ -990,6 +995,13 @@ export interface paths {
             responses: {
                 /** @description Удалён */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Ключ привязан к профилю; сначала требуется явный unbind */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1432,7 +1444,7 @@ export interface paths {
             parameters: {
                 query?: {
                     status?: ("running" | "paused" | "interrupted" | "completed" | "stopped" | "archived")[];
-                    kind?: "baseline" | "free" | "scenario";
+                    kind?: "baseline" | "free" | "scenario" | "live";
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
                 };
@@ -1741,7 +1753,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Экспорт запуска (JSON с summary и агрегатами или CSV событий) */
+        /**
+         * Экспорт запуска (JSON с summary и агрегатами или CSV событий)
+         * @description После archive JSON читается из сохранённого файла; CSV событий недоступен (409), поскольку строки запуска удалены.
+         */
         get: {
             parameters: {
                 query?: {
@@ -1767,6 +1782,7 @@ export interface paths {
                         "text/csv": string;
                     };
                 };
+                409: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -1987,6 +2003,8 @@ export interface paths {
                          */
                         reset_mode?: "none" | "counters" | "baseline";
                         label?: string;
+                        seed?: number;
+                        llm_profile_id?: number;
                     };
                 };
             };
@@ -2506,7 +2524,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                };
                 path: {
                     id: components["parameters"]["IdPath"];
                 };
@@ -2669,7 +2690,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                };
                 path: {
                     id: components["parameters"]["IdPath"];
                 };
@@ -4248,11 +4272,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Внутренний приём сообщений от сервиса tgbot (только из docker-сети) */
+        /**
+         * Подписанный durable приём сообщений от сервиса tgbot
+         * @description HMAC-SHA256 точного body/method/path и UTC timestamp с окном ±60с; body ≤32768 bytes.
+         *     Старые kind сохранены, но все callers должны передавать bot_id/update_id и подпись.
+         *     Это service-to-service transport; пользовательский логин/RBAC не добавляется.
+         *     Повтор bot_id/update_id с тем же body/chat возвращает receipt без новых side effects;
+         *     другой body/chat даёт409. accepted означает DB commit, не физическую доставку.
+         */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header: {
+                    "X-CX-Tg-Timestamp": string;
+                    "X-CX-Tg-Signature": string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -4260,9 +4294,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         chat_id: number;
+                        bot_id: number;
+                        update_id: number;
                         username?: string;
                         /** @enum {string} */
-                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append";
+                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append" | "message" | "callback";
                         text: string;
                         payload?: {
                             [key: string]: unknown;
@@ -4271,14 +4307,18 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Что ответить пользователю */
+                /** @description Durable receipt и текст поставленного в очередь ответа */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            reply_text?: string;
+                            /** @constant */
+                            accepted: true;
+                            update_id: number;
+                            notification_id: number;
+                            reply_text: string;
                             buttons?: {
                                 text?: string;
                                 data?: string;
@@ -4288,6 +4328,16 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Неверная подпись или timestamp */
+                401: components["responses"]["Problem"];
+                /** @description Несовместимый bot namespace или конфликт update_id */
+                409: components["responses"]["Problem"];
+                /** @description Body превышает32768 bytes */
+                413: components["responses"]["Problem"];
+                /** @description Невалидные поля события */
+                422: components["responses"]["Problem"];
+                /** @description Transport не настроен либо maintenance */
+                503: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -6398,7 +6448,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -6487,7 +6540,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                };
                 path: {
                     id: components["parameters"]["IdPath"];
                 };
@@ -7070,13 +7126,13 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    product_line?: components["schemas"]["product_line"];
+                    product_line?: string;
                     period?: "day" | "week" | "month" | "quarter";
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                 };
                 header?: {
-                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
                     "X-Cx-Role"?: components["parameters"]["CxRole"];
                     /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
                     "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
@@ -7092,10 +7148,11 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["CabinetOverview"];
                     };
                 };
-                501: components["responses"]["Problem"];
+                403: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -7117,14 +7174,14 @@ export interface paths {
         get: {
             parameters: {
                 query: {
-                    product_line: components["schemas"]["product_line"];
+                    product_line: string;
                     period?: "day" | "week" | "month" | "quarter";
                     format?: "json" | "xlsx";
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
                 };
                 header?: {
-                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
                     "X-Cx-Role"?: components["parameters"]["CxRole"];
                     /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
                     "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
@@ -7141,6 +7198,8 @@ export interface paths {
                     };
                     content?: never;
                 };
+                403: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
                 501: components["responses"]["Problem"];
             };
         };
@@ -7175,10 +7234,67 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["CabinetRoles"];
                     };
                 };
                 501: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cabinet/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [ЕТЗ] Сигналы кабинета, сортировка и фильтры */
+        get: {
+            parameters: {
+                query?: {
+                    product_line?: string;
+                    period?: "day" | "week" | "month" | "quarter";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
+                    region?: string;
+                    status?: string;
+                    channel?: string;
+                    /** @description true — только red_word; false — без presentation preset; отсутствие — OR preset для compliance_officer, остальные роли без фильтра. Overview не меняется. */
+                    red_words?: boolean;
+                    sort?: "date" | "level" | "region";
+                    direction?: "asc" | "desc";
+                    limit?: number;
+                    offset?: number;
+                };
+                header?: {
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+                    "X-Cx-Role"?: components["parameters"]["CxRole"];
+                    /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
+                    "X-Cx-Product-Line"?: components["parameters"]["CxProductLine"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CabinetSignals"];
+                    };
+                };
+                403: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -7252,7 +7368,7 @@ export interface paths {
                     run_id?: components["parameters"]["RunId"];
                 };
                 header?: {
-                    /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
+                    /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
                     "X-Cx-Role"?: components["parameters"]["CxRole"];
                 };
                 path?: never;
@@ -7882,6 +7998,162 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        CabinetRole: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
+        CabinetProductLine: {
+            code: string;
+            name_ru: string;
+            name_en: string;
+            rate_code: string | null;
+            owner_team_code: string | null;
+            owner_is_proxy: boolean;
+            product_codes: string[];
+        };
+        CabinetRegion: {
+            lat: number | null;
+            lon: number | null;
+            code: string;
+            name_ru: string;
+            name_en: string;
+            signals: number;
+            negative: number;
+            critical: number;
+            /** @description Сигналы с известным client_id */
+            identified_signals: number;
+            /** @description Различные известные клиенты; не весь охват при partial coverage */
+            identified_clients: number;
+            /** @description NULL если хотя бы один сигнал не идентифицирован; 0 только для действительно пустой группы */
+            affected_clients: number | null;
+            negativity_index: number | null;
+            /** @enum {string} */
+            zone: "red" | "yellow" | "green";
+            critical_count: number;
+            copilot_index: number | null;
+            zone_index: number;
+        };
+        CabinetSignal: {
+            signal_type: string | null;
+            client_public_id: string | null;
+            id: number;
+            public_id: string;
+            run_id: number;
+            product_line_code: string | null;
+            /** Format: date-time */
+            received_sim: string;
+            sentiment: string | null;
+            criticality: string | null;
+            region_code: string | null;
+            channel_code: string;
+            source_platform: components["schemas"]["SourcePlatform"] | null;
+            client_id: number | null;
+            flags: string[];
+            red_words: string[];
+            status: string;
+            summary: string;
+            /** Format: date-time */
+            sla_due_sim: string | null;
+            incidents: {
+                id: number;
+                public_id: string;
+                status: string;
+            }[];
+        };
+        /** @description Обращения клиентов; служебные origin=proactive anchors исключены из списка/total. Technical Trace/raw history и реальные инциденты/экономика сохраняются. */
+        CabinetSignals: {
+            items: components["schemas"]["CabinetSignal"][];
+            total: number;
+            next_offset: number | null;
+        };
+        /** @description Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются. */
+        CabinetOverview: {
+            scope: {
+                /** @enum {string} */
+                role: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
+                /** @enum {string} */
+                visibility: "soft" | "strict";
+                product_lines: string[] | null;
+                run_ids: number[] | null;
+                /** @enum {string} */
+                period: "day" | "week" | "month" | "quarter";
+                /** Format: date-time */
+                since_sim: string;
+                /** Format: date-time */
+                sim_time: string;
+            };
+            product_lines: components["schemas"]["CabinetProductLine"][];
+            kpi: {
+                signals: number;
+                sentiment_known: number;
+                negative: number;
+                criticality_known: number;
+                critical: number;
+                mapped: number;
+                no_geo: number;
+                incidents: number;
+                economics_known: number;
+                potential_loss_rub: number | null;
+                prevented_loss_rub: number | null;
+                /** Format: date-time */
+                oldest_computed_at: string | null;
+                negative_share: number | null;
+                critical_share: number | null;
+            };
+            regions: components["schemas"]["CabinetRegion"][];
+            top_regions: components["schemas"]["CabinetRegion"][];
+            sources: {
+                platform: components["schemas"]["SourcePlatform"] | null;
+                signals: number;
+            }[];
+            daily: {
+                /** Format: date */
+                day: string;
+                signals: number | null;
+                incidents: number | null;
+                economics_known: number | null;
+                potential_loss_rub: number | null;
+                prevented_loss_rub: number | null;
+            }[];
+            monthly: {
+                /** Format: date */
+                month: string;
+                signals: number;
+                sentiment_known: number | null;
+                negative: number;
+                critical: number;
+                potential_loss_rub: number | null;
+                is_synthetic: boolean;
+                is_partial: boolean | null;
+                quality_unknown: boolean;
+                /** Format: date-time */
+                coverage_start: string | null;
+                /** Format: date-time */
+                coverage_end: string | null;
+            }[];
+            csi: {
+                branch_known: number;
+                wait_known: number;
+                responses: number;
+                branches: number | null;
+                average_wait_min: number | null;
+            };
+            history_note: string;
+            economics_note: string;
+        };
+        CabinetRoles: {
+            /** @enum {string} */
+            default_role: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
+            items: {
+                /** @enum {string} */
+                code: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
+                name_ru: string;
+                name_en: string;
+                /** @enum {string} */
+                scope: "one" | "configured" | "all";
+                /** @description OR: red_word, legal_regulatory, связанный incident_type misselling; только фильтр списка */
+                default_compliance_filter: boolean;
+                default_red_words: boolean;
+            }[];
+        };
         DemoExecutionRequest: {
             /** @description Обязателен при mode=demo. */
             scenario_id?: string | null;
@@ -8068,9 +8340,32 @@ export interface components {
             id?: number;
             provider?: components["schemas"]["LlmProvider"];
             label?: string;
+            key_hint?: string | null;
+            endpoint_url?: string | null;
+            scope?: string | null;
+            /** Format: date-time */
+            created_at?: string | null;
+            /** @description Legacy hint до явного reconciliation; при usage_known=false не означает полный расход */
             tokens_used?: number;
+            /** @description Неоткатываемый подтверждённый app-observed или operator-declared floor */
+            readonly observed_tokens_floor?: number;
+            /** @description Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint */
+            readonly usage_known?: boolean;
+            readonly usage_source?: string;
+            /** Format: date-time */
+            readonly usage_as_of?: string | null;
+            readonly requests_known?: boolean;
+            /**
+             * Format: date
+             * @description Реальная UTC дата operational counter; не SimClock
+             */
+            readonly requests_day?: string;
+            /** @description null — остаток неизвестен или лимит не задан; не0 */
+            readonly tokens_remaining?: number | null;
+            readonly requests_remaining?: number | null;
             tokens_limit?: number | null;
             requests_today?: number;
+            /** @description Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы */
             rpd_limit?: number | null;
             /** @description OpenRouter — из GET /api/v1/key */
             balance_usd?: number | null;
@@ -8174,7 +8469,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             /** @enum {string} */
-            kind: "baseline" | "free" | "scenario";
+            kind: "baseline" | "free" | "scenario" | "live";
             label: string;
             scenario_id?: string | null;
             seed: number;
@@ -8253,6 +8548,13 @@ export interface components {
             title_en?: string;
             description_ru?: string;
             duration_sim_hours?: number;
+            /**
+             * @description Обязательный reset из YAML сценария; null — режим выбирает пользователь
+             * @enum {string|null}
+             */
+            reset_mode_required?: "baseline" | null;
+            /** @description В текущем коде есть исполняемый вход inject/file; UI не предлагает недоступный запуск */
+            runnable?: boolean;
             /** Format: date-time */
             last_run_at?: string | null;
             last_result?: {
@@ -8270,7 +8572,16 @@ export interface components {
             city_id?: number;
             telegram_chat_id?: number;
         };
+        /** @description Известная площадка из catalog; только текст, без URL и внешних ссылок */
+        SourcePlatform: {
+            code: string;
+            name_ru: string;
+            name_en: string;
+            /** @enum {string} */
+            type: "review_portal" | "telegram_channel" | "app_store" | "forum" | "other";
+        };
         Signal: {
+            source_platform?: components["schemas"]["SourcePlatform"] | null;
             tags?: string[];
             run_id?: number;
             run_public_id?: string;
@@ -8429,6 +8740,7 @@ export interface components {
             to_status?: string;
             actor_type?: string;
             actor_ref?: string | null;
+            actor_role?: components["schemas"]["CabinetRole"] | null;
             reason?: string | null;
             /** Format: date-time */
             changed_sim?: string;
@@ -8467,6 +8779,7 @@ export interface components {
             template_code?: string | null;
             subject?: string | null;
             body?: string;
+            /** @description unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет */
             status?: string;
             /** Format: date-time */
             sent_sim?: string | null;
@@ -8568,6 +8881,7 @@ export interface components {
             waiting_minutes?: number;
             decision?: string | null;
             decided_by?: string | null;
+            actor_role?: components["schemas"]["CabinetRole"] | null;
         };
         HitlFeedback: {
             id: number;
@@ -8761,6 +9075,16 @@ export interface components {
             llm_profile_code?: string;
             prompt_version?: string;
             outcome?: string | null;
+            /**
+             * @description Состояние исполнения; interrupted не подменяет бизнес-исход outcome.
+             * @enum {string}
+             */
+            status?: "running" | "interrupted" | "completed" | "awaiting_human" | "deferred" | "failed" | "fallback_mock" | "cancelled";
+            /**
+             * Format: date-time
+             * @description Реальное время обнаруженного прерывания; очищается при Resume.
+             */
+            interrupted_at?: string | null;
             needed_human?: boolean;
             total_tokens?: number;
             total_latency_ms?: number;
@@ -11119,8 +11443,8 @@ export interface components {
         Cursor: string;
         /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
         RunId: string;
-        /** @description [ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация) */
-        CxRole: string;
+        /** @description [ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes */
+        CxRole: components["schemas"]["CabinetRole"];
         /** @description [ЕТЗ] Выбранное продуктовое направление для пресета */
         CxProductLine: components["schemas"]["product_line"];
     };

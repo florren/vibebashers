@@ -24,6 +24,8 @@ for _candidate in (_ROOT / "backend", Path("/app")):
 
 from app.sim import baseline as baseline_svc  # noqa: E402
 from app.sim.baseline import BaselineToolingError  # noqa: E402
+from app.sim.maintenance_control import ControlError, MaintenanceControl  # noqa: E402
+from app.sim.maintenance_db import LOCK  # noqa: E402
 
 from scripts.seed.clients import (  # noqa: E402
     ensure_history_run,
@@ -35,6 +37,7 @@ from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting
 from scripts.seed.coverage import compute_coverage  # noqa: E402
 from scripts.seed.faults import seed_faults  # noqa: E402
 from scripts.seed.refs import seed_all_refs  # noqa: E402
+from scripts.seed.reviews import seed_reviews  # noqa: E402
 
 
 def preserve_existing(cur: psycopg.Cursor[Any], profile: str) -> int | None:
@@ -106,6 +109,23 @@ def main() -> int:
         2026, 11, 9, 9, 0, tzinfo=dt.timezone(dt.timedelta(hours=3))
     )  # «сегодня» симуляции = день демо
     with connect(a.database_url) as conn, conn.cursor() as cur:
+        # Session lease остаётся через все commits и exported snapshot/dump.
+        control = MaintenanceControl()
+        try:
+            if control.read() is None:
+                if not cur.execute("select pg_try_advisory_lock(%s,%s)", LOCK).fetchone()[0]:
+                    raise ControlError("Baseline restore активен; данные не менялись")
+                try:
+                    control.initialize_missing()
+                    cur.execute("select pg_advisory_lock_shared(%s,%s)", LOCK)
+                finally:
+                    cur.execute("select pg_advisory_unlock(%s,%s)", LOCK)
+            elif not cur.execute("select pg_try_advisory_lock_shared(%s,%s)", LOCK).fetchone()[0]:
+                raise ControlError("Baseline restore активен; данные не менялись")
+            control.require_idle()
+        except ControlError as exc:
+            log.error("seed_maintenance_busy", message=str(exc))
+            return 4
         if not a.refs_only:
             try:
                 versions = baseline_svc.check_tools(conn.info.server_version)
@@ -136,7 +156,7 @@ def main() -> int:
                 "truncate signals, incidents, operations, faults, client_states, client_products, accounts, clients, sim_runs restart identity cascade"
             )
             cur.execute(
-                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:')"
+                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:') or starts_with(key, 'seed_product_reviews:')"
             )
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)
@@ -148,8 +168,10 @@ def main() -> int:
         conn.commit()
         seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()
+        seed_reviews(cur, run_id=run_id, anchor=sim_now, seed=seed)
+        conn.commit()
         cov = compute_coverage(cur, run_id)
-        if not cov["sla_cells_ok"] or cov["signal_combos_missing"]:
+        if not cov["sla_cells_ok"] or cov["signal_combos_missing"] or cov["direction_channel_missing"]:
             conn.commit()
             log.error(
                 "seed_coverage_failed",

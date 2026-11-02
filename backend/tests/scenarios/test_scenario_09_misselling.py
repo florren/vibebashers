@@ -33,12 +33,24 @@ def _replay_chain() -> ProviderChain:
     return ProviderChain([ReplayProvider(store, speed=100.0)])
 
 
-async def test_scenario_09_transcript_on_replay(seeded: str) -> None:
+async def test_scenario_09_transcript_on_replay(seeded: str, monkeypatch, request) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setenv("LLM_PROVIDER", "replay")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     scenario = sc.get("branch_misselling")
     assert scenario is not None and sc.is_transcript(scenario)
     chain = _replay_chain()
     t0 = time.perf_counter()
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        # Кассета записана Pro: фиксируем честный offline профиль до создания run.
+        await conn.execute(
+            "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
+            "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
+            "from llm_profiles where model='GigaChat-3-Pro' and is_active order by id limit 1 "
+            "on conflict(key) do update set value=excluded.value"
+        )
         run_id = await new_run(conn, "test branch_misselling replay", scenario_id="branch_misselling")
         now = await sim_now(conn)
         tr = await sc.inject_transcript(conn, scenario, run_id, sim_time=now)

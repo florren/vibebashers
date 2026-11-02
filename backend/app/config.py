@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://cx:cx@localhost:5432/cx_pulse"
     database_url_test: str | None = None
+    maintenance_control_dir: str | None = None
 
     profile: Profile = "lite"
     sim_seed: int = 42
@@ -52,7 +53,10 @@ class Settings(BaseSettings):
     cassettes_dir: str = "../data/cassettes"
 
     # интеграции
-    telegram_bot_token: str | None = None
+    telegram_bot_token: str | None = Field(default=None, repr=False)
+    tgbot_enabled: bool = False
+    tgbot_internal_secret: str | None = Field(default=None, repr=False)
+    tgbot_public_base_url: str | None = None
     mailpit_enabled: bool = False
     mailpit_host: str = "mailpit"
     mailpit_port: int = Field(default=1025, ge=1, le=65535)

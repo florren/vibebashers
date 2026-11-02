@@ -1,6 +1,7 @@
 """T050: streaming соблюдает существующие квоты и deadline; только synthetic providers."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -186,3 +187,41 @@ async def test_deadline_does_not_cancel_consumer_while_generator_is_suspended():
     with pytest.raises(StopAsyncIteration):
         await anext(stream)
     assert live.closed and mock.calls == []
+
+
+async def test_bound_stream_keeps_selected_client_quota_deadline_and_close(monkeypatch):
+    from types import SimpleNamespace
+
+    clock = SimpleNamespace(now=0.0)
+    monkeypatch.setattr(failover.time, "perf_counter", lambda: clock.now)
+    limiter = RecordingLimiter(clock=clock, advance=0.2)
+    original, bound = SyntheticProvider(), SyntheticProvider(chunks=("bound",))
+    events = []
+
+    @asynccontextmanager
+    async def selected(candidate, profile):
+        assert candidate is original and profile.api_key_id == 71
+        assert limiter.calls == [(PROFILE.code, 10, 20)]
+        clock.now += 0.3
+        events.append("open")
+        try:
+            yield bound
+        finally:
+            events.append("close")
+
+    monkeypatch.setattr(failover, "selected_provider", selected)
+    assert await collect(chain([original], limiter), replace(PROFILE, api_key_id=71)) == "bound"
+    assert original.calls == []
+    assert len(bound.calls) == 1 and bound.calls[0][2] == pytest.approx(0.5)
+    assert bound.closed and events == ["open", "close"]
+
+
+async def test_durable_provider_uses_rpm_before_stream_but_daily_wire_ledger_owns_rpd():
+    from types import SimpleNamespace
+
+    live = SyntheticProvider(chunks=("durable",))
+    live.accounting = SimpleNamespace(durable=True)
+    limiter = RecordingLimiter()
+    assert await collect(chain([live], limiter)) == "durable"
+    assert limiter.calls == [(PROFILE.code, 10, None)]
+    assert live.closed

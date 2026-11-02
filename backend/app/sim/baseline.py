@@ -23,6 +23,7 @@ from psycopg.types.json import Jsonb
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
+from app.sim import baseline_contract, baseline_llm
 from app.sim.events import dumps as json_dumps
 
 log = get_logger(__name__)
@@ -208,53 +209,95 @@ def info(profile: str | None = None) -> dict[str, Any]:
 
 
 def _write_artifacts(profile: str, dump_path: Path, meta: dict[str, Any]) -> None:
-    _sha_path(profile).write_text(f"{_sha256_file(dump_path)}  {dump_path.name}\n", encoding="utf-8")
-    _meta_path(profile).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    digest = _sha256_file(dump_path)
+    meta = {**meta, "dump_sha256": digest}
+    marker = uuid.uuid4().hex
+    metadata = _meta_path(profile).with_suffix(f".{marker}.tmp")
+    checksum = _sha_path(profile).with_suffix(f".{marker}.tmp")
+    try:
+        metadata.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        checksum.write_text(f"{digest}  {dump_path.name}\n", encoding="utf-8")
+        # Checksum публикуется последним: промежуточный архив не проходит preflight.
+        metadata.replace(_meta_path(profile))
+        checksum.replace(_sha_path(profile))
+    finally:
+        metadata.unlink(missing_ok=True)
+        checksum.unlink(missing_ok=True)
 
 
-def _run_pg_dump(dsn: str, dump_path: Path) -> None:
+def _run_pg_dump(dsn: str, dump_path: Path, snapshot: str | None = None) -> None:
     cmd = [
         _pg_tool("pg_dump"),
         "-Fc",
         "--no-owner",
         "--no-acl",
         "--exclude-table=public.sim_runs",
+        "--exclude-schema=channel_runtime",
+        "--exclude-schema=llm_runtime",
         "-f",
         str(dump_path),
         dsn,
     ]
-    log.info("baseline_dump_start", path=str(dump_path))
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if snapshot is not None:
+        cmd.insert(1, f"--snapshot={snapshot}")
+    log.info("baseline_dump_start")
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise BaselineToolingError("pg_dump не завершился за120с; снимок не опубликован") from None
     if proc.returncode != 0:
-        raise BaselineToolingError(f"pg_dump завершился с кодом {proc.returncode}: {proc.stderr.strip()[-500:]}")
+        raise BaselineToolingError(f"pg_dump завершился с кодом {proc.returncode}; снимок не опубликован")
 
 
 def dump_for_connection(
     conn: psycopg.Connection[Any], profile: str | None = None, *, database_url: str | None = None
 ) -> dict[str, Any]:
-    """Синхронный dump после сида (scripts/seed/run.py)."""
+    """Digest и pg_dump читают одну READ ONLY REPEATABLE READ snapshot."""
     prof = resolve_profile(profile)
-    with conn.cursor() as cur:
-        seed_done = _seed_meta_sync(cur)
-        baseline_run_id = _baseline_run_id_sync(cur)
-        if seed_done and seed_done.get("run_id"):
-            baseline_run_id = int(seed_done["run_id"])
-        seed = int(seed_done["seed"]) if seed_done and seed_done.get("seed") is not None else get_settings().sim_seed
-        if seed_done and seed_done.get("profile"):
-            prof = str(seed_done["profile"])
-    dump_path = _dump_path(prof)
-    dump_path.parent.mkdir(parents=True, exist_ok=True)
-    dsn = psycopg_dsn(database_url)
-    _run_pg_dump(dsn, dump_path)
-    meta = {
-        "profile": prof,
-        "seed": seed,
-        "baseline_run_id": baseline_run_id,
-        "created_at": dt.datetime.now(dt.UTC).isoformat(),
-    }
-    _write_artifacts(prof, dump_path, meta)
-    log.info("baseline_dump_done", profile=prof, bytes=dump_path.stat().st_size)
-    return info(prof)
+    conn.commit()
+    stage: Path | None = None
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute("set transaction isolation level repeatable read read only")
+            seed_done = _seed_meta_sync(cur)
+            baseline_run_id = _baseline_run_id_sync(cur)
+            if seed_done and seed_done.get("run_id"):
+                baseline_run_id = int(seed_done["run_id"])
+            seed = (
+                int(seed_done["seed"]) if seed_done and seed_done.get("seed") is not None else get_settings().sim_seed
+            )
+            if seed_done and seed_done.get("profile"):
+                prof = str(seed_done["profile"])
+            fingerprint = baseline_llm.read_sync(cur)
+            contract_fingerprint = baseline_contract.read_sync(cur)
+            snapshot_row = cur.execute("select pg_export_snapshot()").fetchone()
+            if snapshot_row is None:
+                raise BaselineToolingError("Не удалось открыть exported snapshot")
+            snapshot = snapshot_row[0]
+            dump_path = _dump_path(prof)
+            dump_path.parent.mkdir(parents=True, exist_ok=True)
+            stage = dump_path.with_name(f".{dump_path.name}.{uuid.uuid4().hex}.tmp")
+            _run_pg_dump(psycopg_dsn(database_url), stage, snapshot)
+        stage.replace(dump_path)
+        _write_artifacts(
+            prof,
+            dump_path,
+            {
+                "profile": prof,
+                "seed": seed,
+                "baseline_run_id": baseline_run_id,
+                "created_at": dt.datetime.now(dt.UTC).isoformat(),
+                "llm_config_fingerprint": fingerprint,
+                "db_contract_fingerprint": contract_fingerprint,
+            },
+        )
+        log.info("baseline_dump_done", profile=prof, bytes=dump_path.stat().st_size)
+        return info(prof)
+    except baseline_llm.LLMConfigDrift as exc:
+        raise BaselineToolingError(str(exc)) from exc
+    finally:
+        if stage is not None:
+            stage.unlink(missing_ok=True)
 
 
 def _connection_dsn(conn: psycopg.AsyncConnection[Any]) -> str:
@@ -263,28 +306,67 @@ def _connection_dsn(conn: psycopg.AsyncConnection[Any]) -> str:
 
 
 async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -> dict[str, Any]:
-    """Создать снимок baseline из текущего состояния БД."""
+    """Снимок и opaque LLM digest одной snapshot; отмена ждёт завершения pg_dump."""
+    from app.sim.maintenance import completion
+
     prof = resolve_profile(profile)
-    seed_done = await _seed_meta_async(conn)
-    baseline_run_id = await _baseline_run_id_async(conn)
-    if seed_done and seed_done.get("run_id"):
-        baseline_run_id = int(seed_done["run_id"])
-    seed = int(seed_done["seed"]) if seed_done and seed_done.get("seed") is not None else get_settings().sim_seed
-    if seed_done and seed_done.get("profile"):
-        prof = str(seed_done["profile"])
-    dump_path = _dump_path(prof)
-    dump_path.parent.mkdir(parents=True, exist_ok=True)
-    dsn = _connection_dsn(conn)
     await conn.commit()
-    _run_pg_dump(dsn, dump_path)
-    meta = {
-        "profile": prof,
-        "seed": seed,
-        "baseline_run_id": baseline_run_id,
-        "created_at": dt.datetime.now(dt.UTC).isoformat(),
-    }
-    _write_artifacts(prof, dump_path, meta)
-    return info(prof)
+    stage: Path | None = None
+    try:
+        async with conn.transaction():
+            await conn.execute("set transaction isolation level repeatable read read only")
+            seed_done = await _seed_meta_async(conn)
+            baseline_run_id = await _baseline_run_id_async(conn)
+            if seed_done and seed_done.get("run_id"):
+                baseline_run_id = int(seed_done["run_id"])
+            seed = (
+                int(seed_done["seed"]) if seed_done and seed_done.get("seed") is not None else get_settings().sim_seed
+            )
+            if seed_done and seed_done.get("profile"):
+                prof = str(seed_done["profile"])
+            fingerprint = await baseline_llm.read(conn)
+            contract_fingerprint = await baseline_contract.read(conn)
+            snapshot_row = await (await conn.execute("select pg_export_snapshot()")).fetchone()
+            if snapshot_row is None:
+                raise BaselineToolingError("Не удалось открыть exported snapshot")
+            snapshot = snapshot_row[0]
+            dump_path = _dump_path(prof)
+            dump_path.parent.mkdir(parents=True, exist_ok=True)
+            stage = dump_path.with_name(f".{dump_path.name}.{uuid.uuid4().hex}.tmp")
+            task = asyncio.create_task(asyncio.to_thread(_run_pg_dump, _connection_dsn(conn), stage, snapshot))
+            await completion(task, propagate_cancel=True)
+        stage.replace(dump_path)
+        _write_artifacts(
+            prof,
+            dump_path,
+            {
+                "profile": prof,
+                "seed": seed,
+                "baseline_run_id": baseline_run_id,
+                "created_at": dt.datetime.now(dt.UTC).isoformat(),
+                "llm_config_fingerprint": fingerprint,
+                "db_contract_fingerprint": contract_fingerprint,
+            },
+        )
+        return info(prof)
+    except baseline_llm.LLMConfigDrift as exc:
+        raise BaselineToolingError(str(exc)) from exc
+    finally:
+        if stage is not None:
+            stage.unlink(missing_ok=True)
+
+
+async def preflight_restore(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -> None:
+    """Отказ до pause/export/restore, если архив откатит операторскую LLM-конфигурацию."""
+    prof = resolve_profile(profile)
+    path = _restore_dump_path(prof)
+    _csi_repair_script()
+    try:
+        meta = _load_meta(prof) or {}
+        baseline_contract.validate(meta, await baseline_contract.read(conn))
+        baseline_llm.validate(meta, await baseline_llm.read(conn), _sha256_file(path))
+    except (baseline_llm.LLMConfigDrift, baseline_contract.ContractDrift) as exc:
+        raise BaselineUnavailableError(str(exc)) from None
 
 
 async def _fetch_sim_runs(conn: psycopg.AsyncConnection[Any]) -> list[tuple[Any, ...]]:
@@ -314,12 +396,23 @@ async def _restore_sim_runs(conn: psycopg.AsyncConnection[Any], rows: list[tuple
     )
 
 
+def _bounded_process(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    # subprocess.run при timeout завершает и ожидает только собственный процесс.
+    # Gate удерживается до возврата из supervised thread, включая этот cleanup.
+    try:
+        return subprocess.run(*args, **kwargs, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise BaselineToolingError(
+            "Инструмент восстановления не завершился за 120с; повторите baseline restore после проверки PostgreSQL"
+        ) from None
+
+
 def _run_pg_restore(dsn: str, dump_path: Path) -> None:
     # sim_runs исключена из dump. Её исходящие FK мешают --clean удалять PK
     # scenarios/llm_profiles. Снимаем их и возвращаем в той же транзакции.
     with tempfile.TemporaryDirectory(prefix="cx-restore-") as directory:
         script = Path(directory) / "restore.sql"
-        proc = subprocess.run(
+        proc = _bounded_process(
             [
                 _pg_tool("pg_restore"),
                 "--clean",
@@ -367,7 +460,7 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
             "sslmode": "PGSSLMODE",
         }
         env = {**os.environ, **{keys[k]: str(v) for k, v in conninfo_to_dict(dsn).items() if k in keys}}
-        proc = subprocess.run(
+        proc = _bounded_process(
             [_pg_tool("psql"), "-X", "--single-transaction", "--set=ON_ERROR_STOP=1", "-f", str(wrapped)],
             env=env,
             capture_output=True,
@@ -390,7 +483,7 @@ def _csi_repair_script() -> Path:
 
 def _run_csi_repair(dsn: str, script: Path) -> dict[str, Any]:
     # DSN передаём окружением, а не argv; отдельный процесс изолирует logging seed-модулей.
-    proc = subprocess.run(
+    proc = _bounded_process(
         [sys.executable, str(script), "--apply", "--json"],
         env={**os.environ, "DATABASE_URL": dsn},
         capture_output=True,
@@ -430,6 +523,7 @@ async def restore(
     *,
     profile: str | None = None,
     pause: bool = False,
+    job_id: str | None = None,
 ) -> str:
     """Откат БД к снимку baseline; sim_runs и runs/ восстанавливаются отдельно."""
     prof = resolve_profile(profile)
@@ -437,8 +531,13 @@ async def restore(
     if not dump_path.is_file():
         raise BaselineUnavailableError(f"снимок baseline для профиля {prof} не найден")
     repair_script = _csi_repair_script()
-    job_id = str(uuid.uuid4())
+    await preflight_restore(conn, prof)
+    job_id = job_id or str(uuid.uuid4())
     dsn = _connection_dsn(conn)
+    from app.sim.run_lifecycle import prepare_for_restore
+
+    sim_rows = await _fetch_sim_runs(conn)
+    sim_rows = await prepare_for_restore(conn, sim_rows)
     runs_dir = runs_export_dir()
     runs_backup: Path | None = None
     if runs_dir.is_dir() and any(runs_dir.iterdir()):
@@ -447,13 +546,15 @@ async def restore(
             shutil.rmtree(runs_backup)
         shutil.copytree(runs_dir, runs_backup)
 
-    sim_rows = await _fetch_sim_runs(conn)
     await _notify(conn, "baseline_restore_started", job_id)
     await conn.commit()
     await conn.close()
 
     try:
-        _run_pg_restore(dsn, dump_path)
+        from app.sim.maintenance import completion
+
+        task = asyncio.create_task(asyncio.to_thread(_run_pg_restore, dsn, dump_path))
+        await completion(task, propagate_cancel=False)
     except Exception:
         if runs_backup and runs_backup.is_dir():
             shutil.rmtree(runs_backup, ignore_errors=True)
@@ -461,6 +562,9 @@ async def restore(
 
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=False) as new_conn:
         await _restore_sim_runs(new_conn, sim_rows)
+        from app.llm.accounting import sync_mirrors
+
+        await sync_mirrors(new_conn)
         if runs_backup and runs_backup.is_dir():
             if runs_dir.exists():
                 shutil.rmtree(runs_dir)
@@ -468,7 +572,8 @@ async def restore(
             shutil.rmtree(runs_backup, ignore_errors=True)
         # CLI открывает свою транзакцию: сохранённые sim_runs должны быть видны до ремонта.
         await new_conn.commit()
-        await asyncio.to_thread(_run_csi_repair, dsn, repair_script)
+        repair = asyncio.create_task(asyncio.to_thread(_run_csi_repair, dsn, repair_script))
+        await completion(repair, propagate_cancel=False)
         await _notify(new_conn, "baseline_restore_finished", job_id)
         await new_conn.commit()
 

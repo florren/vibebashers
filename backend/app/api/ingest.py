@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -21,6 +20,7 @@ from app.ingest.normalizer import IngestError, create_signal
 from app.ingest.sources import is_external_url, poll_source
 from app.logging import get_logger
 from app.search.cases import entity_filter
+from app.sim.maintenance import spawn_writer
 
 log = get_logger(__name__)
 
@@ -135,7 +135,7 @@ async def _accept_docs(
                 out.append({"filename": filename, "status": "failed", "error": str(exc)[:300]})
     for t in out:
         if t.get("id"):
-            asyncio.create_task(analyze_in_background(request, int(t["id"]), pacing_delay_s=pacing_delay_s))
+            spawn_writer(analyze_in_background(request, int(t["id"]), pacing_delay_s=pacing_delay_s), kind="transcript")
     return out
 
 
@@ -276,7 +276,7 @@ async def post_ingest_transcripts_id_analyze(request: Request, id: int, body: di
             raise HTTPException(status_code=404, detail="транскрипт не найден")
         if body and body.get("analyses"):
             await conn.execute("update transcripts set analyses = %s where id = %s", (list(body["analyses"]), id))
-    asyncio.create_task(analyze_in_background(request, id))
+    spawn_writer(analyze_in_background(request, id), kind="transcript")
     return JSONResponse({"id": id, "status": "analyzing"}, status_code=202)
 
 

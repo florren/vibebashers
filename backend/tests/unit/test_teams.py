@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -89,12 +90,37 @@ class MemStore:
 
 
 class MemConn:
+    autocommit = False
+
     def __init__(self, store: MemStore) -> None:
         self.store = store
+
+    @asynccontextmanager
+    async def cursor(self, **kwargs):
+        conn = self
+
+        class Cursor:
+            async def execute(self, query, args):
+                self.result = await conn.execute(query, args)
+
+            async def fetchall(self):
+                return await self.result.fetchall()
+
+        yield Cursor()
 
     async def execute(self, sql: str, args: tuple[Any, ...] = ()) -> _Cursor:
         s = " ".join(sql.lower().split())
         st = self.store
+        if "pg_advisory_xact_lock" in s:
+            return _Cursor(None)
+        if "event_type='team.runtime_started'" in s:
+            return _Cursor([({"event_type": "team.runtime_started", "version": 1},)])
+        if "event_type='team.plan'" in s:
+            return _Cursor(
+                [(e["payload"], e["payload"]["incident_id"]) for e in st.events if e["event_type"] == "team.plan"]
+            )
+        if "select id from incidents" in s and "for update" in s:
+            return _Cursor((args[0],))
         if "from error_codes" in s:
             return _Cursor([(c, m["system"], m["product"]) for c, m in st.error_codes.items()])
         if "from teams" in s and "speed_profile" in s:
@@ -215,6 +241,8 @@ class RecordingBus:
         payload = {**payload, "event_type": event_type}
         if event_type == "fault.regression":
             assert validate(payload, "sim/fault_regression") == []
+        elif event_type == "team.plan":
+            assert validate(payload, "sim/team_plan") == []
         elif event_type.startswith("team."):
             assert validate(payload, "sim/team_action") == []
         self.store.events.append({"event_type": event_type, "payload": payload, "sim_time": sim_time})

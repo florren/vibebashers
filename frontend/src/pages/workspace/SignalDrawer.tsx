@@ -1,3 +1,5 @@
+import { SourcePlatformBadge } from '@/shared/components/SourcePlatformBadge'
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
 import { ExternalLink } from 'lucide-react'
@@ -35,6 +37,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge tone={signalStatusTone(s.status)}>{tEnum('signal.status', s.status)}</Badge>
             <Badge>{tEnum('channel', s.channel_code)}</Badge>
+            <SourcePlatformBadge platform={s.source_platform} />
             {s.origin && <Badge>{tEnum('signal.origin', s.origin)}</Badge>}
             <span className="ml-auto num font-mono text-xs text-muted">{fmtSim(s.received_sim, 'dd.MM.yyyy HH:mm')}</span>
           </div>
@@ -164,7 +167,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
                   <li key={r.id} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                     <span className="font-mono text-xs">#{r.id}</span>
                     <Badge tone={r.outcome === 'completed' ? 'ok' : r.outcome === 'awaiting_human' ? 'warn' : r.outcome === 'failed' ? 'danger' : 'neutral'}>
-                      {tEnum('engine.outcome', r.outcome ?? 'running')}
+                      {tEnum('engine.outcome', agentRunStatus(r))}
                     </Badge>
                     <span className="text-xs text-muted">
                       {r.llm_profile_code} · {r.prompt_version} · {r.total_tokens} ток.

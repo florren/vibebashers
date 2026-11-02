@@ -1,4 +1,5 @@
 id: potential_client
+reset_mode_required: baseline
 number: 4
 title_ru: Потенциальный клиент через лендинг или бота
 title_en: Potential client

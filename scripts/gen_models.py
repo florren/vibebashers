@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -46,16 +45,32 @@ def main() -> int:
     try:
         with psycopg.connect(gen_url, autocommit=True) as c:
             c.execute((ROOT / "contracts/db/schema.sql").read_text(encoding="utf-8"))
-        sqlacodegen = ROOT / "backend/.venv/bin/sqlacodegen"
-        exe = str(sqlacodegen) if sqlacodegen.exists() else "sqlacodegen"
-        r = subprocess.run(
-            [exe, "--generator", "declarative", "--options", "nojoined,noindexes", "--noviews", sa_url],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        OUT.write_text(HEADER + r.stdout, encoding="utf-8")
-        print(f"models: {r.stdout.count(chr(10) + 'class ')} классов → {OUT.relative_to(ROOT)}")  # noqa: T201
+        from sqlacodegen.generators import DeclarativeGenerator
+        from sqlalchemy import MetaData, create_engine
+        from sqlalchemy.sql.schema import BLANK_SCHEMA
+
+        engine = create_engine(sa_url, connect_args={"options": "-csearch_path=pg_catalog"})
+        try:
+            reflected = MetaData()
+            for schema in ("public", "langgraph", "channel_runtime", "llm_runtime"):
+                reflected.reflect(engine, schema=schema, views=False, postgresql_ignore_search_path=True)
+            # PostgreSQL/Alembic представляют default public как schema=None.
+            # Нормализуем public и FK до генерации, иначе один sim_runs отражается
+            # дважды (public.sim_runs и sim_runs), а check видит ложный drift.
+            metadata = MetaData()
+            for table in reflected.tables.values():
+                table.to_metadata(
+                    metadata,
+                    schema=None if table.schema == "public" else table.schema,
+                    referred_schema_fn=lambda table, target_schema, fk, referred_schema: (
+                        BLANK_SCHEMA if referred_schema == "public" else referred_schema
+                    ),
+                )
+            generated = DeclarativeGenerator(metadata, engine, ["nojoined", "noindexes"]).generate()
+        finally:
+            engine.dispose()
+        OUT.write_text(HEADER + generated, encoding="utf-8")
+        print(f"models: {generated.count(chr(10) + 'class ')} классов → {OUT.relative_to(ROOT)}")  # noqa: T201
     finally:
         with psycopg.connect(admin, autocommit=True) as c:
             c.execute(f'DROP DATABASE IF EXISTS "{gen_db}"')

@@ -7,6 +7,7 @@ import contextlib
 import dataclasses
 import json
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import psycopg
@@ -19,20 +20,30 @@ from app.db.session import psycopg_dsn
 from app.ingest.normalizer import create_signal
 from app.llm.base import LLMProfile, ProviderError
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.realtime.hub import hub
+from app.sim.maintenance import MaintenanceBusy, start_daemon, writer, writer_lease
 from app.trace.privacy import mask
 
 log = get_logger(__name__)
 
 
 class TwinService:
-    def __init__(self, chain: ProviderChain, profile: LLMProfile) -> None:
+    def __init__(
+        self,
+        chain: ProviderChain,
+        profile: LLMProfile,
+        *,
+        behavior_sink: Callable[[psycopg.AsyncConnection[Any], int, int], Awaitable[bool]] | None = None,
+    ) -> None:
         self.chain, self.profile = chain, profile
+        # Включается только coherent behavior wiring; standalone legacy пока сохранён.
+        self.behavior_sink = behavior_sink
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
-        self._task = asyncio.create_task(self._loop(), name="client-twins")
+        self._task = start_daemon(self._loop, name="client-twins")
 
     async def stop(self) -> None:
         if self._task is not None:
@@ -46,53 +57,63 @@ class TwinService:
         pending: dict[int, float] = {}
         while True:
             try:
-                async with await psycopg.AsyncConnection.connect(
-                    psycopg_dsn(), autocommit=True, row_factory=dict_row, connect_timeout=3
-                ) as conn:
-                    if watermark is None:
-                        await conn.execute(
-                            "update agent_runs set outcome='failed',finished_at=now(),error='twin interrupted: server restarted' where kind='client_twin' and outcome is null"
-                        )
-                        row = await (await conn.execute("select coalesce(max(id),0) id from notifications")).fetchone()
-                        watermark = int(row["id"]) if row else 0
-                    rows = await (
-                        await conn.execute(
-                            "select n.id from notifications n join sim_state st on st.current_run_id=n.run_id "
-                            "where n.id>%s and n.recipient_type in ('client','public') and n.client_id is not null "
-                            "and n.signal_id is not null and n.status in ('sent','delivered') order by n.id limit 20",
-                            (watermark,),
-                        )
-                    ).fetchall()
-                    for row in rows:
-                        pending[int(row["id"])] = time.monotonic()
-                        watermark = int(row["id"])
-                    for notification_id, queued_at in list(pending.items()):
-                        ready = await (
+                async with writer_lease("twin-poll"):
+                    async with await psycopg.AsyncConnection.connect(
+                        psycopg_dsn(), autocommit=True, row_factory=dict_row, connect_timeout=3
+                    ) as conn:
+                        if watermark is None:
                             await conn.execute(
-                                "select n.run_id=st.current_run_id current_run, exists(select 1 from agent_runs a "
-                                "where a.signal_id=n.signal_id and a.kind='agent' and a.finished_at is not null) ready "
-                                "from notifications n cross join sim_state st where st.id=1 and n.id=%s",
-                                (notification_id,),
+                                "update agent_runs set outcome='failed',finished_at=now(),error='twin interrupted: server restarted' where kind='client_twin' and outcome is null"
                             )
-                        ).fetchone()
-                        if not ready or not ready["current_run"]:
+                            row = await (
+                                await conn.execute("select coalesce(max(id),0) id from notifications")
+                            ).fetchone()
+                            watermark = int(row["id"]) if row else 0
+                        rows = await (
+                            await conn.execute(
+                                "select n.id from notifications n join sim_state st on st.current_run_id=n.run_id "
+                                "where n.id>%s and n.recipient_type in ('client','public') and n.client_id is not null "
+                                "and n.signal_id is not null and n.status in ('sent','delivered') order by n.id limit 20",
+                                (watermark,),
+                            )
+                        ).fetchall()
+                        for row in rows:
+                            pending[int(row["id"])] = time.monotonic()
+                            watermark = int(row["id"])
+                        for notification_id, queued_at in list(pending.items()):
+                            ready = await (
+                                await conn.execute(
+                                    "select n.run_id=st.current_run_id current_run, exists(select 1 from agent_runs a "
+                                    "where a.signal_id=n.signal_id and a.kind='agent' and a.finished_at is not null) ready "
+                                    "from notifications n cross join sim_state st where st.id=1 and n.id=%s",
+                                    (notification_id,),
+                                )
+                            ).fetchone()
+                            if not ready or not ready["current_run"]:
+                                pending.pop(notification_id)
+                            elif ready["ready"]:
+                                await self.react(conn, notification_id)
+                                pending.pop(notification_id)
+                            elif time.monotonic() - queued_at > 300:
+                                # Незавершённый агент не удерживает уведомления бесконечно.
+                                log.warning("twin_notification_expired", notification_id=notification_id)
+                                pending.pop(notification_id)
+                        # Ограничение памяти на случай массового сбоя агента.
+                        while len(pending) > 1000:
+                            notification_id = next(iter(pending))
                             pending.pop(notification_id)
-                        elif ready["ready"]:
-                            await self.react(conn, notification_id)
-                            pending.pop(notification_id)
-                        elif time.monotonic() - queued_at > 300:
-                            # Незавершённый агент не удерживает уведомления бесконечно.
-                            log.warning("twin_notification_expired", notification_id=notification_id)
-                            pending.pop(notification_id)
-                    # Ограничение памяти на случай массового сбоя агента.
-                    while len(pending) > 1000:
-                        notification_id = next(iter(pending))
-                        pending.pop(notification_id)
-                        log.warning("twin_queue_full", notification_id=notification_id)
+                            log.warning("twin_queue_full", notification_id=notification_id)
+            except MaintenanceBusy:
+                from app.sim.maintenance import current
+
+                coordinator = current()
+                if coordinator is not None:
+                    await coordinator.wait_ready()
             except (psycopg.Error, OSError) as exc:
                 log.warning("twin_worker_unavailable", error_type=type(exc).__name__)
             await asyncio.sleep(1)
 
+    @writer("twin")
     async def react(self, conn: psycopg.AsyncConnection[Any], notification_id: int) -> int | None:
         """Один ответ на уведомление. Advisory lock сериализует бюджет внутри запуска."""
         async with conn.transaction():
@@ -162,7 +183,8 @@ class TwinService:
             )
             if remaining < estimate:
                 return None
-            profile = self.chain.profile_for("twin", self.profile)
+            chain, main_profile = await run_profiles(conn, int(run_id), self.chain, self.profile, new=True)
+            profile = chain.profile_for("twin", main_profile)
             profile = dataclasses.replace(
                 profile,
                 extra={
@@ -176,8 +198,8 @@ class TwinService:
             ).fetchone()
             created = await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,client_id,llm_profile_id,prompt_version,graph_version,thread_id,started_sim) "
-                    "values('client_twin',%s,%s,%s,%s,%s,%s,'twin-v1',%s,%s) returning id",
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,client_id,llm_profile_id,prompt_version,graph_version,thread_id,started_sim,llm_profiles_snapshot) "
+                    "values('client_twin',%s,%s,%s,%s,%s,%s,'twin-v1',%s,%s,%s) returning id",
                     (
                         run_id,
                         row["signal_id"],
@@ -187,13 +209,14 @@ class TwinService:
                         prompt.version,
                         f"twin:{notification_id}",
                         sim_time,
+                        Jsonb(chain.role_snapshot),
                     ),
                 )
             ).fetchone()
             assert created is not None
             agent_id = int(created["id"])
         try:
-            result = await self.chain.complete_structured(
+            result = await chain.complete_structured(
                 [{"role": "system", "content": prompt.body}, {"role": "user", "content": content}],
                 deref("agent/client_twin_reaction"),
                 profile,
@@ -237,27 +260,32 @@ class TwinService:
                     actual.latency_ms,
                 ),
             )
-            await conn.execute(
-                "insert into client_reactions(run_id,client_id,signal_id,incident_id,notification_id,reaction,tone,satisfaction,text,generated_by,agent_run_id,reacted_sim) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (
-                    run_id,
-                    client_id,
-                    row["signal_id"],
-                    row["incident_id"],
-                    notification_id,
-                    obj["reaction"],
-                    obj["tone"],
-                    obj["satisfaction"],
-                    text,
-                    "mock" if actual.source == "mock" else "llm",
-                    agent_id,
-                    sim_time,
-                ),
-            )
-            await conn.execute(
-                "update client_states set care_score=%s where client_id=%s and run_id=%s and is_current",
-                (obj["satisfaction"], client_id, run_id),
-            )
+            reaction_row = await (
+                await conn.execute(
+                    "insert into client_reactions(run_id,client_id,signal_id,incident_id,notification_id,reaction,tone,satisfaction,text,generated_by,agent_run_id,reacted_sim) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id",
+                    (
+                        run_id,
+                        client_id,
+                        row["signal_id"],
+                        row["incident_id"],
+                        notification_id,
+                        obj["reaction"],
+                        obj["tone"],
+                        obj["satisfaction"],
+                        text,
+                        "mock" if actual.source == "mock" else "llm",
+                        agent_id,
+                        sim_time,
+                    ),
+                )
+            ).fetchone()
+            assert reaction_row is not None
+            handled = self.behavior_sink is not None and await self.behavior_sink(conn, run_id, int(reaction_row["id"]))
+            if not handled:
+                await conn.execute(
+                    "update client_states set care_score=%s where client_id=%s and run_id=%s and is_current",
+                    (obj["satisfaction"], client_id, run_id),
+                )
             if obj["reaction"] in ("asks_again", "escalates") and text:
                 # Старые стенды могут ещё не иметь нового справочника: регистрируем только свой источник.
                 await conn.execute(

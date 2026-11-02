@@ -1,0 +1,28 @@
+dataset: product_lines_v1
+version: 1
+synthetic: true
+rows: 162
+source: reviews.json
+sha256: d70ad54df4ea4c1d40d8b3a34d13dbb4678d808ea20ddc69755a325b5b01e19f
+review_share_multiplier: 3
+history:
+  seasonality:
+  - 0.96
+  - 0.93
+  - 1.02
+  - 1.0
+  - 0.98
+  - 0.95
+  - 0.94
+  - 0.97
+  - 1.04
+  - 1.06
+  - 1.08
+  - 1.12
+  fault_spike_multiplier: 1.25
+  jitter_ratio: 0.08
+notes: Все тексты синтетические. Исторические коэффициенты задают вариативность генератора,
+  не экономические или поведенческие правила.
+reference_anchor: '2026-10-15T09:00:00+03:00'
+annotation_revision: 2
+sentiment_annotation_source: editorial_text_review_not_criticality_or_model_output

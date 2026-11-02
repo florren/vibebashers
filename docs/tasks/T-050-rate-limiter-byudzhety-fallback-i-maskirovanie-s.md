@@ -61,3 +61,11 @@ Targeted 37 passed; lint зелёный, coverage redactor/app.logging 100%. П�
 Follow-up parent review: named credential containers внутри diagnostic repr теперь маскируются целиком (list/dict/tuple/nested/quoted/escaped), без eval. Truncated/malformed container скрывает остаток строки; outside IDs после balanced container сохраняются. Targeted 59 passed; lint/100% coverage прошли. Подробности и итог полного unit — в `docs/reviews/T-050-secret-redaction.md`.
 
 Follow-up полный unit: 975 passed / 18 skipped, exit 0; source и credentials/environment boundaries сохранены.
+
+## P2 durable accounting, 2026-11-02
+
+Production wire hooks обоих live providers используют private durable UTC ledger0016/API1.5.21; failed/retry attempts, streaming lower usage floor, unknown provenance и explicit operator reconciliation больше не сводятся к process-local успешным benchmark counters. API/UI показывают known/source/observed floor/server remaining; legacy hint не объявляется подтверждённым расходом. История не откатывается банковским restore; aliases одного physical key делят allowance, conflicting limits fail-closed. Setup binding и configured env endpoint повторно проверяются перед HTTP. Никаких новых численных лимитов/цен/customer money/HITL/auth или реальных HTTP вызовов.
+
+Frozen bc40536:1669 unit/18 skip;435 integration/4 skip/1 Alembic drift failure;43 scenario/2 skip;31 compliance;354 frontend;43 bot. После нормализации pre-release default исходный schema check и ledger52 passed, targeted110 unit passed; полный unit на6c8ae26 —1669 passed/18 skipped; новый lint включает362 frontend, Ruff/mypy/OpenAPI и licenses550+36 green. Это source-qualified evidence, не заявление полного make test green. Final scoped coverage:413 targeted passed,1100/1193=92.20% changed executable statements. Exact-head CI и human API/DDL/external-budget policy review обязательны до merge. Подробные semantics, recovery и итоговые проверки: `docs/reviews/T-050-durable-accounting.md`; UI proof: `docs/reviews/T-050-quota-ui.md`.
+
+T050 остаётся `in_progress`: очередь20s/limiter lock и main→fast→mock policy требуют отдельных coherent packets. Критерий всей карточки и live DoD не объявлены выполненными.

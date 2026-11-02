@@ -46,7 +46,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
 
   const running = !!sim?.running
   const runStatus = sim?.current_run_status ?? null
-  const canResume = !running && runStatus === 'paused'
+  const canResume = !running && (runStatus === 'paused' || runStatus === 'interrupted')
 
   const clearPress = () => {
     if (pressTimer.current) clearTimeout(pressTimer.current)

@@ -8,6 +8,19 @@ os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("LLM_PROVIDER", "mock")
 
 
+@pytest.fixture(autouse=True)
+def isolated_maintenance_control(tmp_path_factory, monkeypatch):
+    """Готовый store каждого теста; bootstrap/crash тесты меняют только свой marker."""
+    from app.config import get_settings
+    from app.sim.maintenance_control import MaintenanceControl
+
+    monkeypatch.setenv("MAINTENANCE_CONTROL_DIR", str(tmp_path_factory.mktemp("maintenance-control")))
+    get_settings.cache_clear()
+    MaintenanceControl().write("idle")
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def replay_bank(migrated_db, monkeypatch):
     """Общий неизменный synthetic bank записанной кассеты; это не текущий seed."""
@@ -46,7 +59,7 @@ def replay_bank(migrated_db, monkeypatch):
     )
     dsn = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(dsn, autocommit=True) as conn:
-        conn.execute("drop schema public cascade; create schema public")
+        conn.execute("drop schema if exists langgraph cascade; drop schema public cascade; create schema public")
     applied = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=root / "backend",

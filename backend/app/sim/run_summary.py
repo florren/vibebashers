@@ -33,7 +33,9 @@ async def build_summary(
     conn: psycopg.AsyncConnection[Any], run_id: int, *, refresh_economics: bool = False
 ) -> dict[str, Any]:
     run = await fetch_one(
-        conn, "select id,started_at,finished_at,started_sim,finished_sim from sim_runs where id=%s", (run_id,)
+        conn,
+        "select id,started_at,finished_at,started_sim,finished_sim,settings_snapshot from sim_runs where id=%s",
+        (run_id,),
     )
     if run is None:
         raise LookupError("запуск не найден")
@@ -41,14 +43,36 @@ async def build_summary(
     facts = await fact(conn, run_id, None, None, None)
     profiles = await fetch_all(
         conn,
-        "select ar.llm_profile_id,p.code,p.provider,p.model,p.price_in_per_1m,p.price_out_per_1m,ar.kind,count(*) runs,"
+        "select ar.llm_profile_id,ar.llm_profiles_snapshot,p.code,p.provider,p.model,p.price_in_per_1m,p.price_out_per_1m,ar.kind,count(*) runs,"
         "sum(ar.prompt_tokens) prompt_tokens,sum(ar.completion_tokens) completion_tokens,sum(ar.total_tokens) total_tokens,"
         "sum(ar.cost_estimate) recorded_cost_estimate,"
         "case when p.id is null then null else sum((ar.prompt_tokens*p.price_in_per_1m+ar.completion_tokens*p.price_out_per_1m)/1000000.0) end tariff_cost_estimate "
         "from agent_runs ar left join llm_profiles p on p.id=ar.llm_profile_id where ar.sim_run_id=%s "
-        "group by ar.llm_profile_id,p.id,ar.kind order by ar.llm_profile_id nulls last,ar.kind",
+        "group by ar.llm_profile_id,ar.llm_profiles_snapshot,p.id,ar.kind order by ar.llm_profile_id nulls last,ar.kind",
         (run_id,),
     )
+    snapshot = (run.get("settings_snapshot") or {}).get("llm_profiles") or {}
+    pinned = {
+        pid: snapshot.get("roles", {}).get(role)
+        for role, pid in snapshot.get("profile_ids", {}).items()
+        if pid is not None
+    }
+    for row in profiles:
+        ar_snapshot = row.pop("llm_profiles_snapshot") or {}
+        role = ar_snapshot.get("execution_role") or ("twin" if row["kind"] == "client_twin" else "main")
+        frozen = ar_snapshot.get("roles", {}).get(role) or pinned.get(row["llm_profile_id"])
+        tariff_source = "agent_run_snapshot" if ar_snapshot else "run_snapshot"
+        # Compare/bench выбирают собственный профиль явно и не наследуют роли запуска.
+        if frozen is not None and row["kind"] not in ("compare", "bench"):
+            for key in ("code", "provider", "model", "price_in_per_1m", "price_out_per_1m"):
+                row[key] = frozen[key]
+            row["tariff_cost_estimate"] = (
+                Decimal(str(frozen["price_in_per_1m"])) * row["prompt_tokens"]
+                + Decimal(str(frozen["price_out_per_1m"])) * row["completion_tokens"]
+            ) / Decimal(1000000)
+            row["tariff_source"] = tariff_source
+        else:
+            row["tariff_source"] = "current_catalog" if row["code"] is not None else "unknown"
     counters = await fetch_one(conn, "select * from v_run_counters where run_id=%s", (run_id,))
     quality = await fetch_one(
         conn,

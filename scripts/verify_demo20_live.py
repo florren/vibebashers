@@ -145,7 +145,9 @@ async def main():
     app.state.llm_chain = chain
     app.state.llm_profile = default_profile(s)
     svc = app.state.agent = AgentService(chain, app.state.llm_profile)
-    sim = app.state.sim = Simulator()
+    from app.sim.behavior.runtime import configured_policy
+
+    sim = app.state.sim = Simulator(behavior_policy=configured_policy())
     await sim.load_state()
     await refresh(app, s, required=True)
     print(

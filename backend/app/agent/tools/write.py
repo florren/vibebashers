@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 from app.agent import gifts as agent_gifts
-from app.agent.tools.base import ToolContext, ToolError, mask_name, tool
+from app.agent.tools.base import ClientStateIntent, ToolContext, ToolError, mask_name, tool
 from app.sim.events import dumps
 
 STATUS_TRANSITIONS: dict[str, set[str]] = {
@@ -286,10 +286,24 @@ async def notify_client(
         body = text_override
     body = PII_RE.sub("****", body)
     status = "sent"
+    tg_config = None
+    real_telegram = False
+    if channel == "telegram_bot":
+        from app.config import get_settings
+        from app.tgbot.configuration import configured
+
+        settings = get_settings()
+        real_telegram = settings.tgbot_enabled
+        if real_telegram:
+            try:
+                tg_config = configured(settings)
+            except ValueError:
+                tg_config = None
+            status = "queued" if tg_config is not None else "failed"
     if consents is not None and channel in ("sms", "email", "push") and consents.get(channel) is False:
         status = "suppressed"
     row = await ctx.fetchone(
-        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()) returning id",
+        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else now() end) returning id",
         (
             ctx.run_id,
             recipient_type,
@@ -301,10 +315,16 @@ async def notify_client(
             subject,
             body,
             status,
-            ctx.sim_time,
+            None if real_telegram else ctx.sim_time,
+            status,
         ),
     )
     nid = int(row[0])  # type: ignore[index]
+    if tg_config is not None:
+        from app.tgbot.outbox import enqueue_notification
+
+        if not await enqueue_notification(ctx.conn, tg_config, nid):
+            status = "failed"
     data = {
         "notification_id": nid,
         "recipient_type": recipient_type,
@@ -315,7 +335,7 @@ async def notify_client(
         "status": status,
         "body": body[:400],
     }
-    await ctx.notify("notifications", "sent", data)
+    await ctx.notify("notifications", status if real_telegram else "sent", data)
     if recipient_type == "public":
         await ctx.notify("feed", "reply", data)
     return data
@@ -529,15 +549,40 @@ async def set_client_state(
     signal_id: int | None = None,
     incident_id: int | None = None,
 ) -> dict[str, Any]:
+    if ctx.dry_run:
+        raise ToolError("Client state недоступен в сравнении без побочных эффектов")
+    if ctx.state_evidence_sink is not None:
+        result = await ctx.state_evidence_sink(
+            ctx.conn,
+            ClientStateIntent(
+                ctx.run_id, ctx.agent_run_id, client_id, state, trigger, ctx.sim_time, signal_id, incident_id
+            ),
+        )
+        actual = await ctx.fetchone(
+            "select cs.state from client_states cs join sim_runs sr on sr.id=cs.run_id "
+            "where cs.client_id=%s and cs.is_current and (cs.run_id=%s or sr.kind='baseline') "
+            "order by (cs.run_id=%s) desc,cs.id desc limit 1",
+            (client_id, ctx.run_id, ctx.run_id),
+        )
+        return {
+            "client_id": client_id,
+            "state": actual[0] if actual else "calm",
+            "requested_state": state,
+            "status": "pending" if result.accepted else "suppressed",
+            "accepted": result.accepted,
+            "evidence_id": result.evidence_id,
+            "reason": result.reason,
+        }
     await ctx.conn.execute(
-        "update client_states set is_current = false where client_id = %s and is_current", (client_id,)
+        "update client_states set is_current=false where client_id=%s and run_id=%s and is_current",
+        (client_id, ctx.run_id),
     )
     await ctx.conn.execute(
         "insert into client_states (run_id, client_id, state, since_sim, trigger, incident_id, signal_id, is_current) values (%s, %s, %s, %s, %s, %s, %s, true)",
         (ctx.run_id, client_id, state, ctx.sim_time, trigger, incident_id, signal_id),
     )
     await ctx.notify("clients", "state", {"client_id": client_id, "state": state, "trigger": trigger})
-    return {"client_id": client_id, "state": state}
+    return {"client_id": client_id, "state": state, "requested_state": state, "status": "applied"}
 
 
 __all__ = [

@@ -19,6 +19,7 @@ from app.contracts.registry import deref, validate_schema
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
 from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START
+from app.llm.run_profiles import resolve
 from app.logging import get_logger
 from app.sim.events import dumps
 
@@ -67,11 +68,20 @@ class Detector:
             {"role": "system", "content": system.body},
             {"role": "user", "content": prompt.render(**prompt_vars) + _hint(hint)},
         ]
+        chain, main = await resolve(self.conn, self.run_id, self.chain, self.profile, new=True)
+        profile = chain.profile_for(self.profile.role, main)
+        snapshot = {**(chain.role_snapshot or {}), "execution_role": profile.role}
         row = await (
             await self.conn.execute(
-                "insert into agent_runs (kind, sim_run_id, prompt_version, graph_version, thread_id, started_sim) "
-                "values ('compliance_detector', %s, %s, 'compliance-v1', %s, %s) returning id",
-                (self.run_id, prompt.version, f"compliance:{self.session_id or 0}:{node}", self.sim_time),
+                "insert into agent_runs (kind, sim_run_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) "
+                "values ('compliance_detector', %s, %s, 'compliance-v1', %s, %s,%s::jsonb) returning id",
+                (
+                    self.run_id,
+                    prompt.version,
+                    f"compliance:{self.session_id or 0}:{node}",
+                    self.sim_time,
+                    dumps(snapshot),
+                ),
             )
         ).fetchone()
         agent_run_id = int(row[0])  # type: ignore[index]
@@ -85,7 +95,7 @@ class Detector:
             {"prompt_tokens": 0, "completion_tokens": 0},
         )
         try:
-            res = await self.chain.complete_structured(messages, deref(schema_name), self.profile, context=context)
+            res = await chain.complete_structured(messages, deref(schema_name), profile, context=context)
             got = dict(res.obj or {})
             errors = validate_schema(got, deref(schema_name))
             provider, usage = (
@@ -113,7 +123,7 @@ class Detector:
                 dumps(obj),
                 messages[1]["content"][:6000],
                 err or ("вердикт детектора" if provider != "mock" else "mock = правила"),
-                f"{provider}/{self.profile.model}" if provider else None,
+                f"{provider}/{profile.model}" if provider else None,
                 usage["prompt_tokens"],
                 usage["completion_tokens"],
                 ms,

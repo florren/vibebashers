@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import re
+import time
 
 import httpx
 import psycopg
@@ -217,31 +220,64 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(settings, "telegram_bot_token", "")
         hidden = client.get("/api/public/bot/qr")
         assert hidden.status_code == 404
-        secret = "super-secret-bot-token-do-not-leak"
+        secret = "123456:" + "A" * 35
         monkeypatch.setattr(settings, "telegram_bot_token", secret)
+        monkeypatch.setattr(settings, "tgbot_enabled", True)
         qr = client.get("/api/public/bot/qr")
         assert qr.status_code == 200
         assert qr.headers["content-type"].startswith("image/svg+xml")
         assert "<svg" in qr.text
         assert secret not in qr.text
 
+        monkeypatch.setattr(settings, "tgbot_enabled", True)
+        monkeypatch.setattr(settings, "tgbot_internal_secret", "public-test-transport-vector-000000000000")
+        monkeypatch.setattr(settings, "tgbot_public_base_url", "https://bank.invalid")
+        monkeypatch.setattr(settings, "app_secret", "public-test-storage-vector-000000000000")
+        with psycopg.connect(_dsn(dsn), autocommit=True) as clean:
+            for table in (
+                "telegram_inbound",
+                "telegram_conversations",
+                "telegram_deliveries",
+                "telegram_chat_rate",
+                "telegram_signal_bindings",
+                "telegram_client_bindings",
+            ):
+                clean.execute(f"delete from channel_runtime.{table} where bot_id=123456")
+        update_id = 0
+
+        def bot_post(url, *, json):
+            nonlocal update_id
+            update_id += 1
+            event = {**json, "bot_id": 123456, "update_id": update_id}
+            raw = __import__("json").dumps(event, ensure_ascii=False, separators=(",", ":")).encode()
+            stamp = str(int(time.time()))
+            payload = "\n".join(("cx-tgbot-v1", stamp, "POST", url, hashlib.sha256(raw).hexdigest())).encode()
+            signature = hmac.new(settings.tgbot_internal_secret.encode(), payload, hashlib.sha256).hexdigest()
+            return client.post(
+                url,
+                content=raw,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-CX-Tg-Timestamp": stamp,
+                    "X-CX-Tg-Signature": signature,
+                },
+            )
+
         chat_id = 424242
-        started = client.post(
-            "/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "start", "text": "/start"}
-        )
+        started = bot_post("/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "start", "text": "/start"})
         assert started.status_code == 200, started.text
         start_body = started.json()
         assert start_body["signal_id"] is None
         assert len(start_body["buttons"]) == 2
         assert {button["data"] for button in start_body["buttons"]} == {"is_client", "not_client"}
 
-        short = client.post(
+        short = bot_post(
             "/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "free_text", "text": "коротко"}
         )
         assert short.status_code == 200 and short.json()["signal_id"] is None
 
-        client.post("/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "is_client", "text": "is_client"})
-        client.post(
+        bot_post("/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "is_client", "text": "is_client"})
+        bot_post(
             "/api/internal/tgbot/inbound",
             json={
                 "chat_id": chat_id,
@@ -249,13 +285,11 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
                 "text": "Не приходит смс-код для входа в приложение уже второй день",
             },
         )
-        client.post(
+        bot_post(
             "/api/internal/tgbot/inbound",
             json={"chat_id": chat_id, "kind": "contact", "text": "+7 900 001-22-33"},
         )
-        finished = client.post(
-            "/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "region", "text": region}
-        )
+        finished = bot_post("/api/internal/tgbot/inbound", json={"chat_id": chat_id, "kind": "region", "text": region})
         assert finished.status_code == 200, finished.text
         bot = finished.json()
         assert bot["signal_id"]

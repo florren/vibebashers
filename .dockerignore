@@ -15,3 +15,9 @@ data/baseline/*.dump
 frontend/dist-personal
 
 .cx/
+
+# Долговечный runtime maintenance marker, не часть исходников/образа.
+data/maintenance/
+
+# Не включать локальный staging ответов провайдера в build context.
+/var/recordings/

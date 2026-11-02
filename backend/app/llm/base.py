@@ -56,6 +56,25 @@ class Usage:
         }
 
 
+def binding_fields(api_key_id: int | None, extra: dict[str, Any]) -> tuple[int | None, dict[str, Any]]:
+    """Read compatibility старого bench extra.api_key_id; новые writes используют поле API."""
+    if api_key_id is not None and (type(api_key_id) is not int or api_key_id < 1):
+        raise ValueError("api_key_id должен быть положительным целым числом")
+    if not isinstance(extra, dict):
+        raise ValueError("extra должен быть объектом")
+    if "api_key_id" not in extra:
+        return api_key_id, extra
+    legacy = extra["api_key_id"]
+    if (
+        isinstance(legacy, bool)
+        or not isinstance(legacy, int)
+        or legacy < 1
+        or (api_key_id is not None and api_key_id != legacy)
+    ):
+        raise ValueError("неоднозначная legacy credential binding")
+    return legacy, {key: value for key, value in extra.items() if key != "api_key_id"}
+
+
 @dataclass(slots=True)
 class LLMProfile:
     """Строка llm_profiles (или значения по умолчанию из .env)."""
@@ -65,6 +84,7 @@ class LLMProfile:
     model: str
     role: Literal["main", "fast", "twin", "bench_only"] = "main"
     base_url: str | None = None
+    api_key_id: int | None = None
     temperature: float = 0.0
     rpm_limit: int | None = None
     rpd_limit: int | None = None
@@ -73,6 +93,12 @@ class LLMProfile:
     supports_tools: bool = True
     supports_stream: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
+    id: int | None = None  # Стабильный public config ID для live quota, не credential identity.
+
+    def __post_init__(self) -> None:
+        if self.id is not None and (type(self.id) is not int or self.id < 1):
+            raise ValueError("ID профиля должен быть положительным целым числом")
+        self.api_key_id, self.extra = binding_fields(self.api_key_id, self.extra)
 
     def cost(self, prompt: int, completion: int) -> float:
         return prompt / 1e6 * self.price_in_per_1m + completion / 1e6 * self.price_out_per_1m
@@ -87,6 +113,7 @@ class ProviderError(Exception):
         retry_after_s: float | None = None,
         status: int | None = None,
         usage: Usage | None = None,
+        request_count: int = 0,
     ):
         super().__init__(f"{kind}: {detail}" if detail else kind)
         self.kind: ErrorKind = kind
@@ -94,6 +121,8 @@ class ProviderError(Exception):
         self.retry_after_s = retry_after_s
         self.status = status
         self.usage = usage
+        # Существующий adapter generation-attempt counter, не all-HTTP ledger.
+        self.request_count = request_count
 
 
 class Provider(Protocol):

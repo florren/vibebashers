@@ -17,9 +17,10 @@ parser = argparse.ArgumentParser(
     description="T-152: собрать metadata без установки wheel; версия/hash wheel сверяются с uv.lock"
 )
 parser.add_argument("--wheel-dir", type=pathlib.Path, required=True)
+parser.add_argument("--project", choices=["backend", "tgbot"], default="backend")
 args = parser.parse_args()
 root = pathlib.Path(__file__).resolve().parents[1]
-lock = tomllib.loads((root / "backend/uv.lock").read_text())
+lock = tomllib.loads((root / args.project / "uv.lock").read_text())
 distributions = {re.sub(r"[-_.]+", "-", d.metadata["Name"]).lower(): d for d in m.distributions()}
 rows = []
 classes = {
@@ -32,11 +33,16 @@ classes = {
 aliases = {
     "Apache Software License": "Apache-2.0",
     "Apache License, Version 2.0": "Apache-2.0",
+    "Apache 2.0": "Apache-2.0",
     "PSFL": "PSF-2.0",
     "MIT license": "MIT",
     "MIT License": "MIT",
 }
 reviewed = {
+    ("jsonpointer", "3.7"): (
+        "BSD-3-Clause",
+        "LICENSE.txt: clauses 1/2/3 and disclaimer read and verified",
+    ),
     ("jinja2", "3.1.6"): (
         "BSD-3-Clause",
         "LICENSE.txt: clauses 1/2/3 read and verified",
@@ -51,6 +57,10 @@ reviewed = {
     ),
 }
 reviewed_notice_hashes = {
+    ("jsonpointer", "3.7"): {
+        "d8b24f15d472885f788a2d6e985850f264627b86012a17bb242c83f310d907e5",
+        "4d58319d0f59c87bef5b07b3fe4db0f19c2d7d5545b034c6bf7b57c89bbef57f",
+    },
     ("colorama", "0.4.6"): {"cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"},
     ("jinja2", "3.1.6"): {"3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b"},
     ("qrcode", "8.2"): {"40dfb903c94ee3f789500131311186548ecba5cefd3557623d7700e2522ab994"},
@@ -58,7 +68,7 @@ reviewed_notice_hashes = {
 
 for p in lock["package"]:
     n, v = p["name"], p["version"]
-    if n == "cx-pulse-backend":
+    if n == ("cx-pulse-backend" if args.project == "backend" else "cx-pulse-tgbot"):
         continue
     d = distributions.get(n)
     license_hashes = {}
@@ -109,5 +119,6 @@ for p in lock["package"]:
         row["wheel_sha256"] = archive
         row["wheel_url"] = entry["url"]
     rows.append(row)
-(root / "docs/licenses/python-metadata.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
+evidence = "python-metadata.json" if args.project == "backend" else "tgbot-metadata.json"
+(root / "docs/licenses" / evidence).write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
 sys.stdout.write(f"license metadata: {len(rows)} distributions\n")

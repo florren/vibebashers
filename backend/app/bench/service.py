@@ -9,31 +9,48 @@ import json
 from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
-from typing import Any
+from typing import Any, cast
 
 from psycopg import Error as DatabaseError
 from psycopg.types.json import Jsonb
 
 from app.agent.prompts import load as load_prompt
 from app.api.common import db, fetch_all, fetch_one
-from app.api.settings import key_plain, load_keys, set_setting
+from app.api.settings import key_plain, load_keys
 from app.bench import runner
 from app.config import get_settings
 from app.errors import Problem
+from app.llm import accounting, credentials
 from app.llm.base import LLMProfile, Provider, ProviderError
 from app.llm.budget import load_openrouter_budget
 from app.llm.failover import ProviderChain
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.mock import MockProvider
-from app.llm.openai_compat import OpenAICompatProvider
+from app.llm.openai_compat import OpenAICompatProvider, is_paid_model
 from app.llm.ratelimit import RateLimiter, limiter
 from app.logging import get_logger
 from app.realtime.hub import hub
 from app.replay.provider import ReplayProvider
 from app.replay.store import CassetteStore
+from app.sim.maintenance import spawn_writer, writer
 
 log = get_logger(__name__)
+
+
+async def record_key_usage(conn: Any, key_id: int, tokens: int) -> None:
+    """Derived mirror only: inference was already durably counted before HTTP.
+
+    tokens remains a compatibility argument for callbacks, never a new charge.
+    """
+    await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+    alias = await fetch_one(
+        conn,
+        "select a.credential_uid from llm_runtime.credential_aliases a join llm_api_keys k on k.credential_uid=a.config_uid where k.id=%s",
+        (key_id,),
+    )
+    if alias is not None:
+        await accounting.sync_mirrors(conn, alias["credential_uid"])
 
 
 class BenchRateLimiter(RateLimiter):
@@ -97,12 +114,52 @@ class BenchService:
             )
             if len(profiles) != len(set(ids)):
                 raise Problem(422, "неизвестный или неактивный профиль")
+            for row in profiles:
+                await credentials.validate_binding(conn, self.profile(row))
             keys = await load_keys(conn)
+            await self.accounting_metadata(conn, profiles, keys)
         cases = [
             runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"], r.get("tags", []))
             for r in rows
         ]
         return dataset["code"], cases, profiles, keys
+
+    async def accounting_metadata(self, conn: Any, profiles: list[dict[str, Any]], keys: list[dict[str, Any]]) -> None:
+        # Private grouping keys never enter Forecast/BenchRecord/export DTOs.
+        groups = await fetch_all(
+            conn,
+            "select credential_uid, count(distinct row(tokens_limit,rpd_limit))>1 as conflict from llm_api_keys where is_active and deleted_at is null group by credential_uid",
+        )
+        conflicts = {str(row["credential_uid"]): row["conflict"] for row in groups}
+        identities = await fetch_all(conn, "select id,credential_uid from llm_api_keys where deleted_at is null")
+        by_id = {row["id"]: str(row["credential_uid"]) for row in identities}
+        for item in keys:
+            item["_quota_group"] = by_id[item["id"]]
+            item["_quota_conflict"] = conflicts.get(item["_quota_group"], False)
+        for provider in ("gigachat", "openai_compatible"):
+            for env in self.available_keys(provider, []):
+                facts = accounting.KeyFacts(provider, env["_secret"], env["endpoint_url"], env["tokens_limit"])
+                observed = await accounting.attach_env_observation(conn, env, facts)
+                identity = await fetch_one(
+                    conn,
+                    "select coalesce((select a.config_uid from llm_runtime.credential_aliases a where a.credential_uid=c.uid limit 1),c.uid) as uid from llm_runtime.credentials c where c.verifier=%s",
+                    (facts.verifier(),),
+                )
+                observed["_quota_group"] = str(identity["uid"]) if identity else env["label"]
+                observed["_quota_conflict"] = conflicts.get(observed["_quota_group"], False)
+                keys.append(observed)
+        daily = await fetch_all(
+            conn,
+            "with clock as(select (clock_timestamp() at time zone 'UTC')::date as day) "
+            "select p.id,coalesce(d.requests_today,0) as used,coalesce(d.requests_known,(s.created_at at time zone 'UTC')::date<clock.day,false) as known "
+            "from clock cross join llm_profiles p left join llm_runtime.profile_scopes s on s.scope='quota:'||p.quota_uid::text "
+            "left join llm_runtime.daily_usage d on d.scope_type='profile' and d.scope_id=s.scope and d.utc_day=clock.day where p.id=any(%s)",
+            ([row["id"] for row in profiles],),
+        )
+        by_profile = {row["id"]: row for row in daily}
+        for row in profiles:
+            observed = by_profile[row["id"]]
+            row["_requests_known"], row["_requests_today"] = observed["known"], observed["used"]
 
     @staticmethod
     def profile(row: dict[str, Any]) -> LLMProfile:
@@ -111,12 +168,16 @@ class BenchService:
             if key in values:
                 values[key] = float(values[key])
         values["temperature"] = 0.0  # единые параметры сравнения; профиль twin в БД не меняется
-        return LLMProfile(**values)
+        profile = LLMProfile(**values)
+        from app.llm.run_profiles import _safe
+
+        _safe(profile)
+        return profile
 
     def available_keys(self, provider: str, saved: list[dict[str, Any]]) -> list[dict[str, Any]]:
         settings = get_settings()
         keys = [
-            {**k, "label": f"bench_{provider}_db_{k['id']}"}
+            {**k, "label": f"bench_{provider}_db_{k['id']}" if k.get("id") is not None else k["label"]}
             for k in saved
             if k.get("provider") == provider and k.get("is_active", True)
         ]
@@ -126,37 +187,59 @@ class BenchService:
             else (settings.openrouter_api_key,)
         )
         for index, value in enumerate(env_values, 1):
-            if value:
+            if value and not any(key.get("_env_slot") == index for key in keys):
                 keys.append(
                     {
+                        "id": None,
                         "label": f"{provider}_env_{index}",
+                        "_env_slot": index,
                         "provider": provider,
                         "_secret": value,
                         "tokens_limit": 50_000_000 if provider == "gigachat" else None,
                         "tokens_used": 0,
+                        "endpoint_url": credentials.endpoint(
+                            settings.gigachat_base_url if provider == "gigachat" else settings.openrouter_base_url
+                        ),
                     }
                 )
         return keys
 
+    def selected_keys(self, profile: LLMProfile, saved: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        keys = self.available_keys(profile.provider, saved)
+        if profile.api_key_id is not None:
+            return [key for key in keys if key.get("id") == profile.api_key_id]
+        target = credentials.endpoint(profile.base_url or credentials.default_endpoint(profile.provider))
+        return [key for key in keys if key.get("endpoint_url") and credentials.endpoint(key["endpoint_url"]) == target]
+
     def remaining(self, keys: list[dict[str, Any]]) -> int | None:
-        if any(k.get("tokens_limit") is None for k in keys):
+        unique: dict[str, dict[str, Any]] = {}
+        for key in keys:
+            group = key.get("_quota_group", key["label"])
+            if group not in unique or (unique[group].get("id") is None and key.get("id") is not None):
+                unique[group] = key
+        selected = list(unique.values())
+        if any(k.get("usage_known") is False or k.get("_quota_conflict") for k in selected):
+            return None
+        if any(k.get("tokens_limit") is None for k in selected):
             return None
         return sum(
-            max(
+            int(k["tokens_remaining"])
+            if k.get("usage_known") is True
+            else max(
                 0,
                 int(k["tokens_limit"])
                 - max(
                     int(k.get("tokens_used") or 0), self.keys[k["label"]].tokens_used if k["label"] in self.keys else 0
                 ),
             )
-            for k in keys
+            for k in selected
         )
 
     def forecast(
         self, code: str, cases: list[runner.BenchCase], row: dict[str, Any], saved: list[dict[str, Any]], repeats: int
     ) -> dict[str, Any]:
         profile = self.profile(row)
-        keys = self.available_keys(profile.provider, saved)
+        keys = self.selected_keys(profile, saved)
         fc = runner.forecast(
             code, profile, repeats=repeats, cases=cases, key_tokens_remaining=self.remaining(keys) if keys else None
         )
@@ -168,7 +251,27 @@ class BenchService:
         ):
             fc.fits_limits = False
             warning = "; ".join(filter(None, (warning, "нет активного ключа провайдера")))
-        used = int(limiter.stats().get(profile.code, {}).get("today") or 0)
+        if profile.provider not in ("mock", "replay"):
+            budgeted = (
+                (
+                    profile.provider == "openai_compatible"
+                    and is_paid_model(profile, profile.base_url or get_settings().openrouter_base_url)
+                )
+                or profile.rpd_limit is not None
+                or any(k.get("tokens_limit") is not None or k.get("rpd_limit") is not None for k in keys)
+            )
+            if any(k.get("_quota_conflict") for k in keys):
+                fc.fits_limits = False
+                warning = "; ".join(filter(None, (warning, "конфликт лимитов active aliases physical credential")))
+            if budgeted and any(k.get("usage_known") is not True or k.get("requests_known") is not True for k in keys):
+                fc.fits_limits = False
+                warning = "; ".join(filter(None, (warning, "расход ключа неизвестен; нужен operator reconciliation")))
+            if profile.rpd_limit is not None and row.get("_requests_known") is False:
+                fc.fits_limits = False
+                warning = "; ".join(
+                    filter(None, (warning, "суточный расход профиля неизвестен; нужен operator reconciliation"))
+                )
+        used = int(row.get("_requests_today", limiter.stats().get(profile.code, {}).get("today") or 0))
         if profile.rpd_limit is not None and used + fc.est_requests > profile.rpd_limit:
             fc.fits_limits = False
             warning = "; ".join(
@@ -188,7 +291,7 @@ class BenchService:
             providers.append(ReplayProvider(CassetteStore(settings.cassettes_dir)))
         elif profile.provider == "gigachat":
             pool = []
-            for item in self.available_keys("gigachat", saved):
+            for item in self.selected_keys(profile, saved):
                 label = str(item["label"])
                 secret = item.get("_secret") or key_plain(item)
                 key = self.keys.get(label)
@@ -221,13 +324,14 @@ class BenchService:
             base = profile.base_url or (settings.local_llm_base_url if local else settings.openrouter_base_url)
             if not base:
                 raise ProviderError("unavailable", "LOCAL_LLM_BASE_URL или base_url локального профиля не задан")
-            keys = self.available_keys(profile.provider, saved)
+            keys = self.selected_keys(profile, saved)
             if local:
                 # Ключ локального endpoint выбирается явно; OpenRouter secret не подставляется.
                 keys = [
                     key
                     for key in keys
-                    if profile.extra.get("api_key_id") is not None and key.get("id") == profile.extra["api_key_id"]
+                    if (profile.api_key_id or profile.extra.get("api_key_id")) is not None
+                    and key.get("id") == (profile.api_key_id or profile.extra.get("api_key_id"))
                 ]
 
             def capacity(item: dict[str, Any]) -> int:
@@ -260,6 +364,13 @@ class BenchService:
                     self.keys[selected_key].tokens_used, int(chosen.get("tokens_used") or 0)
                 )
                 self.keys[selected_key].tokens_limit = chosen.get("tokens_limit")
+            if (
+                local
+                and chosen is None
+                and secret
+                and base.rstrip("/") != (settings.local_llm_base_url or "").rstrip("/")
+            ):
+                raise ProviderError("auth", "local env source не разрешён для endpoint профиля")
             providers.append(
                 OpenAICompatProvider(
                     secret,
@@ -270,6 +381,9 @@ class BenchService:
             )
         else:
             raise ProviderError("unavailable", "провайдер не поддерживается")
+        if profile.api_key_id is not None:
+            for provider in providers:
+                cast(Any, provider).credential_id = profile.api_key_id
         return ProviderChain(providers, append_mock=False, rate_limiter=BenchRateLimiter()), providers, selected_key
 
     async def start(self, dataset_id: int, ids: list[int], repeats: int, dry_run: bool) -> dict[str, Any]:
@@ -295,7 +409,7 @@ class BenchService:
                 records.append((row, rec))
         for row, rec in records:
             self.records[rec.id] = rec
-            task = asyncio.create_task(self.execute(row, rec, cases, saved))
+            task = spawn_writer(self.execute(row, rec, cases, saved), kind="bench")
             self.tasks[rec.id] = task
             task.add_done_callback(partial(self.finished, rec.id))
         return {"run_ids": [rec.id for _, rec in records], "forecast": forecasts}
@@ -306,6 +420,7 @@ class BenchService:
         if not task.cancelled() and task.exception() is not None:
             log.error("bench_background_failed", run_id=id_, error_type=type(task.exception()).__name__)
 
+    @writer("bench")
     async def execute(
         self,
         row: dict[str, Any],
@@ -328,21 +443,9 @@ class BenchService:
                         if key.provider != "gigachat":
                             usage_updates.append((key, result["prompt_tokens"] + result["completion_tokens"]))
                         if key.db_id is not None:
-                            await conn.execute("select value from settings where key='llm_keys' for update")
-                            stored = await load_keys(conn)
-                            for item in stored:
-                                if item.get("id") == key.db_id:
-                                    item["tokens_used"] = (
-                                        int(item.get("tokens_used") or 0)
-                                        + result["prompt_tokens"]
-                                        + result["completion_tokens"]
-                                    )
-                                    today = datetime.now(UTC).date().isoformat()
-                                    item["requests_today"] = (
-                                        int(item.get("requests_today") or 0) if item.get("requests_day") == today else 0
-                                    ) + 1
-                                    item["requests_day"] = today
-                            await set_setting(conn, "llm_keys", stored)
+                            await record_key_usage(
+                                conn, key.db_id, result["prompt_tokens"] + result["completion_tokens"]
+                            )
                     await conn.execute(
                         "insert into bench_results(run_id,case_id,repeat_no,predicted,correct,json_valid_first_try,retries,latency_ms,prompt_tokens,completion_tokens,fallback_mock) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (
@@ -390,7 +493,8 @@ class BenchService:
                     return
                 # Повторная проверка после ожидания другого прогона того же профиля.
                 async with db() as conn:
-                    saved = await load_keys(conn)
+                    await credentials.validate_binding(conn, self.profile(row))
+                    saved = await load_keys(conn, reveal=True)
                 fc = self.forecast(rec.dataset_code, cases, row, saved, rec.repeats)
                 if not fc["fits_limits"]:
                     raise ProviderError("quota", str(fc["warning"]))

@@ -22,26 +22,40 @@ from app import api as api_pkg
 from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
 from app.bench.service import BenchService
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
 from app.llm.gigachat import GigaChatProvider
 from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, openrouter_deactivation_plan
 from app.llm.roles import refresh as refresh_roles
+from app.llm.runtime_provider import clear_runtime_keys
 from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
+from app.sim.behavior.runtime import configured_policy
 from app.sim.engine import Simulator
+from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
+from app.sim.maintenance_control import ControlError, MaintenanceControl
+from app.sim.maintenance_db import DatabaseBoundary
 from app.sim.twins import TwinService
 from app.stt import audio_ws
+from app.tgbot.configuration import configured as tgbot_configuration
+from app.tgbot.middleware import BotSignatureMiddleware
 
 log = get_logger(__name__)
 
 
+def _automatic_llm_offline(chain: ProviderChain, settings: Settings | None = None) -> bool:
+    settings = settings or get_settings()
+    return settings.llm_provider in ("mock", "replay") or getattr(chain, "offline_mode", None) in ("mock", "replay")
+
+
 async def _sync_openrouter_models(chain: ProviderChain) -> None:
     """Нет id в каталоге OpenRouter — профиль is_active=false. Чужой base_url, ошибка GET и пустой список не гасят."""
+    if _automatic_llm_offline(chain):
+        return
     prov = next((p for p in chain.providers if isinstance(p, OpenAICompatProvider)), None)
     if prov is None or not is_openrouter(prov.base_url):
         return
@@ -76,19 +90,154 @@ async def _abs_backfill() -> None:
         log.info("abs_backfill", **done)
 
 
+async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery: bool = False) -> None:
+    """Создаёт только runtime-компоненты, которыми владеет lifespan."""
+    with app.state.maintenance.bind():
+        if "agent" in components:
+            app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
+            app.state.agent.enabled = getattr(app.state, "maintenance_agent_enabled", True)
+            sim = getattr(app.state, "sim", None)
+            if sim is not None:
+                sim.before_resume = app.state.agent.validate_recovery
+                sim.after_resume = app.state.agent.recover_run
+            if startup_recovery and sim is not None:
+                await app.state.agent._recover()
+                app.state.agent.start(recover=False)
+            else:
+                app.state.agent.start()
+        if "twins" in components:
+            from app.sim.behavior.runtime import configured_policy, twin_sink
+
+            app.state.twins = TwinService(
+                app.state.llm_chain,
+                app.state.llm_profile,
+                behavior_sink=twin_sink if configured_policy() is not None else None,
+            )
+            app.state.twins.start()
+        if "poll" in components:
+            from app.ingest.sources import polling_worker
+
+            app.state.poll_stop = asyncio.Event()
+            app.state.ingest_poll = start_daemon(lambda: polling_worker(app.state.poll_stop), name="ingest-poll")
+        if "demo" in components:
+            from app.demo.execution import worker
+
+            app.state.demo_task = start_daemon(lambda: worker(app), name="demo-execution")
+        if "public" in components:
+            from app.demo.execution import public_worker
+
+            app.state.public_task = start_daemon(lambda: public_worker(app), name="public-execution")
+        if "tgbot" in components:
+            from app.tgbot.delivery import worker as telegram_worker
+
+            app.state.tgbot_task = start_daemon(telegram_worker, name="telegram-delivery")
+    app.state.runtime_components = components
+
+
+async def _park_runtime(app: FastAPI) -> None:
+    """Вызывается после drain; активные seed/audio до этого отклоняют restore."""
+    components = set(getattr(app.state, "runtime_components", set()))
+    if not hasattr(app.state, "maintenance_saved_components"):
+        app.state.maintenance_saved_components = components
+        app.state.maintenance_agent_enabled = getattr(getattr(app.state, "agent", None), "enabled", True)
+    sim = getattr(app.state, "sim", None)
+    if sim is not None and hasattr(sim, "shutdown"):
+        if sim.clock.running or getattr(sim, "run_status", None) == "running":
+            await sim.control("pause")
+        await sim.shutdown()
+    for name in ("demo_task", "public_task", "tgbot_task"):
+        task = getattr(app.state, name, None)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            setattr(app.state, name, None)
+    bench = getattr(app.state, "bench", None)
+    if bench is not None:
+        await bench.stop()
+    if "twins" in components and app.state.twins is not None:
+        await app.state.twins.stop()
+        app.state.twins = None
+    if "poll" in components:
+        app.state.poll_stop.set()
+        task = getattr(app.state, "ingest_poll", None)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        app.state.ingest_poll = None
+    if "agent" in components and app.state.agent is not None:
+        await app.state.agent.stop()
+        app.state.agent = None
+    from app.db.session import get_engine
+
+    await get_engine().dispose()
+    app.state.runtime_components = set()
+
+
+async def _resume_runtime(app: FastAPI) -> None:
+    if getattr(app.state, "maintenance_startup_recovery", False):
+        await _prepare_runtime_profiles(app)
+        if not get_settings().is_test:
+            await _abs_backfill()
+            bridge.start()
+        app.state.maintenance_startup_recovery = False
+    components = set(getattr(app.state, "maintenance_saved_components", set()))
+    # Завершённые benchmark записи/ключи не должны ссылаться на переиспользованные ID.
+    app.state.bench = BenchService()
+    await _start_runtime(app, components)
+    if hasattr(app.state, "maintenance_saved_components"):
+        del app.state.maintenance_saved_components
+
+
+async def _initialize_maintenance(app: FastAPI) -> bool:
+    coordinator = app.state.maintenance
+    control = coordinator.control
+    if control is None:
+        return False
+    try:
+        if control.read() is None:
+            # Bootstrap не пересоздаёт уже существующий failed/corrupt marker.
+            await coordinator.boundary.acquire()
+            try:
+                control.initialize_missing()
+            finally:
+                await coordinator.boundary.release()
+        control.require_idle()
+        return False
+    except ControlError:
+        coordinator.phase = "failed"
+        coordinator.failure = "IncompleteMaintenance"
+        coordinator._ready.clear()
+        log.error("baseline_maintenance_recovery_required")
+        return True
+
+
+async def _prepare_runtime_profiles(app: FastAPI) -> None:
+    s = get_settings()
+    if s.is_test:
+        return
+    chain = app.state.llm_chain
+    await refresh_roles(app, s)
+    # Локальная replay metadata нужна, но warmup/catalog не является diagnostic intent.
+    if _automatic_llm_offline(chain, s):
+        return
+    for provider in chain.providers:
+        if isinstance(provider, GigaChatProvider):
+            await provider.prepare(list(chain.role_profiles.values()))
+    if any(p.name == "openai_compatible" for p in chain.providers):
+        await _sync_openrouter_models(chain)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     s = get_settings()
     configure_logging(s.app_env, s.log_path if (s.log_jsonl and not s.is_test) else None, s.log_jsonl_level)
+    recovering = await _initialize_maintenance(app)
     app.state.llm_chain = build_chain(s)
     app.state.llm_profile = default_profile(s)
-    if not s.is_test:
-        await refresh_roles(app, s)
-        for provider in app.state.llm_chain.providers:
-            if isinstance(provider, GigaChatProvider):
-                await provider.prepare(list(app.state.llm_chain.role_profiles.values()))
-    if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
-        await _sync_openrouter_models(app.state.llm_chain)
+    if not recovering:
+        await _prepare_runtime_profiles(app)
     log.info(
         "startup",
         env=s.app_env,
@@ -101,18 +250,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.sim = None
     app.state.agent = None
     app.state.twins = None
-    poll_stop: asyncio.Event | None = None
-    if not s.is_test:
-        from app.ingest.sources import polling_worker
-
-        poll_stop = asyncio.Event()
-        app.state.ingest_poll = asyncio.create_task(polling_worker(poll_stop))
+    app.state.runtime_components = set()
+    if recovering:
+        app.state.sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
+        app.state.sim.full_execution = True
+        app.state.maintenance_saved_components = (
+            ({"agent", "twins", "poll", "demo", "public"} | ({"tgbot"} if s.tgbot_enabled else set()))
+            if not s.is_test
+            else set()
+        )
+        app.state.maintenance_startup_recovery = True
+    if not s.is_test and not recovering:
         bridge.start()
-        app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
-        app.state.agent.start()
-        app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
-        app.state.twins.start()
-        sim = Simulator(seed=s.sim_seed)
+        sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         sim.full_execution = True
         try:
             await sim.load_state()
@@ -120,35 +270,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await _abs_backfill()
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
-    demo_task = public_task = None
-    if not s.is_test:
-        from app.demo.execution import public_worker
-        from app.demo.execution import worker as demo_worker
-
-        demo_task = asyncio.create_task(demo_worker(app), name="demo-execution")
-        public_task = asyncio.create_task(public_worker(app), name="public-execution")
+    if not s.is_test and not recovering:
+        components = {"agent", "twins", "poll", "demo", "public"}
+        if s.tgbot_enabled:
+            components.add("tgbot")
+        await _start_runtime(app, components, startup_recovery=True)
     yield
-    for execution_task in (demo_task, public_task):
-        if execution_task:
-            execution_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await execution_task
-    await app.state.bench.stop()
-    if app.state.twins is not None:
-        await app.state.twins.stop()
-    if poll_stop is not None:
-        poll_stop.set()
-        task = getattr(app.state, "ingest_poll", None)
-        if task is not None:
-            await task
-    if app.state.agent is not None:
-        await app.state.agent.stop()
-    if app.state.sim is not None:
-        await app.state.sim.shutdown()
+    try:
+        await app.state.maintenance.join_restore()
+    except Exception as exc:
+        log.warning("restore_failed_at_shutdown", error_type=type(exc).__name__)
+    await _park_runtime(app)
+    if app.state.maintenance.boundary is not None:
+        await app.state.maintenance.boundary.release()
     await bridge.stop()
-    for provider in app.state.llm_chain.providers:
-        if isinstance(provider, (GigaChatProvider, OpenAICompatProvider)):
-            await provider.aclose()
+    try:
+        for provider in app.state.llm_chain.providers:
+            if isinstance(provider, (GigaChatProvider, OpenAICompatProvider)):
+                await provider.aclose()
+    finally:
+        clear_runtime_keys()
 
 
 def include_api_routers(app: FastAPI) -> list[str]:
@@ -173,10 +314,26 @@ def create_app() -> FastAPI:
         docs_url="/docs" if s.app_env != "prod" else None,
         openapi_url="/openapi.json",
     )
+    app.state.maintenance = MaintenanceCoordinator(boundary=DatabaseBoundary(), control=MaintenanceControl())
+    app.state.maintenance_park = lambda: _park_runtime(app)
+    app.state.maintenance_resume = lambda: _resume_runtime(app)
+    app.add_middleware(MaintenanceMiddleware, coordinator=app.state.maintenance)
     app.add_middleware(
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )
+    from app.analytics.cabinet_scope import CabinetPresetMiddleware
+
+    app.add_middleware(CabinetPresetMiddleware)
     app.add_middleware(RequestLogMiddleware)
+
+    def bot_secret() -> bytes | None:
+        try:
+            config = tgbot_configuration(get_settings())
+        except ValueError:
+            return None
+        return config.secret if config is not None else None
+
+    app.add_middleware(BotSignatureMiddleware, secret=bot_secret)
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)

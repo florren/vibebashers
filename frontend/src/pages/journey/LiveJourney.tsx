@@ -1,3 +1,4 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -419,7 +420,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
                 {availableRuns.map((r) => (
                   <option key={r.id} value={r.id}>
                     #{r.id} · {t(r.kind === 'client_twin' ? 'journeyLive.twin' : 'journeyLive.mainAgent')} ·{' '}
-                    {r.outcome ? t(`engine.outcome.${r.outcome}`) : t('engine.outcome.running')}
+                    {t(`engine.outcome.${agentRunStatus(r)}`)}
                   </option>
                 ))}
               </select>

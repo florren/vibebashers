@@ -5,9 +5,10 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
+from app.analytics.cabinet_scope import actor_role
 from app.api.agent import build_decision_chain
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.api.tickets import TICKET_SQL
@@ -82,7 +83,8 @@ class EscalationBody(BaseModel):
 
 
 @router.post("/api/escalations", status_code=201, summary="Ручная эскалация оператором (created_by = human)")
-async def post_escalations(body: EscalationBody) -> Any:
+async def post_escalations(request: Request, body: EscalationBody) -> Any:
+    role = actor_role(request)
     if body.incident_id is None and body.signal_id is None:
         raise Problem(422, "Нужен incident_id или signal_id")
     async with db() as conn:
@@ -118,8 +120,8 @@ async def post_escalations(body: EscalationBody) -> Any:
                     (inc["id"],),
                 )
                 await conn.execute(
-                    "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, %s, 'escalated', 'human', %s, %s, %s)",
-                    (inc["id"], inc["status"], body.actor, body.reason, sim_time),
+                    "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, %s, 'escalated', 'human', %s, %s, %s, %s)",
+                    (inc["id"], inc["status"], body.actor, body.reason, sim_time, role),
                 )
             else:
                 await conn.execute(
@@ -182,7 +184,8 @@ class AckBody(BaseModel):
 
 
 @router.post("/api/escalations/{id}/ack", summary="Руководитель подтвердил / закрыл / отклонил эскалацию")
-async def post_escalations_id_ack(id: int, body: AckBody) -> Any:  # noqa: A002
+async def post_escalations_id_ack(request: Request, id: int, body: AckBody) -> Any:  # noqa: A002
+    role = actor_role(request)
     async with db() as conn:
         cur = await fetch_one(conn, "select id, run_id, status, incident_id from escalations where id = %s", (id,))
         if not cur:
@@ -212,12 +215,13 @@ async def post_escalations_id_ack(id: int, body: AckBody) -> Any:  # noqa: A002
                         ((now or {}).get("sim_time"), cur["incident_id"]),
                     )
                     await conn.execute(
-                        "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim) values (%s, 'escalated', 'in_progress', 'human', %s, %s, %s)",
+                        "insert into incident_status_history (incident_id, from_status, to_status, actor_type, actor_ref, reason, changed_sim, actor_role) values (%s, 'escalated', 'in_progress', 'human', %s, %s, %s, %s)",
                         (
                             cur["incident_id"],
                             body.actor,
                             f"эскалация {body.status}: {body.resolution_ru}",
                             (now or {}).get("sim_time"),
+                            role,
                         ),
                     )
                 else:

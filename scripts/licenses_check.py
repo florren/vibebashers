@@ -91,16 +91,20 @@ def license_allowed(expression: str) -> bool:
     return result
 
 
-def python_inventory(root: Path) -> list[dict]:
-    lock = tomllib.loads((root / "backend/uv.lock").read_text())
-    cache = json.loads((root / "docs/licenses/python-metadata.json").read_text())
+def python_inventory(root: Path, project_dir: str = "backend") -> list[dict]:
+    if project_dir not in {"backend", "tgbot"}:
+        raise ValueError("неизвестный Python project")
+    project_name = "cx-pulse-backend" if project_dir == "backend" else "cx-pulse-tgbot"
+    evidence = "python-metadata.json" if project_dir == "backend" else "tgbot-metadata.json"
+    lock = tomllib.loads((root / project_dir / "uv.lock").read_text())
+    cache = json.loads((root / "docs/licenses" / evidence).read_text())
     reviewed = {(r["name"], r["version"]): r for r in cache}
     if len(reviewed) != len(cache):
         raise ValueError("повтор metadata name/version")
     packages = {p["name"]: p for p in lock["package"]}
     if len(packages) != len(lock["package"]):
         raise ValueError("несколько версий одного Python package: требуется явная поддержка inventory")
-    project = packages["cx-pulse-backend"]
+    project = packages[project_name]
     runtime = set()
 
     def visit(name):
@@ -119,7 +123,7 @@ def python_inventory(root: Path) -> list[dict]:
         visit(edge["name"])
     rows = []
     for name, package in sorted(packages.items()):
-        if name == "cx-pulse-backend":
+        if name == project_name:
             continue
         row = reviewed.get((name, package["version"]))
         if row is None:
@@ -160,7 +164,7 @@ def python_inventory(root: Path) -> list[dict]:
                 "source": row["source"],
             }
         )
-    expected = {(p["name"], p["version"]) for p in lock["package"] if p["name"] != "cx-pulse-backend"}
+    expected = {(p["name"], p["version"]) for p in lock["package"] if p["name"] != project_name}
     if set(reviewed) != expected:
         raise ValueError("python-metadata.json содержит устаревшие или лишние записи")
     return rows
@@ -196,8 +200,8 @@ def npm_inventory(root: Path) -> list[dict]:
     return rows
 
 
-def inventory(root: Path) -> list[dict]:
-    rows = python_inventory(root) + npm_inventory(root)
+def inventory(root: Path, project_dir: str = "backend") -> list[dict]:
+    rows = python_inventory(root, project_dir) + (npm_inventory(root) if project_dir == "backend" else [])
     for row in rows:
         if not license_allowed(row["license"]):
             raise ValueError(
@@ -206,7 +210,7 @@ def inventory(root: Path) -> list[dict]:
     return rows
 
 
-def render(rows: list[dict]) -> str:
+def render(rows: list[dict], project_dir: str = "backend") -> str:
     lines = [
         "# Лицензии закреплённых зависимостей",
         "",
@@ -217,6 +221,11 @@ def render(rows: list[dict]) -> str:
         "| Экосистема | Пакет | Версия | Область | SPDX |",
         "|---|---|---|---|---|",
     ]
+    if project_dir == "tgbot":
+        lines[2] = "Сгенерировано `python scripts/licenses_check.py --project tgbot --write`; не редактировать вручную."
+        lines[4] = (
+            "Изолированный tgbot/uv.lock, включая runtime/dev/platform-only. Version-bound evidence: docs/licenses/tgbot-metadata.json."
+        )
     for row in rows:
         lines.append(
             "| " + " | ".join(str(row[key]) for key in ("ecosystem", "name", "version", "scope", "license")) + " |"
@@ -231,11 +240,12 @@ def main() -> int:
         action="store_true",
         help="обновить THIRD_PARTY_LICENSES.md после проверки metadata",
     )
+    parser.add_argument("--project", choices=["backend", "tgbot"], default="backend")
     args = parser.parse_args()
     try:
-        rows = inventory(ROOT)
-        report = render(rows)
-        path = ROOT / "THIRD_PARTY_LICENSES.md"
+        rows = inventory(ROOT, args.project)
+        report = render(rows, args.project)
+        path = (ROOT if args.project == "backend" else ROOT / "tgbot") / "THIRD_PARTY_LICENSES.md"
         if args.write:
             path.write_text(report)
         elif not path.exists() or path.read_text() != report:

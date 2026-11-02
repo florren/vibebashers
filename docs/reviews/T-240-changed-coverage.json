@@ -1,0 +1,136 @@
+{
+  "source_head": "4211db730b72443d4f7579f9bd76809923a1e98a",
+  "method": "exact absolute co_filename parent trace; task-owned new files whole, existing files added executable lines vs afcfbde; subprocess seed excluded, direct failure/retry seed included; supplemental in-process actual CLI seed and threading.settrace for actual API TestClient worker",
+  "pytest_exit": 0,
+  "covered": 776,
+  "executable": 815,
+  "percent": 95.21,
+  "files": {
+    "backend/app/corpus/reviews.py": {
+      "sha256": "c9a64604caa055bcc9bbd31808335ed93d80c6cee4d455d938461f3d81c09aa3",
+      "covered": 189,
+      "executable": 203,
+      "percent": 93.1,
+      "missing_lines": [
+        64,
+        82,
+        100,
+        111,
+        112,
+        128,
+        135,
+        140,
+        144,
+        150,
+        177,
+        182,
+        198,
+        199
+      ]
+    },
+    "backend/app/corpus/importer.py": {
+      "sha256": "ee91c14fa6248e775232dc24e5e26f29f59f4b625121d4d816f9b06e622186ac",
+      "covered": 38,
+      "executable": 42,
+      "percent": 90.48,
+      "missing_lines": [
+        23,
+        25,
+        44,
+        55
+      ]
+    },
+    "backend/app/corpus/seed_plan.py": {
+      "sha256": "3bb6a3329f45be161a2d7ecb353b445cca07e8ea7e1c4d434670c92efa76042d",
+      "covered": 89,
+      "executable": 94,
+      "percent": 94.68,
+      "missing_lines": [
+        54,
+        112,
+        114,
+        119,
+        128
+      ]
+    },
+    "backend/app/corpus/history.py": {
+      "sha256": "a8fbca4754387c25a9d5ec0bcca4cf0c731adc36eea8ca657a458793d625f5f6",
+      "covered": 154,
+      "executable": 157,
+      "percent": 98.09,
+      "missing_lines": [
+        42,
+        129,
+        133
+      ]
+    },
+    "backend/app/corpus/history_store.py": {
+      "sha256": "19fe578b8cd7256b01d5b8d20815409bc79c6c3a70ff09cf7a2964dd0f831527",
+      "covered": 47,
+      "executable": 48,
+      "percent": 97.92,
+      "missing_lines": [
+        19
+      ]
+    },
+    "scripts/import_reviews.py": {
+      "sha256": "86ca5f03108b6ade7e7f81b6ef0f91911794eb7c1c48ea7902704d2fdf4e8359",
+      "covered": 44,
+      "executable": 45,
+      "percent": 97.78,
+      "missing_lines": [
+        65
+      ]
+    },
+    "scripts/seed/reviews.py": {
+      "sha256": "90fb5cfc7214a3a25541e5e5bf2491b91004e986057b5ca374d771f52c9ffeb5",
+      "covered": 180,
+      "executable": 189,
+      "percent": 95.24,
+      "missing_lines": [
+        37,
+        48,
+        52,
+        67,
+        97,
+        99,
+        108,
+        200,
+        216
+      ]
+    },
+    "backend/app/api/signals.py": {
+      "sha256": "08eec7be1e51a9cad7572e5c291a3f263ac265cd761ee44751861d75a300968c",
+      "covered": 8,
+      "executable": 8,
+      "percent": 100.0,
+      "missing_lines": []
+    },
+    "backend/app/ingest/sync_bridge.py": {
+      "sha256": "a4ca6c1f52021f0a3c9bc4bcddbda5bae1cb74ad4c0979a1fbcaf51c8347ffab",
+      "covered": 11,
+      "executable": 12,
+      "percent": 91.67,
+      "missing_lines": [
+        88
+      ]
+    },
+    "scripts/seed/coverage.py": {
+      "sha256": "e6d86fa01bf75727ea3765b7abef082a28a562c2ddf4ba563077397047351b6d",
+      "covered": 12,
+      "executable": 12,
+      "percent": 100.0,
+      "missing_lines": []
+    },
+    "scripts/seed/run.py": {
+      "sha256": "b4976b37e7d780605ef95dacd8282bd0bb4ee9fbfa882a074fc23787574dc4fb",
+      "covered": 4,
+      "executable": 5,
+      "percent": 80.0,
+      "missing_lines": [
+        159
+      ]
+    }
+  },
+  "supplement_exit": 0
+}

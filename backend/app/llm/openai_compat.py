@@ -8,6 +8,7 @@ OpenRouter /key остаётся служебным HTTP endpoint вне Chat Co
 from __future__ import annotations
 
 import json
+import logging
 import math
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -19,8 +20,16 @@ from openai import APIConnectionError, APIError, APIStatusError, APITimeoutError
 from openai.types.chat import ChatCompletionMessageParam
 
 from app.contracts.registry import validate_schema
+from app.llm import accounting
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
 from app.llm.budget import budget_value
+from app.llm.credential_boundary import (
+    CredentialStreamGuard,
+    observe_stream_usage,
+    reject_reflection,
+    response_token_counts,
+    retry_after,
+)
 from app.llm.gigachat import JSON_INSTRUCTION, schema_for_model
 from app.logging import get_logger
 
@@ -92,8 +101,24 @@ def _skips_budget_check(model: str) -> bool:
     return model.endswith(":free")
 
 
+def is_paid_model(profile: LLMProfile, base_url: str) -> bool:
+    return is_openrouter(base_url) and not _skips_budget_check(profile.model)
+
+
 async def _empty_key() -> str:
     return ""
+
+
+_SDK_LOGGERS = ("openai", "openai._base_client", "openai._response", "openai._legacy_response")
+
+
+def _enforce_sdk_logging() -> None:
+    # SDK2.54 читает OPENAI_LOG при import и DEBUG пишет body/headers/exception.
+    # Наша граница владеет только этими logger: root/httpx/app logs не меняем.
+    for name in _SDK_LOGGERS:
+        logger = logging.getLogger(name)
+        if logger.getEffectiveLevel() < logging.WARNING:
+            logger.setLevel(logging.WARNING)
 
 
 class OpenAICompatProvider:
@@ -111,7 +136,9 @@ class OpenAICompatProvider:
         budget_loader: Callable[[], Awaitable[float]] | None = None,
         endpoint_keys: dict[str, str | None] | None = None,
     ) -> None:
+        _enforce_sdk_logging()
         self.api_key = api_key
+        self.accounting = accounting.service()
         self.endpoint_keys = endpoint_keys
         self.base_url = base_url.rstrip("/")
         self.app_title = app_title
@@ -150,19 +177,26 @@ class OpenAICompatProvider:
 
     async def list_models(self, timeout_s: float = 10.0) -> list[str]:
         """GET /models — мастер настройки проверяет доступность моделей профиля."""
-        r = await self._client.get(f"{self.base_url}/models", headers=self._headers(self.base_url), timeout=timeout_s)
+        try:
+            r = await self._client.get(
+                f"{self.base_url}/models", headers=self._headers(self.base_url), timeout=timeout_s
+            )
+        except httpx.HTTPError as exc:
+            raise ProviderError("unavailable", f"models: {type(exc).__name__}") from None
         if r.status_code >= 400:
             raise ProviderError("unavailable", f"models {r.status_code}", status=r.status_code)
         try:
             body = r.json()
-        except ValueError as exc:
-            raise ProviderError("unavailable", "models: некорректный JSON") from exc
+        except ValueError:
+            raise ProviderError("unavailable", "models: некорректный JSON") from None
         data = body.get("data") if isinstance(body, dict) else None
         if not isinstance(data, list) or any(
             not isinstance(model, dict) or not isinstance(model.get("id"), str) or not model["id"] for model in data
         ):
             raise ProviderError("unavailable", "models: некорректный каталог")
-        return [model["id"] for model in data]
+        model_ids = [model["id"] for model in data]
+        reject_reflection(model_ids, [self._key(self.base_url)])
+        return model_ids
 
     async def fetch_key(self, timeout_s: float = 10.0, *, base_url: str | None = None) -> dict[str, Any]:
         """GET {base}/key. Ошибка запроса — ProviderError quota, без chat/completions."""
@@ -170,18 +204,21 @@ class OpenAICompatProvider:
         try:
             r = await self._client.get(f"{base}/key", headers=self._headers(base), timeout=timeout_s)
         except httpx.TimeoutException as e:
-            raise ProviderError("quota", f"key timeout: {e}") from e
+            raise ProviderError("quota", f"key timeout: {type(e).__name__}") from None
         except httpx.HTTPError as e:
-            raise ProviderError("quota", f"key: {e}") from e
+            raise ProviderError("quota", f"key: {type(e).__name__}") from None
         if r.status_code >= 400:
             raise ProviderError("quota", f"key {r.status_code}", status=r.status_code)
         try:
             body = r.json()
-        except ValueError as exc:
-            raise ProviderError("quota", "key: некорректный JSON") from exc
+        except ValueError:
+            raise ProviderError("quota", "key: некорректный JSON") from None
         if not isinstance(body, dict):
             raise ProviderError("quota", "key: не объект")
-        return parse_key_payload(body)
+        public = parse_key_payload(body)
+        # Только consumed projection; private unused provider labels не публикуются.
+        reject_reflection(public, [self._key(base)])
+        return public
 
     async def _before_chat(self, profile: LLMProfile, base_url: str) -> None:
         if profile.provider != "openai_compatible":
@@ -209,16 +246,10 @@ class OpenAICompatProvider:
 
     @staticmethod
     def _paid(profile: LLMProfile, base_url: str) -> bool:
-        return is_openrouter(base_url) and not _skips_budget_check(profile.model)
-
-    @staticmethod
-    def _usage_known(usage: Any) -> bool:
-        return all(
-            isinstance(value, int) and not isinstance(value, bool) and value >= 0
-            for value in (usage.prompt_tokens, usage.completion_tokens)
-        )
+        return is_paid_model(profile, base_url)
 
     def _chat_client(self, base_url: str, timeout_s: float) -> AsyncOpenAI:
+        _enforce_sdk_logging()
         headers: dict[str, Any] = self._headers(base_url)
         key = self._key(base_url)
         if not key:
@@ -241,13 +272,45 @@ class OpenAICompatProvider:
             if status == 402:
                 return ProviderError("quota", "HTTP 402", status=status)
             if status == 429:
-                try:
-                    retry = float(exc.response.headers.get("Retry-After", "20"))
-                except ValueError:
-                    retry = 20.0
-                return ProviderError("rate_limit", "HTTP 429", status=status, retry_after_s=retry)
+                return ProviderError(
+                    "rate_limit",
+                    "HTTP 429",
+                    status=status,
+                    retry_after_s=retry_after(exc.response.headers.get("Retry-After")),
+                )
             return ProviderError("unavailable", f"HTTP {status}", status=status)
         return ProviderError("bad_output", "некорректный ответ OpenAI-совместимого endpoint")
+
+    async def _structured_wire(
+        self, payload: dict[str, Any], profile: LLMProfile, base_url: str, timeout_s: float, usage: Usage
+    ) -> tuple[Any, int, int]:
+        facts = accounting.KeyFacts(
+            self.name, self._key(base_url), base_url, db_id=profile.api_key_id, paid=self._paid(profile, base_url)
+        )
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s) as scope:
+            await self._before_chat(profile, base_url)
+            async with scope.inference() as ticket:
+                usage.request_count += 1
+                try:
+                    result = await self._chat_client(base_url, timeout_s).chat.completions.create(**payload)
+                except APIError as exc:
+                    raise self._provider_error(exc) from None
+                if result.usage is None:
+                    detail = (
+                        "расход платного ответа неизвестен: usage отсутствует"
+                        if self._paid(profile, base_url)
+                        else "расход ответа неизвестен: usage отсутствует"
+                    )
+                    raise ProviderError("bad_output", detail)
+                raw_usage = {
+                    "prompt_tokens": result.usage.prompt_tokens,
+                    "completion_tokens": result.usage.completion_tokens,
+                }
+                if getattr(result.usage, "total_tokens", None) is not None:
+                    raw_usage["total_tokens"] = result.usage.total_tokens
+                prompt, completion, total = response_token_counts(raw_usage, [self._key(base_url)])
+                await ticket.observe(prompt, completion, total_tokens=total, final=True)
+                return result, prompt, completion
 
     async def complete_structured(
         self, messages: list[Message], schema: dict[str, Any], profile: LLMProfile, *, timeout_s: float
@@ -286,30 +349,23 @@ class OpenAICompatProvider:
                 }
             else:
                 payload["response_format"] = {"type": "json_object"}
+            requests_before = usage.request_count
             try:
-                try:
-                    await self._before_chat(profile, base_url)
-                except ProviderError as exc:
-                    if usage_observed:
-                        usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
-                        exc.usage = usage
-                    raise
-                usage.request_count += 1
-                result = await self._chat_client(base_url, timeout_s).chat.completions.create(**payload)
-            except APIError as exc:
-                usage_observed = False  # Ошибка upstream не подтверждает нулевой расход.
-                error = self._provider_error(exc)
+                result, prompt, completion = await self._structured_wire(payload, profile, base_url, timeout_s, usage)
+            except ProviderError as error:
+                if usage.request_count > requests_before:
+                    usage_observed = False  # Новый wire без validated usage не равен0.
+                if usage_observed:
+                    usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
+                    error.usage = usage
                 if error.kind == "unavailable" and use_json_schema and error.status == 400:
                     use_json_schema = False  # Смена формата не расходует корректирующую попытку.
                     log.info("openai_compat_no_json_schema", model=profile.model)
                     continue
-                raise error from exc
-            if self._paid(profile, base_url) and (result.usage is None or not self._usage_known(result.usage)):
-                raise ProviderError("bad_output", "расход платного ответа неизвестен: usage отсутствует")
-            if result.usage is not None:
-                usage_observed = self._usage_known(result.usage)
-                usage.prompt_tokens += result.usage.prompt_tokens or 0
-                usage.completion_tokens += result.usage.completion_tokens or 0
+                raise error from None
+            usage_observed = True
+            usage.prompt_tokens += prompt
+            usage.completion_tokens += completion
             raw = result.choices[0].message.content if result.choices else ""
             raw = raw or ""
             try:
@@ -317,6 +373,13 @@ class OpenAICompatProvider:
                 errors = validate_schema(obj, schema)
             except ProviderError as e:
                 obj, errors = {}, [e.detail]
+            try:
+                reject_reflection([raw, obj], [self._key(base_url)])
+            except ProviderError as exc:
+                if usage_observed:
+                    usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
+                    exc.usage = usage
+                raise
             if not errors:
                 usage.latency_ms = int((time.perf_counter() - t0) * 1000)
                 usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
@@ -338,26 +401,71 @@ class OpenAICompatProvider:
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         base_url = (profile.base_url or self.base_url).rstrip("/")
-        await self._before_chat(profile, base_url)
-        try:
-            response = await self._chat_client(base_url, timeout_s).chat.completions.create(
-                model=profile.model,
-                messages=cast(list[ChatCompletionMessageParam], messages),
-                temperature=profile.temperature,
-                stream=True,
-                extra_headers={} if self._key(base_url) else {"Authorization": omit},
-                stream_options={"include_usage": True} if self._paid(profile, base_url) else {},
-            )
-            usage_seen = False
-            async with response:
-                async for chunk in response:
-                    usage_seen = usage_seen or (chunk.usage is not None and self._usage_known(chunk.usage))
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-            if self._paid(profile, base_url) and not usage_seen:
-                raise ProviderError("bad_output", "расход платного stream неизвестен: usage отсутствует")
-        except APIError as exc:
-            raise self._provider_error(exc) from exc
+        facts = accounting.KeyFacts(
+            self.name, self._key(base_url), base_url, db_id=profile.api_key_id, paid=self._paid(profile, base_url)
+        )
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s, streaming=True) as scope:
+            await scope.wait(self._before_chat(profile, base_url))
+            async with scope.inference() as ticket:
+                observed: Usage | None = None
+                observed_total = 0
+                try:
+                    response = await scope.wait(
+                        self._chat_client(base_url, timeout_s).chat.completions.create(
+                            model=profile.model,
+                            messages=cast(list[ChatCompletionMessageParam], messages),
+                            temperature=profile.temperature,
+                            stream=True,
+                            extra_headers={} if self._key(base_url) else {"Authorization": omit},
+                            stream_options={"include_usage": True},
+                        )
+                    )
+                    usage_seen = False
+                    guard = CredentialStreamGuard([self._key(base_url)])
+                    async with response:
+                        async for chunk in scope.iterate(response):
+                            if chunk.usage is not None:
+                                raw_usage = {
+                                    "prompt_tokens": chunk.usage.prompt_tokens,
+                                    "completion_tokens": chunk.usage.completion_tokens,
+                                }
+                                if getattr(chunk.usage, "total_tokens", None) is not None:
+                                    raw_usage["total_tokens"] = chunk.usage.total_tokens
+                                prompt, completion, total = response_token_counts(raw_usage, [self._key(base_url)])
+                                await ticket.observe(prompt, completion, total_tokens=total)
+                                observed_total = total
+                                usage_seen = True
+                                observed = observe_stream_usage(
+                                    observed,
+                                    {"prompt_tokens": prompt, "completion_tokens": completion},
+                                    profile,
+                                    self.name,
+                                )
+                            if chunk.choices and chunk.choices[0].delta.content:
+                                safe = guard.feed(chunk.choices[0].delta.content)
+                                if safe:
+                                    yield safe
+                    if not usage_seen or observed is None:
+                        detail = (
+                            "расход платного stream неизвестен: usage отсутствует"
+                            if self._paid(profile, base_url)
+                            else "расход stream неизвестен: usage отсутствует"
+                        )
+                        raise ProviderError("bad_output", detail)
+                    await ticket.observe(
+                        observed.prompt_tokens, observed.completion_tokens, total_tokens=observed_total, final=True
+                    )
+                    last = guard.finish()
+                    if last:
+                        yield last
+                except ProviderError as exc:
+                    if observed is not None:
+                        exc.usage = observed
+                    raise
+                except APIError as exc:
+                    error = self._provider_error(exc)
+                    error.usage = observed
+                    raise error from None
 
 
 async def openrouter_deactivation_plan(provider: OpenAICompatProvider) -> list[dict[str, Any]]:

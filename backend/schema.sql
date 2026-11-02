@@ -610,7 +610,7 @@ CREATE TABLE notifications (
   template_code    text,
   subject          text,
   body             text NOT NULL,
-  status           text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','delivered','failed','suppressed')),
+  status           text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','delivered','failed','suppressed','unknown')),
   sent_sim         timestamptz,
   sent_at          timestamptz,
   external_ref     text,                           -- Mailpit message id / Telegram message id
@@ -1860,3 +1860,573 @@ CREATE TRIGGER client_states_activity AFTER INSERT OR UPDATE OR DELETE ON client
 CREATE TRIGGER churn_events_activity AFTER INSERT OR UPDATE OR DELETE ON churn_events FOR EACH ROW EXECUTE FUNCTION log_db_activity();
 CREATE TRIGGER incident_economics_activity AFTER INSERT OR UPDATE OR DELETE ON incident_economics FOR EACH ROW EXECUTE FUNCTION log_db_activity();
 CREATE TRIGGER faults_activity AFTER INSERT OR UPDATE OR DELETE ON faults FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+
+-- Upstream DDL: langgraph-checkpoint-postgres 3.2.0 (MIT).
+-- https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-postgres
+-- MIT License
+--
+-- Copyright (c) 2024 LangChain, Inc.
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in all
+-- copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-- SOFTWARE.
+
+-- T-041: PostgreSQL checkpointer LangGraph, upstream schema 3.2.0.
+CREATE SCHEMA IF NOT EXISTS langgraph;
+-- Runtime не выполняет DDL; владение данными определяется FK к sim_runs.
+
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_migrations (
+    v INTEGER PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoints (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    checkpoint_id TEXT NOT NULL,
+    parent_checkpoint_id TEXT,
+    type TEXT,
+    checkpoint JSONB NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_blobs (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    channel TEXT NOT NULL,
+    version TEXT NOT NULL,
+    type TEXT NOT NULL,
+    blob BYTEA,
+    PRIMARY KEY (thread_id, checkpoint_ns, channel, version)
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_writes (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    checkpoint_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    channel TEXT NOT NULL,
+    type TEXT,
+    blob BYTEA NOT NULL,
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
+);
+
+ALTER TABLE langgraph.checkpoint_blobs ALTER COLUMN blob DROP not null;
+
+SELECT 1;
+
+CREATE INDEX IF NOT EXISTS checkpoints_thread_id_idx ON langgraph.checkpoints(thread_id);
+
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_thread_id_idx ON langgraph.checkpoint_blobs(thread_id);
+
+CREATE INDEX IF NOT EXISTS checkpoint_writes_thread_id_idx ON langgraph.checkpoint_writes(thread_id);
+
+ALTER TABLE langgraph.checkpoint_writes ADD COLUMN IF NOT EXISTS task_path TEXT NOT NULL DEFAULT '';
+
+INSERT INTO langgraph.checkpoint_migrations(v) SELECT generate_series(0,9) ON CONFLICT DO NOTHING;
+
+ALTER TABLE langgraph.checkpoints ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoints_run_fk') THEN
+  ALTER TABLE langgraph.checkpoints ADD CONSTRAINT checkpoints_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoints_run_idx ON langgraph.checkpoints(run_id);
+
+
+ALTER TABLE langgraph.checkpoint_blobs ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoint_blobs_run_fk') THEN
+  ALTER TABLE langgraph.checkpoint_blobs ADD CONSTRAINT checkpoint_blobs_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_run_idx ON langgraph.checkpoint_blobs(run_id);
+
+
+ALTER TABLE langgraph.checkpoint_writes ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoint_writes_run_fk') THEN
+  ALTER TABLE langgraph.checkpoint_writes ADD CONSTRAINT checkpoint_writes_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoint_writes_run_idx ON langgraph.checkpoint_writes(run_id);
+
+
+-- Исходный outcome не переопределяется: статус прерывания хранится отдельно.
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS interrupted_at timestamptz;
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS status text GENERATED ALWAYS AS
+ (CASE WHEN outcome IS NULL AND interrupted_at IS NOT NULL THEN 'interrupted'
+       ELSE coalesce(outcome,'running') END) STORED;
+
+-- T-051: единый реестр credential configuration и snapshot на AgentRun.
+-- Operational ledger/UTC quotas сюда не входят (T-050, отдельная миграция).
+ALTER TABLE llm_api_keys DROP CONSTRAINT IF EXISTS llm_api_keys_provider_check;
+ALTER TABLE llm_api_keys ADD CONSTRAINT llm_api_keys_provider_check CHECK(provider IN ('gigachat','openai_compatible','mock'));
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS llm_profiles_snapshot jsonb;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS credential_uid uuid NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS endpoint_url text;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS scope text;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS key_hint text;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS rpd_limit integer;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS balance_usd numeric;
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE llm_api_keys ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS api_key_id integer;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='llm_profiles_api_key_fk') THEN
+  ALTER TABLE llm_profiles ADD CONSTRAINT llm_profiles_api_key_fk FOREIGN KEY(api_key_id) REFERENCES llm_api_keys(id) ON DELETE RESTRICT;
+ END IF;
+END $$;
+COMMENT ON COLUMN agent_runs.llm_profiles_snapshot IS 'T-051: versioned secret-free role configuration before first LLM; NULL is legacy, not invented history';
+COMMENT ON COLUMN llm_api_keys.credential_uid IS 'Private logical identity, never projected by API; no operational counters in model snapshots';
+COMMENT ON COLUMN llm_profiles.api_key_id IS 'Explicit credential binding; invalid/revoked/mismatched key never falls back to env';
+
+-- Fail-closed rollback: прежнее приложение не может завести второй writable store.
+-- Существующая encrypted legacy row читается конвертером и удаляется только при commit.
+CREATE OR REPLACE FUNCTION reject_legacy_llm_key_writes() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF NEW.key='llm_keys' THEN
+  RAISE EXCEPTION 'Legacy LLM key writes are disabled; use canonical credential registry' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS settings_legacy_llm_key_writes ON settings;
+CREATE TRIGGER settings_legacy_llm_key_writes BEFORE INSERT OR UPDATE ON settings
+ FOR EACH ROW EXECUTE FUNCTION reject_legacy_llm_key_writes();
+-- T-240: история принадлежит запуску; неизвестное происхождение legacy не угадываем.
+ALTER TABLE product_signal_history
+  ADD COLUMN IF NOT EXISTS run_id bigint REFERENCES sim_runs(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS sentiment_known_count integer,
+  ADD COLUMN IF NOT EXISTS is_partial boolean,
+  ADD COLUMN IF NOT EXISTS coverage_start timestamptz,
+  ADD COLUMN IF NOT EXISTS coverage_end timestamptz;
+ALTER TABLE product_signal_history ALTER COLUMN loss_rub DROP NOT NULL;
+ALTER TABLE product_signal_history ALTER COLUMN loss_rub DROP DEFAULT;
+
+-- Имя старого UNIQUE могло отличаться у оператора: сопоставляем реальные колонки.
+DO $$
+DECLARE old_key record;
+BEGIN
+  FOR old_key IN
+    SELECT c.conname FROM pg_constraint c
+    WHERE c.conrelid = 'product_signal_history'::regclass AND c.contype = 'u'
+      AND (SELECT array_agg(a.attname::text ORDER BY a.attname)
+           FROM unnest(c.conkey) k(attnum)
+           JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.attnum)
+          = ARRAY['month','product_line_code']::text[]
+  LOOP
+    EXECUTE 'ALTER TABLE product_signal_history DROP CONSTRAINT ' || quote_ident(old_key.conname);
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conrelid='product_signal_history'::regclass
+                   AND conname='product_signal_history_run_line_month_key') THEN
+    ALTER TABLE product_signal_history ADD CONSTRAINT product_signal_history_run_line_month_key
+      UNIQUE (run_id, product_line_code, month);
+  END IF;
+END $$;
+
+-- Старые строки с NULL owner/quality остаются неизменными. Новые записи и правки
+-- обязаны иметь известный запуск и честный интервал наблюдений, а не default=0.
+CREATE OR REPLACE FUNCTION guard_product_signal_history() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE month_start timestamptz; month_end timestamptz;
+BEGIN
+  IF NEW.run_id IS NULL OR NEW.run_id <= 0 THEN
+    RAISE EXCEPTION 'product history requires known positive run_id' USING ERRCODE='23514';
+  END IF;
+  IF NEW.month <> date_trunc('month', NEW.month::timestamp)::date THEN
+    RAISE EXCEPTION 'product history month must be first day' USING ERRCODE='23514';
+  END IF;
+  IF NEW.sentiment_known_count IS NULL OR NEW.signal_count < 0
+     OR NEW.negative_count < 0 OR NEW.negative_count > NEW.sentiment_known_count
+     OR NEW.sentiment_known_count > NEW.signal_count
+     OR NEW.critical_count < 0 OR NEW.critical_count > NEW.signal_count THEN
+    RAISE EXCEPTION 'product history counts are inconsistent' USING ERRCODE='23514';
+  END IF;
+  month_start := NEW.month::timestamp AT TIME ZONE 'Europe/Moscow';
+  month_end := (NEW.month + INTERVAL '1 month')::timestamp AT TIME ZONE 'Europe/Moscow';
+  IF NEW.coverage_start IS NULL OR NEW.coverage_end IS NULL OR NEW.is_partial IS NULL
+     OR NEW.coverage_start < month_start OR NEW.coverage_end > month_end
+     OR NEW.coverage_start >= NEW.coverage_end
+     OR NEW.is_partial IS DISTINCT FROM (NEW.coverage_start <> month_start OR NEW.coverage_end <> month_end) THEN
+    RAISE EXCEPTION 'product history coverage is inconsistent' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS product_signal_history_guard ON product_signal_history;
+CREATE TRIGGER product_signal_history_guard BEFORE INSERT OR UPDATE ON product_signal_history
+FOR EACH ROW EXECUTE FUNCTION guard_product_signal_history();
+COMMENT ON COLUMN product_signal_history.run_id IS 'NULL только для legacy неизвестного запуска; чтение только явным all';
+COMMENT ON COLUMN product_signal_history.sentiment_known_count IS 'NULL legacy: качество неизвестно; unknown не считается neutral';
+COMMENT ON COLUMN product_signal_history.loss_rub IS 'NULL: потери не наблюдались; synthetic history не выдумывает деньги';
+
+-- T-121 / migration0015: durable Telegram transport после0014.
+-- Операционная схема намеренно без FK в восстанавливаемый public baseline.
+CREATE SCHEMA IF NOT EXISTS channel_runtime;
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_conversations (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    state_enc bytea NOT NULL,
+    revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, chat_id)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_inbound (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    update_id bigint NOT NULL CHECK (update_id >= 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    response_enc bytea NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, update_id)
+);
+-- Stable identity позволяет отличить восстановленную notification от новой с тем же id.
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS delivery_key uuid NOT NULL DEFAULT gen_random_uuid();
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_delivery_key_uidx ON public.notifications (delivery_key);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_deliveries (
+    delivery_key uuid PRIMARY KEY,
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    notification_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    payload_enc bytea NOT NULL,
+    status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','claimed','sent','failed','unknown','suppressed')),
+    claimed_at timestamptz,
+    completed_at timestamptz,
+    external_ref text,
+    error_code text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CHECK (status <> 'sent' OR (external_ref IS NOT NULL AND completed_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS telegram_deliveries_queue_idx
+    ON channel_runtime.telegram_deliveries (created_at, delivery_key) WHERE status = 'queued';
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_chat_rate (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    last_claimed_at timestamptz NOT NULL,
+    PRIMARY KEY (bot_id, chat_id)
+);
+
+-- Сеть могла принять sendMessage до потери ответа: это не definite failed/sent.
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_status_check;
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_status_check
+ CHECK (status IN ('queued','sent','delivered','failed','suppressed','unknown'));
+
+ALTER TABLE channel_runtime.telegram_deliveries ADD COLUMN IF NOT EXISTS sent_sim timestamptz;
+
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_signal_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    signal_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    token_hash text NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, signal_id, run_id, token_hash)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_client_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    client_id bigint NOT NULL,
+    client_code text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, client_id),
+    UNIQUE (bot_id, chat_id)
+);
+
+-- T-050: operational accounting survives bank seed/restore; no FK into public.
+-- Stable configuration identity: numeric IDs can be reused after bank restore.
+ALTER TABLE public.llm_profiles ADD COLUMN IF NOT EXISTS quota_uid uuid NOT NULL DEFAULT gen_random_uuid();
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='llm_profiles_quota_uid_key') THEN
+  ALTER TABLE public.llm_profiles ADD CONSTRAINT llm_profiles_quota_uid_key UNIQUE (quota_uid);
+ END IF;
+END $$;
+COMMENT ON COLUMN public.llm_profiles.quota_uid IS 'Private budget configuration identity; no API/AR/export projection; not usage';
+CREATE SCHEMA IF NOT EXISTS llm_runtime;
+CREATE TABLE IF NOT EXISTS llm_runtime.identity_settings (
+    singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+    secret_tag bytea NOT NULL CHECK (octet_length(secret_tag) = 32),
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.credentials (
+    uid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider text NOT NULL CHECK (provider IN ('gigachat', 'openai_compatible')),
+    verifier bytea UNIQUE NOT NULL CHECK (octet_length(verifier) = 32),
+    confirmed_tokens bigint NOT NULL DEFAULT 0 CHECK (confirmed_tokens >= 0),
+    legacy_tokens_hint bigint NOT NULL DEFAULT 0 CHECK (legacy_tokens_hint >= 0),
+    usage_known boolean NOT NULL DEFAULT false,
+    usage_source text NOT NULL DEFAULT 'unknown',
+    usage_as_of timestamptz,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.credential_aliases (
+    config_uid uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.profile_scopes (
+    scope text PRIMARY KEY,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.daily_usage (
+    scope_type text NOT NULL CHECK (scope_type IN ('key', 'profile')),
+    scope_id text NOT NULL,
+    utc_day date NOT NULL,
+    requests_today bigint NOT NULL DEFAULT 0 CHECK (requests_today >= 0),
+    requests_known boolean NOT NULL DEFAULT false,
+    usage_source text NOT NULL DEFAULT 'unknown',
+    usage_as_of timestamptz,
+    PRIMARY KEY (scope_type, scope_id, utc_day)
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.reconciliations (
+    id uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    as_of timestamptz NOT NULL,
+    recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    source text NOT NULL CHECK (source = 'operator_declared_app_usage'),
+    observation jsonb NOT NULL CHECK (jsonb_typeof(observation) = 'object')
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.wire_attempts (
+    id uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    profile_scope text NOT NULL,
+    profile_id integer,
+    profile_code text NOT NULL,
+    endpoint text NOT NULL,
+    model text NOT NULL,
+    utc_day date NOT NULL,
+    admitted_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    deadline_at timestamptz NOT NULL,
+    finished_at timestamptz,
+    state text NOT NULL DEFAULT 'reserved' CHECK (state IN ('reserved', 'known', 'unknown', 'reconciled')),
+    prompt_tokens bigint CHECK (prompt_tokens >= 0),
+    completion_tokens bigint CHECK (completion_tokens >= 0),
+    observed_tokens bigint NOT NULL DEFAULT 0 CHECK (observed_tokens >= 0),
+    error_kind text,
+    reconciliation_id uuid REFERENCES llm_runtime.reconciliations(id),
+    CHECK (state <> 'known' OR (prompt_tokens IS NOT NULL AND completion_tokens IS NOT NULL AND finished_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS wire_attempts_key_day_idx
+    ON llm_runtime.wire_attempts (credential_uid, utc_day, admitted_at);
+CREATE INDEX IF NOT EXISTS wire_attempts_profile_day_idx
+    ON llm_runtime.wire_attempts (profile_scope, utc_day, admitted_at);
+
+-- Idempotent for a partially installed development checkpoint as well.
+ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_id integer;
+ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_code text NOT NULL DEFAULT '';
+
+-- Normalize a pre-release partially installed checkpoint without changing history.
+ALTER TABLE llm_runtime.wire_attempts ALTER COLUMN profile_code DROP DEFAULT;
+
+-- T-161: durable behavior owner, evidence/receipts/timers; actual parent0016.
+-- Legacy duplicate current states требуют явного согласования, без удаления истории.
+DO $$ BEGIN
+  IF EXISTS(SELECT 1 FROM client_states WHERE is_current GROUP BY run_id,client_id HAVING count(*)>1) THEN
+    RAISE EXCEPTION 'legacy duplicate current client states: explicit operator reconciliation required' USING ERRCODE='23514';
+  END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS behavior_client_states_current_key ON client_states(run_id,client_id) WHERE is_current;
+
+CREATE OR REPLACE FUNCTION valid_behavior_care_snapshot(doc jsonb) RETURNS boolean
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE component text;
+BEGIN
+  IF jsonb_typeof(doc) IS DISTINCT FROM 'object'
+     OR NOT doc ?& ARRAY['version','components','first_reply_at','tone_violated','sla_breached']
+     OR (SELECT count(*) FROM jsonb_object_keys(doc))<>5
+     OR doc->'version' IS DISTINCT FROM '1'::jsonb
+     OR jsonb_typeof(doc->'components') IS DISTINCT FROM 'object'
+     OR NOT (doc->'components') ?& ARRAY['proactive','speed','sla','gift_fit','tone','explanation']
+     OR (SELECT count(*) FROM jsonb_object_keys(doc->'components'))<>6
+     OR jsonb_typeof(doc->'tone_violated') IS DISTINCT FROM 'boolean'
+     OR jsonb_typeof(doc->'sla_breached') IS DISTINCT FROM 'boolean'
+     OR jsonb_typeof(doc->'first_reply_at') NOT IN ('string','null') THEN
+    RETURN false;
+  END IF;
+  FOREACH component IN ARRAY ARRAY['proactive','speed','sla','gift_fit','tone','explanation'] LOOP
+    IF jsonb_typeof(doc->'components'->component) IS DISTINCT FROM 'number' THEN RETURN false; END IF;
+    IF (doc->'components'->>component)::numeric NOT BETWEEN 0 AND 1 THEN RETURN false; END IF;
+  END LOOP;
+  IF (doc->>'tone_violated')::boolean AND (doc->'components'->>'tone')::numeric<>0 THEN RETURN false; END IF;
+  IF (doc->>'sla_breached')::boolean AND (doc->'components'->>'sla')::numeric<>0 THEN RETURN false; END IF;
+  IF jsonb_typeof(doc->'first_reply_at')='string' THEN
+    IF doc->>'first_reply_at' !~ '(Z|[+-][0-9]{2}:[0-9]{2})$' THEN RETURN false; END IF;
+    PERFORM (doc->>'first_reply_at')::timestamptz;
+  END IF;
+  RETURN true;
+END $$;
+
+CREATE OR REPLACE FUNCTION behavior_valid_failed_operation(op_id bigint, expected_run bigint) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT EXISTS(
+    SELECT 1 FROM operations o JOIN clients c ON c.id=o.client_id
+    LEFT JOIN faults f ON f.id=o.fault_id
+    WHERE o.id=op_id AND o.run_id=expected_run AND o.status='failed' AND o.error_code IS NOT NULL
+      AND (o.fault_id IS NULL OR (f.run_id=o.run_id AND f.error_code=o.error_code
+        AND f.system_code=ANY(o.system_path) AND o.started_sim>=f.started_sim
+        AND (f.resolved_sim IS NULL OR o.started_sim<f.resolved_sim)
+        AND (cardinality(f.region_codes)=0 OR c.region_code=ANY(f.region_codes))))
+  );
+$$;
+
+CREATE TABLE IF NOT EXISTS behavior_evidence (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  source_kind text NOT NULL CHECK(source_kind IN ('operation','notification','twin_reaction','sla','resolution','agent_state')),
+  source_id bigint NOT NULL CHECK(source_id>0),
+  observed_sim timestamptz NOT NULL,
+  consumed_sim timestamptz,
+  UNIQUE(run_id,client_id,source_kind,source_id)
+);
+CREATE INDEX IF NOT EXISTS behavior_evidence_due_idx ON behavior_evidence(run_id,observed_sim,id) WHERE consumed_sim IS NULL;
+CREATE TABLE IF NOT EXISTS behavior_runtime (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  state_id bigint NOT NULL REFERENCES client_states(id),
+  opened_sim timestamptz NOT NULL,
+  closed_sim timestamptz,
+  psychotype_code text NOT NULL,
+  segment_code text NOT NULL,
+  first_response_min integer NOT NULL CHECK(first_response_min>0),
+  policy_source_sha256 text NOT NULL CHECK(policy_source_sha256 ~ '^[0-9a-f]{64}$'),
+  policy_hash text NOT NULL CHECK(policy_hash ~ '^[0-9a-f]{64}$'),
+  policy_snapshot jsonb NOT NULL,
+  params_snapshot jsonb NOT NULL,
+  care_snapshot jsonb NOT NULL CHECK(octet_length(care_snapshot::text)<=4096 AND valid_behavior_care_snapshot(care_snapshot)),
+  first_complaint_sim timestamptz,
+  patience_due_sim timestamptz NOT NULL,
+  repeat_count integer NOT NULL DEFAULT 0 CHECK(repeat_count>=0),
+  sla_breached boolean NOT NULL DEFAULT false,
+  silent_decline boolean NOT NULL DEFAULT false,
+  next_hazard_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id)
+);
+CREATE TABLE IF NOT EXISTS behavior_causes (
+  run_id bigint NOT NULL,
+  client_id bigint NOT NULL,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  operation_id bigint NOT NULL REFERENCES operations(id),
+  fault_id bigint REFERENCES faults(id),
+  PRIMARY KEY(run_id,client_id,operation_id),
+  FOREIGN KEY(run_id,client_id) REFERENCES behavior_runtime(run_id,client_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS behavior_work (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL,
+  client_id bigint NOT NULL,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','consumed','cancelled')),
+  kind text NOT NULL CHECK(kind IN ('complaint','repeat','patience')),
+  source_id bigint NOT NULL CHECK(source_id>0),
+  due_sim timestamptz NOT NULL,
+  consumed_sim timestamptz,
+  UNIQUE(run_id,client_id,episode_no,kind,source_id),
+  FOREIGN KEY(run_id,client_id) REFERENCES behavior_runtime(run_id,client_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS behavior_work_due_idx ON behavior_work(run_id,due_sim,id) WHERE status='pending';
+CREATE TABLE IF NOT EXISTS behavior_receipts (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  source_kind text NOT NULL,
+  source_id bigint NOT NULL CHECK(source_id>0),
+  action text NOT NULL,
+  consumed_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id,source_kind,source_id,action)
+);
+CREATE TABLE IF NOT EXISTS behavior_tick_receipts (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  logical_tick_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id,logical_tick_sim)
+);
+
+-- Запрос агента хранится отдельно от результата owner; никаких inferred closure.
+CREATE TABLE IF NOT EXISTS behavior_agent_intents (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  agent_run_id bigint NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  signal_id bigint NOT NULL REFERENCES signals(id),
+  incident_id bigint REFERENCES incidents(id),
+  requested_state text NOT NULL CHECK(requested_state IN ('calm','affected','complaining','waiting','asks_again','escalates','satisfied','churn_intent','retained','churned')),
+  trigger text NOT NULL CHECK(length(trigger) BETWEEN 1 AND 128),
+  observed_sim timestamptz NOT NULL,
+  UNIQUE NULLS NOT DISTINCT(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger)
+);
+
+-- Только новые или действительно пустые run; legacy timers не восстанавливаем догадкой.
+CREATE TABLE IF NOT EXISTS behavior_runs (
+  run_id bigint PRIMARY KEY REFERENCES sim_runs(id) ON DELETE CASCADE,
+  policy_hash text NOT NULL CHECK(length(policy_hash)=64),
+  activated_sim timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS behavior_pending_signals (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  due_sim timestamptz NOT NULL,
+  client_snapshot jsonb NOT NULL CHECK(jsonb_typeof(client_snapshot)='object' AND octet_length(client_snapshot::text)<=16384),
+  signal_type text NOT NULL,
+  product_code text NOT NULL REFERENCES products(code),
+  source_operation_id bigint REFERENCES operations(id) ON DELETE CASCADE,
+  source_fault_id bigint REFERENCES faults(id) ON DELETE CASCADE,
+  error_code text REFERENCES error_codes(code),
+  system_code text REFERENCES systems(code),
+  correlation_id uuid NOT NULL,
+  consumed_sim timestamptz
+);
+CREATE INDEX IF NOT EXISTS behavior_pending_due_idx ON behavior_pending_signals(run_id,due_sim,id) WHERE consumed_sim IS NULL;
+
+-- T-241: DDL18 после фактической0017, read-only cabinet facts и происхождение human audit.
+-- Аддитивные поля: NULL означает неизвестный legacy actor, без backfill.
+ALTER TABLE human_decisions ADD COLUMN IF NOT EXISTS actor_role text
+  CHECK (actor_role IN ('cx_operator','cx_lead','product_manager','product_head','compliance_officer','bank_head','admin'));
+ALTER TABLE incident_status_history ADD COLUMN IF NOT EXISTS actor_role text
+  CHECK (actor_role IN ('cx_operator','cx_lead','product_manager','product_head','compliance_officer','bank_head','admin'));
+-- Одна строка на сигнал, без incident join: счётчики не размножаются.
+CREATE OR REPLACE VIEW v_cabinet_signal_facts AS
+SELECT s.id,s.public_id,s.run_id,s.product_line_code,s.received_sim,s.sentiment,
+  s.classification->>'criticality' AS criticality,
+  coalesce(s.geo->>'region_code',c.region_code) AS region_code,
+  s.channel_code,s.meta->>'source_platform' AS source_platform,
+  s.client_id,s.flags,s.red_words,s.status,c.public_id AS client_public_id,
+  s.classification->>'signal_type' AS signal_type
+FROM signals s LEFT JOIN clients c ON c.id=s.client_id
+-- Служебный proactive anchor не является обращением клиента. NULL legacy сохраняем.
+WHERE s.origin IS DISTINCT FROM 'proactive';
+-- Сначала distinct соответствия, затем сохранённая экономика: без compute/write.
+CREATE OR REPLACE VIEW v_cabinet_incident_facts AS
+SELECT x.product_line_code,i.id,i.run_id,i.created_sim,i.region_code,i.status,
+  i.criticality,i.sla_due_sim,i.outcome_class,ie.potential_loss_rub,
+  ie.prevented_loss_rub,ie.computed_at
+FROM incidents i
+LEFT JOIN (SELECT DISTINCT s.product_line_code,ic.incident_id,s.run_id
+      FROM signals s JOIN incident_signals ic ON ic.signal_id=s.id
+      WHERE s.product_line_code IS NOT NULL) x ON i.id=x.incident_id AND i.run_id=x.run_id
+LEFT JOIN incident_economics ie ON ie.incident_id=i.id;
+CREATE INDEX IF NOT EXISTS signals_cabinet_scope_time_idx
+ ON signals(run_id,product_line_code,received_sim DESC,id DESC);
+CREATE INDEX IF NOT EXISTS product_history_scope_month_idx
+ ON product_signal_history(run_id,product_line_code,month DESC);
+-- Downgrade удаляет только views/indexes. Аддитивные audit columns/values
+-- сохраняются: откат кода не должен уничтожать происхождение ручных решений.

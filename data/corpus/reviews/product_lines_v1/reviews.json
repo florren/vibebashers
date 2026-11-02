@@ -1,0 +1,2108 @@
+[
+  {
+    "external_id": "PLV1-0001",
+    "date": "2026-10-01T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Срок вклада закончился вчера, а основная сумма не вернулась на текущий счёт. Прошу найти перевод.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0001",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0002",
+    "date": "2026-10-01T11:00:00+03:00",
+    "channel": "social",
+    "text": "При открытии накопительного счёта приложение показывает пустой список условий, поэтому не могу подтвердить договор.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0002",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0003",
+    "date": "2026-10-01T12:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На странице вклада обещали одну ставку, а перед подписанием показали другую. Нужна сверка условий до открытия.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0003",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0004",
+    "date": "2026-10-01T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не могу скачать справку о начисленных процентах по вкладу за прошлый месяц.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0004",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0005",
+    "date": "2026-10-01T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Пополнение накопительного счёта отклоняется, хотя перевод между моими счетами доступен.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0005",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0006",
+    "date": "2026-10-01T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Хочу отключить автопродление вклада, но переключатель возвращается во включённое состояние.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0006",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0007",
+    "date": "2026-10-01T16:00:00+03:00",
+    "channel": "social",
+    "text": "После закрытия вклада удержали комиссию, которой нет в моём договоре. Прошу проверить списание.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0007",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0008",
+    "date": "2026-10-01T17:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В истории накопительного счёта пропал расчёт процентов за два дня, сам остаток отображается.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0008",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0009",
+    "date": "2026-10-01T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Подскажите, где увидеть точную дату следующей выплаты процентов по моему вкладу.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0009",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0010",
+    "date": "2026-10-01T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не получается изменить счёт для выплаты процентов: выбранный счёт не сохраняется.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0010",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0011",
+    "date": "2026-10-01T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Скачанный договор вклада содержит пустую страницу с индивидуальными условиями.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0011",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0012",
+    "date": "2026-10-01T21:00:00+03:00",
+    "channel": "social",
+    "text": "Вклад исчез из списка после перевода крупной суммы на его открытие. Платёж исполнен, договора не вижу.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0012",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0013",
+    "date": "2026-10-01T22:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заявка на открытие вклада зависла в статусе проверки, а повторно подать её нельзя.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0013",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0014",
+    "date": "2026-10-01T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Сведения о сроке вклада в приложении и в подписанном договоре различаются на месяц.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0014",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0015",
+    "date": "2026-10-02T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо сотруднику за понятное объяснение разницы между вкладом и накопительным счётом.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0015",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0016",
+    "date": "2026-10-02T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При частичном снятии с накопительного счёта не показывается предупреждение об изменении ставки.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0016",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0017",
+    "date": "2026-10-02T02:00:00+03:00",
+    "channel": "social",
+    "text": "Уведомление об окончании вклада пришло уже после автоматического продления. Хочу разобраться со сроком отправки.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0017",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0018",
+    "date": "2026-10-02T03:00:00+03:00",
+    "channel": "review_portal",
+    "text": "С накопительного счёта списали сумму, которую я не переводил. Прошу срочно проверить операцию.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0018",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0019",
+    "date": "2026-10-02T04:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не могу оформить доверенность на получение вклада: запись в отделение отменяется без причины.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0019",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0020",
+    "date": "2026-10-02T05:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Нужна выписка по накопительному счёту с разбивкой процентов по месяцам, в меню нашёл только общий итог.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0020",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "low",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0021",
+    "date": "2026-10-02T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В приложении нельзя добавить новое пополнение в ранее открытый вклад, хотя договор разрешает взносы.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0021",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0022",
+    "date": "2026-10-02T07:00:00+03:00",
+    "channel": "social",
+    "text": "При досрочном закрытии вклада сумма к возврату меньше внесённой основной суммы. Проценты я понимаю, но тело вклада теряться не должно.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0022",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0023",
+    "date": "2026-10-02T08:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Операция открытия вклада завершилась ошибкой, а лимит на его повторное открытие уже сработал.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0023",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0024",
+    "date": "2026-10-02T09:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В совместном накопительном счёте второй владелец не видит историю начислений, хотя доступ предоставлен.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0024",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0025",
+    "date": "2026-10-02T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Предлагаю добавить напоминание за неделю до окончания вклада, чтобы успеть выбрать условия продления.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0025",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0026",
+    "date": "2026-10-02T11:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Изменение ставки накопительного счёта не отразилось в разделе условий даже после даты вступления новых правил.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0026",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0027",
+    "date": "2026-10-02T12:00:00+03:00",
+    "channel": "social",
+    "text": "Закрыл вклад в отделении, но деньги перечислили на неизвестный мне счёт. Нужна срочная проверка реквизитов.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0027",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0028",
+    "date": "2026-10-02T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Ипотечный платёж списали дважды в один день. Прошу вернуть повторное списание и проверить график.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0028",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0029",
+    "date": "2026-10-02T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заявка на досрочное погашение ипотеки сохранена, но новый график не формируется.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0029",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0030",
+    "date": "2026-10-02T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После предоставления справки о доходах статус ипотечной заявки не меняется уже неделю.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0030",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0031",
+    "date": "2026-10-02T16:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Банк отметил просрочку по ипотеке, хотя платёж поступил до установленной даты. Прошу исправить сведения.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0031",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0032",
+    "date": "2026-10-02T17:00:00+03:00",
+    "channel": "social",
+    "text": "Не могу скачать справку об остатке ипотечного долга для оформления вычета.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0032",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0033",
+    "date": "2026-10-02T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При загрузке страхового полиса по ипотеке файл принимается, но затем снова появляется требование его предоставить.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0033",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0034",
+    "date": "2026-10-02T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Ипотека полностью погашена: подскажите порядок снятия обременения и какие документы банк выдаёт для регистрации.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0034",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0035",
+    "date": "2026-10-02T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В уведомлении об ипотечном платеже указана сумма, отличающаяся от действующего графика. Платёж ещё не списан.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0035",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0036",
+    "date": "2026-10-02T21:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После полного погашения ипотеки продолжаются автоматические списания. Прошу остановить их и проверить возврат.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0036",
+    "gold": {
+      "product_line": "mortgage",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0037",
+    "date": "2026-10-02T22:00:00+03:00",
+    "channel": "social",
+    "text": "По потребительскому кредиту списали платёж дважды, хотя в графике предусмотрено одно списание.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0037",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0038",
+    "date": "2026-10-02T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При оформлении потребительского кредита невозможно открыть индивидуальные условия перед подписанием.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0038",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0039",
+    "date": "2026-10-03T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заявление на частичное досрочное погашение кредита исчезло после подтверждения.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0039",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0040",
+    "date": "2026-10-03T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В кредитной истории появилась просрочка по моему потребительскому кредиту, хотя все платежи внесены вовремя.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0040",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0041",
+    "date": "2026-10-03T02:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Справка о закрытии потребительского кредита недоступна в приложении после погашения.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0041",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0042",
+    "date": "2026-10-03T03:00:00+03:00",
+    "channel": "social",
+    "text": "Новый график потребительского кредита не учитывает выполненное досрочное погашение.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0042",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0043",
+    "date": "2026-10-03T04:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Хочу узнать, как выбрать сокращение срока вместо уменьшения платежа при досрочном погашении кредита.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0043",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0044",
+    "date": "2026-10-03T05:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Из выданного потребительского кредита удержали платную услугу, на которую я не соглашался.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0044",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0045",
+    "date": "2026-10-03T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В заявке на потребительский кредит нельзя исправить ошибку в сроке, а удалить черновик тоже не получается.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0045",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0046",
+    "date": "2026-10-03T07:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Напоминание о платеже по кредиту приходит после даты платежа, хотя телефон в профиле указан правильно.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0046",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0047",
+    "date": "2026-10-03T08:00:00+03:00",
+    "channel": "social",
+    "text": "После закрытия потребительского кредита продолжают начисляться проценты и уменьшаться остаток на счёте.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0047",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0048",
+    "date": "2026-10-03T09:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо за понятный расчёт полной стоимости потребительского кредита до подписания договора.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0048",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0049",
+    "date": "2026-10-03T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не удаётся перенести дату платежа по потребительскому кредиту через доступную в меню функцию.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0049",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0050",
+    "date": "2026-10-03T11:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В уведомлении об одобрении потребительского кредита нет срока действия предложения.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0050",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0051",
+    "date": "2026-10-03T12:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На моё имя появился потребительский кредит, который я не оформлял. Прошу срочно проверить договор.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0051",
+    "gold": {
+      "product_line": "loans",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0052",
+    "date": "2026-10-03T13:00:00+03:00",
+    "channel": "social",
+    "text": "По кредитной карте списали проценты за период, который в договоре обозначен как беспроцентный, условия я выполнил.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0052",
+    "gold": {
+      "product_line": "credit_cards",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0053",
+    "date": "2026-10-03T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В разделе кредитной карты не отображается дата окончания льготного периода, хотя задолженность уже есть.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0053",
+    "gold": {
+      "product_line": "credit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0054",
+    "date": "2026-10-03T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Нужен понятный расчёт минимального платежа по кредитной карте с разделением основного долга и процентов.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0054",
+    "gold": {
+      "product_line": "credit_cards",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0055",
+    "date": "2026-10-03T16:00:00+03:00",
+    "channel": "review_portal",
+    "text": "За обслуживание дебетовой карты списали плату, хотя условия бесплатного обслуживания выполнены.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0055",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0056",
+    "date": "2026-10-03T17:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заказ перевыпуска дебетовой карты завис без даты готовности и не отменяется.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0056",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0057",
+    "date": "2026-10-03T18:00:00+03:00",
+    "channel": "social",
+    "text": "Не могу установить лимит покупок по дебетовой карте: новое значение не сохраняется.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0057",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0058",
+    "date": "2026-10-03T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "С дебетовой карты прошло списание за покупку, которую я не совершал. Карту уже заблокировал.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0058",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0059",
+    "date": "2026-10-03T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Подскажите, как получить цифровую дебетовую карту без выпуска пластика.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0059",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0060",
+    "date": "2026-10-03T21:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Дебетовую карту выдали в отделении, но кнопка активации в приложении недоступна.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0060",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0061",
+    "date": "2026-10-03T22:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При замене дебетовой карты старые ограничения не перенеслись, хочу восстановить настройки.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0061",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0062",
+    "date": "2026-10-03T23:00:00+03:00",
+    "channel": "social",
+    "text": "Возврат покупки по дебетовой карте отмечен исполненным, но деньги на счёт не зачислены.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0062",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0063",
+    "date": "2026-10-04T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На дебетовой карте не удаётся изменить лимит снятия наличных перед поездкой.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0063",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0064",
+    "date": "2026-10-04T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо за быстрое восстановление повреждённой дебетовой карты без повторной анкеты.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0064",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0065",
+    "date": "2026-10-04T02:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Уведомление о готовности дебетовой карты пришло, но в указанном отделении карту не нашли.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0065",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0066",
+    "date": "2026-10-04T03:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После блокировки дебетовой карты по заявлению продолжаются новые списания. Прошу проверить их происхождение.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0066",
+    "gold": {
+      "product_line": "debit_cards",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0067",
+    "date": "2026-10-04T04:00:00+03:00",
+    "channel": "social",
+    "text": "Перевод по номеру телефона списан, но получатель денег не увидел. Прошу проверить статус и маршрут платежа.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0067",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0068",
+    "date": "2026-10-04T05:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Сохранённый шаблон оплаты коммунальных услуг подставляет старый лицевой счёт после редактирования.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0068",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0069",
+    "date": "2026-10-04T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При переводе между моими счетами удержали комиссию, хотя в показанных условиях её не было.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0069",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0070",
+    "date": "2026-10-04T07:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не удаётся скачать платёжное поручение по уже исполненному переводу.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0070",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0071",
+    "date": "2026-10-04T08:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Хочу настроить напоминание о регулярном платеже без автоматического списания денег.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0071",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0072",
+    "date": "2026-10-04T09:00:00+03:00",
+    "channel": "social",
+    "text": "Один платёж за обучение провёлся дважды после повторного нажатия при зависшем экране.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0072",
+    "gold": {
+      "product_line": "transfers_payments",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0073",
+    "date": "2026-10-04T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После обновления мобильное приложение закрывается сразу после ввода кода входа. Через браузер доступ есть.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0073",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0074",
+    "date": "2026-10-04T11:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В мобильном приложении не приходят push-уведомления, хотя разрешения устройства включены.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0074",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0075",
+    "date": "2026-10-04T12:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Экран входа в мобильное приложение не реагирует на кнопку продолжения после смены телефона.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0075",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0076",
+    "date": "2026-10-04T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В мобильном приложении слишком мелкий текст условий, системное увеличение шрифта его обрезает.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0076",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0077",
+    "date": "2026-10-04T14:00:00+03:00",
+    "channel": "social",
+    "text": "История операций в мобильном приложении перестала обновляться, но в браузере новые записи видны.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0077",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0078",
+    "date": "2026-10-04T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После восстановления доступа мобильное приложение каждый раз снова требует пройти регистрацию.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0078",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0079",
+    "date": "2026-10-04T16:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Предлагаю добавить поиск по названиям разделов мобильного приложения: сейчас нужные настройки приходится искать через несколько меню.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0079",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "low",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0080",
+    "date": "2026-10-04T17:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Мобильное приложение зависает при открытии профиля, остальные разделы работают.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0080",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0081",
+    "date": "2026-10-04T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не удаётся выйти из мобильного приложения на потерянном устройстве через список активных сессий.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0081",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0082",
+    "date": "2026-10-04T19:00:00+03:00",
+    "channel": "social",
+    "text": "При смене языка интерфейса мобильного приложения часть кнопок становится без подписи.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0082",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0083",
+    "date": "2026-10-04T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В мобильном приложении не читается ошибка входа программой экранного доступа.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0083",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0084",
+    "date": "2026-10-04T21:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо за удобный режим крупного текста в новой версии мобильного приложения.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0084",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0085",
+    "date": "2026-10-04T22:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После переключения между приложениями банковский экран возвращается в пустое состояние вместо открытого раздела.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0085",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0086",
+    "date": "2026-10-04T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В мобильном приложении кнопка назад закрывает весь экран помощи, не сохраняя введённый вопрос.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0086",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0087",
+    "date": "2026-10-05T00:00:00+03:00",
+    "channel": "social",
+    "text": "Мобильное приложение показывает бесконечную загрузку при открытии настроек уведомлений.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0087",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0088",
+    "date": "2026-10-05T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Сканер документов в мобильном приложении не позволяет повторить снимок после неудачной попытки.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0088",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0089",
+    "date": "2026-10-05T02:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На небольшом экране мобильного приложения кнопка подтверждения скрывается под клавиатурой.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0089",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0090",
+    "date": "2026-10-05T03:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Хотелось бы видеть дату последнего обновления данных прямо в мобильном приложении.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0090",
+    "gold": {
+      "product_line": "mobile_app",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0091",
+    "date": "2026-10-05T04:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После продажи облигаций в инвестиционном портфеле не появилась выручка, хотя сделка отмечена исполненной.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0091",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0092",
+    "date": "2026-10-05T05:00:00+03:00",
+    "channel": "social",
+    "text": "В инвестиционном отчёте не отображаются комиссии по сделкам за выбранный месяц.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0092",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0093",
+    "date": "2026-10-05T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не могу скачать справку по индивидуальному инвестиционному счёту для налоговой.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0093",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0094",
+    "date": "2026-10-05T07:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В брокерском отчёте появилась сделка, поручение на которую я не давал. Прошу проверить запись.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0094",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0095",
+    "date": "2026-10-05T08:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Нужна понятная инструкция, где посмотреть купонные выплаты по облигациям.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0095",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0096",
+    "date": "2026-10-05T09:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заявление на закрытие брокерского счёта сохраняется без номера обращения и срока обработки.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0096",
+    "gold": {
+      "product_line": "investments",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0097",
+    "date": "2026-10-05T10:00:00+03:00",
+    "channel": "social",
+    "text": "В страховой выплате по действующему полису отказали без объяснения основания. Прошу предоставить письменное решение.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0097",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0098",
+    "date": "2026-10-05T11:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После оплаты страхового полиса документ не появился в личном кабинете.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0098",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0099",
+    "date": "2026-10-05T12:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Не удаётся исправить ошибку в адресе объекта страхования до начала действия полиса.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0099",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0100",
+    "date": "2026-10-05T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При оформлении кредита мне подключили страховку без отдельного согласия и удержали её стоимость.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0100",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0101",
+    "date": "2026-10-05T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Страховое заявление принято, но список недостающих документов в кабинете пустой.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0101",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0102",
+    "date": "2026-10-05T15:00:00+03:00",
+    "channel": "social",
+    "text": "Срок действия страхового полиса в скачанном документе отличается от выбранного при оформлении.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0102",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0103",
+    "date": "2026-10-05T16:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Подскажите, как заранее сообщить о продлении страхования квартиры без автоматической оплаты.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0103",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0104",
+    "date": "2026-10-05T17:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После отказа от страховки в разрешённый срок деньги не вернули, хотя подтверждение заявления есть.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0104",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0105",
+    "date": "2026-10-05T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На странице страховки нельзя загрузить дополнительный документ к уже созданному заявлению.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0105",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0106",
+    "date": "2026-10-05T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "По страхованию путешествий не отображается номер службы помощи в выданном полисе.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0106",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0107",
+    "date": "2026-10-05T20:00:00+03:00",
+    "channel": "social",
+    "text": "Стоимость страхового полиса списали повторно после продления, хотя новый полис только один.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0107",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0108",
+    "date": "2026-10-05T21:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Статус страхового случая меняется на проверку заново при каждом входе, неясно, принят ли пакет документов.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0108",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0109",
+    "date": "2026-10-05T22:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо за понятное объяснение исключений из покрытия до покупки страхового полиса.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0109",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0110",
+    "date": "2026-10-05T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В страховом полисе указан старый номер автомобиля, хотя при оформлении я вводил новый.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0110",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0111",
+    "date": "2026-10-06T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Пожилому родственнику представили инвестиционное страхование как обычный вклад. Просим проверить объяснение рисков при продаже.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0111",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0112",
+    "date": "2026-10-06T01:00:00+03:00",
+    "channel": "social",
+    "text": "Не получается отключить автоматическое продление страхового полиса в доступном разделе настроек.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0112",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0113",
+    "date": "2026-10-06T02:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Страховое уведомление требует документ, который уже отмечен загруженным в том же кабинете.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0113",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0114",
+    "date": "2026-10-06T03:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После отмены страхового полиса продолжаются ежемесячные списания страховой премии.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0114",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0115",
+    "date": "2026-10-06T04:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В заявлении на страховую выплату невозможно изменить способ получения ответа.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0115",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0116",
+    "date": "2026-10-06T05:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Нужна инструкция, как получить копию действующего страхового полиса без посещения отделения.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0116",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0117",
+    "date": "2026-10-06T06:00:00+03:00",
+    "channel": "social",
+    "text": "При выборе программы страхования исчезает таблица сравнения рисков, нельзя проверить покрытие до оплаты.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0117",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0118",
+    "date": "2026-10-06T07:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Выплату по страховому случаю направили на реквизиты, которые я не указывал в заявлении.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0118",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0119",
+    "date": "2026-10-06T08:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При переносе даты поездки не удаётся изменить период действия туристической страховки до её начала.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0119",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0120",
+    "date": "2026-10-06T09:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Подтверждение регистрации страхового случая пришло без номера, поэтому не могу проверить его статус.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0120",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0121",
+    "date": "2026-10-06T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Плату за подписку списали после её подтверждённого отключения. Прошу проверить и вернуть ошибочную плату.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0121",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0122",
+    "date": "2026-10-06T11:00:00+03:00",
+    "channel": "social",
+    "text": "Бонусы за покупку не начислены после окончания указанного срока ожидания.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0122",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0123",
+    "date": "2026-10-06T12:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В подписке показаны доступные привилегии, но при выборе партнёра появляется сообщение об отсутствии доступа.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0123",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0124",
+    "date": "2026-10-06T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Подскажите дату окончания бесплатного периода подписки до первого платного списания.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0124",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0125",
+    "date": "2026-10-06T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "История бонусных начислений не объясняет причину отмены ранее выданных баллов.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0125",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0126",
+    "date": "2026-10-06T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При подключении подписки списали годовую стоимость вместо выбранной месячной оплаты.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0126",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0127",
+    "date": "2026-10-06T16:00:00+03:00",
+    "channel": "social",
+    "text": "Не получается применить бонусы к подходящей покупке: кнопка списания баллов неактивна.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0127",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0128",
+    "date": "2026-10-06T17:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо за прозрачный календарь начисления бонусов по подписке: теперь вижу ожидаемые даты по каждой покупке.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0128",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0129",
+    "date": "2026-10-06T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В описании подписки и в карточке партнёрской привилегии указаны разные сроки использования.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0129",
+    "gold": {
+      "product_line": "bonuses_subscription",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0130",
+    "date": "2026-10-06T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В отделении приняли по талону позже клиентов без очереди, хотя отдельных льготных окон не было.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0130",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0131",
+    "date": "2026-10-06T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Записался на обслуживание в отделении, но сотрудник не увидел запись и предложил заново ждать в общей очереди.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0131",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0132",
+    "date": "2026-10-06T21:00:00+03:00",
+    "channel": "social",
+    "text": "В отделении отправили между тремя окнами за одной справкой, не объяснив порядок обслуживания.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0132",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0133",
+    "date": "2026-10-06T22:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Спасибо сотруднику отделения за спокойное объяснение документов и помощь с заявлением.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0133",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0134",
+    "date": "2026-10-06T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "График работы отделения на двери отличается от графика в приложении, я приехал к закрытому офису.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0134",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0135",
+    "date": "2026-10-07T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В отделении нет доступного способа вызвать сотрудника посетителю на коляске.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0135",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0136",
+    "date": "2026-10-07T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Сотрудник отделения обсуждал личные сведения посетителей достаточно громко, чтобы слышала вся очередь.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0136",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0137",
+    "date": "2026-10-07T02:00:00+03:00",
+    "channel": "social",
+    "text": "Талон в отделении закрыли до моего вызова, и повторная регистрация отправила меня в конец очереди.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0137",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0138",
+    "date": "2026-10-07T03:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Предлагаю показывать ожидаемое время обслуживания рядом с номером талона в отделении.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0138",
+    "gold": {
+      "product_line": "branches_service",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0139",
+    "date": "2026-10-07T04:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В чате поддержки оператор завершил разговор, не ответив на уточнение по уже открытому обращению.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0139",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0140",
+    "date": "2026-10-07T05:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Телефонная поддержка трижды переводила звонок между специалистами без передачи сути вопроса.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0140",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0141",
+    "date": "2026-10-07T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Ответ поддержки содержит только общую ссылку, хотя я приложил снимок конкретной ошибки.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0141",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0142",
+    "date": "2026-10-07T07:00:00+03:00",
+    "channel": "social",
+    "text": "Спасибо оператору поддержки за понятный ответ без внутренних сокращений.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0142",
+    "gold": {
+      "product_line": "support",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  },
+  {
+    "external_id": "PLV1-0143",
+    "date": "2026-10-07T08:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Поддержка обещала связаться по обращению вчера, но ни сообщения, ни нового срока нет.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0143",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0144",
+    "date": "2026-10-07T09:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В чате поддержки отправленные вложения исчезают после подключения оператора.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0144",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0145",
+    "date": "2026-10-07T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Платёж юридического лица списан со счёта, но поставщик его не получил, а поддержка не даёт подтверждения исполнения.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0145",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0146",
+    "date": "2026-10-07T11:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В кабинете бизнеса не открывается выписка за прошлый квартал.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0146",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0147",
+    "date": "2026-10-07T12:00:00+03:00",
+    "channel": "social",
+    "text": "Новый сотрудник компании не получает приглашение в бизнес-кабинет после настройки полномочий.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0147",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0148",
+    "date": "2026-10-07T13:00:00+03:00",
+    "channel": "review_portal",
+    "text": "За обслуживание расчётного счёта компании списали плату по тарифу, который мы не подключали.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0148",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0149",
+    "date": "2026-10-07T14:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При подписании платёжного поручения компании не появляется поле выбора электронной подписи.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0149",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0150",
+    "date": "2026-10-07T15:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Нужна инструкция по выдаче бухгалтеру доступа только к просмотру расчётного счёта.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0150",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "low",
+      "sentiment": "neutral"
+    }
+  },
+  {
+    "external_id": "PLV1-0151",
+    "date": "2026-10-07T16:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Заявка на изменение лимитов бизнес-счёта не показывает этап проверки и ответственного специалиста.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0151",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0152",
+    "date": "2026-10-07T17:00:00+03:00",
+    "channel": "social",
+    "text": "В бизнес-кабинете появилась исполненная платёжная ведомость, которую уполномоченные сотрудники не подписывали.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0152",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0153",
+    "date": "2026-10-07T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Реквизиты нового расчётного счёта компании не выгружаются в документ для контрагентов.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0153",
+    "gold": {
+      "product_line": "business_banking",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0154",
+    "date": "2026-10-07T19:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Банкомат списал сумму снятия, но наличные не выдал. Номер операции и время сохранены в приложении.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0154",
+    "gold": {
+      "product_line": "atm_self_service",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0155",
+    "date": "2026-10-07T20:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Терминал самообслуживания не печатает чек после выполненной оплаты, нужен электронный дубликат.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0155",
+    "gold": {
+      "product_line": "atm_self_service",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0156",
+    "date": "2026-10-07T21:00:00+03:00",
+    "channel": "review_portal",
+    "text": "При внесении наличных банкомат принял купюры, но зачисление на счёт не произошло.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0156",
+    "gold": {
+      "product_line": "atm_self_service",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0157",
+    "date": "2026-10-07T22:00:00+03:00",
+    "channel": "social",
+    "text": "Мне звонят от имени банка и требуют код подтверждения. Код я не сообщал, прошу проверить попытку мошенничества.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0157",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0158",
+    "date": "2026-10-07T23:00:00+03:00",
+    "channel": "review_portal",
+    "text": "После перехода по подозрительной ссылке появились неизвестные переводы. Доступ заблокирован, нужна проверка безопасности.",
+    "source_platform": "app_feedback",
+    "source_url": "https://app-feedback.example.invalid/reviews/PLV1-0158",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0159",
+    "date": "2026-10-08T00:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Самостоятельная блокировка всех сессий в разделе безопасности не завершается подтверждением.",
+    "source_platform": "customer_forum",
+    "source_url": "https://customer-forum.example.invalid/reviews/PLV1-0159",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0160",
+    "date": "2026-10-08T01:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Уведомление о смене контактного номера пришло без моего запроса. Прошу срочно проверить доступ к профилю.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0160",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "high",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0161",
+    "date": "2026-10-08T02:00:00+03:00",
+    "channel": "review_portal",
+    "text": "В разделе безопасности не отображается список подключённых устройств, хотя функция заявлена в справке.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0161",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "medium",
+      "sentiment": "negative"
+    }
+  },
+  {
+    "external_id": "PLV1-0162",
+    "date": "2026-10-08T03:00:00+03:00",
+    "channel": "social",
+    "text": "Спасибо специалисту безопасности за объяснение, как проверить подлинность звонка без передачи кодов.",
+    "source_platform": "open_channel",
+    "source_url": "https://open-channel.example.invalid/reviews/PLV1-0162",
+    "gold": {
+      "product_line": "fraud_security",
+      "criticality": "low",
+      "sentiment": "positive"
+    }
+  }
+]

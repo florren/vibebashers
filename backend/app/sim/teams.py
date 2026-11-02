@@ -164,6 +164,11 @@ class TeamEmulator:
         self.error_codes = {r[0]: {"system": r[1], "product": r[2]} for r in await cur.fetchall()}
         cur = await self.conn.execute("select code, speed_profile from teams")
         self._team_profiles = {r[0]: dict(r[1]) for r in await cur.fetchall()}
+        from app.sim.team_plans import legacy_blob, native_plans
+
+        self.plans = {
+            iid: _plan_from_blob(iid, blob) for iid, blob in (await native_plans(self.conn, self.run_id)).items()
+        }
         release_by_incident: dict[int, tuple[int, dt.datetime]] = {}
         cur = await self.conn.execute(
             "select id, incident_id, action, payload, action_sim from team_actions where run_id = %s order by action_sim, id",
@@ -174,10 +179,25 @@ class TeamEmulator:
             key = (incident_id, str(action), (payload or {}).get("report_day"))
             self.done.add(key)
             plan_blob = (payload or {}).get("plan")
-            if plan_blob:
-                self.plans[incident_id] = _plan_from_blob(incident_id, plan_blob)
+            if plan_blob is not None:
+                self.plans[incident_id] = _plan_from_blob(incident_id, legacy_blob(plan_blob, self.run_id, incident_id))
             if str(action) == "release":
                 release_by_incident[incident_id] = (int(action_id), _parse_ts(action_sim))
+        # Clarify и реальный возврат in_progress — сохранённые факты, не новый draw.
+        # Это восстанавливает resume до следующего due action, когда нового snapshot ещё нет.
+        for iid, plan in self.plans.items():
+            if plan.do_clarify and (iid, "clarify", None) in self.done:
+                plan.paused_after_clarify = True
+                status = await (
+                    await self.conn.execute(
+                        "select status from incidents where id=%s and run_id=%s", (iid, self.run_id)
+                    )
+                ).fetchone()
+                progressed = any(
+                    (iid, action, None) in self.done for action in ("rca", "fix_decision", "release", "verify", "close")
+                )
+                if progressed or (status and status[0] == "in_progress"):
+                    plan.resumed = True
         cur = await self.conn.execute(
             "select id, caused_by_incident_id from faults where run_id = %s and caused_by_incident_id is not null",
             (self.run_id,),
@@ -188,6 +208,9 @@ class TeamEmulator:
         self._restore_pending_regressions(release_by_incident)
 
     async def tick(self, sim_time: dt.datetime, world: Any) -> None:
+        from app.sim.team_plans import ensure_runtime
+
+        await ensure_runtime(self.conn, self.run_id, sim_time)
         await self._process_regressions(sim_time, world)
         cur = await self.conn.execute(
             "select id, status, team_code, created_sim, take_due_sim, sla_due_sim, report_due_sims, "
@@ -222,6 +245,18 @@ class TeamEmulator:
         if plan is not None and plan.outcome and not self.demo_outcome:
             return
         if plan is None:
+            from app.sim.team_plans import native_plans
+
+            # Частный advisory key сериализует только конкурирующих builders:
+            # не добавляем incident row lock через последующие LLM-действия.
+            await self.conn.execute(
+                "select pg_advisory_xact_lock(hashtextextended(%s,0))", (f"team-plan:{self.run_id}:{incident_id}",)
+            )
+            saved = (await native_plans(self.conn, self.run_id)).get(incident_id)
+            if saved is not None:
+                plan = _plan_from_blob(incident_id, saved)
+                self.plans[incident_id] = plan
+        if plan is None:
             plan = self._build_plan(
                 incident_id,
                 str(team_code),
@@ -232,6 +267,12 @@ class TeamEmulator:
                 [_parse_ts(x) for x in (report_due_sims or [])],
                 str(system_code),
                 product_code,
+            )
+            await self.bus.emit(
+                self.run_id,
+                "team.plan",
+                {"version": 1, "incident_id": incident_id, "team": plan.team_code, "plan": _plan_blob(plan)},
+                sim_time,
             )
             self.plans[incident_id] = plan
 
@@ -424,6 +465,25 @@ class TeamEmulator:
         status: str,
     ) -> None:
         self.artifact_meta = {}
+        active_llm = self.llm
+        reserved_ar: int | None = None
+        if plan.outcome:
+            from app.llm.run_profiles import no_llm_snapshot, resolve
+
+            snapshot = no_llm_snapshot()
+            kind = ARTIFACT_FOR_ACTION.get(step.action)
+            if self.llm and kind and kind != "verification_report" and not step.skipped:
+                scoped, main = await resolve(self.conn, self.run_id, self.llm[0], self.llm[1], new=True)
+                role = self.llm[1].role
+                active_llm = (scoped, scoped.profile_for(role, main))
+                snapshot = {**(scoped.role_snapshot or {}), "execution_role": role}
+            started = await ctx.fetchone(
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) "
+                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s,%s::jsonb) returning id",
+                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time, dumps(snapshot)),
+            )
+            assert started is not None
+            reserved_ar = int(started[0])
         key = (incident_id, step.action, step.report_day)
         payload: dict[str, Any] = {"plan": _plan_blob(plan)}
         if plan.outcome:
@@ -472,7 +532,7 @@ class TeamEmulator:
 
         artifact_kind = ARTIFACT_FOR_ACTION.get(step.action)
         if artifact_kind and not step.skipped:
-            body = await self._artifact_body(ctx, artifact_kind, step, incident_ctx)
+            body = await self._artifact_body(ctx, artifact_kind, step, incident_ctx, active_llm)
             title = {
                 "rca": "Анализ первопричины",
                 "fix_decision": "Решение о внедрении фикса",
@@ -502,6 +562,7 @@ class TeamEmulator:
         if step.action == "release" and step.regression:
             self._queue_regression(incident_id, ctx.sim_time, step, str(incident_ctx.get("system") or ""))
 
+        payload["plan"] = _plan_blob(plan)
         cur = await self.conn.execute(
             "insert into team_actions (run_id, incident_id, team_code, action, payload, action_sim) "
             "values (%s, %s, %s, %s, %s::jsonb, %s) returning id",
@@ -532,14 +593,18 @@ class TeamEmulator:
         if plan.outcome:
             from app.agent.nodes import Deps
 
-            ar = await ctx.fetchone(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
-                "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s) returning id",
-                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
-            )
-            assert ar is not None
-            ctx.agent_run_id = int(ar[0])
-            deps = Deps(ctx=ctx, chain=self.llm[0], profile=self.llm[1])
+            assert reserved_ar is not None
+            ctx.agent_run_id = reserved_ar
+            if active_llm is None:
+                from app.llm.base import LLMProfile
+                from app.llm.failover import ProviderChain
+                from app.llm.mock import MockProvider
+
+                active_llm = (
+                    ProviderChain([MockProvider()], offline_mode="mock"),
+                    LLMProfile(code="no_llm", provider="mock", model="not-called"),
+                )
+            deps = Deps(ctx=ctx, chain=active_llm[0], profile=active_llm[1])
             await deps.record_step(
                 "act",
                 "ok",
@@ -567,10 +632,13 @@ class TeamEmulator:
                     pr.release_action_id = action_id
                     break
 
-    async def _artifact_body(self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any]) -> str:
+    async def _artifact_body(
+        self, ctx: ToolContext, kind: str, step: PlannedStep, incident_ctx: dict[str, Any], llm: Any = None
+    ) -> str:
         self.artifact_meta = {}
         outcome = incident_ctx.get("outcome", self.demo_outcome)
-        if outcome and self.llm:
+        active_llm = llm if llm is not None else self.llm
+        if outcome and active_llm:
             from app.demo.roles import respond
 
             evidence = incident_ctx.get("demo_evidence", self.demo_context)
@@ -617,7 +685,7 @@ class TeamEmulator:
                     "confirmed_result": facts["result"],
                 }
                 return str(facts["result"])
-            obj, self.artifact_meta = await respond(self.llm[0], self.llm[1], facts, fallback)
+            obj, self.artifact_meta = await respond(active_llm[0], active_llm[1], facts, fallback)
             self.artifact_meta["outcome"] = outcome
             self.artifact_meta["stage"] = kind
             return PII_RE.sub("****", str(obj["body"]))
@@ -705,8 +773,10 @@ class TeamEmulator:
                 (self.run_id, pr.system, pr.error_code, sim_time, pr.incident_id, []),
             )
             fid = int((await cur.fetchone())[0])  # type: ignore[index]
+            duration_min = 90  # Существующая длительность закрепляется в native event.
             payload = {
                 "fault_id": fid,
+                "expected_duration_min": duration_min,
                 "caused_by_incident_id": pr.incident_id,
                 "release_action_id": pr.release_action_id,
                 "origin_system": pr.origin_system,
@@ -717,17 +787,17 @@ class TeamEmulator:
                 "impact_count": 0,
                 "started_sim": sim_time.isoformat(),
             }
-            await self.bus.emit(self.run_id, "fault.regression", payload, sim_time)
+            correlation = await self.bus.emit(self.run_id, "fault.regression", payload, sim_time)
             world.active_faults.append(
                 {
                     "id": fid,
                     "system": pr.system,
                     "error_code": pr.error_code,
                     "started_sim": sim_time,
-                    "expected_end": sim_time + dt.timedelta(minutes=90),
+                    "expected_end": sim_time + dt.timedelta(minutes=duration_min),
                     "impact": 0,
                     "clients": set(),
-                    "corr": __import__("uuid").uuid4(),
+                    "corr": correlation,
                 }
             )
             self._regressed_incidents.add(pr.incident_id)
@@ -740,6 +810,8 @@ def _plan_blob(plan: IncidentPlan) -> dict[str, Any]:
         "sla_breach": plan.sla_breach,
         "do_clarify": plan.do_clarify,
         "outcome": plan.outcome,
+        "paused_after_clarify": plan.paused_after_clarify,
+        "resumed": plan.resumed,
         "steps": [
             {
                 "action": s.action,
@@ -773,6 +845,8 @@ def _plan_from_blob(incident_id: int, blob: dict[str, Any]) -> IncidentPlan:
         bool(blob.get("do_clarify")),
         steps,
         outcome=blob.get("outcome"),
+        paused_after_clarify=bool(blob.get("paused_after_clarify", False)),
+        resumed=bool(blob.get("resumed", False)),
     )
 
 
