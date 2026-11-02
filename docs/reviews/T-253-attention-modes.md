@@ -23,7 +23,7 @@
 
 ## Выявленный побочный эффект существующего GET
 
-Нельзя утверждать «DB unchanged»: при дополнительных GET list/detail economics совпали 83 из 85 table fingerprints, изменились `incident_economics` (154 → 154 строк) и `db_activity_log` (+104 строк). Браузер не пытался отправлять non-GET команды; изменение порождает существующая GET materialization. Отдельный HTTP 200 `GET /api/incidents/{id}/economics` подтвердил изменение **только `computed_at`** и +1 audit row; остальные колонки, включая финансовые результаты, сохранили hashes. Безопасные имена/count/hash — в `get-economics-materialization.json`, без raw payload. Backend в T-253 не исправлялся; finding передан владельцу economics.
+Нельзя утверждать «DB unchanged»: при дополнительных GET list/detail economics совпали 83 из 85 table fingerprints, изменились `incident_economics` (154 → 154 строк) и `db_activity_log` (+104 строк). В этом дополнительном SLA/mobile проходе браузер не пытался отправлять non-GET команды; изменение порождает существующая GET materialization. Отдельные calm settings cases, напротив, намеренно выполняли и проверяли настоящие PATCH ui.attention; эти разрешённые настройки не включаются в утверждение о нуле non-GET. Отдельный HTTP 200 `GET /api/incidents/{id}/economics` подтвердил изменение **только `computed_at`** и +1 audit row; остальные колонки, включая финансовые результаты, сохранили hashes. Безопасные имена/count/hash — в `get-economics-materialization.json`, без raw payload. Backend в T-253 не исправлялся; finding передан владельцу economics.
 
 ## Приёмка и ограничения
 

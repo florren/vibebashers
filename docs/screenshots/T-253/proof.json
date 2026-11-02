@@ -8,7 +8,6 @@
   "inherited_browser_passed_at_original_source": 49,
   "actual_calm_browser_passed": 4,
   "actual_sla_mobile_cases_passed": 4,
-  "browser_non_GET_attempts": 0,
   "external_attempts": 0,
   "LLM_calls_during_browser": 0,
   "business_preparation": "Штатный lite seed200 +4 настоящих обращения через normalizer/Mock graph до browser proof, без ручных fake incident rows",
@@ -30,5 +29,8 @@
       }
     },
     "note": "GET economics выполняет существующую materialization; DB unchanged не утверждается."
-  }
+  },
+  "additional_sla_browser_non_GET_attempts": 0,
+  "actual_calm_browser_non_settings_mutation_attempts": 0,
+  "actual_calm_settings_PATCH": "Реальные сохранения ui.attention разрешены и проверены; число PATCH отдельно не фиксировалось."
 }
