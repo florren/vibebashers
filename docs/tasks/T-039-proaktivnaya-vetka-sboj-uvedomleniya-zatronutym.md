@@ -123,3 +123,15 @@ logical vs observation cutoff и отсутствие credit уже поступ
 [Source-qualified proof](../reviews/T-039-receipts-runtime-proof.json).
 Final DDL19/consumer review и композиция proactive API25 остаются отдельными;
 полная T039 этим отчётом не закрывается. Реальных внешних вызовов/prod не было.
+
+
+### Reviewable API25/receipt19 handoff
+
+Final parent composition c54f6d8 сохраняет API25 и утверждённые catalog/rate fields
+API24(T242/PR190); agent/native source byte-preserved. Адресно53unit+9PG green,
+full420frontend/type/lint green. Новый committed-progress wake:33unit+7PG native,
+focused35tests/15of18newlines83.33% отдельно; старый expanded145pass3F не скрывается
+и не считается whole-green. Полный final make/CI ещё pending, задача остаётся
+in_progress до проверки final head. Proof/review: docs/reviews/T-039-proactive-fault.md
+и T-039-composition-proof.json. Пользовательское недеструктивное окно до07:00
+03.11.2026МСК не включает внешние платные вызовы/production/PR180 cutover block.

@@ -388,3 +388,20 @@ Ordinary metadata-only58a4a28 merged9f37081, один card-report conflict об�
 366frontend/43bot относится к owner0e, не consumer composition. Final T039 full
 make/whole CI остаётся pending; merge не выполнялся. Draft body подготовлен
 в/tmp/T-039-draft-pr.md, публикацией и проверкой окончательного head занимается root.
+
+
+### Final reviewable composition API24 parent → API25
+
+Ordinary merge5b34a5f(T242/API24, PR190 parent) → c54f6d8. Единственный конфликт
+info.version24/25 разрешён в25, все additive catalog/rate fields сохранены;
+frontend TS regenerated штатным generator. CSI20/API28 и T244/API26 не включались.
+Existing agent/sim proactive/dcltv source byte-equal65d177d; incoming metrics.py
+byte-equal утверждённому parent. Hash proof в T-039-composition-proof.json.
+
+Exact source c54:53unit passed4.38s (explicit-rate/cabinet-scope/wake),9actualPG
+passed105.37s (calculator native catalog/persisted no-write + всеphase/recovery/
+unknown/public-controls/early-complaint guards). Full frontend420/420 в58files12.79s,
+typecheck/lint+motion green; прежний DemoMenu18 warning1/0errors.
+Это composition targets, не полный final make. Failed frozen8a145/3F не скрыт;
+new wake35coverage/7nativePG fixes отдельно qualified. Root получает clean frozen
+head для draftPR API25/DDL19 и обязательного exact-head CI; remote не изменялся.
