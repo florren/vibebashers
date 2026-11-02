@@ -16,17 +16,23 @@ export function applyUiTheme(pack: ThemePack, mode: ThemeMode, density: ThemeDen
   const phase = phaseAt(simTime)
   const resolved = resolveMode(mode, phase)
   const root = document.documentElement
-  const changed = root.dataset.phase !== phase || root.dataset.mode !== resolved || root.dataset.pack !== pack
+  const changed = root.dataset.phase !== phase || root.dataset.mode !== resolved || root.dataset.pack !== pack || root.dataset.circadian !== String(mode === 'circadian')
   const shouldAnimate = animate && changed && mode === 'circadian' && !matchMedia('(prefers-reduced-motion: reduce)').matches
   const from = shouldAnimate ? readPalette(root) : null
   // Повторный tick той же фазы не обрывает уже идущий переход.
   if (!changed && animate) return
+  const instant = !from && (changed || root.dataset.themeTransition === 'running')
   cancelThemeTransition()
+  root.dataset.themeTransition = instant ? 'instant' : 'idle'
   clearPalette(root)
-  root.dataset.themeTransition = 'idle'
   const attributes = { pack, mode: resolved, phase, circadian: String(mode === 'circadian'), density }
   for (const [key, value] of Object.entries(attributes)) if (root.dataset[key] !== value) root.dataset[key] = value
   if (root.classList.contains('dark') !== (resolved === 'dark')) root.classList.toggle('dark', resolved === 'dark')
+  if (instant) {
+    // Фиксируем стили без CSS transition контролов до снятия временного запрета.
+    void root.offsetWidth
+    root.dataset.themeTransition = 'idle'
+  }
   localStorage.setItem('cx.ui.phase', phase)
   localStorage.setItem('cx.theme', resolved)
   if (from) {

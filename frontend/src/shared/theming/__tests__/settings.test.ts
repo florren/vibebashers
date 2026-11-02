@@ -107,3 +107,19 @@ it('synchronizes only the complete circadian preference, never local coordinates
   expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { circadian: { source: 'fixed', fixed_phase: 'night' } } })
   expect(localStorage.getItem('cx.ui.location')).toBe('{"latitude":12,"longitude":34}')
 })
+
+it('does not cancel an in-flight clock transition when a late GET repeats the same preferences', async () => {
+  let finishGet!: (data: unknown) => void
+  vi.mocked(api).mockReturnValue(new Promise((resolve) => { finishGet = resolve }))
+  useUiTheme.getState().setMode('circadian')
+  useUiTheme.getState().setSimTime('2026-11-09T06:00:00Z')
+  disconnect = connectThemeSettings()
+  useUiTheme.getState().setSimTime('2026-11-09T18:00:00Z')
+  // jsdom не рисует CSS; running моделирует уже запущенный runtime RAF.
+  document.documentElement.dataset.themeTransition = 'running'
+  finishGet({ ui: { theme_pack: 'brand', mode: 'circadian', density: 'comfortable', circadian: { ...DEFAULT_CIRCADIAN } } })
+  await flush()
+  expect(document.documentElement.dataset.phase).toBe('night')
+  expect(document.documentElement.dataset.themeTransition).toBe('running')
+  expect(patch).not.toHaveBeenCalled()
+})

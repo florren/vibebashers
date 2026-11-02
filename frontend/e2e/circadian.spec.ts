@@ -4,9 +4,11 @@ import { expect, test, type Page, type WebSocketRoute } from '@playwright/test'
 // Синтетический локальный HTTP/WS transport: проверяется production UI, внешних вызовов нет.
 const NOON = '2026-06-21T12:00:00+03:00'
 const NIGHT = '2026-06-21T23:00:00+03:00'
-async function fixture(page: Page, { lang = 'ru', source = 'fixed', phase = 'noon', mode = 'circadian' } = {}) {
+async function fixture(page: Page, { lang = 'ru', source = 'fixed', phase = 'noon', mode = 'circadian', deferSettings = false } = {}) {
   const errors: string[] = [], remote: string[] = [], patches: unknown[] = []
   let current = NOON, socket: WebSocketRoute | undefined
+  let releaseSettings!: () => void
+  const settingsReady = new Promise<void>(resolve => { releaseSettings = resolve })
   const ui: Record<string, unknown> = { theme_pack: 'brand', mode, density: 'comfortable', circadian: { source, fixed_phase: phase }, lang }
   page.on('pageerror', (e) => errors.push(e.message))
   page.on('request', (request) => { if (!['127.0.0.1', 'localhost'].includes(new URL(request.url()).hostname)) remote.push(request.url()) })
@@ -32,6 +34,7 @@ async function fixture(page: Page, { lang = 'ru', source = 'fixed', phase = 'noo
     const url = new URL(route.request().url()), method = route.request().method()
     let json: unknown = {}
     if (url.pathname === '/api/settings') {
+      if (method === 'GET' && deferSettings) await settingsReady
       if (method === 'PATCH') { const patch = route.request().postDataJSON(); patches.push(patch); Object.assign(ui, patch.ui) }
       json = { ui }
     } else if (url.pathname === '/api/sim/state') json = state()
@@ -41,7 +44,7 @@ async function fixture(page: Page, { lang = 'ru', source = 'fixed', phase = 'noo
     else if (url.pathname.startsWith('/api/refs/') || url.pathname === '/api/compliance/alerts') json = []
     await route.fulfill({ json })
   })
-  return { errors, remote, patches, tick: async (time: string) => { current = time; await expect.poll(() => !!socket).toBe(true); socket!.send(JSON.stringify({ topic: 'sim', type: 'sim.tick', ts: time, data: state() })) } }
+  return { errors, remote, patches, releaseSettings, tick: async (time: string) => { current = time; await expect.poll(() => !!socket).toBe(true); socket!.send(JSON.stringify({ topic: 'sim', type: 'sim.tick', ts: time, data: state() })) } }
 }
 async function openControls(page: Page) {
   const details = page.getByTestId('circadian-controls')
@@ -79,7 +82,13 @@ for (const lang of ['ru', 'en']) test(`T252 all packs/phases and manual override
   expect(await page.evaluate(() => (window as unknown as { geoCalls: number }).geoCalls)).toBe(0)
   await f.tick(NOON)
   await expect(page.locator('html')).toHaveAttribute('data-phase', 'night')
-  await page.getByRole('combobox', { name: label.mode, exact: true }).selectOption('light')
+  const manualPaint = await page.getByRole('combobox', { name: label.mode, exact: true }).evaluate((element) => {
+    (element as HTMLSelectElement).value = 'light'
+    element.dispatchEvent(new Event('change', { bubbles: true }))
+    const root = getComputedStyle(document.documentElement)
+    return { actual: getComputedStyle([...document.querySelectorAll('header button')].find(button => /Режим жюри|Jury mode/.test(button.textContent ?? ''))!).backgroundColor, target: `rgb(${root.getPropertyValue('--surface').trim().split(/\s+/).join(', ')})` }
+  })
+  expect(manualPaint.actual).toBe(manualPaint.target)
   await f.tick(NIGHT)
   await expect(page.locator('html')).toHaveAttribute('data-mode', 'light')
   await page.reload()
@@ -89,10 +98,12 @@ for (const lang of ['ru', 'en']) test(`T252 all packs/phases and manual override
 })
 test('T252 sim ×60 eight seconds per-frame WCAG and reduced motion', async ({ page }, info) => {
   test.setTimeout(35_000)
-  const f = await fixture(page, { source: 'sim' })
+  const f = await fixture(page, { source: 'sim', deferSettings: true })
   await page.goto('/trace')
   await expect(page.locator('html')).toHaveAttribute('data-phase', 'noon')
   await f.tick(NIGHT)
+  await expect(page.locator('html')).toHaveAttribute('data-theme-transition', 'running')
+  f.releaseSettings()
   await expect(page.locator('html')).toHaveAttribute('data-theme-transition', 'running')
   const frames: { time: number; text: number; control: number }[] = []
   const start = Date.now()

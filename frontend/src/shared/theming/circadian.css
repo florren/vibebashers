@@ -10,4 +10,4 @@ html[data-circadian='true'][data-mode='dark'][data-phase='night'] { --bg: 10 16 
 .circadian-night-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .06; color: rgb(var(--ink)); background-image: radial-gradient(circle at 8% 16%, currentColor 1px, transparent 2px), radial-gradient(circle at 80% 14%, currentColor 1px, transparent 2px), radial-gradient(circle at 43% 22%, currentColor 1px, transparent 2px); }
 .circadian-night-layer::after { content: '☾'; position: absolute; right: 4%; top: 10%; font-size: 72px; }
 /* CSS transition отдельных контролов не должен запаздывать за покадровой проверкой контраста. */
-html[data-theme-transition='running'] *, html[data-theme-transition='running'] *::before, html[data-theme-transition='running'] *::after { transition: none !important; }
+html[data-theme-transition='running'] *, html[data-theme-transition='running'] *::before, html[data-theme-transition='running'] *::after, html[data-theme-transition='instant'] *, html[data-theme-transition='instant'] *::before, html[data-theme-transition='instant'] *::after { transition: none !important; }

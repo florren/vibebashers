@@ -56,11 +56,14 @@ export function connectThemeSettings(): () => void {
   void api<{ ui?: unknown }>('/api/settings').then((settings) => {
     if (!active) return
     const preferences = { ...validated(settings.ui), ...localEdits, ...pending }
+    const before = useUiTheme.getState()
     hydrating = true
     useUiTheme.setState(preferences)
     const state = useUiTheme.getState()
     for (const key of KEYS) localStorage.setItem(`cx.ui.${key}`, typeof state[key] === 'string' ? state[key] : JSON.stringify(state[key]))
-    applyUiTheme(state.theme_pack, state.mode, state.density, state.simTime)
+    const samePreferences = before.theme_pack === state.theme_pack && before.mode === state.mode && before.density === state.density && JSON.stringify(before.circadian) === JSON.stringify(state.circadian)
+    // Поздний GET с теми же настройками не должен обрывать переход от WS-часов.
+    applyUiTheme(state.theme_pack, state.mode, state.density, state.simTime, samePreferences)
     hydrating = false
     save()
   }).catch(() => { if (active) useUiTheme.setState({ syncError: true }) })
