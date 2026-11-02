@@ -1372,6 +1372,7 @@
     "scenario8": "Scenario 8 — QR fee",
     "scenario9": "Scenario 9 — misselling",
     "scenario10": "Scenario 10 — red phrases",
+    "scenario12": "Scenario 12 — three customer journeys",
     "scenario13": "Scenario 13 — search and trace",
     "baselineRestore": "Reset to baseline",
     "actionError": "Could not complete the action"

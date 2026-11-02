@@ -1,0 +1,65 @@
+{
+  "source": "ab9b8daac9d21e156ac583c860f87e7f1dc42a57",
+  "dataset": "own200client synthetic native Mock graphs, no active actors",
+  "measurement": "actual localhost HTTP, warm after browser proof, 25sequential samples per path/mode; other isolated testDBs active on same PostgreSQL host, no dedicated resource allocation",
+  "GET": 150,
+  "tables_unchanged": 84,
+  "structured_and_stream_LLM_attempts": 0,
+  "external_network_attempts": 0,
+  "results": [
+    {
+      "trajectory": "autonomous",
+      "presenter": false,
+      "samples": 25,
+      "events": 32,
+      "p95_ms": 33.678,
+      "max_ms": 42.007,
+      "max_bytes": 24946
+    },
+    {
+      "trajectory": "autonomous",
+      "presenter": true,
+      "samples": 25,
+      "events": 32,
+      "p95_ms": 38.83,
+      "max_ms": 38.883,
+      "max_bytes": 25438
+    },
+    {
+      "trajectory": "human",
+      "presenter": false,
+      "samples": 25,
+      "events": 16,
+      "p95_ms": 32.204,
+      "max_ms": 33.056,
+      "max_bytes": 12039
+    },
+    {
+      "trajectory": "human",
+      "presenter": true,
+      "samples": 25,
+      "events": 16,
+      "p95_ms": 31.308,
+      "max_ms": 37.588,
+      "max_bytes": 12602
+    },
+    {
+      "trajectory": "escalation",
+      "presenter": false,
+      "samples": 25,
+      "events": 31,
+      "p95_ms": 40.135,
+      "max_ms": 45.344,
+      "max_bytes": 23912
+    },
+    {
+      "trajectory": "escalation",
+      "presenter": true,
+      "samples": 25,
+      "events": 31,
+      "p95_ms": 39.59,
+      "max_ms": 40.343,
+      "max_bytes": 24424
+    }
+  ]
+}
