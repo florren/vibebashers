@@ -12,7 +12,7 @@ import datetime as dt
 import hmac
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -385,12 +385,18 @@ class PostgresAccounting:
 
     @asynccontextmanager
     async def key_scope(
-        self, profile: LLMProfile, facts: KeyFacts, *, timeout_s: float, check_budget: bool = True
+        self,
+        profile: LLMProfile,
+        facts: KeyFacts,
+        *,
+        timeout_s: float,
+        check_budget: bool = True,
+        streaming: bool = False,
     ) -> AsyncIterator[KeyScope]:
         reject_reflection({"endpoint": facts.endpoint, "model": profile.model, "profile": profile.code}, [facts.secret])
         deadline = time.monotonic() + timeout_s
         try:
-            async with asyncio.timeout(timeout_s), contextlib.AsyncExitStack() as stack:
+            async with asyncio.timeout(timeout_s) as budget_timer, contextlib.AsyncExitStack() as stack:
                 await stack.enter_async_context(public_operation())
                 conn = await stack.enter_async_context(
                     await psycopg.AsyncConnection.connect(
@@ -412,6 +418,10 @@ class PostgresAccounting:
                     scope = KeyScope(self, conn, profile, facts, account["uid"], deadline)
                     if check_budget:
                         await scope.check()
+                    if streaming:
+                        # The caller may process a yielded chunk in this same task.
+                        # Bound individual awaited I/O, never cancel that consumer.
+                        budget_timer.reschedule(None)
                     yield scope
                 finally:
                     await conn.execute("select pg_advisory_unlock(%s)", (lock,))
@@ -431,6 +441,20 @@ class KeyScope:
     facts: KeyFacts = field(repr=False)
     uid: uuid.UUID = field(repr=False)
     deadline: float
+
+    async def wait[T](self, operation: Awaitable[T]) -> T:
+        try:
+            return await asyncio.wait_for(operation, max(0.0, self.deadline - time.monotonic()))
+        except TimeoutError:
+            raise AdmissionRefused("timeout", "absolute inference deadline исчерпан") from None
+
+    async def iterate[T](self, iterator: AsyncIterator[T]) -> AsyncIterator[T]:
+        while True:
+            try:
+                item = await self.wait(anext(iterator))
+            except StopAsyncIteration:
+                return
+            yield item
 
     @asynccontextmanager
     async def _state(self) -> AsyncIterator[dict[str, Any]]:
@@ -546,7 +570,7 @@ class KeyScope:
 
     @asynccontextmanager
     async def inference(self) -> AsyncIterator[Ticket]:
-        ticket = await self.admit()
+        ticket = await self.wait(self.admit())
         try:
             yield ticket
         except BaseException as exc:

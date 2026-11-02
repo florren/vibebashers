@@ -66,3 +66,11 @@ Preflight existing runtime/setup/routing:28 passed/1 failed на source79; bound
 Target12 PG passed71.55s: lifecycle+3actual echo paths+8explicit/implicit×Giga/SDK×deactivate/delete races. Invalid binding отвергается до OAuth/key/models/inference HTTP; provider clients закрыты, secret/env inputs не возвращаются. Новая Setup source требует собственного coverage supplement; full P2 validation ещё впереди.
 
 Source79 coverage в отдельной worktree/БД:325 tests passed145.09s,957/1141 changed executable statements=83.87%. `/tmp/t050-coverage-79.json` содержит per-file SHA/missing lines; результат относится к source79 и не приписывается автоматически последующим source changes/UI. Никакие реальные внешние сервисы для coverage не вызывались.
+
+## Streaming deadline follow-up
+
+Первый frozen `make test` на2b57831 завершился на unit:1659 passed/18 skipped/2 failed; единственный класс отказа — исходный paid diagnostic matcher «расход платного». Восстановлены прежние paid structured/stream тексты без изменения assertions; free/local missing usage также остаётся явной ошибкой. Следующие фазы того run не выполнялись.
+
+Отдельный actual PG+FakeSDK probe доказал собственную регрессию: `asyncio.timeout` в key_scope пересекал yield и отменял consumer вне generator, пока тот обрабатывал уже выданный prefix. Для streaming scope timer отключается после admission setup; absolute deadline сохраняется и ограничивает только await setup/I/O/anext через scope.wait/iterate. Non-stream timeout остаётся прежним. Неизвестная или оборванная попытка не возвращает RPD и подтверждённый floor; no fallback после prefix сохраняется. После EOF validated usage финализируется до финальной content guard, чтобы отказ полного model output не делал подтверждённый response usage неизвестным. Удалён private helper, ставший неиспользуемым после общей validation.
+
+Проверки:212 targeted provider/budget/chain/security unit passed7.64s;33 ledger PG passed24.94s;2 actual ProviderChain+durable PG passed5.86s. Включены обе модели direct consumer pause заdeadline, blocked SSE I/O, lower prefix Usage и отсутствие смешанного fallback. Test-only storage не используется в этих PG regressions. Scope только deadlines/usage bookkeeping, без новых чисел/RPM/денежных/HITL политик или реальных HTTP. Для новой source нужен fresh full/coverage; старый2b run не называется green.

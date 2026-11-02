@@ -250,13 +250,6 @@ class OpenAICompatProvider:
     def _paid(profile: LLMProfile, base_url: str) -> bool:
         return is_paid_model(profile, base_url)
 
-    @staticmethod
-    def _usage_known(usage: Any) -> bool:
-        return all(
-            isinstance(value, int) and not isinstance(value, bool) and value >= 0
-            for value in (usage.prompt_tokens, usage.completion_tokens)
-        )
-
     def _chat_client(self, base_url: str, timeout_s: float) -> AsyncOpenAI:
         _enforce_sdk_logging()
         headers: dict[str, Any] = self._headers(base_url)
@@ -305,7 +298,12 @@ class OpenAICompatProvider:
                 except APIError as exc:
                     raise self._provider_error(exc) from None
                 if result.usage is None:
-                    raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
+                    detail = (
+                        "расход платного ответа неизвестен: usage отсутствует"
+                        if self._paid(profile, base_url)
+                        else "расход ответа неизвестен: usage отсутствует"
+                    )
+                    raise ProviderError("bad_output", detail)
                 raw_usage = {
                     "prompt_tokens": result.usage.prompt_tokens,
                     "completion_tokens": result.usage.completion_tokens,
@@ -408,24 +406,26 @@ class OpenAICompatProvider:
         facts = accounting.KeyFacts(
             self.name, self._key(base_url), base_url, db_id=profile.api_key_id, paid=self._paid(profile, base_url)
         )
-        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s) as scope:
-            await self._before_chat(profile, base_url)
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s, streaming=True) as scope:
+            await scope.wait(self._before_chat(profile, base_url))
             async with scope.inference() as ticket:
                 observed: Usage | None = None
                 observed_total = 0
                 try:
-                    response = await self._chat_client(base_url, timeout_s).chat.completions.create(
-                        model=profile.model,
-                        messages=cast(list[ChatCompletionMessageParam], messages),
-                        temperature=profile.temperature,
-                        stream=True,
-                        extra_headers={} if self._key(base_url) else {"Authorization": omit},
-                        stream_options={"include_usage": True},
+                    response = await scope.wait(
+                        self._chat_client(base_url, timeout_s).chat.completions.create(
+                            model=profile.model,
+                            messages=cast(list[ChatCompletionMessageParam], messages),
+                            temperature=profile.temperature,
+                            stream=True,
+                            extra_headers={} if self._key(base_url) else {"Authorization": omit},
+                            stream_options={"include_usage": True},
+                        )
                     )
                     usage_seen = False
                     guard = CredentialStreamGuard([self._key(base_url)])
                     async with response:
-                        async for chunk in response:
+                        async for chunk in scope.iterate(response):
                             if chunk.usage is not None:
                                 raw_usage = {
                                     "prompt_tokens": chunk.usage.prompt_tokens,
@@ -447,14 +447,19 @@ class OpenAICompatProvider:
                                 safe = guard.feed(chunk.choices[0].delta.content)
                                 if safe:
                                     yield safe
-                    last = guard.finish()
-                    if last:
-                        yield last
                     if not usage_seen or observed is None:
-                        raise ProviderError("bad_output", "расход stream неизвестен: usage отсутствует")
+                        detail = (
+                            "расход платного stream неизвестен: usage отсутствует"
+                            if self._paid(profile, base_url)
+                            else "расход stream неизвестен: usage отсутствует"
+                        )
+                        raise ProviderError("bad_output", detail)
                     await ticket.observe(
                         observed.prompt_tokens, observed.completion_tokens, total_tokens=observed_total, final=True
                     )
+                    last = guard.finish()
+                    if last:
+                        yield last
                 except ProviderError as exc:
                     if observed is not None:
                         exc.usage = observed

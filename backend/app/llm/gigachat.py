@@ -11,7 +11,7 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from typing import Any
 from weakref import WeakKeyDictionary
 
@@ -486,8 +486,8 @@ class GigaChatProvider:
             raise ProviderError("miss", "профиль openai_compatible")
         key = self.pool.pick()
         facts = accounting.KeyFacts(self.name, key.secret, self._chat_base(profile), key.tokens_limit, db_id=key.db_id)
-        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s) as scope:
-            token = await self._token(key, timeout_s)
+        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s, streaming=True) as scope:
+            token = await scope.wait(self._token(key, timeout_s))
             guard = CredentialStreamGuard([key.secret, token])
             observed: Usage | None = None
             observed_total = 0
@@ -499,29 +499,32 @@ class GigaChatProvider:
                 "stream": True,
             }
             try:
-                async with (
-                    generation_slot(self.scope),
-                    scope.inference() as ticket,
-                    self._client.stream(
-                        "POST",
-                        f"{self._chat_base(profile)}/chat/completions",
-                        json=payload,
-                        timeout=timeout_s,
-                        headers={
-                            "Authorization": f"Bearer {token}",
-                            "Content-Type": "application/json",
-                            "Accept": "text/event-stream",
-                        },
-                    ) as r,
-                ):
+                async with AsyncExitStack() as stream_stack:
+                    await scope.wait(stream_stack.enter_async_context(generation_slot(self.scope)))
+                    ticket = await stream_stack.enter_async_context(scope.inference())
+                    r = await scope.wait(
+                        stream_stack.enter_async_context(
+                            self._client.stream(
+                                "POST",
+                                f"{self._chat_base(profile)}/chat/completions",
+                                json=payload,
+                                timeout=timeout_s,
+                                headers={
+                                    "Authorization": f"Bearer {token}",
+                                    "Content-Type": "application/json",
+                                    "Accept": "text/event-stream",
+                                },
+                            )
+                        )
+                    )
                     if r.status_code >= 400:
-                        await r.aread()
+                        await scope.wait(r.aread())
                         raise ProviderError(
                             "rate_limit" if r.status_code == 429 else "unavailable",
                             f"HTTP {r.status_code}",
                             status=r.status_code,
                         )
-                    async for line in r.aiter_lines():
+                    async for line in scope.iterate(r.aiter_lines()):
                         if not line.startswith("data:"):
                             continue
                         data = line[5:].strip()
@@ -563,14 +566,14 @@ class GigaChatProvider:
                             safe = guard.feed(delta)
                             if safe:
                                 yield safe
-                    last = guard.finish()
-                    if last:
-                        yield last
                     if observed is None:
                         raise ProviderError("bad_output", "расход stream неизвестен: usage отсутствует")
                     await ticket.observe(
                         observed.prompt_tokens, observed.completion_tokens, total_tokens=observed_total, final=True
                     )
+                    last = guard.finish()
+                    if last:
+                        yield last
             except ProviderError as exc:
                 if observed is not None:
                     exc.usage = observed

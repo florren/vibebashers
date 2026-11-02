@@ -940,3 +940,179 @@ async def test_existing_metadata_refresh_serializes_rpd_and_recomputes_public_re
         public = next(item for item in await task if item["id"] == created["id"])
     assert public["rpd_limit"] == public["requests_remaining"] == 3
     assert public["requests_today"] == 0 and public["requests_known"]
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_stream_deadline_never_cancels_consumer_between_pulls(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(
+            200,
+            text='data: {"choices":[{"delta":{"content":"prefix"}}]}\n\ndata: [DONE]\n\n',
+            headers={"Content-Type": "text/event-stream"},
+        )
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = provider.stream([], profile, timeout_s=2)
+    try:
+        assert await anext(stream) == "prefix"
+        # This is consumer work OUTSIDE the provider generator. Its deadline may
+        # reject the next pull, but must never asynchronously cancel this task.
+        await asyncio.sleep(2.1)
+        with pytest.raises(ProviderError) as expired:
+            await anext(stream)
+        assert expired.value.kind == "timeout" and expired.value.usage is None
+        assert calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.requests_today == 1 and not observed.usage_known
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_stream_blocked_io_has_absolute_deadline_and_preserves_known_floor(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    class Blocked(httpx.AsyncByteStream):
+        closed = False
+
+        async def __aiter__(self):
+            try:
+                yield b'data: {"choices":[{"delta":{"content":"prefix"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}\n\n'
+                await asyncio.Event().wait()
+            finally:
+                self.closed = True
+
+        async def aclose(self):
+            self.closed = True
+
+    body = Blocked()
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, stream=body, headers={"Content-Type": "text/event-stream"})
+
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = provider.stream([], profile, timeout_s=2)
+    try:
+        assert await anext(stream) == "prefix"
+        with pytest.raises(ProviderError) as expired:
+            await asyncio.wait_for(anext(stream), 4)
+        assert expired.value.kind == "timeout"
+        assert expired.value.usage.total_tokens == 2  # Lower observation, not a completeness claim.
+        assert body.closed and calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 2 and not observed.usage_known and observed.tokens_remaining is None
+    assert observed.requests_today == 1
+
+
+@pytest.mark.parametrize("provider_name", ["gigachat", "openai_compatible"])
+async def test_actual_chain_deadline_keeps_single_source_and_durable_partial_usage(accounting_case, provider_name):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.failover import ProviderChain
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile, facts = replace(original, provider=provider_name), replace(source, provider=provider_name)
+    await confirm((service, profile, facts))
+    calls = []
+
+    class Blocked(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'data: {"choices":[{"delta":{"content":"prefix"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}\n\n'
+            await asyncio.Event().wait()
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(200, stream=Blocked(), headers={"Content-Type": "text/event-stream"})
+
+    class ForbiddenMock:
+        name = "mock"
+        called = False
+
+        async def stream(self, *args, **kwargs):
+            self.called = True
+            yield "fallback-must-not-be-mixed"
+
+    fallback = ForbiddenMock()
+    if provider_name == "gigachat":
+        key = ApiKey(
+            "synthetic", facts.secret, tokens_limit=20, access_token="synthetic-access", token_expires_at=9999999999
+        )
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url="https://synthetic.invalid/oauth",
+            base_url=facts.endpoint,
+            transport=httpx.MockTransport(fake),
+        )
+    else:
+        provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    stream = ProviderChain([provider, fallback], timeouts={"default": 2}).stream([], profile)
+    try:
+        assert await anext(stream) == "prefix"
+        with pytest.raises(StopAsyncIteration):
+            await asyncio.wait_for(anext(stream), 4)
+        assert not fallback.called and calls == ["/v1/chat/completions"]
+    finally:
+        await stream.aclose()
+        await provider.aclose()
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 2 and observed.requests_today == 1 and not observed.usage_known
