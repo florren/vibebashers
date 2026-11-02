@@ -8052,12 +8052,17 @@ export interface components {
             summary_ru: string[];
             summary: string[];
             kpi: {
-                code: string;
+                /** @enum {string} */
+                code: "signals" | "negative" | "critical" | "loss" | "prevented" | "incidents";
                 label: string;
+                /** @description Текущее наблюдаемое значение. Для RUB точные суммы — в money_exact; numeric используется для совместимой визуализации. */
                 value: number | null;
                 unit: string;
+                /** @description Наблюдаемая разница: counts, процентные пункты или RUB по delta_unit; NULL при отсутствии знаменателя/полной сохранённой экономики. Для денег точный источник money_exact.kpi.*_delta_rub. */
                 delta: number | null;
                 verdict: string;
+                /** @enum {string} */
+                delta_unit: "count" | "percentage_points" | "RUB";
             }[];
             charts: {
                 /** @enum {string} */
@@ -8072,6 +8077,19 @@ export interface components {
                 sim_time: string;
                 signals: number;
                 note: string;
+                kpi: {
+                    signals: number;
+                    sentiment_known: number;
+                    negative: number;
+                    criticality_known: number;
+                    critical: number;
+                    incidents: number;
+                    economics_known: number;
+                    potential_loss_rub: number | null;
+                    prevented_loss_rub: number | null;
+                    negative_share: number | null;
+                    critical_share: number | null;
+                };
             };
             signals: components["schemas"]["CabinetSignal"][];
             top_problems: {
@@ -8083,6 +8101,9 @@ export interface components {
                 status: string;
                 team: string;
                 action: string;
+                /** @description Только native warning той же стадии/срока; false не доказывает отсутствие риска при неполной истории. */
+                sla_warning_current: boolean;
+                sla_warning_event_id: number | null;
             }[];
             attention: {
                 public_id: string;
@@ -8094,6 +8115,9 @@ export interface components {
                 team: string;
                 action: string;
                 recommendation: string;
+                /** @description Только native warning той же стадии/срока; false не доказывает отсутствие риска при неполной истории. */
+                sla_warning_current: boolean;
+                sla_warning_event_id: number | null;
             }[];
             attention_total: number;
             red_phrase_signals: number;
@@ -8124,6 +8148,10 @@ export interface components {
                     potential_loss_rub: string | null;
                     /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
                     prevented_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_delta_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_delta_rub: string | null;
                 };
                 daily: {
                     /** Format: date */
@@ -8139,6 +8167,12 @@ export interface components {
                     /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
                     potential_loss_rub: string | null;
                 }[];
+                previous: {
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    potential_loss_rub: string | null;
+                    /** @description Точная десятичная сумма RUB из сохранённых facts; text в XLSX исключает потерю копеек. */
+                    prevented_loss_rub: string | null;
+                };
             };
             /** @description До 10 первых по времени red-word сигналов; полный набор в signals, общее число red_phrase_signals. Только записанные связанные команды, иначе unknown. */
             red_phrase_attention: {
@@ -8146,6 +8180,9 @@ export interface components {
                 problem: string;
                 team: string;
             }[];
+            /** @description Количество подтверждённых native warnings текущей стадии, не прогноз полного риска. */
+            sla_warning_count: number;
+            sla_warning_note: string;
         };
         /** @description Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются. */
         CabinetOverview: {

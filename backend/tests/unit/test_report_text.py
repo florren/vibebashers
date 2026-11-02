@@ -31,6 +31,9 @@ def test_main_edges_are_truthful_and_deterministic(lang, n, saved):
     result = describe(observed(n, saved), observed(), 0, 0, lang)
     assert result == describe(observed(n, saved), observed(), 0, 0, lang)
     assert len(result["summary"]) == 5
+    import re
+
+    assert len(re.split(r"(?<=[.!?])\s+", " ".join(result["summary"]))) == 5
     assert all(result["summary"])
     assert len(result["kpi"]) == 6
     assert result["kpi"][0]["delta"] == n
@@ -65,11 +68,11 @@ def test_every_exported_string_is_text_not_formula_or_hyperlink(attack):
     }
     data = {
         "lang": "ru",
-        "money_exact": {"kpi": {}, "daily": [], "monthly": []},
+        "money_exact": {"kpi": {}, "daily": [], "monthly": [], "previous": {}},
         "overview": view,
         "summary": [attack],
-        "previous": {"note": attack},
-        "kpi": [{"label": attack, "value": 1, "unit": attack, "delta": 0, "verdict": attack}],
+        "previous": {"note": attack, "kpi": {}},
+        "kpi": [{"label": attack, "value": 1, "unit": attack, "delta": 0, "delta_unit": "count", "verdict": attack}],
         "signals": [
             {"public_id": attack, "received_sim": attack, "summary": attack, "status": attack, "source_platform": None}
         ],
@@ -87,6 +90,8 @@ def test_every_exported_string_is_text_not_formula_or_hyperlink(attack):
         ],
         "attention": [{"problem": attack, "public_id": attack, "recommendation": attack, "team": attack}],
         "attention_total": 1,
+        "sla_warning_count": 0,
+        "sla_warning_note": attack,
         "red_phrase_signals": 0,
         "red_phrase_attention": [],
     }
@@ -141,3 +146,63 @@ def test_main_topic_uses_recorded_types_and_declares_incomplete_coverage():
     assert main_topic(entries, "ru") == "технические сбои — 2 из 2 сигналов с известным типом (4 всего)"
     assert main_topic(entries, "en") == "technical faults — 2 of 2 signals with a known type (4 total)"
     assert main_topic([{"signal_type": None}], "ru") is None
+
+
+def test_all_kpi_observational_deltas_use_percentage_points_and_exact_decimal():
+    from decimal import Decimal
+
+    current, old = observed(8, Decimal("0.00")), observed(3, Decimal("0.01"))
+    current["kpi"].update(
+        negative_share=0.5, critical_share=0.25, potential_loss_rub=Decimal("900719925474099.93"), incidents=4
+    )
+    old["kpi"].update(negative_share=0.25, critical_share=0.125, potential_loss_rub=Decimal("0.01"), incidents=2)
+    rows = {row["code"]: row for row in describe(current, old, 0, 0, "ru")["kpi"]}
+    assert rows["signals"]["delta"] == 5 and rows["incidents"]["delta"] == 2
+    assert rows["negative"]["delta"] == 25 and rows["critical"]["delta"] == 12.5
+    assert rows["negative"]["delta_unit"] == "percentage_points"
+    assert rows["loss"]["delta"] == Decimal("900719925474099.92")
+    assert rows["prevented"]["delta"] == Decimal("-0.01")
+    old["kpi"].update(negative_share=None, potential_loss_rub=None)
+    rows = {row["code"]: row for row in describe(current, old, 0, 0, "ru")["kpi"]}
+    assert rows["negative"]["delta"] is rows["loss"]["delta"] is None
+
+
+def test_warning_requires_native_current_stage_deadline_and_nonterminal_state():
+    import datetime as dt
+
+    from app.analytics.cabinet_report import warning_current
+
+    now = dt.datetime(2026, 11, 9, 6, tzinfo=dt.UTC)
+    row = {
+        "status": "in_progress",
+        "stage_status": "in_progress",
+        "stage_sim": now - dt.timedelta(hours=2),
+        "created_sim": now - dt.timedelta(days=3),
+        "release_sim": None,
+        "warning_sim": now - dt.timedelta(hours=1),
+        "warning_due_sim": now + dt.timedelta(hours=1),
+        "sla_due_sim": now + dt.timedelta(hours=1),
+    }
+    assert warning_current(row, now)
+    for patch in [
+        {"status": "closed"},
+        {"status": "resolved"},
+        {"stage_status": "resolved"},
+        {"stage_sim": None},
+        {"release_sim": now},
+        {"stage_sim": row["warning_sim"]},
+        {"warning_sim": now + dt.timedelta(minutes=1)},
+        {"warning_due_sim": now + dt.timedelta(hours=2)},
+        {"warning_due_sim": "bad-date"},
+        {"warning_due_sim": "2026-11-09T07:00:00"},
+    ]:
+        assert not warning_current({**row, **patch}, now), patch.keys()
+
+
+def test_recorded_action_fallback_never_claims_an_actual_record_is_missing():
+    from app.analytics.report_text import recorded_action
+
+    assert recorded_action("release", "ru") == "Записан релиз исправления"
+    assert recorded_action("take", "en") == "Work accepted"
+    assert "(future_action)" in recorded_action("future_action", "en")
+    assert recorded_action(None, "ru") == "Действие не записано"

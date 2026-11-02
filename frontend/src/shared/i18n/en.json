@@ -2449,6 +2449,9 @@
     "clientCoverage": "Client counts refer to linked signals. Anonymous signals leave complete coverage unknown.",
     "ruleVersion": "Rule version {{version}} ({{code}})",
     "exportSnapshot": "Each download creates a new read-only snapshot: compare product line, period, run and report date.",
-    "metadataPreview": "Print descriptions are shortened; showing the first 3 rule versions and 3 runs (total {{rules}} / {{runs}})."
+    "metadataPreview": "Print descriptions are shortened; showing the first 3 rule versions and 3 runs (total {{rules}} / {{runs}}).",
+    "pp": "pp",
+    "coverage": "Coverage (sentiment; criticality; saved economics): current {{current}}; preceding window {{previous}}.",
+    "nativeWarnings": "Verified native SLA warnings: {{count}}."
   }
 }

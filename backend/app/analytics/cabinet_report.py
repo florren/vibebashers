@@ -13,7 +13,8 @@ from typing import Any
 from fastapi import HTTPException
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from openpyxl.styles import Font
+from openpyxl.styles import Alignment
+from openpyxl.utils import get_column_letter
 from psycopg.types.json import set_json_loads
 from starlette.responses import Response
 
@@ -21,7 +22,7 @@ from app import __version__
 from app.analytics.cabinet import overview
 from app.analytics.cabinet_scope import CabinetScope
 from app.analytics.cabinet_signals import signals
-from app.analytics.report_text import TEXT, describe, main_topic, status_label
+from app.analytics.report_text import TEXT, describe, main_topic, recorded_action, status_label
 from app.api.common import fetch_all, fetch_one
 from app.trace.privacy import mask
 from app.trace.store import Conn
@@ -47,6 +48,34 @@ def bounded_json(data: dict[str, Any]) -> Response:
     return Response(body, media_type="application/json")
 
 
+def warning_current(row: dict[str, Any], now: dt.datetime) -> bool:
+    """Только native evidence текущей стадии; неоднозначность не объявляется риском."""
+    if row["status"] in ("closed", "resolved", "rejected", "duplicate"):
+        return False
+
+    def timestamp(value: Any) -> dt.datetime | None:
+        try:
+            parsed = value if isinstance(value, dt.datetime) else dt.datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed.tzinfo is not None else None
+
+    stage = timestamp(row.get("stage_sim"))
+    if stage is None:
+        if row["status"] != "new":
+            return False
+        stage = timestamp(row.get("created_sim"))
+    elif row.get("stage_status") != row["status"]:
+        return False
+    release = timestamp(row.get("release_sim"))
+    if release is not None and stage is not None:
+        stage = max(stage, release)
+    at = timestamp(row.get("warning_sim"))
+    due = timestamp(row.get("warning_due_sim"))
+    current_due = timestamp(row.get("sla_due_sim"))
+    return stage is not None and at is not None and due is not None and due == current_due and stage < at <= now
+
+
 async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run: str) -> dict[str, Any]:
     # Только эта connection: JSONB numeric сохраняет десятичные копейки до export.
     set_json_loads(partial(json.loads, parse_float=Decimal), conn)
@@ -63,16 +92,30 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
         )
     current = await overview(conn, scope)
     previous_scope = replace(
-        scope, now=scope.since - dt.timedelta(microseconds=1), since=scope.since - (scope.now - scope.since)
+        scope,
+        now=scope.since - dt.timedelta(microseconds=1),
+        since=scope.since - (scope.now - scope.since) - dt.timedelta(microseconds=1),
     )
     pw, pa = previous_scope.predicate("p")
     iw, ia = previous_scope.predicate("i", time_column="created_sim")
     prior = await fetch_one(
         conn,
-        f"SELECT (SELECT count(*) FROM v_cabinet_signal_facts p WHERE {pw}) AS signals, (SELECT count(DISTINCT i.id) FROM v_cabinet_incident_facts i WHERE {iw}) AS incidents",
+        f"""
+      WITH old_signals AS MATERIALIZED (SELECT p.* FROM v_cabinet_signal_facts p WHERE {pw}),
+      old_incidents AS MATERIALIZED (SELECT DISTINCT i.id,i.computed_at,i.potential_loss_rub,i.prevented_loss_rub FROM v_cabinet_incident_facts i WHERE {iw}),
+      sk AS (SELECT count(*) AS signals,count(*) FILTER(WHERE sentiment IN ('positive','neutral','negative')) AS sentiment_known,
+        count(*) FILTER(WHERE sentiment='negative') AS negative,count(*) FILTER(WHERE criticality IN ('high','medium','low')) AS criticality_known,
+        count(*) FILTER(WHERE criticality='high') AS critical FROM old_signals),
+      ik AS (SELECT count(*) AS incidents,count(computed_at) AS economics_known,
+        CASE WHEN count(computed_at)=count(*) THEN sum(potential_loss_rub) END AS potential_loss_rub,
+        CASE WHEN count(computed_at)=count(*) THEN sum(prevented_loss_rub) END AS prevented_loss_rub FROM old_incidents)
+      SELECT sk.*,ik.* FROM sk CROSS JOIN ik
+    """,
         [*pa, *ia],
-    )  # noqa: S608
+    )  # noqa: S608 — predicates внутренние; значения параметризованы.
     assert prior is not None
+    prior["negative_share"] = prior["negative"] / prior["sentiment_known"] if prior["sentiment_known"] else None
+    prior["critical_share"] = prior["critical"] / prior["criticality_known"] if prior["criticality_known"] else None
     previous = {"kpi": prior}
     # False снимает presentation preset, чтобы JSON/XLSX совпадали с overview.
     entries = await signals(
@@ -93,8 +136,22 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
         f"""
         WITH selected AS MATERIALIZED (
           SELECT DISTINCT f.id FROM v_cabinet_incident_facts f WHERE {incident_where}
+        ), actions AS (
+          SELECT a.incident_id,(array_agg(a.action ORDER BY a.action_sim DESC,a.id DESC))[1] AS last_action,
+            max(a.action_sim) FILTER(WHERE a.action='release') AS release_sim
+          FROM team_actions a JOIN selected x ON x.id=a.incident_id JOIN incidents i ON i.id=x.id AND i.run_id=a.run_id GROUP BY a.incident_id
+        ), stages AS (
+          SELECT DISTINCT ON (h.incident_id) h.incident_id,h.changed_sim,h.to_status
+          FROM incident_status_history h JOIN selected x ON x.id=h.incident_id ORDER BY h.incident_id,h.changed_sim DESC,h.id DESC
+        ), warnings AS (
+          SELECT DISTINCT ON (e.run_id,e.payload->>'incident_id') e.id,e.run_id,e.payload,e.sim_time
+          FROM sim_events e JOIN incidents i ON e.run_id=i.run_id AND e.payload->>'incident_id'=i.id::text
+          JOIN selected x ON x.id=i.id WHERE e.event_type='sla.warning' AND e.sim_time<=%s
+          ORDER BY e.run_id,e.payload->>'incident_id',e.sim_time DESC,e.id DESC
         ), details AS (
-          SELECT i.id,i.public_id,i.title,i.status,i.criticality,i.sla_due_sim,i.sla_breached,
+          SELECT i.id,i.run_id,i.created_sim,i.public_id,i.title,i.status,i.criticality,i.sla_due_sim,i.sla_breached,
+            max(a.last_action) AS last_action,max(a.release_sim) AS release_sim,
+            max(h.changed_sim) AS stage_sim,max(h.to_status) AS stage_status,
             i.resolution_summary,t.name_ru AS team_ru,t.name_en AS team_en,
             r.name_ru AS region_ru,r.name_en AS region_en,
             CASE WHEN count(s.id)>0 AND count(s.id)=count(s.client_id) THEN count(DISTINCT s.client_id) END AS clients,
@@ -104,12 +161,14 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
              i.sla_due_sim < %s AND i.status NOT IN ('closed','resolved','rejected','duplicate')) AS attention
           FROM selected x JOIN incidents i ON i.id=x.id JOIN teams t ON t.code=i.team_code
           LEFT JOIN regions r ON r.code=i.region_code
+          LEFT JOIN actions a ON a.incident_id=i.id LEFT JOIN stages h ON h.incident_id=i.id
           LEFT JOIN incident_signals ix ON ix.incident_id=i.id
           LEFT JOIN v_cabinet_signal_facts s ON s.id=ix.signal_id AND s.run_id=i.run_id
             AND (%s::text[] IS NULL OR s.product_line_code=ANY(%s))
           GROUP BY i.id,t.name_ru,t.name_en,r.name_ru,r.name_en
         ) SELECT
           (SELECT count(*) FROM details WHERE attention) AS attention_total,
+          (SELECT jsonb_agg(to_jsonb(d)||jsonb_build_object('warning_event_id',w.id,'warning_sim',w.sim_time,'warning_due_sim',w.payload->>'due_sim')) FROM details d JOIN warnings w ON w.run_id=d.run_id AND w.payload->>'incident_id'=d.id::text) AS warning_candidates,
           (SELECT jsonb_agg(to_jsonb(p)) FROM (SELECT * FROM details ORDER BY attention DESC,clients DESC NULLS LAST,id LIMIT 5) p) AS problems,
           (SELECT jsonb_agg(to_jsonb(p)) FROM (SELECT * FROM details WHERE attention ORDER BY sla_due_sim,id LIMIT 10) p) AS attention,
           (SELECT jsonb_agg(DISTINCT ie.breakdown->>'formula_ru') FILTER(WHERE ie.breakdown->>'formula_ru' IS NOT NULL)
@@ -119,9 +178,33 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
              JOIN v_cabinet_signal_facts s ON s.id=ix.signal_id AND s.received_sim BETWEEN %s AND %s AND (%s::text[] IS NULL OR s.product_line_code=ANY(%s)) JOIN incidents i ON i.id=x.id AND i.run_id=s.run_id
              JOIN rule_evaluations re ON re.signal_id=s.id AND re.run_id=s.run_id) AS rules
     """,
-        [*incident_args, scope.now, scope.lines, scope.lines, scope.since, scope.now, scope.lines, scope.lines],
+        [
+            *incident_args,
+            scope.now,
+            scope.now,
+            scope.lines,
+            scope.lines,
+            scope.since,
+            scope.now,
+            scope.lines,
+            scope.lines,
+        ],
     )  # noqa: S608
     assert facts is not None
+    valid_warnings = [row for row in facts["warning_candidates"] or [] if warning_current(row, scope.now)]
+    facts["attention_total"] += sum(not row["attention"] for row in valid_warnings)
+    marked = [{**row, "attention": True, "sla_warning_current": True} for row in valid_warnings]
+    merged_problems = {row["id"]: row for row in facts["problems"] or []}
+    merged_problems.update({row["id"]: row for row in marked})
+    facts["problems"] = sorted(
+        merged_problems.values(),
+        key=lambda row: (not row["attention"], row["clients"] is None, -(row["clients"] or 0), row["id"]),
+    )[:5]
+    merged_attention = {row["id"]: row for row in facts["attention"] or []}
+    merged_attention.update({row["id"]: row for row in marked})
+    facts["attention"] = sorted(
+        merged_attention.values(), key=lambda row: (dt.datetime.fromisoformat(row["sla_due_sim"]), row["id"])
+    )[:10]
     t = TEXT[lang]
     red_signals = [row for row in entries["items"] if "red_word" in row["flags"]]
     red = len(red_signals)
@@ -143,7 +226,9 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
             "region": row["region_" + lang] or t["region_unknown"],
             "status": status_label(row["status"], lang),
             "team": row["team_" + lang],
-            "action": mask(row["resolution_summary"], 180) if row["resolution_summary"] else t["not_recorded"],
+            "action": mask(row["resolution_summary"], 180).strip() or recorded_action(row.get("last_action"), lang),
+            "sla_warning_current": bool(row.get("sla_warning_current")),
+            "sla_warning_event_id": row.get("warning_event_id") if row.get("sla_warning_current") else None,
         }
 
     runs = await fetch_all(
@@ -160,7 +245,17 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
         return None if value is None else format(Decimal(value), "f")
 
     money_exact = {
-        "kpi": {name: exact(current["kpi"][name]) for name in ("potential_loss_rub", "prevented_loss_rub")},
+        "kpi": {
+            **{name: exact(current["kpi"][name]) for name in ("potential_loss_rub", "prevented_loss_rub")},
+            **{
+                ("potential_loss_delta_rub" if row["code"] == "loss" else "prevented_loss_delta_rub"): exact(
+                    row["delta"]
+                )
+                for row in words["kpi"]
+                if row["unit"] == "RUB"
+            },
+        },
+        "previous": {name: exact(prior[name]) for name in ("potential_loss_rub", "prevented_loss_rub")},
         "daily": [
             {
                 "day": str(row["day"]),
@@ -183,12 +278,18 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
             "since_sim": previous_scope.since,
             "sim_time": previous_scope.now,
             "signals": previous["kpi"]["signals"],
+            "kpi": prior,
             "note": t["coverage"],
         },
         "signals": entries["items"],
         "top_problems": [problem(row) for row in facts["problems"] or []],
-        "attention": [{**problem(row), "recommendation": t["action"]} for row in facts["attention"] or []],
+        "attention": [
+            {**problem(row), "recommendation": t["warning_action"] if row.get("sla_warning_current") else t["action"]}
+            for row in facts["attention"] or []
+        ],
         "attention_total": facts["attention_total"],
+        "sla_warning_count": len(valid_warnings),
+        "sla_warning_note": t["warning_note"],
         "red_phrase_signals": red,
         "red_phrase_attention": [
             {
@@ -230,15 +331,26 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
             # До открытия XML writers: отказ не оставляет частично записанный XLSX.
             raise HTTPException(413, "Текст отчёта не помещается в безопасную XLSX-ячейку; используйте JSON")
     wb = Workbook(write_only=True)
-    font = Font(name="Calibri", size=11)
+    wrap = Alignment(wrap_text=True, vertical="top")
 
     def sheet(name: str, rows: list[list[Any]]) -> None:
         from openpyxl.cell import WriteOnlyCell
 
         ws = wb.create_sheet(name)
-        for row in rows:
+        widths = {
+            "Главное": [110],
+            "KPI": [40, 30, 14, 30, 18, 65],
+            "Сигналы": [22, 28, 90, 28, 35],
+            "Динамика": [18, 20, 18, 30, 30],
+            "Источники": [50, 18],
+            "Регионы": [50, 18, 18, 28, 28],
+            "Методика": [30, 100, 30, 30, 30, 60, 40],
+        }
+        for index, width in enumerate(widths[name], 1):
+            ws.column_dimensions[get_column_letter(index)].width = width
+        for row_index, row in enumerate(rows):
             cells = []
-            for value in row:
+            for col_index, value in enumerate(row):
                 value = value if not isinstance(value, (dict, list)) else str(value)
                 if isinstance(value, str) and (len(value) > 32767 or ILLEGAL_CHARACTERS_RE.search(value)):
                     raise HTTPException(413, "Текст отчёта не помещается в безопасную XLSX-ячейку; используйте JSON")
@@ -246,7 +358,14 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
                 if isinstance(cell.value, str):
                     # Не меняем видимый текст и не создаём executable formula/hyperlink.
                     cell.data_type = "s"
-                cell.font = font
+                if isinstance(value, str) and len(value) > 60:
+                    cell.alignment = wrap
+                if name == "KPI" and row_index > 0:
+                    metric = data["kpi"][row_index - 1]
+                    if col_index == 1 and metric["unit"] == "%":
+                        cell.number_format = "0.0%"
+                    elif col_index == 3 and metric["delta_unit"] == "percentage_points":
+                        cell.number_format = '0.0" ' + ("п.п." if data["lang"] == "ru" else "pp") + '"'
                 cells.append(cell)
             ws.append(cells)
 
@@ -260,7 +379,7 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
     sheet(
         "KPI",
         [
-            labels("label", "value", "unit", "delta", "verdict"),
+            labels("label", "value", "unit", "delta", "delta_unit", "verdict"),
             *[
                 [
                     r["label"],
@@ -268,7 +387,16 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
                     if r["unit"] == "RUB"
                     else r["value"],
                     r["unit"],
-                    r["delta"],
+                    data["money_exact"]["kpi"][
+                        "potential_loss_delta_rub" if r["code"] == "loss" else "prevented_loss_delta_rub"
+                    ]
+                    if r["unit"] == "RUB"
+                    else r["delta"],
+                    "RUB"
+                    if r["delta_unit"] == "RUB"
+                    else ("п.п." if data["lang"] == "ru" else "pp")
+                    if r["delta_unit"] == "percentage_points"
+                    else TEXT[data["lang"]]["count"],
                     r["verdict"],
                 ]
                 for r in data["kpi"]
@@ -294,13 +422,25 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
     sheet(
         "Динамика",
         [
-            labels("series", "date", "signals", "loss_rub"),
+            labels("series", "date", "signals", "loss_rub", "prevented_rub"),
             *[
-                ["daily", str(r["day"]), r["signals"], data["money_exact"]["daily"][n]["potential_loss_rub"]]
+                [
+                    "daily",
+                    str(r["day"]),
+                    r["signals"],
+                    data["money_exact"]["daily"][n]["potential_loss_rub"],
+                    data["money_exact"]["daily"][n]["prevented_loss_rub"],
+                ]
                 for n, r in enumerate(k["daily"])
             ],
             *[
-                ["monthly", str(r["month"]), r["signals"], data["money_exact"]["monthly"][n]["potential_loss_rub"]]
+                [
+                    "monthly",
+                    str(r["month"]),
+                    r["signals"],
+                    data["money_exact"]["monthly"][n]["potential_loss_rub"],
+                    None,
+                ]
                 for n, r in enumerate(k["monthly"])
             ],
         ],
@@ -334,6 +474,12 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
     method_rows.extend([["formula_ru", formula] for formula in method["formula_ru"]])
     method_rows.extend([["rule", rule["code"], rule["version"]] for rule in method["rules_version"]])
     method_rows.extend([["run", ident] for ident in method["run_public_id"]])
+    method_rows.extend(
+        [
+            ["previous." + name, data["money_exact"]["previous"].get(name, value)]
+            for name, value in data["previous"]["kpi"].items()
+        ]
+    )
     method_rows.append(["top_problems", "problem", "clients", "region", "status", "action", "team"])
     method_rows.extend(
         [
@@ -350,6 +496,7 @@ def workbook_bytes(data: dict[str, Any]) -> bytes:
         ]
     )
     method_rows.append(["attention_total", data["attention_total"]])
+    method_rows.append(["native_sla_warnings", data["sla_warning_count"], data["sla_warning_note"]])
     method_rows.extend(
         [
             ["attention", row["problem"] + " (" + row["public_id"] + ")", row["recommendation"], row["team"]]
