@@ -69,3 +69,20 @@ APP_SECRET/internal secret. Не откатывать на unsigned inbound по
 Не выполнять повторную отправку unknown без ручной сверки Telegram. Автоматического
 backfill внешних сообщений для прежних seed/history нет. Реальный jury/health/QR
 проход остаётся T-122/live proof; health flag+token пока не означает verified liveness.
+
+## Composition P1/current main и повторные проверки
+
+Runtime source155600e содержит P1 profiles/startup guards и main e572939.
+Полный backend unit:1633passed/18skip54.20s. Штатный make lint green:
+326frontend, Ruff431/mypy283, botRuff11/mypy5, drift192. 87target unit/PG
+passed89.80s; весь transport412/450 исполняемых строк=91.56%, delivery130/149=87.25%,
+каждый transport module≥80%; hashes в T-121-transport-coverage.json.
+
+Production UI unknown:4/4 ru/en×themes, настоящие API, отдельные явно синтетические
+status fixtures (не фактические Telegram receipts),94 table hashes unchanged,
+0nonGET/0external/0LLM/pageerrors. Screenshots и proof:docs/screenshots/T-121/.
+Preview принудительно default_transaction_read_only, external DNS/socket guard;
+собственный процесс остановлен после proof. Обе production builds прошли штатный
+npm run build (он уже включает personal); отдельного build:personal script нет.
+
+Полные integration/scenario/compliance/bot фазы ещё выполняются; итог не заявлен.
