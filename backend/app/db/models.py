@@ -160,6 +160,23 @@ class TelegramChatRate(Base):
     last_claimed_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
 
 
+class TelegramClientBindings(Base):
+    __tablename__ = 'telegram_client_bindings'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_client_bindings_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_client_bindings_chat_id_check'),
+        PrimaryKeyConstraint('bot_id', 'client_id', name='telegram_client_bindings_pkey'),
+        UniqueConstraint('bot_id', 'chat_id', name='telegram_client_bindings_bot_id_chat_id_key'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    client_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    client_code: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
 class TelegramConversations(Base):
     __tablename__ = 'telegram_conversations'
     __table_args__ = (
@@ -202,6 +219,7 @@ class TelegramDeliveries(Base):
     completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     external_ref: Mapped[Optional[str]] = mapped_column(Text)
     error_code: Mapped[Optional[str]] = mapped_column(Text)
+    sent_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 
 
 class TelegramInbound(Base):
@@ -220,6 +238,24 @@ class TelegramInbound(Base):
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     body_hash: Mapped[str] = mapped_column(Text, nullable=False)
     response_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramSignalBindings(Base):
+    __tablename__ = 'telegram_signal_bindings'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_signal_bindings_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_signal_bindings_chat_id_check'),
+        CheckConstraint("token_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_signal_bindings_token_hash_check'),
+        PrimaryKeyConstraint('bot_id', 'signal_id', 'run_id', 'token_hash', name='telegram_signal_bindings_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    signal_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(Text, primary_key=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
 
 
@@ -2292,7 +2328,7 @@ class Notifications(Base):
     __tablename__ = 'notifications'
     __table_args__ = (
         CheckConstraint("recipient_type = ANY (ARRAY['client'::text, 'team'::text, 'public'::text, 'cx'::text])", name='notifications_recipient_type_check'),
-        CheckConstraint("status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'failed'::text, 'suppressed'::text])", name='notifications_status_check'),
+        CheckConstraint("status = ANY (ARRAY['queued'::text, 'sent'::text, 'delivered'::text, 'failed'::text, 'suppressed'::text, 'unknown'::text])", name='notifications_status_check'),
         ForeignKeyConstraint(['client_id'], ['clients.id'], name='notifications_client_id_fkey'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='notifications_incident_id_fkey'),
         ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='notifications_run_id_fkey'),
