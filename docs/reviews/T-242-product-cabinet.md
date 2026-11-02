@@ -21,7 +21,7 @@ Stacked branch `codex/T-242-product-cabinet` поверх `codex/T-243-server-ca
 Final coherent runtime source `833690` (T24119135 customer-only view18 +T2431acc686/API24); handoff81066a8 normal-merges T24372a4365/T241f987591, runtime diff0:
 - full frontend **407 passed**,55files (финальный `make lint` также повторил этот набор); полный composed `make lint` green (Ruff447/mypy292, bot11/5, drift193/193), typecheck green; обе production builds (`vite build` и personal) green; i18n2019keys и generated TS без diff; tasks205 дважды без diff;
 - actual production Playwright **5/5**,27.7s: ru/en × light/dark, реальные KPI/API, keyboard map/prefetch/completedopacity0.35, signal Drawer, full-viewport calculator/visible input/focus Escape, strict own/foreign403, softall, reset/Undo, mobile360 nooverflow/header≤100, fixednight/reducedmotion,7blocks и scoped digest IDs;
-- все31actualcatalogcodes по одному выбраны через UI с HTTP200 и совпадением serveramount, region-prefill/servermoney, known0→server0 и unknown→noquery/`—`; palette text minimum≥4.5/control≥3 в каждой теме; infinite animations0, page errors0, page non-GET attempts0, global incidents/signals queries0, external0. Setup/restore fixture явно PATCHит только собственные settings — **не утверждается DB unchanged для всей browser фазы**;
+- все31actualcatalogcodes по одному выбраны через UI с HTTP200 и совпадением serveramount, region-prefill/servermoney, known0→server0 и unknown→noquery/`—`; palette text minimum≥4.5/control≥3 в каждой теме; infinite animations0, page errors0, запрещённых non-GET вне /api/settings —0, global incidents/signals queries0, external0. UI visibility и setup/restore fixture явно PATCHят собственные settings — **не утверждается DB unchanged для всей browser фазы**;
 - read-only cabinet API отдельно: финальный T24165PG/unit green,98%coverage; demo5000/2813signals,25GET каждогоscope, bank p9540.49ms/direction24.15ms,107 public/private table fingerprints unchanged, LLM/external0 и safe EXPLAIN (`T-241-demo-performance.json`). Никаких compute_incident/money writes;
 -14curatedPNG просмотрены и tracked в `docs/screenshots/T-242`; exact hashes/actual guards — `T-242-browser-proof.json`.
 
@@ -45,7 +45,7 @@ T243 serverproducer/formatter внедрены отдельным API24 паке
 только server core. Ранее versioned UI00d6 был structural proof и содержал local
 arithmetic gap — это не financial acceptance и не итоговый producer.
 Actual GET phase35requests/31codes+known0+422:107table fingerprints unchanged,
-BombLLM/external markers absent. Браузерная fixture PATCH settings выделена отдельно.
+BombLLM/external markers absent. PATCH settings из UI visibility и fixtures выделены отдельно; общее число non-GET не измерялось.
 T262 canonical cabinet_red_words_report scenario14 ещё отсутствует (existing
 number14 demo20_branch_queue — другой сценарий); этот сценарный DoD не подменяется
 UI smoke. Формулы/premium/HITL policy не расширялись. Статус карточки in_progress до CI/review, placeholder KPI нет.
@@ -70,3 +70,9 @@ positiveidentifiedprefill проверенunit/actualPGcoveragefixture.14PNG с�
 изэтогоcoherent source.35GET/107fp повтореныпослеbrowserfixtureфазы, unchanged,
 LLM/external0. Дваruntimeфикса приQA (card-transformDrawer/duplicate localarith)
 исправлены и защищены регрессиями; всеAPI/money approvals ещёpendinghumanreview.
+
+Уточнение счётчиков browser guard: `forbidden_writes=[]` означает отсутствие
+запрещённых non-GET **вне** `/api/settings`, а не отсутствие всех non-GET.
+Visibility UI намеренно делает PATCH settings; fixtures также PATCHят их.
+Общий счётчик non-GET не снимался. Отдельная фаза35GET без этих PATCH имеет
+реальное доказательство unchanged fingerprints107таблиц.

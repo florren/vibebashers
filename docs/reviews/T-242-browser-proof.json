@@ -96,8 +96,7 @@
       "night_scoped_high_count": 8
     }
   ],
-  "browser_page_non_get_attempts": 0,
-  "fixture_writes": "Only explicit own scratch /api/settings PATCH setup/restore; this is NOT a whole-browser DB-unchanged claim. Cabinet GET-only fingerprints are independently proven over107tables in T241 performance report.",
+  "fixture_writes": "UI visibility and fixture setup/restore explicitly write own scratch settings. No whole-browser DB-unchanged claim. Forbidden non-GET outside /api/settings count0; separate35GET phase fingerprints107tables unchanged.",
   "server_llm_attempt_marker_exists": false,
   "server_external_attempt_marker_exists": false,
   "screenshots": [
@@ -210,5 +209,7 @@
     ],
     "readonly_page_failures": []
   },
-  "ui_fixture_proactive_origins": 0
+  "ui_fixture_proactive_origins": 0,
+  "browser_forbidden_non_get_attempts": 0,
+  "allowed_browser_writes": "UI visibility PATCH /api/settings is deliberately allowed and exercised; fixture setup/restore also PATCH settings via request context. The count of all non-GET requests was not measured."
 }
