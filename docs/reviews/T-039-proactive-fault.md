@@ -85,3 +85,41 @@ verified mass2. 1 passed/7.94s. Unit wake/coalescing/cancellation + старые
 tracking/ingest/maintenance checks: 28 passed/2.30s; Ruff и mypy runner зелёные.
 Первый non-escalated TestClient запуск остановлен из-за известного sandbox hang;
 доказательством служит полный host повтор, не незавершённый запуск.
+
+### Financial candidate: actual cohort вместо service/complaint rows
+
+Сохранённый numeric regression подтвердил ошибку: один actual failed клиент,
+`mass_impact=1`, но после первого customer metadata link stored
+`incident_economics.affected_count` становился `2`: `signals_count` включал
+служебный anchor. При исправлении before/after в обоих competing-fault cases:
+`(mass, affected, potential_loss_rub, premium_addon_rub)` =
+`(1, 1, 22.92, 0)` → `(1, 1, 22.92, 0)`. Старое значение potential loss отдельно
+не снималось; старое `affected=2` подтверждено red regression, не расчётной оценкой.
+
+`origin IS DISTINCT FROM 'proactive'` исключает service rows из customer count,
+сохраняя legacy NULL. Для reserved native fault-monitor anchor требуется полный
+canonical ingest payload/source/external-id/run/fault lineage. Shape лишь требует
+проверку, authority не даёт. Cohort — DISTINCT actual failed clients собственного
+run/fault/system/code/window, `started_sim <= own as_of`, с native fault.started.
+Stored fault counters, будущие операции и число повторных customer signals не
+подменяют cohort. Несовпадающий mass, отсутствующие/неконсистентные native facts,
+provenance или own clock дают диагностируемую ошибку до financial writes.
+Для исторического native run используется собственный `finished_sim`, для
+текущего — persisted native clock; глобальные часы другого run не заимствуются.
+Legacy/non-service fallback сохранён. Ставки, коэффициенты, retention, формула,
+refund/HITL policy и платежи не меняются.
+
+Это financial + HITL reviewer packet: metadata link до approval обновляет не
+только relation/header, но и stored incident_economics через existing tool.
+Pending human остаётся pending; act/refund/gift до approval не исполняются.
+Откат без DDL — возврат source, но он возвращает известное ошибочное вычисление
+service count; recovery при invalid native facts — восстановить/проверить native
+scope и повторить штатный link/recompute, не подставлять ноль/старый payload.
+User approval этого нового financial/HITL diff ещё не получено.
+
+35 actual-PG regressions passed/218.73s: native future/counter ignore, восемь
+negative facts с неизменным stored financial JSON после ошибки, повторный
+customer/HITL, timing/recovery/runner, прежние finance/map/anonymous consumers.
+Чистая формула/ingress/runner: 19 unit passed/1.08s; Ruff/mypy dCLTV зелёные.
+Полный unit financial candidate: 1800 passed/18 skipped/54.16s. Full всей T039 и
+exact-head CI ещё не выполнялись; actual120/90/30 остаётся следующим proof.

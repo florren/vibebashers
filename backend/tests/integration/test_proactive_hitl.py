@@ -17,7 +17,7 @@ from .test_proactive_fault import fault, operation
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("competing", [False, True])
-async def test_verified_customer_fault_link_is_recorded_while_real_hitl_still_waits(seeded, competing):
+async def test_verified_customer_fault_link_is_recorded_while_real_hitl_still_waits(seeded, competing, record_property):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run = await new_run(conn, "T039 causal link before HITL")
         at = await sim_now(conn)
@@ -33,6 +33,17 @@ async def test_verified_customer_fault_link_is_recorded_while_real_hitl_still_wa
         service = await process_signal(conn, signal_id=service_id, chain=mock_chain(), profile=MOCK_PROFILE)
         assert service is not None and service["client"] is None
         incident_id = (await (await conn.execute("select id from incidents where run_id=%s", (run,))).fetchone())[0]
+
+        async def economics():
+            return await (
+                await conn.execute(
+                    "select i.mass_impact,e.affected_count,e.potential_loss_rub,e.premium_addon_rub "
+                    "from incidents i join incident_economics e on e.incident_id=i.id where i.id=%s",
+                    (incident_id,),
+                )
+            ).fetchone()
+
+        before_economics = await economics()
         if competing:
             competing_at = at + dt.timedelta(seconds=30)
             other_fault = await fault(conn, run, competing_at)
@@ -55,6 +66,10 @@ async def test_verified_customer_fault_link_is_recorded_while_real_hitl_still_wa
         result = await create_signal(conn, msg, source_code="api", run_id=run, sim_time=later)
         await conn.commit()
         state = await process_signal(conn, signal_id=result["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE)
+        after_economics = await economics()
+        assert after_economics[:2] == before_economics[:2] == (1, 1)
+        record_property("economics_before", str(before_economics))
+        record_property("economics_after_metadata_hitl", str(after_economics))
         assert state["outcome"] == "awaiting_human"
         assert state["decision"]["needs_human"] is True
         assert state["decision"]["incident_action"] == "link_existing"
@@ -84,6 +99,7 @@ async def test_verified_customer_fault_link_is_recorded_while_real_hitl_still_wa
             conn, signal_id=second["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE
         )
         assert second_state["outcome"] == "awaiting_human"
+        assert (await economics())[:2] == (1, 1)
         assert await (
             await conn.execute("select incident_id from incident_signals where signal_id=%s", (second["signal_id"],))
         ).fetchall() == [(incident_id,)]
