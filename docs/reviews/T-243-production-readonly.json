@@ -1,0 +1,11 @@
+{
+  "source_api": "Composed T2431acc686/T242833690/customer-view19135 production loopback, Mock-only/BombLLM/external guards",
+  "catalog_codes_checked": 31,
+  "get_requests": 35,
+  "fingerprint_tables": 107,
+  "fingerprints_unchanged": true,
+  "changed_tables": [],
+  "server_llm_attempt_marker": false,
+  "server_external_attempt_marker": false,
+  "fixture_writes_in_phase": 0
+}

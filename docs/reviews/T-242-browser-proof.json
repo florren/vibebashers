@@ -1,0 +1,215 @@
+{
+  "application_source": "81066a8 (runtime byte-identical833690), normal T24372a4365/T241f987591; API1.5.24/customer-view18",
+  "fixture": "actual PostgreSQL0018, standard demo5000/2813signals, own cx_cabinet_ui_revision; no API mocks",
+  "browser_result": "5 passed in27.7s at runtime833690, including31ratecodes and actualemptyregion0",
+  "browser_cases": [
+    {
+      "language": "ru",
+      "mode": "light",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 4.760713308355131,
+        "control": 3.1834204505648223
+      },
+      "preview_queries": [
+        "?affected=2&rate_code=deposit&detractor_share=0.1&no_return_share=0.5",
+        "?affected=2&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5",
+        "?affected=0&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5"
+      ],
+      "rate_catalog_count": 31,
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "ru",
+      "mode": "dark",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 5.793715110412343,
+        "control": 4.672395027039239
+      },
+      "preview_queries": [
+        "?affected=2&rate_code=deposit&detractor_share=0.1&no_return_share=0.5",
+        "?affected=2&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5",
+        "?affected=0&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5"
+      ],
+      "rate_catalog_count": 31,
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "en",
+      "mode": "light",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 4.760713308355131,
+        "control": 3.1834204505648223
+      },
+      "preview_queries": [
+        "?affected=2&rate_code=deposit&detractor_share=0.1&no_return_share=0.5",
+        "?affected=2&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5",
+        "?affected=0&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5"
+      ],
+      "rate_catalog_count": 31,
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    },
+    {
+      "language": "en",
+      "mode": "dark",
+      "block_count": 7,
+      "product_line": "deposits",
+      "strict_foreign_status": 403,
+      "global_queries": [],
+      "forbidden_writes": [],
+      "external": [],
+      "page_errors": [],
+      "palette": {
+        "text": 5.793715110412343,
+        "control": 4.672395027039239
+      },
+      "preview_queries": [
+        "?affected=2&rate_code=deposit&detractor_share=0.1&no_return_share=0.5",
+        "?affected=2&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5",
+        "?affected=0&rate_code=auto_loan&detractor_share=0.1&no_return_share=0.5"
+      ],
+      "rate_catalog_count": 31,
+      "night": "explicit fixed phase, reduced motion",
+      "night_scoped_high_count": 8
+    }
+  ],
+  "fixture_writes": "UI visibility and fixture setup/restore explicitly write own scratch settings. No whole-browser DB-unchanged claim. Forbidden non-GET outside /api/settings count0; separate35GET phase fingerprints107tables unchanged.",
+  "server_llm_attempt_marker_exists": false,
+  "server_external_attempt_marker_exists": false,
+  "screenshots": [
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-top.png",
+      "sha256": "d1a07cb3e424b443f741bee28d491ff3741048938aa4ebda17f9a2b0b097f8e1"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-region.png",
+      "sha256": "bf4a434a1ccee41c99506c231defa23470f24fa6fa39896577db79668d72c7af"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-analytics.png",
+      "sha256": "6caf0e57a4ceb586071f2cf0c0b79ef872b128cfed61c061de02f15b289d15c5"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-calculator.png",
+      "sha256": "df1bf4b84089d5f4032f690080b769d2cca37e4f85540baa30e76ac0ee37fcb5"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-mobile.png",
+      "sha256": "0e02f51e5104983641c7f52b20ff5e1305b74a2a17d9a72e0d6985a157a6aa00"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-light-night-mobile.png",
+      "sha256": "7663590981dd51e4cbb303b5bf91587efa1cf0e30ac9a42339016b86faea1886"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-ru-dark-top.png",
+      "sha256": "1fd53031c28e85e592967893e8073b144f31826e413e6086567acf244a54b0bb"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-light-top.png",
+      "sha256": "444cfe5d5910799fe469bc1eee56bdb820697d8d2e71d2537453e85183377d04"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-top.png",
+      "sha256": "1a85c4da5e6099dd0e1e1fdf6cf3f3d3ccba188c9eb3ee3573035864233f8b4b"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-region.png",
+      "sha256": "316c7220943e8babde359384ab78ad41c23cf7e3798d88809b00bfe603092f97"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-analytics.png",
+      "sha256": "c9756f585fb6f9d5e16c071d234027a35cb258f1fe9d0432a505fdf3eaf7e41a"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-calculator.png",
+      "sha256": "37697cbad7930ea4650a219b8ce644c4a20136d27c7d67dbecb93ee501b86135"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-mobile.png",
+      "sha256": "7a762b78172d136ce7dadbf634e7fe4f65f938bdf8ee958b419b0b4fd607a850"
+    },
+    {
+      "path": "docs/screenshots/T-242/cabinet-en-dark-night-mobile.png",
+      "sha256": "5bbc43b2f292a6ac9f326ba93ada5fec454b179218e7f3ddac5682f91368395c"
+    }
+  ],
+  "financial_producer": "Only GET/api/metrics/economics/preview -> dcltv.compute; no local arithmetic. Money inputs/rounded amount are server DTO. Three-decimal rates preserved; results2decimals.",
+  "production_readonly": {
+    "source_api": "Composed T2431acc686/T242833690/customer-view19135 production loopback, Mock-only/BombLLM/external guards",
+    "catalog_codes_checked": 31,
+    "get_requests": 35,
+    "fingerprint_tables": 107,
+    "fingerprints_unchanged": true,
+    "changed_tables": [],
+    "server_llm_attempt_marker": false,
+    "server_external_attempt_marker": false,
+    "fixture_writes_in_phase": 0
+  },
+  "actual_ui_rate_catalog": {
+    "source": "T242+T243 actual production composition",
+    "catalog_count": 31,
+    "actual_empty_region_prefill": 0,
+    "actual_empty_region_server_result": 0,
+    "all_selected_codes": [
+      "atm",
+      "auto_loan",
+      "bank_average",
+      "bnpl",
+      "branches",
+      "brokerage",
+      "call_center",
+      "card_delivery",
+      "consumer_loan",
+      "credit_card",
+      "debit_card",
+      "deposit",
+      "id_service",
+      "insurance",
+      "investments",
+      "kids_card",
+      "kids_service",
+      "loyalty",
+      "mobile_app",
+      "mortgage",
+      "notifications",
+      "pay_service",
+      "payments",
+      "pension",
+      "pos_terminals",
+      "premium_service",
+      "real_estate",
+      "salary_card",
+      "subscription",
+      "support_chat",
+      "transfers"
+    ],
+    "readonly_page_failures": []
+  },
+  "ui_fixture_proactive_origins": 0,
+  "browser_forbidden_non_get_attempts": 0,
+  "allowed_browser_writes": "UI visibility PATCH /api/settings is deliberately allowed and exercised; fixture setup/restore also PATCH settings via request context. The count of all non-GET requests was not measured."
+}

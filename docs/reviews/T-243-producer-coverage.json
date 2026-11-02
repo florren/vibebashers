@@ -1,0 +1,24 @@
+{
+  "baseline": "f15b02d",
+  "file": "backend/app/api/metrics.py",
+  "new_executable_lines": [
+    10,
+    230,
+    231,
+    234,
+    235,
+    236,
+    238
+  ],
+  "covered": [
+    10,
+    230,
+    231,
+    234,
+    235,
+    236,
+    238
+  ],
+  "missing": [],
+  "ratio": 1.0
+}

@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Рабочая поверхность менеджера (ТЗ 24.4) в режиме «Тихий».
@@ -32,9 +32,9 @@
 5. e2e: пресет `product_manager` показывает одно направление; `strict` скрывает остальные.
 
 ## Критерии приёмки
-- [ ] Экран показывает только блоки ТЗ 24.4 (≤ 7), ничего не мигает, нет звука.
-- [ ] KPI, динамика и топ-5 совпадают с ответом API; клик по региону даёт панель сигналов.
-- [ ] Скриншоты обеих тем и языков в PR.
+- [x] Экран показывает только блоки ТЗ 24.4 (≤ 7), ничего не мигает, нет звука.
+- [x] KPI, динамика и топ-5 совпадают с ответом API; клик по региону даёт панель сигналов.
+- [x] Скриншоты обеих тем и языков в PR.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,4 +44,18 @@ cd frontend && npx playwright test e2e/cabinet.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-242-product-cabinet`, stacked от T241 API22/DDL18.
+Реальны7blocks, scoped roles/run/period/visibility, карта/топ5/регион,
+feed20/table/filters/SLA, SVG charts, coverage-aware CSI и serverpreview калькулятор.
+Глобальные priority/night queries на cabinet не стартуют; scoped night внутри
+signalsblock. Unknown money/anonymous cohort не становятся0.
+Full frontend407green, обеproductionbuilds/lint/typecheck/i18n2019keys green,
+actual production5/5 ru/en×themes/mobile/strict/night/keyboard/Undo/viewportDrawer,
+14curatedPNG tracked. T241 actual65PG/98%coverage и readonly107fingerprints
+зафиксированы отдельно. Report: docs/reviews/T-242-product-cabinet.md.
+T244report501/T249fullCSI/T243producerAPI24 внедрён отдельной stacked веткой; canonical T262scenario14 ещё pending; human
+API22/DDL18 review, exactheadCI и liveGigaDoD не заявлены выполненными.
+
+Final coherent runtime833690/handoff81066a8: T241customer-view18 иAPI24вместе,
+5productioncases27.7s (31codes+realemptyregion0); test-onlyCIfixf987 normal-merged
+черезT24372a4365. Runtime diff0 послефакттическогопруфа; CI/humanreviewpending.
