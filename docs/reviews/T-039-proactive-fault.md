@@ -405,3 +405,34 @@ typecheck/lint+motion green; прежний DemoMenu18 warning1/0errors.
 Это composition targets, не полный final make. Failed frozen8a145/3F не скрыт;
 new wake35coverage/7nativePG fixes отдельно qualified. Root получает clean frozen
 head для draftPR API25/DDL19 и обязательного exact-head CI; remote не изменялся.
+
+
+### PR197 consumer CI regression: native scenario6 и final visible endpoints
+
+Root exacte522 CI shard3 job125541702856:632pass/1F, Trace fixture обращалсяк
+injected[0], ноpreparednativeinjectкорректно[]; scenario6 не исключён изтеста.
+Shared tests/proactive_runtime.py выделен изпрежнегоactual main test: ENV/Mock,
+async/syncHTTP/SMTP/DNS/socketbombs, allactors/cleanup, CLI30/outer45 прежние.
+Fixture теперьиспользует productionHTTP→journalworker/120actualops→normalgraphs,
+31actualAR, notified.anchor_signal_id иcompletedreceipt, неlegacyYAMLclone/ручныеAR.
+Cases1/8 ипрежниеTraceGET/schema/edges/fanout/privacy/LLMbomb/fingerprints сохранены.
+
+Честнаяnativefixture выявила реальныйassembler defect: visible set строилсядо
+terminal inclusion. Replacement выкидывалпоследнийafterevent(step110), ноvisible.add
+сохранялегоID. ПоэтомуDTOedges ссылалисьнаотсутствующийstep. Red1pass/1F41.91s
+зафиксирован в/tmp/t039-native-trace-fixture-fix.log; pureeviction1F0.16s — отдельно.
+Minimalappfix пересчитываетvisible изFINALsubject/before/after. Storedrelations,
+SQL,groupcounts/anchors,cursors,aftercount/limits неизменны. Puretest доказывает:
+вытесненныйevent неphantomendpoint; прирасширенииafter_limit прежняяrelation
+сновавидна; offpagegroupanchor/count9 сохраняютсякакявныйexpansionref. Existing
+frontend graphModel ужеобрабатываетoffpageanchors безпридуманнойnode, UIне менялся.
+
+Green:100unit1.56s;6actualPG79.61s (runtime,scenarios1/6/8,1001bothfamilies,cursor/
+privacy,10001boundedpage). Отдельныйnativeperf ПОСЛЕroot47PG finalpass:
+1passed19.27s, p95=26.385ms припрежнем<300ms;
+page50of10001, memory=282061bytes припрежнем<8MiB.
+Все6 signal/incidentTraceviews имеютоднозначныйsubjectalias; native6 signal203nodes/
+248edges/3groups,incident214nodes/248edges/2groups. Publictablefingerprints
+readphaseunchanged, structuredLLMbomb0. Не заявляетсяfingerprint всехprivate
+namespaces. Ruff/format/mypyassembler green. ExactheadwholeCI ещёpendingroot.
+Proof: T-039-native-trace-consumer-proof.json. RealLLM/TG/email/productionне было.
