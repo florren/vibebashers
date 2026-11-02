@@ -41,8 +41,18 @@ CLI дополнительно читает существующие metrics pre
 ## Final focused verification (2026-11-03)
 
 - 110 pure targeted tests — passed, 1.96s: Mock mapping, manifest/XLSX, CLI и прежние normalization/product-line checks.
-- На final runtime source: coverage run25 tests (9 unit +16 actual PG) — passed,148.85s. `classification_store`7/7,100%; `scenario_acceptance`168/182,92%; вместе175/189,92.59%. Это line coverage, не benchmark/performance proof. [Агрегаты и SHA256 runtime files](T-262-foundation-proof.json).
+- На runtime source `4a8a1b5` до evaluator follow-up: coverage run25 tests (9 unit +16 actual PG) — passed,148.85s. `classification_store`7/7,100%; `scenario_acceptance`168/182,92%; вместе175/189,92.59%. Это line coverage, не benchmark/performance proof. [Агрегаты и SHA256 runtime files](T-262-foundation-proof.json).
 - Native generic-import/preparation race сначала RED `DeadlockDetected`10.56s, затем тот же test GREEN9.82s после `FOR NO KEY UPDATE` вместо `FOR UPDATE` header. Current/paused checks и SimState pin сохранены; обычный FK KEY SHARE importer больше не образует цикл с advisory lock.
 - `make lint contracts-check licenses-check` — exit0: frontend429 tests/61 files, backend Ruff520/Mypy316, bot Ruff12/Mypy5; drift195 operations без missing/extra;47 schemas/165 paths; licenses550+36. После lock fix backend lint/typecheck повторён.
 - Actual Alembic check на своей DB: `No new upgrade operations detected.`; source schema/migrations не менялись.
 - Полный backend suite/4-shard union пока **не запускался**: root согласует ресурсное окно после review focused checkpoint. Нельзя выдавать эти targeted результаты за full green. Рабочие/production БД не использовались; real LLM, Telegram/email и runtime human accept не выполнялись.
+
+### Evaluator follow-up после root review
+
+Для `legal_pending_hitl`/`csi_registered_sample` поддерживается только literal `True`.
+`False`, числа и malformed значения получают `ok:null/not_verified` до SQL; при
+только неподдержанных expectations SQL вообще не выполняется. Actual YAML и общий
+pending UI/replay `passed=False` не меняются. Отдельно проверены28 pure tests
+(включая14 негативных combinations) и2 actual PG supported-True cases,18.99s.
+Coverage92.59% выше относится к source4a8, новый guard проверен этим follow-up;
+полный backend suite остаётся в ожидании ресурсного окна.
