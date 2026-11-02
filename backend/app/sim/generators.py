@@ -528,7 +528,7 @@ class World:
         )
         identified = channel not in ("social", "review_portal") or self.rng.random() < 0.3
         cur = await self.conn.execute(
-            "insert into signals (run_id, channel_code, client_id, external_contact, text, received_sim, status, origin, source_operation_id, source_fault_id, sentiment, geo) values (%s, %s, %s, %s::jsonb, %s, %s, 'new', 'sim', %s, %s, %s, %s::jsonb) returning id",
+            "insert into signals (run_id, channel_code, client_id, external_contact, text, received_sim, status, origin, source_operation_id, source_fault_id, sentiment, geo, lang) values (%s, %s, %s, %s::jsonb, %s, %s, 'new', 'sim', %s, %s, %s, %s::jsonb, %s) returning id",
             (
                 self.run_id,
                 channel,
@@ -540,6 +540,7 @@ class World:
                 p.source_fault_id,
                 g.gold.get("sentiment"),
                 dumps({"region_code": p.client.region_code, "city": p.client.city, "source": "client_profile"}),
+                g.gold["language"],
             ),
         )
         sid = (await cur.fetchone())[0]  # type: ignore[index]

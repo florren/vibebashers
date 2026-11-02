@@ -445,7 +445,6 @@ def seed_history_signals(
             "error_code": g.gold.get("error_code"),
             "llm_source": "seed",
             "style": g.style,
-            "generator_hint": g.gold,
         }
         signal_status = (
             "closed"
@@ -511,6 +510,11 @@ def seed_history_signals(
                 ),
             )
             signal_id = cur.fetchone()[0]
+        # Служебный gold не входит в строгий DTO classification и не передаётся модели.
+        cur.execute(
+            "update signals set meta=coalesce(meta,'{}'::jsonb) || %s::jsonb,lang=%s,classification=%s where id=%s",
+            (J({"generator_hint": g.gold}), g.gold["language"], None if is_noise else J(classification), signal_id),
+        )
         if not creates_incident:
             continue
         complexity, criticality = incident_plan[inc_i]

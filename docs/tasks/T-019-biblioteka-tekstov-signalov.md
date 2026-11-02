@@ -62,3 +62,13 @@ Mock accuracy_type=0.15 на960 сложных ru-примерах; classifier �
 Итоговый full после main-composition/coverage и CI ещё предстоит; live GigaChat
 не вызывался, карточка не закрывается. Описание библиотеки и точного способа подсчёта:
 `data/signal_templates/README.md`. Логи `/tmp/t019-{targeted,pg-targeted,full-unit,lint}.log`.
+
+Уточнение границы хранения: gold находится в `signals.meta.generator_hint`, а не
+в public classification; шум имеет classification=null. Язык ru/en сохраняется
+в signals.lang и для seed, и для runtime. Actual read API проверен без lifespan:
+1PG/API passed7.24s, meta/gold не публикуются. Ещё34 targeted unit/PG passed12.73s.
+Composed unit1145/18 прошли до этого уточнения, полный интеграционный run остановлен
+для исправления найденной границы; завершённым не объявляется. Чистые corpus/textgen
+модули:100%44/44 и97%101/104 coverage; это не покрытие всех изменённых seed/runtimeстрок.
+Существующая частичная historical classification — отдельный пробел T020: этот пакет
+не выдаёт её за полный валидированный результат Mock-графа.
