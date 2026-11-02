@@ -1,0 +1,955 @@
+{
+  "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+  "base_revision": "85fcbaa",
+  "exit_code": 0,
+  "evidence_kind": "composite, exact-blob reuse only for unchanged app files; fresh trace for all modified app files",
+  "frozen_source": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+  "fresh_pytest_args": [
+    "-q",
+    "tests/unit",
+    "tests/integration/test_runtime_profiles.py",
+    "tests/integration/test_refund_case_relevance.py",
+    "tests/integration/test_durable_graph.py",
+    "tests/integration/test_bench_jobs.py",
+    "tests/integration/test_step_atomicity.py",
+    "tests/integration/test_run_profiles.py",
+    "tests/integration/test_followups.py",
+    "tests/integration/test_full_simulation_controls.py",
+    "tests/scenarios/test_scenario_08_qr_fee.py",
+    "tests/scenarios/test_scenario_08_latency.py",
+    "tests/scenarios/test_scenario_09_misselling.py",
+    "tests/scenarios/test_scenarios_8_10_cassettes.py"
+  ],
+  "covered": 2903,
+  "statements": 3206,
+  "percent": 90.55,
+  "files": {
+    "backend/app/agent/comparison.py": {
+      "covered": 2,
+      "statements": 3,
+      "missing_lines": [
+        216
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "3bc503c33ed7be4ee7857344f700a19e52c693a9",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/agent/graph.py": {
+      "covered": 6,
+      "statements": 6,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "aee9b935eca24718a568bcd0f66090a5c75a2a56",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/agent/nodes.py": {
+      "covered": 78,
+      "statements": 78,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "c1de7f7d0a4c4e5ddb9cde01e8ef4354d173bbd8",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/agent/operator_feedback.py": {
+      "covered": 14,
+      "statements": 17,
+      "missing_lines": [
+        209,
+        212,
+        213
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "da4a8f91b02bee16237e1680f54505f7226874bd",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/agent/policies.py": {
+      "covered": 5,
+      "statements": 5,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "d61bcbfdae05068fe8abe06f9ed7edac46733c2f",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/agent/refund_scope.py": {
+      "covered": 140,
+      "statements": 149,
+      "missing_lines": [
+        43,
+        75,
+        81,
+        117,
+        134,
+        137,
+        138,
+        164,
+        185
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "9513c600eb00414cb8b62c70179636adf5a9bac5",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/agent/runner.py": {
+      "covered": 84,
+      "statements": 117,
+      "missing_lines": [
+        119,
+        296,
+        299,
+        300,
+        302,
+        303,
+        304,
+        305,
+        306,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "a2c122d2170a41a0b18e2b08eb50f23cbdbdf7fc",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/_compliance_support.py": {
+      "covered": 2,
+      "statements": 2,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "ac2ba906d0be4fe00f95ce74afb7fac0263c9cc6",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/compliance.py": {
+      "covered": 1,
+      "statements": 5,
+      "missing_lines": [
+        225,
+        280,
+        281,
+        282
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "bd0c1688f17eb5f558310e0b4ae411c87c427d2d",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/engine.py": {
+      "covered": 2,
+      "statements": 2,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "dbae2cc1f8dd5a5dd4b1e7fccd93b9827bba386e",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/ingest.py": {
+      "covered": 1,
+      "statements": 3,
+      "missing_lines": [
+        138,
+        279
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "5a6b94737eb0c1ba6f81c86c9ec80d3ba75707cc",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/scenarios.py": {
+      "covered": 7,
+      "statements": 9,
+      "missing_lines": [
+        65,
+        66
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "42f481483036423c08c636c4cac96b0a476665e8",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/settings.py": {
+      "covered": 119,
+      "statements": 163,
+      "missing_lines": [
+        45,
+        58,
+        61,
+        63,
+        75,
+        77,
+        86,
+        87,
+        88,
+        89,
+        93,
+        94,
+        96,
+        135,
+        138,
+        139,
+        140,
+        141,
+        142,
+        155,
+        156,
+        158,
+        284,
+        285,
+        371,
+        372,
+        373,
+        374,
+        400,
+        409,
+        410,
+        411,
+        427,
+        428,
+        429,
+        435,
+        440,
+        448,
+        511,
+        522,
+        523,
+        524,
+        525,
+        547
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "8ad73abc9ebc99652a5f8e570b8d95fd57ee0301",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/setup.py": {
+      "covered": 25,
+      "statements": 45,
+      "missing_lines": [
+        165,
+        253,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        265,
+        267,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        490
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "2a8d3fa417f069bb48b0e75db5be56a64dd8402b",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/signals.py": {
+      "covered": 3,
+      "statements": 3,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "0b906d359158bc2c9d5b03f6a0fcaf35df3e0a85",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/sim.py": {
+      "covered": 40,
+      "statements": 42,
+      "missing_lines": [
+        178,
+        224
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "bf58a9b98c3f07d99674ebf01daa62fd1398a9cc",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/api/trace.py": {
+      "covered": 20,
+      "statements": 20,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "126d5e65487cf4451e9c64d848758c9bc620942d",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/bench/datasets.py": {
+      "covered": 175,
+      "statements": 194,
+      "missing_lines": [
+        29,
+        52,
+        80,
+        114,
+        117,
+        119,
+        126,
+        130,
+        134,
+        147,
+        150,
+        159,
+        165,
+        176,
+        183,
+        208,
+        214,
+        220,
+        235
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "cce1d95659adc8be22c3706cd82b135f3962f681",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/bench/metrics.py": {
+      "covered": 7,
+      "statements": 7,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "277e3d8e09c0eaa197ffc42396099a2107c728ef",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/bench/runner.py": {
+      "covered": 23,
+      "statements": 24,
+      "missing_lines": [
+        87
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "380d8c540f7055641031f03afbb419f9bb3a0862",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/bench/service.py": {
+      "covered": 41,
+      "statements": 42,
+      "missing_lines": [
+        254
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "a47eb5f43368c9a371586d61594e2bf21d7aa1e9",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/compliance/llm_detector.py": {
+      "covered": 13,
+      "statements": 13,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "0e4ef6e5a01c2a4d5ed3ba7b23a03e027c9e95a0",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/config.py": {
+      "covered": 1,
+      "statements": 1,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "ecc5a65290824db09baed189dcd574d657646823",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/demo/execution.py": {
+      "covered": 44,
+      "statements": 55,
+      "missing_lines": [
+        612,
+        613,
+        627,
+        628,
+        629,
+        630,
+        631,
+        632,
+        633,
+        634,
+        636
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "1fd30d068660f071788f513f1cd3355a1b504262",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/demo/history.py": {
+      "covered": 0,
+      "statements": 5,
+      "missing_lines": [
+        3,
+        14,
+        98,
+        99,
+        106
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "7c4ec3e293254a6d45465baeb5a2718918441ab9",
+        "evidence": "no captured executable line hits; coverage is conservatively zero"
+      }
+    },
+    "backend/app/demo/recovery.py": {
+      "covered": 0,
+      "statements": 1,
+      "missing_lines": [
+        67
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "c851ce9c60c927f4a933f7c71206922bf487f1e2",
+        "evidence": "no captured executable line hits; coverage is conservatively zero"
+      }
+    },
+    "backend/app/errors.py": {
+      "covered": 4,
+      "statements": 4,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "7c29522ad6ec6ee6f27a2b076498878186f854fc",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/ingest/sources.py": {
+      "covered": 10,
+      "statements": 17,
+      "missing_lines": [
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "4cdcd1207e935451fd168bd4f0bfbf1ca15d3aea",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/llm/base.py": {
+      "covered": 16,
+      "statements": 19,
+      "missing_lines": [
+        62,
+        64,
+        74
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "b59284d96af635402b71c2dfdd0809d09d759f3f",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/llm/credential_boundary.py": {
+      "covered": 149,
+      "statements": 152,
+      "missing_lines": [
+        73,
+        74,
+        146
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "58f429b63d416f9aefcb42f7a32736f58896c834",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/llm/credentials.py": {
+      "covered": 135,
+      "statements": 146,
+      "missing_lines": [
+        65,
+        76,
+        77,
+        128,
+        135,
+        137,
+        148,
+        219,
+        223,
+        224,
+        228
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "eb2d81585362600a2c4fa08baaba598eba467750",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/llm/failover.py": {
+      "covered": 47,
+      "statements": 51,
+      "missing_lines": [
+        86,
+        123,
+        152,
+        281
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "32462ab63f9aa8d47489131b8355d7595ad20262",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/llm/gigachat.py": {
+      "covered": 69,
+      "statements": 87,
+      "missing_lines": [
+        174,
+        275,
+        407,
+        408,
+        410,
+        486,
+        489,
+        500,
+        501,
+        503,
+        519,
+        522,
+        525,
+        530,
+        531,
+        532,
+        538,
+        540
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "0119b931dfad962d1c321fa74e6f5e948b087973",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/llm/openai_compat.py": {
+      "covered": 68,
+      "statements": 77,
+      "missing_lines": [
+        178,
+        179,
+        184,
+        185,
+        201,
+        203,
+        208,
+        209,
+        423
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "403ce86d0e343a997dd0db57f23886bfb595bb11",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/llm/run_profiles.py": {
+      "covered": 91,
+      "statements": 99,
+      "missing_lines": [
+        142,
+        217,
+        221,
+        222,
+        223,
+        260,
+        270,
+        282
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "b43e0cb400cb3517303f7403fc2db61c32c8073a",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/llm/runtime_provider.py": {
+      "covered": 86,
+      "statements": 91,
+      "missing_lines": [
+        56,
+        71,
+        74,
+        85,
+        119
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "a87c560952b9427db91349d30918027cb7141b40",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/logging.py": {
+      "covered": 3,
+      "statements": 3,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "05854e7e1d4941ba172e718f282764ba9c050e03",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/main.py": {
+      "covered": 135,
+      "statements": 136,
+      "missing_lines": [
+        126
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "13805213bfe39e5652da0a3fa09c9fcf54e81818",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/observability/http.py": {
+      "covered": 3,
+      "statements": 3,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "6e64d8b47a017c25a56f42df3a597f205ba6d2c2",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/observability/redaction.py": {
+      "covered": 72,
+      "statements": 72,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "2afa2456ebee9d55c0593023f1933996f2813bed",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/public_chat.py": {
+      "covered": 2,
+      "statements": 2,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "aac6e306a472aa1e2aa873fce5c8a36459a54dc3",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/replay/bounded_record.py": {
+      "covered": 271,
+      "statements": 292,
+      "missing_lines": [
+        56,
+        62,
+        69,
+        91,
+        147,
+        166,
+        174,
+        200,
+        201,
+        260,
+        273,
+        317,
+        318,
+        338,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348,
+        352
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "2956792e93ce2f0a365c528c92ffb03ddd34e3ef",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/rules/engine.py": {
+      "covered": 6,
+      "statements": 6,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "418d54e1fc71dc90f12d2ddb5128d272e15f1800",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/sim/baseline.py": {
+      "covered": 120,
+      "statements": 130,
+      "missing_lines": [
+        244,
+        245,
+        247,
+        273,
+        295,
+        329,
+        402,
+        403,
+        404,
+        405
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "b8e7c5d95b62c383e2926cffea539a8711eb73ca",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/baseline_contract.py": {
+      "covered": 26,
+      "statements": 26,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "145dd2dd8b12f347393bd97bec1b907bda2db268",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/baseline_llm.py": {
+      "covered": 57,
+      "statements": 57,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "0cb0fdb83fb4ae6f00ddcf8455d65e8ab7cfade9",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/engine.py": {
+      "covered": 56,
+      "statements": 61,
+      "missing_lines": [
+        136,
+        137,
+        141,
+        142,
+        143
+      ],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "aec28377d2c8e7d7c1176f6d318dcd0a00b42d52",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/sim/generators.py": {
+      "covered": 10,
+      "statements": 10,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+        "git_blob": "975908e006f37be895a87405d6b6a7c0437b29ae",
+        "evidence": "fresh unit/targeted PostgreSQL trace on current revision"
+      }
+    },
+    "backend/app/sim/maintenance.py": {
+      "covered": 248,
+      "statements": 266,
+      "missing_lines": [
+        95,
+        97,
+        98,
+        102,
+        120,
+        121,
+        141,
+        157,
+        162,
+        177,
+        231,
+        232,
+        233,
+        234,
+        240,
+        241,
+        242,
+        260
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "59ef8ce533c8212c258a474160baa1bc6bdf1ef4",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/maintenance_control.py": {
+      "covered": 70,
+      "statements": 70,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "0b48711434628d3c3044cf0b7416ea56a298e065",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/maintenance_db.py": {
+      "covered": 56,
+      "statements": 61,
+      "missing_lines": [
+        39,
+        62,
+        63,
+        74,
+        75
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "08a9b95d08b90c0029a9b6b943e551dc4e4e7f8a",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/run_summary.py": {
+      "covered": 6,
+      "statements": 6,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "0f4e0466eb9b43d7ca93eca0a43772c77140fbbb",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/teams.py": {
+      "covered": 27,
+      "statements": 33,
+      "missing_lines": [
+        557,
+        558,
+        559,
+        561,
+        562,
+        563
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "99b1b7ffd49ede12f592ad2881a7f0b43b729bd8",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/textgen.py": {
+      "covered": 2,
+      "statements": 2,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "27883703d75c49406ebe72715b7994e86f2e8d0c",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/sim/twins.py": {
+      "covered": 37,
+      "statements": 46,
+      "missing_lines": [
+        84,
+        90,
+        91,
+        94,
+        96,
+        98,
+        100,
+        101,
+        102
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "96e0273a95a9f18878aeaae3297b1876b4084a41",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/stt/live.py": {
+      "covered": 2,
+      "statements": 2,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "735ad7a044200e6403bed1614f2de69fd0472f30",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/trace/assembler.py": {
+      "covered": 9,
+      "statements": 9,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "aecd15155c778d072474ca40e559f7556707a4c9",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/trace/fanout.py": {
+      "covered": 156,
+      "statements": 158,
+      "missing_lines": [
+        88,
+        147
+      ],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "c41cc66067e1f93b7c45fa3872a47c986be09565",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    },
+    "backend/app/trace/projections.py": {
+      "covered": 1,
+      "statements": 1,
+      "missing_lines": [],
+      "provenance": {
+        "source_revision": "727d1dbcac14ab06cd850ea96d42c95fb2da8ef2",
+        "git_blob": "aa5362a284ef553568d1d5ec7ee45b8068bcbc0a",
+        "evidence": "frozen727 trace; exact unchanged git blob"
+      }
+    }
+  }
+}
