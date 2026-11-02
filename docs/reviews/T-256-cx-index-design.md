@@ -1,6 +1,6 @@
 # T-256: источники CX Index и план API 1.5.29
 
-Статус: API29 producer реализован, local full checks зелёные на frozen `1968631`; root review/CI и композиция T255/T257 впереди. Ветка `codex/T-256-cx-index`, исходная база clean T-244 `b971710`. T-255 и T-257 будут отдельными stacked ветками/PR. API 1.5.29 зарезервирован; DDL не меняется, CSI20 WIP не используется.
+Статус: API29 producer реализован; актуальная ветка обычными merge включает API28/CSI20, Journey и T041 writer fence. Собственного DDL нет. Ветка `codex/T-256-cx-index`; T255/T257 — отдельные UI-пакеты. Исторический full green1968631 не переносится на новый source; актуальные bounded composition checks и ограничения перечислены ниже. Точный CI нового PR обязателен.
 
 ## Утверждённая формула
 
@@ -92,3 +92,26 @@ Rollback: revert данного scoped guard/API409 addition; это не уст
 Final native ASGI HTTP benchmark на `ad33c825`: demo5000,30GET каждого endpoint, первыйGET включён, без warmup/tracer/ANALYZE statistics/retry, прежний300ms guard. CX p95=27.9971929849ms (first27.9971929849), Overview p95=25.8147710119ms (first25.3036039649).1/1passed32.92s, GETpublicfingerprints unchanged, Bomb external/monetary writers. Все raw samples и sourcehash в producer-proof JSON; это отдельный неинструментированный run. AFTER benchmark readonly EXPLAIN ANALYZE только нового guard: allcost0.22/exec0.021ms,currentcost19.47/exec0.035ms, noJIT. Это не подмена общего endpoint latency SQL временем.
 
 Local implementation готов к parent review/точному CI и композиции parent API28→API29; новым fullbackend run старый196full не называется. Остаточные product semantics proposal (`S basis=registered_sla_risk`, unknown/partial, current weights на обе observed dates) остаются явно в API29 review. Никакой универсальной реконструкции positive publication по missing receipt не заявляется.
+
+### Root composition: актуальный parent PR199
+
+Обычный merge c463cdd→637fca6 сохранил API1.5.29 и полный набор API28/29 schemas;
+CSI/branches paths взяты изAPI28, metrics paths — изAPI29. Переводы объединены
+строгим трёхсторонним сравнением всех ключей, generatedTS пересоздан изконтракта.
+Corpus test меняет только одинаковый docstring. Затем обычный merge92f68f0→4d2d2e2
+перенёс проверенную generic scenario06 CI regression изPR197 через198/199.
+
+Focused test-only1c9c365→ed5b6ce использует native internal normalizer authority
+для reserved service origin, а не запрещённый public sourceapi. Customer/N/C/R/
+window assertions сохранены. На агентском composed1c9:102/102functional passed60.43s.
+Root git ls-tree подтвердил byte-identical **весь backend/app** и metrics/control/
+shutdown test files между1c9 и4d2d2e2; это source-qualified reuse именно этих102
+проверок, не заявление нового full backend suite. Все три новых analytics modules
+также byte-identical c8:224/226 coverage и отдельный native benchmark остаются
+квалифицированы прежними source hashes. API28 parent меняет engine scripted runtime,
+поэтому старый196full не называется итоговым. New exact-head CI ещё требуется.
+
+Final root lint на runtimeb3afc6c (обычная композиция PR200 evidence, source engine
+не менялся): **444frontend/65files**, Ruff550/mypy323,bot12/5,drift196/196.
+Contracts48schemas/166paths. Это actual root result после API28/29 union;
+full backend не подразумевается. Parent PR199/200 и точный CI остаются gates.

@@ -402,5 +402,41 @@
       "backend/app/sim/engine.py": "c9707f9883a11cc91a48577d05bc57a72728556276063ee40b5b41e904852655",
       "contracts/api/openapi.yaml": "ba250d6b84e063fe59850171becb1dcbbecea5a2e65904f27b43d93c73c113f9"
     }
+  },
+  "root_parent_composition": {
+    "head": "4d2d2e2a88a5e0dd5488fb769540cfb6d17dbc98",
+    "parent199": "92f68f09954a5d334a388d27a7901ec23aa37c1d",
+    "functional_source": "1c9c36515f8eb517824f6b93b723366fe81ae840",
+    "functional": "102 passed60.43s; no benchmark/full-suite claim",
+    "identity": {
+      "backend/app": {
+        "equal": true,
+        "tree_listing_sha256": "dd894571c4f219335a16fda60a1678242323839552499545d0ff7d953c62a1df"
+      },
+      "backend/tests/integration/test_metrics_cx_index.py": {
+        "equal": true,
+        "tree_listing_sha256": "0d65dcc204c22472eac4bc6e1e3967f1c8fd8ca705fefe918f802cfb6f285a6f"
+      },
+      "backend/tests/integration/test_sim_stale_control.py": {
+        "equal": true,
+        "tree_listing_sha256": "4cf0b3dd3de04b5860e3cfdd95ec400c377708fee37760959a036f09a9f2f032"
+      },
+      "backend/tests/unit/test_sim_shutdown.py": {
+        "equal": true,
+        "tree_listing_sha256": "11b625f90175e464eafad62cfec19c59103aa1be6e4363c882aa67750c6bc8c6"
+      }
+    },
+    "ci": "pending new PR",
+    "root_lint": {
+      "runtime": "b3afc6c1cd406c7cf5d14f17003babea56d0b38d",
+      "frontend_passed": 444,
+      "frontend_files": 65,
+      "ruff_files": 550,
+      "mypy_sources": 323,
+      "bot": "12format/5mypy",
+      "drift": "196/196",
+      "contracts": "48schemas/166paths",
+      "full_backend": "not rerun; source-qualified102functional only"
+    }
   }
 }
