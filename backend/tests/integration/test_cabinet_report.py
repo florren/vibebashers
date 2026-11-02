@@ -31,6 +31,11 @@ def test_report_real_json_xlsx_overview_readonly(client, sql, monkeypatch, lang)
     assert data["overview"] == client.get("/api/cabinet/overview", params=query).json()
     assert len(data["summary_ru"]) == len(data["summary"]) == 5
     assert len(data["signals"]) == data["overview"]["kpi"]["signals"]
+    # Внутренняя read-only проекция может переиспользовать immutable empties;
+    # публичные flags/red_words/incidents всегда остаются JSON arrays.
+    for item in data["signals"]:
+        for key in ("flags", "red_words", "incidents"):
+            assert isinstance(item[key], list)
     xlsx = client.get("/api/cabinet/report", params={**query, "format": "xlsx"})
     assert xlsx.status_code == 200
     assert len(xlsx.content) <= 5 * 1024 * 1024
