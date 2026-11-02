@@ -9,6 +9,7 @@ import psycopg
 from psycopg.rows import tuple_row
 
 from app.sim.events import dumps
+from app.sim.run_summary import build_summary
 
 RUN_COLS = "id, kind, label, scenario_id, seed, llm_profile_id, reset_mode, parent_run_id, status, started_sim, finished_sim, started_at, finished_at, resumed_count, summary"
 
@@ -60,10 +61,11 @@ async def create_run(
     """Новый запуск; незавершённый текущий переводится в stopped (reset_mode=counters)."""
     cur_id = await current_run_id(conn)
     if cur_id:
-        await conn.execute(
-            "update sim_runs set status = 'stopped', finished_sim = coalesce(finished_sim, %s), finished_at = coalesce(finished_at, now()) where id = %s and status in ('running','paused','interrupted')",
-            (sim_time, cur_id),
-        )
+        async with conn.cursor(row_factory=tuple_row) as previous:
+            await previous.execute("select status from sim_runs where id=%s", (cur_id,))
+            previous_row = await previous.fetchone()
+        if previous_row and previous_row[0] in ("running", "paused", "interrupted"):
+            await set_run_status(conn, cur_id, "stopped", sim_time)
     async with conn.cursor(row_factory=tuple_row) as cur:
         await cur.execute(
             "insert into sim_runs (kind, label, scenario_id, seed, reset_mode, parent_run_id, status, started_sim, settings_snapshot) values (%s, %s, %s, %s, %s, %s, 'running', %s, %s::jsonb) returning id",
@@ -116,16 +118,20 @@ async def set_run_status(
     conn: psycopg.AsyncConnection[Any], run_id: int, status: str, sim_time: dt.datetime | None = None
 ) -> None:
     if status in ("stopped", "completed"):
-        summary = await conn.execute("select to_jsonb(v) from v_run_counters v where v.run_id = %s", (run_id,))
-        row = await summary.fetchone()
-        await conn.execute(
-            "update sim_runs set status = %s, finished_sim = %s, finished_at = now(), summary = %s::jsonb where id = %s",
-            (status, sim_time, dumps(row[0] if row else {}), run_id),
-        )
+        async with conn.transaction():
+            await conn.execute(
+                "update sim_runs set status=%s,finished_sim=coalesce(%s,finished_sim,(select sim_time from sim_state where id=1),started_sim),finished_at=coalesce(finished_at,now()) where id=%s",
+                (status, sim_time, run_id),
+            )
+            summary = await build_summary(conn, run_id, refresh_economics=True)
+            await conn.execute("update sim_runs set summary=%s::jsonb where id=%s", (dumps(summary), run_id))
     else:
         await conn.execute(
-            "update sim_runs set status = %s, resumed_count = resumed_count + %s where id = %s",
-            (status, 1 if status == "running" else 0, run_id),
+            "update sim_runs set status = %s, resumed_count = resumed_count + %s, "
+            "finished_at=case when %s='running' then null else finished_at end, "
+            "finished_sim=case when %s='running' then null else finished_sim end, "
+            "summary=case when %s='running' then null else summary end where id = %s",
+            (status, 1 if status == "running" else 0, status, status, status, run_id),
         )
     await conn.execute(
         "select pg_notify('runs', %s)",

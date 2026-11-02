@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 from qrcode.image.svg import SvgPathImage
 
+from app.agent.tools.write import PII_RE
 from app.api._compliance_support import run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.config import get_settings
@@ -23,6 +24,8 @@ from app.errors import NotImplementedYet, Problem
 from app.feed import service as feed_svc
 from app.i18n import communication_lang
 from app.ingest.normalizer import create_signal, from_bot, from_landing
+from app.sim.events import EventBus
+from app.tracking_mail import send_tracking_receipt
 
 router = APIRouter(tags=["public"])
 
@@ -167,7 +170,12 @@ def _claim_limited(host: str) -> bool:
 
 def _email_ok(value: str) -> bool:
     local, sep, domain = value.partition("@")
-    return bool(sep and local and " " not in value and domain.lower() in _EMAIL_DOMAINS)
+    return bool(
+        sep
+        and len(value) <= 254
+        and re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+", local)
+        and domain.lower() in _EMAIL_DOMAINS
+    )
 
 
 def _contact_error(phone: str | None, email: str | None, lang: str = "ru") -> str | None:
@@ -205,9 +213,9 @@ def _accepted_reply(public_id: str, token: str, lang: str) -> str:
 def _human(text: str | None) -> str | None:
     if not text:
         return None
-    if _TEAM_CODE.search(text) or _ERROR_CODE.search(text):
+    if _TEAM_CODE.search(text) or any(not match.group().startswith("SIG-") for match in _ERROR_CODE.finditer(text)):
         return None
-    return text
+    return re.sub(r"\+7 900 \d{3}-\d{2}-\d{2}", "+7 900 ***-**-**", PII_RE.sub("****", text))
 
 
 def _take_captcha(captcha_id: str, answer: int) -> bool:
@@ -289,7 +297,6 @@ def _timeline(
     received = signal["received_sim"]
     statuses = {str(row["status"]) for row in incidents}
     templates = [str(row["template_code"]) for row in notes if row.get("template_code")]
-    team_name = _human(next((str(row["team_name"]) for row in incidents if row.get("team_name")), None))
     problem = _human(_problem_text(signal.get("classification")))
     clarify = signal["status"] == "awaiting_client" or any(
         row["status"] == "scheduled" and row["reason"] == "awaiting_client" for row in followups
@@ -310,7 +317,6 @@ def _timeline(
     }
     texts = {
         "classified": problem,
-        "incident_created": team_name,
         "clarification_needed": _human(_clarify_body(notes)),
     }
     stamps = {
@@ -369,68 +375,86 @@ def _note_time_any(notes: list[dict[str, Any]], templates: set[str]) -> Any:
     return stamps[-1] if stamps else None
 
 
-async def _tracking_view(conn: Any, signal: dict[str, Any]) -> dict[str, Any]:
+async def _tracking_view(conn: Any, signal: dict[str, Any], lang: str | None = None) -> dict[str, Any]:
     signal_id = int(signal["id"])
+    owned = await fetch_all(
+        conn,
+        "with recursive owned as (select id,run_id from signals where id=%s "
+        "union select s.id,s.run_id from signals s join owned p on s.parent_signal_id=p.id and s.run_id=p.run_id) "
+        "select id from owned",
+        (signal_id,),
+    )
+    signal_ids = [int(row["id"]) for row in owned]
     runs = await fetch_all(
         conn,
         "select id, started_sim, started_at, outcome, incident_id from agent_runs "
-        "where signal_id = %s and kind = 'agent' order by id",
-        (signal_id,),
+        "where signal_id = any(%s) and kind = 'agent' order by id",
+        (signal_ids,),
     )
     incidents = await fetch_all(
         conn,
-        "select i.id, i.status, i.created_sim, i.resolved_sim, i.closed_sim, tm.name_ru as team_name "
+        "select distinct i.id, i.status, i.created_sim, i.resolved_sim, i.closed_sim "
         "from incident_signals ls join incidents i on i.id = ls.incident_id "
-        "join teams tm on tm.code = i.team_code where ls.signal_id = %s order by i.id",
-        (signal_id,),
+        "where ls.signal_id = any(%s) order by i.id",
+        (signal_ids,),
     )
-    incident_ids = [int(row["id"]) for row in incidents]
-    if incident_ids:
-        followups = await fetch_all(
-            conn,
-            "select status, reason, wake_sim from followups where signal_id = %s or incident_id = any(%s) order by id",
-            (signal_id, incident_ids),
-        )
-        notes = await fetch_all(
-            conn,
-            "select id, recipient_type, channel_code, template_code, subject, body, status, sent_sim, client_id, incident_id "
-            "from notifications where recipient_type = 'client' and (signal_id = %s or incident_id = any(%s)) order by id",
-            (signal_id, incident_ids),
-        )
-    else:
-        followups = await fetch_all(
-            conn,
-            "select status, reason, wake_sim from followups where signal_id = %s order by id",
-            (signal_id,),
-        )
-        notes = await fetch_all(
-            conn,
-            "select id, recipient_type, channel_code, template_code, subject, body, status, sent_sim, client_id, incident_id "
-            "from notifications where recipient_type = 'client' and signal_id = %s order by id",
-            (signal_id,),
-        )
+    followups = await fetch_all(
+        conn,
+        "select status, reason, wake_sim from followups where signal_id = any(%s) order by id",
+        (signal_ids,),
+    )
+    notes = await fetch_all(
+        conn,
+        "select id, channel_code, template_code, subject, body, status, sent_sim "
+        "from notifications where recipient_type = 'client' and signal_id = any(%s) "
+        "and status in ('sent','delivered') order by id",
+        (signal_ids,),
+    )
+    notes = [
+        {key: row.get(key) for key in ("id", "channel_code", "template_code", "status", "sent_sim")}
+        | {"subject": _human(row.get("subject")), "body": _human(row.get("body"))}
+        for row in notes
+        if _human(row.get("body"))
+    ]
     can_append = signal["status"] == "awaiting_client" or any(
         row["status"] == "scheduled" and row["reason"] == "awaiting_client" for row in followups
     )
-    lang = _view_lang(signal.get("lang") if isinstance(signal.get("lang"), str) else None)
+    lang = lang or _view_lang(signal.get("lang") if isinstance(signal.get("lang"), str) else None)
     return {
         "public_id": signal["public_id"],
         "status_label_ru": _status_label(str(signal["status"]), lang),
         "timeline": _timeline(signal, runs, incidents, notes, followups, lang),
         "can_append": can_append,
-        "question_from_agent": _clarify_body(notes),
+        "question_from_agent": _human(_clarify_body(notes)) if can_append else None,
         "notifications": notes,
     }
 
 
 async def _append_signal(
-    conn: Any, parent: dict[str, Any], text: str, *, run_id: int, sim_time: Any, source_code: str
+    conn: Any,
+    parent: dict[str, Any],
+    text: str,
+    *,
+    run_id: int,
+    sim_time: Any,
+    source_code: str,
+    request_id: str | None = None,
 ) -> dict[str, Any]:
     ext = parent.get("external_contact") or {}
     if not isinstance(ext, dict):
         ext = {}
     parent_id = int(parent["id"])
-    external_id = f"track-{parent_id}-{uuid.uuid4().hex[:12]}"
+    external_id = f"track-{parent_id}-{request_id or uuid.uuid4().hex}"
+    if request_id:
+        existing = await fetch_one(
+            conn,
+            "select payload from ingest_messages where source_code=%s and external_id=%s",
+            (source_code, external_id),
+        )
+        if existing and (existing.get("payload") or {}).get("text") != text:
+            raise Problem(
+                422, "Ключ повтора уже использован", "Для нового текста дополнения нужен новый Idempotency-Key"
+            )
     if parent.get("channel_code") == "telegram_bot":
         chat_raw = ext.get("telegram_chat_id")
         if chat_raw is None:
@@ -454,7 +478,31 @@ async def _append_signal(
         )
     channel = "telegram_bot" if parent.get("channel_code") == "telegram_bot" else "landing"
     await _ensure_source(conn, source_code, channel)
-    return await create_signal(conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=False)
+    result = await create_signal(conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=False)
+    if result.get("status") == "accepted":
+        await EventBus(conn).emit(
+            run_id,
+            "signal.appended",
+            {
+                "signal_id": result["signal_id"],
+                "parent_signal_id": parent_id,
+                "channel": channel,
+                "text": text,
+                "received_sim": sim_time.isoformat(),
+                "origin": "telegram_bot" if channel == "telegram_bot" else "landing",
+            },
+            sim_time,
+        )
+    return result
+
+
+def _submit_public(request: Request, signal_id: int, sim_time: Any, parent_id: int | None = None) -> None:
+    agent = getattr(request.app.state, "agent", None)
+    if agent is not None and agent.enabled:
+        if parent_id is None:
+            agent.submit(signal_id, sim_time)
+        else:
+            agent.submit_client_reply(parent_id, signal_id, sim_time)
 
 
 @router.get("/api/public/captcha", summary="Арифметическая антибот-проверка")
@@ -473,7 +521,7 @@ async def post_public_claim(request: Request, body: ClaimBody) -> JSONResponse:
     contact_error = _contact_error(body.contact.phone, body.contact.email)
     if contact_error:
         raise Problem(422, "Неверный контакт", contact_error)
-    async with db() as conn:
+    async with db() as conn, conn.transaction():
         await _ensure_refs(conn, body)
         if not _take_captcha(body.captcha.id, body.captcha.answer):
             raise Problem(422, "Антибот-проверка", "Неверная или повторная антибот-проверка")
@@ -495,8 +543,21 @@ async def post_public_claim(request: Request, body: ClaimBody) -> JSONResponse:
         res = await create_signal(conn, msg, source_code="landing", run_id=run_id, sim_time=sim_time)
     if res.get("status") != "accepted":
         raise Problem(422, "Обращение не принято", res.get("error") or "сообщение отклонено нормализатором")
+    _submit_public(request, int(res["signal_id"]), sim_time)
     track = str(res.get("tracking_token") or token)
     url = _track_url(request, track)
+    if body.contact.email:
+        async with db() as mail_conn:
+            await send_tracking_receipt(
+                mail_conn,
+                signal_id=int(res["signal_id"]),
+                run_id=run_id,
+                recipient=body.contact.email.strip(),
+                public_id=str(res["public_id"]),
+                url=url,
+                sim_time=sim_time,
+                lang=communication_lang(body.text),
+            )
     return JSONResponse(
         {"public_id": res.get("public_id"), "tracking_token": track, "track_url": url, "qr_svg": _qr_svg(url)},
         status_code=201,
@@ -504,7 +565,9 @@ async def post_public_claim(request: Request, body: ClaimBody) -> JSONResponse:
 
 
 @router.get("/api/public/track/{token}", summary="Таймлайн обращения понятным языком")
-async def get_public_track_token(token: str) -> JSONResponse:
+async def get_public_track_token(request: Request, token: str) -> JSONResponse:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{24,}", token):
+        raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
     async with db() as conn:
         signal = await fetch_one(
             conn,
@@ -513,27 +576,46 @@ async def get_public_track_token(token: str) -> JSONResponse:
         )
         if not signal:
             raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
-        view = await _tracking_view(conn, signal)
+        raw_lang = request.headers.get("accept-language", "").split(",")[0].split("-")[0].split(";")[0]
+        view = await _tracking_view(conn, signal, raw_lang if raw_lang in ("ru", "en") else None)
     return JSONResponse(jsonable_encoder(view))
 
 
 @router.post("/api/public/track/{token}", summary="«Дополнить обращение» (ответ на уточняющий вопрос агента)")
 async def post_public_track_token(request: Request, token: str, body: TrackAppendBody) -> Response:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{24,}", token):
+        raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
     text = body.text.strip()
     if not text:
         raise Problem(422, "Пустое дополнение", "Напишите текст дополнения")
-    async with db() as conn:
+    request_id = request.headers.get("Idempotency-Key")
+    if request_id:
+        try:
+            request_id = str(uuid.UUID(request_id))
+        except ValueError:
+            raise Problem(422, "Неверный ключ повтора", "Используйте UUID для Idempotency-Key") from None
+    async with db() as conn, conn.transaction():
         parent = await fetch_one(
             conn,
-            "select id, channel_code, external_contact from signals where tracking_token = %s",
+            "select id, run_id, channel_code, external_contact from signals where tracking_token = %s for update",
             (token,),
         )
         if not parent:
             raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
-        run_id, sim_time = await run_context(request, conn)
-        res = await _append_signal(conn, parent, text, run_id=run_id, sim_time=sim_time, source_code="track_append")
-    if res.get("status") != "accepted":
+        _, sim_time = await run_context(request, conn)
+        res = await _append_signal(
+            conn,
+            parent,
+            text,
+            run_id=int(parent["run_id"]),
+            sim_time=sim_time,
+            source_code="track_append",
+            request_id=request_id,
+        )
+    if res.get("status") not in {"accepted", "duplicate"}:
         raise Problem(422, "Дополнение не принято", res.get("error") or "сообщение отклонено нормализатором")
+    if res.get("signal_id"):
+        _submit_public(request, int(res["signal_id"]), sim_time, int(parent["id"]))
     return Response(status_code=202)
 
 

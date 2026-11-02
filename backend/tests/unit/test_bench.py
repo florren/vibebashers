@@ -34,7 +34,16 @@ def test_lite_v1_dataset() -> None:
     for c in cases:
         assert c.text and c.channel
         assert "signal_type" in c.gold and "product" in c.gold
-        assert set(c.gold.keys()) <= {"signal_type", "product", "system"}
+        assert set(c.gold.keys()) == {
+            "signal_type",
+            "product",
+            "system",
+            "criticality",
+            "complexity",
+            "team",
+            "flags",
+            "needs_hitl",
+        }
 
 
 def test_aggregate_deterministic_and_stability_rules() -> None:
