@@ -9,3 +9,12 @@ Sourcef05b3b0 добавляет одинаковую explicit offline пров�
 Scoped stdlib trace на точномf05b3b0:16/17 changed executable statements=94.12%; missing line214 — прежний Giga prepare invocation в online branch, перемещённый при guard restructuring. Схема/контракты/DI diagnostics не менялись. Full make lint green:220frontend, Ruff398, mypy268, drift192/192. Machine coverage в T-051-startup-offline-coverage.json.
 
 Предыдущий frozen43 aggregate и90.55% whole-packet coverage остаются историческими source-qualified доказательствами. Новый startup source ими полностью не покрывается; настоящий exact final-head GitHub CI обязателен. Нет новых live LLM/TG/email calls, env/key-registry reads, production изменений или canonical venv mutations.
+
+После публикации4981f45 все четыре backend CI shards, db, lint, frontend,
+images и e2e прошли. Aggregate tests был red из-за единственного contracts gate:
+gen_tasks удалял пустую строку после heading отчёта T051. Исправление6105556 —
+только canonical generator output, assertions/gates не менялись.
+После ordinary merge mainf51c8ed (circadian T252) checkpoint4bb5469:
+make lint exit0,324frontend passed, Ruff398/mypy268/drift192.
+Backend runtime остаётся тем же, новые frontend тесты пришли из проверенного main.
+Полный CI новой композиции обязателен; предыдущие checkpoints не подменяют его.
