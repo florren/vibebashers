@@ -10371,12 +10371,14 @@ export interface components {
             known_employees: number;
             anonymous_complaints: number;
         };
-        /** @description Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont. */
+        /** @description Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont; whiskers — наблюдённые min/max, не выдуманные percentiles. */
         CsiTenureGroup: {
             /** @enum {string} */
             group: "with_complaints" | "without_complaints";
             employees: number;
             known_tenure: number;
+            minimum: number | null;
+            maximum: number | null;
             q1: number | null;
             median: number | null;
             q3: number | null;

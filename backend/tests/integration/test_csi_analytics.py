@@ -66,7 +66,17 @@ def test_complete_native_sample_schema_bounds_and_read_only(seeded):
             sum(x["employees"] for x in result["tenure"]["groups"])
             == sql.execute("select count(*) from employees where is_active").fetchone()[0]
         )
-        assert all(x["q1"] <= x["median"] <= x["q3"] for x in result["tenure"]["groups"] if x["known_tenure"])
+        assert all(
+            x["minimum"] <= x["q1"] <= x["median"] <= x["q3"] <= x["maximum"]
+            for x in result["tenure"]["groups"]
+            if x["known_tenure"]
+        )
+        reference = sql.execute(
+            "WITH staff AS (SELECT e.position_since_sim,ss.sim_time,EXISTS(SELECT 1 FROM csi_responses cr JOIN signals s ON s.id=cr.signal_id WHERE cr.employee_id=e.id AND s.run_id=ss.current_run_id) AS complained FROM employees e CROSS JOIN sim_state ss WHERE e.is_active AND ss.id=1 AND e.position_since_sim<=ss.sim_time) SELECT complained,min(floor(extract(epoch FROM(sim_time-position_since_sim))/86400))::int,max(floor(extract(epoch FROM(sim_time-position_since_sim))/86400))::int FROM staff GROUP BY complained"
+        ).fetchall()
+        expected = {"with_complaints" if flag else "without_complaints": (lo, hi) for flag, lo, hi in reference}
+        for group in result["tenure"]["groups"]:
+            assert (group["minimum"], group["maximum"]) == expected[group["group"]]
         assert len(get(client, offset=299)["complaints"]["items"]) == 1
         assert get(client, offset=300)["complaints"]["items"] == []
         assert fingerprint(sql) == before

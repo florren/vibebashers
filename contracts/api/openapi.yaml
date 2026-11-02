@@ -5973,6 +5973,8 @@ components:
       - group
       - employees
       - known_tenure
+      - minimum
+      - maximum
       - q1
       - median
       - q3
@@ -5987,6 +5989,12 @@ components:
           minimum: 0
         known_tenure:
           type: integer
+          minimum: 0
+        minimum:
+          type: [integer, 'null']
+          minimum: 0
+        maximum:
+          type: [integer, 'null']
           minimum: 0
         q1:
           type:
@@ -6004,7 +6012,7 @@ components:
           - 'null'
           minimum: 0
       description: Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future
-        position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont.
+        position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont; whiskers — наблюдённые min/max, не выдуманные percentiles.
     CsiHeatmapRegion:
       type: object
       additionalProperties: false

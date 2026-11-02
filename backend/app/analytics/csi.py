@@ -193,6 +193,8 @@ async def analytics(
                 "group": code,
                 "employees": len(sample),
                 "known_tenure": n,
+                "minimum": min((value for value in sample if value is not None), default=None),
+                "maximum": max((value for value in sample if value is not None), default=None),
                 "q1": qs[0] if qs else None,
                 "median": qs[1] if qs else None,
                 "q3": qs[2] if qs else None,
