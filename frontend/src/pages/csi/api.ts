@@ -16,8 +16,9 @@ export function analyticsOptions(scope: CsiScope, headers: CsiHeaders) {
   }
 }
 
-export function useBranchDirectory(scope: Pick<CsiScope, 'product_line' | 'region_code'>, headers: CsiHeaders) {
+export function useBranchDirectory(scope: Pick<CsiScope, 'product_line' | 'region_code'>, headers: CsiHeaders, enabled = true) {
   return useInfiniteQuery({
+    enabled,
     queryKey: ['csi', 'directory', scope, headers],
     queryFn: ({ pageParam, signal }) => api<Schemas['BranchDirectoryResponse']>('/api/branches', { query: { ...scope, limit: 200, cursor: pageParam }, headers, signal }),
     initialPageParam: undefined as string | undefined,
@@ -27,10 +28,11 @@ export function useBranchDirectory(scope: Pick<CsiScope, 'product_line' | 'regio
   })
 }
 
-export function useDirectionCatalog(headers: CsiHeaders) {
+export function useDirectionCatalog(headers: CsiHeaders, enabled = true) {
   // Каталог уже входит в согласованный read-only cabinet API. Не подменяем
   // выбранный role ради получения более широкого списка направлений.
   return useQuery({
+    enabled,
     queryKey: ['csi', 'directions', headers],
     queryFn: async ({ signal }) => {
       const snapshot = await api<Schemas['CabinetOverview']>('/api/cabinet/overview', { query: { run_id: 'current' } satisfies Query, headers, signal })

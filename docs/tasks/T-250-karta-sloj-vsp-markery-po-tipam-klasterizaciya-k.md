@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 ЕТЗ 5.4, 8.2–8.4 и критерии 16.1 (ТЗ 25.5) на существующей карте d3-geo.
@@ -43,4 +43,4 @@ cd frontend && npx playwright test e2e/map-branches.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-250-map-branches`. Map-only scope/alias prerequisites:731af38/0387d24,6actualPG green. UI candidate: lazy scoped directory, реальные координаты/кластеры/list/keyboard, direct closed counts отдельно от city90-day zones,4метрики.28targetedfrontend/typecheck/ESLint/i18n2209 зелёные; full/native/demo3s ещё не проверены. API30 ждёт finalclean API29. [Проверенные границы и план](../reviews/T-250-ui-candidate.md); карточка не done.
