@@ -610,7 +610,7 @@ CREATE TABLE notifications (
   template_code    text,
   subject          text,
   body             text NOT NULL,
-  status           text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','delivered','failed','suppressed')),
+  status           text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent','delivered','failed','suppressed','unknown')),
   sent_sim         timestamptz,
   sent_at          timestamptz,
   external_ref     text,                           -- Mailpit message id / Telegram message id
@@ -2075,3 +2075,321 @@ FOR EACH ROW EXECUTE FUNCTION guard_product_signal_history();
 COMMENT ON COLUMN product_signal_history.run_id IS 'NULL только для legacy неизвестного запуска; чтение только явным all';
 COMMENT ON COLUMN product_signal_history.sentiment_known_count IS 'NULL legacy: качество неизвестно; unknown не считается neutral';
 COMMENT ON COLUMN product_signal_history.loss_rub IS 'NULL: потери не наблюдались; synthetic history не выдумывает деньги';
+
+-- T-121 / migration0015: durable Telegram transport после0014.
+-- Операционная схема намеренно без FK в восстанавливаемый public baseline.
+CREATE SCHEMA IF NOT EXISTS channel_runtime;
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_conversations (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    state_enc bytea NOT NULL,
+    revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, chat_id)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_inbound (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    update_id bigint NOT NULL CHECK (update_id >= 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    response_enc bytea NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, update_id)
+);
+-- Stable identity позволяет отличить восстановленную notification от новой с тем же id.
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS delivery_key uuid NOT NULL DEFAULT gen_random_uuid();
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_delivery_key_uidx ON public.notifications (delivery_key);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_deliveries (
+    delivery_key uuid PRIMARY KEY,
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    notification_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    payload_enc bytea NOT NULL,
+    status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','claimed','sent','failed','unknown','suppressed')),
+    claimed_at timestamptz,
+    completed_at timestamptz,
+    external_ref text,
+    error_code text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CHECK (status <> 'sent' OR (external_ref IS NOT NULL AND completed_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS telegram_deliveries_queue_idx
+    ON channel_runtime.telegram_deliveries (created_at, delivery_key) WHERE status = 'queued';
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_chat_rate (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    last_claimed_at timestamptz NOT NULL,
+    PRIMARY KEY (bot_id, chat_id)
+);
+
+-- Сеть могла принять sendMessage до потери ответа: это не definite failed/sent.
+ALTER TABLE public.notifications DROP CONSTRAINT IF EXISTS notifications_status_check;
+ALTER TABLE public.notifications ADD CONSTRAINT notifications_status_check
+ CHECK (status IN ('queued','sent','delivered','failed','suppressed','unknown'));
+
+ALTER TABLE channel_runtime.telegram_deliveries ADD COLUMN IF NOT EXISTS sent_sim timestamptz;
+
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_signal_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    signal_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    token_hash text NOT NULL CHECK (token_hash ~ '^[0-9a-f]{64}$'),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, signal_id, run_id, token_hash)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_client_bindings (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    client_id bigint NOT NULL,
+    client_code text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, client_id),
+    UNIQUE (bot_id, chat_id)
+);
+
+-- T-050: operational accounting survives bank seed/restore; no FK into public.
+-- Stable configuration identity: numeric IDs can be reused after bank restore.
+ALTER TABLE public.llm_profiles ADD COLUMN IF NOT EXISTS quota_uid uuid NOT NULL DEFAULT gen_random_uuid();
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='llm_profiles_quota_uid_key') THEN
+  ALTER TABLE public.llm_profiles ADD CONSTRAINT llm_profiles_quota_uid_key UNIQUE (quota_uid);
+ END IF;
+END $$;
+COMMENT ON COLUMN public.llm_profiles.quota_uid IS 'Private budget configuration identity; no API/AR/export projection; not usage';
+CREATE SCHEMA IF NOT EXISTS llm_runtime;
+CREATE TABLE IF NOT EXISTS llm_runtime.identity_settings (
+    singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+    secret_tag bytea NOT NULL CHECK (octet_length(secret_tag) = 32),
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.credentials (
+    uid uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider text NOT NULL CHECK (provider IN ('gigachat', 'openai_compatible')),
+    verifier bytea UNIQUE NOT NULL CHECK (octet_length(verifier) = 32),
+    confirmed_tokens bigint NOT NULL DEFAULT 0 CHECK (confirmed_tokens >= 0),
+    legacy_tokens_hint bigint NOT NULL DEFAULT 0 CHECK (legacy_tokens_hint >= 0),
+    usage_known boolean NOT NULL DEFAULT false,
+    usage_source text NOT NULL DEFAULT 'unknown',
+    usage_as_of timestamptz,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.credential_aliases (
+    config_uid uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.profile_scopes (
+    scope text PRIMARY KEY,
+    created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.daily_usage (
+    scope_type text NOT NULL CHECK (scope_type IN ('key', 'profile')),
+    scope_id text NOT NULL,
+    utc_day date NOT NULL,
+    requests_today bigint NOT NULL DEFAULT 0 CHECK (requests_today >= 0),
+    requests_known boolean NOT NULL DEFAULT false,
+    usage_source text NOT NULL DEFAULT 'unknown',
+    usage_as_of timestamptz,
+    PRIMARY KEY (scope_type, scope_id, utc_day)
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.reconciliations (
+    id uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    as_of timestamptz NOT NULL,
+    recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    source text NOT NULL CHECK (source = 'operator_declared_app_usage'),
+    observation jsonb NOT NULL CHECK (jsonb_typeof(observation) = 'object')
+);
+CREATE TABLE IF NOT EXISTS llm_runtime.wire_attempts (
+    id uuid PRIMARY KEY,
+    credential_uid uuid NOT NULL REFERENCES llm_runtime.credentials(uid),
+    profile_scope text NOT NULL,
+    profile_id integer,
+    profile_code text NOT NULL,
+    endpoint text NOT NULL,
+    model text NOT NULL,
+    utc_day date NOT NULL,
+    admitted_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    deadline_at timestamptz NOT NULL,
+    finished_at timestamptz,
+    state text NOT NULL DEFAULT 'reserved' CHECK (state IN ('reserved', 'known', 'unknown', 'reconciled')),
+    prompt_tokens bigint CHECK (prompt_tokens >= 0),
+    completion_tokens bigint CHECK (completion_tokens >= 0),
+    observed_tokens bigint NOT NULL DEFAULT 0 CHECK (observed_tokens >= 0),
+    error_kind text,
+    reconciliation_id uuid REFERENCES llm_runtime.reconciliations(id),
+    CHECK (state <> 'known' OR (prompt_tokens IS NOT NULL AND completion_tokens IS NOT NULL AND finished_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS wire_attempts_key_day_idx
+    ON llm_runtime.wire_attempts (credential_uid, utc_day, admitted_at);
+CREATE INDEX IF NOT EXISTS wire_attempts_profile_day_idx
+    ON llm_runtime.wire_attempts (profile_scope, utc_day, admitted_at);
+
+-- Idempotent for a partially installed development checkpoint as well.
+ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_id integer;
+ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_code text NOT NULL DEFAULT '';
+
+-- T-161: durable behavior owner, evidence/receipts/timers; actual parent0016.
+-- Legacy duplicate current states требуют явного согласования, без удаления истории.
+DO $$ BEGIN
+  IF EXISTS(SELECT 1 FROM client_states WHERE is_current GROUP BY run_id,client_id HAVING count(*)>1) THEN
+    RAISE EXCEPTION 'legacy duplicate current client states: explicit operator reconciliation required' USING ERRCODE='23514';
+  END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS behavior_client_states_current_key ON client_states(run_id,client_id) WHERE is_current;
+
+CREATE OR REPLACE FUNCTION valid_behavior_care_snapshot(doc jsonb) RETURNS boolean
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE component text;
+BEGIN
+  IF jsonb_typeof(doc) IS DISTINCT FROM 'object'
+     OR NOT doc ?& ARRAY['version','components','first_reply_at','tone_violated','sla_breached']
+     OR (SELECT count(*) FROM jsonb_object_keys(doc))<>5
+     OR doc->'version' IS DISTINCT FROM '1'::jsonb
+     OR jsonb_typeof(doc->'components') IS DISTINCT FROM 'object'
+     OR NOT (doc->'components') ?& ARRAY['proactive','speed','sla','gift_fit','tone','explanation']
+     OR (SELECT count(*) FROM jsonb_object_keys(doc->'components'))<>6
+     OR jsonb_typeof(doc->'tone_violated') IS DISTINCT FROM 'boolean'
+     OR jsonb_typeof(doc->'sla_breached') IS DISTINCT FROM 'boolean'
+     OR jsonb_typeof(doc->'first_reply_at') NOT IN ('string','null') THEN
+    RETURN false;
+  END IF;
+  FOREACH component IN ARRAY ARRAY['proactive','speed','sla','gift_fit','tone','explanation'] LOOP
+    IF jsonb_typeof(doc->'components'->component) IS DISTINCT FROM 'number' THEN RETURN false; END IF;
+    IF (doc->'components'->>component)::numeric NOT BETWEEN 0 AND 1 THEN RETURN false; END IF;
+  END LOOP;
+  IF (doc->>'tone_violated')::boolean AND (doc->'components'->>'tone')::numeric<>0 THEN RETURN false; END IF;
+  IF (doc->>'sla_breached')::boolean AND (doc->'components'->>'sla')::numeric<>0 THEN RETURN false; END IF;
+  IF jsonb_typeof(doc->'first_reply_at')='string' THEN
+    IF doc->>'first_reply_at' !~ '(Z|[+-][0-9]{2}:[0-9]{2})$' THEN RETURN false; END IF;
+    PERFORM (doc->>'first_reply_at')::timestamptz;
+  END IF;
+  RETURN true;
+END $$;
+
+CREATE OR REPLACE FUNCTION behavior_valid_failed_operation(op_id bigint, expected_run bigint) RETURNS boolean
+LANGUAGE sql STABLE AS $$
+  SELECT EXISTS(
+    SELECT 1 FROM operations o JOIN clients c ON c.id=o.client_id
+    LEFT JOIN faults f ON f.id=o.fault_id
+    WHERE o.id=op_id AND o.run_id=expected_run AND o.status='failed' AND o.error_code IS NOT NULL
+      AND (o.fault_id IS NULL OR (f.run_id=o.run_id AND f.error_code=o.error_code
+        AND f.system_code=ANY(o.system_path) AND o.started_sim>=f.started_sim
+        AND (f.resolved_sim IS NULL OR o.started_sim<f.resolved_sim)
+        AND (cardinality(f.region_codes)=0 OR c.region_code=ANY(f.region_codes))))
+  );
+$$;
+
+CREATE TABLE IF NOT EXISTS behavior_evidence (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  source_kind text NOT NULL CHECK(source_kind IN ('operation','notification','twin_reaction','sla','resolution','agent_state')),
+  source_id bigint NOT NULL CHECK(source_id>0),
+  observed_sim timestamptz NOT NULL,
+  consumed_sim timestamptz,
+  UNIQUE(run_id,client_id,source_kind,source_id)
+);
+CREATE INDEX IF NOT EXISTS behavior_evidence_due_idx ON behavior_evidence(run_id,observed_sim,id) WHERE consumed_sim IS NULL;
+CREATE TABLE IF NOT EXISTS behavior_runtime (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  state_id bigint NOT NULL REFERENCES client_states(id),
+  opened_sim timestamptz NOT NULL,
+  closed_sim timestamptz,
+  psychotype_code text NOT NULL,
+  segment_code text NOT NULL,
+  first_response_min integer NOT NULL CHECK(first_response_min>0),
+  policy_source_sha256 text NOT NULL CHECK(policy_source_sha256 ~ '^[0-9a-f]{64}$'),
+  policy_hash text NOT NULL CHECK(policy_hash ~ '^[0-9a-f]{64}$'),
+  policy_snapshot jsonb NOT NULL,
+  params_snapshot jsonb NOT NULL,
+  care_snapshot jsonb NOT NULL CHECK(octet_length(care_snapshot::text)<=4096 AND valid_behavior_care_snapshot(care_snapshot)),
+  first_complaint_sim timestamptz,
+  patience_due_sim timestamptz NOT NULL,
+  repeat_count integer NOT NULL DEFAULT 0 CHECK(repeat_count>=0),
+  sla_breached boolean NOT NULL DEFAULT false,
+  silent_decline boolean NOT NULL DEFAULT false,
+  next_hazard_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id)
+);
+CREATE TABLE IF NOT EXISTS behavior_causes (
+  run_id bigint NOT NULL,
+  client_id bigint NOT NULL,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  operation_id bigint NOT NULL REFERENCES operations(id),
+  fault_id bigint REFERENCES faults(id),
+  PRIMARY KEY(run_id,client_id,operation_id),
+  FOREIGN KEY(run_id,client_id) REFERENCES behavior_runtime(run_id,client_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS behavior_work (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL,
+  client_id bigint NOT NULL,
+  episode_no integer NOT NULL CHECK(episode_no>0),
+  status text NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','consumed','cancelled')),
+  kind text NOT NULL CHECK(kind IN ('complaint','repeat','patience')),
+  source_id bigint NOT NULL CHECK(source_id>0),
+  due_sim timestamptz NOT NULL,
+  consumed_sim timestamptz,
+  UNIQUE(run_id,client_id,episode_no,kind,source_id),
+  FOREIGN KEY(run_id,client_id) REFERENCES behavior_runtime(run_id,client_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS behavior_work_due_idx ON behavior_work(run_id,due_sim,id) WHERE status='pending';
+CREATE TABLE IF NOT EXISTS behavior_receipts (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  source_kind text NOT NULL,
+  source_id bigint NOT NULL CHECK(source_id>0),
+  action text NOT NULL,
+  consumed_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id,source_kind,source_id,action)
+);
+CREATE TABLE IF NOT EXISTS behavior_tick_receipts (
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  logical_tick_sim timestamptz NOT NULL,
+  PRIMARY KEY(run_id,client_id,logical_tick_sim)
+);
+
+-- Запрос агента хранится отдельно от результата owner; никаких inferred closure.
+CREATE TABLE IF NOT EXISTS behavior_agent_intents (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  agent_run_id bigint NOT NULL REFERENCES agent_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  signal_id bigint NOT NULL REFERENCES signals(id),
+  incident_id bigint REFERENCES incidents(id),
+  requested_state text NOT NULL CHECK(requested_state IN ('calm','affected','complaining','waiting','asks_again','escalates','satisfied','churn_intent','retained','churned')),
+  trigger text NOT NULL CHECK(length(trigger) BETWEEN 1 AND 128),
+  observed_sim timestamptz NOT NULL,
+  UNIQUE NULLS NOT DISTINCT(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger)
+);
+
+-- Только новые или действительно пустые run; legacy timers не восстанавливаем догадкой.
+CREATE TABLE IF NOT EXISTS behavior_runs (
+  run_id bigint PRIMARY KEY REFERENCES sim_runs(id) ON DELETE CASCADE,
+  policy_hash text NOT NULL CHECK(length(policy_hash)=64),
+  activated_sim timestamptz NOT NULL
+);
+CREATE TABLE IF NOT EXISTS behavior_pending_signals (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id bigint NOT NULL REFERENCES sim_runs(id) ON DELETE CASCADE,
+  client_id bigint NOT NULL REFERENCES clients(id),
+  due_sim timestamptz NOT NULL,
+  client_snapshot jsonb NOT NULL CHECK(jsonb_typeof(client_snapshot)='object' AND octet_length(client_snapshot::text)<=16384),
+  signal_type text NOT NULL,
+  product_code text NOT NULL REFERENCES products(code),
+  source_operation_id bigint REFERENCES operations(id) ON DELETE CASCADE,
+  source_fault_id bigint REFERENCES faults(id) ON DELETE CASCADE,
+  error_code text REFERENCES error_codes(code),
+  system_code text REFERENCES systems(code),
+  correlation_id uuid NOT NULL,
+  consumed_sim timestamptz
+);
+CREATE INDEX IF NOT EXISTS behavior_pending_due_idx ON behavior_pending_signals(run_id,due_sim,id) WHERE consumed_sim IS NULL;

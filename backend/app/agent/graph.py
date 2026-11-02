@@ -19,7 +19,7 @@ from app.agent.nodes import Deps
 from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
 from app.agent.tools import write as wt
-from app.agent.tools.base import ToolContext
+from app.agent.tools.base import StateEvidenceSink, ToolContext
 from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
@@ -106,13 +106,20 @@ async def load_deps(
     sim_time: dt.datetime,
     dry_run: bool = False,
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
+    state_evidence_sink: StateEvidenceSink | None = None,
 ) -> Deps:
     if not dry_run:
         chain, profile = await run_profiles(
             conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
         )
     ctx = ToolContext(
-        conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
+        conn,
+        run_id=run_id,
+        agent_run_id=agent_run_id,
+        sim_time=sim_time,
+        dry_run=dry_run,
+        trace_conn=trace_conn,
+        state_evidence_sink=state_evidence_sink,
     )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [

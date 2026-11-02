@@ -7,6 +7,7 @@ import contextlib
 import dataclasses
 import json
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import psycopg
@@ -29,8 +30,16 @@ log = get_logger(__name__)
 
 
 class TwinService:
-    def __init__(self, chain: ProviderChain, profile: LLMProfile) -> None:
+    def __init__(
+        self,
+        chain: ProviderChain,
+        profile: LLMProfile,
+        *,
+        behavior_sink: Callable[[psycopg.AsyncConnection[Any], int, int], Awaitable[None]] | None = None,
+    ) -> None:
         self.chain, self.profile = chain, profile
+        # Включается только coherent behavior wiring; standalone legacy пока сохранён.
+        self.behavior_sink = behavior_sink
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
@@ -251,27 +260,33 @@ class TwinService:
                     actual.latency_ms,
                 ),
             )
-            await conn.execute(
-                "insert into client_reactions(run_id,client_id,signal_id,incident_id,notification_id,reaction,tone,satisfaction,text,generated_by,agent_run_id,reacted_sim) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (
-                    run_id,
-                    client_id,
-                    row["signal_id"],
-                    row["incident_id"],
-                    notification_id,
-                    obj["reaction"],
-                    obj["tone"],
-                    obj["satisfaction"],
-                    text,
-                    "mock" if actual.source == "mock" else "llm",
-                    agent_id,
-                    sim_time,
-                ),
-            )
-            await conn.execute(
-                "update client_states set care_score=%s where client_id=%s and run_id=%s and is_current",
-                (obj["satisfaction"], client_id, run_id),
-            )
+            reaction_row = await (
+                await conn.execute(
+                    "insert into client_reactions(run_id,client_id,signal_id,incident_id,notification_id,reaction,tone,satisfaction,text,generated_by,agent_run_id,reacted_sim) values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id",
+                    (
+                        run_id,
+                        client_id,
+                        row["signal_id"],
+                        row["incident_id"],
+                        notification_id,
+                        obj["reaction"],
+                        obj["tone"],
+                        obj["satisfaction"],
+                        text,
+                        "mock" if actual.source == "mock" else "llm",
+                        agent_id,
+                        sim_time,
+                    ),
+                )
+            ).fetchone()
+            assert reaction_row is not None
+            if self.behavior_sink is not None:
+                await self.behavior_sink(conn, run_id, int(reaction_row["id"]))
+            else:
+                await conn.execute(
+                    "update client_states set care_score=%s where client_id=%s and run_id=%s and is_current",
+                    (obj["satisfaction"], client_id, run_id),
+                )
             if obj["reaction"] in ("asks_again", "escalates") and text:
                 # Старые стенды могут ещё не иметь нового справочника: регистрируем только свой источник.
                 await conn.execute(

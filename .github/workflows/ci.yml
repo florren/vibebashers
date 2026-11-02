@@ -113,6 +113,8 @@ jobs:
       - run: cd frontend && npm ci
       - name: Backend lint и типы
         run: cd backend && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy app
+      - name: Telegram transport — изолированное окружение, lint и fake tests
+        run: cd tgbot && uv sync --frozen && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy cx_tgbot && uv run --frozen pytest -q
       - name: Frontend lint и типы
         run: cd frontend && npm run lint && npm run typecheck
       - name: Лицензии и i18n

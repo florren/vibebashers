@@ -242,6 +242,16 @@ class World:
             / 60
         )
         n = self.rng.poisson(lam)
+        # Cache не доказывает run/time/region принадлежность. Читаем фактические
+        # границы один раз на batch, не добавляя запрос на каждую операцию.
+        canonical_faults = {}
+        if self.active_faults:
+            rows = await self.conn.execute(
+                "select id,run_id,system_code,error_code,started_sim,resolved_sim,region_codes "
+                "from faults where run_id=%s and id=any(%s)",
+                (self.run_id, [item["id"] for item in self.active_faults]),
+            )
+            canonical_faults = {row[0]: row for row in await rows.fetchall()}
         for _ in range(n):
             client = self.rng.choice(self.clients)
             if not client.products:
@@ -262,14 +272,34 @@ class World:
                 if op_type == "transfer"
                 else "online"
             )
-            fault = next((f for f in self.active_faults if f["system"] in path), None)
+            candidate = next((f for f in self.active_faults if f["system"] in path), None)
+            # Сохраняем прежний draw даже при отклонённой causal связи, иначе
+            # сдвинутся времена/типы всех последующих операций фиксированного seed.
+            failure_selected = candidate is not None and self.rng.random() < 0.6
+            fault = None
+            for cached in self.active_faults:
+                actual = canonical_faults.get(cached["id"])
+                if (
+                    actual is not None
+                    and actual[1] == self.run_id
+                    and actual[2] in path
+                    and cached["system"] == actual[2]
+                    and cached["error_code"] == actual[3]
+                    and self.error_codes.get(actual[3], {}).get("system") == actual[2]
+                    and actual[4] <= started
+                    and (actual[5] is None or started < actual[5])
+                    and (not actual[6] or client.region_code in actual[6])
+                ):
+                    fault = cached
+                    break
+            rejected_failure = failure_selected and fault is None
             status, error_code, fault_id, fee = "success", None, None, 0.0
-            if fault and self.rng.random() < 0.6:
+            if failure_selected and fault is not None:
                 status, error_code, fault_id = "failed", fault["error_code"], fault["id"]
                 fault["impact"] += 1
                 fault["clients"].add(client.id)
             elif (
-                method == "qr_sbp" and amount and self.rng.random() < 0.03
+                not failure_selected and method == "qr_sbp" and amount and self.rng.random() < 0.03
             ):  # фоновая ошибочная комиссия за QR (сценарий 8)
                 fee = round(amount * 0.015 + 90, 2)
                 error_code = "PROC-QR-FEE-CHARGED"
@@ -331,7 +361,10 @@ class World:
                 correlation_id=corr,
                 causation_id=fault["corr"] if fault is not None and fault_id else None,
             )
-            if status == "failed" or error_code:
+            if rejected_failure:
+                # Потребляем старый complaint draw/delay без фиктивной жалобы.
+                self._maybe_complain(client, product, started, op_id, None, None, None, corr, enqueue=False)
+            elif status == "failed" or error_code:
                 self._maybe_complain(
                     client,
                     product,
@@ -357,12 +390,15 @@ class World:
         *,
         base_p: float | None = None,
         stype: str | None = None,
+        enqueue: bool = True,
     ) -> None:
         p = base_p if base_p is not None else client.p_complain
         if self.rng.random() >= p:
             return
         lo, hi = client.complain_delay_min
         delay = self.rng.randint(int(lo), max(int(lo), int(hi)))
+        if not enqueue:
+            return
         self.pending.append(
             PendingSignal(
                 at + dt.timedelta(minutes=delay),
