@@ -86,9 +86,15 @@ async def deficit_threshold(conn: Conn) -> float | None:
     threshold = value.get("deficit_signals_per_open_branch")
     if threshold is None:
         return None
-    if type(threshold) not in (int, float) or not math.isfinite(threshold) or threshold <= 0:
+    if type(threshold) not in (int, float):
         raise HTTPException(409, "Порог дефицита ВСП должен быть конечным положительным числом")
-    return float(threshold)
+    try:
+        number = float(threshold)
+    except OverflowError:
+        raise HTTPException(409, "Порог дефицита ВСП превышает числовой диапазон") from None
+    if not math.isfinite(number) or number <= 0:
+        raise HTTPException(409, "Порог дефицита ВСП должен быть конечным положительным числом")
+    return number
 
 
 async def analytics(conn: Conn, scope: CabinetScope, region: str | None, limit: int, offset: int) -> dict[str, Any]:

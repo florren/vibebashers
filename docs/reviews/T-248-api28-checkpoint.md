@@ -24,3 +24,7 @@ DDL0020 additive: три cohort tables, composite FK, immutable snapshots, hash 
 - Первые два запуска API не прошли setup из-за неверного SQLAlchemy driver DSN и pg_dump18 вместо обязательного16; logs сохранены, это не green и не причина менять guards.
 
 UI T-249/T-250, scenario14/T-262 и replay/live приёмка этим checkpoint не закрываются. Реальные LLM/Telegram/email, рабочая БД и глобальные настройки планировщика не затрагивались.
+
+После обычного merge foundation e347e87 (включая public-run team enrollment95c77 и actual0019): make lint зелёный,367frontend/Ruff507/mypy312/bot12/5/drift195. Полный backend unit:1944passed/18skip70.50с. Первый lint остановился из-за отсутствия локального tgbot/.venv; подключено уже существующее изолированное окружение, без установки dependencies, полный повтор зелёный.
+
+После этого finite-positive threshold guard уточнён для огромных JSON integer (OverflowError→409, без500);4native branch boundary tests passed33.35с покрыли также closed91days: week пересекается с90-day zone, day уже нет; unknown branch status не даёт известного ratio, отсутствующий/неверный directory source/time не становится synthetic/now, directory GET доступен без SimClock. Новых policy defaults нет. Final frozen checks/coverage/performance ещё впереди.

@@ -118,3 +118,45 @@ def test_closure_same_city_native_window_and_configured_threshold(seeded):
             "update settings set value=%s where key='csi_analytics'", (Jsonb({"deficit_signals_per_open_branch": -1}),)
         )
         assert client.get("/api/branches/analytics").status_code == 409
+
+
+def test_unknown_status_directory_metadata_and_thresholds_remain_explicit(seeded):
+    from tests.integration.test_cabinet_api import assert_schema
+
+    install(seeded)
+    with psycopg.connect(dsn(seeded), autocommit=True) as sql, TestClient(create_app()) as client:
+        branch_id, region = sql.execute(
+            "select b.id,b.region_code from csi_cohorts c join branches b on b.id=c.branch_id order by c.id limit 1"
+        ).fetchone()
+        sql.execute("update branches set branch_status=NULL where id=%s", (branch_id,))
+        pressure = client.get("/api/branches/analytics").json()["pressure"]
+        row = next(x for x in pressure if x["region_code"] == region)
+        assert row["unknown_status_branches"] == 1 and row["signals_per_open_branch"] is None
+        for threshold in [True, 0, -1, "many", 10**1000, []]:
+            sql.execute(
+                "insert into settings(key,value) values('csi_analytics',%s) on conflict(key) do update set value=excluded.value",
+                (Jsonb({"deficit_signals_per_open_branch": threshold}),),
+            )
+            response = client.get("/api/branches/analytics")
+            assert response.status_code == 409, (threshold, response.text)
+        # Справочник доступен без часов. Unknown source/time не становится
+        # synthetic=True, сегодняшней датой или чужой неразмеченной историей.
+        line = sql.execute("select product_line_code from csi_cohorts order by id limit 1").fetchone()[0]
+        sql.execute(
+            "update settings set value=%s where key='branch_directory'",
+            (Jsonb({"mode": "unknown", "is_synthetic": 0, "as_of_sim": "bad"}),),
+        )
+        sql.execute("delete from sim_state where id=1")
+        response = client.get("/api/branches")
+        assert response.status_code == 200, response.text
+        assert_schema(response.json(), "BranchDirectoryResponse")
+        assert response.json()["directory"] == {
+            "mode": None,
+            "synthetic": None,
+            "as_of_sim": None,
+            "scope": "global_directory_snapshot",
+        }
+        network = client.get("/api/branches/network", params={"product_line": line})
+        assert network.status_code == 200, network.text
+        assert network.json()["items"] == [] and network.json()["basis"] == "unavailable_snapshot_time"
+        assert client.get("/api/csi/analytics").status_code == 409
