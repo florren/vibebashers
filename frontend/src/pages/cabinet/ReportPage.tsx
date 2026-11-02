@@ -58,7 +58,7 @@ export function ReportPage() {
       {(['json', 'xlsx'] as const).map(format => <button className="btn" key={format} disabled={!data || exporting} onClick={() => void download(format)}>{t('report.download', { format: format.toUpperCase() })}</button>)}
     </nav>
     <p className="report-controls text-sm">{t('report.exportSnapshot')}</p>
-    {report.isError && <ErrorBox error={report.error} />}{exportError != null && <ErrorBox error={exportError} />}
+    {(report.isError || exportError != null) && <div className="report-controls">{report.isError && <ErrorBox error={report.error} />}{exportError != null && <ErrorBox error={exportError} />}</div>}
     {report.isPending && <Skeleton className="mx-auto h-64 w-full max-w-3xl" />}
     {data && <>
       <article className="report-paper" data-report-page="1">
