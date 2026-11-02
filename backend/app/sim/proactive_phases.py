@@ -97,7 +97,9 @@ async def fail(conn: psycopg.AsyncConnection[Any], run_id: int, reason: str) -> 
     await conn.commit()
 
 
-async def native_anchor(conn: psycopg.AsyncConnection[Any], context: Case) -> dict[str, Any] | None:
+async def native_anchor(
+    conn: psycopg.AsyncConnection[Any], context: Case, *, active: bool = True
+) -> dict[str, Any] | None:
     found = await rows(
         conn,
         "select s.*,s.channel_code as channel from signals s join ingest_messages m on m.signal_id=s.id "
@@ -110,7 +112,22 @@ async def native_anchor(conn: psycopg.AsyncConnection[Any], context: Case) -> di
     )
     if not found:
         return None
-    if len(found) != 1 or not await proactive.service_scope(conn, found[0], context.prepared.run_id, for_effect=True):
+    if (
+        len(found) != 1
+        or not proactive.is_service(found[0])
+        or found[0]["client_id"] is not None
+        or found[0]["source_fault_id"] != context.prepared.payload["fault_id"]
+    ):
+        raise ScriptedScenarioError("inconsistent_evidence")
+    if active:
+        valid = await proactive.service_scope(conn, found[0], context.prepared.run_id, for_effect=True)
+    else:
+        # Read-only historical report — native completion as_of, никогда
+        # authority для producer/recovery и никогда чужой current clock.
+        valid = await proactive.fault_scope(
+            conn, context.prepared.run_id, context.prepared.payload["fault_id"], context.observed_at
+        )
+    if not valid:
         raise ScriptedScenarioError("inconsistent_evidence")
     return found[0]
 
@@ -331,9 +348,21 @@ async def advance(conn: psycopg.AsyncConnection[Any], sim: Simulator) -> list[in
         return []
 
 
-async def journal_inputs(conn: psycopg.AsyncConnection[Any], context: Case) -> list[int]:
+async def journal_inputs(conn: psycopg.AsyncConnection[Any], context: Case, *, active: bool = True) -> list[int]:
     """Private recovery inputs только из native producer/typed journal, не ingestion meta."""
-    anchor = await native_anchor(conn, context)
+    anchor = await native_anchor(conn, context, active=active)
+    if "notified" in context.events:
+        native = context.events["notified"]["payload"]
+        if (
+            anchor is None
+            or anchor["id"] != native["anchor_signal_id"]
+            or not await rows(
+                conn,
+                "select 1 from agent_runs where id=%s and kind='agent' and sim_run_id=%s and signal_id=%s",
+                (native["agent_run_id"], context.prepared.run_id, anchor["id"]),
+            )
+        ):
+            raise ScriptedScenarioError("inconsistent_evidence")
     ids = [int(anchor["id"])] if anchor else []
     event = context.events.get("complaints")
     if event is None:
@@ -390,7 +419,7 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
         check("native_phases_completed", complete, "Только typed completed с native refs; queued/unknown не доставка")
         if context is None or not complete:
             return {"passed": False, "checks": checks, "counts": counts}
-        await journal_inputs(conn, context)
+        await journal_inputs(conn, context, active=False)
         notified = context.events["notified"]["payload"]
         completed = context.events["completed"]["payload"]
         complaints = context.events["complaints"]["payload"]["complaint_signal_ids"]
@@ -481,6 +510,20 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
 
                 from app.api.map import get_map_zones
 
+                own_clock = await rows(
+                    conn,
+                    "select 1 from sim_state where id=1 and current_run_id=%s and sim_time=%s",
+                    (run_id, context.observed_at),
+                )
+                if not own_clock:
+                    counts["map_basis"] = "historical_unavailable"
+                    check(
+                        key,
+                        False,
+                        "unavailable/not_verified: existing map producer требует actual own completion clock; historical run/current не переключаются",
+                    )
+                    continue
+                counts["map_basis"] = "native_completion_clock"
                 response = await get_map_zones(run_id=str(run_id))
                 zones = json.loads(bytes(response.body))["items"]
                 regions = {person["region_code"] for person in context.operations}

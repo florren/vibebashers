@@ -224,3 +224,26 @@ nullable client_id generated. Первый restricted sandbox unit завис н
 остановлен только свой session(exit130); host repeat прошёл без source/test
 изменений для этого зависания. Это обход окружения, не runtime fix.
 Coverage/full PG/scenarios/compliance/front/final composition ещё впереди.
+
+### Frozen7108 coverage и historical reevaluation
+
+[Scoped coverage](T-039-coverage-7108.json):90 targeted unit/PG/Simulator passed
+511.56s. В семи измеренных модулях changed executable825/956=86.30% vsab6;
+новый phase coordinator205/240=85.42%, prepared215/233=92.27%, proactive96/101.
+Whole selected modules75% из-за прежнего runner/engine; это не whole T039 DoD
+coverage, не full make/CI. Exact7108 Ruff/format488/mypy301 и frontend typecheck
+green. Coverage overlay offline, свой checkout/DB, без установки dependencies.
+
+Последующий narrow guard: existing map producer использует current sim_state.
+При historical reevaluate с другим current/time карта помечается
+`unavailable/not_verified`, а не «неправильная»; map producer не вызывается,
+current/clock не переключаются. Read-only old anchor evidence проверяется по
+native completion as_of; producer/recovery сохраняют strict active authority по
+умолчанию. Stored completion phase и last_result таким ограничением не
+перезаписываются. Target2PG passed24.04s включает current positive evaluator,
+historical guard/unchanged stored result и ordinary paused free interrupted AR с
+реальным checkpoint: никакого auto recovery/новых notices, нужен manual Resume.
+
+[Native phase proof](T-039-native-phased-proof.json) сохраняет реальные typed
+receipts и один service AR/step statuses из Mock graph, без prompts/PII/secrets.
+Это controlled native proof; не live Telegram и не предотвращённые90 жалоб.

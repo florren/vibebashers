@@ -640,6 +640,8 @@ def _check_transcript(key: str, want: Any, tr: dict[str, Any]) -> dict[str, Any]
 
 
 async def save_result(conn: psycopg.AsyncConnection[Any], scenario_id: str, result: dict[str, Any]) -> None:
+    if result.get("counts", {}).get("map_basis") == "historical_unavailable":
+        return  # Read-only ограничение карты не заменяет stored completion result.
     await conn.execute(
         "update scenarios set last_run_at = now(), last_result = %s::jsonb where id = %s",
         (dumps({"passed": result["passed"], "checks": result["checks"]}), scenario_id),
