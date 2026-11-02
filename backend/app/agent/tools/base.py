@@ -65,6 +65,23 @@ class ActFrame:
     spec: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class ClientStateIntent:
+    """Запрос агента — provenance, а не подтверждённый behavior переход."""
+
+    run_id: int
+    agent_run_id: int
+    client_id: int
+    requested_state: str
+    trigger: str
+    at: dt.datetime
+    signal_id: int | None
+    incident_id: int | None
+
+
+StateEvidenceSink = Callable[[psycopg.AsyncConnection[Any], ClientStateIntent], Awaitable[int]]
+
+
 class ToolContext:
     def __init__(
         self,
@@ -76,6 +93,7 @@ class ToolContext:
         llm_source: str = "mock",
         dry_run: bool = False,
         trace_conn: psycopg.AsyncConnection[Any] | None = None,
+        state_evidence_sink: StateEvidenceSink | None = None,
     ) -> None:
         self.conn = conn
         self.run_id = run_id
@@ -84,6 +102,7 @@ class ToolContext:
         self.llm_source = llm_source
         self.dry_run = dry_run
         self.trace_conn = trace_conn
+        self.state_evidence_sink = state_evidence_sink
         self.calls: list[dict[str, Any]] = []  # tool_calls текущего узла (сбрасывает узел)
         self.pending_wraps: list[str] = []  # внутренние имена, которые фасад свернёт в wraps
         self.act_frame: ActFrame | None = None

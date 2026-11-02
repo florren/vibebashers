@@ -55,6 +55,7 @@ SECRET_FIELDS = frozenset(
         "encrypted_key",
         "key_enc",
         "credential_uid",
+        "quota_uid",
     }
 )
 

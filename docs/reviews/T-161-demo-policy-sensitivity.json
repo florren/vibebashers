@@ -1,0 +1,300 @@
+{
+  "policy_id": "demo_behavior_v0_review",
+  "status": "approved_for_implementation",
+  "enabled": false,
+  "approved_by": "user_in_chat",
+  "approved_date": "2026-11-02",
+  "approval_scope": "values_and_semantics_only",
+  "approval_source_commit": "ba5145dc8ff63d1ac0b75a44faa697749fa05e5e",
+  "policy_sha256": "a22fb3375f77809e015747e09e40598c5b744439d45c1436cb70189dcfe7ce9b",
+  "catalog_sha256": {
+    "psychotypes": "63004af0d26c884d44235358cdc517f739ea4c760a92c1b1ec9a39757a8bbb2b",
+    "segments": "d2962440c00cb6912e45059e6669896c9f84a4461f6524e296c37a6bf64e0a18",
+    "gifts": "112f1452e453ffbb7b65e7cd08a09d3d8dee9a450cfeb0ada497475c7217a081"
+  },
+  "catalog_psychotypes": 8,
+  "explicit_segments": 7,
+  "worst_raw_hazard": {
+    "psychotype": "silent_churner",
+    "segment": "mass",
+    "raw": 0.216
+  },
+  "fixed_24h_ticks": 96,
+  "care_examples": [
+    {
+      "psychotype": "loyal_pragmatic",
+      "on_time_reply_no_proactive_no_gift": 0.75,
+      "after_sla_breach": 0.45,
+      "after_tone_violation": 0.65,
+      "hypothetical_valid_bonus_gift": 0.79,
+      "with_prior_proactive": 0.9,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": true
+      }
+    },
+    {
+      "psychotype": "anxious",
+      "on_time_reply_no_proactive_no_gift": 0.6,
+      "after_sla_breach": 0.5,
+      "after_tone_violation": 0.5,
+      "hypothetical_valid_bonus_gift": 0.615,
+      "with_prior_proactive": 0.95,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": false
+      }
+    },
+    {
+      "psychotype": "demanding_rational",
+      "on_time_reply_no_proactive_no_gift": 0.85,
+      "after_sla_breach": 0.45,
+      "after_tone_violation": 0.8,
+      "hypothetical_valid_bonus_gift": 0.858,
+      "with_prior_proactive": 0.95,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": true
+      }
+    },
+    {
+      "psychotype": "public_emotional",
+      "on_time_reply_no_proactive_no_gift": 0.75,
+      "after_sla_breach": 0.65,
+      "after_tone_violation": 0.5,
+      "hypothetical_valid_bonus_gift": 0.825,
+      "with_prior_proactive": 0.85,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": true
+      }
+    },
+    {
+      "psychotype": "silent_churner",
+      "on_time_reply_no_proactive_no_gift": 0.3,
+      "after_sla_breach": 0.2,
+      "after_tone_violation": 0.25,
+      "hypothetical_valid_bonus_gift": 0.33,
+      "with_prior_proactive": 0.9,
+      "retained_threshold_sweep": {
+        "0.45": false,
+        "0.55": false,
+        "0.65": false
+      }
+    },
+    {
+      "psychotype": "bonus_hunter",
+      "on_time_reply_no_proactive_no_gift": 0.35,
+      "after_sla_breach": 0.25,
+      "after_tone_violation": 0.3,
+      "hypothetical_valid_bonus_gift": 0.89,
+      "with_prior_proactive": 0.4,
+      "retained_threshold_sweep": {
+        "0.45": false,
+        "0.55": false,
+        "0.65": false
+      }
+    },
+    {
+      "psychotype": "novice",
+      "on_time_reply_no_proactive_no_gift": 0.8,
+      "after_sla_breach": 0.7,
+      "after_tone_violation": 0.65,
+      "hypothetical_valid_bonus_gift": 0.84,
+      "with_prior_proactive": 0.9,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": true
+      }
+    },
+    {
+      "psychotype": "status_oriented",
+      "on_time_reply_no_proactive_no_gift": 0.75,
+      "after_sla_breach": 0.6,
+      "after_tone_violation": 0.55,
+      "hypothetical_valid_bonus_gift": 0.78,
+      "with_prior_proactive": 0.9,
+      "retained_threshold_sweep": {
+        "0.45": true,
+        "0.55": true,
+        "0.65": true
+      }
+    }
+  ],
+  "hazard_sensitivity": [
+    {
+      "psychotype": "loyal_pragmatic",
+      "care_score": 0.0,
+      "raw_per_tick": 0.02,
+      "intent_probability_fixed_24h": 0.8562184151122986
+    },
+    {
+      "psychotype": "loyal_pragmatic",
+      "care_score": 0.5,
+      "raw_per_tick": 0.015,
+      "intent_probability_fixed_24h": 0.7656428932639298
+    },
+    {
+      "psychotype": "loyal_pragmatic",
+      "care_score": 1.0,
+      "raw_per_tick": 0.01,
+      "intent_probability_fixed_24h": 0.6189528818954504
+    },
+    {
+      "psychotype": "anxious",
+      "care_score": 0.0,
+      "raw_per_tick": 0.03,
+      "intent_probability_fixed_24h": 0.9462861243328006
+    },
+    {
+      "psychotype": "anxious",
+      "care_score": 0.5,
+      "raw_per_tick": 0.018,
+      "intent_probability_fixed_24h": 0.8251350260412866
+    },
+    {
+      "psychotype": "anxious",
+      "care_score": 1.0,
+      "raw_per_tick": 0.005999999999999998,
+      "intent_probability_fixed_24h": 0.43883199450307087
+    },
+    {
+      "psychotype": "demanding_rational",
+      "care_score": 0.0,
+      "raw_per_tick": 0.05,
+      "intent_probability_fixed_24h": 0.9927311432903873
+    },
+    {
+      "psychotype": "demanding_rational",
+      "care_score": 0.5,
+      "raw_per_tick": 0.0325,
+      "intent_probability_fixed_24h": 0.9580730303270582
+    },
+    {
+      "psychotype": "demanding_rational",
+      "care_score": 1.0,
+      "raw_per_tick": 0.015000000000000003,
+      "intent_probability_fixed_24h": 0.7656428932639298
+    },
+    {
+      "psychotype": "public_emotional",
+      "care_score": 0.0,
+      "raw_per_tick": 0.04,
+      "intent_probability_fixed_24h": 0.9801372959480172
+    },
+    {
+      "psychotype": "public_emotional",
+      "care_score": 0.5,
+      "raw_per_tick": 0.025,
+      "intent_probability_fixed_24h": 0.912008016609765
+    },
+    {
+      "psychotype": "public_emotional",
+      "care_score": 1.0,
+      "raw_per_tick": 0.01,
+      "intent_probability_fixed_24h": 0.6189528818954504
+    },
+    {
+      "psychotype": "silent_churner",
+      "care_score": 0.0,
+      "raw_per_tick": 0.08,
+      "intent_probability_fixed_24h": 0.9996660884625987
+    },
+    {
+      "psychotype": "silent_churner",
+      "care_score": 0.5,
+      "raw_per_tick": 0.048,
+      "intent_probability_fixed_24h": 0.9911049776241524
+    },
+    {
+      "psychotype": "silent_churner",
+      "care_score": 1.0,
+      "raw_per_tick": 0.015999999999999997,
+      "intent_probability_fixed_24h": 0.7874165507322954
+    },
+    {
+      "psychotype": "bonus_hunter",
+      "care_score": 0.0,
+      "raw_per_tick": 0.03,
+      "intent_probability_fixed_24h": 0.9462861243328006
+    },
+    {
+      "psychotype": "bonus_hunter",
+      "care_score": 0.5,
+      "raw_per_tick": 0.020999999999999998,
+      "intent_probability_fixed_24h": 0.869641782575216
+    },
+    {
+      "psychotype": "bonus_hunter",
+      "care_score": 1.0,
+      "raw_per_tick": 0.012,
+      "intent_probability_fixed_24h": 0.68619007115025
+    },
+    {
+      "psychotype": "novice",
+      "care_score": 0.0,
+      "raw_per_tick": 0.03,
+      "intent_probability_fixed_24h": 0.9462861243328006
+    },
+    {
+      "psychotype": "novice",
+      "care_score": 0.5,
+      "raw_per_tick": 0.0195,
+      "intent_probability_fixed_24h": 0.8490026211897899
+    },
+    {
+      "psychotype": "novice",
+      "care_score": 1.0,
+      "raw_per_tick": 0.009000000000000001,
+      "intent_probability_fixed_24h": 0.5801725504841111
+    },
+    {
+      "psychotype": "status_oriented",
+      "care_score": 0.0,
+      "raw_per_tick": 0.06,
+      "intent_probability_fixed_24h": 0.9973680723564158
+    },
+    {
+      "psychotype": "status_oriented",
+      "care_score": 0.5,
+      "raw_per_tick": 0.036,
+      "intent_probability_fixed_24h": 0.9703929419864663
+    },
+    {
+      "psychotype": "status_oriented",
+      "care_score": 1.0,
+      "raw_per_tick": 0.011999999999999997,
+      "intent_probability_fixed_24h": 0.68619007115025
+    }
+  ],
+  "segment_sensitivity": [
+    {
+      "multiplier": 0.8,
+      "raw": 0.012,
+      "intent_probability_fixed_24h": 0.68619007115025
+    },
+    {
+      "multiplier": 1.0,
+      "raw": 0.015,
+      "intent_probability_fixed_24h": 0.7656428932639298
+    },
+    {
+      "multiplier": 1.2,
+      "raw": 0.018000000000000002,
+      "intent_probability_fixed_24h": 0.8251350260412866
+    }
+  ],
+  "silent_decline_unconditional_example": 0.63,
+  "not_claimed": [
+    "real-client calibration",
+    "real churn forecast",
+    "monetary impact",
+    "runtime activation",
+    "account closure"
+  ]
+}

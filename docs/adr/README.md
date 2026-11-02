@@ -30,3 +30,5 @@ ADR-0001…0007 оформлены 27.10.2026 задним числом по р�
 - [ADR-0019](ADR-0019-explicit-synthetic-ingest.md) — явная синтетика, безопасное recovery и добавочный CSI-ремонт.
 
 - [ADR-0020](ADR-0020-automatic-baseline-csi.md) — автоматический CSI-ремонт после restore, привязка к соединению.
+
+- [ADR-0024](ADR-0024-demo-client-behavior-policy.md) — demo-policy T161: значения утверждены для реализации, runtime выключен.

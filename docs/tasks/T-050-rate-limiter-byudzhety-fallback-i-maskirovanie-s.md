@@ -61,3 +61,7 @@ Targeted 37 passed; lint зелёный, coverage redactor/app.logging 100%. П�
 Follow-up parent review: named credential containers внутри diagnostic repr теперь маскируются целиком (list/dict/tuple/nested/quoted/escaped), без eval. Truncated/malformed container скрывает остаток строки; outside IDs после balanced container сохраняются. Targeted 59 passed; lint/100% coverage прошли. Подробности и итог полного unit — в `docs/reviews/T-050-secret-redaction.md`.
 
 Follow-up полный unit: 975 passed / 18 skipped, exit 0; source и credentials/environment boundaries сохранены.
+
+## P2 durable accounting: foundation, 2026-11-02
+
+Подготовлены private operational namespace0016, stable profile quota identity, атомарные UTC daily reservations, known/unknown usage floor и явная audit reconciliation. HTTP providers ещё не подключены, API21/CLI/публичные остатки и финальная политика не объявляются готовыми.15 synthetic PG (включая настоящий dump/restore) и61 targeted unit прошли; Ruff/mypy targeted прошли. Подробные semantics, ограничения и будущий обязательный policy/contract review: `docs/reviews/T-050-durable-accounting.md`. T050 остаётся `in_progress`; live calls не выполнялись.
