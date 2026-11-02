@@ -21,6 +21,18 @@ def configured_policy() -> DemoPolicy | None:
     return policy if policy.spec["enabled"] else None
 
 
+async def effective_policy(
+    conn: psycopg.AsyncConnection[Any], run_id: int | None, policy: DemoPolicy | None
+) -> DemoPolicy | None:
+    """Policy применима только к фактическому free/scenario, без отключения loader."""
+    if policy is None or run_id is None:
+        return None
+    run = await BehaviorStore(conn)._one("select kind from sim_runs where id=%s", (run_id,))
+    if run is None:
+        raise ValueError("behavior run отсутствует")
+    return policy if run[0] in ("free", "scenario") else None
+
+
 async def prepare_run(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime, policy: DemoPolicy) -> None:
     store = BehaviorStore(conn)
     store.require_transaction()

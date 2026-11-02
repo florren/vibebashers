@@ -436,3 +436,74 @@ async def test_owned_reset_day_processes_timers_and_preserves_working_deadline(s
             await (await conn.execute("select sim_time,day_no,rng_state from sim_state where id=1")).fetchone()
         ) == (sim.clock.sim_time, 11, sim.rng.dump_state())
         await sim.conn.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("identified", [True, False])
+async def test_live_graph_and_clock_keep_owned_state_hazard_and_rng_unchanged(seeded, monkeypatch, identified):
+    from tests.helpers import run_agent_on
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        owned, client, now, sim = await setup(conn, monkeypatch, seeded)
+        await failed(conn, owned, client, now)
+        await sim.step(1)
+        before = await (
+            await conn.execute(
+                "select to_jsonb(cs),to_jsonb(b) from client_states cs join behavior_runtime b on b.state_id=cs.id where b.run_id=%s",
+                (owned,),
+            )
+        ).fetchone()
+        assert before is not None
+        rng = sim.rng.dump_state()
+        risk = (await (await conn.execute("select churn_risk from clients where id=%s", (client,))).fetchone())[0]
+        live = await new_run(conn, "T161 actual live input", kind="live")
+        await sim.conn.close()
+        active = Simulator(dsn=seeded)
+        await active.load_state()
+        assert active.behavior_policy is not None
+        active.full_execution = True
+        monkeypatch.setattr(active, "_start_loop", lambda: setattr(active.clock, "running", True))
+        active._intensities = {"op": 0, "fault": 0, "client_error": 0, "signal_noise": 0}
+        _, result = await run_agent_on(
+            conn,
+            "Не могу открыть вклад в приложении, ошибка DEP-TIMEOUT-503. Прошу помочь.",
+            client_id=client if identified else None,
+            run_id=live,
+        )
+        await conn.commit()
+        assert result["outcome"] in ("completed", "deferred", "awaiting_human", "fallback_mock"), result.get("errors")
+        assert active.rng.dump_state() == rng
+        await active._ensure_world()
+        # Штатный TeamEmulator.load закрепляет план своими draw. После load
+        # admission и часы live не должны добавлять behavior hazard draws.
+        clock_rng = active.rng.dump_state()
+        await active.control("pause")
+        await active.control("resume")
+        await active.control("pause")
+        await active.control("step", step_minutes=15)
+        assert active.world.behavior_policy is None
+        assert active.rng.dump_state() == clock_rng
+        assert (await (await conn.execute("select rng_state from sim_state where id=1")).fetchone()) == (clock_rng,)
+        assert (
+            await (
+                await conn.execute(
+                    "select to_jsonb(cs),to_jsonb(b) from client_states cs join behavior_runtime b on b.state_id=cs.id where b.run_id=%s",
+                    (owned,),
+                )
+            ).fetchone()
+            == before
+        )
+        assert (await (await conn.execute("select churn_risk from clients where id=%s", (client,))).fetchone()) == (
+            risk,
+        )
+        assert (
+            await (
+                await conn.execute(
+                    "select (select count(*) from behavior_runs where run_id=%s),"
+                    "(select count(*) from behavior_evidence where run_id=%s),"
+                    "(select count(*) from behavior_runtime where run_id=%s)",
+                    (live, live, live),
+                )
+            ).fetchone()
+        ) == (0, 0, 0)
+        await active.conn.close()

@@ -20,7 +20,7 @@ from app.sim import baseline as baseline_svc
 from app.sim import runs as run_svc
 from app.sim.behavior.owner import BehaviorOwner
 from app.sim.behavior.policy import DemoPolicy
-from app.sim.behavior.runtime import capture, configured_policy, prepare_run, require_run
+from app.sim.behavior.runtime import capture, configured_policy, effective_policy, prepare_run, require_run
 from app.sim.clock import MSK, PRESETS, SimClock, is_working_day
 from app.sim.events import EventBus
 from app.sim.generators import World
@@ -135,7 +135,7 @@ class Simulator:
                 self.rng,
                 self.run_id,
                 old.intensities if old is not None else getattr(self, "_intensities", None),
-                behavior_policy=self.behavior_policy,
+                behavior_policy=await effective_policy(conn, self.run_id, self.behavior_policy),
             )
             if old is not None:
                 self.world.pending = old.pending
@@ -176,8 +176,9 @@ class Simulator:
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
             conn = await self.connect()
+            policy = await effective_policy(conn, self.run_id, self.behavior_policy)
             if (
-                self.behavior_policy is not None
+                policy is not None
                 and self.run_id is not None
                 and self.run_status not in ("completed", "stopped", "archived")
             ):
@@ -186,15 +187,16 @@ class Simulator:
                     if self.run_status == "interrupted":
                         raise ValueError("Прерванный behavior run сначала нужно возобновить")
                     # До _ensure_world: legacy отказ не меняет даже memory cache.
-                    await prepare_run(conn, self.run_id, self.clock.sim_time, self.behavior_policy)
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
                 except BaseException:
                     await conn.rollback()
                     raise
             world = await self._ensure_world()
-            if self.behavior_policy is not None:
+            policy = world.behavior_policy
+            if policy is not None:
                 assert self.run_id is not None
                 try:
-                    await prepare_run(conn, self.run_id, self.clock.sim_time, self.behavior_policy)
+                    await prepare_run(conn, self.run_id, self.clock.sim_time, policy)
                     row = await (
                         await conn.execute(
                             "select current_run_id,sim_time,rng_state from sim_state where id=1 for update"
@@ -231,10 +233,10 @@ class Simulator:
                 await world.sla_engine.tick(t0, self.clock.sim_time)
                 self.stats["ticks"] += 1
                 await self.persist()
-                if self.behavior_policy is not None:
+                if policy is not None:
                     assert self.run_id is not None
                     await capture(conn, self.run_id)
-                    owner = BehaviorOwner(conn, self.behavior_policy)
+                    owner = BehaviorOwner(conn, policy)
                     next_rng = await owner.advance(
                         run_id=self.run_id, to_sim=self.clock.sim_time, allow_paused=self.run_status == "paused"
                     )
@@ -255,7 +257,7 @@ class Simulator:
                     self.rng,
                     world.run_id,
                     world.intensities,
-                    behavior_policy=self.behavior_policy,
+                    behavior_policy=policy,
                 )
                 restored.pending = pending_before
                 restored.active_faults = faults_before
@@ -418,7 +420,7 @@ class Simulator:
             await self._stop_loop()
             lt = self.clock.sim_time.astimezone(MSK)
             target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-            if self.behavior_policy is not None:
+            if await effective_policy(conn, self.run_id, self.behavior_policy) is not None:
                 await self.step((target - self.clock.sim_time).total_seconds() / 60)
             else:
                 self.clock.sim_time = target
@@ -463,8 +465,9 @@ class Simulator:
                 raise ValueError("возобновить можно только текущий paused/interrupted запуск")
             rid, _, sim_time, rng_state, seed, day_no = row
             try:
-                if self.behavior_policy is not None:
-                    await prepare_run(conn, int(rid), sim_time, self.behavior_policy)
+                policy = await effective_policy(conn, int(rid), self.behavior_policy)
+                if policy is not None:
+                    await prepare_run(conn, int(rid), sim_time, policy)
                 if self.before_resume:
                     await self.before_resume(int(rid), sim_time)
                 self.seed = int(seed)
