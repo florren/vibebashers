@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { applyUiTheme, resolveMode } from './apply'
+import { bootstrapCircadian, readCircadian, type CircadianPreferences } from './circadian'
 import type { ThemeDensity, ThemeMode, ThemePack, ResolvedThemeMode } from './types'
 
 const PACK_KEY = 'cx.ui.theme_pack'
@@ -25,6 +26,8 @@ function readDensity(): ThemeDensity {
 
 export type UiThemeState = {
   theme_pack: ThemePack
+  circadian: CircadianPreferences
+  setCircadian: (preferences: CircadianPreferences) => void
   simTime: string | null
   syncError: boolean
   setSimTime: (time: string | null) => void
@@ -38,11 +41,18 @@ export type UiThemeState = {
 
 export const useUiTheme = create<UiThemeState>((set, get) => ({
   theme_pack: readPack(),
+  circadian: readCircadian(),
+  setCircadian: (circadian) => {
+    localStorage.setItem('cx.ui.circadian', JSON.stringify(circadian))
+    set({ circadian })
+    applyUiTheme(get().theme_pack, get().mode, get().density, get().simTime)
+  },
   simTime: null,
   syncError: false,
   setSimTime: (simTime) => {
+    if (simTime && Number.isFinite(Date.parse(simTime))) localStorage.setItem('cx.ui.sim_time', simTime)
     set({ simTime })
-    applyUiTheme(get().theme_pack, get().mode, get().density, simTime)
+    applyUiTheme(get().theme_pack, get().mode, get().density, simTime, true)
   },
   mode: readMode(),
   density: readDensity(),
@@ -66,7 +76,5 @@ export const useUiTheme = create<UiThemeState>((set, get) => ({
 }))
 
 export function bootstrapUiTheme() {
-  const pack = readPack()
-  const mode = readMode()
-  applyUiTheme(pack, mode, readDensity())
+  bootstrapCircadian()
 }
