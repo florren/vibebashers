@@ -502,9 +502,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CxSettingsMap"];
                 };
             };
             responses: {
@@ -515,6 +513,7 @@ export interface paths {
                     };
                     content?: never;
                 };
+                422: components["responses"]["Problem"];
             };
         };
         trace?: never;
@@ -7625,12 +7624,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** [ПРОТО] Демонстрационный индекс CX (ТЗ 26.4) */
+        /**
+         * [ПРОТО] Демонстрационный индекс CX
+         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim или native observed receipt выбранного запуска дают 409 temporal_context_conflict до live projection (all проверяет все запуски). Это defensive boundary, не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
+         */
         get: {
             parameters: {
                 query?: {
-                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
-                    run_id?: components["parameters"]["RunId"];
+                    /** @description Положительный bigint <=9223372036854775807, current либо all. ASCII only; неизвестный numeric ID404. */
+                    run_id?: string;
                 };
                 header?: never;
                 path?: never;
@@ -7644,10 +7646,61 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>;
+                        "application/json": components["schemas"]["CxIndex"];
                     };
                 };
-                501: components["responses"]["Problem"];
+                404: components["responses"]["Problem"];
+                /** @description temporal_context_conflict — известное native evidence позже global as_of. */
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+                503: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/metrics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * [ПРОТО] Readonly Обзор: KPI, давление, сохранённые summaries
+         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim или native observed receipt выбранного запуска дают 409 temporal_context_conflict до live projection (all проверяет все запуски). Это defensive boundary, не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Положительный bigint <=9223372036854775807, current либо all. ASCII only; неизвестный numeric ID404. */
+                    run_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MetricsOverview"];
+                    };
+                };
+                404: components["responses"]["Problem"];
+                /** @description temporal_context_conflict — известное native evidence позже global as_of. */
+                409: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+                503: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -8138,6 +8191,177 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Конечные буквальные коэффициенты; хотя бы один >0. Не нормируются; default по ТЗ 0.4/0.25/0.2/0.15. Даже нулевой вес не скрывает unknown компонента. */
+        CxWeights: {
+            negativity: number;
+            criticality: number;
+            sla: number;
+            churn: number;
+        } | {
+            negativity?: unknown;
+        } | {
+            criticality?: unknown;
+        } | {
+            sla?: unknown;
+        } | {
+            churn?: unknown;
+        };
+        CxSettingsMap: {
+            cx_index?: {
+                weights?: components["schemas"]["CxWeights"];
+            } & {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        MetricsRunScope: {
+            requested_run_id: string;
+            resolved_run_id: number | null;
+            all_runs: boolean;
+            current_missing: boolean;
+        };
+        /** @description Окно (starts_sim, ends_sim], authoritative sim clock. */
+        MetricsWindow: {
+            /** Format: date-time */
+            starts_sim: string;
+            /** Format: date-time */
+            ends_sim: string;
+        };
+        /** @description value только при полном coverage. observed_value описывает только известную часть; не подставляется в общий индекс. N numerator=сумма записанных negativity, C/R/S=число положительных случаев. unknown total не подменяется нулём. */
+        CxComponent: {
+            value: number | null;
+            observed_value: number | null;
+            known: number;
+            total: number | null;
+            numerator: number | null;
+            /** @enum {string} */
+            status: "complete" | "empty" | "partial" | "unknown";
+            /** @constant */
+            unit: "percent";
+            /** @enum {string} */
+            basis: "recorded_classification" | "observed_classification_receipts" | "registered_sla_risk";
+        };
+        CxComponents: {
+            negativity: components["schemas"]["CxComponent"];
+            criticality: components["schemas"]["CxComponent"];
+            sla: components["schemas"]["CxComponent"];
+            churn: components["schemas"]["CxComponent"];
+        };
+        /** @description Демонстрационный CX=clamp(100−Σwᵢxᵢ,0,100), не CSI/география/денежная формула. Частичный компонент => index NULL, без перенормировки. previous использует те же ТЕКУЩИЕ веса, но только independently observed immutable classify snapshot+receipt на исторический cutoff. Frozen churn_predicted_sim не publication proof. Historical open SLA без deadline snapshot => unknown. S basis зарегистрированный current-stage native warning либо просрочка: отсутствие события не гарантирует отсутствие прогноза риска. Эти semantics требуют review API29. */
+        CxIndex: {
+            /** @constant */
+            demonstration: true;
+            index: number | null;
+            previous_index: number | null;
+            delta_hour: number | null;
+            /** Format: date-time */
+            as_of_sim: string;
+            window: components["schemas"]["MetricsWindow"];
+            previous_window: components["schemas"]["MetricsWindow"];
+            scope: components["schemas"]["MetricsRunScope"];
+            weights: components["schemas"]["CxWeights"] | null;
+            /** @enum {string} */
+            weights_source: "tz_default" | "configured" | "invalid";
+            /** @enum {string|null} */
+            weights_error: null | "invalid_cx_index_weights";
+            default_weights: components["schemas"]["CxWeights"];
+            /** @constant */
+            comparison_basis: "current_weights_on_observed_states";
+            components: components["schemas"]["CxComponents"];
+            previous_components: components["schemas"]["CxComponents"];
+            /** @constant */
+            sla_basis: "registered_sla_risk";
+            /** @constant */
+            sla_forecast_complete: false;
+            /** @enum {string|null} */
+            historical_sla_reason: null | "historical_sla_evidence_unavailable";
+            signals: number;
+            previous_signals: number;
+            channel_mix: {
+                channel_code: string;
+                signals: number;
+            }[];
+            flow: {
+                bucket: number;
+                /** Format: date-time */
+                starts_sim: string;
+                /** Format: date-time */
+                ends_sim: string;
+                signals: number;
+            }[];
+        };
+        /** @description today=Europe/Moscow midnight..sim now; остальные cohorts rolling24h, SLA=current open stock. autonomous share=finished completed&&!needed_human / all finished agent runs; response=записанная total_latency_ms, не wall clock age. saved=только stored incident_economics; exact Decimal string без потери копеек, partial=NULL, действительно пустой incident cohort=0. */
+        OverviewKpi: {
+            signals_today: number;
+            critical_today: number | null;
+            autonomous_share: number | null;
+            agent_response_p50_ms: number | null;
+            sla_risk_incidents: number | null;
+            saved_rub_exact: string | null;
+        };
+        OverviewCoverage: {
+            signals_today: number;
+            criticality_known_today: number;
+            agent_runs: number;
+            outcome_known: number;
+            latency_known: number;
+            incidents: number;
+            economics_known: number;
+            sla_known: number;
+            sla_open: number;
+        };
+        /** @description Маскированная сохранённая summary_ru; это исходный язык, не новая генерация/перевод. Mode только из actual source/model, legacy unknown явно unknown. */
+        OverviewSummary: {
+            agent_run_id: number;
+            signal_id: number;
+            public_id: string | null;
+            /** Format: date-time */
+            started_sim: string | null;
+            /** @enum {string} */
+            node: "classify" | "instant_decide";
+            /** @enum {string} */
+            mode: "mock" | "replay" | "live" | "unknown";
+            text: string;
+        };
+        /** @description Один REPEATABLE READ READ ONLY snapshot, без LLM, compute/recompute или materialization writes. До 8 фактически сохранённых summaries за24h по received_sim; total/truncated явно показывают ограничение, текст маскирован/ограничен300. Это компиляция, не новый текст агента. Pressure включает реальные текущие статусы инцидентов, без новой бизнес-классификации. */
+        MetricsOverview: {
+            /** Format: date-time */
+            as_of_sim: string;
+            scope: components["schemas"]["MetricsRunScope"];
+            window: components["schemas"]["MetricsWindow"];
+            /** Format: date-time */
+            today_starts_sim: string;
+            kpi: components["schemas"]["OverviewKpi"];
+            coverage: components["schemas"]["OverviewCoverage"];
+            /** @constant */
+            economics_basis: "saved_incident_economics_only";
+            /** Format: date-time */
+            oldest_computed_at: string | null;
+            /** @constant */
+            sla_basis: "registered_sla_risk";
+            /** @constant */
+            sla_forecast_complete: false;
+            /** @constant */
+            response_basis: "recorded_agent_run_latency_ms";
+            pressure: {
+                status: string;
+                criticality: string;
+                incidents: number;
+            }[];
+            shift: {
+                /** @constant */
+                basis: "saved_classification_compendium";
+                /** @constant */
+                new_llm_call: false;
+                /** @constant */
+                limit: 8;
+                total: number;
+                truncated: boolean;
+                items: components["schemas"]["OverviewSummary"][];
+            };
+            signals_24h: number;
+        };
         /** @enum {string} */
         CabinetRole: "cx_operator" | "cx_lead" | "product_manager" | "product_head" | "compliance_officer" | "bank_head" | "admin";
         CabinetProductLine: {
