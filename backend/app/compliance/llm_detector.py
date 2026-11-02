@@ -68,7 +68,9 @@ class Detector:
             {"role": "system", "content": system.body},
             {"role": "user", "content": prompt.render(**prompt_vars) + _hint(hint)},
         ]
-        chain, profile = await resolve(self.conn, self.run_id, self.chain, self.profile, new=True)
+        chain, main = await resolve(self.conn, self.run_id, self.chain, self.profile, new=True)
+        profile = chain.profile_for(self.profile.role, main)
+        snapshot = {**(chain.role_snapshot or {}), "execution_role": profile.role}
         row = await (
             await self.conn.execute(
                 "insert into agent_runs (kind, sim_run_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) "
@@ -78,7 +80,7 @@ class Detector:
                     prompt.version,
                     f"compliance:{self.session_id or 0}:{node}",
                     self.sim_time,
-                    dumps(chain.role_snapshot),
+                    dumps(snapshot),
                 ),
             )
         ).fetchone()

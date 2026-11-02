@@ -5,6 +5,7 @@ import datetime as dt
 
 import psycopg
 import pytest
+from fastapi import HTTPException
 from starlette.requests import Request
 
 from app.agent.runner import AgentService
@@ -220,7 +221,16 @@ async def test_scenario_controls_stop_everything(seeded, monkeypatch, endpoint):
             config = await configuration(conn, state["run_id"])
             assert config["status"] == "stopped" and not config["enabled"]
         if endpoint == "run":
-            await post_sim_runs_id_resume(request, state["run_id"])
+            # T-041: stopped — terminal; новый сценарий запускается явно, без Resume.
+            with pytest.raises(HTTPException) as rejected:
+                await post_sim_runs_id_resume(request, state["run_id"])
+            assert rejected.value.status_code == 409
+            assert sim.clock.sim_time == at and not sim.clock.running
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+                stopped = await configuration(conn, state["run_id"])
+                assert stopped["status"] == "stopped" and not stopped["enabled"]
+            restarted = await post_demo_execution(request, DemoExecutionBody(scenario_id="demo20_01_branch_queue"))
+            assert restarted["run_id"] != state["run_id"]
             assert sim.clock.running and sim._task is None
         else:
             await post_sim_control(request, SimControlRequest(action="start"))

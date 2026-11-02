@@ -1,4 +1,4 @@
-"""Снимок main/fast/twin на запуск; общие providers/лимитеры, независимые role bindings."""
+"""Снимок main/fast/twin на AgentRun; SimRun metadata и явный initial main override."""
 
 from __future__ import annotations
 
@@ -107,6 +107,11 @@ def _offline(
     return profiles
 
 
+def no_llm_snapshot() -> dict[str, Any]:
+    """Детерминированный trace не притворяется исполнением выбранной модели."""
+    return {"version": 1, "provenance": "no_llm_execution", "roles": {}, "profile_ids": {}, "execution_role": None}
+
+
 def _forced(profiles: dict[str, LLMProfile], chain: ProviderChain | None = None) -> dict[str, LLMProfile]:
     """Только explicit runtime policy; provider одной роли не меняет остальные роли."""
     configured = get_settings().llm_provider
@@ -116,7 +121,9 @@ def _forced(profiles: dict[str, LLMProfile], chain: ProviderChain | None = None)
     return profiles
 
 
-async def capture(conn: psycopg.AsyncConnection[Any], main_profile_id: int | None) -> dict[str, Any]:
+async def capture(
+    conn: psycopg.AsyncConnection[Any], main_profile_id: int | None, *, frozen_main: dict[str, Any] | None = None
+) -> dict[str, Any]:
     async with conn.cursor(row_factory=dict_row) as cur:
         await cur.execute("select * from llm_profiles order by id")
         rows = list(await cur.fetchall())
@@ -128,6 +135,8 @@ async def capture(conn: psycopg.AsyncConnection[Any], main_profile_id: int | Non
     }
     if main_profile_id is not None:
         selected["main_profile_id"] = main_profile_id
+    if frozen_main is not None:
+        selected.pop("main_profile_id", None)
     for profile_id in selected.values():
         if profile_id is not None and (type(profile_id) is not int or profile_id < 1):
             raise ValueError("ID профиля должен быть положительным целым числом")
@@ -137,16 +146,21 @@ async def capture(conn: psycopg.AsyncConnection[Any], main_profile_id: int | Non
             values = {key: source[key] for key in LLMProfile.__dataclass_fields__ if key in source}
             await credentials.validate_binding(conn, LLMProfile(**values))
     profiles = select(get_settings(), rows, selected)
+    if frozen_main is not None:
+        profiles["main"] = LLMProfile(**frozen_main["roles"]["main"])
     for profile in profiles.values():
         if profile.provider not in {"mock", "replay"}:
             await credentials.validate_binding(conn, profile)
     profiles = _forced(profiles)
     by_code = {row["code"]: int(row["id"]) for row in rows}
+    profile_ids = {role: by_code.get(profiles[role].code) for role in ROLES}
+    if frozen_main is not None:
+        profile_ids["main"] = frozen_main["profile_ids"]["main"]
     return {
         "version": 1,
         "explicit_main_override": main_profile_id is not None,
         "roles": {role: _safe(profiles[role]) for role in ROLES},
-        "profile_ids": {role: by_code.get(profiles[role].code) for role in ROLES},
+        "profile_ids": profile_ids,
     }
 
 
@@ -167,7 +181,12 @@ async def resolve(
     if new:
         async with conn.transaction():
             await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
-            snapshot = await capture(conn, None)
+            frozen = (
+                run_snapshot
+                if isinstance(run_snapshot, dict) and run_snapshot.get("explicit_main_override") is True
+                else None
+            )
+            snapshot = await capture(conn, None, frozen_main=frozen)
         if run_snapshot is None and (default.provider in {"mock", "replay"} or chain.offline_mode is not None):
             # Новый AR старого/offline вызывающего кода получает его явные model/tariffs.
             # Это snapshot до исполнения, а не выдуманная история старого AR.
@@ -185,8 +204,6 @@ async def resolve(
                 "provenance": "legacy_explicit_offline_configuration",
             }
         if isinstance(run_snapshot, dict) and run_snapshot.get("explicit_main_override") is True:
-            snapshot["roles"]["main"] = run_snapshot["roles"]["main"]
-            snapshot["profile_ids"]["main"] = run_snapshot["profile_ids"]["main"]
             snapshot["provenance"] = "current_roles_with_initial_main_override"
         else:
             snapshot.setdefault("provenance", "current_roles")
@@ -236,7 +253,7 @@ async def resolve(
             except TypeError as exc:
                 raise ValueError("неверные поля профиля LLM в снимке запуска") from exc
             _safe(profile)
-            if profile.provider not in {"mock", "replay"}:
+            if new and profile.provider not in {"mock", "replay"}:
                 await credentials.validate_binding(conn, profile)
             profiles[role] = profile
     if snapshot is None:

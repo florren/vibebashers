@@ -198,3 +198,90 @@ def test_lifespan_releases_runtime_key_state_even_if_loop_is_still_referenced(mo
         assert loops and loops[0] not in runtime_provider._KEY_STATES
     finally:
         get_settings.cache_clear()
+
+
+async def test_compliance_keeps_callers_fast_role_in_execution_and_snapshot(monkeypatch):
+    import datetime as dt
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from app.compliance.llm_detector import Detector
+    from app.llm.base import LLMProfile, Usage
+
+    main = LLMProfile(code="main", provider="mock", model="main-model", role="main")
+    fast = LLMProfile(code="fast", provider="mock", model="fast-model", role="fast")
+    cursor = SimpleNamespace(fetchone=AsyncMock(return_value=(23,)))
+    conn = SimpleNamespace(execute=AsyncMock(return_value=cursor))
+    chain = SimpleNamespace(
+        profile_for=Mock(return_value=fast),
+        role_snapshot={"version": 1, "roles": {"fast": {"model": fast.model}}},
+        complete_structured=AsyncMock(return_value=SimpleNamespace(obj={}, provider="mock", usage=Usage())),
+    )
+    monkeypatch.setattr("app.compliance.llm_detector.resolve", AsyncMock(return_value=(chain, main)))
+    detector = Detector(conn, run_id=1, sim_time=dt.datetime.now(dt.UTC), chain=chain, profile=fast)
+    await detector.report(
+        transcript_text="synthetic",
+        findings=[],
+        script_code="synthetic",
+        script_steps=[],
+        products={},
+        overall_hint="synthetic",
+        action_hint="synthetic",
+    )
+    assert chain.complete_structured.await_args.args[2] is fast
+    snapshot = json.loads(conn.execute.await_args_list[0].args[1][-1])
+    assert snapshot["execution_role"] == "fast"
+    assert snapshot["roles"]["fast"]["model"] == "fast-model"
+
+
+@pytest.mark.parametrize("action,expected_role", [("rca", "twin"), ("verify", None)])
+async def test_team_keeps_twin_role_and_deterministic_action_needs_no_current_keys(monkeypatch, action, expected_role):
+    import datetime as dt
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, Mock
+
+    from app.agent.nodes import Deps
+    from app.agent.tools.base import ToolContext
+    from app.llm.base import LLMProfile
+    from app.sim.rng import SimRng
+    from app.sim.teams import IncidentPlan, PlannedStep, TeamEmulator
+
+    main = LLMProfile(code="main", provider="mock", model="main-model", role="main")
+    twin = LLMProfile(code="twin", provider="mock", model="twin-model", role="twin")
+    cursor = SimpleNamespace(fetchone=AsyncMock(return_value=(23,)))
+    conn = SimpleNamespace(execute=AsyncMock(return_value=cursor))
+    chain = SimpleNamespace(profile_for=Mock(return_value=twin), role_snapshot={"version": 1, "roles": {}})
+    resolve = AsyncMock(return_value=(chain, main))
+    if expected_role is None:
+        resolve.side_effect = AssertionError("deterministic action must not inspect current keys")
+    monkeypatch.setattr("app.llm.run_profiles.resolve", resolve)
+    monkeypatch.setattr(Deps, "record_step", AsyncMock())
+    monkeypatch.setattr("app.demo.roles.finish_run", AsyncMock())
+    monkeypatch.setattr("app.sim.teams.update_incident", AsyncMock())
+    bus = SimpleNamespace(emit=AsyncMock())
+    team = TeamEmulator(SimRng(1), conn, bus, 1, llm=(chain, twin))
+    body = AsyncMock(return_value="synthetic artifact")
+    monkeypatch.setattr(team, "_artifact_body", body)
+    now = dt.datetime.now(dt.UTC)
+    ctx = ToolContext(conn, run_id=1, agent_run_id=1, sim_time=now)
+    plan = IncidentPlan(1, "synthetic", False, False, outcome="on_time")
+    await team._execute_step(
+        ctx,
+        SimpleNamespace(),
+        plan,
+        PlannedStep(action, now),
+        1,
+        "synthetic",
+        {"title": "synthetic", "system": "synthetic"},
+        "fix_deployed",
+    )
+    snapshot = json.loads(conn.execute.await_args_list[0].args[1][-1])
+    assert snapshot["execution_role"] == expected_role
+    if expected_role:
+        assert body.await_args.args[-1][1] is twin
+        resolve.assert_awaited_once()
+    else:
+        assert snapshot["provenance"] == "no_llm_execution" and snapshot["roles"] == {}
+        resolve.assert_not_awaited()

@@ -64,7 +64,7 @@ async def recover_incident(app: Any, conn: Any, iid: int, *, public_demo: bool =
         ],
         outcome="recovered",
     )
-    chain, main_profile = await run_profiles(conn, int(rid), svc.chain, svc.profile)
+    chain, main_profile = await run_profiles(conn, int(rid), svc.chain, svc.profile, new=True)
     emulator = TeamEmulator(
         SimRng(sim.seed),
         conn,

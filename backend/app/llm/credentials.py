@@ -200,7 +200,8 @@ async def validate_binding(
     kid = profile.api_key_id
     if kid is None:
         return None  # Явная совместимость legacy env source, не неявный fallback выбранного ключа.
-    await migrate_legacy(conn)
+    if reveal:
+        await migrate_legacy(conn)
     async with conn.cursor(row_factory=dict_row) as cur:
         projection = PUBLIC_SQL + (
             ",pgp_sym_decrypt(encrypted_key,%s) as _secret,credential_uid as _credential_uid" if reveal else ""

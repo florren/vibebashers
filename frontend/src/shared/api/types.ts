@@ -8737,6 +8737,16 @@ export interface components {
             llm_profile_code?: string;
             prompt_version?: string;
             outcome?: string | null;
+            /**
+             * @description Состояние исполнения; interrupted не подменяет бизнес-исход outcome.
+             * @enum {string}
+             */
+            status?: "running" | "interrupted" | "completed" | "awaiting_human" | "deferred" | "failed" | "fallback_mock" | "cancelled";
+            /**
+             * Format: date-time
+             * @description Реальное время обнаруженного прерывания; очищается при Resume.
+             */
+            interrupted_at?: string | null;
             needed_human?: boolean;
             total_tokens?: number;
             total_latency_ms?: number;

@@ -28,12 +28,14 @@ services:
       DATABASE_URL: postgresql+psycopg://cx:cx@postgres:5432/cx_pulse
       CASSETTES_DIR: /data/cassettes
       ENV_FILE: /data/env/.env
+      MAINTENANCE_CONTROL_DIR: /run/cx-maintenance
     ports: ["8000:8000"]
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ./data:/data
+      - maintenance_control:/run/cx-maintenance
       - ./.env:/data/env/.env   # мастер настройки (/setup) правит .env на месте
 
   personal:
@@ -45,8 +47,10 @@ services:
       APP_SECRET: ${APP_SECRET:-change-me}
       PERSONAL_FRONTEND_DIST: /frontend/dist-personal
       STT_PROVIDER: vosk
+      MAINTENANCE_CONTROL_DIR: /run/cx-maintenance
     volumes:
       - ./data/models/stt:/data/models/stt:ro
+      - maintenance_control:/run/cx-maintenance:ro
     depends_on:
       backend: { condition: service_healthy }
     healthcheck:
@@ -62,3 +66,4 @@ services:
 
 volumes:
   pgdata:
+  maintenance_control:

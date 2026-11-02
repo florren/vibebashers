@@ -1,0 +1,69 @@
+{
+  "source_revision": "2a88a680380ea9644cf2470948248e4f5344abc7",
+  "backend": {
+    "passed": 1246,
+    "skipped": 24,
+    "shards": 4,
+    "independent_checkouts_and_databases": true,
+    "exact_collection_union_verified": true,
+    "shard_passed": [
+      394,
+      311,
+      368,
+      173
+    ],
+    "shard_skipped": [
+      1,
+      0,
+      19,
+      4
+    ]
+  },
+  "unit_standalone": {
+    "passed": 923,
+    "skipped": 18,
+    "seconds": 22.86
+  },
+  "frontend": {
+    "passed": 161,
+    "lint": "passed",
+    "typecheck": "passed"
+  },
+  "real_image": {
+    "passed": 71,
+    "minutes": 2.6,
+    "digest": "sha256:ba013b8a08631ce246fde9173747b01d62007efea539979c4507064abd7f5036",
+    "source_revision": "0082a240150792887e66716ca2914e11d91be2d7",
+    "later_change": "только markerfixture isolation; runtime/image source не менялись",
+    "fresh_candidate_project": true,
+    "fresh_control_volume": true,
+    "restart_same_uid_verified": true,
+    "cleanup_exit_code": 0
+  },
+  "coverage": {
+    "tool": "stdlib trace",
+    "cases_passed": 91,
+    "seconds": 141.13,
+    "maintenance_percent": 92,
+    "baseline_percent": 86,
+    "control_percent": 100,
+    "db_lease_percent": 92,
+    "llm_guard_percent": 100,
+    "db_contract_guard_percent": 100
+  },
+  "checks": {
+    "ruff_format_files": 351,
+    "mypy_files": 252,
+    "contract_schemas": 44,
+    "openapi_paths": 161,
+    "drift_routes": 191,
+    "licensed_distributions": 526
+  },
+  "limitations": [
+    "Один main ASGI process; произвольные SQL/DDL и дополнительные main replicas не координируются",
+    "CLI shared lease предотвращает restore overlap; concurrent destructive seed/main не объявляется безопасным",
+    "T041 namespace/checkpoint composition проверяется отдельной веткой",
+    "Перед merge требуется human review operational volume/config/data purge"
+  ],
+  "date": "2026-11-02"
+}

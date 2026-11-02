@@ -80,7 +80,18 @@ def giga(handler):
 
 @pytest.mark.parametrize("stage", ["oauth", "chat"])
 @pytest.mark.parametrize("status,kind", [(401, "auth"), (403, "auth"), (429, "rate_limit"), (503, "unavailable")])
-async def test_giga_error_diagnostics_never_echo_authorization_before_pool_logging(stage, status, kind, capsys):
+async def test_giga_error_diagnostics_never_echo_authorization_before_pool_logging(
+    stage, status, kind, capsys, monkeypatch
+):
+    import structlog
+
+    from app.logging import configure_logging, get_logger
+
+    previous = structlog.get_config()
+    configure_logging("test")
+    monkeypatch.setattr("app.llm.keys.log", get_logger("synthetic-error-keys"))
+    monkeypatch.setattr("app.llm.gigachat.log", get_logger("synthetic-error-giga"))
+
     def handler(request):
         if request.url.path.endswith("oauth") and stage == "chat":
             return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
@@ -100,6 +111,7 @@ async def test_giga_error_diagnostics_never_echo_authorization_before_pool_loggi
             assert refused.value.retry_after_s == 7
     finally:
         await provider.aclose()
+        structlog.configure(**previous)
 
 
 @pytest.mark.parametrize("which", ["auth", "access"])
@@ -163,7 +175,12 @@ async def test_provider_stream_rejects_split_credential_without_yielding_it(prov
         frames.append(
             "data: "
             + json.dumps(
-                {"choices": [{"delta": {"content": text}}], "usage": {"total_tokens": 7} if text == "opaque" else None}
+                {
+                    "choices": [{"delta": {"content": text}}],
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7}
+                    if text == "opaque"
+                    else None,
+                }
             )
             + "\n\n"
         )
@@ -181,12 +198,13 @@ async def test_provider_stream_rejects_split_credential_without_yielding_it(prov
     )
     emitted = []
     try:
-        with pytest.raises(ProviderError, match=REFLECTION):
+        with pytest.raises(ProviderError, match=REFLECTION) as refused:
             async for text in provider.stream(
                 MESSAGES, LLMProfile(code="stream", provider=provider_kind, model="synthetic:free"), timeout_s=2
             ):
                 emitted.append(text)
         assert "".join(emitted) == "prefix "
+        assert refused.value.usage.total_tokens == 7
         if provider_kind == "gigachat":
             assert provider.pool.keys[0].tokens_used == 7
     finally:
@@ -230,5 +248,197 @@ async def test_oauth_private_token_field_is_not_public_model_output():
                 MESSAGES, SCHEMA, LLMProfile(code="test", provider="gigachat", model="synthetic"), timeout_s=2
             )
         assert provider.pool.keys[0].access_token is None
+    finally:
+        await provider.aclose()
+
+
+def test_structured_stream_utf8_limit_is_exact_and_plain_text_stays_incremental():
+    from app.llm.credential_boundary import STRUCTURED_STREAM_LIMIT
+
+    prefix, suffix = '{"note":"', '"}'
+    fixed = len((prefix + suffix).encode())
+    body = (
+        prefix
+        + "я" * ((STRUCTURED_STREAM_LIMIT - fixed) // 2)
+        + ("x" if (STRUCTURED_STREAM_LIMIT - fixed) % 2 else "")
+        + suffix
+    )
+    assert len(body.encode()) == STRUCTURED_STREAM_LIMIT
+    guard = CredentialStreamGuard([SECRET])
+    assert guard.feed(body) == "" and guard.finish() == body
+    overflow = CredentialStreamGuard([SECRET])
+    with pytest.raises(ProviderError, match="64KiB") as refused:
+        overflow.feed(body + " ")
+    assert refused.value.usage is None
+    plain = CredentialStreamGuard([SECRET])
+    assert plain.feed("Обычный текст ") == "Обычный текст "
+    assert plain.feed("[ссылка] и {имя}") == "[ссылка] и {имя}"
+    assert plain.finish() == ""
+    keyless = CredentialStreamGuard([])
+    assert keyless.feed(body + " ") == body + " "
+
+
+@pytest.mark.parametrize("style", ["json", "codefence", "quoted"])
+def test_structured_stream_holds_split_unicode_json_credential(style):
+    encoded = "".join(f"\\u{ord(char):04x}" for char in SECRET)
+    payload = '{"note":"' + encoded + '"}'
+    if style == "codefence":
+        payload = "```json\n" + payload + "\n```"
+    elif style == "quoted":
+        payload = '"' + encoded + '"'
+    guard = CredentialStreamGuard([SECRET])
+    emitted = ""
+    for offset in range(0, len(payload), 3):
+        emitted += guard.feed(payload[offset : offset + 3])
+    assert emitted == ""
+    with pytest.raises(ProviderError, match=REFLECTION):
+        guard.finish()
+
+
+@pytest.mark.parametrize("provider_kind", ["gigachat", "openai_compatible"])
+async def test_codefenced_unicode_credential_is_refused_after_model_json_parse(provider_kind):
+    encoded = "".join(f"\\u{ord(char):04x}" for char in SECRET)
+    raw = '```json\n{"ok":true,"note":"' + encoded + '"}\n```'
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": raw}}],
+                "usage": {"prompt_tokens": 3, "completion_tokens": 4, "total_tokens": 7},
+            },
+        )
+
+    provider = (
+        giga(handler)
+        if provider_kind == "gigachat"
+        else OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    )
+    try:
+        with pytest.raises(ProviderError, match=REFLECTION) as refused:
+            await provider.complete_structured(
+                MESSAGES,
+                SCHEMA,
+                LLMProfile(code="encoded", provider=provider_kind, model="synthetic:free"),
+                timeout_s=2,
+            )
+        assert refused.value.usage.total_tokens == 7
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("provider_kind", ["gigachat", "openai_compatible"])
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_structured_stream_cancel_or_deadline_closes_response_without_yield(provider_kind, cancel):
+    import asyncio
+
+    started = asyncio.Event()
+
+    class Blocking(httpx.AsyncByteStream):
+        closed = False
+
+        async def __aiter__(self):
+            yield ("data: " + json.dumps({"choices": [{"delta": {"content": '```json\n{"note":"'}}]}) + "\n\n").encode()
+            started.set()
+            await asyncio.Event().wait()
+
+        async def aclose(self):
+            self.closed = True
+
+    body = Blocking()
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        return httpx.Response(200, headers={"Content-Type": "text/event-stream"}, stream=body)
+
+    provider = (
+        giga(handler)
+        if provider_kind == "gigachat"
+        else OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    )
+    iterator = provider.stream(
+        MESSAGES, LLMProfile(code="cancel", provider=provider_kind, model="synthetic:free"), timeout_s=1
+    )
+    task = asyncio.create_task(anext(iterator))
+    try:
+        await asyncio.wait_for(started.wait(), 1)
+        if cancel:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        else:
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(task, 0.02)
+        assert body.closed
+    finally:
+        await iterator.aclose()
+        await provider.aclose()
+
+
+async def test_plain_prefix_then_structured_failure_never_falls_back():
+    from app.llm.failover import ProviderChain
+
+    class Structured:
+        name = "gigachat"
+
+        async def stream(self, *args, **kwargs):
+            guard = CredentialStreamGuard([SECRET])
+            for raw in ("plain prefix ", '```json\n{"note":"', SECRET):
+                safe = guard.feed(raw)
+                if safe:
+                    yield safe
+            yield guard.finish()
+
+    class Forbidden:
+        name = "mock"
+
+        async def stream(self, *args, **kwargs):
+            pytest.fail("after plain prefix no fallback is permitted")
+            yield ""
+
+    chain = ProviderChain([Structured(), Forbidden()], append_mock=False)
+    assert [
+        part async for part in chain.stream(MESSAGES, LLMProfile(code="s", provider="gigachat", model="synthetic"))
+    ] == ["plain prefix "]
+
+
+@pytest.mark.parametrize("provider_kind", ["gigachat", "openai_compatible"])
+async def test_structured_overflow_closes_provider_iterator_and_keeps_usage_unknown(provider_kind):
+    from app.llm.credential_boundary import STRUCTURED_STREAM_LIMIT
+
+    class Body(httpx.AsyncByteStream):
+        closed = False
+
+        async def __aiter__(self):
+            value = '{"note":"' + "x" * STRUCTURED_STREAM_LIMIT
+            yield ("data: " + json.dumps({"choices": [{"delta": {"content": value}}]}) + "\n\n").encode()
+
+        async def aclose(self):
+            self.closed = True
+
+    body = Body()
+
+    def handler(request):
+        if request.url.path.endswith("oauth"):
+            return httpx.Response(200, json={"access_token": ACCESS, "expires_at": (time.time() + 3600) * 1000})
+        return httpx.Response(200, headers={"Content-Type": "text/event-stream"}, stream=body)
+
+    provider = (
+        giga(handler)
+        if provider_kind == "gigachat"
+        else OpenAICompatProvider(SECRET, "https://synthetic.invalid/v1", transport=httpx.MockTransport(handler))
+    )
+    try:
+        with pytest.raises(ProviderError, match="64KiB") as refused:
+            _ = [
+                part
+                async for part in provider.stream(
+                    MESSAGES, LLMProfile(code="cap", provider=provider_kind, model="synthetic:free"), timeout_s=2
+                )
+            ]
+        assert body.closed and refused.value.usage is None
     finally:
         await provider.aclose()

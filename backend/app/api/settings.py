@@ -290,6 +290,7 @@ def public_profile(row: dict[str, Any]) -> dict[str, Any]:
 async def post_llm_profiles(body: LlmProfile) -> Response:
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        await credentials.migrate_legacy(conn)
         await credentials.validate_binding(conn, body)
         if await fetch_one(conn, "select 1 from llm_profiles where code = %s", (body.code,)):
             raise Problem(409, f"Профиль {body.code} уже есть")
@@ -320,6 +321,7 @@ async def post_llm_profiles(body: LlmProfile) -> Response:
 async def patch_llm_profiles_id(id: int, body: LlmProfile, request: Request) -> Response:  # noqa: A002
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        await credentials.migrate_legacy(conn)
         existing = await fetch_one(conn, "select api_key_id,extra from llm_profiles where id = %s", (id,))
         if existing is None:
             raise Problem(404, "Профиль не найден")

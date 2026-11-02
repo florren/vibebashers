@@ -41,6 +41,8 @@ def _problem_text(res: Any) -> str:
 
 
 def _attach_mock_sim(client: TestClient) -> MagicMock:
+    client.app.state.maintenance.boundary = None
+    client.app.state.maintenance.control = None
     sim = MagicMock()
     sim.clock.running = False
     sim.run_status = "completed"
@@ -57,6 +59,10 @@ def _mock_dump_conn(profile: str) -> AsyncMock:
     mock_conn.closed = False
     mock_conn.info = SimpleNamespace(dsn="dbname=isolated_mock", password="")
     mock_conn.commit = AsyncMock()
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock(return_value=None)
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    mock_conn.transaction = MagicMock(return_value=transaction)
 
     async def _execute(sql: str, params: tuple[Any, ...] | None = None) -> AsyncMock:
         cur = AsyncMock()
@@ -64,6 +70,10 @@ def _mock_dump_conn(profile: str) -> AsyncMock:
             cur.fetchone = AsyncMock(return_value=({"profile": profile, "seed": 42, "run_id": 1},))
         elif "sim_runs where kind" in sql:
             cur.fetchone = AsyncMock(return_value=(1,))
+        elif "jsonb_agg" in sql:
+            cur.fetchone = AsyncMock(return_value=([],))
+        elif "pg_export_snapshot" in sql:
+            cur.fetchone = AsyncMock(return_value=("snapshot-for-unit",))
         else:
             cur.fetchone = AsyncMock(return_value=None)
             cur.fetchall = AsyncMock(return_value=[])
@@ -96,9 +106,14 @@ def test_dump_requires_pg_dump(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     conn = MagicMock()
     cur = MagicMock()
     conn.cursor.return_value.__enter__.return_value = cur
+    cur.execute.return_value = cur
+    cur.fetchall.return_value = []
     cur.fetchone.side_effect = [
         ({"profile": "lite", "seed": 42, "run_id": 7},),
         (7,),
+        ([],),
+        None,
+        ("snapshot-for-unit",),
     ]
     with pytest.raises(baseline_svc.BaselineToolingError, match="pg_dump"):
         baseline_svc.dump_for_connection(conn, "lite", database_url="postgresql://u:p@localhost/db")
@@ -109,7 +124,8 @@ def test_dump_invokes_pg_dump(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     monkeypatch.setattr(baseline_svc.shutil, "which", lambda name: f"/usr/bin/{name}")
 
     def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
-        out = tmp_path / "lite.dump"
+        out = Path(cmd[cmd.index("-f") + 1])
+        assert "--snapshot=snapshot-for-unit" in cmd
         out.write_bytes(b"dump-bytes")
         proc = MagicMock()
         proc.returncode = 0
@@ -120,9 +136,14 @@ def test_dump_invokes_pg_dump(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -
     conn = MagicMock()
     cur = MagicMock()
     conn.cursor.return_value.__enter__.return_value = cur
+    cur.execute.return_value = cur
+    cur.fetchall.return_value = []
     cur.fetchone.side_effect = [
         ({"profile": "lite", "seed": 42, "run_id": 7},),
         (7,),
+        ([],),
+        None,
+        ("snapshot-for-unit",),
     ]
     result = baseline_svc.dump_for_connection(conn, "lite", database_url="postgresql://u:p@localhost/db")
     assert result["available"] is True
@@ -156,7 +177,8 @@ def test_post_baseline_dump_202(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     prof = baseline_svc.resolve_profile()
 
     def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
-        out = tmp_path / f"{prof}.dump"
+        out = Path(cmd[cmd.index("-f") + 1])
+        assert "--snapshot=snapshot-for-unit" in cmd
         out.write_bytes(b"dump-bytes")
         proc = MagicMock()
         proc.returncode = 0
@@ -209,7 +231,8 @@ def test_baseline_restore_202_with_snapshot(tmp_path: Path, monkeypatch: pytest.
     monkeypatch.setattr(baseline_svc, "baseline_dir", lambda: tmp_path)
     _write_snapshot(tmp_path)
 
-    async def _fake_restore(request: Any) -> str:
+    async def _fake_restore(request: Any, *, main_profile_id: int | None = None) -> str:
+        assert main_profile_id is None
         return "job-111"
 
     monkeypatch.setattr("app.api.sim._restore_baseline", _fake_restore)
@@ -234,12 +257,18 @@ def test_post_sim_runs_baseline_restore_and_start(tmp_path: Path, monkeypatch: p
 
     calls: list[str] = []
 
-    async def _fake_restore(request: Any) -> str:
+    async def _fake_restore(request: Any, *, main_profile_id: int | None = None) -> str:
+        assert main_profile_id is None
         calls.append("restore")
         return "job-222"
 
     monkeypatch.setattr("app.api.sim._restore_baseline", _fake_restore)
-    monkeypatch.setattr("app.api.sim._conn", AsyncMock(return_value=AsyncMock()))
+    # Binding/preflight covered by real-PG tests; this unit isolates start ordering.
+    monkeypatch.setattr("app.api.sim.capture", AsyncMock())
+    conn = AsyncMock()
+    conn.__aenter__.return_value = conn
+    conn.transaction = MagicMock(return_value=conn)
+    monkeypatch.setattr("app.api.sim._conn", AsyncMock(return_value=conn))
     monkeypatch.setattr("app.api.sim.run_svc.get_run", AsyncMock(return_value={"id": 99, "kind": "free"}))
     with TestClient(create_app()) as client:
         sim = _attach_mock_sim(client)
@@ -266,6 +295,8 @@ async def test_restore_preserves_sim_runs_summary(tmp_path: Path, monkeypatch: p
     monkeypatch.setattr(baseline_svc, "runs_export_dir", lambda: tmp_path / "runs")
     _write_snapshot(tmp_path)
 
+    # Этот unit изолирует сохранение заголовков; совместимость snapshot покрыта real PG tests.
+    monkeypatch.setattr(baseline_svc, "preflight_restore", AsyncMock())
     summary = {"signals": 3, "incidents_open": 1}
     sim_row = (
         1,

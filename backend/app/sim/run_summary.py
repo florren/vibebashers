@@ -59,7 +59,7 @@ async def build_summary(
     }
     for row in profiles:
         ar_snapshot = row.pop("llm_profiles_snapshot") or {}
-        role = "twin" if row["kind"] == "client_twin" else "main"
+        role = ar_snapshot.get("execution_role") or ("twin" if row["kind"] == "client_twin" else "main")
         frozen = ar_snapshot.get("roles", {}).get(role) or pinned.get(row["llm_profile_id"])
         tariff_source = "agent_run_snapshot" if ar_snapshot else "run_snapshot"
         # Compare/bench выбирают собственный профиль явно и не наследуют роли запуска.

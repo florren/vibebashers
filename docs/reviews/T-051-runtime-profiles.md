@@ -32,3 +32,18 @@ Giga OAuth/chat error diagnostics сохраняют kind/status/Retry-After/usa
 ## Обязательный review перед merge
 
 `contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage counters не добавлять в baseline fingerprint; private UID/endpoint/scope/limits/deleted config включить после maintenance composition. Номер0014 сохранён для отдельно reviewed durable operational store.
+
+
+## Составной checkpoint после297a8459 (в работе)
+
+Ordinary merge сохраняет maintenance coordinator, DB boundary/marker и API17 вместе с P1API18/0013. Selected-role metadata повторно проверяется внутри exclusive preflight после drain, до park/restore; эта проверка не decrypt/convert и не делает HTTP. Canonical new identity/endpoint/scope/RPD/deleted-config входит в opaque LLM fingerprint; usage/balance/day/last_error/timestamps не входят. Source не дублирует maintenance guard.
+
+Точный T120 стык: signal.appended продолжает использовать child HITL guard; reply daemon запускается через start_daemon, poll проходит writer lease, continuation регистрируется spawn_writer до первого шага. Restore ждёт reply pipeline, а не получает stale task после нового epoch.
+
+Дополнительная security boundary: raw и уже decoded modelJSON проверяются, включая Unicode escapes/codefence. Structured/quoted JSON/codefence stream держит fragment до complete, ≤64KiB UTF-8; prefix plaintext уже выдаётся, после него fallback запрещён. Limit включает fences/whitespace. При overflow/cancel/deadline iterator/HTTP response закрываются; known cumulative stream usage прикрепляется к ошибке, отсутствие usage остаётся None. Обычный unmarked plaintext не буферизуется целиком. Это конкретное изменение latency, а не обещание универсального DLP/распознавания всех кодировок.
+
+При source audit исправлена собственная role regression: TeamEmulator сохраняет caller twin, Compliance detector — caller fast вместо случайной замены наmain. No-LLM verification/notification/manual traces получают явный no_llm_execution и не зависят от текущих keys. Completed manager role trace получает pre-call snapshot от вызывающего кода, а не текущую конфигурацию после LLM. Frozen Deps loading проверяет структуру snapshot, но не decrypt/валидирует unused credential; metadata authority обязательна перед реальным network invocation. Real approved static HITL remainder проходит после deactivation/deletion synthetic key; actual network и новый AR/preflight при этом отказывают.
+
+Новые подтверждения:191 directed pure tests прошли до последних actor-role изменений;4 PG case (metadata-no-decrypt, fingerprint, approved static resume with inactive/deleted key) прошли16.09s. Полные проверки окончательного состава ещё не запускались; их результаты будут добавлены отдельно.
+
+Проверка composed backend: полный `tests/unit` —1145passed/18skipped26.82s; targeted baseline/maintenance/benchmark46passed, caller-role/no-LLM17passed. Первый полный прогон обнаружил9 fixture несовместимостей: AsyncMock transaction/preflight protocol и совпадение слишком общего fake credential `synthetic` с suffix имени fake модели. Исправлены только fixtures/доступность отсутствующего baseline проверяется до открытия DB; исходные assertions preserved, reflection guard не ослаблен. PG/full composite и UI ещё не являются доказанными на этом checkpoint.

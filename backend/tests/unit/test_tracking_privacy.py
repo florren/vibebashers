@@ -270,3 +270,57 @@ async def test_reply_worker_starts_and_stops_with_service(monkeypatch) -> None:
     assert reply is not None and not reply.done()
     await service.stop()
     assert reply.cancelled() and service._reply_task is None
+
+
+async def test_maintenance_waits_for_tracking_reply_before_restore(monkeypatch):
+    import asyncio
+    import datetime as dt
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.agent import runner
+    from app.sim.maintenance import MaintenanceCoordinator
+
+    coordinator = MaintenanceCoordinator(drain_timeout=2)
+    service = runner.AgentService(object(), object())
+    release = asyncio.Event()
+    started = asyncio.Event()
+    order = []
+
+    async def child():
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(service, "submit", lambda *_args: asyncio.create_task(child()))
+
+    @asynccontextmanager
+    async def connection():
+        yield SimpleNamespace(
+            execute=AsyncMock(return_value=SimpleNamespace(fetchone=AsyncMock(return_value=("closed",))))
+        )
+
+    async def connect():
+        return connection()
+
+    async def wake(*args, **kwargs):
+        order.append("reply")
+
+    monkeypatch.setattr(service, "_conn", connect)
+    monkeypatch.setattr(runner, "wake_followups_for_client_reply", wake)
+
+    async def action(job):
+        order.append("restore")
+        return job
+
+    with coordinator.bind():
+        task = service.submit_client_reply(7, 9, dt.datetime(2026, 11, 1, tzinfo=dt.UTC))
+        await started.wait()
+        restore = asyncio.create_task(coordinator.restore(action))
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert order == [] and not restore.done()
+        release.set()
+        await task
+        await restore
+    assert order == ["reply", "restore"] and coordinator.epoch == 1

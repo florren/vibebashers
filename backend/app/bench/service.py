@@ -33,6 +33,7 @@ from app.logging import get_logger
 from app.realtime.hub import hub
 from app.replay.provider import ReplayProvider
 from app.replay.store import CassetteStore
+from app.sim.maintenance import spawn_writer, writer
 
 log = get_logger(__name__)
 
@@ -316,7 +317,7 @@ class BenchService:
                 records.append((row, rec))
         for row, rec in records:
             self.records[rec.id] = rec
-            task = asyncio.create_task(self.execute(row, rec, cases, saved))
+            task = spawn_writer(self.execute(row, rec, cases, saved), kind="bench")
             self.tasks[rec.id] = task
             task.add_done_callback(partial(self.finished, rec.id))
         return {"run_ids": [rec.id for _, rec in records], "forecast": forecasts}
@@ -327,6 +328,7 @@ class BenchService:
         if not task.cancelled() and task.exception() is not None:
             log.error("bench_background_failed", run_id=id_, error_type=type(task.exception()).__name__)
 
+    @writer("bench")
     async def execute(
         self,
         row: dict[str, Any],

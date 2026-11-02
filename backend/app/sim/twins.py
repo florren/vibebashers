@@ -22,6 +22,7 @@ from app.llm.failover import ProviderChain
 from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.realtime.hub import hub
+from app.sim.maintenance import MaintenanceBusy, start_daemon, writer, writer_lease
 from app.trace.privacy import mask
 
 log = get_logger(__name__)
@@ -33,7 +34,7 @@ class TwinService:
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
-        self._task = asyncio.create_task(self._loop(), name="client-twins")
+        self._task = start_daemon(self._loop, name="client-twins")
 
     async def stop(self) -> None:
         if self._task is not None:
@@ -47,53 +48,63 @@ class TwinService:
         pending: dict[int, float] = {}
         while True:
             try:
-                async with await psycopg.AsyncConnection.connect(
-                    psycopg_dsn(), autocommit=True, row_factory=dict_row, connect_timeout=3
-                ) as conn:
-                    if watermark is None:
-                        await conn.execute(
-                            "update agent_runs set outcome='failed',finished_at=now(),error='twin interrupted: server restarted' where kind='client_twin' and outcome is null"
-                        )
-                        row = await (await conn.execute("select coalesce(max(id),0) id from notifications")).fetchone()
-                        watermark = int(row["id"]) if row else 0
-                    rows = await (
-                        await conn.execute(
-                            "select n.id from notifications n join sim_state st on st.current_run_id=n.run_id "
-                            "where n.id>%s and n.recipient_type in ('client','public') and n.client_id is not null "
-                            "and n.signal_id is not null and n.status in ('sent','delivered') order by n.id limit 20",
-                            (watermark,),
-                        )
-                    ).fetchall()
-                    for row in rows:
-                        pending[int(row["id"])] = time.monotonic()
-                        watermark = int(row["id"])
-                    for notification_id, queued_at in list(pending.items()):
-                        ready = await (
+                async with writer_lease("twin-poll"):
+                    async with await psycopg.AsyncConnection.connect(
+                        psycopg_dsn(), autocommit=True, row_factory=dict_row, connect_timeout=3
+                    ) as conn:
+                        if watermark is None:
                             await conn.execute(
-                                "select n.run_id=st.current_run_id current_run, exists(select 1 from agent_runs a "
-                                "where a.signal_id=n.signal_id and a.kind='agent' and a.finished_at is not null) ready "
-                                "from notifications n cross join sim_state st where st.id=1 and n.id=%s",
-                                (notification_id,),
+                                "update agent_runs set outcome='failed',finished_at=now(),error='twin interrupted: server restarted' where kind='client_twin' and outcome is null"
                             )
-                        ).fetchone()
-                        if not ready or not ready["current_run"]:
+                            row = await (
+                                await conn.execute("select coalesce(max(id),0) id from notifications")
+                            ).fetchone()
+                            watermark = int(row["id"]) if row else 0
+                        rows = await (
+                            await conn.execute(
+                                "select n.id from notifications n join sim_state st on st.current_run_id=n.run_id "
+                                "where n.id>%s and n.recipient_type in ('client','public') and n.client_id is not null "
+                                "and n.signal_id is not null and n.status in ('sent','delivered') order by n.id limit 20",
+                                (watermark,),
+                            )
+                        ).fetchall()
+                        for row in rows:
+                            pending[int(row["id"])] = time.monotonic()
+                            watermark = int(row["id"])
+                        for notification_id, queued_at in list(pending.items()):
+                            ready = await (
+                                await conn.execute(
+                                    "select n.run_id=st.current_run_id current_run, exists(select 1 from agent_runs a "
+                                    "where a.signal_id=n.signal_id and a.kind='agent' and a.finished_at is not null) ready "
+                                    "from notifications n cross join sim_state st where st.id=1 and n.id=%s",
+                                    (notification_id,),
+                                )
+                            ).fetchone()
+                            if not ready or not ready["current_run"]:
+                                pending.pop(notification_id)
+                            elif ready["ready"]:
+                                await self.react(conn, notification_id)
+                                pending.pop(notification_id)
+                            elif time.monotonic() - queued_at > 300:
+                                # Незавершённый агент не удерживает уведомления бесконечно.
+                                log.warning("twin_notification_expired", notification_id=notification_id)
+                                pending.pop(notification_id)
+                        # Ограничение памяти на случай массового сбоя агента.
+                        while len(pending) > 1000:
+                            notification_id = next(iter(pending))
                             pending.pop(notification_id)
-                        elif ready["ready"]:
-                            await self.react(conn, notification_id)
-                            pending.pop(notification_id)
-                        elif time.monotonic() - queued_at > 300:
-                            # Незавершённый агент не удерживает уведомления бесконечно.
-                            log.warning("twin_notification_expired", notification_id=notification_id)
-                            pending.pop(notification_id)
-                    # Ограничение памяти на случай массового сбоя агента.
-                    while len(pending) > 1000:
-                        notification_id = next(iter(pending))
-                        pending.pop(notification_id)
-                        log.warning("twin_queue_full", notification_id=notification_id)
+                            log.warning("twin_queue_full", notification_id=notification_id)
+            except MaintenanceBusy:
+                from app.sim.maintenance import current
+
+                coordinator = current()
+                if coordinator is not None:
+                    await coordinator.wait_ready()
             except (psycopg.Error, OSError) as exc:
                 log.warning("twin_worker_unavailable", error_type=type(exc).__name__)
             await asyncio.sleep(1)
 
+    @writer("twin")
     async def react(self, conn: psycopg.AsyncConnection[Any], notification_id: int) -> int | None:
         """Один ответ на уведомление. Advisory lock сериализует бюджет внутри запуска."""
         async with conn.transaction():

@@ -426,15 +426,20 @@ class TeamEmulator:
         self.artifact_meta = {}
         active_llm = self.llm
         reserved_ar: int | None = None
-        if plan.outcome and self.llm:
-            from app.llm.run_profiles import resolve
+        if plan.outcome:
+            from app.llm.run_profiles import no_llm_snapshot, resolve
 
-            scoped, main = await resolve(self.conn, self.run_id, self.llm[0], self.llm[1], new=True)
-            active_llm = (scoped, main)
+            snapshot = no_llm_snapshot()
+            kind = ARTIFACT_FOR_ACTION.get(step.action)
+            if self.llm and kind and kind != "verification_report" and not step.skipped:
+                scoped, main = await resolve(self.conn, self.run_id, self.llm[0], self.llm[1], new=True)
+                role = self.llm[1].role
+                active_llm = (scoped, scoped.profile_for(role, main))
+                snapshot = {**(scoped.role_snapshot or {}), "execution_role": role}
             started = await ctx.fetchone(
                 "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) "
                 "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s,%s::jsonb) returning id",
-                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time, dumps(scoped.role_snapshot)),
+                (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time, dumps(snapshot)),
             )
             assert started is not None
             reserved_ar = int(started[0])
@@ -546,15 +551,17 @@ class TeamEmulator:
         if plan.outcome:
             from app.agent.nodes import Deps
 
-            if reserved_ar is None:
-                ar = await ctx.fetchone(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) "
-                    "values ('team_emulator',%s,(select signal_id from agent_runs where id=%s),%s,'demo-role-v3','demo-execution-v1',%s) returning id",
-                    (self.run_id, ctx.agent_run_id, incident_id, ctx.sim_time),
-                )
-                assert ar is not None
-                reserved_ar = int(ar[0])
+            assert reserved_ar is not None
             ctx.agent_run_id = reserved_ar
+            if active_llm is None:
+                from app.llm.base import LLMProfile
+                from app.llm.failover import ProviderChain
+                from app.llm.mock import MockProvider
+
+                active_llm = (
+                    ProviderChain([MockProvider()], offline_mode="mock"),
+                    LLMProfile(code="no_llm", provider="mock", model="not-called"),
+                )
             deps = Deps(ctx=ctx, chain=active_llm[0], profile=active_llm[1])
             await deps.record_step(
                 "act",

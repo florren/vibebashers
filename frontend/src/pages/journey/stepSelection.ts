@@ -1,9 +1,10 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import type { AgentRunDetail, AgentStep } from '@/shared/api/client'
 import type { TraceEvent } from '@/shared/api/trace'
 import { Product, Team } from '@/shared/contracts/enums'
 
 export type StepSelection = { runId: number; node?: string; seq?: number }
-export type NodeStatus = 'pending' | 'running' | 'done' | 'fallback' | 'error' | 'waiting_human' | 'scheduled' | 'skipped' | 'not_reached'
+export type NodeStatus = 'pending' | 'running' | 'done' | 'fallback' | 'error' | 'waiting_human' | 'scheduled' | 'skipped' | 'not_reached' | 'interrupted'
 export function eventStep(event: TraceEvent): { runId: number; seq: number } | null {
   const link = event.links.engine_step
   const match = link?.match(/^\/engine\/(\d+)\?([^#]*)/)
@@ -66,6 +67,7 @@ export function selectedAttempt(run: AgentRunDetail | undefined, selection: Step
   return selection.seq != null ? run.steps?.find((s) => s.seq === selection.seq) : run.steps?.filter((s) => s.node === selection.node).at(-1)
 }
 export function nodeStatus(run: AgentRunDetail | undefined, node: string, current: string | null): NodeStatus {
+  if (current === node && agentRunStatus(run) === 'interrupted') return 'interrupted'
   if (current === node && (!run?.outcome || run.outcome === 'awaiting_human')) return run?.outcome === 'awaiting_human' ? 'waiting_human' : 'running'
   const step = run?.steps?.filter((s) => s.node === node).at(-1)
   if (step) {

@@ -65,3 +65,18 @@ curl -s localhost:8000/api/sim/runs/current | jq .counters
 Checkpoint per-run profiles: snapshot main/fast/twin и локальные bindings подключены к graph/load_deps/process, twins, demo employees/teams/recovery. Снимок включает модели/ID/тарифы, не secrets. Runtime mock/replay исключает live chain для всех ролей; legacy без snapshot сохраняет явную конфигурацию без заявления об исторической точности. Summary показывает frozen tariff estimate, recorded cost неизменна; compare/bench сохраняют собственный выбор. bench_only/inactive/missing отклоняются до старта; credentials в extra/URL и неконечные/отрицательные тарифы запрещены.44unit и12PG profiles/summary/jury passed; дополнительный profile+bench_only PG набор3passed11.42s. Полный regression и maintenance ещё не завершены; финансовые/контрактные изменения не готовы к merge.
 
 Составной follow-up: legacy explicit priced Mock сохраняет тарифы только без snapshot; новые pinned профили неизменны.18targetunit/PG profiles+T065cost+strictReplay+CSIrestore passed32.72s. Fixture явно задаёт Replay-профиль до создания run; кассеты и исходные финансовые/replay/CSI assertions сохранены. Полный composed regression повторяется вT094.
+
+### Maintenance candidate (отдельная ветка)
+
+Runtime admission/drain, protected seed/audio409, supervised cancel-safe restore,
+LLM/DB-contract same-snapshot preflight и межпроцессный durable fail-closed
+реализованы в codex/T-040-maintenance. Source2a88a68: backend1246passed24skip
+в четырёх изолированных checkout/БД, точный aggregate; frontend161passed,
+real-image71passed; stdlibtrace coordinator92%, control100%, DBlease92%, baseline86%.
+Новые migrations/API paths/поля не добавлены. Dedicated control named volume
+mainrw/personalro и ENV требуют финального human review; default native store
+в data/maintenance, нет TTL/удаления marker для обхода. CLI seed — cooperating
+shared lease, не гарантия concurrent destructive seed/main.
+[Граница/recovery/rollback](../reviews/T-040-maintenance-boundary.md),
+[проверки](../reviews/T-040-maintenance-proof.json). T041 композиция отдельно
+проверяется перед интеграцией; общий DoD до human review не закрыт.

@@ -471,3 +471,158 @@ def test_setup_check_never_returns_upstream_credential_echo(seeded, monkeypatch,
     assert secret not in result.text
     assert clients and all(instance._client.is_closed for instance in clients)
     get_settings.cache_clear()
+
+
+async def test_metadata_binding_validation_does_not_decrypt_or_cut_over(seeded, conn, monkeypatch):
+    kid = conn.execute(
+        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope) values('gigachat','synthetic',pgp_sym_encrypt('synthetic-only',%s),'https://synthetic.invalid/v1',%s) returning id",
+        (get_settings().app_secret, get_settings().gigachat_scope),
+    ).fetchone()[0]
+    preupgrade_legacy_row(
+        conn, [{"id": kid + 1, "provider": "gigachat", "label": "legacy", "key_enc": "synthetic-not-decoded"}]
+    )
+
+    def forbidden(*args):
+        pytest.fail("metadata preflight must not decrypt legacy data")
+
+    monkeypatch.setattr(credentials.legacy, "decrypt", forbidden)
+    async with await connect(seeded) as ac:
+        item = await credentials.validate_binding(
+            ac,
+            LLMProfile(
+                code="metadata",
+                provider="gigachat",
+                model="synthetic",
+                base_url="https://synthetic.invalid/v1",
+                api_key_id=kid,
+            ),
+        )
+    assert item["id"] == kid and "_secret" not in item and "_credential_uid" not in item
+    assert conn.execute("select value from settings where key='llm_keys'").fetchone() is not None
+
+
+async def test_config_fingerprint_tracks_new_binding_metadata_but_not_usage(seeded, conn):
+    from app.sim import baseline_llm
+
+    kid = conn.execute(
+        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope,tokens_limit,rpd_limit) values('gigachat','synthetic',pgp_sym_encrypt('synthetic-only',%s),'https://synthetic.invalid/v1',%s,1000,20) returning id",
+        (get_settings().app_secret, get_settings().gigachat_scope),
+    ).fetchone()[0]
+    async with await connect(seeded) as ac:
+        original = await baseline_llm.read(ac)
+        conn.execute(
+            "update llm_api_keys set tokens_used=17,requests_today=3,requests_day=current_date,balance_usd=8,last_error='synthetic-status',updated_at=now(),created_at=now() where id=%s",
+            (kid,),
+        )
+        assert await baseline_llm.read(ac) == original
+        for mutation in (
+            "endpoint_url='https://changed.invalid/v1'",
+            "scope='synthetic-changed-scope'",
+            "rpd_limit=21",
+            "credential_uid=gen_random_uuid()",
+            "deleted_at=now()",
+        ):
+            before = await baseline_llm.read(ac)
+            conn.execute("update llm_api_keys set " + mutation + " where id=%s", (kid,))
+            assert await baseline_llm.read(ac) != before
+
+
+@pytest.mark.parametrize("revoked", ["inactive", "deleted"])
+async def test_frozen_approved_non_llm_remainder_survives_key_revocation_but_network_does_not(
+    seeded, conn, monkeypatch, revoked
+):
+    import dataclasses
+
+    from app.agent.graph import load_deps, process_signal, resume_after_human
+    from app.ingest.normalizer import create_signal, from_api_signal
+    from app.llm.failover import ProviderChain
+    from app.llm.mock import MockProvider
+    from app.sim import runs
+
+    monkeypatch.setenv("DATABASE_URL", seeded)
+    monkeypatch.setenv("LLM_PROVIDER", "gigachat")
+    get_settings.cache_clear()
+    base = "https://synthetic.invalid/v1"
+    kid = conn.execute(
+        "insert into llm_api_keys(provider,label,encrypted_key,endpoint_url,scope) values('gigachat','synthetic',pgp_sym_encrypt('synthetic-only',%s),%s,%s) returning id",
+        (get_settings().app_secret, base, get_settings().gigachat_scope),
+    ).fetchone()[0]
+    ids = {}
+    for role in ("main", "fast", "twin"):
+        ids[role] = conn.execute(
+            "insert into llm_profiles(code,provider,model,role,base_url,api_key_id) values(%s,'gigachat',%s,%s,%s,%s) returning id",
+            ("resume-" + role, "Frozen-" + role, role, base, kid),
+        ).fetchone()[0]
+    conn.execute(
+        "insert into settings(key,value) values('setup_payload',%s) on conflict(key) do update set value=excluded.value",
+        (Jsonb({"llm": {role + "_profile_id": pid for role, pid in ids.items()}}),),
+    )
+
+    class Recording(MockProvider):
+        name = "gigachat"
+        credential_id = kid
+        calls = 0
+
+        async def complete_structured(self, messages, schema, profile, *, timeout_s):
+            self.calls += 1
+            obj, usage, raw = await super().complete_structured(messages, schema, profile, timeout_s=timeout_s)
+            return obj, dataclasses.replace(usage, model=profile.model), raw
+
+    provider = Recording()
+    chain = ProviderChain([provider], append_mock=False)
+    default = LLMProfile(code="current", provider="gigachat", model="current")
+    now = conn.execute("select sim_time from sim_state where id=1").fetchone()[0]
+    cid = conn.execute("select id from clients where segment_code='ultra_vip' order by id limit 1").fetchone()[0]
+    async with await connect(seeded) as ac:
+        rid = await runs.create_run(ac, kind="free", label="static resume", seed=7, sim_time=now)
+        result = await create_signal(
+            ac,
+            from_api_signal(
+                {
+                    "channel_code": "email",
+                    "client_id": cid,
+                    "text": "Третий день не могу открыть вклад, ошибка подтверждения.",
+                }
+            ),
+            source_code="api",
+            run_id=rid,
+            sim_time=now,
+            emit_event=False,
+        )
+        state = await process_signal(ac, signal_id=result["signal_id"], chain=chain, profile=default)
+        assert state["outcome"] == "awaiting_human"
+        arid = state["agent_run_id"]
+        hid = conn.execute("select id from human_decisions where agent_run_id=%s", (arid,)).fetchone()[0]
+        approved = {
+            "incident_action": "none",
+            "router_action": "none",
+            "client_action": {"kind": "none"},
+            "followup": None,
+            "gift": None,
+            "escalation": None,
+        }
+        conn.execute(
+            "update human_decisions set decision='modify',modified_proposal=%s,decided_by='synthetic-operator',decided_at=now() where id=%s",
+            (Jsonb(approved), hid),
+        )
+        conn.execute(
+            "update llm_api_keys set is_active=false,deleted_at=case when %s='deleted' then now() else null end where id=%s",
+            (revoked, kid),
+        )
+        before = provider.calls
+        resumed = await resume_after_human(ac, human_decision_id=hid, chain=chain, profile=default, sim_time=now)
+        assert resumed["outcome"] == "completed" and provider.calls == before
+        assert conn.execute("select decision from human_decisions where id=%s", (hid,)).fetchone()[0] == "modify"
+        deps = await load_deps(ac, chain=chain, profile=default, run_id=rid, agent_run_id=arid, sim_time=now)
+        with pytest.raises(Problem):
+            await deps.chain.complete_structured(
+                [{"role": "user", "content": "fixed synthetic"}], {"type": "object"}, deps.profile
+            )
+        assert provider.calls == before
+        with pytest.raises(Problem):
+            await credentials.validate_binding(ac, deps.profile)
+        with pytest.raises(Problem):
+            from app.llm.run_profiles import capture
+
+            await capture(ac, None)
+    get_settings.cache_clear()

@@ -192,6 +192,7 @@ async def test_backend_shutdown_closes_auth_worker(monkeypatch):
 
     from app.config import get_settings
     from app.main import lifespan
+    from app.sim.maintenance import MaintenanceCoordinator
 
     p = provider(response, expires_in=1800)
     monkeypatch.setenv("APP_ENV", "test")
@@ -199,7 +200,7 @@ async def test_backend_shutdown_closes_auth_worker(monkeypatch):
     monkeypatch.setattr("app.main.build_chain", lambda settings: SimpleNamespace(providers=[p], names=["gigachat"]))
     monkeypatch.setattr("app.main.bridge.stop", AsyncMock())
     try:
-        async with lifespan(SimpleNamespace(state=SimpleNamespace())):
+        async with lifespan(SimpleNamespace(state=SimpleNamespace(maintenance=MaintenanceCoordinator()))):
             await p.prepare([PROFILE])
             task = p._auth_task
         assert task is not None and task.cancelled() and p._client.is_closed

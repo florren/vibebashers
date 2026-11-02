@@ -15,3 +15,6 @@ data/baseline/*.dump
 frontend/dist-personal
 
 .cx/
+
+# Долговечный runtime maintenance marker, не часть исходников/образа.
+data/maintenance/

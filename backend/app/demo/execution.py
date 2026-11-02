@@ -24,10 +24,14 @@ from app.demo.settings import configuration as configuration
 from app.demo.settings import ensure
 from app.demo.settings import save as save
 from app.ingest.normalizer import create_signal
+from app.llm.base import LLMProfile
+from app.llm.failover import ProviderChain
+from app.llm.run_profiles import no_llm_snapshot
 from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim import scenarios
 from app.sim.events import EventBus, dumps
+from app.sim.maintenance import MaintenanceBusy, writer, writer_lease
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
@@ -164,25 +168,41 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
                     by=f"demo-agent:manager:{meta['source']}",
                     comment="[DEMO] " + obj["body"],
                 )
-                await compliance_customer_case(conn, app, run_id, int(alert[0]), at, meta)
+                await compliance_customer_case(
+                    conn, app, run_id, int(alert[0]), at, meta, llm=(chain, chain.profile_for("twin", main_profile))
+                )
         return True
     return False
 
 
 async def compliance_customer_case(
-    conn: Any, app: Any, run_id: int, alert_id: int, at: dt.datetime, meta: dict[str, Any]
+    conn: Any,
+    app: Any,
+    run_id: int,
+    alert_id: int,
+    at: dt.datetime,
+    meta: dict[str, Any],
+    *,
+    llm: tuple[ProviderChain, LLMProfile] | None = None,
 ) -> None:
     """Инструменты используют tuple-строки; HTTP-роутер передаёт dict_row в той же транзакции."""
     original_factory = conn.row_factory
     try:
         conn.row_factory = tuple_row
-        await _compliance_customer_case(conn, app, run_id, alert_id, at, meta)
+        await _compliance_customer_case(conn, app, run_id, alert_id, at, meta, llm=llm)
     finally:
         conn.row_factory = original_factory
 
 
 async def _compliance_customer_case(
-    conn: Any, app: Any, run_id: int, alert_id: int, at: dt.datetime, meta: dict[str, Any]
+    conn: Any,
+    app: Any,
+    run_id: int,
+    alert_id: int,
+    at: dt.datetime,
+    meta: dict[str, Any],
+    *,
+    llm: tuple[ProviderChain, LLMProfile] | None = None,
 ) -> None:
     """Подтверждённое нарушение требует ответа клиенту даже без его жалобы."""
     row = await (
@@ -222,12 +242,17 @@ async def _compliance_customer_case(
             raise ValueError("Не удалось зарегистрировать проактивное обращение комплаенса")
         sid = int(result["signal_id"])
         await conn.execute("update signals set status='linked',updated_at=now() where id=%s and status='new'", (sid,))
-    chain, main_profile = await run_profiles(conn, run_id, app.state.agent.chain, app.state.agent.profile, new=True)
+    if llm is None:
+        chain, main_profile = app.state.agent.chain, app.state.agent.profile
+        snapshot = no_llm_snapshot()
+    else:
+        chain, main_profile = llm
+        snapshot = {**(chain.role_snapshot or {}), "execution_role": main_profile.role}
     ar = (
         await (
             await conn.execute(
                 "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('team_emulator',%s,%s,%s,'demo-role-v3','demo-execution-v1',%s,%s::jsonb) returning id",
-                (run_id, sid, incident_id, at, dumps(chain.role_snapshot)),
+                (run_id, sid, incident_id, at, dumps(snapshot)),
             )
         ).fetchone()
     )[0]
@@ -263,7 +288,7 @@ async def notify_results(
         )
     ).fetchall()
     svc = app.state.agent
-    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile, new=True)
+    chain, main_profile = svc.chain, svc.profile
     for iid, status, summary, breached, sid, cid, text, segment, consents, channel in rows:
         success = status == "closed"
         from app.i18n import communication_lang
@@ -285,7 +310,7 @@ async def notify_results(
             await (
                 await conn.execute(
                     "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('team_emulator',%s,%s,%s,'customer-result-v2','demo-execution-v1',%s,%s::jsonb) returning id",
-                    (run_id, sid, iid, at, dumps(chain.role_snapshot)),
+                    (run_id, sid, iid, at, dumps(no_llm_snapshot())),
                 )
             ).fetchone()
         )[0]
@@ -422,6 +447,7 @@ async def complete_manual_followups(app: Any, conn: Any, rid: int) -> None:
         )
 
 
+@writer("demo")
 async def cycle(app: Any) -> None:
     sim = app.state.sim
     svc = app.state.agent
@@ -547,6 +573,7 @@ async def cycle(app: Any) -> None:
         await sim._publish_tick()
 
 
+@writer("demo")
 async def public_cycle(app: Any) -> None:
     svc = app.state.agent
     if svc is None or not svc.enabled:
@@ -582,6 +609,8 @@ async def public_worker(app: Any) -> None:
             await public_cycle(app)
         except asyncio.CancelledError:
             raise
+        except MaintenanceBusy:
+            pass
         except Exception as exc:
             log.exception("public_execution_failed", error_type=type(exc).__name__)
         await asyncio.sleep(2)
@@ -590,15 +619,19 @@ async def public_worker(app: Any) -> None:
 async def worker(app: Any) -> None:
     while True:
         try:
-            await cycle(app)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            log.exception("demo_execution_failed", error_type=type(exc).__name__)
-            sim = app.state.sim
-            if sim is not None and sim.run_id:
-                async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
-                    config = await configuration(conn, sim.run_id)
-                    config.update(enabled=False, status="error", error=type(exc).__name__)
-                    await save(conn, sim.run_id, config)
+            async with writer_lease("demo-cycle"):
+                try:
+                    await cycle(app)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    log.exception("demo_execution_failed", error_type=type(exc).__name__)
+                    sim = app.state.sim
+                    if sim is not None and sim.run_id:
+                        async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+                            config = await configuration(conn, sim.run_id)
+                            config.update(enabled=False, status="error", error=type(exc).__name__)
+                            await save(conn, sim.run_id, config)
+        except MaintenanceBusy:
+            pass
         await asyncio.sleep(2)

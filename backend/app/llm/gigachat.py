@@ -19,7 +19,7 @@ import httpx
 
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
-from app.llm.credential_boundary import CredentialStreamGuard, reject_reflection, retry_after
+from app.llm.credential_boundary import CredentialStreamGuard, observe_stream_usage, reject_reflection, retry_after
 from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
@@ -399,7 +399,13 @@ class GigaChatProvider:
             )
             raw = body["choices"][0]["message"]["content"]
             try:
-                reject_reflection(raw, [key.secret, key.access_token])
+                obj = extract_json(raw)
+                errors = validate_schema(obj, schema)
+            except ProviderError as e:
+                errors = [e.detail]
+                obj = {}
+            try:
+                reject_reflection([raw, obj], [key.secret, key.access_token])
                 if body.get("model") != profile.model:
                     reject_reflection(body.get("model"), [key.secret, key.access_token])
             except ProviderError as exc:
@@ -407,12 +413,6 @@ class GigaChatProvider:
                 exc.usage = total_usage
                 raise
             total_usage.model = str(body.get("model") or profile.model)
-            try:
-                obj = extract_json(raw)
-                errors = validate_schema(obj, schema)
-            except ProviderError as e:
-                errors = [e.detail]
-                obj = {}
             if not errors:
                 total_usage.json_valid_first_try = total_usage.request_count == 1
                 total_usage.latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -441,6 +441,7 @@ class GigaChatProvider:
         key = self.pool.pick()
         token = await self._token(key, timeout_s)
         guard = CredentialStreamGuard([key.secret, token])
+        observed: Usage | None = None
         payload = {
             **profile.extra.get("request", {}),
             "model": profile.model,
@@ -479,6 +480,7 @@ class GigaChatProvider:
                     chunk = json.loads(data)
                     delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content")
                     if chunk.get("usage"):
+                        observed = observe_stream_usage(observed, chunk["usage"], profile, self.name, key.label)
                         self.pool.add_usage(key, int(chunk["usage"].get("total_tokens", 0)))
                     if delta:
                         safe = guard.feed(delta)
@@ -487,7 +489,11 @@ class GigaChatProvider:
                 last = guard.finish()
                 if last:
                     yield last
+        except ProviderError as exc:
+            if observed is not None:
+                exc.usage = observed
+            raise
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", type(e).__name__) from e
+            raise ProviderError("timeout", type(e).__name__, usage=observed) from e
         except httpx.HTTPError as e:
-            raise ProviderError("network", type(e).__name__) from e
+            raise ProviderError("network", type(e).__name__, usage=observed) from e

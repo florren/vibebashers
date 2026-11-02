@@ -38,6 +38,7 @@ from app.llm.base import LLMProfile, Message
 from app.llm.budget import load_openrouter_budget
 from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, suggest_replacement
 from app.logging import get_logger
+from app.sim.maintenance import spawn_writer
 
 router = APIRouter(tags=["setup"])
 log = get_logger(__name__)
@@ -486,7 +487,7 @@ async def post_setup_generate(request: Request, body: GenerateBody) -> Any:
             "started_at": dt.datetime.now(dt.UTC).isoformat(),
         }
     )
-    job["task"] = asyncio.create_task(_run_generate(job, body))
+    job["task"] = spawn_writer(_run_generate(job, body), kind="seed")
     return {"job_id": job["job_id"]}
 
 
