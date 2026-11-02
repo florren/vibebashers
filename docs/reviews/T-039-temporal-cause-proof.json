@@ -1,0 +1,32 @@
+{
+  "tool": "stdlib trace; exact absolute co_filename filter, no basename ignore cache",
+  "exit": 0,
+  "covered": 31,
+  "statements": 31,
+  "percent": 100.0,
+  "files": {
+    "backend/app/sim/generators.py": {
+      "covered": 31,
+      "statements": 31,
+      "missing": [],
+      "percent": 100.0
+    }
+  },
+  "base": "83e0cf8",
+  "tests": {
+    "passed": 49,
+    "seconds": 169.73,
+    "targets": [
+      "test_fault_operation_causality",
+      "test_full_simulation_controls",
+      "test_teams",
+      "test_operation_history unit"
+    ]
+  },
+  "scope": "changed executable generator lines; no new actor enable, full-suite or proactive acceptance claim",
+  "source_sha256": {
+    "backend/app/sim/generators.py": "0e67e074d6e2c92556addd3beaa2ed524e22d180743f7a994c61e6d5f19b325a",
+    "backend/tests/integration/test_fault_operation_causality.py": "5b69d97b245b0bdb4048ef15fc63a4aabf44a4f726b3ea865cbd9260451e8a1d"
+  },
+  "external_calls": 0
+}
