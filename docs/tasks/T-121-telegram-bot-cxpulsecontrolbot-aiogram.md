@@ -80,3 +80,10 @@ bot209/21995.43%. Actual4ru/en/themeUI,94tablesunchanged/noexternal/LLM.
 Источники, границы и rollback:docs/reviews/T-121-{delivery-review.md,final-verification.json}.
 Статусin_progress доcontractreview/CI/merge; настоящийжюриTelegramсценарийне
 проверялся и неавторизован. T122readiness/QR иT189managerHITL — отдельные карточки.
+
+## Contract-change review
+
+Метка: `contract-change`. OpenAPI1.5.20 и actual0015 меняют обязательные inbound
+headers/body и notification status. Конкретный final diff, paired rollout,
+forward-only rollback и проверки: docs/reviews/T-121-delivery-review.md.
+Согласование service-to-service исключения не заменяет этот final review.
