@@ -253,7 +253,10 @@ class BenchService:
             warning = "; ".join(filter(None, (warning, "нет активного ключа провайдера")))
         if profile.provider not in ("mock", "replay"):
             budgeted = (
-                is_paid_model(profile, profile.base_url or get_settings().openrouter_base_url)
+                (
+                    profile.provider == "openai_compatible"
+                    and is_paid_model(profile, profile.base_url or get_settings().openrouter_base_url)
+                )
                 or profile.rpd_limit is not None
                 or any(k.get("tokens_limit") is not None or k.get("rpd_limit") is not None for k in keys)
             )

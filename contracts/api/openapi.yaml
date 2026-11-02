@@ -2916,7 +2916,7 @@ components:
         requests_remaining: { type: [integer, "null"], minimum: 0, readOnly: true }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
-        rpd_limit: { type: [integer, "null"] }
+        rpd_limit: { type: [integer, "null"], description: Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы }
         balance_usd: { type: [number, "null"], description: OpenRouter — из GET /api/v1/key }
         is_active: { type: boolean }
         last_error: { type: [string, "null"] }

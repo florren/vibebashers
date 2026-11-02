@@ -1221,3 +1221,107 @@ async def test_operator_cli_keyless_local_and_wrong_env_binding_fail_closed(migr
         with pytest.raises(ProviderError, match="local env source"):
             await accounting_cli.selection(args)
     get_settings.cache_clear()
+
+
+async def test_private_migration_normalizes_pre_release_default_without_rewinding_history(accounting_case):
+    from pathlib import Path
+
+    from app.db.session import psycopg_dsn
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    async with service.key_scope(profile, facts, timeout_s=3) as scope:
+        ticket = await scope.admit()
+        await ticket.observe(2, 3, final=True)
+    sql = (Path(__file__).resolve().parents[3] / "contracts/db/migrations/0016_llm_accounting.sql").read_text()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        await conn.execute("alter table llm_runtime.wire_attempts alter column profile_code set default ''")
+        for _ in range(2):
+            await conn.execute(sql)
+        actual = (
+            await (
+                await conn.execute(
+                    "select column_default from information_schema.columns where table_schema='llm_runtime' and table_name='wire_attempts' and column_name='profile_code'"
+                )
+            ).fetchone()
+        )[0]
+        assert actual is None
+    observed = await service.snapshot(profile, facts, timeout_s=3)
+    assert observed.tokens_used == 5 and observed.requests_today == 1 and observed.usage_known
+
+
+async def test_paid_sdk_stream_candidate_uses_endpoint_classification_before_any_http(accounting_case):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    _, original, source = accounting_case
+    profile = replace(original, provider="gigachat", model="paid-model", rpd_limit=None)
+    # Legacy stream-chain may try an SDK candidate with the requested Giga tag.
+    # The actual paid endpoint remains budgeted; a display tag is not an exemption.
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        pytest.fail("unknown paid origin must be rejected before metadata or inference HTTP")
+
+    provider = OpenAICompatProvider(source.secret, "https://openrouter.ai/api/v1", transport=httpx.MockTransport(fake))
+    try:
+        with pytest.raises(ProviderError) as denied:
+            await anext(provider.stream([], profile, timeout_s=3))
+        assert denied.value.kind == "quota" and calls == []
+    finally:
+        await provider.aclose()
+
+
+async def test_env_provider_tier_is_not_reported_as_configured_key_cap(accounting_case):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.api.settings import public_openrouter_env_key
+    from app.db.session import psycopg_dsn
+    from app.llm.accounting import attach_env_observation
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, source = accounting_case
+    profile = replace(original, provider="openai_compatible", model="synthetic:free")
+    facts = KeyFacts("openai_compatible", source.secret, source.endpoint)
+    await confirm((service, profile, facts))
+    calls = []
+
+    def fake(request):
+        calls.append(request.url.path)
+        return httpx.Response(
+            200,
+            json={
+                "id": "synthetic",
+                "object": "chat.completion",
+                "created": 1,
+                "model": profile.model,
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "{}"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            },
+        )
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(fake))
+    try:
+        for count in (1, 2):
+            await provider.complete_structured([], {"type": "object"}, profile, timeout_s=3)
+            card = public_openrouter_env_key(
+                [], {"rpd_limit": 1, "balance_usd": 17}, key_hint="…synthetic", last_error=None
+            )[0]
+            async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+                public = await attach_env_observation(conn, card, facts)
+            assert public["rpd_limit"] is None and public["requests_remaining"] is None
+            assert public["requests_today"] == count and public["requests_known"]
+            assert public["balance_usd"] == 17  # Existing informational balance retained.
+            actual = await service.snapshot(profile, facts, timeout_s=3)
+            assert actual.profile_requests_remaining == 2 - count
+        with pytest.raises(ProviderError) as exhausted:
+            await provider.complete_structured([], {"type": "object"}, profile, timeout_s=3)
+        assert exhausted.value.kind == "rate_limit" and calls == ["/v1/chat/completions"] * 2
+    finally:
+        await provider.aclose()

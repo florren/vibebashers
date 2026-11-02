@@ -479,7 +479,9 @@ def public_openrouter_env_key(
         "tokens_used": 0,
         "tokens_limit": None,
         "requests_today": 0,
-        "rpd_limit": None if info is None else info.get("rpd_limit"),
+        # Provider-reported tier is informational, not a configured application
+        # key cap. Profile limits remain independently enforced by their scope.
+        "rpd_limit": None,
         "balance_usd": None if info is None else info.get("balance_usd"),
         "is_active": True,
         "last_error": last_error,

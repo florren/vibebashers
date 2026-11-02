@@ -72,7 +72,7 @@ async def selection(args: argparse.Namespace) -> tuple[LLMProfile, accounting.Ke
                 item["tokens_limit"],
                 item["rpd_limit"],
                 db_id=args.key_id,
-                paid=OpenAICompatProvider._paid(profile, base),
+                paid=profile.provider == "openai_compatible" and OpenAICompatProvider._paid(profile, base),
             )
         if profile.api_key_id is not None:
             raise ProviderError("auth", "bound profile не допускает env source")
@@ -101,7 +101,7 @@ async def selection(args: argparse.Namespace) -> tuple[LLMProfile, accounting.Ke
             secret,
             base,
             tokens_limit=DEFAULT_LIMIT if provider == "gigachat" else None,
-            paid=OpenAICompatProvider._paid(profile, base),
+            paid=profile.provider == "openai_compatible" and OpenAICompatProvider._paid(profile, base),
         )
 
 

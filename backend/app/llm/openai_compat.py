@@ -102,9 +102,7 @@ def _skips_budget_check(model: str) -> bool:
 
 
 def is_paid_model(profile: LLMProfile, base_url: str) -> bool:
-    return (
-        profile.provider == "openai_compatible" and is_openrouter(base_url) and not _skips_budget_check(profile.model)
-    )
+    return is_openrouter(base_url) and not _skips_budget_check(profile.model)
 
 
 async def _empty_key() -> str:

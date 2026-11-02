@@ -8137,6 +8137,7 @@ export interface components {
             readonly requests_remaining?: number | null;
             tokens_limit?: number | null;
             requests_today?: number;
+            /** @description Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы */
             rpd_limit?: number | null;
             /** @description OpenRouter — из GET /api/v1/key */
             balance_usd?: number | null;
