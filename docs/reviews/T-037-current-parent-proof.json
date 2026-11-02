@@ -1,0 +1,74 @@
+{
+  "checked_runtime_composition": "98af3b66a9bcd4c2ee67520685dcc06dc8170737",
+  "docs_and_task_source_parent": "d0867fc",
+  "head_after_nonruntime_merge": "a3fb6164e7e2a41c7d5be394763bd8247dccc8c5",
+  "journal_files_sha256": {
+    "backend/app/sim/team_plans.py": "322ff60ba32aab9267a3ed7a4d68eca2a32f71101df58accaa852b08de834d68",
+    "backend/app/sim/teams.py": "db0201a2cc52be6bea1981b52bdd64fd92b4247fb0cfcd2857a2bf46004e8e95",
+    "backend/app/sim/events.py": "0829d9175edc549b60757e5d2298c2f09d38d4023def180fa01c5f5f30e908d3",
+    "backend/app/sim/runs.py": "c2f7b34f90dcd354c27cf6603a107ce3015c04b121c16c15e4a136a48949f7f1",
+    "backend/app/sim/engine.py": "e64169b74ccd67241d6e4327fd2358cb17f6d00c27acb9d151eb97e8bc41cb49",
+    "contracts/events/envelope.schema.json": "82a865a06d6bba28cf6721c19790da827de83b429ae932246d16effc2a6aff58",
+    "contracts/events/sim/team_plan.schema.json": "cc63fef88259d82be95d1ff587cb268096dc1ac18231427808ae51be57763b61",
+    "contracts/events/sim/team_runtime.schema.json": "a58fc51691f108d1770b463169830510af5c38d3d229699a3304ced27ee790ae",
+    "backend/app/contracts/events/sim/team_plan.py": "38c0bc0dcefd780843cba3ad76752cec4db88463b093ae2ca2170b0109dee1f4",
+    "backend/app/contracts/events/sim/team_runtime.py": "0bea9e106efd2ced056345969f7dafa5605c58071abac5b8fcf568e022a19c62",
+    "backend/tests/integration/test_team_plan_recovery.py": "49f0758bf6edbbf6d65e1dcc1867bac3b17265e8377d6e8765eb1948c385a63b",
+    "backend/tests/fixtures/team_plan_process.py": "97a35af1445e1f2de5135aa9782eedfc2fdf3a65c5d7b866ab810dd805bcc367",
+    "backend/tests/integration/test_sim.py": "37a11916faf22008dfdf5dcfa0b94bc4ef75b0245cad6b7a8d06661b3bc5592f",
+    "backend/tests/unit/test_teams.py": "eb4ec8d2c8c921cec57d2f17a49ebf7b5bb5396c721ac9bf794e4e6635a35807"
+  },
+  "behavior_files_sha256": {
+    "backend/app/sim/behavior/__init__.py": "26d5f30b85d02dac8d0c01c62474a8f53717001ebb10fa94f7e9bb5d0554d418",
+    "backend/app/sim/behavior/care.py": "39edee31c5b56b0b08910149272f6f006e9b0e586f82c42320b4639df4ccaba0",
+    "backend/app/sim/behavior/codec.py": "6492b260a3ff01a4d523cc8ceb787bbd74f34b0fb5e58965f2be358a05165846",
+    "backend/app/sim/behavior/facts.py": "ac82d067858a3a2860fb75dcb04563c1d265739a53eff777db7339ef8ed0bfcf",
+    "backend/app/sim/behavior/model.py": "e78d6814aaa75d26b43b2fa61eba7d712274aa9ad37d304c7df7c71f11a58a36",
+    "backend/app/sim/behavior/owner.py": "83da49ae3236ffae9e62ae7966654da5c042d91c4291fe0b5eeb07d2c4f6a16b",
+    "backend/app/sim/behavior/pending.py": "ad3bf6d8caa5d48a302685d47fbf70855c92b894279e756631241a9d676e9915",
+    "backend/app/sim/behavior/policy.py": "4039b774524825518c2f62bfd7b44bf3e0fe5018bd4690d29d9c4880f840594b",
+    "backend/app/sim/behavior/runtime.py": "a5fce26a892992358eaf56510c853b28d721d997dffcbd496f5630b41f475b2d",
+    "backend/app/sim/behavior/signals.py": "9bdc244df694d4bcaeff7e6db252dbdd2d3dbef182fd1ea3850c87fd0853a324",
+    "backend/app/sim/behavior/store.py": "18b277dfb4247a82c6ed9f261140139cdfa52b5d361fd30b94f66057bbcb0f37"
+  },
+  "composed_tests": {
+    "passed": 67,
+    "seconds": 364.32,
+    "log": "/tmp/t037-current-p2-parent-targets.log"
+  },
+  "generation": {
+    "orm_classes": 110,
+    "backend_completed": true,
+    "first_frontend_attempt": "node_modules отсутствовал в новом worktree; link к существующему frozen окружению, без установки",
+    "frontend_retry_exit": 0,
+    "tracked_diff": false,
+    "logs": [
+      "/tmp/t037-final-parent-generation.log",
+      "/tmp/t037-final-parent-types.log"
+    ]
+  },
+  "make_lint": {
+    "exit": 0,
+    "backend_ruff_files": 475,
+    "backend_mypy_modules": 300,
+    "bot_ruff_files": 12,
+    "bot_mypy_modules": 5,
+    "frontend_tests": 366,
+    "frontend_files": 47,
+    "drift_spec": 192,
+    "drift_code": 192,
+    "inherited_eslint_warnings": 1,
+    "errors": 0,
+    "log": "/tmp/t037-current-parent-make-lint.log"
+  },
+  "contracts": {
+    "schemas": 47,
+    "paths": 162
+  },
+  "licenses": {
+    "backend_npm": 550,
+    "tgbot": 36
+  },
+  "approval": "отдельный human event/journal review и green exact CI ещё обязательны; T161 approval не расширяется",
+  "receipts0019_API27": "отдельный будущий child, без изменений в T161/T037"
+}
