@@ -1,0 +1,104 @@
+{
+  "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+  "postmerge_code_revision": "027fd27a53e2490974967dde7bbfcbb2ca1b73c5",
+  "backend_app_tree": "9047827c295409c9248c77f4542f5df4689523b8",
+  "local_make_green": false,
+  "make_exit_code": 2,
+  "make_seconds": 1599.16,
+  "components": {
+    "contracts": {
+      "schemas": 45,
+      "openapi_paths": 162
+    },
+    "unit": {
+      "passed": 1484,
+      "skipped": 18,
+      "seconds": 49.22
+    },
+    "integration": {
+      "passed": 342,
+      "failed": 1,
+      "skipped": 2,
+      "seconds": 1545.14
+    },
+    "scenarios_separately_same_source": {
+      "passed": 43,
+      "skipped": 2,
+      "seconds": 169.24
+    },
+    "compliance_separately_same_source": {
+      "passed": 31,
+      "seconds": 79.89
+    },
+    "frontend_separately_same_source": {
+      "passed": 220
+    }
+  },
+  "known_failure": {
+    "test": "tests/integration/test_engine_db_api.py::test_db_activity_chain_isolation_masking_and_idempotent_migration",
+    "line": 41,
+    "error": "TypeError: 'NoneType' object is not subscriptable",
+    "cause": "non-causal historical fixture: no matching incident_signals row; current main supplies explicit failed deposit operations and simulation clock",
+    "fix_source": "9625410f351b8a419da6c565916ead9358fb6a83",
+    "integrated_main": "e839d83915db954b9717c1a97e4f081491bf27c7",
+    "corrected_target": {
+      "source_revision": "027fd27a53e2490974967dde7bbfcbb2ca1b73c5",
+      "tests": [
+        "tests/integration/test_engine_db_api.py",
+        "tests/integration/test_runtime_profiles.py",
+        "tests/integration/test_step_atomicity.py"
+      ],
+      "passed": 30,
+      "seconds": 133.96
+    }
+  },
+  "postmerge_identity": {
+    "backend_app_identical_to_frozen": true,
+    "frontend_identical_to_frozen": true,
+    "api_contract_identical_to_frozen": true,
+    "all_baseline_contract_fingerprint_source_inputs_identical": true,
+    "canonical_0013_and_generated_mirror_equal": true,
+    "note": "Canonical Alembic source comment now matches already-forward-only backend mirror; no runtime DDL or fingerprint input bytes changed."
+  },
+  "lint_frozen": {
+    "frontend_passed": 220,
+    "ruff_files": 398,
+    "mypy_sources": 268,
+    "openapi_spec_paths": 192,
+    "openapi_code_paths": 192
+  },
+  "coverage": {
+    "report": "T-051-final-coverage.json",
+    "covered": 2903,
+    "statements": 3206,
+    "percent": 90.55,
+    "kind": "composite, exact-blob reuse for unchanged files and fresh final43 trace for all changed files",
+    "pytest_passed": 1580,
+    "pytest_skipped": 19
+  },
+  "legacy_upgrade": "T-051-legacy-upgrade-proof.json",
+  "external_calls": "none: ENV_FILE=/dev/null APP_ENV=test LLM_PROVIDER=mock; synthetic/Fake transports only",
+  "remaining": [
+    "Exact final-head GitHub CI",
+    "Mandatory DB/API/credential/budget human review and cross-layer composition approval",
+    "No live validation of P1 bound-credential hot apply was performed",
+    "T-050 durable operational quotas are separate P2/0016"
+  ],
+  "lint_postmerge": {
+    "source_revision": "027fd27a53e2490974967dde7bbfcbb2ca1b73c5",
+    "frontend_passed": 220,
+    "ruff_files": 398,
+    "mypy_sources": 268,
+    "openapi_spec_paths": 192,
+    "openapi_code_paths": 192
+  },
+  "final_gates": {
+    "contracts_schemas": 45,
+    "contracts_openapi_paths": 162,
+    "i18n_keys": 1804,
+    "api_types_fresh": true,
+    "license_distributions": 550,
+    "production_and_personal_builds": true,
+    "generation_models": 88
+  }
+}

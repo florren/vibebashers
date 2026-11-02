@@ -22,7 +22,7 @@ from app import api as api_pkg
 from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
 from app.bench.service import BenchService
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
@@ -46,8 +46,15 @@ from app.tgbot.middleware import BotSignatureMiddleware
 log = get_logger(__name__)
 
 
+def _automatic_llm_offline(chain: ProviderChain, settings: Settings | None = None) -> bool:
+    settings = settings or get_settings()
+    return settings.llm_provider in ("mock", "replay") or getattr(chain, "offline_mode", None) in ("mock", "replay")
+
+
 async def _sync_openrouter_models(chain: ProviderChain) -> None:
     """Нет id в каталоге OpenRouter — профиль is_active=false. Чужой base_url, ошибка GET и пустой список не гасят."""
+    if _automatic_llm_offline(chain):
+        return
     prov = next((p for p in chain.providers if isinstance(p, OpenAICompatProvider)), None)
     if prov is None or not is_openrouter(prov.base_url):
         return
@@ -201,13 +208,18 @@ async def _initialize_maintenance(app: FastAPI) -> bool:
 
 async def _prepare_runtime_profiles(app: FastAPI) -> None:
     s = get_settings()
-    if not s.is_test:
-        await refresh_roles(app, s)
-        for provider in app.state.llm_chain.providers:
-            if isinstance(provider, GigaChatProvider):
-                await provider.prepare(list(app.state.llm_chain.role_profiles.values()))
-    if not s.is_test and any(p.name == "openai_compatible" for p in app.state.llm_chain.providers):
-        await _sync_openrouter_models(app.state.llm_chain)
+    if s.is_test:
+        return
+    chain = app.state.llm_chain
+    await refresh_roles(app, s)
+    # Локальная replay metadata нужна, но warmup/catalog не является diagnostic intent.
+    if _automatic_llm_offline(chain, s):
+        return
+    for provider in chain.providers:
+        if isinstance(provider, GigaChatProvider):
+            await provider.prepare(list(chain.role_profiles.values()))
+    if any(p.name == "openai_compatible" for p in chain.providers):
+        await _sync_openrouter_models(chain)
 
 
 @asynccontextmanager

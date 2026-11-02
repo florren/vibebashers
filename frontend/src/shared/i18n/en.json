@@ -203,7 +203,38 @@
       "comfortable": "Comfortable",
       "compact": "Compact"
     },
-    "syncError": "Theme saved locally; settings sync unavailable"
+    "syncError": "Theme saved locally; settings sync unavailable",
+    "circadian": {
+      "settings": "Day cycle",
+      "sourceLabel": "Time source",
+      "source": {
+        "sim": "Simulation",
+        "real": "Device clock",
+        "fixed": "Fixed phase"
+      },
+      "phaseLabel": "Phase",
+      "phase": {
+        "dawn": "Dawn",
+        "morning": "Morning",
+        "noon": "Noon",
+        "sunset": "Sunset",
+        "twilight": "Twilight",
+        "night": "Night"
+      },
+      "geoExplanation": "Sunrise and sunset are calculated offline. Your location is requested only after you press Allow; coordinates stay in this browser and are never sent to the server.",
+      "localLocation": "Using location saved in this browser",
+      "moscow": "Using Moscow (default)",
+      "allowLocation": "Allow location",
+      "locating": "Locating…",
+      "forgetLocation": "Use Moscow",
+      "geoError": "Location unavailable. The previous location or Moscow remains in use.",
+      "digest": "Night digest · high priority signals",
+      "loading": "Loading…",
+      "digestError": "Signals unavailable; retry in the workspace.",
+      "empty": "No high priority signals in the current run.",
+      "more": "Showing the latest 10. All signals are available in the workspace.",
+      "openWorkspace": "Open workspace"
+    }
   },
   "signal": {
     "type": {
@@ -1859,37 +1890,6 @@
     "controlsHelp": "Selecting an option does not save settings. “Save processing profile” applies settings to new team plans in the current and future runs without creating a message. Existing plans and past replies are unchanged. “Run a separate scenario” creates a new run with the selected input and switches the current history. If employee emulation is disabled, approvals require manual action.",
     "fastHint": "Fast mode is enabled: manual requests and related incidents advance without waiting for simulated days, even while paused. Background bank clocks and generators remain unchanged. Live LLM calls take time; unresolved issues remain open.",
     "draftHint": "The selected settings have not been applied. Click “Save processing profile” before submitting a manual request."
-  },
-  "db": {
-    "run": "Run #{{id}}",
-    "title": "Database activity",
-    "readonly": "Read only · real changes from audit triggers",
-    "scope": "Run scope",
-    "current": "Baseline + current",
-    "all": "All runs",
-    "table": "Table",
-    "allTables": "All tables",
-    "pause": "Pause updates",
-    "resume": "Resume updates",
-    "refresh": "Refresh",
-    "paused": "Updates paused",
-    "live": "WebSocket + polling",
-    "polling": "Polling · WebSocket unavailable",
-    "legacy": "Legacy events without run_id appear only in all runs",
-    "limit": "Latest 50 rows; changes shown newest first",
-    "counters": "Table counters",
-    "delta": "Counter change",
-    "exact": "Exact",
-    "estimated": "PostgreSQL estimate",
-    "activity": "Change feed",
-    "emptyActivity": "No changes in the selected scope yet",
-    "unknownRun": "Unknown run",
-    "older": "Older changes",
-    "rows": "Latest rows",
-    "masked": "Contacts, secrets and raw LLM payloads are hidden by the server",
-    "emptyRows": "No rows in this scope",
-    "inspect": "Inspect JSON",
-    "inspector": "JSON inspector"
   },
   "client360": {
     "open": "Client 360",
