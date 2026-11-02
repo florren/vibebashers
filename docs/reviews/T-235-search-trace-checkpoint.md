@@ -30,3 +30,11 @@ pending для незавершённого инцидента и веер ≥12
 24 адресных unit/actual PG теста прошли за 8.77s. Raw contact в отображаемом
 тексте Trace также даёт FAIL. Coverage artifact выше относится к c4d53ab;
 покрытие расширенного checkpoint будет пересчитано отдельно.
+
+Добавлены меню сценария 13 и локальное скачивание загруженного Trace в JSON/Markdown.
+JSON сохраняет scope и DTO; Markdown — ДО/ОБЪЕКТ/ПОСЛЕ, итог, pending и сводки
+связей. Тексты экранируются от Markdown images и HTML. Backend теперь возвращает
+422 до SQL для некорректных внутренних числовых refs и UUID не той семьи.
+Проверено 46 unit/PG тестами за 7.79s, 329 frontend за 10.14s, frontend lint/typecheck
+и обеими production builds. Browser proof, coverage после расширения, demo5000
+performance и полный backend suite остаются следующими проверками.

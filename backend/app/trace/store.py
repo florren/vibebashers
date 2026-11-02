@@ -49,11 +49,17 @@ async def read_db() -> AsyncIterator[Conn]:
 
 
 async def resolve(conn: Conn, kind: str, ref: str, run_id: str = "all") -> dict[str, Any]:
-    parsed = parse(ref)
+    ref = ref.strip()
+    try:
+        parsed = parse(ref)
+    except ValueError:
+        raise HTTPException(422, "Некорректный идентификатор") from None
     if kind in ("tracking", "correlation"):
         kind = "signal" if kind == "tracking" else "ledger"
     if kind not in TYPES:
         raise HTTPException(422, "Неизвестный тип объекта")
+    if parsed["kind"] == "correlation" and kind != "ledger":
+        raise HTTPException(422, "UUID корреляции доступен для проводки")
     spec = TYPES[kind]
     column = (
         "tracking_token"
@@ -61,17 +67,24 @@ async def resolve(conn: Conn, kind: str, ref: str, run_id: str = "all") -> dict[
         else "correlation_id"
         if parsed["kind"] == "correlation"
         else spec.key
-        if ref.isdigit()
+        if ref.isdecimal()
         else spec.public
     )
-    rid = await allowed_run(conn, run_id)
     value: Any = parsed["normalized"] if column not in (spec.key, "tracking_token") else ref
     predicate = f"t.{column}=%s"
-    if kind == "branch" and not ref.isdigit():
+    if kind == "branch" and not ref.isdecimal():
         predicate = "t.code=ANY(%s)"
         value = [value, str(value).removeprefix("VSP-")]
     if column == spec.key and spec.key != "code":
-        value = int(ref)
+        if not ref.isdecimal():
+            raise HTTPException(422, "Ожидался числовой идентификатор")
+        try:
+            value = int(ref)
+        except ValueError:
+            raise HTTPException(422, "Некорректный числовой идентификатор") from None
+        if not 1 <= value <= 9223372036854775807:
+            raise HTTPException(422, "Идентификатор вне диапазона bigint")
+    rid = await allowed_run(conn, run_id)
     row = await fetch_one(
         conn,
         f"SELECT to_jsonb(t) AS data, {scope(kind)} AS scope_id FROM {spec.table} t WHERE {predicate} AND (%s::bigint IS NULL OR {scope(kind)} IS NULL OR {scope(kind)}=%s OR {scope(kind)} IN (SELECT id FROM sim_runs WHERE kind='baseline'))",

@@ -72,3 +72,10 @@ Ruff/formatter изменённых файлов прошли; assertions не �
 suite/CI/merge ещё требуются. Реальных LLM/Telegram вызовов нет. Cross-layer
 L1 scripts/docs, L3 trace, L5 tests согласован общим поручением пользователя;
 нового contract-change нет.
+
+Следующий checkpoint: два причинных следа, pending и fanout120 проверены actualPG;
+всего 47 GET. Меню сценария 13 открывает read-only Trace, добавлены локальные
+JSON/Markdown exports со scope и экранированием текста. Некорректные внутренние
+числовые refs/UUID дают 422 до SQL. Проверки: 46 unit/PG (7.79s), 329 frontend
+(10.14s), lint/typecheck, main/personal builds. Actual browser и полный backend/CI
+ещё требуются; прежний coverage artifact относится только к c4d53ab.
