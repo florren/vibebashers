@@ -1,0 +1,22 @@
+{
+  "source": "c47d2784a3953452a9bc154c9048eae0416cd3cb",
+  "base": "97798acda1885e226f06a1ceba190e2b4ad2d9a6",
+  "file": "backend/app/sim/engine.py",
+  "sha256": "c9707f9883a11cc91a48577d05bc57a72728556276063ee40b5b41e904852655",
+  "covered_new": 27,
+  "statements_new": 33,
+  "missing_new": [
+    172,
+    203,
+    402,
+    477,
+    502,
+    522
+  ],
+  "percent_new": 81.81818181818181,
+  "tests": [
+    "7 passed44.10s: actualPG6 + shutdown unit1",
+    "3 passed/18deselected41.64s: existing positive start/stop/pause/resume/shutdown"
+  ],
+  "instrumentation": "timid tracer, no performance claim"
+}

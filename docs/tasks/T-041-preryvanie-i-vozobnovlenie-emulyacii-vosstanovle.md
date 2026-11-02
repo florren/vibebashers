@@ -77,3 +77,10 @@ Peer review добавил status-only resurrection и shutdown bypass: оба a
 плюс скрытый flush error. Followup7GREEN36.48с; typedValueError-compatible stale
 skip/rollback/close, неожиданная storagefailure явно пробрасывается.
 Прежний c92 broader56PG321.86с source-qualified; новый broader/CI ещё обязателен.
+
+Актуальный c47 после followup:59native/adjacent GREEN341.95s, полный unit1866passed/
+18skipped56.09s; make lint367frontend/485Ruff/301mypy,bot12/5,drift192/192;
+contracts47/162. Coverage нового engine27/33=81.82% (7regression+3existingpositive
+controls под tracer), source-qualified JSON вreview. Генератор идемпотентен.
+Exact-head CI/зависимостьPR195 остаются обязательны; нового fullintegration/live
+smoke не заявляем, общий DoD карточки не закрыт.
