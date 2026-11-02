@@ -169,7 +169,7 @@ def test_recorded_history_context_is_not_rekeyed_or_reused_after_changes(history
     from app.contracts.registry import deref
     from app.llm.base import LLMProfile, ProviderError
     from app.replay.provider import ReplayProvider
-    from app.replay.store import CassetteStore
+    from app.replay.store import CassetteStore, request_hash
 
     fixture = json.loads((ROOT / "backend/tests/fixtures/replay_bank_v1.json").read_text())
     record = next(
@@ -181,7 +181,11 @@ def test_recorded_history_context_is_not_rekeyed_or_reused_after_changes(history
     provider = ReplayProvider(store)
     profile = LLMProfile(code="recorded", provider=record["provider"], model=record["model"])
     schema = deref("agent/instant_decision")
-    assert provider._find(record["messages"], schema, profile)["request_hash"] == fixture["source_request_hash"]
+    # Старый hash — provenance неизменного bank context, не hash новой schema.
+    current_hash = request_hash(record["provider"], record["model"], record["messages"], schema)
+    current = provider._find(record["messages"], schema, profile)
+    assert current["request_hash"] == current_hash
+    assert current["messages"] == record["messages"]
     changed = copy.deepcopy(record["messages"])
     changed[0]["content"] = changed[0]["content"].replace('"operation_ids":[2179]', '"operation_ids":[600001]')
     assert changed != record["messages"]
