@@ -650,17 +650,21 @@ async def resume_after_followup(
             state["current_node"] = "verify"
         else:
             c = state.get("classification") or {}
-            escalate = (state.get("decision") or {}).get("escalate_on_silence")
+            decision = state.get("decision") or {}
+            planned_escalation = decision.get("escalation") or {}
+            escalate = decision.get("escalate_on_silence")
             if escalate is None:
-                escalate = c.get("signal_type") == "fraud_suspicion"
+                # Уточнение при сарказме уже сохраняет escalation в decide.
+                # После тишины исполняем этот план, не вызывая модель повторно.
+                escalate = bool(planned_escalation) or c.get("signal_type") == "fraud_suspicion"
             if escalate and incident_id:
                 await wt.escalate_to_manager(
                     deps.ctx,
                     int(signal_id),
                     int(incident_id),
                     "Клиент не предоставил данные в срок",
-                    "high",
-                    "cx_lead",
+                    planned_escalation.get("severity") or "high",
+                    planned_escalation.get("to_role") or "cx_lead",
                 )
             await conn.execute("update signals set status = 'closed', updated_at = now() where id = %s", (signal_id,))
             state["verified"] = True

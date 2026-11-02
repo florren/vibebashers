@@ -8,7 +8,7 @@
 | Волна | 3 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Контроль сроков фикса, взятия в работу, первого ответа и промежуточных отчётов с эскалациями.
@@ -41,3 +41,20 @@ pytest backend/tests/unit/test_sla.py
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+
+### Ревизия 2026-11-02: durable план до первого действия
+
+Кандидат в `codex/T-037-durable-team-plan` от T161 `9bba1d9`: typed native `team.plan` и `team.runtime_started`, атомарные plan/RNG tick, чтение legacy action facts, fail-closed неизвестный pre-action план; DDL и SLA числа/due times не изменены. Исправлен доказанный restart gap без fake take/report.
+
+Основной PG/OS/lifecycle/restore/reset-day набор 43 passed; дополнительные stale/corrupt legacy 3 passed; actual PG16 dump/restore clone 1 passed. Full unit 1727 passed /18 skipped; changed-executable line coverage131/131; Ruff/mypy/contracts/licenses зелёные. Подробности, ограничения, source hashes и rollback: [кандидат review](../reviews/T-037-durable-plan-candidate.md).
+
+На runtime `56e62b9` также scenarios43 passed/2 skipped и compliance31 passed. Статус `in_progress`, DoD не закрыт: полная composition CI и обязательный human event/runtime compatibility review ещё нужны. Техническое разрешение root не является пользовательским одобрением legacy policy. UI SLA warning этим кандидатом не менялся; отдельный новый UI proof не заявлен.
+
+
+Финальная композиция98af3b66 + non-runtime parent d0867fc:67targetspassed364.32s,
+все14journal и11behavior source SHA прежние. Final make lint green с366frontend
+тестами, contracts47/162, licenses550+36. [Consolidated event/journal review](../reviews/T-037-final-review.md)
+с точным legacy-planless fail-closed, restart-before-first-take и rollback.
+Отдельный human review и green CI exact head ещё обязательны; T161/PR193
+approval не считается approval T037. Receipts0019/API27 здесь не реализуются.

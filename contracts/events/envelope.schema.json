@@ -137,7 +137,7 @@
       "if": {
         "properties": {
           "event_type": {
-            "pattern": "^team\\."
+            "pattern": "^team\\.(?!plan$|runtime_started$)"
           }
         }
       },
@@ -289,6 +289,38 @@
         "properties": {
           "payload": {
             "$ref": "sim/zone.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "team.plan"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/team_plan.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "team.runtime_started"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/team_runtime.schema.json"
           }
         }
       }

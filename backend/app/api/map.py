@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from app.analytics.map_thresholds import map_thresholds
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 
 router = APIRouter(tags=["map"])
@@ -115,16 +116,7 @@ async def get_map_zones(run_id: str | None = Query(None)) -> Any:
         rid = await resolve_run_id(conn, run_id)
         th = await fetch_one(conn, "select map_zone_thresholds as t from economics_settings where id = 1")
         raw = (th or {}).get("t") or {}
-        t: dict[str, Any] = {
-            "yellow": 0.25,
-            "red": 0.5,
-            "copilot_weight": 0.5,
-            "window_sim_hours": 24,
-            "critical_red": 3,
-            **raw,
-        }
-        if "yellow_max" in raw and "red" not in raw:  # старый формат порогов из сида (green_max / yellow_max)
-            t["yellow"], t["red"] = float(raw.get("green_max", 0.25)), float(raw.get("yellow_max", 0.5))
+        t = map_thresholds(raw)
         now = await _sim_now(conn)
         since = now - dt.timedelta(hours=int(t["window_sim_hours"]))
         run_sql = "and s.run_id = %s" if rid is not None else ""

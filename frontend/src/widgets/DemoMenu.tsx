@@ -102,6 +102,7 @@ export function DemoMenu() {
             </button>
           </div>
           <div className="flex flex-col gap-2">
+            <button className="btn btn-sm justify-start" onClick={() => { nav(ROUTES.journey); setOpen(false) }}>{t('demoMenu.scenario12')}</button>
             <button
               type="button"
               className="btn btn-sm justify-start"
@@ -136,6 +137,7 @@ export function DemoMenu() {
             </button>
           </div>
           <div className="flex flex-col gap-2">
+            <button className="btn btn-sm justify-start" onClick={() => { nav(ROUTES.trace); setOpen(false) }}>{t('demoMenu.scenario13')}</button>
             {([[1, 'deposit_promo_rate'], [8, 'qr_fee_public_review'], [9, 'branch_misselling'], [11, 'social_sarcasm_escalation']] as const).map(([n, scenario]) => <button key={n} className="btn btn-sm justify-start" disabled={opening} onClick={() => void run(async () => {
               setOpening(true)
               try { const ref = await loadScenarioJourney(scenario); nav(`${ROUTES.journeyObject(ref)}?mode=presenter`); setOpen(false) }

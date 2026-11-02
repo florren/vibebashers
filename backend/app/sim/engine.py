@@ -145,6 +145,9 @@ class Simulator:
                 self.world.active_faults = old.active_faults
         if not self.world.loaded:
             try:
+                from app.sim.team_plans import ensure_runtime
+
+                await ensure_runtime(conn, self.run_id, self.clock.sim_time)
                 await self.world.load()
             except BaseException:
                 await conn.rollback()

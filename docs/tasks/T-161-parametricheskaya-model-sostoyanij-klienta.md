@@ -27,9 +27,7 @@
 
 ## Что сделать
 1. app/sim/behavior/model.py: обработчики op.failed/fault.started (affected), таймер жалобы по complain_delay → создание сигнала (текст из библиотеки T-019 по психотипу/тону) или silent_decline; реакции на notifications (agent_reply/proactive/progress/gift) → care_score по care_weights; повтор/эскалация по repeat_prob/escalation_prob; на каждом sla.tick для waiting/churn_intent розыгрыш hazard по формуле ТЗ 4.5; retained при закрытии с care_score ≥ порога.
-2. Запись client_states (is_current), событий client.* и raw per-tick intent hazard.
-   Existing clients.churn_risk и его контекстная projection сохраняются;
-   новое probability mapping/калибровка — отдельная T-165 с provenance review.
+2. Запись client_states (is_current), событий client.* и raw per-tick intent hazard. Existing clients.churn_risk и его контекстная projection сохраняются; новое probability mapping/калибровка — отдельная T-165 с provenance review.
 3. Все вероятности через rng.py; параметры из psychotypes.params и settings.
 
 ## Критерии приёмки
@@ -105,3 +103,30 @@ legacy clients.churn_risk/projection сохраняется доT-165. Approval 
 source decision: [решение](../reviews/T-161-churn-risk-decision-proposal.md).
 Новых probability/money defaults и hazard*100 нет; прежнее demo-policy approval
 осталось неизменным. Runtime/actual0017 proof продолжается, statusin_progress.
+
+
+### Runtime candidate и проверки 02.11.2026
+
+Исторические записи выше относятся к ранним checkpoints. Текущий candidate
+имеет actual0017 после0016, единый Sim tick owner, durable evidence/work/receipts,
+World pending и actual native fault recovery; approved policy включена только в
+тестируемой ветке для фактических free/scenario. Live остаётся вне hazard owner;
+legacy churn_risk не подменён raw hazard. Production не изменялся.
+
+Фактический полный integration на9bba1d9:469 passed/2failed/4skip,2752.16s.
+Два конкретных follow-up (валидная explicit transaction при autocommit=True,
+явный reload stale reader в test-only factory fixture) проверены3target+24affected
+pass. [Причины и границы](../reviews/T-161-full-regression-findings.md).
+Полный integration пока не назван успешным; final exact CI, актуальное coverage/
+performance и конкретный human event/runtime/reset_day/financial-time review
+ещё нужны. Два ранее одобренных решения demo-policy/variant A не запрашиваются
+повторно. Карточка остаётся in_progress.
+
+
+Frozen runtime70e4b00: full unit1725/18skip; fresh pure-core+все7behaviorPG
+167passed, новый package line coverage1657/1772=93.51% (каждый модуль≥90.12%).
+[Актуальный source-qualified отчёт](../reviews/T-161-full-regression-findings.md).
+Known whole-World Team plan/RNG gap устраняется отдельной T037 child карточкой;
+T161 отдельно не объявляет универсальную restart-equivalence. Карточки/PR не
+смешиваются без atomic exception; конечная composition CI и final human review
+остаются обязательными.

@@ -2227,6 +2227,7 @@ ALTER TABLE llm_runtime.wire_attempts ADD COLUMN IF NOT EXISTS profile_code text
 
 -- Normalize a pre-release partially installed checkpoint without changing history.
 ALTER TABLE llm_runtime.wire_attempts ALTER COLUMN profile_code DROP DEFAULT;
+
 -- T-161: durable behavior owner, evidence/receipts/timers; actual parent0016.
 -- Legacy duplicate current states требуют явного согласования, без удаления истории.
 DO $$ BEGIN
@@ -2387,3 +2388,100 @@ CREATE TABLE IF NOT EXISTS behavior_pending_signals (
   consumed_sim timestamptz
 );
 CREATE INDEX IF NOT EXISTS behavior_pending_due_idx ON behavior_pending_signals(run_id,due_sim,id) WHERE consumed_sim IS NULL;
+
+-- T-241: DDL18 после фактической0017, read-only cabinet facts и происхождение human audit.
+-- Аддитивные поля: NULL означает неизвестный legacy actor, без backfill.
+ALTER TABLE human_decisions ADD COLUMN IF NOT EXISTS actor_role text
+  CHECK (actor_role IN ('cx_operator','cx_lead','product_manager','product_head','compliance_officer','bank_head','admin'));
+ALTER TABLE incident_status_history ADD COLUMN IF NOT EXISTS actor_role text
+  CHECK (actor_role IN ('cx_operator','cx_lead','product_manager','product_head','compliance_officer','bank_head','admin'));
+-- Одна строка на сигнал, без incident join: счётчики не размножаются.
+CREATE OR REPLACE VIEW v_cabinet_signal_facts AS
+SELECT s.id,s.public_id,s.run_id,s.product_line_code,s.received_sim,s.sentiment,
+  s.classification->>'criticality' AS criticality,
+  coalesce(s.geo->>'region_code',c.region_code) AS region_code,
+  s.channel_code,s.meta->>'source_platform' AS source_platform,
+  s.client_id,s.flags,s.red_words,s.status,c.public_id AS client_public_id,
+  s.classification->>'signal_type' AS signal_type
+FROM signals s LEFT JOIN clients c ON c.id=s.client_id
+-- Служебный proactive anchor не является обращением клиента. NULL legacy сохраняем.
+WHERE s.origin IS DISTINCT FROM 'proactive';
+-- Сначала distinct соответствия, затем сохранённая экономика: без compute/write.
+CREATE OR REPLACE VIEW v_cabinet_incident_facts AS
+SELECT x.product_line_code,i.id,i.run_id,i.created_sim,i.region_code,i.status,
+  i.criticality,i.sla_due_sim,i.outcome_class,ie.potential_loss_rub,
+  ie.prevented_loss_rub,ie.computed_at
+FROM incidents i
+LEFT JOIN (SELECT DISTINCT s.product_line_code,ic.incident_id,s.run_id
+      FROM signals s JOIN incident_signals ic ON ic.signal_id=s.id
+      WHERE s.product_line_code IS NOT NULL) x ON i.id=x.incident_id AND i.run_id=x.run_id
+LEFT JOIN incident_economics ie ON ie.incident_id=i.id;
+CREATE INDEX IF NOT EXISTS signals_cabinet_scope_time_idx
+ ON signals(run_id,product_line_code,received_sim DESC,id DESC);
+CREATE INDEX IF NOT EXISTS product_history_scope_month_idx
+ ON product_signal_history(run_id,product_line_code,month DESC);
+-- Downgrade удаляет только views/indexes. Аддитивные audit columns/values
+-- сохраняются: откат кода не должен уничтожать происхождение ручных решений.
+
+-- T-039 B: только provenance отмены; legacy NULL не восстанавливается догадкой.
+ALTER TABLE public.behavior_receipts ADD COLUMN IF NOT EXISTS details jsonb;
+
+CREATE OR REPLACE FUNCTION public.valid_behavior_cancellation_details(
+  p_source_kind text, p_action text, p_consumed_sim timestamptz, p_doc jsonb
+) RETURNS boolean LANGUAGE plpgsql STABLE AS $$
+DECLARE
+  key text;
+  keys text[] := ARRAY['version','episode_no','work_kind','due_sim','cancellation_sim',
+    'cancellation_observed_sim','first_complaint_sim_at_cancellation','complaint_observation_complete',
+    'evidence_id','evidence_kind','evidence_source_id','canonical_signal_id','resolution_sim'];
+  stamp_pattern text := '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$';
+BEGIN
+  IF p_doc IS NULL THEN RETURN true; END IF;
+  IF jsonb_typeof(p_doc) IS DISTINCT FROM 'object' OR octet_length(p_doc::text)>2048 THEN RETURN false; END IF;
+  IF NOT (p_doc ?& keys) OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_doc) k WHERE NOT k=ANY(keys)) THEN RETURN false; END IF;
+  IF p_source_kind IS DISTINCT FROM 'work' OR p_action IS NULL OR p_action NOT IN ('cancelled_by_resolution','already_complained') THEN RETURN false; END IF;
+  IF jsonb_typeof(p_doc->'version') IS DISTINCT FROM 'number' OR p_doc->>'version'<>'1' THEN RETURN false; END IF;
+  FOREACH key IN ARRAY ARRAY['episode_no','evidence_id','evidence_source_id'] LOOP
+    IF jsonb_typeof(p_doc->key) IS DISTINCT FROM 'number' THEN RETURN false; END IF;
+    IF (p_doc->>key) !~ '^[1-9][0-9]*$' THEN RETURN false; END IF;
+    IF (p_doc->>key)::numeric>9223372036854775807 THEN RETURN false; END IF;
+  END LOOP;
+  IF (p_doc->>'episode_no')::numeric>2147483647 THEN RETURN false; END IF;
+  IF jsonb_typeof(p_doc->'canonical_signal_id') IS DISTINCT FROM 'null' THEN
+    IF jsonb_typeof(p_doc->'canonical_signal_id') IS DISTINCT FROM 'number' THEN RETURN false; END IF;
+    IF p_doc->>'canonical_signal_id' !~ '^[1-9][0-9]*$' THEN RETURN false; END IF;
+    IF (p_doc->>'canonical_signal_id')::numeric>9223372036854775807 THEN RETURN false; END IF;
+  END IF;
+  IF p_doc->>'work_kind' NOT IN ('complaint','repeat','patience') OR
+    jsonb_typeof(p_doc->'work_kind') IS DISTINCT FROM 'string' OR
+    p_doc->>'evidence_kind' NOT IN ('resolution','agent_state') OR
+    jsonb_typeof(p_doc->'evidence_kind') IS DISTINCT FROM 'string' OR
+    jsonb_typeof(p_doc->'complaint_observation_complete') IS DISTINCT FROM 'boolean' THEN RETURN false; END IF;
+  FOREACH key IN ARRAY ARRAY['due_sim','cancellation_sim','cancellation_observed_sim',
+    'first_complaint_sim_at_cancellation','resolution_sim'] LOOP
+    IF key IN ('first_complaint_sim_at_cancellation','resolution_sim') AND jsonb_typeof(p_doc->key)='null' THEN CONTINUE; END IF;
+    IF jsonb_typeof(p_doc->key) IS DISTINCT FROM 'string' OR p_doc->>key !~ stamp_pattern THEN RETURN false; END IF;
+    IF NOT pg_catalog.pg_input_is_valid(p_doc->>key,'timestamp with time zone') THEN RETURN false; END IF;
+  END LOOP;
+  IF (p_doc->>'cancellation_sim')::timestamptz IS DISTINCT FROM p_consumed_sim OR
+    (p_doc->>'cancellation_observed_sim')::timestamptz<(p_doc->>'cancellation_sim')::timestamptz THEN RETURN false; END IF;
+  FOREACH key IN ARRAY ARRAY['first_complaint_sim_at_cancellation','resolution_sim'] LOOP
+    IF jsonb_typeof(p_doc->key)<>'null' AND (p_doc->>key)::timestamptz>(p_doc->>'cancellation_sim')::timestamptz THEN RETURN false; END IF;
+  END LOOP;
+  IF p_action='cancelled_by_resolution' THEN
+    RETURN p_doc->>'evidence_kind'='resolution';
+  END IF;
+  RETURN p_doc->>'evidence_kind'='agent_state' AND p_doc->>'work_kind'='complaint'
+    AND jsonb_typeof(p_doc->'canonical_signal_id')='number'
+    AND jsonb_typeof(p_doc->'first_complaint_sim_at_cancellation')='string'
+    AND jsonb_typeof(p_doc->'resolution_sim')='null';
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.behavior_receipts'::regclass AND conname='behavior_cancellation_details_valid') THEN
+    ALTER TABLE public.behavior_receipts ADD CONSTRAINT behavior_cancellation_details_valid
+      CHECK(public.valid_behavior_cancellation_details(source_kind,action,consumed_sim,details));
+  END IF;
+END $$;
+COMMENT ON COLUMN public.behavior_receipts.details IS
+  'T039 B v1: native provenance отмены; NULL остаётся неизвестным, без legacy backfill и attribution к Sent';

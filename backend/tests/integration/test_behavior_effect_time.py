@@ -195,3 +195,32 @@ async def test_refund_effect_time_is_current_own_clock_or_frozen_historical_cont
             assert await abs_svc.check_invariant(conn) == []
         finally:
             await sim.conn.close()
+
+
+@pytest.mark.asyncio
+async def test_effect_fence_uses_actual_transaction_not_autocommit_connection_flag(seeded, monkeypatch):
+    from psycopg.pq import TransactionStatus
+    from psycopg.rows import dict_row
+
+    from app.sim.behavior.store import BehaviorStore
+
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as setup_conn:
+        run, _, now, _, _ = await case(setup_conn, monkeypatch, seeded)
+        before = await (
+            await setup_conn.execute("select sim_time,rng_state,current_run_id from sim_state where id=1")
+        ).fetchone()
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), autocommit=True, row_factory=dict_row) as conn:
+        store = BehaviorStore(conn)
+        assert conn.info.transaction_status == TransactionStatus.IDLE
+        with pytest.raises(ValueError, match="внешнюю transaction"):
+            await store.current_effect_time(run)
+        assert conn.info.transaction_status == TransactionStatus.IDLE
+        async with conn.transaction():
+            assert conn.autocommit and conn.info.transaction_status == TransactionStatus.INTRANS
+            assert await store.current_effect_time(run) == now
+        assert conn.info.transaction_status == TransactionStatus.IDLE
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as check:
+        assert (
+            await (await check.execute("select sim_time,rng_state,current_run_id from sim_state where id=1")).fetchone()
+            == before
+        )

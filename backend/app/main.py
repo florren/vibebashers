@@ -323,6 +323,9 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )
+    from app.analytics.cabinet_scope import CabinetPresetMiddleware
+
+    app.add_middleware(CabinetPresetMiddleware)
     app.add_middleware(RequestLogMiddleware)
 
     def bot_secret() -> bytes | None:

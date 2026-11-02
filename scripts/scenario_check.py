@@ -18,6 +18,7 @@ from pathlib import Path
 import httpx
 import psycopg
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app.sim import scenarios as sc  # noqa: E402
@@ -76,12 +77,22 @@ async def _wait_scripted(dsn: str, run_id: int, timeout: float) -> None:
 
 
 async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
+    if scenario.get("kind") == "read_model" and scenario["id"] == "customer_journey":
+        from scripts.journey_check import run_journeys
+
+        return await run_journeys(base, dsn, scenario)
+    if scenario.get("kind") == "read_model" and scenario["id"] == "search_and_trace":
+        from scripts.read_model_check import run_search_trace
+
+        return await run_search_trace(base, dsn, scenario)
     async with httpx.AsyncClient(base_url=base, timeout=60) as http:
         r = await http.post(f"/api/scenarios/{scenario['id']}/run", json={})
         if r.status_code == 501:
             why = r.json().get("detail") or r.text[:80]
-            print(f"  [{scenario['number']:>2}] {scenario['title_ru']}: пропуск — {why}")  # noqa: T201
-            return True
+            print(  # noqa: T201
+                f"  [{scenario['number']:>2}] FAIL {scenario['title_ru']}: сценарий не выполнен — {why}"
+            )
+            return False
         r.raise_for_status()
         run_id = int(r.json()["run"]["id"])
     if "script" in scenario:
@@ -95,7 +106,9 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
         await sc.save_result(conn, scenario["id"], res)
         await conn.commit()
     mark = "OK " if res["passed"] else "FAIL"
-    print(f"  [{scenario['number']:>2}] {mark} {scenario['title_ru']} (run {run_id}; {res['counts']})")  # noqa: T201
+    print(  # noqa: T201
+        f"  [{scenario['number']:>2}] {mark} {scenario['title_ru']} (run {run_id}; {res['counts']})"
+    )
     for c in res["checks"]:
         sym = "✓" if c["ok"] else ("·" if c["ok"] is None else "✗")
         print(f"        {sym} {c['code']}: {c['detail']}")  # noqa: T201
@@ -106,18 +119,31 @@ async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("which", help="номер сценария, id или all")
     ap.add_argument("--base", default=os.environ.get("CX_BASE_URL", "http://localhost:8000"))
-    ap.add_argument("--wait", type=float, default=30, help="сколько секунд ждать агента на один сценарий")
+    ap.add_argument(
+        "--recording-source",
+        choices=("replay", "live"),
+        default="replay",
+        help="источник записанных путей сценария12; не запускает LLM",
+    )
+    ap.add_argument(
+        "--wait",
+        type=float,
+        default=30,
+        help="сколько секунд ждать агента на один сценарий",
+    )
     a = ap.parse_args()
     dsn = _dsn(os.environ.get("DATABASE_URL") or "postgresql://cx:cx@localhost:5432/cx_pulse")
     items = sc.load_all()
     if a.which != "all":
-        items = [s for s in items if str(s.get("number")) == a.which or s["id"] == a.which]
+        items = [
+            s for s in items if str(s.get("number")) == a.which or s["id"] == a.which or a.which in s.get("aliases", [])
+        ]
         if not items:
             print(f"сценарий {a.which} не найден")  # noqa: T201
             return 2
     ok = True
     for s in items:
-        ok = await run_one(a.base, dsn, s, a.wait) and ok
+        ok = await run_one(a.base, dsn, {**s, "_recording_source": a.recording_source}, a.wait) and ok
     return 0 if ok else 1
 
 

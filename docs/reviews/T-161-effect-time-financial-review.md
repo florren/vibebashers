@@ -8,7 +8,7 @@
 
 ## Конкретное изменение
 
-Production `load_deps` устанавливает `effect_time_fence`; общий `@tool` вызывает его непосредственно перед `SIDE_EFFECT_TOOLS`, после LLM. `BehaviorStore.current_effect_time` возвращает aware native persisted SimTime **только своего current run**, проверяя kind/status под `sim_runs FOR SHARE`. SimState lock в late graph callback не берётся; LLM не исполняется под этим fence. Внешняя caller transaction должна быть без autocommit; первая SQL statement может открыть её неявно, helper не выполняет commit.
+Production `load_deps` устанавливает `effect_time_fence`; общий `@tool` вызывает его непосредственно перед `SIDE_EFFECT_TOOLS`, после LLM. `BehaviorStore.current_effect_time` возвращает aware native persisted SimTime **только своего current run**, проверяя kind/status под `sim_runs FOR SHARE`. SimState lock в late graph callback не берётся; LLM не исполняется под этим fence. Требуется активная caller transaction (`TransactionStatus.INTRANS`): допускаются как неявная транзакция при `autocommit=False`, так и явный transaction block при `autocommit=True`. Helper не выполняет commit. Эта граница исправлена и проверена в `70e4b00`; standalone-вызов вне транзакции отклоняется.
 
 Current active `free`/`scenario`/`live` получает собственное native время. Historical/inactive/baseline сохраняет bounded own-run context: foreign clock не заимствуется. Model eligibility по-прежнему только `free`/`scenario`; `include_live=True` в effect clock не включает hazard для live. Dry-run comparison не запускает effects/fence.
 

@@ -9,6 +9,7 @@ import { ROUTES } from '@/shared/routes'
 import { EventCard } from './components/EventCard'
 import { GraphView } from './components/GraphView'
 import { SubjectCard } from './components/SubjectCard'
+import { downloadTrace } from './exportTrace'
 import './trace.css'
 
 export function TracePage() {
@@ -78,6 +79,11 @@ export function TracePage() {
       )}
       {data && (
         <>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button className="btn btn-sm" onClick={() => downloadTrace(data, scope, 'json', t)}>{t('traceUi.exportJson')}</button>
+            <button className="btn btn-sm" onClick={() => downloadTrace(data, scope, 'md', t)}>{t('traceUi.exportMarkdown')}</button>
+            <small className="text-muted">{t('traceUi.exportSnapshot')}</small>
+          </div>
           <p className="mb-3">
             {t('traceUi.summary', { before: data.stats.before_count, after: data.stats.after_count })} · {data.terminal.outcome_ru}
           </p>

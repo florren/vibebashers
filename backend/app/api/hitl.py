@@ -8,6 +8,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.analytics.cabinet_scope import actor_role
 from app.api.common import agent_service, db, fetch_all, fetch_one, page
 from app.search.cases import case_search, related_entities
 from app.sim.events import dumps
@@ -17,7 +18,7 @@ router = APIRouter(tags=["hitl"])
 
 HITL_SQL = """
 select hd.id,hd.public_id,hd.sim_run_id,(select r.public_id from sim_runs r where r.id=hd.sim_run_id) as run_public_id,hd.reason,hd.agent_proposal,hd.options,hd.recommendation,
- hd.requested_sim,hd.requested_at,hd.decision,hd.decided_by,hd.comment,hd.decided_sim,
+ hd.requested_sim,hd.requested_at,hd.decision,hd.decided_by,hd.actor_role,hd.comment,hd.decided_sim,
  hd.agent_run_id,hd.incident_id,hd.task_id,ar.outcome as process_outcome,
  (hd.decision is null and ar.outcome='awaiting_human' and
    (select case when st.input->>'current_node'='wait_human' then st.output->>'human_decision_id' end from agent_steps st where st.run_id=ar.id and st.node='wait_human' order by st.seq desc limit 1)=hd.id::text) as can_resume,
@@ -118,6 +119,7 @@ class HitlDecisionBody(BaseModel):
 
 @router.post("/api/hitl/{id}", summary="Решение человека — возвращается в граф агента")
 async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any:  # noqa: A002
+    role = actor_role(request)
     async with db() as conn:
         async with conn.transaction():
             locked = await fetch_one(conn, "select id from human_decisions where id=%s for update", (id,))
@@ -149,7 +151,7 @@ async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any
                 else ({"delegate_to": body.delegate_to} if body.delegate_to else None)
             )
             await conn.execute(
-                "update human_decisions set decision=%s,modified_proposal=%s::jsonb,decided_by=%s,comment=%s,decided_sim=%s,decided_at=now(),use_as_fewshot=%s where id=%s",
+                "update human_decisions set decision=%s,modified_proposal=%s::jsonb,decided_by=%s,comment=%s,decided_sim=%s,decided_at=now(),use_as_fewshot=%s,actor_role=%s where id=%s",
                 (
                     body.decision,
                     dumps(modified) if modified else None,
@@ -157,6 +159,7 @@ async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any
                     body.comment,
                     sim_time,
                     body.use_as_fewshot and resume,
+                    role,
                     id,
                 ),
             )

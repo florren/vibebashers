@@ -1190,6 +1190,7 @@ class IncidentSignals(Base):
 class IncidentStatusHistory(Base):
     __tablename__ = 'incident_status_history'
     __table_args__ = (
+        CheckConstraint("actor_role = ANY (ARRAY['cx_operator'::text, 'cx_lead'::text, 'product_manager'::text, 'product_head'::text, 'compliance_officer'::text, 'bank_head'::text, 'admin'::text])", name='incident_status_history_actor_role_check'),
         CheckConstraint("actor_type = ANY (ARRAY['agent'::text, 'human'::text, 'team'::text, 'system'::text, 'behavior_model'::text])", name='incident_status_history_actor_type_check'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], ondelete='CASCADE', name='incident_status_history_incident_id_fkey'),
         PrimaryKeyConstraint('id', name='incident_status_history_pkey')
@@ -1204,6 +1205,7 @@ class IncidentStatusHistory(Base):
     from_status: Mapped[Optional[str]] = mapped_column(Text)
     actor_ref: Mapped[Optional[str]] = mapped_column(Text)
     reason: Mapped[Optional[str]] = mapped_column(Text)
+    actor_role: Mapped[Optional[str]] = mapped_column(Text)
 
     incident: Mapped['Incidents'] = relationship('Incidents', back_populates='incident_status_history')
 
@@ -2335,6 +2337,7 @@ class BehaviorPendingSignals(Base):
 class BehaviorReceipts(Base):
     __tablename__ = 'behavior_receipts'
     __table_args__ = (
+        CheckConstraint('public.valid_behavior_cancellation_details(source_kind, action, consumed_sim, details)', name='behavior_cancellation_details_valid'),
         CheckConstraint('source_id > 0', name='behavior_receipts_source_id_check'),
         ForeignKeyConstraint(['client_id'], ['clients.id'], ondelete='CASCADE', name='behavior_receipts_client_id_fkey'),
         ForeignKeyConstraint(['run_id'], ['sim_runs.id'], ondelete='CASCADE', name='behavior_receipts_run_id_fkey'),
@@ -2347,6 +2350,7 @@ class BehaviorReceipts(Base):
     source_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     action: Mapped[str] = mapped_column(Text, primary_key=True)
     consumed_sim: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+    details: Mapped[Optional[dict]] = mapped_column(JSONB, comment='T039 B v1: native provenance отмены; NULL остаётся неизвестным, без legacy backfill и attribution к Sent')
 
     client: Mapped['Clients'] = relationship('Clients', back_populates='behavior_receipts')
     run: Mapped['SimRuns'] = relationship('SimRuns', back_populates='behavior_receipts')
@@ -2730,6 +2734,7 @@ class CsiResponses(Base):
 class HumanDecisions(Base):
     __tablename__ = 'human_decisions'
     __table_args__ = (
+        CheckConstraint("actor_role = ANY (ARRAY['cx_operator'::text, 'cx_lead'::text, 'product_manager'::text, 'product_head'::text, 'compliance_officer'::text, 'bank_head'::text, 'admin'::text])", name='human_decisions_actor_role_check'),
         CheckConstraint("decision = ANY (ARRAY['accept'::text, 'modify'::text, 'reject'::text, 'delegate'::text])", name='human_decisions_decision_check'),
         ForeignKeyConstraint(['agent_run_id'], ['agent_runs.id'], name='human_decisions_agent_run_id_fkey'),
         ForeignKeyConstraint(['incident_id'], ['incidents.id'], name='human_decisions_incident_id_fkey'),
@@ -2759,6 +2764,7 @@ class HumanDecisions(Base):
     decided_sim: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     decided_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     public_id: Mapped[Optional[str]] = mapped_column(Text, Computed("('HD-'::text || lpad((id)::text, 6, '0'::text))", persisted=True))
+    actor_role: Mapped[Optional[str]] = mapped_column(Text)
 
     agent_run: Mapped[Optional['AgentRuns']] = relationship('AgentRuns', back_populates='human_decisions')
     incident: Mapped[Optional['Incidents']] = relationship('Incidents', back_populates='human_decisions')

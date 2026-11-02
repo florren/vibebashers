@@ -37,3 +37,10 @@ Frozen `bc405367ce770d0fd04ff7cff6ec488422595809`: unit 1669 passed / 18 skipped
 Coverage на `6c8ae26` измерена относительно parent `3450afe`: stdlib tracing включает worker threads, отдельные worktree/БД. [Отчёт](T-050-durable-accounting-coverage.json) содержит file SHA и непокрытые строки, без runtime locals или credentials. Локальный второй полный 40-мин integration не запускался: финальный exact-head GitHub CI обязателен. Унаследованный root UI proof: 4 actual RU/EN×themes,101 table fingerprints stable,0 browser external/nonGET/errors, backend LLM/network Bomb markers absent; ссылки в T-050-quota-ui.md. Собственные regression tests используют только synthetic PostgreSQL/Fake HTTP; canonical venv/production/env values не изменялись.
 
 T050 остаётся in_progress: отдельными пакетами ещё требуются queue 20s/per-profile limiter lock и main→fast→mock/fallback policy. Этот P2 закрывает durable accounting и прозрачность known/unknown, а не всю карточку. До merge обязательны точный final-head CI и human review API21/DDL16/внешнего API-budget policy по AGENTS §7. Техническое согласование реализации не заменяет пользовательский financial approval.
+
+
+Композиция parentT121 b85d377:head34178fd, дерево идентично frozenab6a5eb. Parent теперь прямой предок, diff PR53файла. Проверка owners с явным --allow-cross прошла; L1/L2/L3/L4/L5 разрешены поручением пользователя, отдельный API21/DDL16/финансовый review ещё требуется. Runtime/coverage evidence не изменились.
+
+## PR188 CI: source-qualified latency triage
+
+Exact d99b856: shard3 содержит454 passed/1 skipped и единственный Trace fanout latency failure305.9>300ms. Парные неизменённые локальные тесты P2/parent прошли55.0/56.5ms; hot paths byte-identical, runtime fix не заявлен, порог не снижен. [Диагностика и source-qualified samples](T-050-ci-fanout-latency.md). После обычной композиции main/parent требуется новый exact-head CI. API21/DDL16/external-budget policy пользователь одобрил в родительском review PR188; эта диагностика не меняет согласованную политику.
