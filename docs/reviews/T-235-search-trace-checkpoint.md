@@ -38,3 +38,25 @@ JSON сохраняет scope и DTO; Markdown — ДО/ОБЪЕКТ/ПОСЛЕ,
 Проверено 46 unit/PG тестами за 7.79s, 329 frontend за 10.14s, frontend lint/typecheck
 и обеими production builds. Browser proof, coverage после расширения, demo5000
 performance и полный backend suite остаются следующими проверками.
+
+Actual production UI proof на ae7141d: 10 вариантов legacy/v2 × ru/en × light/dark
+и два mobile 320px. Проверены меню → поиск → before/center/after, реальные скачивания
+JSON/Markdown, отсутствие horizontal overflow. Все 85 table fingerprints совпали;
+0 browser external/nonGET/page errors/failed responses. SQL read-only включён;
+структурированный LLM bomb и backend network guard не сработали. Это synthetic
+fixture, не live bank. Screenshots/proof: docs/screenshots/T-235/. Owned preview
+остановлен. Первый harness не дождался mount Trace перед hotkey; после явного
+ожидания заголовка все 10 исходных assertions прошли. Никаких route mocks нет.
+
+Постоянный CI regression `frontend/e2e/trace-journey.spec.ts` дополнен фактическими
+JSON/Markdown downloads: 4 ru/en × themes cases passed за 7.2s на static production
+frontend с явно mocked API. Он дополняет, не заменяет actual API/PG proof выше.
+Проверен запуск новых unit tests из backend без PYTHONPATH: pytest явно включает
+backend и repo scripts в import path. Команды и путь manifest исправлены в
+источнике генератора карточек (`gen_tasks_v15.py`), а не только в сгенерированном
+Markdown.
+
+Штатный `make lint` после согласования imports с backend cwd завершился успешно:
+329 frontend, Ruff/formatter 377 файлов, mypy 258 source files. Первое выполнение
+выявило только порядок imports четырёх новых tests; он исправлен без изменения
+assertions. Следующий gate — последовательный `make test` на отдельной БД.

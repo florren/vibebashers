@@ -8,16 +8,16 @@ from contextlib import asynccontextmanager
 import httpx
 import psycopg
 import pytest
+from fastapi import HTTPException
+from psycopg.rows import dict_row
+from scripts import read_model_check, scenario_check
+
 from app.api import public, trace
 from app.ingest.normalizer import create_signal, from_api_signal, from_landing
 from app.llm.failover import ProviderChain
 from app.main import create_app
 from app.sim import scenarios
 from app.trace import store
-from fastapi import HTTPException
-from psycopg.rows import dict_row
-
-from scripts import read_model_check, scenario_check
 from tests.helpers import dsn, new_run, sim_now
 
 pytestmark = pytest.mark.integration

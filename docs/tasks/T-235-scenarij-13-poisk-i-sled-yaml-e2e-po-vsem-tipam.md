@@ -17,14 +17,14 @@
 §18, §28.8, §19
 
 ## Контракты
-- `data/scenarios/search_and_trace.yaml`
+- `data/scenarios/13_search_trace.yaml`
 
 ## Зависимости
 - Зависит от: [T-230](T-230-universalnyj-poisk-app-search-raspoznavanie-iden.md), [T-232](T-232-ekran-sled-trace-kind-ref-do-obekt-posle-itog-oz.md), [T-233](T-233-sled-adaptery-kartochki-obekta-i-rendery-sobytij.md)
 - Блокирует: [T-260](T-260-dokumentaciya-v1-5-demo-skript-bloki-e-f-rukovod.md)
 
 ## Что сделать
-1. `data/scenarios/search_and_trace.yaml` (ID сценария 13): набор запросов по каждому типу идентификатора, ожидаемые типы и цели, два следа с проверкой «до/объект/после/итог», веерный инцидент (сценарий 6), инцидент в работе с ожидаемым шагом.
+1. `data/scenarios/13_search_trace.yaml` (ID сценария 13): набор запросов по каждому типу идентификатора, ожидаемые типы и цели, два следа с проверкой «до/объект/после/итог», веерный инцидент (сценарий 6), инцидент в работе с ожидаемым шагом.
 2. Автотесты backend: матрица идентификаторов, ПДн-проверка выдачи (`test_no_pii`), бюджеты времени, тест «только чтение» (нет write-эндпоинтов у `search`/`trace`/`journey`, LLM не вызывается).
 3. Playwright: ввод запроса, выбор кандидата, переход «до → объект → после», экспорт JSON/Markdown, скриншоты.
 4. Блок E демо-скрипта, часть 2 (поиск); пункт в меню демонстратора.
@@ -38,7 +38,8 @@
 ## Как проверить
 ```bash
 make scenario ID=search_and_trace
-cd frontend && npx playwright test e2e/trace-scenario.spec.ts
+cd backend && .venv/bin/pytest -q tests/integration/test_search_trace_acceptance.py
+cd frontend && npx playwright test e2e/trace-journey.spec.ts --project=read-only
 ```
 
 ## Отчёт субагента

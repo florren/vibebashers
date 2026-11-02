@@ -9,11 +9,12 @@ from urllib.parse import quote
 
 import httpx
 import psycopg
+from psycopg import sql
+
 from app.contracts.registry import validate
 from app.search.grammar import PREFIXES
 from app.trace.privacy import mask
 from app.trace.relations import TYPES
-from psycopg import sql
 
 
 @dataclass(frozen=True)

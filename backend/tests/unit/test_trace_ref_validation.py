@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from app.trace.store import resolve
 from fastapi import HTTPException
+
+from app.trace.store import resolve
 
 
 @pytest.mark.parametrize("kind", ["operation", "ingest", "alert"])

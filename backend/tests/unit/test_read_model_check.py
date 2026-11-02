@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from app.search.grammar import PREFIXES
-
 from scripts.read_model_check import FORMATS, SearchCase, check_search, check_trace, recorded_cases, recorded_contexts
+
+from app.search.grammar import PREFIXES
 
 
 def search_payload(ref="SIG-000001"):
