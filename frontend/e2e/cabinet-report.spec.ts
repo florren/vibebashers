@@ -72,23 +72,49 @@ for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] a
   })
 }
 
-test('cabinet button preserves scope; report never widens an explicit manager binding', async ({ page }) => {
-  const mutations: string[] = []
+test('cabinet button preserves scope; strict report never widens an explicit manager binding', async ({ page, request }) => {
+  const settings = await (await request.get('/api/settings')).json()
+  const cabinet = settings.cabinet ?? {}
+  const dotted = Object.hasOwn(settings, 'cabinet.visibility')
+  const visibility = dotted ? settings['cabinet.visibility'] : cabinet.visibility ?? 'soft'
+  expect(['soft', 'strict']).toContain(visibility)
+  const restore = dotted ? { 'cabinet.visibility': visibility } : { cabinet: { visibility } }
+  const strict = dotted ? { 'cabinet.visibility': 'strict' } : { cabinet: { visibility: 'strict' } }
+  const catalog = await (await request.get('/api/cabinet/overview?product_line=all&period=month&run_id=current', { headers: { 'X-Cx-Role': 'cx_lead' } })).json()
+  const [own, foreign] = catalog.product_lines
+  expect(own).toBeTruthy(); expect(foreign).toBeTruthy()
+  const headers = { 'X-Cx-Role': 'product_manager', 'X-Cx-Product-Line': own.code }
+  const mutations: string[] = [], reportHeaders: Record<string, string>[] = []
+  page.on('request', req => { if (new URL(req.url()).pathname === '/api/cabinet/report') reportHeaders.push(req.headers()) })
   await page.route('**/*', route => {
     if (!['GET', 'HEAD'].includes(route.request().method())) { mutations.push(route.request().method()); return route.abort() }
     return route.continue()
   })
-  await page.addInitScript(() => { localStorage.setItem('cx.lang','en'); localStorage.setItem('cx.ui.mode','light'); localStorage.setItem('cx.ui.role','product_manager'); localStorage.setItem('cx.ui.productLine','deposits') })
+  await page.addInitScript((line: string) => { localStorage.setItem('cx.lang','en'); localStorage.setItem('cx.ui.mode','light'); localStorage.setItem('cx.ui.role','product_manager'); localStorage.setItem('cx.ui.productLine',line) }, own.code)
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/cabinet/deposits?period=month&run_id=current')
-  await page.getByRole('button',{ name:'Create report',exact:true }).click()
-  await expect(page).toHaveURL(/\/cabinet\/deposits\/report\?period=month&run_id=current/)
-  await expect(page.locator('[data-report-page]')).toHaveCount(3)
-  await expect(page.getByRole('heading',{name:/Product line report.*Deposits/})).toBeVisible()
-  const response=page.waitForResponse(response=>response.url().includes('/api/cabinet/report')&&response.url().includes('product_line=mortgage'))
-  await page.goto('/cabinet/mortgage/report?period=month&run_id=current')
-  expect((await response).status()).toBe(403)
-  await expect(page.locator('[data-report-page]')).toHaveCount(0)
-  await expect(page.getByRole('button',{name:'Save PDF',exact:true})).toBeDisabled()
-  expect(mutations).toEqual([])
+  try {
+    // Strict — явная server fixture, не предположение о default soft или старом e2e state.
+    if (visibility !== 'strict') expect((await request.patch('/api/settings', { data: strict })).status()).toBe(200)
+    expect((await request.get(`/api/cabinet/report?product_line=${encodeURIComponent(foreign.code)}&period=month&run_id=current`, { headers })).status()).toBe(403)
+    await page.goto(`/cabinet/${encodeURIComponent(own.code)}?period=month&run_id=current`)
+    await page.getByRole('button',{ name:'Create report',exact:true }).click()
+    await expect.poll(() => new URL(page.url()).pathname).toBe(`/cabinet/${own.code}/report`)
+    expect(new URL(page.url()).searchParams.get('period')).toBe('month')
+    expect(new URL(page.url()).searchParams.get('run_id')).toBe('current')
+    await expect(page.locator('[data-report-page]')).toHaveCount(3)
+    await expect(page.getByRole('heading',{name:'Product line report · ' + own.name_en, exact: true})).toBeVisible()
+    const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/cabinet/report' && new URL(response.url()).searchParams.get('product_line') === foreign.code)
+    await page.goto(`/cabinet/${encodeURIComponent(foreign.code)}/report?period=month&run_id=current`)
+    expect((await response).status()).toBe(403)
+    await expect(page.locator('[data-report-page]')).toHaveCount(0)
+    await expect(page.getByRole('button',{name:'Save PDF',exact:true})).toBeDisabled()
+    expect(mutations).toEqual([])
+    expect(reportHeaders.length).toBeGreaterThanOrEqual(2)
+    for (const sent of reportHeaders) {
+      expect(sent['x-cx-role']).toBe('product_manager')
+      expect(sent['x-cx-product-line']).toBe(own.code)
+    }
+  } finally {
+    if (visibility !== 'strict') expect((await request.patch('/api/settings', { data: restore })).status()).toBe(200)
+  }
 })

@@ -67,7 +67,10 @@ async def signals(
       ), link_map AS MATERIALIZED (
         SELECT jsonb_object_agg(signal_id,jsonb_build_object('sla_due_sim',sla_due_sim,'incidents',incidents)) AS by_signal FROM linked
       )
-      SELECT f.*,s.classification->>'problem_summary' AS problem_summary,
+      SELECT f.id,f.public_id,f.run_id,f.product_line_code,f.received_sim,f.sentiment,
+        f.criticality,f.region_code,f.channel_code,f.source_platform,f.client_id,
+        nullif(f.flags,ARRAY[]::text[]) AS flags,nullif(f.red_words,ARRAY[]::text[]) AS red_words,
+        f.status,f.client_public_id,f.signal_type,s.classification->>'problem_summary' AS problem_summary,
         coalesce(s.classification->>'summary_ru',s.text) AS summary,
         (m.by_signal->f.id::text->>'sla_due_sim')::timestamptz AS sla_due_sim,m.by_signal->f.id::text->'incidents' AS incidents
       FROM selected f JOIN signals s ON s.id=f.id CROSS JOIN link_map m ORDER BY {order}
@@ -78,8 +81,11 @@ async def signals(
         summary = row.pop("problem_summary") or row.pop("summary")
         row.pop("summary", None)
         row["summary"] = mask(" ".join(re.split(r"(?<=[.!?])\s+", str(summary or ""))[:2]), 500)
-        row["red_words"] = [mask(x, 100) for x in row["red_words"]]
+        # Read-only проекция: не удерживаем тысячи пустых mutable arrays до
+        # сериализации большого отчёта. Пустой tuple на wire остаётся JSON[].
+        row["red_words"] = [mask(x, 100) for x in row["red_words"]] if row["red_words"] else ()
+        row["flags"] = row["flags"] or ()
         row["source_platform"] = project_platform(row.pop("source_platform"))
-        row["incidents"] = row["incidents"] or []
+        row["incidents"] = row["incidents"] or ()
     count = int((total or {})["total"])
     return {"items": rows, "total": count, "next_offset": offset + len(rows) if offset + len(rows) < count else None}
