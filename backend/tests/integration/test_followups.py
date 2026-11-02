@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 
 import psycopg
@@ -125,6 +126,30 @@ async def test_recover_wakes_overdue_followup(seeded: str) -> None:
         await conn.commit()
     svc = AgentService(ProviderChain([MockProvider()]), PROFILE, dsn=dsn(seeded), concurrency=1)
     await svc._recover()
+    if svc._inflight:
+        await asyncio.gather(*list(svc._inflight))
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         st = await (await conn.execute("select status from followups where signal_id = %s", (signal_id,))).fetchone()
         assert st and st[0] == "fired"
+
+
+@pytest.mark.parametrize("status", ["paused", "interrupted"])
+async def test_startup_recovery_does_not_wake_paused_or_interrupted_timers(seeded, status):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid = await new_run(conn, "t063-paused-recovery")
+        client = await (await conn.execute("select id from clients where segment_code='premium' limit 1")).fetchone()
+        sid, _ = await run_agent_on(conn, FRAUD_TEXT, client_id=int(client[0]), run_id=rid)
+        await conn.execute(
+            "update followups set wake_sim=(select sim_time-interval '1 hour' from sim_state where id=1) where signal_id=%s and status='scheduled'",
+            (sid,),
+        )
+        await conn.execute("update sim_runs set status=%s where id=%s", (status, rid))
+        await conn.commit()
+    service = AgentService(ProviderChain([MockProvider()]), PROFILE, dsn=dsn(seeded), concurrency=1)
+    await service._recover()
+    assert not service._inflight
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        assert await (await conn.execute("select status from followups where signal_id=%s", (sid,))).fetchone() == (
+            "scheduled",
+        )
+        assert await (await conn.execute("select status from sim_runs where id=%s", (rid,))).fetchone() == (status,)

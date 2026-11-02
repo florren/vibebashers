@@ -121,8 +121,9 @@ class AgentService:
     async def _recover(self) -> None:
         async with await self._conn() as conn:
             await conn.execute(
-                "update agent_runs set interrupted_at=coalesce(interrupted_at,now()) "
-                "where kind='agent' and outcome is null and started_at<%s",
+                "update agent_runs ar set interrupted_at=coalesce(interrupted_at,now()) "
+                "where ar.kind='agent' and ar.outcome is null and ar.started_at<%s "
+                f"and not exists(select 1 from signals s where s.id=ar.signal_id and {AUTOMATIC_EXCLUDED_SQL})",
                 (self.started_at,),
             )
             state = await (
@@ -134,29 +135,37 @@ class AgentService:
             await conn.commit()
         # interrupted/paused ждут явного Resume, а не переигрываются при startup.
         if state and state[0] and state[2] == "running":
-            await self.validate_recovery(int(state[0]), state[1])
-            await self.recover_run(int(state[0]), state[1])
+            await self.validate_recovery(int(state[0]), state[1], started_before=self.started_at)
+            await self.recover_run(int(state[0]), state[1], started_before=self.started_at)
 
     @writer("agent-recovery")
-    async def validate_recovery(self, run_id: int, sim_time: dt.datetime) -> None:
+    async def validate_recovery(
+        self, run_id: int, sim_time: dt.datetime, *, started_before: dt.datetime | None = None
+    ) -> None:
         async with await self._conn() as conn:
             missing = await (
                 await conn.execute(
                     "select ar.id from agent_runs ar where ar.sim_run_id=%s and ar.kind='agent' and ar.outcome is null "
+                    "and (%s::timestamptz is null or ar.started_at<%s) "
+                    f"and not exists(select 1 from signals s where s.id=ar.signal_id and {AUTOMATIC_EXCLUDED_SQL}) "
                     "and not exists(select 1 from langgraph.checkpoints c where c.thread_id=ar.thread_id) limit 1",
-                    (run_id,),
+                    (run_id, started_before, started_before),
                 )
             ).fetchone()
             if missing:
                 raise ValueError(f"Проход AR-{missing[0]} не имеет durable checkpoint; нужно ручное восстановление")
 
     @writer("agent-recovery")
-    async def recover_run(self, run_id: int, sim_time: dt.datetime) -> None:
+    async def recover_run(
+        self, run_id: int, sim_time: dt.datetime, *, started_before: dt.datetime | None = None
+    ) -> None:
         async with await self._conn() as conn:
             rows = await (
                 await conn.execute(
-                    "select id,signal_id from agent_runs where sim_run_id=%s and kind='agent' and outcome is null order by id",
-                    (run_id,),
+                    "select ar.id,ar.signal_id from agent_runs ar where ar.sim_run_id=%s and ar.kind='agent' and ar.outcome is null "
+                    "and (%s::timestamptz is null or ar.started_at<%s) "
+                    f"and not exists(select 1 from signals s where s.id=ar.signal_id and {AUTOMATIC_EXCLUDED_SQL}) order by ar.id",
+                    (run_id, started_before, started_before),
                 )
             ).fetchall()
             new_signals = await (

@@ -18,7 +18,7 @@ def test_kill_restart_then_graceful_restart_preserve_agent_effects(seeded, conn,
     env = {
         key: value
         for key, value in os.environ.items()
-        if not key.startswith(("GIGACHAT", "OPENROUTER", "OPENAI", "LOCAL_LLM", "LANGSMITH", "LANGCHAIN"))
+        if not key.upper().startswith(("GIGACHAT", "OPENROUTER", "OPENAI", "LOCAL_LLM", "LANGSMITH", "LANGCHAIN"))
     }
     env.update(
         APP_ENV="dev",

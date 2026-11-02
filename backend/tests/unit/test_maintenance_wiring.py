@@ -272,7 +272,7 @@ async def test_recovery_children_are_reserved_until_checkpoint_and_timer_cleanup
 
     class RecoveryConnection(Connection):
         async def execute(self, sql, *args):
-            rows = [(41, 7)] if "select id,signal_id" in sql else []
+            rows = [(41, 7)] if "select ar.id,ar.signal_id" in sql else []
             return SimpleNamespace(fetchall=AsyncMock(return_value=rows))
 
         async def commit(self):
