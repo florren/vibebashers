@@ -1,0 +1,1466 @@
+{
+  "source": "ab9b8daac9d21e156ac583c860f87e7f1dc42a57",
+  "fixture": {
+    "source": "fd254f769bcb03d120de5f914a6b0b8f23f9b368",
+    "scope": "own200client synthetic fixture, native graphs with explicit Mock-provider, no live/replay claim; existing ultra_vip guard and due followup",
+    "paths": [
+      {
+        "source": "qr_fee_public_review",
+        "trajectory": "autonomous",
+        "ref": "SIG-000801",
+        "run_id": 2,
+        "post_ref": "POST-000001"
+      },
+      {
+        "source": "deposit_promo_rate",
+        "trajectory": "human",
+        "ref": "SIG-000802",
+        "run_id": 3,
+        "post_ref": null
+      },
+      {
+        "source": "social_sarcasm_escalation",
+        "trajectory": "escalation",
+        "ref": "SIG-000803",
+        "run_id": 4,
+        "post_ref": "POST-000002"
+      }
+    ]
+  },
+  "scope": "actual production UI/native Mock graphs on own read-only synthetic DB; no live/replay or external service claim; no route mocks",
+  "results": [
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "legacy",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "autonomous",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "human",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "follow",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "replay",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    },
+    {
+      "layout": "v2",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "height": 800,
+      "trajectory": "escalation",
+      "mode": "presenter",
+      "overflow": 0,
+      "pageErrors": 0,
+      "external": 0,
+      "nonGet": 0,
+      "failedResponses": 0
+    }
+  ],
+  "tablesUnchanged": 84,
+  "before": {
+    "public.accounts": [
+      352,
+      "b0a5260beaf9fc1bffdd6f335ffa7da2"
+    ],
+    "public.agent_runs": [
+      3,
+      "cbd7374c6c7abc8e500ba9ee34ab4e4d"
+    ],
+    "public.agent_steps": [
+      28,
+      "3e6bb341c9d025b0c531b97927a29c4f"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "57d1cd2c206922d6245bfecaed3f7915"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "23b32551b5d44103d1834baf85cbfcb0"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      406,
+      "5be7dc690a000577508cec90ec93032c"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      1,
+      "f7715556576d6c5a948becb4580d3455"
+    ],
+    "public.clients": [
+      200,
+      "610d033bbeefd6c10568049ec2e3b8ae"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      61,
+      "551214da98f3b61ed1eca8046daed5c0"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      3519,
+      "ccf9e64ca2b8fc2eb1920993e76b4de1"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "d3a5e99c706e57db22efb5b68335d1df"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      1,
+      "5834e914310d3ab45b05f6ada4c4645c"
+    ],
+    "public.external_posts": [
+      2,
+      "70ea30e62a2211254f2cab5a28abe645"
+    ],
+    "public.external_replies": [
+      2,
+      "069e16532cac50cc9a8c045944861ede"
+    ],
+    "public.faults": [
+      37,
+      "3208038f571111d58cf55311ae3048d8"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      1,
+      "cde56708220f896559cdded744949dce"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      1,
+      "086bf6d9cd947ce69bc8dd709992aad5"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      2,
+      "39a30ee4619115ef76ba71e60fb7ec25"
+    ],
+    "public.incident_signals": [
+      152,
+      "3b687a2d52f1a5e8989fdddc2718d1ef"
+    ],
+    "public.incident_status_history": [
+      159,
+      "04fb766fb607908d3fa71cb5dc2b8853"
+    ],
+    "public.incidents": [
+      152,
+      "062a2d71e076e26e22383571c2f91fdf"
+    ],
+    "public.ingest_messages": [
+      64,
+      "9eeb559ba93950ce1b2b084b7def9fc7"
+    ],
+    "public.ingest_sources": [
+      8,
+      "cc19e30e93b5abaacb052237f18aef9d"
+    ],
+    "public.ledger_entries": [
+      3,
+      "8924ccc609f251e566548c4b02c09335"
+    ],
+    "public.llm_api_keys": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "a194842c0620398520dd3d887f1a2cb7"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      389,
+      "9964a93cec9c8c137fd9a7affd45ad8b"
+    ],
+    "public.notifications": [
+      7,
+      "43e6bb23a60214e98b784179a3d2b3d9"
+    ],
+    "public.operations": [
+      4802,
+      "1af4f2afafd076474e9c0a8e95321ad6"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      15,
+      "3c843ed2b7aedac4c7b44bcbbe3293fe"
+    ],
+    "public.scenarios": [
+      33,
+      "bc8f86154bd1ea67ce19a4a6875c6710"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "4ec5ff907f69388065cf183b9cdc413f"
+    ],
+    "public.settings": [
+      5,
+      "fcc67b889d86201555eada6b45bc7353"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      803,
+      "6dfd8d49cfa1fe15c1c4ca9fdcb44ea3"
+    ],
+    "public.sim_events": [
+      79,
+      "65d66f19e9e75fff64d5106042b9e882"
+    ],
+    "public.sim_runs": [
+      4,
+      "4c68f3237b21c32eddb628f660aef3a5"
+    ],
+    "public.sim_state": [
+      1,
+      "310e35c8bd49b108e31b149d722e099d"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      413,
+      "380961bdf081da82c3f664031ac24680"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      2,
+      "c69707bd80763bd0c003515a808dee6b"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  },
+  "after": {
+    "public.accounts": [
+      352,
+      "b0a5260beaf9fc1bffdd6f335ffa7da2"
+    ],
+    "public.agent_runs": [
+      3,
+      "cbd7374c6c7abc8e500ba9ee34ab4e4d"
+    ],
+    "public.agent_steps": [
+      28,
+      "3e6bb341c9d025b0c531b97927a29c4f"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "57d1cd2c206922d6245bfecaed3f7915"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "23b32551b5d44103d1834baf85cbfcb0"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      406,
+      "5be7dc690a000577508cec90ec93032c"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      1,
+      "f7715556576d6c5a948becb4580d3455"
+    ],
+    "public.clients": [
+      200,
+      "610d033bbeefd6c10568049ec2e3b8ae"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      61,
+      "551214da98f3b61ed1eca8046daed5c0"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      3519,
+      "ccf9e64ca2b8fc2eb1920993e76b4de1"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "d3a5e99c706e57db22efb5b68335d1df"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      1,
+      "5834e914310d3ab45b05f6ada4c4645c"
+    ],
+    "public.external_posts": [
+      2,
+      "70ea30e62a2211254f2cab5a28abe645"
+    ],
+    "public.external_replies": [
+      2,
+      "069e16532cac50cc9a8c045944861ede"
+    ],
+    "public.faults": [
+      37,
+      "3208038f571111d58cf55311ae3048d8"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      1,
+      "cde56708220f896559cdded744949dce"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      1,
+      "086bf6d9cd947ce69bc8dd709992aad5"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      2,
+      "39a30ee4619115ef76ba71e60fb7ec25"
+    ],
+    "public.incident_signals": [
+      152,
+      "3b687a2d52f1a5e8989fdddc2718d1ef"
+    ],
+    "public.incident_status_history": [
+      159,
+      "04fb766fb607908d3fa71cb5dc2b8853"
+    ],
+    "public.incidents": [
+      152,
+      "062a2d71e076e26e22383571c2f91fdf"
+    ],
+    "public.ingest_messages": [
+      64,
+      "9eeb559ba93950ce1b2b084b7def9fc7"
+    ],
+    "public.ingest_sources": [
+      8,
+      "cc19e30e93b5abaacb052237f18aef9d"
+    ],
+    "public.ledger_entries": [
+      3,
+      "8924ccc609f251e566548c4b02c09335"
+    ],
+    "public.llm_api_keys": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "a194842c0620398520dd3d887f1a2cb7"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      389,
+      "9964a93cec9c8c137fd9a7affd45ad8b"
+    ],
+    "public.notifications": [
+      7,
+      "43e6bb23a60214e98b784179a3d2b3d9"
+    ],
+    "public.operations": [
+      4802,
+      "1af4f2afafd076474e9c0a8e95321ad6"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      15,
+      "3c843ed2b7aedac4c7b44bcbbe3293fe"
+    ],
+    "public.scenarios": [
+      33,
+      "bc8f86154bd1ea67ce19a4a6875c6710"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "4ec5ff907f69388065cf183b9cdc413f"
+    ],
+    "public.settings": [
+      5,
+      "fcc67b889d86201555eada6b45bc7353"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      803,
+      "6dfd8d49cfa1fe15c1c4ca9fdcb44ea3"
+    ],
+    "public.sim_events": [
+      79,
+      "65d66f19e9e75fff64d5106042b9e882"
+    ],
+    "public.sim_runs": [
+      4,
+      "4c68f3237b21c32eddb628f660aef3a5"
+    ],
+    "public.sim_state": [
+      1,
+      "310e35c8bd49b108e31b149d722e099d"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      413,
+      "380961bdf081da82c3f664031ac24680"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      2,
+      "c69707bd80763bd0c003515a808dee6b"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  }
+}

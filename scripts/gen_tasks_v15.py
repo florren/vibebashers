@@ -110,7 +110,7 @@ dict(id=229, title="Сценарий 12 «Путь обращения: три т
         "Playwright: «Следить», «Повтор», «Ведущий» на каждой траектории, скриншоты ключевых состояний.",
         "Блок E демо-скрипта (+2 мин): порядок, тезисы, запасной вариант на кассетах (`docs/DEMO-SCRIPT.md`)."],
  accept=["`make scenario ID=journey_three_trajectories` зелёный на кассетах в CI и вручную на live.", "Блок E описан пошагово с таймингом."],
- check=["make scenario ID=journey_three_trajectories", "cd frontend && npx playwright test e2e/journey-scenario.spec.ts"]),
+ check=["make scenario ID=journey_three_trajectories", "cd frontend && npx playwright test e2e/journey-modes.spec.ts"]),
 # ---------------------------------------------------------------- E23: поиск и след
 dict(id=230, title="Универсальный поиск app/search: распознавание идентификаторов, подсказки клиента, полнотекстовый поиск; GET /api/search", epic="E23", agent="SA-Trace", size="M", wave=8,
  goal="Найти объект по любому идентификатору или тексту (ТЗ 28.2) быстро и без ПДн.",

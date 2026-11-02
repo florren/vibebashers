@@ -38,16 +38,25 @@
 ## Как проверить
 ```bash
 make scenario ID=journey_three_trajectories
-cd frontend && npx playwright test e2e/journey-scenario.spec.ts
+cd frontend && npx playwright test e2e/journey-modes.spec.ts
 ```
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
 
-## Ревизия: native trajectories и собственная клиентская дорожка
+## Ревизия: три native trajectories и собственная клиентская дорожка
 
-Ветка codex/T-229-journey-acceptance; изменения и source-qualified проверки
-описаны в docs/reviews/T-229-journey-acceptance.md. Карточка остаётся in_progress:
-требуются настоящие replay/live recordings, browser/performance/final checks
-и review исправления исполнения сохранённой эскалации. Cross-layerL1/L3/L4/L5
-согласован пользователем; отдельное HITL approval пока не получено.
+Ветка codex/T-229-journey-acceptance. Реализованы read-only CLI/alias/меню12,
+проверки трёх путей, исполнение сохранённой эскалации на тишине, корректный
+адресат client lane по SIG/POST. API/DDL не меняются. Доказательства и точная
+HITL граница: docs/reviews/T-229-journey-acceptance.md.
+
+Runtime ab9b8da:1432unit/18skip,45unit/PG,96.52% новых строк;54actual browser
+cases+6waiting-human frames,84table hashes stable,150GET p95≤40.135ms.
+13 постоянных Playwright cases с явно mocked API,330frontend,lint/types/builds.
+Полныйmake test1791backend/22skip+330frontend завершился, но post-fix готовился
+во время прогона: он проверен отдельно и требует финального CI.
+
+Карточка in_progress: нужны реальные replay/live recordings, итоговая demo
+композиция, human review эскалации и green CI/merge. Cross-layer согласован;
+нового разрешения на external LLM/Telegram не было и вызовов не выполнялось.
