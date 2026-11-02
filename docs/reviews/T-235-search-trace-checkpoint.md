@@ -90,3 +90,5 @@ Actual browser proof остаётся source-qualified ae7141d (10 вариан�
 Playwright — четыре mocked API cases; различие описано выше. Replay-корпус
 с законченными native agent traces и нагрузка активного Sim остаются зависимыми
 приёмочными условиями; карточка не закрывается фиктивно.
+
+Проверка owners с явным `--allow-cross` прошла: пользователь согласовал L1/L3/L4/L5. PR содержит exact checked cross-layer marker для штатного owners gate; код проверки не менялся.
