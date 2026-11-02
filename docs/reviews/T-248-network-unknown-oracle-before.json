@@ -1,0 +1,13 @@
+{
+  "source": "65a83c9817e0c15853b9c2d81ee36f1907434664",
+  "trigger": {
+    "branch_status": null,
+    "opened_sim": "2025-01-01T00:00+03",
+    "closed_sim": null
+  },
+  "actual": {
+    "open_count": 1,
+    "closed_count": 0
+  },
+  "basis": "literal exact status/date predicates; READ ONLY own scratch DB; not parent data"
+}

@@ -38,6 +38,19 @@ BEHAVIOR_TABLES = {
 }
 
 
+CSI_COHORT_TABLES = {"csi_cohorts", "csi_cohort_visits", "csi_cohort_members"}
+
+
+def assert_csi_cohort_tables(conn):
+    actual = {
+        row[0]
+        for row in conn.execute(
+            "select tablename from pg_tables where schemaname='public' and tablename like 'csi_cohort%'"
+        )
+    }
+    assert actual == CSI_COHORT_TABLES
+
+
 def assert_behavior_tables(conn):
     actual = {
         row[0]
@@ -48,7 +61,7 @@ def assert_behavior_tables(conn):
     assert actual == BEHAVIOR_TABLES
 
 
-def test_current_head_and_93_public_tables(conn, migrated_db) -> None:
+def test_current_head_and_96_public_tables(conn, migrated_db) -> None:
     assert (
         conn.execute("select version_num from alembic_version").fetchone()[0]
         == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
@@ -56,7 +69,8 @@ def test_current_head_and_93_public_tables(conn, migrated_db) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert n == 96  # 84 +9 behavior actual0017 +3 cohort actual0020.
+    assert_csi_cohort_tables(conn)
     assert_behavior_tables(conn)
     views = {r[0] for r in conn.execute("select table_name from information_schema.views where table_schema='public'")}
     assert {
@@ -67,6 +81,7 @@ def test_current_head_and_93_public_tables(conn, migrated_db) -> None:
         "v_feed_latency",
         "v_signal_normalized",
         "v_cabinet_kpi",
+        "v_csi_cohort_integrity",
     } <= views
 
 
@@ -89,7 +104,8 @@ def test_migrations_sql_are_idempotent(conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert n == 96  # 84 +9 behavior actual0017 +3 cohort actual0020.
+    assert_csi_cohort_tables(conn)
     assert_behavior_tables(conn)
 
 
@@ -142,7 +158,8 @@ def test_downgrade_0003_and_upgrade_again(migrated_db, conn) -> None:
     n = conn.execute(
         "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name<>'alembic_version'"
     ).fetchone()[0]
-    assert n == 93  # Прежние84 + ровно9 public behavior tables из actual0017.
+    assert n == 96  # 84 +9 behavior actual0017 +3 cohort actual0020.
+    assert_csi_cohort_tables(conn)
     assert_behavior_tables(conn)
 
 

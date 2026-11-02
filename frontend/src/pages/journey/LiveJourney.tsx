@@ -12,13 +12,13 @@ import { ErrorBox } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { ROUTES } from '@/shared/routes'
 import { AgentExecution } from './AgentExecution'
-import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourneyMessage } from './api'
+import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourneyMessage, scopedJourneyHref } from './api'
 import { eventStep, relatedEvents, selectedAttempt, type StepSelection } from './stepSelection'
 import { elapsedSeconds, NODE_STAGE } from './timing'
 
 type Origin = 'jury' | 'feed' | 'sim' | 'any'
 
-export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void }) {
+export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref: string) => void; runId?: string }) {
   const { ref } = useParams()
   const { t, i18n } = useTranslation()
   const nav = useNavigate()
@@ -43,10 +43,10 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   const events = useWs((s) => s.events)
   const productName = useRefName('products')
   const teamName = useRefName('teams')
-  const clients = useClients({ q: clientSearch || undefined })
+  const clients = useClients({ q: clientSearch || undefined }, scopeRunId === undefined)
   const result = useQuery({
-    queryKey: ['journey', ref, origin],
-    queryFn: () => getJourney(ref, origin),
+    queryKey: ['journey', ref, origin, scopeRunId],
+    queryFn: () => scopeRunId === undefined ? getJourney(ref, origin) : getJourney(ref, origin, false, scopeRunId),
     refetchInterval: 2000,
     retry: (count, e) => !(e instanceof ApiError && e.status === 404) && count < 1,
   })
@@ -65,7 +65,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   })
   const recentRunIds = [
     ...new Set([
-      ...(signal.data?.agent_runs ?? []).flatMap((r) => (r.id == null ? [] : [r.id])),
+      ...(scopeRunId === undefined ? signal.data?.agent_runs ?? [] : []).flatMap((r) => (r.id == null ? [] : [r.id])),
       ...traceEvents.flatMap((e) => {
         const linkedRun = e.links.engine_step?.match(/^\/engine\/(\d+)(?:[/?#]|$)/)
         return linkedRun ? [Number(linkedRun[1])] : []
@@ -151,9 +151,9 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
   })
   const incidentId = signal.data?.incidents?.at(-1)?.id ?? numericRef(data?.subject.kind === 'incident' ? data.subject.ref : undefined, 'INC')
   const economics = useQuery({
-    queryKey: ['incidents', 'journey-economics', incidentId],
+    queryKey: ['incidents', 'journey-economics', incidentId, scopeRunId],
     queryFn: () => loadEconomics(incidentId!),
-    enabled: incidentId !== null,
+    enabled: incidentId !== null && scopeRunId === undefined,
     refetchInterval: 5000,
   })
   const send = useMutation({
@@ -164,7 +164,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
       setFollowup(true)
       setSelectedStage(null)
       setSelectedRunId(null)
-      nav(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`))
+      nav(scopedJourneyHref(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`), scopeRunId))
       void qc.invalidateQueries({ queryKey: ['journey'] })
       void qc.invalidateQueries({ queryKey: ['signals'] })
     },
@@ -237,12 +237,13 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
               {t('journeyLive.sources')}: {source}
             </span>
           )}
-          {data && <IdLink kind={data.subject.kind} value={data.subject.ref} />}
+          {data && <IdLink kind={data.subject.kind} value={data.subject.ref} runId={scopeRunId} />}
           <label>
             {t('journeyLive.follow')}{' '}
             <select
               className="input"
               value={origin}
+              disabled={scopeRunId !== undefined}
               onChange={(e) => {
                 setOrigin(e.target.value as Origin)
                 setSelectedStage(null)
@@ -268,7 +269,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
         <div className="card p-4">
           <h2 className="text-xs text-muted">{t('journeyLive.incidentRisk')}</h2>
           <strong className="mt-2 block text-2xl num">{money(economics.data?.potential_loss_rub)}</strong>
-          <p className="mt-1 text-xs text-muted">{economics.data?.formula_ru ?? t('journeyLive.noIncident')}</p>
+          <p className="mt-1 text-xs text-muted">{scopeRunId !== undefined ? t('journeyLive.savedContextOnly') : economics.data?.formula_ru ?? t('journeyLive.noIncident')}</p>
           {economics.isError && <ErrorBox error={economics.error} compact />}
         </div>
         <div className="card p-4">
@@ -322,7 +323,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
               </p>
             )}
           </div>
-          <form onSubmit={submit} className="max-h-[80%] shrink-0 space-y-2 overflow-y-auto border-t border-line p-3">
+          {scopeRunId !== undefined ? <p className="border-t border-line p-3 text-sm text-muted" role="status">{t('journeyLive.scopedReadOnly')}</p> : <form onSubmit={submit} className="max-h-[80%] shrink-0 space-y-2 overflow-y-auto border-t border-line p-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -398,7 +399,7 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
             <button type="submit" className="btn btn-primary w-full" disabled={send.isPending || text.trim().length < 3}>
               {t(send.isPending ? 'journeyLive.sending' : 'journeyLive.send')}
             </button>
-          </form>
+          </form>}
         </section>
         <div className="min-w-0 space-y-4">
           {result.isError && !empty && <ErrorBox error={result.error} />}
@@ -438,13 +439,14 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
             </dl>
           )}
           <AgentExecution
+            readOnly={scopeRunId !== undefined}
             events={traceEvents}
             selection={selection}
             onSelectStep={selectStep}
             onFollowCurrent={followCurrent}
             run={runData}
             current={current}
-            onOpenSignal={(id) => nav(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`))}
+            onOpenSignal={(id) => nav(scopedJourneyHref(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`), scopeRunId))}
           />
           <section ref={bank} className="card scroll-mt-3 p-4" aria-label={t('journeyUi.bank')}>
             <h2 className="mb-3 font-semibold">{t('journeyUi.bank')}</h2>
@@ -533,12 +535,12 @@ export function LiveJourney({ onSubject }: { onSubject: (ref: string) => void })
                     </dl>
                     <div className="my-2 flex gap-3 text-xs">
                       {e.links.engine_step && (
-                        <Link className="text-brand" to={e.links.engine_step}>
+                        <Link className="text-brand" to={scopedJourneyHref(e.links.engine_step, scopeRunId)}>
                           {t('traceUi.engine')}
                         </Link>
                       )}
                       {e.links.trace && (
-                        <Link className="text-brand" to={e.links.trace}>
+                        <Link className="text-brand" to={scopedJourneyHref(e.links.trace, scopeRunId)}>
                           {t('traceUi.title')}
                         </Link>
                       )}

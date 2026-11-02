@@ -10,7 +10,7 @@ import psycopg
 from fastapi import HTTPException
 
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
-from app.search.grammar import parse
+from app.search.grammar import csi_storage_ref, parse
 from app.trace.relations import RELATIONS, TYPES
 
 Conn = psycopg.AsyncConnection[dict[str, Any]]
@@ -71,6 +71,8 @@ async def resolve(conn: Conn, kind: str, ref: str, run_id: str = "all") -> dict[
         else spec.public
     )
     value: Any = parsed["normalized"] if column not in (spec.key, "tracking_token") else ref
+    if kind == "csi" and parsed["kind"] == "csi":
+        value = csi_storage_ref(ref)
     predicate = f"t.{column}=%s"
     if kind == "branch" and not ref.isdecimal():
         predicate = "t.code=ANY(%s)"

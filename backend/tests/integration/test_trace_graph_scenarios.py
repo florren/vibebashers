@@ -13,27 +13,52 @@ from app.config import get_settings
 from app.contracts.events.trace.trace_response import TraceResponse
 from app.main import create_app
 from app.sim import scenarios as sc
+from app.sim.proactive_scenario import case as prepared_case
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
+from tests.integration.test_proactive_prepare import mass_seeded as mass_seeded
 from tests.integration.test_trace_fanout import fingerprints, walk
+from tests.proactive_runtime import offline_main_runtime, run_prepared_mass_case
 
 pytestmark = pytest.mark.integration
 
 
-async def test_graph_real_recorded_scenarios_1_6_8_read_only(seeded, monkeypatch):
+async def test_graph_real_recorded_scenarios_1_6_8_read_only(mass_seeded, monkeypatch, tmp_path):
     """Fixture-записи создаются до read-only проверок; внешней доставки/live-провайдера нет."""
+    seeded = mass_seeded
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     cases = []
+    # Scenario6 владеет native journal: inject=[] не является списком complaints.
+    # Production HTTP/CLI worker создаёт actual120/90/30 до начала readonly phase.
+    async with offline_main_runtime(seeded, monkeypatch, tmp_path) as (app, external):
+        mass_run = await run_prepared_mass_case(app, seeded, monkeypatch)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as native:
+            context = await prepared_case(native, mass_run)
+            assert context is not None and "completed" in context.events
+            mass_signal = context.events["notified"]["payload"]["anchor_signal_id"]
+            assert (
+                await (
+                    await native.execute(
+                        "select count(*) from agent_runs where sim_run_id=%s and kind='agent'", (mass_run,)
+                    )
+                ).fetchone()
+            )[0] == 31
+        assert external == []
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         for scenario_id in ("deposit_promo_rate", "mass_notifications", "qr_fee_public_review"):
             scenario = sc.get(scenario_id)
-            rid = await new_run(conn, "T234 offline scenario fixture", scenario_id=scenario_id)
-            injected = await sc.inject(conn, scenario, rid, sim_time=await sim_now(conn))
-            await conn.commit()
-            for item in injected:
-                assert await process_signal(conn, signal_id=item["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE)
-            await conn.commit()
-            sid = injected[0]["signal_id"]
+            if scenario_id == "mass_notifications":
+                rid, sid = mass_run, mass_signal
+            else:
+                rid = await new_run(conn, "T234 offline scenario fixture", scenario_id=scenario_id)
+                injected = await sc.inject(conn, scenario, rid, sim_time=await sim_now(conn))
+                await conn.commit()
+                for item in injected:
+                    assert await process_signal(
+                        conn, signal_id=item["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE
+                    )
+                await conn.commit()
+                sid = injected[0]["signal_id"]
             public_signal = (
                 await (await conn.execute("select public_id from signals where id=%s", (sid,))).fetchone()
             )[0]

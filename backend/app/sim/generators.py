@@ -505,7 +505,7 @@ class World:
         return n
 
     # --- сигналы: отложенные жалобы + шум -----------------------------------------------------------------------------
-    async def flush_signals(self, now: dt.datetime, minutes: float) -> int:
+    async def flush_signals(self, now: dt.datetime, minutes: float, *, ambient_noise: bool = True) -> int:
         durable = []
         if self.behavior_policy is not None:
             from app.sim.behavior import pending as pending_store
@@ -517,7 +517,9 @@ class World:
         else:
             due = [p for p in self.pending if p.due_sim <= now]
             self.pending = [p for p in self.pending if p.due_sim > now]
-        n_noise = self.rng.poisson(self.intensities["signal_noise"] * self.scale * minutes / 60)
+        # Explicit prepared source заменяет только ambient inputs. Native timers,
+        # owner/SLA/teams продолжают работать с прежними draws и due times.
+        n_noise = self.rng.poisson(self.intensities["signal_noise"] * self.scale * minutes / 60) if ambient_noise else 0
         for _ in range(n_noise):
             client = self.rng.choice(self.clients)
             due.append(
