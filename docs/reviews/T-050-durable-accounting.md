@@ -56,3 +56,13 @@ BenchService больше не начисляет physical usage из резул
 Согласованная fixture корректировка: старый physical budget test подменял SDK классом MockProvider (0HTTP), но ожидал token/RPD charges. Теперь actual SDK+FakeHTTP+явный synthetic reconciliation; все исходные totals/requests/rollback/results/count assertions сохранены и добавлен durable commit proof до forced bench_result rollback. Каждый новый testcase использует уникальный synthetic physical secret: банковский seed намеренно не удаляет private ledger; повтор fixedsecret честно отклонял попытку уменьшить существующий floor.
 
 Проверки:64 targeted bench/env/SDK/public unit passed4.10s;36 ledger+bench PG passed68.23s. Усиленный rollback target2 passed19.73s; metadata lock target1 passed2.64s. Ruff/strict mypy22 affected modules green. Whole final unit/integration/scenarios/compliance/frontend, coverage, latestmain/P1 composition и user financial review ещё впереди. Все HTTP Fake; реальных LLM/TG/email вызовов не выполнялось.
+
+## Setup selected identity и meaningful live-routed fixtures
+
+Preflight existing runtime/setup/routing:28 passed/1 failed на source79; bounded Giga lifecycle fixture не объявлял synthetic origin, поэтому первый budgeted вызов правильно блокировался. Fixture теперь создаёт уникальный physical key и явно reconciles0; исходные4tokens/2HTTP/samecache/locks/closed/quota assertions сохранены. Setup echo fixtures также reconciles synthetic origin и утверждают реальные Fake OAuth/chat paths: формальный отказ до upstream не выдаётся за проверку redaction.
+
+Подтверждён runtime defect: Setup после initial validation создавал final Profile без выбранного api_key_id. При deactivate/delete между selection и wire metadata выбранного credential не могла повторно проверяться. Теперь final Profile и Giga key state сохраняют explicit/implicit stored ID; OpenRouter metadata calls тоже проверяют current selected binding до существующих GET. Нет env fallback, новых HTTP или изменения diagnostic intent.
+
+Target12 PG passed71.55s: lifecycle+3actual echo paths+8explicit/implicit×Giga/SDK×deactivate/delete races. Invalid binding отвергается до OAuth/key/models/inference HTTP; provider clients закрыты, secret/env inputs не возвращаются. Новая Setup source требует собственного coverage supplement; full P2 validation ещё впереди.
+
+Source79 coverage в отдельной worktree/БД:325 tests passed145.09s,957/1141 changed executable statements=83.87%. `/tmp/t050-coverage-79.json` содержит per-file SHA/missing lines; результат относится к source79 и не приписывается автоматически последующим source changes/UI. Никакие реальные внешние сервисы для coverage не вызывались.
