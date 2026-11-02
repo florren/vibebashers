@@ -30,3 +30,24 @@ Rollback к старому controller снова разрешит stale overwrit
 остановить собственные actors и загрузить свежий native state, не запускать два
 контроллера. Не править clock/RNG/старые headers вручную. Production/настоящие
 LLM/Telegram/email не использовались; tests только own cx_stale_control_revision.
+
+## Независимое review: status и shutdown
+
+После c92 peer review нашёл ещё два сохранённых пути. Actual status-only case
+при одинаковыхclock/RNG: actual.stop → stale.pause раньше делал stopped→paused.
+Unconditional shutdown.persist() мог откатить новые часы в обход control fence.
+Третья regression показала, что прежний suppress(Exception) скрывал flush failure.
+Тот source дал3RED/4deselected13.76с; исправленный набор7GREEN36.48с (6nativePG+1unit).
+
+Check_state дополнительно читает native run.status после sim_state fence; обычные
+control writers держат sim_state FOR UPDATE до смены статуса. Expected stale
+выделен как StaleSimulatorError(ValueError), поэтому HTTP409 совместим. Shutdown
+проходит такую же проверку под Python/DB locks: stale discard логируется как info,
+TX rollback и close; неожиданный flush failure логируется и пробрасывается с close.
+Постоянные данные не исправляются, новых leases/clock policies нет. Это защита
+известных state/status/time/RNG противоречий в штатной архитектуре одного Simulator,
+не новый distributed lease protocol. Resume по-прежнему загружает native state.
+
+Более широкий source-c92 прогон до этого followup:56actualPG passed321.86с,
+включая usage/recovery/process/SIGKILL/team journal. Результат source-qualified;
+после status/shutdown нужен новый adjacent/unit/lint/CI, не перенос старого full green.

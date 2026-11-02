@@ -106,3 +106,43 @@ async def test_start_rechecks_state_under_row_lock_after_unlocked_preflight(seed
         finally:
             await actual.conn.close()
             await stale.conn.close()
+
+
+@pytest.mark.asyncio
+async def test_stale_pause_cannot_resurrect_stopped_run_at_same_time_and_rng(seeded, monkeypatch):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, _, t0, actual = await setup(conn, monkeypatch, seeded)
+        stale = await load_sim(seeded)
+        try:
+            await actual.control("stop")
+            assert actual.clock.sim_time == stale.clock.sim_time and actual.rng.dump_state() == stale.rng.dump_state()
+            before = fingerprints(seeded)
+            with pytest.raises(ValueError, match="устарел"):
+                await stale.control("pause")
+            assert fingerprints(seeded) == before
+            assert (
+                await (await conn.execute("select status,finished_sim from sim_runs where id=%s", (run,))).fetchone()
+            ) == ("stopped", t0)
+        finally:
+            await actual.conn.close()
+            await stale.conn.close()
+
+
+@pytest.mark.asyncio
+async def test_stale_shutdown_closes_connection_without_rewinding_current_state(seeded, monkeypatch):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run, _, _, actual = await setup(conn, monkeypatch, seeded)
+        stale = await load_sim(seeded)
+        try:
+            await actual.step(1)
+            before = fingerprints(seeded)
+            await stale.shutdown()
+            assert stale.conn.closed
+            assert fingerprints(seeded) == before
+            assert (
+                await (await conn.execute("select current_run_id,sim_time from sim_state where id=1")).fetchone()
+            ) == (run, actual.clock.sim_time)
+        finally:
+            await actual.conn.close()
+            if not stale.conn.closed:
+                await stale.conn.close()

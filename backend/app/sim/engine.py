@@ -32,6 +32,10 @@ REAL_TICK_S = 0.5
 MAX_BATCH_MIN = 60.0  # за один тик генерируем не больше часа сим-времени (защита от «догоняния» после паузы)
 
 
+class StaleSimulatorError(ValueError):
+    """Устаревший контроллер не вправе перезаписывать native state."""
+
+
 class Simulator:
     def __init__(self, seed: int = 42, dsn: str | None = None, *, behavior_policy: DemoPolicy | None = None) -> None:
         self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
@@ -165,13 +169,18 @@ class Simulator:
         row = await (await conn.execute(query)).fetchone()
         if row is None or row[0] != self.run_id:
             await conn.rollback()
-            raise ValueError("Simulator устарел: загрузите текущий run перед управлением")
+            raise StaleSimulatorError("Simulator устарел: загрузите текущий run перед управлением")
         # Один и тот же pointer не доказывает актуальность контроллера: чужой
         # tick мог уже зафиксировать новое время/RNG. Проверка до create_run не
         # позволяет stale start остановить старый run и записать прежние часы.
         if check_state and (row[1] != self.clock.sim_time or (row[2] is not None and row[2] != self.rng.dump_state())):
             await conn.rollback()
-            raise ValueError("Simulator устарел: загрузите актуальные time/run/RNG перед управлением")
+            raise StaleSimulatorError("Simulator устарел: загрузите актуальные time/run/RNG перед управлением")
+        if check_state:
+            status = await (await conn.execute("select status from sim_runs where id=%s", (self.run_id,))).fetchone()
+            if (status[0] if status else None) != self.run_status:
+                await conn.rollback()
+                raise StaleSimulatorError("Simulator устарел: загрузите актуальный status текущего run")
 
     async def persist(self) -> None:
         conn = await self.connect()
@@ -191,7 +200,7 @@ class Simulator:
         )
         if result.rowcount != 1:
             await conn.rollback()
-            raise ValueError("Simulator устарел: текущий run изменён, state не сохранён")
+            raise StaleSimulatorError("Simulator устарел: текущий run изменён, state не сохранён")
 
     # --- один шаг сим-времени ---------------------------------------------------------------------------------------
     @writer("sim-step")
@@ -585,10 +594,20 @@ class Simulator:
     async def shutdown(self) -> None:
         await self._stop_loop()
         if self.conn and not self.conn.closed:
-            with contextlib.suppress(Exception):
-                await self.persist()
-                await self.conn.commit()
-            await self.conn.close()
+            try:
+                async with self._lock:
+                    await self._require_current(self.conn, check_state=True)
+                    await self.persist()
+                    await self.conn.commit()
+            except StaleSimulatorError:
+                await self.conn.rollback()
+                log.info("sim_shutdown_stale_skipped", run_id=self.run_id)
+            except Exception:
+                await self.conn.rollback()
+                log.exception("sim_shutdown_failed", run_id=self.run_id)
+                raise
+            finally:
+                await self.conn.close()
 
     async def reload_after_restore(self) -> None:
         """Перечитать sim_state после pg_restore (новое соединение, сброс World)."""
