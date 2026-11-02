@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Серверная часть ЕТЗ FR-8.1–8.7 и блока 8.4 (ТЗ 25.3, 25.5).
@@ -42,3 +42,8 @@ pytest backend/tests/integration/test_csi_analytics.py backend/tests/integration
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+
+## Промежуточный checkpoint: математическое ядро
+
+Ветка codex/T-248-csi-analytics. Реализованы Spearman с ties/missing и квартили R7 без новых зависимостей;20 unit/actual-PG reference tests passed2,14с,52/52 statements, Ruff/mypy green. API/DDL/денежные правила не менялись; endpoint остаётся прежним501. Знаменатели требуют отдельного run/cohort provenance, concrete API28/DDL20 ещё не реализованы и не утверждены. План и ограничения: docs/reviews/T-248-statistics-checkpoint.md.
