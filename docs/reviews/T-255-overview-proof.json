@@ -1870,5 +1870,12 @@
     "Historical full backend2770/24skip belongs1968631; final composition verified102targets, not another full backend",
     "No live/paid LLM, STT, mail or Telegram tested",
     "Exact parent CI and review gate remain"
-  ]
+  ],
+  "publication_composition": {
+    "parent_api29": "1d248e2d075bbb132182f6910bf5584c81668c8f",
+    "ordinary_merge": "336bb1ab629f52375ee170c15b150e1c3e268c63",
+    "application_sources_unchanged_from_proven_source": true,
+    "postmerge_gen2_idempotent_cards": 206,
+    "privacy_test_restored_exact_parent_docstring_no_assertion_change": true
+  }
 }
