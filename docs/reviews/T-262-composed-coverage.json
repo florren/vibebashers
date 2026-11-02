@@ -1,0 +1,88 @@
+{
+  "source": "a7b8167b961788f91866919a29cfb2687d4d1167",
+  "base": "c463cdd",
+  "tests": [
+    "38 passed134.18s",
+    "12 passed80.19s append: public scenario dispatcher and Mock mapping"
+  ],
+  "note": "Пять измеренных modules byte-identical a7; engine дополнен отдельным T041 c47 и покрыт его proof. Не full backend source coverage/не benchmark.",
+  "files": {
+    "backend/app/agent/classification_store.py": {
+      "covered": 7,
+      "statements": 7,
+      "covered_new": 7,
+      "statements_new": 7,
+      "missing_new": [],
+      "sha256": "8a6997d482ddd79f0cd5f3326c573b3ef04a965f6fa94cf17f5b17bb075ffa96"
+    },
+    "backend/app/api/scenarios.py": {
+      "covered": 71,
+      "statements": 101,
+      "covered_new": 8,
+      "statements_new": 9,
+      "missing_new": [
+        126
+      ],
+      "sha256": "9cd60d7b0bbcea7a1383dd6e100e250310b45fa7d65512569eb6b0d7d380a3fb"
+    },
+    "backend/app/llm/mock.py": {
+      "covered": 296,
+      "statements": 378,
+      "covered_new": 15,
+      "statements_new": 15,
+      "missing_new": [],
+      "sha256": "588af306a4a93abd620622c236f15f2e119d0f00c8f26921656e15f124cf1c38"
+    },
+    "backend/app/sim/scenario_acceptance.py": {
+      "covered": 175,
+      "statements": 189,
+      "covered_new": 175,
+      "statements_new": 189,
+      "missing_new": [
+        107,
+        127,
+        131,
+        147,
+        148,
+        177,
+        179,
+        217,
+        227,
+        230,
+        231,
+        237,
+        308,
+        309
+      ],
+      "sha256": "d14c3f33fb75c96a47e0fa3705abef80d0d7b822d346c1cac9ae9da4c29255cc"
+    },
+    "backend/app/sim/scenarios.py": {
+      "covered": 88,
+      "statements": 276,
+      "covered_new": 5,
+      "statements_new": 5,
+      "missing_new": [],
+      "sha256": "84bca97abb726af5fb2c3cbb3228911d91b3982bf1fa680ca83bad9d6d941458"
+    }
+  },
+  "covered_new": 210,
+  "statements_new": 225,
+  "percent_new": 93.33333333333333,
+  "composed_control_verification": {
+    "source": "5747428ddd7e286c949396b3f5e4fdf18b412f34",
+    "result": "13 passed94.77s: acceptance/public dispatcher +6native stale control +shutdown unit",
+    "latest_parent200": "144eda8: evidence only, engine unchanged"
+  },
+  "native_script_trace_verification": {
+    "runtime": "2f0aef7b85192967e519b06e2542f9988152d217",
+    "result": "2passed/31deselected41.89s: actual generic06 and Trace1/6/8",
+    "boundary": "productionHTTP/journal actors, CLI30/outer45/egress bombs unchanged; not UI/replay acceptance"
+  },
+  "final_static": {
+    "ruff_format_files": 549,
+    "mypy_sources": 322,
+    "contracts": "48schemas/165paths",
+    "generator": "two identical runs",
+    "full_backend_ci": "pending"
+  }
+}

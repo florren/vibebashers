@@ -43,7 +43,7 @@ def test_actual_xlsx_exact_retry_reconnect_and_extra_unknown_denominator(seeded)
                 300,
                 2400,
             )
-            result = await acceptance.evaluate_native(conn, sc.get("csi_and_branches"), run)
+            result = await sc.evaluate(conn, sc.get("csi_and_branches"), run)
             assert result["counts"]["native_passed"] and not result["passed"]
             assert await scalar(conn, "select count(*) from agent_runs where sim_run_id=%s", (run,)) == 0
             assert await scalar(conn, "select count(*) from ledger_entries where run_id=%s", (run,)) == 0
@@ -111,12 +111,12 @@ def test_native_mock_legal_wait_and_independent_product_facade(seeded):
                 state = await process_signal(conn, signal_id=row["signal_id"], chain=mock_chain(), profile=MOCK_PROFILE)
                 assert not state["errors"], state["errors"]
             conn.row_factory = dict_row
-            result = await acceptance.evaluate_native(conn, sc.get("cabinet_red_words_report"), run)
+            result = await sc.evaluate(conn, sc.get("cabinet_red_words_report"), run)
             assert result["counts"]["native_passed"] and not result["passed"], result
             assert result["counts"]["not_verified"] == 2
             unknown = copy.deepcopy(sc.get("cabinet_red_words_report"))
             unknown["expected"]["unimplemented_ui_check"] = True
-            result = await acceptance.evaluate_native(conn, unknown, run)
+            result = await sc.evaluate(conn, unknown, run)
             assert not result["passed"] and result["counts"]["not_verified"] == 3
             refs = [
                 r["public_id"]

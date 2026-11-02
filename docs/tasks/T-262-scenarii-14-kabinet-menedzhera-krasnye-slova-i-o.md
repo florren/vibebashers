@@ -45,3 +45,11 @@ make scenario ID=csi_and_branches
 
 ## Отчёт субагента
 Ветка `codex/T-262-scenarios`. Native Mock foundation реализован отдельно от полной приёмки: catalog34/35 без изменения1..33;301CSI rows/2reserved blocks, реальные XLSX/normalizer/cohort, atomic retry; legal pending HITL и отдельный ordinary product route; metrics961/настоящий report. Общий passed=False до UI/replay; кассеты не выдумывались, human decisions не принимались. [Конкретные границы, recovery и план replay](../reviews/T-262-scenario-foundation.md). Проверки:110 pure +25 focused coverage tests (9 unit/16 actual PG), frontend429, lint/contracts/licenses, Alembic zero drift — green; coverage175/189=92.59%. Полный backend suite/CI, UI/replay и manual legal continuation остаются непроверенными; карточка не done.
+
+Root final composition parent199+200: publicdispatcher/script-first сохраняет
+T039 и named acceptance, три evaluator calls проверены черезscenarios.evaluate.
+13native/control94.77s +2actualgeneric06/Trace1/6/8 41.89s GREEN. Измеренные пять
+modules byte-identicala7,210/225новыхстрок93.33%; engineproof отдельноPR200.
+Старый make lint444frontend/Ruff546/mypy322 source-qualified, finalbackendstatic Ruff549/mypy322,contracts48/165 GREEN;
+точный CI ещё gate. UI/replay mandatoryunknown, overallpassedFalse/карточка
+не done; нового live recording не было. [Root proof](../reviews/T-262-composed-coverage.json).
