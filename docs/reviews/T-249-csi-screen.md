@@ -64,3 +64,9 @@ Europe/Moscow ограничено изменениями без деструк�
 берутся только из actual scoped trace refs/engine links; legacy list неизменён.
 Тот же testGREEN и final435 подтвердили границу; RuntimeAPI/исходная история не
 меняются. После этого повторены productionbuild/native5/97fingerprints.
+
+Ordinary parent198 follow-up624bf82: frontend/src и frontend/e2e побайтно прежние
+от4ac3ec5 (включая все UI source hashes), поэтому435frontend/5native UI proofs
+не переименовываются в новые проверки backend. Parent75unit/PG90.57с проверяют
+actualTrace1/6/8+CSI/ВСП после terminal-edge fix. Новый exact-head CI обязателен;
+source/UI/суммы/права здесь не менялись.
