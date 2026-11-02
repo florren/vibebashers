@@ -125,3 +125,19 @@ def test_unrepresentable_xlsx_text_rejected_before_opening_writers(value, monkey
     with pytest.raises(HTTPException) as error:
         workbook_bytes({"untrusted": value})
     assert error.value.status_code == 413
+
+
+def test_main_topic_uses_recorded_types_and_declares_incomplete_coverage():
+    from app.analytics.report_text import THEMES, main_topic
+    from app.contracts.enums import SignalType
+
+    assert set(THEMES) == set(SignalType)
+    entries = [
+        {"signal_type": "tech_fault"},
+        {"signal_type": "tech_fault"},
+        {"signal_type": None},
+        {"signal_type": "legacy-unknown"},
+    ]
+    assert main_topic(entries, "ru") == "технические сбои — 2 из 2 сигналов с известным типом (4 всего)"
+    assert main_topic(entries, "en") == "technical faults — 2 of 2 signals with a known type (4 total)"
+    assert main_topic([{"signal_type": None}], "ru") is None

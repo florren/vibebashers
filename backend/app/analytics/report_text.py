@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
+
+from app.contracts.enums import SignalType
 
 TEXT: dict[str, dict[str, Any]] = {
     "ru": {
@@ -13,7 +16,7 @@ TEXT: dict[str, dict[str, Any]] = {
         "coverage": "Сравниваются только записанные наблюдения; полнота двух окон не подтверждена, это не оценка изменения клиентского опыта.",
         "main": "Чаще всего обращения поступали через {source} ({n}).",
         "no_source": "Основная тема обращений не установлена по сохранённым данным.",
-        "theme": "Приоритетная записанная проблема: {theme}.",
+        "theme": "Основная записанная тема: {theme}.",
         "saved": "Сохранённая оценка предотвращённых потерь: {money} ₽; без пересчёта.",
         "money_unknown": "Полной сохранённой оценки предотвращённых потерь нет; неизвестное не заменено нулём.",
         "attention": "Требуют разбора: {n} инцидентов с критичностью high, нарушением SLA или ожиданием человека; красных фраз в сигналах — {red}.",
@@ -85,7 +88,7 @@ TEXT: dict[str, dict[str, Any]] = {
         "coverage": "Only recorded observations are compared; completeness of either window is unconfirmed. This is not a change estimate of customer experience.",
         "main": "The largest recorded source was {source} ({n}).",
         "no_source": "No main customer topic was established from saved data.",
-        "theme": "Priority recorded problem: {theme}.",
+        "theme": "Main recorded topic: {theme}.",
         "saved": "Saved prevented-loss estimate: {money} RUB; no recalculation.",
         "money_unknown": "A complete saved prevented-loss estimate is unavailable; unknown values are not replaced with zero.",
         "attention": "{n} incidents need review for high criticality, SLA breach or a pending human decision; {red} signals contain red phrases.",
@@ -221,3 +224,30 @@ def describe(
             for code in ("daily", "monthly", "sources")
         ],
     }
+
+
+THEMES = {
+    SignalType.TECH_FAULT: ("технические сбои", "technical faults"),
+    SignalType.CLIENT_ERROR: ("ошибки клиента", "customer errors"),
+    SignalType.TARIFF_TERMS: ("условия тарифов", "tariff terms"),
+    SignalType.SERVICE_QUALITY: ("качество обслуживания", "service quality"),
+    SignalType.FRAUD_SUSPICION: ("подозрения на мошенничество", "suspected fraud"),
+    SignalType.LEGAL_REGULATORY: ("правовые и регуляторные вопросы", "legal and regulatory matters"),
+    SignalType.INFO_REQUEST: ("запросы информации", "information requests"),
+    SignalType.GRATITUDE: ("благодарности", "gratitude"),
+    SignalType.SUGGESTION: ("предложения", "suggestions"),
+    SignalType.CHURN: ("намерение уйти", "intent to leave"),
+}
+
+
+def main_topic(entries: list[dict[str, Any]], lang: str) -> str | None:
+    counts = Counter(row["signal_type"] for row in entries if row.get("signal_type") in THEMES)
+    if not counts:
+        return None
+    code = min(counts, key=lambda key: (-counts[key], key))
+    name = THEMES[code][1 if lang == "en" else 0]
+    return (
+        f"{name} — {counts[code]} из {sum(counts.values())} сигналов с известным типом ({len(entries)} всего)"
+        if lang == "ru"
+        else f"{name} — {counts[code]} of {sum(counts.values())} signals with a known type ({len(entries)} total)"
+    )

@@ -21,7 +21,7 @@ from app import __version__
 from app.analytics.cabinet import overview
 from app.analytics.cabinet_scope import CabinetScope
 from app.analytics.cabinet_signals import signals
-from app.analytics.report_text import TEXT, describe, status_label
+from app.analytics.report_text import TEXT, describe, main_topic, status_label
 from app.api.common import fetch_all, fetch_one
 from app.trace.privacy import mask
 from app.trace.store import Conn
@@ -131,9 +131,8 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
         [[row["id"] for row in red_signals[:10]]],
     )
     team_by_signal = {row["id"]: row[lang] for row in red_teams}
-    theme = mask(facts["problems"][0]["title"], 180) if facts["problems"] else None
-    words = describe(current, previous, facts["attention_total"], red, lang, theme)
-    ru_words = describe(current, previous, facts["attention_total"], red, "ru", theme)
+    words = describe(current, previous, facts["attention_total"], red, lang, main_topic(entries["items"], lang))
+    ru_words = describe(current, previous, facts["attention_total"], red, "ru", main_topic(entries["items"], "ru"))
 
     def problem(row: dict[str, Any]) -> dict[str, Any]:
         return {
