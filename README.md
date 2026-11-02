@@ -75,10 +75,10 @@ cd vibebashers
 |---|---|---|---|
 | `--profile` | `lite` (по умолчанию) · `demo` · `stress` | объём данных сида: 1 000 / 5 000 / 20 000 клиентов (сигналов 800 / 2 500 / 10 000) | **перезаписывает** `PROFILE` в `.env`; `lite` — быстрый старт (~1 мин), `demo` — для показа «живой» ленты (~3 мин), `stress` — нагрузка (16 ГБ RAM, см. часть 3) |
 | `--seed N` | целое | зерно генератора данных и эмуляции | перезаписывает `SIM_SEED` в `.env`; без флага остаётся значение из `.env` (42). Одинаковый seed + одинаковый профиль = одинаковые данные |
-| `--offline` | — | автономный режим: `LLM_PROVIDER=mock`, `LLM_CHAIN=replay,mock`, `TELEGRAM_BOT_TOKEN=` пусто | **затирает** ваши `LLM_*`-настройки в `.env` — ключи GigaChat остаются в файле, но в цепочке не используются; чтобы вернуть, впишите `LLM_CHAIN=gigachat,openai_compat,replay,mock` обратно. Несовместим по смыслу с `--with-tgbot` |
+| `--offline` | — | автономный режим: `LLM_PROVIDER=mock`, `LLM_CHAIN=replay,mock`, `TGBOT_ENABLED=false` (token сохраняется) | **затирает** ваши `LLM_*`-настройки в `.env` — ключи GigaChat остаются в файле, но в цепочке не используются; чтобы вернуть, впишите `LLM_CHAIN=gigachat,openai_compat,replay,mock` обратно. Несовместим по смыслу с `--with-tgbot` |
 | `--reset` | — | `docker compose down -v`: удалить тома БД и засеять заново | необратимо удаляет все данные стенда (решения HITL, инциденты, кассеты в БД); файлы `data/` и `.env` не трогает |
 | `--with-mailpit` / `--no-mailpit` | по умолчанию выключен | поднять Mailpit (просмотр писем клиентам на :8025) | флаги взаимоисключающие, последний побеждает; `MAILPIT_ENABLED` в `.env` определяет, будет ли backend **отправлять** письма — без него Mailpit пустой |
-| `--with-tgbot` | — | поднять контейнер Telegram-бота | требует `TELEGRAM_BOT_TOKEN` в `.env` и выход в интернет; бессмыслен с `--offline` |
+| `--with-tgbot` | — | поднять контейнер Telegram-бота | требует `TELEGRAM_BOT_TOKEN`, `APP_SECRET` (≥32 bytes), `TGBOT_PUBLIC_BASE_URL` в `.env` и выход в интернет; `--offline` имеет приоритет |
 | `--help` | — | подсказка | — |
 
 Windows: запускайте из Git Bash или WSL2; либо руками: `docker compose up -d --build`, затем `docker compose exec backend alembic upgrade head` и `docker compose exec backend python /scripts/seed/run.py --profile lite`.
@@ -498,6 +498,35 @@ Worktree создаются в `../wt/<id>` рядом с клоном (конс
 | **Разработка нативно + тесты** | 4–8 ядер | 16 ГБ | 10 ГБ | PostgreSQL 16, Python 3.12, uv, Node.js 22, Git, gh; Playwright для e2e (`npx playwright install chromium`) | полный `make test` ≈ 1 мин, фронт-сборка ≈ 10 с |
 | **Локальная LLM для приложения или для агента-разработчика** | 8+ ядер | 32 ГБ; GPU 12–24 ГБ VRAM (модели 7–14B в q4–q8) | +10–40 ГБ под веса | Ollama / vLLM / LM Studio с OpenAI-совместимым API | в `.env`: `LOCAL_LLM_BASE_URL`; латентность узлов агента вырастет до секунд, лимиты `fast_path` 8 с / `detector` 5 с / `batch` 12 с в `app/llm/base.py` |
 | **Сервер для командного стенда** | 4 vCPU | 8 ГБ | 20 ГБ SSD | Linux, Docker; обратный прокси (nginx/Caddy) с TLS, если доступ извне | один процесс backend обслуживает WS и фон эмуляции; горизонтальное масштабирование не предусмотрено (демо) |
+
+Telegram включается только явным `./install.sh --with-tgbot`: installer проверяет
+конфигурацию без shell-source `.env`, генерирует отдельный `TGBOT_INTERNAL_SECRET`
+при пустом значении и включает Compose profile `telegram`. Сервис long polling не
+получает доступ к PostgreSQL, LLM credentials или `APP_SECRET`. `--offline` выключает
+profile и backend delivery worker, сохраняя token для последующего явного включения.
+`TGBOT_PUBLIC_BASE_URL` — доступный участнику origin интерфейса без path/query;
+tracking URL является capability и не должен попадать в screenshots или логи.
+
+Диалог: `/start`, вымышленный код `CL-…` из UI либо `/skip`, текст, контакт и регион;
+`/status`, `/lang ru|en`, `/bind CL-…`, `/unbind`. Привязка означает только demo opt-in,
+не установление личности. Синтетические chat IDs из seed не разрешают внешнюю доставку.
+Manager/HITL callbacks требуют отдельной реализации T-189.
+
+Ответ сначала фиксируется как `queued`. Только подтверждение `sendMessage` даёт
+`sent`/`external_ref`; явный отказ — `failed`, разрыв соединения, отмена или потеря
+worker после admission — `unknown`. Неопределённые отправки автоматически не
+повторяются: оператор сверяет факт доставки, прежде чем инициировать новое сообщение.
+На чат действует один admission в реальную секунду. Maintenance/удаление run ждут
+активную отправку; private receipts и grants сохраняются вне банковского baseline,
+а UUID сообщения и hash исходного tracking token защищают от повторного использования IDs.
+Утрата `APP_SECRET` делает encrypted dialogue/payload недоступными: сохраните исходный
+секрет; не удаляйте private receipts ради повторной отправки.
+
+API 1.5.20 требует одновременного обновления bot/backend: **все** inbound варианты,
+включая legacy kinds, требуют `bot_id`, `update_id` и HMAC headers. Старый прямой
+unsigned caller получает 401/422. Подробности и forward-only migration 0015:
+`docs/reviews/T-121-delivery-review.md`. Реальный Telegram smoke требует отдельного
+разрешения; проверка `docker run --rm --network none <bot-image> --offline` не делает HTTP.
 
 Сеть и порты: 8000 (приложение и API), 5432 (PostgreSQL, можно не публиковать), 8025/1025 (Mailpit, опционально), 5173 (Vite в режиме разработки). Исходящие: `ngw.devices.sberbank.ru:9443` (OAuth) и `api.giga.chat` (chat/completions) для GigaChat, `openrouter.ai` для OpenRouter, `api.telegram.org` для бота.
 

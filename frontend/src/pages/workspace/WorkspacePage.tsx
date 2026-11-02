@@ -1,3 +1,4 @@
+import { useUndo } from '@/shared/ui/undo'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -60,7 +61,7 @@ export function WorkspacePage() {
         {tab === 'teams' && <TeamsTab />}
         {tab === 'tasks' && <TasksTab runId={runId} />}
       </div>
-      <SignalDrawer id={signalId} onClose={() => setSignalId(null)} />
+      <SignalDrawer id={signalId} onClose={() => { const previous = signalId; setSignalId(null); useUndo.getState().offer(() => setSignalId(previous)) }} />
     </div>
   )
 }

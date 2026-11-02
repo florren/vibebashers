@@ -29,14 +29,16 @@ it.each([['ru', 'прерван'], ['en', 'interrupted']])('renders interrupted 
   render(<LogPanel runId={1} full />)
   expect(screen.getByText(text)).toBeInTheDocument()
 })
-it('shows an interrupted current node statically and keeps the legacy running animation', () => {
+it('shows an interrupted node statically and preserves the finite running indicator', () => {
   const props = { graph: { nodes: [{ id: 'decide', kind: 'llm' as const }], edges: [] }, visited: new Set<string>(), current: 'decide', outcome: null }
   const { container, rerender } = render(<GraphView {...props} executionStatus="interrupted" />)
   expect(container.querySelector('[data-execution-status="interrupted"]')).not.toBeNull()
+  expect(container.querySelector('.status-indicator')).toBeNull()
   expect(container.querySelector('.animate-pulse')).toBeNull()
   rerender(<GraphView {...props} />)
   expect(container.querySelector('[data-execution-status="running"]')).not.toBeNull()
-  expect(container.querySelector('.animate-pulse')).not.toBeNull()
+  expect(container.querySelector('.status-indicator')).not.toBeNull()
+  expect(container.querySelector('.animate-pulse')).toBeNull()
 })
 
 it.each([['ru', 'прерван'], ['en', 'interrupted']])('localizes only the agent trace subject in %s', async (lang, text) => {

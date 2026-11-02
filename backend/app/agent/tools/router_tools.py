@@ -172,7 +172,10 @@ async def notify_customer(ctx: ToolContext, channel: str, message: str) -> dict[
         text_override=body,
         lang=_spec_lang(frame),
     )
-    return {"notification_id": data["notification_id"], "delivery": "emulated"}
+    from app.config import get_settings
+
+    delivery = "logged" if channel == "telegram_bot" and get_settings().tgbot_enabled else "emulated"
+    return {"notification_id": data["notification_id"], "delivery": delivery}
 
 
 @tool("escalate_to_manager")

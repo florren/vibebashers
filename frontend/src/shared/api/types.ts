@@ -4266,11 +4266,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Внутренний приём сообщений от сервиса tgbot (только из docker-сети) */
+        /**
+         * Подписанный durable приём сообщений от сервиса tgbot
+         * @description HMAC-SHA256 точного body/method/path и UTC timestamp с окном ±60с; body ≤32768 bytes.
+         *     Старые kind сохранены, но все callers должны передавать bot_id/update_id и подпись.
+         *     Это service-to-service transport; пользовательский логин/RBAC не добавляется.
+         *     Повтор bot_id/update_id с тем же body/chat возвращает receipt без новых side effects;
+         *     другой body/chat даёт409. accepted означает DB commit, не физическую доставку.
+         */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header: {
+                    "X-CX-Tg-Timestamp": string;
+                    "X-CX-Tg-Signature": string;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -4278,9 +4288,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         chat_id: number;
+                        bot_id: number;
+                        update_id: number;
                         username?: string;
                         /** @enum {string} */
-                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append";
+                        kind: "start" | "is_client" | "not_client" | "free_text" | "contact" | "region" | "append" | "message" | "callback";
                         text: string;
                         payload?: {
                             [key: string]: unknown;
@@ -4289,14 +4301,18 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Что ответить пользователю */
+                /** @description Durable receipt и текст поставленного в очередь ответа */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": {
-                            reply_text?: string;
+                            /** @constant */
+                            accepted: true;
+                            update_id: number;
+                            notification_id: number;
+                            reply_text: string;
                             buttons?: {
                                 text?: string;
                                 data?: string;
@@ -4306,6 +4322,16 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Неверная подпись или timestamp */
+                401: components["responses"]["Problem"];
+                /** @description Несовместимый bot namespace или конфликт update_id */
+                409: components["responses"]["Problem"];
+                /** @description Body превышает32768 bytes */
+                413: components["responses"]["Problem"];
+                /** @description Невалидные поля события */
+                422: components["responses"]["Problem"];
+                /** @description Transport не настроен либо maintenance */
+                503: components["responses"]["Problem"];
             };
         };
         delete?: never;
@@ -8523,6 +8549,7 @@ export interface components {
             template_code?: string | null;
             subject?: string | null;
             body?: string;
+            /** @description unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет */
             status?: string;
             /** Format: date-time */
             sent_sim?: string | null;

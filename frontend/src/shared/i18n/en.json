@@ -302,7 +302,8 @@
     "followups": "Deferred checks",
     "noClient": "client not identified",
     "hints": "Hints for finding the client",
-    "text": "Request text"
+    "text": "Request text",
+    "sourcePlatform": "Source platform"
   },
   "incident": {
     "status": {
@@ -451,6 +452,7 @@
     "profile": "LLM profile",
     "promptVersion": "prompt version",
     "outcome": {
+      "interrupted": "interrupted",
       "completed": "completed",
       "fallback_mock": "completed with fallback provider",
       "awaiting_human": "waiting for a human",
@@ -458,8 +460,7 @@
       "running": "running",
       "cancelled": "cancelled",
       "none": "—",
-      "deferred": "waiting for a scheduled check",
-      "interrupted": "interrupted"
+      "deferred": "waiting for a scheduled check"
     },
     "needHuman": "human needed",
     "selectRun": "Select a run on the left",
@@ -945,7 +946,8 @@
     "delivered": "delivered",
     "failed": "error",
     "queued": "queued",
-    "draft": "draft"
+    "draft": "draft",
+    "unknown": "delivery outcome unknown"
   },
   "outcome": {
     "closed_in_sla_with_gift": "closed within SLA with a gift",
@@ -1614,6 +1616,7 @@
     "linked": "Linked to the selected step",
     "notMapped": "No unambiguous link to a single agent step. Open Trace for event context.",
     "status": {
+      "interrupted": "interrupted",
       "pending": "Pending",
       "running": "Running",
       "done": "Completed",
@@ -1622,8 +1625,7 @@
       "waiting_human": "Waiting for a human",
       "scheduled": "Check scheduled",
       "skipped": "Branch not used",
-      "not_reached": "Not executed",
-      "interrupted": "interrupted"
+      "not_reached": "Not executed"
     },
     "fact": {
       "product": "Product",
@@ -2045,6 +2047,37 @@
       "closed": "Request closed"
     }
   },
+  "db": {
+    "run": "Run #{{id}}",
+    "title": "Database activity",
+    "readonly": "Read only · real changes from audit triggers",
+    "scope": "Run scope",
+    "current": "Baseline + current",
+    "all": "All runs",
+    "table": "Table",
+    "allTables": "All tables",
+    "pause": "Pause updates",
+    "resume": "Resume updates",
+    "refresh": "Refresh",
+    "paused": "Updates paused",
+    "live": "WebSocket + polling",
+    "polling": "Polling · WebSocket unavailable",
+    "legacy": "Legacy events without run_id appear only in all runs",
+    "limit": "Latest 50 rows; changes shown newest first",
+    "counters": "Table counters",
+    "delta": "Counter change",
+    "exact": "Exact",
+    "estimated": "PostgreSQL estimate",
+    "activity": "Change feed",
+    "emptyActivity": "No changes in the selected scope yet",
+    "unknownRun": "Unknown run",
+    "older": "Older changes",
+    "rows": "Latest rows",
+    "masked": "Contacts, secrets and raw LLM payloads are hidden by the server",
+    "emptyRows": "No rows in this scope",
+    "inspect": "Inspect JSON",
+    "inspector": "JSON inspector"
+  },
   "traceGraph": {
     "mode": "Trace view",
     "columns": "Columns",
@@ -2174,35 +2207,38 @@
     },
     "diffScope": "The count covers API diff fields. The table below highlights all differing response fields."
   },
-  "db": {
-    "run": "Run #{{id}}",
-    "title": "Database activity",
-    "readonly": "Read only · real changes from audit triggers",
-    "scope": "Run scope",
-    "current": "Baseline + current",
-    "all": "All runs",
-    "table": "Table",
-    "allTables": "All tables",
-    "pause": "Pause updates",
-    "resume": "Resume updates",
-    "refresh": "Refresh",
-    "paused": "Updates paused",
-    "live": "WebSocket + polling",
-    "polling": "Polling · WebSocket unavailable",
-    "legacy": "Legacy events without run_id appear only in all runs",
-    "limit": "Latest 50 rows; changes shown newest first",
-    "counters": "Table counters",
-    "delta": "Counter change",
-    "exact": "Exact",
-    "estimated": "PostgreSQL estimate",
-    "activity": "Change feed",
-    "emptyActivity": "No changes in the selected scope yet",
-    "unknownRun": "Unknown run",
-    "older": "Older changes",
-    "rows": "Latest rows",
-    "masked": "Contacts, secrets and raw LLM payloads are hidden by the server",
-    "emptyRows": "No rows in this scope",
-    "inspect": "Inspect JSON",
-    "inspector": "JSON inspector"
+  "attention": {
+    "label": "Attention mode",
+    "auto": "By context",
+    "calm": "Calm",
+    "control_room": "Control room",
+    "priorities": "Priorities",
+    "choosePriority": "Choose a priority",
+    "chooseItem": "Priority {{n}}",
+    "loading": "Checking current priorities…",
+    "noPriorities": "All quiet for now. Priority incidents will appear here.",
+    "slaSoon": "Due in {{hours}} h",
+    "slaOverdue": "Past due",
+    "undoLabel": "Undo local action",
+    "localChanged": "Only the interface changed. You can undo within 8 seconds.",
+    "undo": "Undo",
+    "cancel": "Go back",
+    "confirm": "Confirm action",
+    "hitlTitle": "Confirm human decision",
+    "hitlConsequence": "{{id}}: “{{mode}}”. The decision will be saved and may resume the agent, route a task or send a client message under server rules. Local undo cannot reverse it.",
+    "closeTitle": "Close the incident?",
+    "closeConsequence": "The incident will be closed on the server. This changes its status and SLA reporting; the server will validate the action. Local undo cannot restore the previous state.",
+    "slaTimezone": "MSK"
+  },
+  "care": {
+    "details": "Technical details",
+    "emptyNext": "New data will appear here. You can check the selected filters.",
+    "errors": {
+      "busy": "There are many requests right now. Please wait a moment and try again.",
+      "service": "We could not retrieve the service data. Shall we try again?",
+      "request": "We could not complete the action. Check the selected data and try again.",
+      "connection": "We could not reach the service. Check the connection and try again.",
+      "unknown": "We could not complete the action. Shall we try again? You can expand the details below."
+    }
   }
 }

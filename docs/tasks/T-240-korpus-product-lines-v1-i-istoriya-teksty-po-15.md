@@ -34,9 +34,9 @@
 5. Расширение матрицы покрытия: ≥ 1 сигнал на каждое направление × канал; пересоздание baseline-дампа `data/baseline/<profile>.dump` процедурой `app/sim/baseline.py` (T-032), обновить `settings.coverage`.
 
 ## Критерии приёмки
-- [ ] Покрытие: ≥ 1 сигнал на направление × канал; `test_coverage` и `test_no_pii` зелёные.
-- [ ] Два запуска с одним сидом дают одинаковую историю.
-- [ ] Хвост истории согласован с реальными 14 днями.
+- [x] Покрытие: ≥ 1 сигнал на направление × канал; `test_coverage` и `test_no_pii` зелёные.
+- [x] Два запуска с одним сидом дают одинаковую историю.
+- [x] Хвост истории согласован с реальными 14 днями.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -46,20 +46,43 @@ pytest backend/tests/unit/test_no_pii.py
 ```
 
 ## Отчёт субагента
-Независимая фаза в `codex/T-240-review-corpus` от T019 `96caa2a`: 162 review
-с точными 3×54 долями, catalog площадок, bounded local JSON/CSV/XLSX CLI через
-normalizer, отдельная baseline-only seed projection и pure monthly builder.
-45 targeted passed (5 actual PG), 1185 unit passed/18 skipped; coverage 94.56%,
-Ruff/mypy/licenses green. Подробности: [phase proof](../reviews/T-240-independent-phase.md).
+Реализованы 162 осмысленных синтетических отзыва с точными долями 3×54,
+ограниченный импорт JSON/CSV/XLSX через normalizer и отдельная проекция trusted
+seed. Generic CLI игнорирует gold; editorial sentiment: 139/14/9. OpenAPI 1.5.19
+публикует только известный SourcePlatform DTO; лента и карточка показывают ru/en
+название текстом, без URL/href/логотипа.
 
-Это **не done**: migration0014/actual0013 composition, реальный seed180 coverage,
-history persistence/tail/dump, CLI maintenance cooperation и API1.5.19/UI ещё
-впереди. Старый type×product×channel код не менялся; CSI/audio metadata не
-выдумывались. Реальные LLM/production не использовались.
+Миграция 0014 после actual P1/0013 сохраняет legacy NULL owner/quality. Новые
+записи требуют известный run_id и согласованные counts/coverage; FK CASCADE,
+missing sentiment не считается neutral, loss_rub остаётся NULL. Mixed legacy
+aggregate возвращает unknown/NULL. Денежные формулы и HITL не менялись.
 
+Default lite, 1000 клиентов: 24000 операций и 1168 сигналов — исходные 800 T019,
+162 отзыва, 151 экземпляр покрытия, 53 настоящих hard и 2 noise. Покрыты все
+180 direction×channel и прежние 480 cells; hard_share=0.25, noise denominator
+сохранён. Два свежих builder-вызова равны 180 persisted rows; хвост 313 совпадает
+по каждой line/source/severity ячейке (0%). Ещё 855 unmapped не приписаны продукту.
+CSI: 84 строки (69 исходных + 15 новых с реальными branch FK); 480 — размер
+матрицы, не число CSI. Voice/branch — synthetic text, без фиктивного audio/STT.
+Повтор seed и native PG16 dump/restore сохраняют историю и счётчики; immutable
+архив/sidecars, SHA и область схемы 0014 записаны в proof JSON.
 
-Отдельная editorial sentiment revision2: 162 labels (139 negative/14 neutral/9
-positive), без изменения текстов/дат/ID/направлений/criticality. Generic CLI gold
-игнорирует; unknown остаётся None. После root review расширена только baseline
-seed projection с editorial provenance/known guard; без AR/LLM accuracy claim.
-[Delta/review](../reviews/T-240-sentiment-annotation-review.md).
+Проверен source-qualified regression union: 1961 backend passed / 24 skipped,
+225 frontend. Полный make выявил шесть устаревших fixture expectations; после
+исправлений 9 affected tests зелёные. Scenarios: 42/2 skip и исправленный explicit
+replay/Pro сценарий 09 дают 43/2 skip; compliance — 31 passed. Assertions,
+кассеты, responses/hashes сохранены. Final make lint: Ruff 413, mypy 275,
+drift 192/192; licenses 550, contracts 45/162, Alembic zero drift. Обе production
+сборки успешны. Changed coverage: 776/815=95.21%. Actual UI ru/en×themes:
+4 screenshots, 85 table fingerprints неизменны, 0 LLM/external/writes.
+
+Ограничения: explicit linked-fault spike mechanism unit-tested, но baseline не
+содержит подтверждённых fault→physical-line bindings (0 linked months); они не
+выдумываются. T241 cabinet API и будущие 0015/16/17 этим не проверены. Canonical/prod
+не тронуты. **Не done до exact-head CI, final contract/cross-layer review и parent
+PR/merge**; один успешный полный make на final head не заявляется.
+
+Доказательства: [history/contract review](../reviews/T-240-history-contract.md),
+[default lite proof](../reviews/T-240-default-lite-proof.json),
+[coverage](../reviews/T-240-changed-coverage.json),
+[actual UI proof](../reviews/T-240-platform-ui-proof.md).

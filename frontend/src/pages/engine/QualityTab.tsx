@@ -53,7 +53,7 @@ export function QualityTab() {
             <FileText size={14} /> {t('quality.download')}
           </a>
           <button className="btn btn-ghost btn-sm" onClick={() => void q.refetch()} disabled={q.isFetching}>
-            <RefreshCw size={14} className={q.isFetching ? 'animate-spin' : ''} /> {t('quality.refresh')}
+            <RefreshCw size={14} className={q.isFetching ? 'status-indicator' : ''} /> {t('quality.refresh')}
           </button>
         </div>
       </div>
