@@ -7493,7 +7493,7 @@ export interface paths {
         };
         /**
          * [ПРОТО] Демонстрационный индекс CX
-         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal.
+         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim или native observed receipt выбранного запуска дают 409 temporal_context_conflict до live projection (all проверяет все запуски). Это defensive boundary, не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
          */
         get: {
             parameters: {
@@ -7517,6 +7517,8 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["Problem"];
+                /** @description temporal_context_conflict — известное native evidence позже global as_of. */
+                409: components["responses"]["Problem"];
                 422: components["responses"]["Problem"];
                 503: components["responses"]["Problem"];
             };
@@ -7538,7 +7540,7 @@ export interface paths {
         };
         /**
          * [ПРОТО] Readonly Обзор: KPI, давление, сохранённые summaries
-         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal.
+         * @description Current-only по умолчанию, без неявного baseline. all только явно; отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29 semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim или native observed receipt выбранного запуска дают 409 temporal_context_conflict до live projection (all проверяет все запуски). Это defensive boundary, не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
          */
         get: {
             parameters: {
@@ -7562,6 +7564,8 @@ export interface paths {
                     };
                 };
                 404: components["responses"]["Problem"];
+                /** @description temporal_context_conflict — известное native evidence позже global as_of. */
+                409: components["responses"]["Problem"];
                 422: components["responses"]["Problem"];
                 503: components["responses"]["Problem"];
             };

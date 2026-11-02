@@ -251,5 +251,16 @@
     },
     "log": "/tmp/t256-full-make-test.log",
     "make_lint": "green 429frontend/505format/311mypy/bot12format5mypy/drift194"
+  },
+  "temporal_defensive_followup": {
+    "status": "targeted_green_requires_T041_composition_and_native_probes",
+    "historical_full_runtime": "1968631",
+    "pg_http_passed": 28,
+    "pg_http_seconds": 17.86,
+    "pure_unit_passed": 65,
+    "coverage_not_repeated_yet": true,
+    "performance_not_repeated_yet": true,
+    "limitation": "No universal publication receipt; positive native classification requires upstream stale-controller fence",
+    "runtime_sha256": "4e7e40bd3c81706fc97c24d986d31e4d647a36a8b66b564eedb5588b9faf6959"
   }
 }
