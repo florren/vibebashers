@@ -1,0 +1,66 @@
+{
+  "changed_runtime_coverage": {
+    "covered": 127,
+    "statements": 136,
+    "percent": 93.38235294117646
+  },
+  "files": {
+    "backend/app/sim/behavior/cancellation.py": {
+      "covered_lines": 64,
+      "num_statements": 72,
+      "percent_covered": 88.88888888888889
+    },
+    "backend/app/sim/behavior/prevention.py": {
+      "covered_lines": 49,
+      "num_statements": 50,
+      "percent_covered": 98.0
+    },
+    "backend/app/sim/behavior/cancellation_details.py": {
+      "covered_lines": 86,
+      "num_statements": 87,
+      "percent_covered": 98.85057471264368
+    },
+    "backend/app/sim/behavior/owner.py": {
+      "changed_executable": 5,
+      "covered_changed_executable": 5,
+      "missing_changed_lines": []
+    },
+    "backend/app/sim/behavior/signals.py": {
+      "changed_executable": 9,
+      "covered_changed_executable": 9,
+      "missing_changed_lines": []
+    }
+  },
+  "storage_parent": "27a895647b466e93e0ce5004b95337e378c8bb12",
+  "runtime_parent": "ab9acf8ac82d9eb00b7fe649445272d26479718b",
+  "tests": {
+    "passed": 76,
+    "seconds": 142.69,
+    "log": "/tmp/t039-receipts-runtime-coverage-tests.log"
+  },
+  "full_regression": "pending",
+  "public_api_version": "1.5.22",
+  "final_contract_review_required": true,
+  "source_sha256": {
+    "backend/app/sim/behavior/cancellation.py": "e198d88255ebb67f5aaed855233b833364e6418a80bfdf32523f3359de108f81",
+    "backend/app/sim/behavior/prevention.py": "9314e19e1bcdd68f0abb894d4013913ad2b924554c6c854159b1f99d792998f7",
+    "backend/app/sim/behavior/cancellation_details.py": "0fb0223eff9f688879d01a53f2da7179f6370b216cfd6f8565d4433cde4640ca",
+    "backend/app/sim/behavior/owner.py": "a1c3b41bbf2343a2ad9dbc87edc5aa95d2b0b196cbd3af56dffe3b4fcf180fac",
+    "backend/app/sim/behavior/signals.py": "b3037b467b8cf1a21211c5f0041685648fab525defebf3275630169e18e2a29e",
+    "backend/tests/integration/test_behavior_cancellation_runtime.py": "9ebed70b35877f6c6d47192ca34cd4d13c1f023119cd6fd833977d5cf3f16639",
+    "backend/tests/unit/test_behavior_prevention.py": "f51d20b5f47b5f93bb823b405462390c80946978cd908df50e6f0d0a4472db27",
+    "contracts/db/migrations/0019_behavior_cancellation_receipts.sql": "e7ec41700c8dfee7fadd46ddae981dc24d28feb95e0dffb20a3a8beb2bee030f"
+  },
+  "full_unit": {
+    "passed": 1900,
+    "skipped": 18,
+    "seconds": 57.0,
+    "log": "/tmp/t039-receipts-full-unit.log"
+  },
+  "checks": {
+    "make_sync_contracts": "green; generated110ORM, no tracked delta",
+    "make_lint": "green; backend489ruff/307mypy; bot12ruff/5mypy; frontend366vitest/47files; inherited DemoMenu1warning0errors",
+    "contracts": "47schemas/163paths; drift193/193",
+    "licenses": "550+36 distributions"
+  }
+}

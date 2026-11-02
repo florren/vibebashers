@@ -55,3 +55,14 @@ link/жалобу. Порядок RNG draws сохранён, rollback/retry и 
 Combined adjacent regression: 49 passed (169.73 s), changed executable line
 coverage 31/31=100%; source SHA в proof JSON. Полный suite/CI остаётся за
 окончательной композицией, completion T-039 этим не утверждается.
+
+
+### 02.11.2026: отдельный packet prevention receipts B
+
+User variant B разрешён для реализации; final DDL/runtime consumer review отдельно.
+Additive0019 после actual0018 хранит nullable versioned детали отмены без backfill
+legacy. Owner пишет receipt и status атомарно; внутренний run-scoped reader отличает
+modelled resolution до primary due/first complaint от Sent/care/already-complained
+и unknown. Сам proactive subscriber/controlled scenario находится в отдельной
+ветке T039; эта композиция не помечает карточку целиком done. Проверки и границы
+будут зафиксированы в [финальном review receipts](../reviews/T-039-receipts-final-review.md).
