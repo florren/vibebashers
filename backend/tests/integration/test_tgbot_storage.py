@@ -1,4 +1,4 @@
-"""Только собственная scratch БД: SQL proposal до включения production route."""
+"""Только собственная scratch БД: durable receipts до включения production route."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.integration
 async def store_db(migrated_db):
     dsn = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=True, row_factory=dict_row) as conn:
-        sql = (ROOT / "docs/reviews/T-121-runtime-schema-proposal.sql").read_text()
+        sql = (ROOT / "contracts/db/migrations/0015_telegram_transport.sql").read_text()
         await conn.execute(sql)
         await conn.execute(sql)
         for table in ("telegram_conversations", "telegram_inbound"):
@@ -114,3 +114,73 @@ async def test_missing_response_rolls_back_and_next_update_preserves_state(store
         async with InboundStore(SECRET).turn(conn, bot_id=BOT, update_id=72, chat_id=CHAT, body=b"next") as turn:
             assert turn.state["stage"] == "role"
             turn.response = {"accepted": True}
+
+
+async def test_bank_dump_restore_keeps_newer_operational_receipt_and_notification_identity(store_db, tmp_path):
+    import subprocess
+
+    from app.sim import baseline
+
+    archive = tmp_path / "owned-bank.dump"
+    async with await connect(store_db) as conn:
+        run = await (
+            await conn.execute(
+                "insert into sim_runs(kind,label,seed,status,started_sim) values('baseline','T121 scratch',42,'completed',now()) returning id"
+            )
+        ).fetchone()
+        note = await (
+            await conn.execute(
+                "insert into notifications(run_id,recipient_type,channel_code,body) values(%s,'client','telegram_bot','synthetic') returning id,delivery_key",
+                (run["id"],),
+            )
+        ).fetchone()
+        await conn.execute(
+            "insert into channel_runtime.telegram_deliveries(delivery_key,bot_id,chat_id,notification_id,run_id,body_hash,payload_enc,status,completed_at,external_ref) "
+            "values(%s,%s,%s,%s,%s,%s,pgp_sym_encrypt('{}',%s),'sent',now(),'telegram:42')",
+            (note["delivery_key"], BOT, CHAT, note["id"], run["id"], "a" * 64, SECRET),
+        )
+    await asyncio.to_thread(baseline._run_pg_dump, store_db, archive)
+    listing = subprocess.run(
+        [baseline._pg_tool("pg_restore"), "--list", str(archive)], capture_output=True, text=True, check=True
+    ).stdout
+    assert "channel_runtime" not in listing
+    async with await connect(store_db) as conn:
+        await conn.execute("delete from notifications where id=%s", (note["id"],))
+        reused = await (
+            await conn.execute(
+                "insert into notifications(id,run_id,recipient_type,channel_code,body) overriding system value values(%s,%s,'client','telegram_bot','new synthetic') returning delivery_key",
+                (note["id"], run["id"]),
+            )
+        ).fetchone()
+        assert reused["delivery_key"] != note["delivery_key"]
+        async with InboundStore(SECRET).turn(conn, bot_id=BOT, update_id=71, chat_id=CHAT, body=BODY) as turn:
+            turn.state["after_dump"] = True
+            turn.response = {"accepted": True, "update_id": 71}
+        ciphertext = await (
+            await conn.execute("select state_enc from channel_runtime.telegram_conversations where bot_id=%s", (BOT,))
+        ).fetchone()
+    await asyncio.to_thread(baseline._run_pg_restore, store_db, archive)
+    async with await connect(store_db) as conn:
+        restored = await (
+            await conn.execute("select delivery_key from notifications where id=%s", (note["id"],))
+        ).fetchone()
+        assert restored["delivery_key"] == note["delivery_key"]
+        current = await (
+            await conn.execute("select state_enc from channel_runtime.telegram_conversations where bot_id=%s", (BOT,))
+        ).fetchone()
+        assert current["state_enc"] == ciphertext["state_enc"]
+        async with InboundStore(SECRET).turn(conn, bot_id=BOT, update_id=71, chat_id=CHAT, body=BODY) as turn:
+            assert turn.duplicate and turn.response["update_id"] == 71
+        delivery = await (
+            await conn.execute(
+                "select status,external_ref from channel_runtime.telegram_deliveries where delivery_key=%s",
+                (note["delivery_key"],),
+            )
+        ).fetchone()
+        assert delivery == {"status": "sent", "external_ref": "telegram:42"}
+        no_foreign_keys = await (
+            await conn.execute(
+                "select count(*) as n from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='channel_runtime' and c.contype='f'"
+            )
+        ).fetchone()
+        assert no_foreign_keys["n"] == 0

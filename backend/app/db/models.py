@@ -146,6 +146,83 @@ class BenchDatasets(Base):
     bench_runs: Mapped[list['BenchRuns']] = relationship('BenchRuns', back_populates='dataset')
 
 
+class TelegramChatRate(Base):
+    __tablename__ = 'telegram_chat_rate'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_chat_rate_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_chat_rate_chat_id_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_chat_rate_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    last_claimed_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False)
+
+
+class TelegramConversations(Base):
+    __tablename__ = 'telegram_conversations'
+    __table_args__ = (
+        CheckConstraint('bot_id > 0', name='telegram_conversations_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_conversations_chat_id_check'),
+        CheckConstraint('revision >= 0', name='telegram_conversations_revision_check'),
+        PrimaryKeyConstraint('bot_id', 'chat_id', name='telegram_conversations_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    state_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text('0'))
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
+class TelegramDeliveries(Base):
+    __tablename__ = 'telegram_deliveries'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_deliveries_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_deliveries_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_deliveries_chat_id_check'),
+        CheckConstraint("status <> 'sent'::text OR external_ref IS NOT NULL AND completed_at IS NOT NULL", name='telegram_deliveries_check'),
+        CheckConstraint("status = ANY (ARRAY['queued'::text, 'claimed'::text, 'sent'::text, 'failed'::text, 'unknown'::text, 'suppressed'::text])", name='telegram_deliveries_status_check'),
+        PrimaryKeyConstraint('delivery_key', name='telegram_deliveries_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    bot_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    notification_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    run_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    payload_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    claimed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    external_ref: Mapped[Optional[str]] = mapped_column(Text)
+    error_code: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class TelegramInbound(Base):
+    __tablename__ = 'telegram_inbound'
+    __table_args__ = (
+        CheckConstraint("body_hash ~ '^[0-9a-f]{64}$'::text", name='telegram_inbound_body_hash_check'),
+        CheckConstraint('bot_id > 0', name='telegram_inbound_bot_id_check'),
+        CheckConstraint('chat_id > 0', name='telegram_inbound_chat_id_check'),
+        CheckConstraint('update_id >= 0', name='telegram_inbound_update_id_check'),
+        PrimaryKeyConstraint('bot_id', 'update_id', name='telegram_inbound_pkey'),
+        {'schema': 'channel_runtime'}
+    )
+
+    bot_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    update_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    body_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    response_enc: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+
+
 class Channels(Base):
     __tablename__ = 'channels'
     __table_args__ = (
@@ -2086,6 +2163,7 @@ class Notifications(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'queued'::text"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
+    delivery_key: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, server_default=text('gen_random_uuid()'))
     client_id: Mapped[Optional[int]] = mapped_column(BigInteger)
     team_code: Mapped[Optional[str]] = mapped_column(Text)
     signal_id: Mapped[Optional[int]] = mapped_column(BigInteger)
