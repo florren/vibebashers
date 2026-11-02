@@ -65,6 +65,8 @@ def test_step_generates_contract_valid_events_and_new_run(sim: Simulator, conn: 
             "review": "sim/review",
             "client": "behavior/client_event",
         }[fam]
+        if event_type in ("team.plan", "team.runtime_started"):
+            schema = "sim/team_plan" if event_type == "team.plan" else "sim/team_runtime"
         assert validate(payload, schema) == [], (event_type, payload)
     assert (
         conn.execute("select count(*) from operations where run_id = %s", (sim.run_id,)).fetchone()[0]

@@ -1,0 +1,49 @@
+{
+  "base": "9bba1d9",
+  "method": "stdlib line tracing; union of two passing runs with identical runtime source SHA256",
+  "runs": [
+    {
+      "tests_passed": 43,
+      "log": "/tmp/t037-final-coverage-targets2.log"
+    },
+    {
+      "tests_passed": 3,
+      "log": "/tmp/t037-supplemental-coverage.log"
+    }
+  ],
+  "files": {
+    "backend/app/sim/team_plans.py": {
+      "source_sha256": "322ff60ba32aab9267a3ed7a4d68eca2a32f71101df58accaa852b08de834d68",
+      "changed_executable": 88,
+      "covered": 88,
+      "missing": []
+    },
+    "backend/app/sim/teams.py": {
+      "source_sha256": "db0201a2cc52be6bea1981b52bdd64fd92b4247fb0cfcd2857a2bf46004e8e95",
+      "changed_executable": 36,
+      "covered": 36,
+      "missing": []
+    },
+    "backend/app/sim/events.py": {
+      "source_sha256": "0829d9175edc549b60757e5d2298c2f09d38d4023def180fa01c5f5f30e908d3",
+      "changed_executable": 3,
+      "covered": 3,
+      "missing": []
+    },
+    "backend/app/sim/runs.py": {
+      "source_sha256": "c2f7b34f90dcd354c27cf6603a107ce3015c04b121c16c15e4a136a48949f7f1",
+      "changed_executable": 2,
+      "covered": 2,
+      "missing": []
+    },
+    "backend/app/sim/engine.py": {
+      "source_sha256": "e64169b74ccd67241d6e4327fd2358cb17f6d00c27acb9d151eb97e8bc41cb49",
+      "changed_executable": 2,
+      "covered": 2,
+      "missing": []
+    }
+  },
+  "changed_executable": 131,
+  "covered": 131,
+  "percent": 100.0
+}

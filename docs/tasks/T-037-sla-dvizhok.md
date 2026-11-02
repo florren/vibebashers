@@ -41,3 +41,12 @@ pytest backend/tests/unit/test_sla.py
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+
+### Ревизия 2026-11-02: durable план до первого действия
+
+Кандидат в `codex/T-037-durable-team-plan` от T161 `9bba1d9`: typed native `team.plan` и `team.runtime_started`, атомарные plan/RNG tick, чтение legacy action facts, fail-closed неизвестный pre-action план; DDL и SLA числа/due times не изменены. Исправлен доказанный restart gap без fake take/report.
+
+Основной PG/OS/lifecycle/restore/reset-day набор 43 passed; дополнительные stale/corrupt legacy 3 passed; actual PG16 dump/restore clone 1 passed. Full unit 1727 passed /18 skipped; changed-executable line coverage131/131; Ruff/mypy/contracts/licenses зелёные. Подробности, ограничения, source hashes и rollback: [кандидат review](../reviews/T-037-durable-plan-candidate.md).
+
+Статус `todo` и DoD не закрыты: final scenarios/compliance/полная composition CI и обязательный human event/runtime compatibility review ещё нужны. Техническое разрешение root не является пользовательским одобрением legacy policy. UI SLA warning этим кандидатом не менялся; отдельный новый UI proof не заявлен.
