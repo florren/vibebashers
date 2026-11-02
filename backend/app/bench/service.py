@@ -21,6 +21,7 @@ from app.bench import runner
 from app.config import get_settings
 from app.errors import Problem
 from app.llm.base import LLMProfile, Provider, ProviderError
+from app.llm.budget import load_openrouter_budget
 from app.llm.failover import ProviderChain
 from app.llm.gigachat import GigaChatProvider
 from app.llm.keys import ApiKey, KeyPool
@@ -85,7 +86,9 @@ class BenchService:
             if dataset is None:
                 raise Problem(404, "набор не найден")
             rows = await fetch_all(
-                conn, "select id,channel_code,text,gold from bench_cases where dataset_id=%s order by id", (dataset_id,)
+                conn,
+                "select id,channel_code,text,gold,tags from bench_cases where dataset_id=%s order by id",
+                (dataset_id,),
             )
             if not rows or any("signal_type" not in r["gold"] for r in rows):
                 raise Problem(422, "ожидается непустой classify-набор с gold.signal_type")
@@ -95,7 +98,10 @@ class BenchService:
             if len(profiles) != len(set(ids)):
                 raise Problem(422, "неизвестный или неактивный профиль")
             keys = await load_keys(conn)
-        cases = [runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"]) for r in rows]
+        cases = [
+            runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"], r.get("tags", []))
+            for r in rows
+        ]
         return dataset["code"], cases, profiles, keys
 
     @staticmethod
@@ -211,7 +217,18 @@ class BenchService:
                 )
             )
         elif profile.provider == "openai_compatible":
+            local = bool(profile.extra.get("local"))
+            base = profile.base_url or (settings.local_llm_base_url if local else settings.openrouter_base_url)
+            if not base:
+                raise ProviderError("unavailable", "LOCAL_LLM_BASE_URL или base_url локального профиля не задан")
             keys = self.available_keys(profile.provider, saved)
+            if local:
+                # Ключ локального endpoint выбирается явно; OpenRouter secret не подставляется.
+                keys = [
+                    key
+                    for key in keys
+                    if profile.extra.get("api_key_id") is not None and key.get("id") == profile.extra["api_key_id"]
+                ]
 
             def capacity(item: dict[str, Any]) -> int:
                 remaining = self.remaining([item])
@@ -223,7 +240,11 @@ class BenchService:
                 raise ProviderError("quota", "ключи OpenAI-compatible исчерпаны")
             if chosen is None and not profile.extra.get("local"):
                 raise ProviderError("auth", "нет активного OpenAI-compatible ключа")
-            secret = (chosen.get("_secret") or key_plain(chosen)) if chosen else None
+            secret = (
+                (chosen.get("_secret") or key_plain(chosen))
+                if chosen
+                else (getattr(settings, "local_llm_api_key", None) if local else None)
+            )
             if chosen is not None:
                 selected_key = chosen["label"]
                 if selected_key not in self.keys or self.keys[selected_key].secret != secret:
@@ -241,7 +262,10 @@ class BenchService:
                 self.keys[selected_key].tokens_limit = chosen.get("tokens_limit")
             providers.append(
                 OpenAICompatProvider(
-                    secret, profile.base_url or settings.openrouter_base_url, budget_usd=settings.openrouter_budget_usd
+                    secret,
+                    base,
+                    budget_usd=settings.openrouter_budget_usd,
+                    budget_loader=partial(load_openrouter_budget, settings.openrouter_budget_usd),
                 )
             )
         else:
@@ -414,7 +438,7 @@ class BenchService:
         async with db() as conn:
             results = await fetch_all(
                 conn,
-                "select br.*,c.text,c.gold from bench_results br join bench_cases c on c.id=br.case_id where br.run_id=%s order by br.repeat_no,br.case_id",
+                "select br.*,c.text,c.gold,c.tags from bench_results br join bench_cases c on c.id=br.case_id where br.run_id=%s order by br.repeat_no,br.case_id",
                 (id_,),
             )
         return {**row, "results": results}
@@ -468,13 +492,14 @@ class BenchService:
             "fallback_mock",
             "prompt_tokens",
             "completion_tokens",
+            "tags",
         ]
         writer = csv.DictWriter(out, fieldnames=fields)
         writer.writeheader()
         for result in detail["results"]:
             writer.writerow(
                 {
-                    k: json.dumps(result[k], ensure_ascii=False) if isinstance(result[k], dict) else result[k]
+                    k: json.dumps(result[k], ensure_ascii=False) if isinstance(result[k], (dict, list)) else result[k]
                     for k in fields
                 }
             )
