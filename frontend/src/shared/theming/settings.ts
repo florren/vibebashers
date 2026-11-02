@@ -1,13 +1,14 @@
+import { validAttention, type AttentionMode } from './attention'
 import { api, patch } from '@/shared/api/client'
 import { applyUiTheme } from './apply'
 import { useUiTheme } from './store'
 import { validCircadian, type CircadianPreferences } from './circadian'
 import type { ThemeDensity, ThemeMode, ThemePack } from './types'
 
-type Preferences = { theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity; circadian: CircadianPreferences }
+type Preferences = { attention: AttentionMode | null; theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity; circadian: CircadianPreferences }
 const PENDING = 'cx.ui.pending'
 let saveQueue = Promise.resolve()
-const KEYS = ['theme_pack', 'mode', 'density', 'circadian'] as const
+const KEYS = ['theme_pack', 'mode', 'density', 'circadian', 'attention'] as const
 
 function validated(value: unknown): Partial<Preferences> {
   if (!value || typeof value !== 'object') return {}
@@ -16,6 +17,7 @@ function validated(value: unknown): Partial<Preferences> {
   if (obj.theme_pack === 'brand' || obj.theme_pack === 'ops') out.theme_pack = obj.theme_pack
   if (['light', 'dark', 'auto', 'circadian'].includes(String(obj.mode))) out.mode = obj.mode as ThemeMode
   if (obj.density === 'compact' || obj.density === 'comfortable') out.density = obj.density
+  if (obj.attention === null || validAttention(obj.attention)) out.attention = validAttention(obj.attention)
   const circadian = validCircadian(obj.circadian)
   if (circadian) out.circadian = circadian
   return out
@@ -60,7 +62,10 @@ export function connectThemeSettings(): () => void {
     hydrating = true
     useUiTheme.setState(preferences)
     const state = useUiTheme.getState()
-    for (const key of KEYS) localStorage.setItem(`cx.ui.${key}`, typeof state[key] === 'string' ? state[key] : JSON.stringify(state[key]))
+    for (const key of KEYS) {
+      if (state[key] === null) localStorage.removeItem(`cx.ui.${key}`)
+      else localStorage.setItem(`cx.ui.${key}`, typeof state[key] === 'string' ? state[key] : JSON.stringify(state[key]))
+    }
     const samePreferences = before.theme_pack === state.theme_pack && before.mode === state.mode && before.density === state.density && JSON.stringify(before.circadian) === JSON.stringify(state.circadian)
     // Поздний GET с теми же настройками не должен обрывать переход от WS-часов.
     applyUiTheme(state.theme_pack, state.mode, state.density, state.simTime, samePreferences)

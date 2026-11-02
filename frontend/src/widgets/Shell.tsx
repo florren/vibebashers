@@ -1,3 +1,6 @@
+import { AttentionRuntime } from '@/shared/theming/AttentionRuntime'
+import { UndoToast } from '@/shared/components/UndoToast'
+import { PriorityStrip } from '@/shared/components/PriorityStrip'
 import { NightDigest } from '@/shared/theming/NightDigest'
 import { Outlet } from 'react-router-dom'
 import { useDemoStatus } from '@/shared/api/hooks'
@@ -18,13 +21,16 @@ function DemoModeFooter() {
 export function Shell() {
   return (
     <div className="app-shell flex h-full min-w-0 flex-col">
+      <AttentionRuntime />
       <Header />
+      <PriorityStrip />
       <NightDigest />
       <main className="app-content min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>
       <DemoModeFooter />
       <DemoMenu />
+      <UndoToast />
     </div>
   )
 }

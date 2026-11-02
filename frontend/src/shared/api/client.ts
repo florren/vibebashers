@@ -87,6 +87,17 @@ export class ApiError extends Error {
   }
 }
 
+/** Маркер только отклонённого fetch; произвольный TypeError не означает сетевой сбой. */
+export class ApiConnectionError extends Error {
+  readonly cause: unknown
+  constructor(cause: unknown) {
+    // URL/токены из transport error не попадают в пользовательские подробности.
+    super('Network request failed')
+    this.name = 'ApiConnectionError'
+    this.cause = cause
+  }
+}
+
 export type Query = Record<string, string | number | boolean | string[] | null | undefined>
 
 export function qs(params?: Query): string {
@@ -103,10 +114,17 @@ export function qs(params?: Query): string {
 
 export async function api<T>(path: string, init?: RequestInit & { query?: Query }): Promise<T> {
   const { query, ...rest } = init ?? {}
-  const res = await fetch(`${path}${qs(query)}`, {
-    ...rest,
-    headers: { Accept: 'application/json, text/markdown', ...(rest.body ? { 'Content-Type': 'application/json' } : {}), ...rest.headers },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${path}${qs(query)}`, {
+      ...rest,
+      headers: { Accept: 'application/json, text/markdown', ...(rest.body ? { 'Content-Type': 'application/json' } : {}), ...rest.headers },
+    })
+  } catch (error) {
+    // Отмена запроса сохраняет прежнюю семантику и не становится network error.
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    throw new ApiConnectionError(error)
+  }
   if (!res.ok) {
     let problem: Problem | null = null
     try {
