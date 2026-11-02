@@ -43,3 +43,6 @@ cd frontend && npx playwright test e2e/trace-graph.spec.ts
 
 ## Отчёт субагента
 Ветка `codex/T-234-trace-graph`, T-234 / `contract-change`. Producer: полное read-only keyset-раскрытие N, optional actual group anchor/phase, OpenAPI 1.5.16 и generated TS/Pydantic. Обоснование, совместимость, измерения и human-review gate — `docs/reviews/T-234-trace-fanout-contract.md`. 38 новых unit/PG passed; покрытие fanout.py 98,65%; p95 страницы50 при10001 связях 123,96 мс, peak258278B. Legacy include/detail и defaultall существующего Trace сохранены; новый endpoint defaultcurrent. SVG/UI и полный DoD ещё в работе; критерии приёмки не закрыты.
+
+
+UI checkpoint: собственный SVG без новых зависимостей; фазы/шесть форм/реальные edges, directed terminal path, visited/staticring/minimap, keyboard и responsive400ms accordion. Полное раскрытие всех N через bounded50-page UI, точный run scope/URL и виртуализация. 14targetedunit/175fullfrontend lint green,7productionbrowsergreen,24actualAPI/UI variants/24PNG+85tablefingerprints/Bomb0. Подробности: `docs/reviews/T-234-trace-graph-verification.md`. Полный composed backend suite и human contract gate ещё ожидаются.
