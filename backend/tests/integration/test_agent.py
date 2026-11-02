@@ -73,6 +73,10 @@ def test_full_pass_creates_incident_and_notifications(seeded: str, conn: psycopg
         )
     )
     assert state["outcome"] == "completed", state["errors"]
+    # QR/debit_card относится к нескольким canonical lines: instant path не угадывает debit_cards.
+    physical_line = conn.execute("select product_line_code from signals where id=%s", (signal_id,)).fetchone()[0]
+    assert state["classification"]["product"] == "debit_card"
+    assert physical_line is None and state["classification"].get("product_line") is None
     run = conn.execute(
         "select id, outcome, prompt_version, graph_version, thread_id, incident_id, total_tokens from agent_runs where signal_id = %s",
         (signal_id,),

@@ -15,6 +15,7 @@ from typing import Any
 
 import orjson
 
+from app.agent import classification_store
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
 from app.agent import sla as slam
@@ -978,10 +979,7 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
             else "live"
         )
     deps.ctx.llm_source = state["llm_source"]
-    await deps.ctx.conn.execute(
-        "update signals set classification = %s::jsonb, decision = %s::jsonb, updated_at = now() where id = %s",
-        (dumps(cls), dumps(state["decision"]), sig["id"]),
-    )
+    await classification_store.save(deps.ctx.conn, sig["id"], cls, decision=state["decision"])
     state["current_node"] = "act_instant"
     await deps.record_step(
         "instant_decide",
@@ -1682,10 +1680,7 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         )
     state["classification"] = c
     if not getattr(deps.ctx, "dry_run", False):
-        await deps.ctx.conn.execute(
-            "update signals set classification = %s::jsonb, status = 'classified', updated_at = now() where id = %s",
-            (dumps(c), sig["id"]),
-        )
+        await classification_store.save(deps.ctx.conn, sig["id"], c, status="classified")
     await deps.ctx.notify(
         "signals",
         "classified",
