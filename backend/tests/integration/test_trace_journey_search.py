@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from time import perf_counter
@@ -103,7 +104,8 @@ async def test_search_variants_and_explicit_scope(seeded):
         assert max(times) < 300
 
 
-async def test_scenario_12_13_replay(seeded, monkeypatch, request):
+async def test_scenario_12_13_replay(replay_bank, monkeypatch, request):
+    seeded = replay_bank
     from app.config import get_settings
     from app.llm.base import LLMProfile
     from app.llm.failover import ProviderChain
@@ -144,6 +146,13 @@ async def test_scenario_12_13_replay(seeded, monkeypatch, request):
         ref = f"SIG-{items[0]['signal_id']:06d}"
         model = await journey(conn, ref, str(rid))
         assert model["summary"]["llm_source"] == "replay"
+        fallback_count = await (
+            await conn.execute(
+                "select count(*) n from agent_steps st join agent_runs ar on ar.id=st.run_id where ar.signal_id=%s and st.status in ('fallback','error')",
+                (items[0]["signal_id"],),
+            )
+        ).fetchone()
+        assert fallback_count["n"] == 0
         assert model["client_lane"]
         for n in (await assemble(conn, "signal", ref))[1]:
             if n["kind"] in (
@@ -162,7 +171,6 @@ async def test_scenario_12_13_replay(seeded, monkeypatch, request):
 
 
 async def test_fanout_and_query_budget(seeded):
-    import datetime as dt
 
     from app.ingest.normalizer import create_signal, from_api_signal
 
