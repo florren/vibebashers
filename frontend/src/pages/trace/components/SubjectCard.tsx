@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Trace } from '@/shared/api/trace'
 import { IdLink } from '@/shared/components/IdLink'
+import { tEnum } from '@/shared/i18n'
 import { ROUTES } from '@/shared/routes'
 
 type DemoKind = 'signal' | 'incident' | 'human_decision' | 'notification' | 'ledger' | 'agent_run'
@@ -101,7 +102,7 @@ export function SubjectCard({ trace }: Props) {
     <article className="my-3 rounded-xl border-2 border-brand bg-surface p-5 shadow-lg">
       <IdLink kind={trace.subject.kind} value={trace.subject.ref} />
       <h3 className="my-2 text-lg font-semibold">{trace.subject.title_ru}</h3>
-      <p>{trace.subject.status}</p>
+      <p>{trace.subject.kind === 'agent_run' ? tEnum('engine.outcome', trace.subject.status) : trace.subject.status}</p>
       {Card && (
         <div className="my-2 text-sm">
           <Card trace={trace} />

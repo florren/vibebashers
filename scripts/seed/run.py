@@ -24,6 +24,8 @@ for _candidate in (_ROOT / "backend", Path("/app")):
 
 from app.sim import baseline as baseline_svc  # noqa: E402
 from app.sim.baseline import BaselineToolingError  # noqa: E402
+from app.sim.maintenance_control import ControlError, MaintenanceControl  # noqa: E402
+from app.sim.maintenance_db import LOCK  # noqa: E402
 
 from scripts.seed.clients import (  # noqa: E402
     ensure_history_run,
@@ -33,6 +35,7 @@ from scripts.seed.clients import (  # noqa: E402
 )
 from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting  # noqa: E402
 from scripts.seed.coverage import compute_coverage  # noqa: E402
+from scripts.seed.faults import seed_faults  # noqa: E402
 from scripts.seed.refs import seed_all_refs  # noqa: E402
 
 
@@ -105,6 +108,23 @@ def main() -> int:
         2026, 11, 9, 9, 0, tzinfo=dt.timezone(dt.timedelta(hours=3))
     )  # «сегодня» симуляции = день демо
     with connect(a.database_url) as conn, conn.cursor() as cur:
+        # Session lease остаётся через все commits и exported snapshot/dump.
+        control = MaintenanceControl()
+        try:
+            if control.read() is None:
+                if not cur.execute("select pg_try_advisory_lock(%s,%s)", LOCK).fetchone()[0]:
+                    raise ControlError("Baseline restore активен; данные не менялись")
+                try:
+                    control.initialize_missing()
+                    cur.execute("select pg_advisory_lock_shared(%s,%s)", LOCK)
+                finally:
+                    cur.execute("select pg_advisory_unlock(%s,%s)", LOCK)
+            elif not cur.execute("select pg_try_advisory_lock_shared(%s,%s)", LOCK).fetchone()[0]:
+                raise ControlError("Baseline restore активен; данные не менялись")
+            control.require_idle()
+        except ControlError as exc:
+            log.error("seed_maintenance_busy", message=str(exc))
+            return 4
         if not a.refs_only:
             try:
                 versions = baseline_svc.check_tools(conn.info.server_version)
@@ -134,12 +154,16 @@ def main() -> int:
             cur.execute(
                 "truncate signals, incidents, operations, faults, client_states, client_products, accounts, clients, sim_runs restart identity cascade"
             )
-            cur.execute("delete from settings where key in ('seed_done', 'coverage')")
+            cur.execute(
+                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:')"
+            )
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)
         conn.commit()
         run_id = ensure_history_run(cur, seed, sim_now, a.profile)
         seed_operations(cur, rnd, run_id, sim_now, profile=a.profile)
+        conn.commit()
+        seed_faults(cur, rnd, run_id, sim_now, profile=a.profile)
         conn.commit()
         seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()

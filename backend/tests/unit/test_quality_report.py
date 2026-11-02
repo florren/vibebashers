@@ -45,13 +45,22 @@ def test_http_stats_snapshot_501_is_not_5xx() -> None:
 
 def test_middleware_records_requests() -> None:
     before = http_obs.stats.snapshot()["requests"]
-    with TestClient(create_app()) as c:
+    from app.errors import NotImplementedYet
+
+    app = create_app()
+
+    @app.delete("/api/test-stub")
+    async def stub() -> None:
+        raise NotImplementedYet("T-040")
+
+    with TestClient(app) as c:
         r = c.get("/api/health")
         assert r.status_code == 200
-        c.delete("/api/sim/runs/1")  # 501-заглушка archive/delete
+        response = c.delete("/api/test-stub")
+        assert response.status_code == 501
     snap = http_obs.stats.snapshot()
     assert snap["requests"] >= before + 2
-    assert any(r["route"] == "/api/sim/runs/{id}" and r["s501"] >= 1 for r in snap["routes"])
+    assert any(r["route"] == "/api/test-stub" and r["s501"] >= 1 for r in snap["routes"])
 
 
 def _summary(**over: object) -> dict:

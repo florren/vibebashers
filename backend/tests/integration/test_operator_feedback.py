@@ -206,7 +206,11 @@ def test_startup_recovery_does_not_reset_fresh_public_run(seeded: str, conn: Any
     monkeypatch.setattr(runner, "wake_due_followups", AsyncMock())
     monkeypatch.setattr(service, "submit", Mock())
     asyncio.run(service._recover())
-    assert conn.execute("select outcome from agent_runs where signal_id=%s", (old["sid"],)).fetchone()[0] == "failed"
-    assert conn.execute("select outcome from agent_runs where signal_id=%s", (fresh["sid"],)).fetchone()[0] is None
+    assert conn.execute(
+        "select outcome,status,interrupted_at is not null from agent_runs where signal_id=%s", (old["sid"],)
+    ).fetchone() == (None, "interrupted", True)
+    assert conn.execute(
+        "select outcome,status,interrupted_at from agent_runs where signal_id=%s", (fresh["sid"],)
+    ).fetchone() == (None, "running", None)
     assert conn.execute("select status from signals where id=%s", (fresh["sid"],)).fetchone()[0] == "processing"
-    assert conn.execute("select status from signals where id=%s", (old["sid"],)).fetchone()[0] == "new"
+    assert conn.execute("select status from signals where id=%s", (old["sid"],)).fetchone()[0] == "processing"

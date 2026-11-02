@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import psycopg
+import pytest
 from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 
@@ -19,6 +20,15 @@ from app.llm.mock import MockProvider
 from app.llm.roles import select
 from app.main import create_app
 from app.sim.twins import TwinService
+
+
+@pytest.fixture
+def live_recording_mode(monkeypatch):
+    # Memory RecordingProvider имитирует live dispatch, но HTTP не выполняет.
+    monkeypatch.setenv("LLM_PROVIDER", "gigachat")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 class RecordingProvider(MockProvider):
@@ -43,7 +53,7 @@ class RecordingProvider(MockProvider):
         return obj, usage, raw
 
 
-def test_graph_main_fast_and_twin_reaction_idempotency(seeded, conn):
+def test_graph_main_fast_and_twin_reaction_idempotency(seeded, conn, live_recording_mode):
     dsn = seeded.replace("postgresql+psycopg://", "postgresql://", 1)
     provider = RecordingProvider()
     chain = ProviderChain([provider], append_mock=False)
@@ -180,7 +190,7 @@ def test_setup_hot_switches_roles_and_rejects_invalid_without_partial_save(seede
         get_settings.cache_clear()
 
 
-def test_twin_worker_waits_for_completed_agent_and_skips_old_notifications(seeded, monkeypatch):
+def test_twin_worker_waits_for_completed_agent_and_skips_old_notifications(seeded, monkeypatch, live_recording_mode):
     import time
 
     monkeypatch.setenv("DATABASE_URL", seeded)

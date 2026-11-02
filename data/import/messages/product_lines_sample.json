@@ -1,0 +1,38 @@
+[
+  {
+    "external_id": "PLV1-0001",
+    "date": "2026-10-01T10:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Срок вклада закончился вчера, а основная сумма не вернулась на текущий счёт. Прошу найти перевод.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0001",
+    "gold": {
+      "product_line": "deposits",
+      "criticality": "high"
+    }
+  },
+  {
+    "external_id": "PLV1-0105",
+    "date": "2026-10-05T18:00:00+03:00",
+    "channel": "review_portal",
+    "text": "На странице страховки нельзя загрузить дополнительный документ к уже созданному заявлению.",
+    "source_platform": "feedback_board",
+    "source_url": "https://feedback-board.example.invalid/reviews/PLV1-0105",
+    "gold": {
+      "product_line": "insurance",
+      "criticality": "medium"
+    }
+  },
+  {
+    "external_id": "PLV1-0141",
+    "date": "2026-10-07T06:00:00+03:00",
+    "channel": "review_portal",
+    "text": "Ответ поддержки содержит только общую ссылку, хотя я приложил снимок конкретной ошибки.",
+    "source_platform": "client_voice",
+    "source_url": "https://client-voice.example.invalid/reviews/PLV1-0141",
+    "gold": {
+      "product_line": "support",
+      "criticality": "medium"
+    }
+  }
+]

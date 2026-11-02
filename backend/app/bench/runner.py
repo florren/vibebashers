@@ -285,7 +285,7 @@ async def run(
     schema = deref("agent/classification")
     if chain is None:
         limiter = RateLimiter()
-        chain = ProviderChain([MockProvider()], rate_limiter=limiter)
+        chain = ProviderChain([MockProvider()], rate_limiter=limiter, offline_mode="mock")
 
     sem_size = profile.rpm_limit or 8
     sem = asyncio.Semaphore(sem_size)

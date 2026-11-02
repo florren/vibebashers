@@ -53,6 +53,7 @@ describe('setup-llm', () => {
       calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined })
       if (url.includes('/api/setup/status')) return jsonRes({ current_step: 1, steps_done: [], completed: false })
       if (url.includes('/api/setup') && method === 'GET') return jsonRes({ llm: {} })
+      if (url.includes('/api/settings/llm-keys')) return jsonRes([])
       if (url.includes('/api/settings/env')) return jsonRes({ items: [] })
       if (url.includes('/api/settings/llm-profiles') && method === 'GET') return jsonRes([GIGACHAT_PROFILE])
       if (url.match(/\/api\/settings\/llm-profiles\/\d+$/) && method === 'PATCH') return jsonRes({})
@@ -70,7 +71,7 @@ describe('setup-llm', () => {
     expect(row).toBeTruthy()
     const urlInput = within(row!).getByDisplayValue(GIGACHAT_PROFILE.base_url)
     fireEvent.change(urlInput, { target: { value: NEW_BASE_URL } })
-    fireEvent.click(within(row!).getByText(i18n.t('setup.llm.saveUrl')))
+    fireEvent.click(within(row!).getByText(i18n.t('setup.keys.saveProfile')))
 
     await waitFor(() =>
       expect(calls.some((c) => c.method === 'PATCH' && c.url.includes('/api/settings/llm-profiles/1'))).toBe(true),

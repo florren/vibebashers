@@ -1,0 +1,4 @@
+external_id,date,channel,text,source_platform,source_url,gold
+PLV1-0001,2026-10-01T10:00:00+03:00,review_portal,"Срок вклада закончился вчера, а основная сумма не вернулась на текущий счёт. Прошу найти перевод.",client_voice,https://client-voice.example.invalid/reviews/PLV1-0001,"{""product_line"": ""deposits"", ""criticality"": ""high""}"
+PLV1-0105,2026-10-05T18:00:00+03:00,review_portal,На странице страховки нельзя загрузить дополнительный документ к уже созданному заявлению.,feedback_board,https://feedback-board.example.invalid/reviews/PLV1-0105,"{""product_line"": ""insurance"", ""criticality"": ""medium""}"
+PLV1-0141,2026-10-07T06:00:00+03:00,review_portal,"Ответ поддержки содержит только общую ссылку, хотя я приложил снимок конкретной ошибки.",client_voice,https://client-voice.example.invalid/reviews/PLV1-0141,"{""product_line"": ""support"", ""criticality"": ""medium""}"

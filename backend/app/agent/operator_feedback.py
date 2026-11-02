@@ -16,8 +16,10 @@ from app.contracts.registry import validate
 from app.db.session import psycopg_dsn
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve
 from app.logging import get_logger
 from app.sim.events import dumps
+from app.sim.maintenance import MaintenanceBusy, writer, writer_lease
 
 log = get_logger(__name__)
 
@@ -64,6 +66,7 @@ def planned_priority(context: dict[str, Any], original: int) -> int:
     return min(original, priority) if isinstance(priority, int) and 1 <= priority <= 4 else original
 
 
+@writer("operator-feedback")
 async def process_feedback(conn: Any, feedback_id: int, chain: ProviderChain, profile: LLMProfile) -> bool:
     # Session-level lock переживает commit перед LLM, но освобождается при падении процесса.
     locked = (await (await conn.execute("select pg_try_advisory_lock(268,%s)", (feedback_id,))).fetchone())[0]
@@ -104,11 +107,12 @@ async def process_feedback(conn: Any, feedback_id: int, chain: ProviderChain, pr
                 (source_ar,),
             )
         ).fetchall()
+        chain, profile = await resolve(conn, rid, chain, profile, new=True)
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('operator_review',%s,%s,%s,%s,'operator-feedback-v1',%s) returning id",
-                    (rid, sid, iid, prompt_version(), sim_time),
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('operator_review',%s,%s,%s,%s,'operator-feedback-v1',%s,%s::jsonb) returning id",
+                    (rid, sid, iid, prompt_version(), sim_time, dumps(chain.role_snapshot)),
                 )
             ).fetchone()
         )[0]
@@ -193,17 +197,20 @@ async def worker(provider: Callable[[], tuple[ProviderChain, LLMProfile]], dsn: 
     # Независим от занятой очереди исходных сигналов и симуляционных часов/паузы.
     while True:
         try:
-            async with await psycopg.AsyncConnection.connect(psycopg_dsn(dsn)) as conn:
-                rows = await (
-                    await conn.execute(
-                        "select feedback_id from hitl_feedback_processing where status<>'applied' and attempts<3 and retry_at<=now() order by feedback_id limit 20"
-                    )
-                ).fetchall()
-                await conn.commit()
-                for (fid,) in rows:
-                    await process_feedback(conn, int(fid), *provider())
+            async with writer_lease("operator-feedback-poll"):
+                async with await psycopg.AsyncConnection.connect(psycopg_dsn(dsn)) as conn:
+                    rows = await (
+                        await conn.execute(
+                            "select feedback_id from hitl_feedback_processing where status<>'applied' and attempts<3 and retry_at<=now() order by feedback_id limit 20"
+                        )
+                    ).fetchall()
+                    await conn.commit()
+                    for (fid,) in rows:
+                        await process_feedback(conn, int(fid), *provider())
         except asyncio.CancelledError:
             raise
+        except MaintenanceBusy:
+            pass
         except Exception as exc:
             log.warning("operator_feedback_worker_failed", error=type(exc).__name__)
         await asyncio.sleep(2)

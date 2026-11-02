@@ -1,0 +1,350 @@
+{
+  "backend_source_revision": "7b8b6b0e57d4ef5072912984b7a4f11777737767",
+  "ui_source_revision": "097c5d8bc2ce7c22e9365824b8e71eba95f76d2e",
+  "backend_tree": "cf29ea76fd7b068f34c02a7c25da1ec8a2c882bd",
+  "base_t041": "5758e2d",
+  "maintenance_source": "2a88a680380ea9644cf2470948248e4f5344abc7",
+  "backend": {
+    "passed": 1261,
+    "skipped": 24,
+    "isolated_checkouts": 4,
+    "isolated_databases": 4,
+    "manifest_exact_union_verified": true,
+    "shard_passed": [
+      354,
+      203,
+      409,
+      295
+    ],
+    "shard_skipped": [
+      20,
+      2,
+      2,
+      0
+    ]
+  },
+  "unit": {
+    "passed": 924,
+    "skipped": 18,
+    "seconds": 23.18
+  },
+  "targeted": {
+    "scope_compatibility_passed": 50,
+    "api_durable_process_passed": 8,
+    "api_durable_process_seconds": 38.73
+  },
+  "frontend": {
+    "passed": 167,
+    "lint": "passed",
+    "typecheck": "passed"
+  },
+  "image": {
+    "passed": 75,
+    "minutes": 2.5,
+    "digest": "sha256:e6b64522051d7e1b888ad67f49f68087ed93a0018036e923fca5dd61be984210",
+    "fresh_isolated_project": true,
+    "fresh_named_volumes": true,
+    "cleanup_exit_code": 0,
+    "projection_fixture_get_only": true
+  },
+  "coverage": {
+    "tool": "stdlib trace, co_filename absolute path filter, persisted .cover counts",
+    "pytest_passed": 138,
+    "pytest_seconds": 342.19,
+    "changed": {
+      "covered": 844,
+      "statements": 968,
+      "percent": 87.19,
+      "files": {
+        "backend/app/agent/operator_feedback.py": {
+          "covered": 10,
+          "statements": 13,
+          "missing_lines": [
+            207,
+            210,
+            211
+          ]
+        },
+        "backend/app/agent/runner.py": {
+          "covered": 62,
+          "statements": 101,
+          "missing_lines": [
+            86,
+            245,
+            257,
+            258,
+            259,
+            260,
+            261,
+            262,
+            263,
+            264,
+            265,
+            266,
+            267,
+            268,
+            269,
+            270,
+            271,
+            272,
+            273,
+            274,
+            275,
+            276,
+            277,
+            279,
+            280,
+            281,
+            282,
+            283,
+            284,
+            285,
+            286,
+            287,
+            289,
+            290,
+            291,
+            292,
+            293,
+            294,
+            295
+          ]
+        },
+        "backend/app/api/_compliance_support.py": {
+          "covered": 2,
+          "statements": 2,
+          "missing_lines": []
+        },
+        "backend/app/api/compliance.py": {
+          "covered": 1,
+          "statements": 5,
+          "missing_lines": [
+            225,
+            280,
+            281,
+            282
+          ]
+        },
+        "backend/app/api/engine.py": {
+          "covered": 1,
+          "statements": 1,
+          "missing_lines": []
+        },
+        "backend/app/api/ingest.py": {
+          "covered": 1,
+          "statements": 3,
+          "missing_lines": [
+            138,
+            279
+          ]
+        },
+        "backend/app/api/scenarios.py": {
+          "covered": 1,
+          "statements": 2,
+          "missing_lines": [
+            111
+          ]
+        },
+        "backend/app/api/setup.py": {
+          "covered": 1,
+          "statements": 2,
+          "missing_lines": [
+            445
+          ]
+        },
+        "backend/app/api/signals.py": {
+          "covered": 3,
+          "statements": 3,
+          "missing_lines": []
+        },
+        "backend/app/api/sim.py": {
+          "covered": 24,
+          "statements": 25,
+          "missing_lines": [
+            170
+          ]
+        },
+        "backend/app/bench/service.py": {
+          "covered": 2,
+          "statements": 3,
+          "missing_lines": [
+            275
+          ]
+        },
+        "backend/app/config.py": {
+          "covered": 1,
+          "statements": 1,
+          "missing_lines": []
+        },
+        "backend/app/demo/execution.py": {
+          "covered": 9,
+          "statements": 20,
+          "missing_lines": [
+            587,
+            588,
+            602,
+            603,
+            604,
+            605,
+            606,
+            607,
+            608,
+            609,
+            611
+          ]
+        },
+        "backend/app/ingest/sources.py": {
+          "covered": 10,
+          "statements": 17,
+          "missing_lines": [
+            160,
+            161,
+            162,
+            163,
+            164,
+            165,
+            166
+          ]
+        },
+        "backend/app/main.py": {
+          "covered": 128,
+          "statements": 129,
+          "missing_lines": [
+            125
+          ]
+        },
+        "backend/app/public_chat.py": {
+          "covered": 2,
+          "statements": 2,
+          "missing_lines": []
+        },
+        "backend/app/sim/baseline.py": {
+          "covered": 117,
+          "statements": 126,
+          "missing_lines": [
+            244,
+            245,
+            247,
+            273,
+            327,
+            398,
+            399,
+            400,
+            401
+          ]
+        },
+        "backend/app/sim/baseline_contract.py": {
+          "covered": 26,
+          "statements": 26,
+          "missing_lines": []
+        },
+        "backend/app/sim/baseline_llm.py": {
+          "covered": 42,
+          "statements": 42,
+          "missing_lines": []
+        },
+        "backend/app/sim/engine.py": {
+          "covered": 3,
+          "statements": 3,
+          "missing_lines": []
+        },
+        "backend/app/sim/maintenance.py": {
+          "covered": 248,
+          "statements": 266,
+          "missing_lines": [
+            95,
+            97,
+            98,
+            102,
+            120,
+            121,
+            141,
+            157,
+            162,
+            177,
+            231,
+            232,
+            233,
+            234,
+            240,
+            241,
+            242,
+            260
+          ]
+        },
+        "backend/app/sim/maintenance_control.py": {
+          "covered": 70,
+          "statements": 70,
+          "missing_lines": []
+        },
+        "backend/app/sim/maintenance_db.py": {
+          "covered": 56,
+          "statements": 61,
+          "missing_lines": [
+            39,
+            62,
+            63,
+            74,
+            75
+          ]
+        },
+        "backend/app/sim/twins.py": {
+          "covered": 22,
+          "statements": 43,
+          "missing_lines": [
+            72,
+            73,
+            75,
+            76,
+            77,
+            80,
+            82,
+            83,
+            84,
+            85,
+            86,
+            87,
+            88,
+            90,
+            91,
+            94,
+            96,
+            98,
+            100,
+            101,
+            102
+          ]
+        },
+        "backend/app/stt/live.py": {
+          "covered": 2,
+          "statements": 2,
+          "missing_lines": []
+        }
+      }
+    },
+    "raw_count_recovery": "Postprocessor cwd corrected from persisted raw .cover files; source line0 omitted"
+  },
+  "checks": {
+    "ruff_format_files": 355,
+    "mypy_files": 253,
+    "schemas": 44,
+    "openapi_paths": 161,
+    "drift_routes": 191,
+    "licenses_distributions": 548,
+    "i18n_keys": 1616,
+    "generated_ts_fresh": true
+  },
+  "required_human_review": [
+    "OpenAPI1.5.17",
+    "T0410012 checkpoint schema and ownership",
+    "node effects + checkpoint money/HITL atomicity",
+    "maintenance control volume/config and reset boundary"
+  ],
+  "limitations": [
+    "one main process",
+    "no arbitrary admin SQL coordination",
+    "no concurrent destructive seed/main claim",
+    "SDK/P1 not composed into this source"
+  ],
+  "date": "2026-11-02"
+}

@@ -38,7 +38,7 @@ export const useWs = create<WsState>((set) => ({
     }),
 }))
 
-export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo', 'bench', 'clients', 'metrics'] as const
+export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl', 'tasks', 'sim', 'runs', 'escalations', 'tickets', 'compliance', 'ingest', 'feed', 'abs', 'demo', 'bench', 'clients', 'metrics', 'db'] as const
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
@@ -48,7 +48,8 @@ export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
   notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
   tasks: [['trace'], ['journey'], ['tasks'], ['client360']],
-  runs: [['sim-runs'], ['sim-state'], ['metrics'], ['client360'], ['trace']],
+  db: [['db']],
+  runs: [['db'], ['sim-runs'], ['sim-state'], ['metrics'], ['client360'], ['trace']],
   clients: [['journey'], ['clients'], ['client360']],
   metrics: [['journey'], ['metrics']],
   escalations: [['journey'], ['escalations'], ['tickets'], ['incidents']],
@@ -95,7 +96,7 @@ export function connectWs(qc: QueryClient): () => void {
       backoff = 1000
       useWs.getState().setStatus('open')
       ws.send(JSON.stringify({ type: 'subscribe', topics: [...TOPICS] }))
-      for (const key of ['journey', 'signals', 'agent', 'metrics', 'sim-state']) void qc.invalidateQueries({ queryKey: [key] })
+      for (const key of ['journey', 'signals', 'agent', 'metrics', 'sim-state', 'db']) void qc.invalidateQueries({ queryKey: [key] })
     }
     ws.onmessage = (ev) => {
       let m: WsMessage

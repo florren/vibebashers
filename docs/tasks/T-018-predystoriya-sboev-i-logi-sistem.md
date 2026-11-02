@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Сбои за 14 дней с каузальной связью к операциям и логам, включая регрессии после фиксов.
@@ -32,9 +32,9 @@
 4. Сид событий fault.* в sim_events за прошлое (для ленты и графа).
 
 ## Критерии приёмки
-- [ ] Каждая failed-операция во время сбоя ссылается на fault_id.
-- [ ] По любому сбою get_system_logs возвращает ≥ 3 ERROR-записи в окне.
-- [ ] Валидация событий по схемам проходит.
+- [x] Каждая failed-операция во время сбоя ссылается на fault_id.
+- [x] По любому сбою get_system_logs возвращает ≥ 3 ERROR-записи в окне.
+- [x] Валидация событий по схемам проходит.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -43,4 +43,64 @@ python scripts/seed/faults.py --profile lite --check
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Реализовано в codex/T-018-fault-history от main 4a01734 с обычным merge
+T-017 e1c6c1 (ca00d2f). Генератор scripts/seed/faults.py вызывается после
+operations и до signals: 14 последовательных 24-часовых окон, 2–4 сбоя в сутки,
+10–240 минут, регион/вся страна. Меняется только fault_id совпавших failed
+операций (run/system/code/time/region); статусы, ошибки, суммы и даты T-017
+сохранены. operations.py/clients.py, контракты и финансовые/HITL правила не менялись.
+
+Есть INFO-фон, WARN/ERROR/FATAL и реальные request logs, counts по связанным
+операциям/клиентам, валидные started/resolved events. Инструмент get_system_logs
+исправлен на контрактные uppercase levels и baseline+current scope с исключением
+других free/scenario/live runs. UUID5 namespace фиксирован; события одного fault
+имеют общий correlation, повтор после очистки с тем же seed/ID воспроизводим.
+Идемпотентность/rollback и точный reset-marker prefix проверены на реальном CLI.
+
+**Граница T-020 открыта:** 10–15% — только regression candidates, не реальные
+регрессии. finalize_regressions атомарно проверяет настоящие incident/release
+bindings одного run, другую систему и задержку 1–4 часа, затем заполняет FK и
+создаёт валидное событие; повтор идемпотентен. В seed demo пять кандидатов из 41,
+реальных регрессий пока 0. Поэтому общий статус не отмечен done.
+
+Проверки в отдельной cx_fault_history_revision, без рабочих БД и внешних LLM:
+полный первичный integration 223 passed/4 skipped (869.63s), compliance 31 passed;
+после follow-up полный unit 815 passed/18 skipped (26.42s), повтор затронутых
+integration/agent/trace и ВСЕХ scenarios 70 passed/2 skipped (253.07s).
+Frontend 144 passed, eslint/tsc; ruff/format 324 files, mypy 242 files,
+contracts 44 schemas/161 paths, drift 191/191 и licenses 526 distributions green.
+Stdlib trace: новый faults.py 88%; все 4 изменённые строки get_system_logs
+исполнены реальными DB-проверками (100%). Новых зависимостей нет.
+
+Первичный scenarios выявил честный replay miss из-за T-017 bank-context drift.
+Общий immutable replay_bank_v1 fixture с source hash 174508… сохранён для
+replay08 и trace12/13; отдельный тест проверяет changed-seed→honest miss.
+Исходные completed/replay/ledger/client_lane assertions сохранены; кассеты,
+ответы и usage не менялись. Доказательство относится к старому contract.
+Отдельный T-014 gap ANTIFRAUD-FALSE-BLOCK/regex не скрыт: T-018 использует
+8 утверждённых failure_codes, а не заявляет валидацию всех 25 fault codes.
+Новый common.schema пока не включён и требует отдельного review/нового разрешённого
+реального record; совместимость со stale кассетами не заявляется.
+
+Полный demo5000 (T-017+T-018), включая dump: 21.799s, операций 600000,
+failed 5910, связанных 218, сбоев 41, ERROR logs 341. Это измерение локального
+shared PostgreSQL 16 testcontainer, не обещание времени другого runner.
+[Машинный отчёт](../reviews/T-018-demo5000.json); семантика — data/README.md.
+Финальный required CI/merge выполняет основной агент; T-020 ещё должен завершить
+реальную историческую регрессию. Поэтому общий DoD checkbox оставлен открытым.
+
+Повтор после обычного merge T-017 b97b287: полный backend в четырёх изолированных
+checkout/БД — 1272 passed, 24 skipped; aggregate проверил одинаковый revision,
+точное объединение collection и отсутствие потерь. Затронутые scenarios/agent/
+trace/финансовые fixtures — 89 passed, 2 skipped (358.50s); frontend 144 passed.
+Исходные assertions сохранены. Финансовые исправления получены только обычным
+merge зависимости T-017, без новых policy-правок в T-018.
+
+### Проверка с актуальным T-042/main
+
+Новый исторический след добавил74baseline fault events; прежняя CSV-фикстура
+T-042 ошибочно предполагала пустую sim_events и ожидала1001 вместо1075.
+Теперь тест сначала сверяет экспорт всей исходной истории с реальным count,
+затем очищает только собственные тестовые baseline events для контролируемых1001строк.
+Все исходные assertions CSV escaping/pagination/run isolation/read-only сохранены.
+Targeted1PG passed6.03s; runtime/export не изменялся. Полный текущий CI повторяется.

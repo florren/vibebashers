@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -11,20 +10,29 @@ from pydantic import BaseModel, Field
 from app.agent.comparison import guard_jury_rate, mock_comparison
 from app.api._compliance_support import run_context
 from app.api.common import agent_service, db, fetch_all, fetch_one, page, resolve_run_id
+from app.corpus.reviews import project_platform
 from app.ingest.normalizer import IngestError, create_signal, from_api_signal
 from app.search.cases import case_search
+from app.sim.maintenance import spawn_writer
 from app.trace.store import allowed_run
 
 router = APIRouter(tags=["signals"])
 
 SIGNAL_SQL = (
-    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, coalesce(s.meta->'tags','[]'::jsonb) as tags, s.classification, s.sentiment, s.geo, s.run_id, rs.public_id as run_public_id, "
+    "select s.id, s.public_id, s.channel_code, s.channel_subtype, s.external_contact, s.text, s.received_sim, s.status, s.origin, s.meta->>'source_platform' as _source_platform_code, coalesce(s.meta->'tags','[]'::jsonb) as tags, s.classification, s.sentiment, s.geo, s.run_id, rs.public_id as run_public_id, "
     "coalesce(c.region_code, s.geo->>'region_code') as region_code, "
     "case when c.id is null then null else jsonb_build_object('id', c.id, 'public_id', c.public_id, 'display_name', c.display_name, 'segment_code', c.segment_code, 'region_code', c.region_code, 'city_name', ci.name_ru, 'churn_risk', c.churn_risk, 'is_active', c.is_active) end as client, "
     "coalesce((select array_agg(isg.incident_id order by isg.incident_id) from incident_signals isg where isg.signal_id = s.id), '{}') as incident_ids, "
     "coalesce((select array_agg(i.public_id order by i.id) from incident_signals x join incidents i on i.id=x.incident_id and i.run_id=s.run_id where x.signal_id=s.id), '{}') as incident_refs "
     "from signals s left join sim_runs rs on rs.id=s.run_id left join clients c on c.id = s.client_id left join cities ci on ci.id = c.city_id"
 )
+
+
+def project_signal(row: dict[str, Any]) -> dict[str, Any]:
+    """Публикуем только catalog-поля, никогда пользовательский meta/source_url."""
+    result = dict(row)
+    result["source_platform"] = project_platform(result.pop("_source_platform_code", None))
+    return result
 
 
 @router.get("/api/signals", summary="Лента сигналов с фильтрами")
@@ -84,7 +92,7 @@ async def get_signals(
             f"{cte}{SIGNAL_SQL} where {' and '.join(where)} order by s.id desc limit %s",
             [*search_args, *args, limit],
         )  # noqa: S608
-    return page(rows, limit)
+    return page([project_signal(row) for row in rows], limit)
 
 
 class SignalCreate(BaseModel):
@@ -117,7 +125,7 @@ async def post_signals(request: Request, body: SignalCreate) -> Any:
     comparison_id = None
     if body.compare_with_mock:
         async with mock_comparison(int(res["signal_id"])) as comparison:
-            compare_task = asyncio.create_task(comparison.run())
+            compare_task = spawn_writer(comparison.run(), kind="comparison")
             try:
                 await svc.submit(int(res["signal_id"]))
             finally:
@@ -200,7 +208,7 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
         )
         runs = await fetch_all(
             conn,
-            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
+            "select ar.id, ar.kind, ar.signal_id, 'default' as llm_profile_code, ar.prompt_version, ar.outcome, ar.status, ar.interrupted_at, ar.needed_human, ar.total_tokens, ar.total_latency_ms, ar.started_at, ar.finished_at, (select node from agent_steps st where st.run_id = ar.id order by seq desc limit 1) as current_node from agent_runs ar where ar.signal_id = %s order by ar.id",
             (id,),
         )
         notifications = await fetch_all(
@@ -212,7 +220,7 @@ async def get_signals_id(request: Request, id: int) -> Any:  # noqa: A002
             conn, "select id, wake_sim, reason, status from followups where signal_id = %s order by id", (id,)
         )
     return {
-        **row,
+        **project_signal(row),
         "decision": (decision or {}).get("decision"),
         "incidents": incidents,
         "agent_runs": runs,

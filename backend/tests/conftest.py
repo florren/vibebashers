@@ -8,6 +8,19 @@ os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("LLM_PROVIDER", "mock")
 
 
+@pytest.fixture(autouse=True)
+def isolated_maintenance_control(tmp_path_factory, monkeypatch):
+    """Готовый store каждого теста; bootstrap/crash тесты меняют только свой marker."""
+    from app.config import get_settings
+    from app.sim.maintenance_control import MaintenanceControl
+
+    monkeypatch.setenv("MAINTENANCE_CONTROL_DIR", str(tmp_path_factory.mktemp("maintenance-control")))
+    get_settings.cache_clear()
+    MaintenanceControl().write("idle")
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def replay_bank(migrated_db, monkeypatch):
     """Общий неизменный synthetic bank записанной кассеты; это не текущий seed."""
@@ -22,7 +35,7 @@ def replay_bank(migrated_db, monkeypatch):
 
     from app.contracts.registry import deref
     from app.llm.base import normalize_messages
-    from app.replay.store import request_hash
+    from app.replay.store import CassetteStore, request_hash
 
     root = Path(__file__).resolve().parents[2]
     monkeypatch.syspath_prepend(str(root))
@@ -35,13 +48,18 @@ def replay_bank(migrated_db, monkeypatch):
         if json.loads(line)["request_hash"] == fixture["source_request_hash"]
     )
     assert normalize_messages(record["messages"]) == record["messages"]
-    assert (
-        request_hash(record["provider"], record["model"], record["messages"], deref("agent/instant_decision"))
-        == fixture["source_request_hash"]
-    ), "recorded bank требует актуальную реально записанную schema; rekey запрещён"
+    schema = deref("agent/instant_decision")
+    current_hash = request_hash(record["provider"], record["model"], record["messages"], schema)
+    # Historical hash остаётся provenance; текущая schema требует настоящий новый ответ.
+    current = CassetteStore(root / "data/cassettes").get(
+        record["provider"], record["model"], record["messages"], schema
+    )
+    assert current is not None and current["request_hash"] == current_hash, (
+        "recorded bank требует актуальную реально записанную schema; rekey запрещён"
+    )
     dsn = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(dsn, autocommit=True) as conn:
-        conn.execute("drop schema public cascade; create schema public")
+        conn.execute("drop schema if exists langgraph cascade; drop schema public cascade; create schema public")
     applied = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=root / "backend",

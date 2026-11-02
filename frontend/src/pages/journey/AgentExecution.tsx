@@ -1,3 +1,4 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { GraphView } from '@/pages/engine/GraphView'
@@ -105,7 +106,7 @@ export function AgentExecution({
       )}
       {run && (
         <p className="mb-3 text-sm" role="status">
-          {t('journeyLive.execution')}: {t(`engine.outcome.${run.outcome ?? 'running'}`)}
+          {t('journeyLive.execution')}: {t(`engine.outcome.${agentRunStatus(run)}`)}
         </p>
       )}
       {graph.isError && <ErrorBox error={graph.error} compact />}
@@ -128,6 +129,7 @@ export function AgentExecution({
             visited={visited}
             current={current}
             outcome={run?.outcome ?? null}
+            executionStatus={agentRunStatus(run)}
             failed={new Set(steps.filter((s) => s.status === 'error' && steps.filter((other) => other.node === s.node).at(-1) === s).map((s) => s.node ?? ''))}
           />
         </div>

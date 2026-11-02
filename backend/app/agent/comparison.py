@@ -159,7 +159,7 @@ async def mock_comparison(signal_id: int) -> AsyncIterator[MockComparison]:
             try:
                 deps = await load_deps(
                     reader,
-                    chain=ProviderChain([MockProvider()]),
+                    chain=ProviderChain([MockProvider()], offline_mode="mock"),
                     profile=MOCK_PROFILE,
                     run_id=int(signal["run_id"]),
                     agent_run_id=run_id,
@@ -233,7 +233,7 @@ async def compare_classifications(
 ) -> tuple[tuple[dict[str, Any], int], tuple[dict[str, Any], int]]:
     results = await asyncio.gather(
         _classification(text, channel, client_id, profile, chain),
-        _classification(text, channel, client_id, MOCK_PROFILE, ProviderChain([MockProvider()])),
+        _classification(text, channel, client_id, MOCK_PROFILE, ProviderChain([MockProvider()], offline_mode="mock")),
         return_exceptions=True,
     )
     # Оба диагностических запуска должны завершить аудит до ответа с ошибкой.
