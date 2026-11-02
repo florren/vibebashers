@@ -169,7 +169,7 @@ def test_inconsistent_sticky_state_rejected() -> None:
         apply(communication(), weights={"tone": 1.0})
 
 
-@pytest.mark.parametrize("status", ["queued", "failed", "suppressed"])
+@pytest.mark.parametrize("status", ["queued", "failed", "suppressed", "unknown"])
 def test_unsent_delivery_status_cannot_credit_message_or_gift(status) -> None:
     assert apply(communication(delivery_status=status)).state == EMPTY
     gift = GiftEvidence(1, AT, "bonus_points", True, True, status, 0.7)

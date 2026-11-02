@@ -110,17 +110,44 @@ class HazardDecision:
     triggered: bool
 
 
-def hazard(params: PsychotypeParams, policy: BehaviorPolicy, snapshot: Snapshot, *, repeat: float) -> float:
-    """Точная формула ТЗ 4.5. Raw hazard не обрезается под контракт [0,1]."""
+def complaint_timing(params: PsychotypeParams, at: dt.datetime, rng: SimRng) -> tuple[dt.datetime | None, bool]:
+    """Один первичный выбор и catalog delay; caller проверяет durable receipt заранее."""
+    if at.utcoffset() is None:
+        raise ValueError("aware timestamp required")
+    if rng.random() < params.p_complain:
+        lo, hi = (item.root for item in params.complain_delay_min)
+        return at + dt.timedelta(minutes=rng.randint(lo, hi)), False
+    return None, rng.random() < params.silent_decline_prob
+
+
+def draw_repeat(params: PsychotypeParams, rng: SimRng) -> ClientState | None:
+    if rng.random() >= params.repeat_prob:
+        return None
+    return ClientState.ESCALATES if rng.random() < params.escalation_prob else ClientState.ASKS_AGAIN
+
+
+def hazard_score(params: PsychotypeParams, segment_multiplier: float, snapshot: Snapshot, *, repeat: float) -> float:
+    """Точная формула ТЗ 4.5 без стратегии care и без обрезания raw score."""
+    if (
+        isinstance(segment_multiplier, bool)
+        or not isinstance(segment_multiplier, (int, float))
+        or not math.isfinite(segment_multiplier)
+        or segment_multiplier < 0
+    ):
+        raise ValueError("segment_multiplier must be finite and nonnegative")
     if not isinstance(repeat, (int, float)) or not math.isfinite(repeat) or repeat < 0:
         raise ValueError("repeat must be explicit, finite and nonnegative")
     return (
         params.base_churn_hazard
-        * policy.segment_multiplier
+        * segment_multiplier
         * (1 + 0.5 * repeat)
         * (1 + 0.8 * snapshot.sla_breached)
         * (1 - params.care_sensitivity * snapshot.care_score)
     )
+
+
+def hazard(params: PsychotypeParams, policy: BehaviorPolicy, snapshot: Snapshot, *, repeat: float) -> float:
+    return hazard_score(params, policy.segment_multiplier, snapshot, repeat=repeat)
 
 
 class BehaviorModel:
@@ -147,13 +174,7 @@ class BehaviorModel:
         if previous.state not in (ClientState.CALM, ClientState.SATISFIED, ClientState.RETAINED):
             raise ValueError("affected episode must be deduplicated before model invocation")
         current = replace(previous, state=ClientState.AFFECTED)
-        due = None
-        silent = False
-        if rng.random() < self.params.p_complain:
-            lo, hi = (item.root for item in self.params.complain_delay_min)
-            due = at + dt.timedelta(minutes=rng.randint(lo, hi))
-        else:
-            silent = rng.random() < self.params.silent_decline_prob
+        due, silent = complaint_timing(self.params, at, rng)
         return ComplaintDecision(Transition(previous, current, "fault"), due, silent)
 
     def complaint_due(self, previous: Snapshot) -> Transition:
@@ -176,9 +197,9 @@ class BehaviorModel:
 
     def repeat(self, previous: Snapshot, rng: SimRng) -> Transition:
         self._require(previous, (ClientState.WAITING,))
-        if rng.random() >= self.params.repeat_prob:
+        state = draw_repeat(self.params, rng)
+        if state is None:
             return Transition(previous, previous, "timer")
-        state = ClientState.ESCALATES if rng.random() < self.params.escalation_prob else ClientState.ASKS_AGAIN
         return Transition(previous, replace(previous, state=state, repeat_count=previous.repeat_count + 1), "timer")
 
     def sla_tick(self, previous: Snapshot, rng: SimRng, *, repeat: float) -> HazardDecision:

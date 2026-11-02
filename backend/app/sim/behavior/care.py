@@ -15,8 +15,8 @@ from decimal import ROUND_HALF_UP, Decimal
 from types import MappingProxyType
 from typing import Literal
 
-DeliveryStatus = Literal["queued", "sent", "delivered", "failed", "suppressed"]
-_DELIVERY_STATUSES = frozenset({"queued", "sent", "delivered", "failed", "suppressed"})
+DeliveryStatus = Literal["queued", "sent", "delivered", "failed", "suppressed", "unknown"]
+_DELIVERY_STATUSES = frozenset({"queued", "sent", "delivered", "failed", "suppressed", "unknown"})
 
 COMPONENTS = frozenset({"proactive", "speed", "sla", "gift_fit", "tone", "explanation"})
 

@@ -69,3 +69,21 @@ approved_by=user_in_chat, approved_date и values-only scope; enabled=false.
 тех же значений не требуется. Следуют typed components/result, durable writer и
 Twin reconciliation. Неполная реализация не активируется; новые контракты — после
 конкретного final review. Другие денежные defaults/live Telegram не разрешались.
+
+
+### 02.11.2026: durable owner, ещё без actor activation
+
+Реализованы transactional BehaviorStore/BehaviorOwner, strict component codec,
+immutable pinned policy/params, фактические notification/SLA/resolution/Twin
+adapters, durable evidence/receipts/work/tick receipts. SQL — только
+[review proposal](../reviews/T-161-storage-proposal.sql), не actual Alembic 0017.
+Собственная scratch DB на actual 0014: 99 pure + 13 actual PG = **112 passed**,
+exact-file module line coverage **90.85%**; Ruff/mypy green. Отчёт и ограничения:
+[T-161 durable checkpoint](../reviews/T-161-durable-owner-checkpoint.md).
+
+Policy значения уже одобрены; прежние требования повторного value approval выше
+описывают историю checkpoints. enabled=false/неподключённый actor сохраняются.
+До завершения нужны actual 0015/0016→0017 composition, единый writer с agent,
+исправление временной fault причинности в World, явное churn_risk отображение,
+tick/RNG adapter, OS restart/archive/baseline/full-suite proof. Новых денежных
+правил, выдачи подарков, внешнего LLM/TG и production DB операций нет.
