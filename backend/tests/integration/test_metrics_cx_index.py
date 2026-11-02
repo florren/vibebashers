@@ -142,3 +142,112 @@ async def test_current_is_not_baseline_or_all_and_missing_pointer_is_empty(cx_db
         assert all(c.complete_value is None for c in empty["components"].values())
     finally:
         sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (pointer,))
+
+
+@pytest.fixture(scope="module")
+def cabinet_db(cx_db):
+    # Existing native SlaEngine fixture получает ту же БД без повторного rebuild.
+    return cx_db
+
+
+from tests.integration.test_cabinet_report import native_sla_case as native_sla_case  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        "current",
+        "foreign",
+        "closed",
+        "reopened",
+        "release",
+        "same_clock",
+        "changed_deadline",
+        "missing_stage",
+        "overdue",
+    ],
+)
+def test_native_registered_sla_scope_lifecycle_and_unknown(cx_db, sql, native_sla_case, state, monkeypatch):
+    import asyncio
+
+    from app.agent.tools.base import ToolContext
+    from app.agent.tools.write import update_incident
+    from app.analytics.cx_index_reader import sla_facts
+    from app.sim.events import EventBus
+
+    case = native_sla_case
+
+    async def transition():
+        async with await psycopg.AsyncConnection.connect(cx_db.replace("postgresql+psycopg:", "postgresql:")) as conn:
+            ctx = ToolContext(
+                conn,
+                run_id=case["run"],
+                agent_run_id=case["agent"],
+                sim_time=case["now"] + dt.timedelta(minutes=1),
+                llm_source="mock",
+            )
+            if state in ("closed", "reopened"):
+                await update_incident(ctx, case["incident"], "resolved", "T256: завершение fixture стадии")
+                ctx.sim_time += dt.timedelta(minutes=1)
+                await update_incident(
+                    ctx,
+                    case["incident"],
+                    "closed" if state == "closed" else "in_progress",
+                    "T256: следующая fixture стадия",
+                )
+            elif state == "same_clock":
+                ctx.sim_time = case["now"]
+                await update_incident(ctx, case["incident"], "fix_proposed", "T256: fixture стадия")
+                await update_incident(ctx, case["incident"], "in_progress", "T256: fixture возврат")
+            elif state == "foreign":
+                await EventBus(conn).emit(case["foreign"], "sla.warning", case["payload"], ctx.sim_time)
+
+    asyncio.run(transition())
+    if state == "release":
+        sql.execute(
+            "INSERT INTO team_actions(run_id,incident_id,team_code,action,action_sim) VALUES(%s,%s,'team_deposits','release',%s)",
+            (case["run"], case["incident"], case["now"] + dt.timedelta(minutes=1)),
+        )
+    if state == "changed_deadline":
+        sql.execute("UPDATE incidents SET sla_due_sim=sla_due_sim+interval '1 hour' WHERE id=%s", (case["incident"],))
+    if state == "missing_stage":
+        sql.execute("DELETE FROM incident_status_history WHERE incident_id=%s", (case["incident"],))
+    if state == "overdue":
+        sql.execute(
+            "UPDATE incidents SET sla_due_sim=%s WHERE id=%s", (case["now"] - dt.timedelta(seconds=1), case["incident"])
+        )
+    sql.execute("UPDATE sim_state SET sim_time=%s WHERE id=1", (case["now"] + dt.timedelta(minutes=3),))
+
+    async def bomb(*args, **kwargs):
+        raise AssertionError("SLA reader must not invoke monetary writers or LLM")
+
+    monkeypatch.setattr("app.economics.dcltv.compute_incident", bomb)
+    monkeypatch.setattr("app.llm.failover.ProviderChain.complete_structured", bomb)
+
+    async def observed():
+        async with await psycopg.AsyncConnection.connect(
+            cx_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+        ) as conn:
+            await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            return await sla_facts(conn, await metrics_scope(conn, str(case["run"])))
+
+    before = fingerprint(sql)
+    facts = asyncio.run(observed())
+    assert facts["basis"] == "registered_sla_risk" and facts["forecast_complete"] is False
+    component = facts["component"]
+    if state == "closed":
+        assert facts["registered_count"] == 0 and component.value == 0 and component.known == component.total == 0
+    elif state in ("current", "foreign", "overdue"):
+        assert (
+            facts["registered_count"] == 1
+            and component.complete_value == 100
+            and component.known == component.total == 1
+        )
+    else:
+        assert (
+            facts["registered_count"] == 0
+            and component.complete_value is None
+            and component.known == 0
+            and component.total == 1
+        )
+    assert before == fingerprint(sql)

@@ -85,6 +85,19 @@ async def patch_settings(body: dict[str, Any]) -> Response:
         raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
     if "setup_payload" in body:
         validate_setup_llm(body["setup_payload"])
+    if "cx_index" in body:
+        from app.analytics.cx_index import validated_weights
+
+        config = body["cx_index"]
+        if not isinstance(config, dict):
+            raise Problem(422, "cx_index должен быть объектом")
+        if "weights" in config:
+            try:
+                validated_weights(config["weights"])
+            except ValueError as exc:
+                raise Problem(
+                    422, "cx_index.weights: четыре явных конечных неотрицательных веса, хотя бы один положительный"
+                ) from exc
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in body.items():

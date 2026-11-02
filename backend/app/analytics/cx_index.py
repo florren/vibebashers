@@ -35,7 +35,7 @@ class Observation:
 
 def validated_weights(value: object) -> dict[str, float]:
     """Граница settings: четыре явных finite coefficients, без тихой нормировки."""
-    if not isinstance(value, Mapping) or set(value) != set(COMPONENTS):
+    if not isinstance(value, Mapping) or len(value) != len(COMPONENTS) or any(key not in value for key in COMPONENTS):
         raise ValueError("Нужны ровно четыре явных веса CX")
     result: dict[str, float] = {}
     for key in COMPONENTS:

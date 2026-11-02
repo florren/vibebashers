@@ -115,3 +115,93 @@ def test_settings_weights_do_not_normalize_explicit_coefficients():
     configured = {key: 1 for key in COMPONENTS}
     assert validated_weights(configured) == configured
     assert configured == {key: 1 for key in COMPONENTS}
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("fresh", False),
+        ("warning", True),
+        ("overdue", True),
+        ("missing_stage", None),
+        ("mismatch", None),
+        ("future_stage", None),
+        ("release", None),
+        ("reopen", None),
+        ("stale_warning", None),
+        ("same_clock", None),
+    ],
+)
+def test_registered_sla_current_lifecycle_is_not_an_exhaustive_forecast(case, expected):
+    import datetime as dt
+
+    from app.analytics.cx_index_reader import registered_sla_risk
+
+    now = dt.datetime(2026, 11, 9, 9, tzinfo=dt.UTC)
+    row = {
+        "status": "in_progress",
+        "stage_status": "in_progress",
+        "stage_sim": now - dt.timedelta(hours=2),
+        "sla_due_sim": now + dt.timedelta(hours=1),
+    }
+    if case in ("warning", "stale_warning", "same_clock"):
+        row.update(warning_event_id=1, warning_sim=now - dt.timedelta(minutes=30), warning_due_sim=row["sla_due_sim"])
+    if case == "overdue":
+        row["sla_due_sim"] = now - dt.timedelta(seconds=1)
+    if case == "missing_stage":
+        row["stage_sim"] = None
+    if case == "mismatch":
+        row["stage_status"] = "new"
+    if case == "future_stage":
+        row["stage_sim"] = now + dt.timedelta(seconds=1)
+    if case == "release":
+        row["release_sim"] = now - dt.timedelta(minutes=10)
+    if case == "reopen":
+        row["reopened_sim"] = now - dt.timedelta(minutes=10)
+    if case == "stale_warning":
+        row["stage_sim"] = now - dt.timedelta(minutes=10)
+    if case == "same_clock":
+        row["stage_sim"] = row["warning_sim"]
+    assert registered_sla_risk(row, now) is expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stored,source",
+    [
+        (None, "tz_default"),
+        ({"value": {}}, "tz_default"),
+        ({"value": {"weights": dict(DEFAULT_WEIGHTS)}}, "configured"),
+        ({"value": {"weights": None}}, "invalid"),
+        ({"value": {"weights": "private-invalid-sentinel"}}, "invalid"),
+        ({"value": True}, "invalid"),
+    ],
+)
+async def test_settings_defaults_only_when_absent_and_never_echo_bad_values(monkeypatch, stored, source):
+    from app.analytics import cx_index_reader
+
+    async def fetch(*args, **kwargs):
+        return stored
+
+    monkeypatch.setattr(cx_index_reader, "fetch_one", fetch)
+    result = await cx_index_reader.weights_config(None)
+    assert result["source"] == source
+    assert (result["weights"] is None) == (source == "invalid")
+    assert "private-invalid-sentinel" not in str(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "config", [None, [], {"weights": None}, {"weights": {"sla": 0.2}}, {"weights": {**DEFAULT_WEIGHTS, "sla": True}}]
+)
+async def test_bad_settings_patch_rejected_before_database(monkeypatch, config):
+    from app.api import settings
+    from app.errors import Problem
+
+    def bomb(*args, **kwargs):
+        raise AssertionError("invalid config must be rejected before DB")
+
+    monkeypatch.setattr(settings, "db", bomb)
+    with pytest.raises(Problem) as error:
+        await settings.patch_settings({"cx_index": config})
+    assert error.value.status == 422
