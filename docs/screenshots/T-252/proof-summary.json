@@ -1,0 +1,32 @@
+{
+  "sourceRevision": "18ad9fd0f8f054ae7fc371bfce06a3f531b342dc",
+  "before": {
+    "sim_time": "2026-11-09T08:29:36.337000+00:00",
+    "speed": 60
+  },
+  "after": {
+    "sim_time": "2026-11-09T08:38:06.337000+00:00",
+    "speed": 60
+  },
+  "naturalRunningTicks": 9,
+  "changedAfterMs": 108.66155900000012,
+  "defaultGeoCalls": 0,
+  "pageErrors": 0,
+  "browserExternalRequests": 0,
+  "actualApi": true,
+  "apiRouteMocks": false,
+  "providers": [
+    "mock"
+  ],
+  "roles": {
+    "main": "mock",
+    "fast": "mock",
+    "twin": "mock"
+  },
+  "nightTransition": "explicit pause + jump_to 2026-11-09T17:30:00Z; not natural night in 9 ticks",
+  "totalSimTicksIncludingCommands": 21,
+  "browserFrameSamples": 473,
+  "sampledTransitionWindowMs": 7906,
+  "minimumTextContrast": 4.500012945770761,
+  "minimumControlContrast": 3.000000215283742
+}
