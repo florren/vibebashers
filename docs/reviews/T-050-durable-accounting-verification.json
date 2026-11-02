@@ -1,0 +1,89 @@
+{
+  "runtime_source": "6c8ae266f8f1cc5aceead007c58af319c53d8714",
+  "base": "3450afe",
+  "no_live_provider_calls": true,
+  "frozen_full_attempt": {
+    "source": "bc405367ce770d0fd04ff7cff6ec488422595809",
+    "make_test_green": false,
+    "unit": {
+      "passed": 1669,
+      "skipped": 18
+    },
+    "integration": {
+      "passed": 435,
+      "skipped": 4,
+      "failed": 1,
+      "failure": "test_schema.py::test_alembic_check_no_drift",
+      "cause": "pre-release scratch wire_attempts.profile_code default drift",
+      "repaired_by": "6c8ae26"
+    },
+    "same_source_tail_targets": {
+      "scenarios": {
+        "passed": 43,
+        "skipped": 2
+      },
+      "compliance": {
+        "passed": 31
+      },
+      "frontend": {
+        "passed": 354
+      },
+      "tgbot": {
+        "passed": 43
+      }
+    }
+  },
+  "final_source_checks": {
+    "unit": {
+      "passed": 1669,
+      "skipped": 18,
+      "seconds": 49.91
+    },
+    "targeted_unit": {
+      "passed": 110
+    },
+    "schema_and_ledger": {
+      "passed": 52,
+      "seconds": 34.93
+    },
+    "lint": {
+      "passed": true,
+      "frontend_tests": 362,
+      "backend_ruff_files": 440,
+      "backend_mypy_files": 285,
+      "bot_ruff_files": 12,
+      "bot_mypy_files": 5,
+      "openapi_spec_paths": 192,
+      "openapi_code_paths": 192
+    },
+    "contracts": {
+      "schemas": 45,
+      "paths": 162
+    },
+    "license_gate": {
+      "backend_distributions": 550,
+      "tgbot_distributions": 36
+    },
+    "production_builds": [
+      "main",
+      "personal"
+    ],
+    "scoped_coverage": {
+      "tests_passed": 413,
+      "seconds": 342.79,
+      "covered_statements": 1100,
+      "changed_executable_statements": 1193,
+      "percent": 92.2,
+      "report": "T-050-durable-accounting-coverage.json",
+      "tracing": "stdlib sys.settrace + threading.settrace; changed executable statements relative to 3450afe; isolated checkout and scratch DB"
+    }
+  },
+  "final_exact_head_ci": "pending_parent_publication",
+  "human_api_ddl_budget_review": "required_before_merge",
+  "task_status": "in_progress",
+  "remaining_packets": [
+    "queue20s / limiter lock",
+    "main -> fast -> mock fallback policy"
+  ],
+  "ui_proof": "screenshots/T-050/proof.json"
+}
