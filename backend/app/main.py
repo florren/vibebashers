@@ -34,6 +34,7 @@ from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
+from app.sim.behavior.runtime import configured_policy
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
 from app.sim.maintenance_control import ControlError, MaintenanceControl
@@ -105,7 +106,13 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
             else:
                 app.state.agent.start()
         if "twins" in components:
-            app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
+            from app.sim.behavior.runtime import configured_policy, twin_sink
+
+            app.state.twins = TwinService(
+                app.state.llm_chain,
+                app.state.llm_profile,
+                behavior_sink=twin_sink if configured_policy() is not None else None,
+            )
             app.state.twins.start()
         if "poll" in components:
             from app.ingest.sources import polling_worker
@@ -245,7 +252,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.twins = None
     app.state.runtime_components = set()
     if recovering:
-        app.state.sim = Simulator(seed=s.sim_seed)
+        app.state.sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         app.state.sim.full_execution = True
         app.state.maintenance_saved_components = (
             ({"agent", "twins", "poll", "demo", "public"} | ({"tgbot"} if s.tgbot_enabled else set()))
@@ -255,7 +262,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.maintenance_startup_recovery = True
     if not s.is_test and not recovering:
         bridge.start()
-        sim = Simulator(seed=s.sim_seed)
+        sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         sim.full_execution = True
         try:
             await sim.load_state()

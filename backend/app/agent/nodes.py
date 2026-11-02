@@ -990,6 +990,7 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         {
             "instant": {k: inst.get(k) for k in ("rule_codes", "confidence", "actions")},
             "classification_type": cls.get("signal_type"),
+            "classification_snapshot": cls,
             "churn_risk": cls.get("churn_risk"),
             "score_pipeline": SCORE_PIPELINE,
             "churn_predicted_sim": deps.ctx.sim_time.isoformat(),
@@ -1001,6 +1002,9 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         usage=meta.get("usage"),
         latency_ms=int(meta.get("latency_ms") or 0),
     )
+    from app.sim.behavior.signals import record_classified
+
+    await record_classified(deps.ctx, int(sig["id"]))
     return state
 
 
@@ -1711,6 +1715,9 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         usage=meta.get("usage"),
         latency_ms=int(meta.get("latency_ms") or 0),
     )
+    from app.sim.behavior.signals import record_classified
+
+    await record_classified(deps.ctx, int(sig["id"]))
     return state
 
 
@@ -2917,10 +2924,10 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             else "calm"
         )
         if new_state != (client.get("state") or "calm"):
-            await wt.set_client_state(
+            changed = await wt.set_client_state(
                 deps.ctx, client["client_id"], new_state, f"agent:{c['signal_type']}", sig["id"], incident_id
             )
-            mark("client_state", state=new_state)
+            mark("client_state", **{key: value for key, value in changed.items() if key != "client_id"})
     sig_status = (
         "awaiting_client"
         if d["router_action"] == "request_clarification"
@@ -2952,7 +2959,11 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         step_status,
         {"decision": {k: d.get(k) for k in ("incident_action", "router_action", "needs_human")}, "human": human},
         {"actions": actions, "signal_status": sig_status},
-        reasoning="Выполнено: " + ", ".join(a["action"] for a in actions) + ".",
+        reasoning="Выполнено: "
+        + ", ".join(
+            a["action"] + (" (evidence ожидает owner)" if a.get("status") == "pending" else "") for a in actions
+        )
+        + ".",
     )
     return state
 

@@ -1,0 +1,207 @@
+{
+  "tool": "stdlib trace; exact absolute co_filename filter, no basename ignore cache",
+  "exit": 0,
+  "covered": 1062,
+  "statements": 1169,
+  "percent": 90.85,
+  "files": {
+    "backend/app/sim/behavior/care.py": {
+      "covered": 178,
+      "statements": 190,
+      "missing": [
+        64,
+        84,
+        87,
+        97,
+        103,
+        127,
+        131,
+        144,
+        160,
+        163,
+        192,
+        194
+      ],
+      "percent": 93.68
+    },
+    "backend/app/sim/behavior/codec.py": {
+      "covered": 26,
+      "statements": 27,
+      "missing": [
+        31
+      ],
+      "percent": 96.3
+    },
+    "backend/app/sim/behavior/facts.py": {
+      "covered": 104,
+      "statements": 108,
+      "missing": [
+        64,
+        67,
+        69,
+        143
+      ],
+      "percent": 96.3
+    },
+    "backend/app/sim/behavior/model.py": {
+      "covered": 157,
+      "statements": 161,
+      "missing": [
+        72,
+        89,
+        116,
+        137
+      ],
+      "percent": 97.52
+    },
+    "backend/app/sim/behavior/owner.py": {
+      "covered": 412,
+      "statements": 477,
+      "missing": [
+        63,
+        73,
+        138,
+        148,
+        159,
+        181,
+        185,
+        193,
+        293,
+        312,
+        339,
+        340,
+        342,
+        344,
+        345,
+        346,
+        347,
+        348,
+        349,
+        351,
+        352,
+        353,
+        354,
+        356,
+        357,
+        358,
+        359,
+        376,
+        390,
+        393,
+        408,
+        414,
+        451,
+        455,
+        456,
+        457,
+        458,
+        459,
+        460,
+        461,
+        462,
+        463,
+        464,
+        465,
+        467,
+        481,
+        491,
+        508,
+        512,
+        526,
+        528,
+        537,
+        545,
+        549,
+        550,
+        551,
+        552,
+        554,
+        555,
+        557,
+        562,
+        572,
+        577,
+        584,
+        597
+      ],
+      "percent": 86.37
+    },
+    "backend/app/sim/behavior/policy.py": {
+      "covered": 72,
+      "statements": 80,
+      "missing": [
+        39,
+        55,
+        66,
+        87,
+        90,
+        93,
+        95,
+        98
+      ],
+      "percent": 90.0
+    },
+    "backend/app/sim/behavior/store.py": {
+      "covered": 113,
+      "statements": 126,
+      "missing": [
+        28,
+        59,
+        66,
+        84,
+        88,
+        99,
+        109,
+        114,
+        123,
+        134,
+        139,
+        148,
+        154
+      ],
+      "percent": 89.68
+    }
+  },
+  "scope": "unwired durable owner and SQL proposal on actual 0014 scratch base; not full T161 completion",
+  "tests": {
+    "pure": 99,
+    "actual_pg": 13,
+    "total_passed": 112,
+    "seconds": 71.01
+  },
+  "source_base": "7e480a7",
+  "policy_enabled": false,
+  "alembic_0017_present": false,
+  "external_calls": 0,
+  "raw_data_included": false,
+  "source_sha256": {
+    "backend/app/sim/behavior/__init__.py": "26d5f30b85d02dac8d0c01c62474a8f53717001ebb10fa94f7e9bb5d0554d418",
+    "backend/app/sim/behavior/care.py": "9b170b902fd19dc47b005e1b3b0f1e899c47c68d2bbc42bd26f60586e293cf10",
+    "backend/app/sim/behavior/codec.py": "6492b260a3ff01a4d523cc8ceb787bbd74f34b0fb5e58965f2be358a05165846",
+    "backend/app/sim/behavior/facts.py": "db905556a22b3818f4915175a108c427e18f065aad789a224050092e7976b0d6",
+    "backend/app/sim/behavior/model.py": "e78d6814aaa75d26b43b2fa61eba7d712274aa9ad37d304c7df7c71f11a58a36",
+    "backend/app/sim/behavior/owner.py": "4bbc3d6e2fe5d548f4e15b0abf61238b2379da66eb584c8bd7b3fe7feb633173",
+    "backend/app/sim/behavior/policy.py": "4039b774524825518c2f62bfd7b44bf3e0fe5018bd4690d29d9c4880f840594b",
+    "backend/app/sim/behavior/store.py": "33c3dae6c52f3e823a5c2c654e8dc7a03c61b8d1c842ae6256e089fe5dbff38a",
+    "backend/app/sim/twins.py": "c13d1b2c30f0ca93c41f65dbaf415dc4899e4a139024679c3e8831c8acfda930",
+    "docs/reviews/T-161-storage-proposal.sql": "faed33ed903985c5f2e33212b361d9504429989c962a78f35d82b77463927a2f"
+  },
+  "nearby_regression": {
+    "passed": 39,
+    "seconds": 23.8,
+    "targets": [
+      "test_demo_behavior_policy_review",
+      "test_textgen",
+      "test_sim_baseline",
+      "test_maintenance_wiring",
+      "test_llm_routing"
+    ]
+  },
+  "checks": {
+    "make_lint": "exit 0: frontend eslint/typecheck + 225 vitest, Ruff 426 files, mypy 283 source files, OpenAPI drift 192/192",
+    "contracts_check": "45 schemas, 162 paths",
+    "licenses_check": "550 distributions",
+    "git_diff_check": "exit 0",
+    "full_make_test": "not run: scoped checkpoint remains unwired"
+  }
+}

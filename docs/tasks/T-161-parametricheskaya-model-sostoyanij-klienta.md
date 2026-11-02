@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Машина состояний ТЗ 4.5 для всех клиентов: переходы по событиям и таймерам, care_score, hazard.
@@ -27,7 +27,9 @@
 
 ## Что сделать
 1. app/sim/behavior/model.py: обработчики op.failed/fault.started (affected), таймер жалобы по complain_delay → создание сигнала (текст из библиотеки T-019 по психотипу/тону) или silent_decline; реакции на notifications (agent_reply/proactive/progress/gift) → care_score по care_weights; повтор/эскалация по repeat_prob/escalation_prob; на каждом sla.tick для waiting/churn_intent розыгрыш hazard по формуле ТЗ 4.5; retained при закрытии с care_score ≥ порога.
-2. Запись client_states (is_current), событий client.*, обновление clients.churn_risk.
+2. Запись client_states (is_current), событий client.* и raw per-tick intent hazard.
+   Existing clients.churn_risk и его контекстная projection сохраняются;
+   новое probability mapping/калибровка — отдельная T-165 с provenance review.
 3. Все вероятности через rng.py; параметры из psychotypes.params и settings.
 
 ## Критерии приёмки
@@ -41,4 +43,65 @@ pytest backend/tests/unit/test_behavior_model.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Pure checkpoint в `codex/T-161-behavior-model`: типизированные переходы,
+p_complain/delay/repeat через SimRng, точная формула hazard и обязательные policy
+inputs без defaults. Runtime не включён; DB/DDL, параметры и финансы не менялись.
+70 unit passed (52 behavior + 4 textgen + 14 baseline), Ruff/mypy green.
+После initial collection gap использован разрешённый frozen SDK venv; общий
+venv не менялся. Полный regression пока не выполнялся. Полные критерии T161 **не выполнены**: ожидаются решения по
+policy/ADR/storage, durable integration и process-restart/full-suite proof.
+
+Предложение и границы: [T-161 pure core / policy / storage](../reviews/T-161-pure-core-policy-storage.md).
+
+
+По новому запросу пользователя подготовлено **предложение**, не активация:
+[data/behavior/demo_policy.review.yaml](../../data/behavior/demo_policy.review.yaml),
+[ADR-0024](../adr/ADR-0024-demo-client-behavior-policy.md) и
+[sensitivity JSON](../reviews/T-161-demo-policy-sensitivity.json).
+Все новые значения явно синтетические, enabled=false/approved_by=null;
+исходные psychotype/segment/gift параметры и runtime не менялись.
+60 pure tests passed; до wire нужны человеческий review и отдельная реализация/
+проверка durable state/receipt/timer границы. T161 остаётся in_progress.
+
+
+02.11.2026 пользователь явно подтвердил значения/семантику demo-policy из
+`ba5145d` для реализации. Зафиксированы status=approved_for_implementation,
+approved_by=user_in_chat, approved_date и values-only scope; enabled=false.
+Все поведенческие значения deep-equal утверждённому packet; повторное одобрение
+тех же значений не требуется. Следуют typed components/result, durable writer и
+Twin reconciliation. Неполная реализация не активируется; новые контракты — после
+конкретного final review. Другие денежные defaults/live Telegram не разрешались.
+
+
+### 02.11.2026: durable owner, ещё без actor activation
+
+Реализованы transactional BehaviorStore/BehaviorOwner, strict component codec,
+immutable pinned policy/params, фактические notification/SLA/resolution/Twin
+adapters, durable evidence/receipts/work/tick receipts. SQL — только
+[review proposal](../reviews/T-161-storage-proposal.sql), не actual Alembic 0017.
+Собственная scratch DB на actual 0014: 99 pure + 13 actual PG = **112 passed**,
+exact-file module line coverage **90.85%**; Ruff/mypy green. Отчёт и ограничения:
+[T-161 durable checkpoint](../reviews/T-161-durable-owner-checkpoint.md).
+
+Policy значения уже одобрены; прежние требования повторного value approval выше
+описывают историю checkpoints. enabled=false/неподключённый actor сохраняются.
+До завершения нужны actual 0015/0016→0017 composition, единый writer с agent,
+исправление временной fault причинности в World, явное churn_risk отображение,
+tick/RNG adapter, OS restart/archive/baseline/full-suite proof. Новых денежных
+правил, выдачи подарков, внешнего LLM/TG и production DB операций нет.
+
+
+Agent writer/read-scope follow-up 83e0cf8: opt-in graph TX evidence sink, truthful
+pending/actual trace, scoped legacy writer и baseline+ctx reader; 193 regression
+passed, extra actual load_deps 1 passed; changed-line coverage94.59%. Runtime
+не включён. [Concrete churn_risk decision proposal](../reviews/T-161-churn-risk-decision-proposal.md)
+сохраняет legacy projection и предлагает явное acceptance уточнение вместо
+неодобренного hazard*100; решение/калибровка не подменяются молчаливой формулой.
+
+
+02.11.2026 пользователь явно одобрил variant A из9700400. Точный scope/acceptance
+diff применён: raw per-15min intent hazard хранится отдельно в client_states,
+legacy clients.churn_risk/projection сохраняется доT-165. Approval metadata и
+source decision: [решение](../reviews/T-161-churn-risk-decision-proposal.md).
+Новых probability/money defaults и hazard*100 нет; прежнее demo-policy approval
+осталось неизменным. Runtime/actual0017 proof продолжается, statusin_progress.
