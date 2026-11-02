@@ -4,6 +4,7 @@ import { useLlmKeyOps, useLlmKeys } from '@/shared/api/hooks'
 import { ApiError, type LlmKeyCreate } from '@/shared/api/client'
 import { Badge, Section, SkeletonRows } from '@/shared/ui'
 import { endpoint } from './llmBinding'
+import { fmtDateTime } from '@/shared/lib/format'
 
 export function LlmKeysPanel() {
   const { t, i18n } = useTranslation()
@@ -31,7 +32,17 @@ export function LlmKeysPanel() {
         <td className="px-2 py-2">{key.label || t('setup.keys.unnamed')}<span className="block font-mono text-muted">{key.key_hint || '••••'}</span></td>
         <td className="px-2 py-2">{key.provider}</td><td className="max-w-56 break-all px-2 py-2">{key.endpoint_url && endpoint(key.endpoint_url) ? key.endpoint_url : '—'}</td>
         <td className="px-2 py-2">{key.scope || '—'}</td><td className="px-2 py-2"><Badge tone={key.is_active ? 'ok' : 'warn'}>{t(key.is_active ? 'setup.keys.active' : 'setup.keys.inactive')}</Badge>{key.last_error && <p className="text-danger">{t('setup.keys.lastError')}</p>}</td>
-        <td className="whitespace-nowrap px-2 py-2">{key.tokens_used ?? '—'} / {key.tokens_limit ?? '—'}<span className="block text-muted">{t('setup.keys.remaining', { value: key.tokens_limit != null && key.tokens_used != null ? Math.max(0, key.tokens_limit - key.tokens_used) : '—' })}</span></td><td className="whitespace-nowrap px-2 py-2">{key.requests_today ?? '—'} / {key.rpd_limit ?? '—'}</td>
+        <td className="whitespace-nowrap px-2 py-2">
+          {key.usage_known === true ? (key.tokens_used ?? '—') : <span className="text-warn">{t('setup.keys.usageUnknown')}</span>} / {key.tokens_limit ?? '—'}
+          <span className="block text-muted">{t('setup.keys.remaining', { value: key.tokens_limit == null ? '—' : key.usage_known === true && key.tokens_remaining != null ? key.tokens_remaining : t('setup.keys.usageUnknown') })}</span>
+          {key.usage_known !== true && key.observed_tokens_floor != null && <span className="block text-muted">{t('setup.keys.observedFloor', { value: key.observed_tokens_floor })}</span>}
+          {key.usage_known !== true && key.usage_source === 'legacy_unverified' && key.tokens_used != null && <span className="block text-muted">{t('setup.keys.legacyHint', { value: key.tokens_used })}</span>}
+          {key.usage_as_of && <span className="block text-muted">{t('setup.keys.usageAsOf', { value: fmtDateTime(key.usage_as_of) })}</span>}
+        </td><td className="whitespace-nowrap px-2 py-2">
+          {key.requests_known === true ? (key.requests_today ?? '—') : <span className="text-warn">{t('setup.keys.usageUnknown')}</span>} / {key.rpd_limit ?? '—'}
+          <span className="block text-muted">{t('setup.keys.remaining', { value: key.rpd_limit == null ? '—' : key.requests_known === true && key.requests_remaining != null ? key.requests_remaining : t('setup.keys.usageUnknown') })}</span>
+          {key.requests_day && <span className="block text-muted">{t('setup.keys.requestsDay', { value: key.requests_day })}</span>}
+        </td>
         <td className="px-2 py-2">{key.balance_usd != null ? `${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 2 }).format(key.balance_usd)} USD` : '—'}</td>
         <td><button className="btn btn-sm" disabled={ops.remove.isPending || key.id == null} aria-label={t('setup.keys.deleteLabel', { label: key.label || key.id })} onClick={() => {
           setResult(null); ops.remove.mutate(key.id!, { onSuccess: () => setResult('removed'), onError: (error) => feedback(error, true) })
