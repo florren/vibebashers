@@ -23,7 +23,7 @@ const row = () => screen.getByText('local-profile').closest('tr')!
 beforeEach(() => {
   profile = { id: 1, code: 'local-profile', provider: 'openai_compatible', model: 'fixture', role: 'bench_only', is_active: true, base_url: LOCAL, api_key_id: 11 }
   keys = [
-    { id: 11, label: 'local-key', provider: 'openai_compatible', key_hint: '••••', is_active: true, endpoint_url: LOCAL, tokens_used: 20, tokens_limit: 100, requests_today: 2, rpd_limit: 10 },
+    { id: 11, label: 'local-key', provider: 'openai_compatible', key_hint: '••••', is_active: true, endpoint_url: LOCAL, tokens_used: 20, tokens_limit: 100, requests_today: 2, rpd_limit: 10, usage_known: true, tokens_remaining: 80, requests_known: true, requests_remaining: 8 },
     { id: 12, label: 'inactive-key', provider: 'openai_compatible', key_hint: '••••', is_active: false, endpoint_url: LOCAL },
     { id: 13, label: 'giga-key', provider: 'gigachat', key_hint: '••••', is_active: true, endpoint_url: 'https://example.test/giga', scope: 'GIGACHAT_API_PERS' },
     { id: 14, label: 'other-endpoint', provider: 'openai_compatible', key_hint: '••••', is_active: true, endpoint_url: 'https://other.test/v1' },

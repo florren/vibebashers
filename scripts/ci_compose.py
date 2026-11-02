@@ -58,6 +58,9 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
                     (Path(outer["source"]) / relative).parent.mkdir(parents=True, exist_ok=True)
         service.pop("container_name", None)
         service["ports"] = []
+    # Long polling/egress не входит в browser candidate. Bot image отдельно
+    # проверяется --network none; все новые inbound/delivery tests используют fake HTTP.
+    config["services"].pop("tgbot", None)
     config["services"]["postgres"]["environment"] = {
         "POSTGRES_USER": "cx",
         "POSTGRES_PASSWORD": "cx",
@@ -80,6 +83,7 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
                 "LLM_RECORD": "false",
                 "STT_PROVIDER": "none",
                 "TELEGRAM_BOT_TOKEN": "",
+                "TGBOT_ENABLED": "false",
                 "MAILPIT_ENABLED": "false",
                 "LOG_DIR": "/tmp/cx-logs",
             }

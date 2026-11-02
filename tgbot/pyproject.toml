@@ -9,6 +9,9 @@ dependencies = [
     "structlog>=24.4",
 ]
 
+[project.scripts]
+cx-tgbot = "cx_tgbot.main:main"
+
 [dependency-groups]
 dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.6", "mypy>=1.11"]
 

@@ -12,7 +12,7 @@ import datetime as dt
 import hmac
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -74,9 +74,8 @@ async def _utc_now(conn: psycopg.AsyncConnection[Any]) -> dt.datetime:
     return value.astimezone(dt.UTC)
 
 
-def _minimum(*values: int | None) -> int | None:
-    present = [_counter(value) for value in values if value is not None]
-    return min(present) if present else None
+def _optional_counter(value: int | None) -> int | None:
+    return None if value is None else _counter(value)
 
 
 def _unavailable(exc: Exception) -> ProviderError:
@@ -94,6 +93,10 @@ class KeyFacts:
     rpd_limit: int | None = None
     db_id: int | None = None
     paid: bool = False
+
+    def __post_init__(self) -> None:
+        if self.endpoint is not None:
+            object.__setattr__(self, "endpoint", credentials.endpoint(self.endpoint))
 
     def verifier(self) -> bytes:
         if not self.secret and not self.endpoint:
@@ -113,6 +116,9 @@ class BudgetSnapshot:
     usage_as_of: dt.datetime | None
     tokens_remaining: int | None
     requests_remaining: int | None
+    profile_requests_today: int = 0
+    profile_requests_known: bool = False
+    profile_requests_remaining: int | None = None
     refusal: ProviderError | None = field(default=None, repr=False)
 
     def public(self) -> dict[str, Any]:
@@ -126,10 +132,15 @@ class BudgetSnapshot:
             "usage_as_of": self.usage_as_of,
             "tokens_remaining": self.tokens_remaining,
             "requests_remaining": self.requests_remaining,
+            "profile_requests_today": self.profile_requests_today,
+            "profile_requests_known": self.profile_requests_known,
+            "profile_requests_remaining": self.profile_requests_remaining,
         }
 
 
 class PostgresAccounting:
+    durable = True
+
     async def _identity(self, conn: psycopg.AsyncConnection[Any], facts: KeyFacts) -> dict[str, Any]:
         tag = _mac(b"cx.llm.identity-key.v1", "stable")
         await conn.execute(
@@ -205,7 +216,7 @@ class PostgresAccounting:
             if current is None:
                 raise AdmissionRefused("quota", "текущая quota configuration профиля отсутствует")
             profile_limit = current["rpd_limit"]
-        return _minimum(key_limit), _minimum(day_limit), _minimum(profile_limit)
+        return _optional_counter(key_limit), _optional_counter(day_limit), _optional_counter(profile_limit)
 
     async def snapshot(self, profile: LLMProfile, facts: KeyFacts, *, timeout_s: float) -> BudgetSnapshot:
         # Read selection state without waiting behind another key's network lease.
@@ -303,6 +314,20 @@ class PostgresAccounting:
                     "legacy_tokens_hint": account["legacy_tokens_hint"],
                     "prior_usage_known": account["usage_known"],
                 }
+                async with conn.cursor(row_factory=dict_row) as hints:
+                    await hints.execute(
+                        "select k.id,k.requests_today,k.requests_day from llm_api_keys k "
+                        "join llm_runtime.credential_aliases a on a.config_uid=k.credential_uid where a.credential_uid=%s order by k.id",
+                        (scope.uid,),
+                    )
+                    audit["legacy_daily_hints"] = [
+                        {
+                            "key_id": row["id"],
+                            "requests_today": row["requests_today"],
+                            "requests_day": row["requests_day"].isoformat() if row["requests_day"] else None,
+                        }
+                        for row in await hints.fetchall()
+                    ]
                 now = await _utc_now(conn)
                 if as_of > now or as_of.date() != now.date():
                     raise AdmissionRefused("quota", "as_of должен относиться к текущим UTC суткам и не быть будущим")
@@ -360,16 +385,23 @@ class PostgresAccounting:
                     "updated_at=clock_timestamp() where uid=%s",
                     (tokens_used, source, as_of, scope.uid),
                 )
+                await sync_mirrors(conn, scope.uid)
         return {"id": str(reconciliation_id), "idempotent": False, "source": source, "as_of": as_of.isoformat()}
 
     @asynccontextmanager
     async def key_scope(
-        self, profile: LLMProfile, facts: KeyFacts, *, timeout_s: float, check_budget: bool = True
+        self,
+        profile: LLMProfile,
+        facts: KeyFacts,
+        *,
+        timeout_s: float,
+        check_budget: bool = True,
+        streaming: bool = False,
     ) -> AsyncIterator[KeyScope]:
         reject_reflection({"endpoint": facts.endpoint, "model": profile.model, "profile": profile.code}, [facts.secret])
         deadline = time.monotonic() + timeout_s
         try:
-            async with asyncio.timeout(timeout_s), contextlib.AsyncExitStack() as stack:
+            async with asyncio.timeout(timeout_s) as budget_timer, contextlib.AsyncExitStack() as stack:
                 await stack.enter_async_context(public_operation())
                 conn = await stack.enter_async_context(
                     await psycopg.AsyncConnection.connect(
@@ -391,6 +423,10 @@ class PostgresAccounting:
                     scope = KeyScope(self, conn, profile, facts, account["uid"], deadline)
                     if check_budget:
                         await scope.check()
+                    if streaming:
+                        # The caller may process a yielded chunk in this same task.
+                        # Bound individual awaited I/O, never cancel that consumer.
+                        budget_timer.reschedule(None)
                     yield scope
                 finally:
                     await conn.execute("select pg_advisory_unlock(%s)", (lock,))
@@ -410,6 +446,20 @@ class KeyScope:
     facts: KeyFacts = field(repr=False)
     uid: uuid.UUID = field(repr=False)
     deadline: float
+
+    async def wait[T](self, operation: Awaitable[T]) -> T:
+        try:
+            return await asyncio.wait_for(operation, max(0.0, self.deadline - time.monotonic()))
+        except TimeoutError:
+            raise AdmissionRefused("timeout", "absolute inference deadline исчерпан") from None
+
+    async def iterate[T](self, iterator: AsyncIterator[T]) -> AsyncIterator[T]:
+        while True:
+            try:
+                item = await self.wait(anext(iterator))
+            except StopAsyncIteration:
+                return
+            yield item
 
     @asynccontextmanager
     async def _state(self) -> AsyncIterator[dict[str, Any]]:
@@ -496,7 +546,7 @@ class KeyScope:
             account, day = state["account"], state["key_day"]
             known = bool(account["usage_known"] and not state["unresolved"])
             requests_known = bool(day["requests_known"])
-            token_limit, request_limit, _ = state["limits"]
+            token_limit, request_limit, profile_limit = state["limits"]
             refusal = None
             try:
                 self._validate(state)
@@ -516,6 +566,11 @@ class KeyScope:
                 requests_remaining=max(0, request_limit - day["requests_today"])
                 if requests_known and request_limit is not None
                 else None,
+                profile_requests_today=state["profile_day"]["requests_today"],
+                profile_requests_known=state["profile_day"]["requests_known"],
+                profile_requests_remaining=max(0, profile_limit - state["profile_day"]["requests_today"])
+                if state["profile_day"]["requests_known"] and profile_limit is not None
+                else None,
                 refusal=refusal,
             )
 
@@ -525,7 +580,7 @@ class KeyScope:
 
     @asynccontextmanager
     async def inference(self) -> AsyncIterator[Ticket]:
-        ticket = await self.admit()
+        ticket = await self.wait(self.admit())
         try:
             yield ticket
         except BaseException as exc:
@@ -580,6 +635,7 @@ class KeyScope:
                 "where utc_day=%s and ((scope_type='key' and scope_id=%s) or (scope_type='profile' and scope_id=%s))",
                 (state["now"], state["day"], str(self.uid), state["profile_scope"]),
             )
+            await sync_mirrors(self.conn, self.uid)
         return Ticket(self, attempt_id)
 
 
@@ -589,11 +645,17 @@ class Ticket:
     id: uuid.UUID
     terminal: bool = False
 
-    async def observe(self, prompt: int, completion: int, *, final: bool = False) -> None:
+    async def observe(
+        self, prompt: int, completion: int, *, total_tokens: int | None = None, final: bool = False
+    ) -> None:
         prompt, completion = _counter(prompt), _counter(completion)
-        total = _counter(prompt + completion)
+        subtotal = _counter(prompt + completion)
+        total = subtotal if total_tokens is None else _counter(total_tokens)
+        if total < subtotal:
+            raise AdmissionRefused("bad_output", "total usage меньше суммы prompt/completion")
         conn = self.scope.conn
         async with conn.transaction():
+            await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
             account = await (
                 await conn.execute("select * from llm_runtime.credentials where uid=%s for update", (self.scope.uid,))
             ).fetchone()
@@ -632,6 +694,7 @@ class Ticket:
                 "usage_as_of=clock_timestamp(),updated_at=clock_timestamp() where uid=%s",
                 (floor, known, source, self.scope.uid),
             )
+            await sync_mirrors(conn, self.scope.uid)
         self.terminal = self.terminal or final or attempt["state"] in ("known", "reconciled")
 
     async def unknown(self, kind: str = "unavailable") -> None:
@@ -663,3 +726,113 @@ class Ticket:
 
 def service() -> PostgresAccounting:
     return PostgresAccounting()
+
+
+def public_observation(item: dict[str, Any], observed: dict[str, Any] | None, day: dt.date) -> dict[str, Any]:
+    """Compatibility tokens_used retains an unverified hint until explicit reconciliation."""
+    data = observed or {}
+    floor = _counter(int(data.get("confirmed_tokens") or 0))
+    reconciled = bool(data.get("reconciled"))
+    known = bool(data.get("usage_known") and not data.get("pending"))
+    used = floor if reconciled else max(_counter(int(item.get("tokens_used") or 0)), floor)
+    daily = data.get("daily_requests")
+    requests_known = bool(data.get("daily_known"))
+    # A registered scope's new UTC day starts at known0 app attempts; unknown
+    # token origin remains separately unknown and still blocks budgeted admission.
+    created = data.get("created_at")
+    if daily is None and created is not None and created.astimezone(dt.UTC).date() < day:
+        daily, requests_known = 0, True
+    if not reconciled:
+        legacy_day = item.get("requests_day", data.get("legacy_requests_day"))
+        legacy_daily = int(item.get("requests_today") or 0) if legacy_day in (None, day, day.isoformat()) else 0
+        daily = max(int(daily or 0), legacy_daily)
+    source = str(data.get("usage_source") or "legacy_unverified")
+    if source == "unknown":
+        source = "legacy_unverified"
+    if data.get("pending") and known is False and reconciled:
+        source = "app_observed_incomplete"
+    limit, rpd = item.get("tokens_limit"), item.get("rpd_limit")
+    return {
+        "tokens_used": used,
+        "observed_tokens_floor": floor,
+        "usage_known": known,
+        "usage_source": source,
+        "usage_as_of": data.get("usage_as_of"),
+        "requests_today": int(daily or 0),
+        "requests_known": requests_known,
+        "requests_day": day,
+        "tokens_remaining": max(0, int(limit) - floor) if known and limit is not None else None,
+        "requests_remaining": max(0, int(rpd) - int(daily or 0)) if requests_known and rpd is not None else None,
+    }
+
+
+async def attach_public_observations(
+    conn: psycopg.AsyncConnection[Any], items: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Read-only metadata join: no decrypt or implicit reconciliation/known0."""
+    try:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute("select (clock_timestamp() at time zone 'UTC')::date as day")
+            clock = await cur.fetchone()
+            assert clock is not None
+            day = clock["day"]
+            await cur.execute(
+                "select k.id,k.requests_day as legacy_requests_day,c.confirmed_tokens,c.usage_known,c.usage_source,c.usage_as_of,c.created_at,"
+                "d.requests_today as daily_requests,d.requests_known as daily_known,"
+                "exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid) as reconciled,"
+                "exists(select 1 from llm_runtime.wire_attempts w where w.credential_uid=c.uid and w.state in ('reserved','unknown') and w.reconciliation_id is null) as pending "
+                "from llm_api_keys k left join llm_runtime.credential_aliases a on a.config_uid=k.credential_uid "
+                "left join llm_runtime.credentials c on c.uid=a.credential_uid "
+                "left join llm_runtime.daily_usage d on d.scope_type='key' and d.scope_id=c.uid::text and d.utc_day=%s "
+                "where k.id=any(%s)",
+                (day, [item["id"] for item in items if item.get("id") is not None]),
+            )
+            observed = {row["id"]: dict(row) for row in await cur.fetchall()}
+        return [{**item, **public_observation(item, observed.get(item.get("id")), day)} for item in items]
+    except psycopg.Error as exc:
+        raise _unavailable(exc) from None
+
+
+async def attach_env_observation(
+    conn: psycopg.AsyncConnection[Any], item: dict[str, Any], facts: KeyFacts
+) -> dict[str, Any]:
+    """Existing env card uses its private identity, never hint-based accounting."""
+    try:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute("select (clock_timestamp() at time zone 'UTC')::date as day")
+            clock = await cur.fetchone()
+            assert clock is not None
+            day = clock["day"]
+            await cur.execute(
+                "select c.confirmed_tokens,c.usage_known,c.usage_source,c.usage_as_of,c.created_at,"
+                "d.requests_today as daily_requests,d.requests_known as daily_known,"
+                "exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid) as reconciled,"
+                "exists(select 1 from llm_runtime.wire_attempts w where w.credential_uid=c.uid and w.state in ('reserved','unknown') and w.reconciliation_id is null) as pending "
+                "from llm_runtime.credentials c left join llm_runtime.daily_usage d "
+                "on d.scope_type='key' and d.scope_id=c.uid::text and d.utc_day=%s where c.verifier=%s",
+                (day, facts.verifier()),
+            )
+            observed = await cur.fetchone()
+        return {**item, **public_observation(item, dict(observed) if observed else None, day)}
+    except psycopg.Error as exc:
+        raise _unavailable(exc) from None
+
+
+async def sync_mirrors(conn: psycopg.AsyncConnection[Any], credential_uid: uuid.UUID | None = None) -> None:
+    """Derived compatibility columns only; never increment or infer usage from them.
+
+    Call while holding configuration lock, or while the restore coordinator owns
+    the exclusive maintenance boundary before writers resume. Unknown legacy hints
+    remain intact until an explicit reconciliation has recorded their provenance.
+    """
+    await conn.execute(
+        "with clock as(select (clock_timestamp() at time zone 'UTC')::date as day) "
+        "update llm_api_keys k set tokens_used=c.confirmed_tokens,"
+        "requests_today=coalesce(d.requests_today,0),requests_day=clock.day,updated_at=now() "
+        "from clock cross join llm_runtime.credential_aliases a join llm_runtime.credentials c on c.uid=a.credential_uid "
+        "left join llm_runtime.daily_usage d on d.scope_type='key' and d.scope_id=c.uid::text "
+        "and d.utc_day=clock.day "
+        "where k.credential_uid=a.config_uid and (%s::uuid is null or c.uid=%s) "
+        "and exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid)",
+        (credential_uid, credential_uid),
+    )

@@ -251,6 +251,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
     )
     if body.api_key_id is not None and body.api_key is not None:
         raise Problem(422, "Передайте api_key либо api_key_id, не оба поля")
+    selected_key_id = body.api_key_id
     async with db() as conn:
         if body.api_key_id is not None:
             item = await credentials.validate_binding(
@@ -277,11 +278,20 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             ]
             if stored:
                 key = key_plain(stored[0])
+                selected_key_id = stored[0]["id"]
     if not key and body.provider == "gigachat":
         key = s.gigachat_auth_key_1 or s.gigachat_auth_key_2
     if not key and body.provider == "openai_compatible" and not local_compat:
         key = s.openrouter_api_key
-    profile = LLMProfile(code="setup_test", provider=body.provider, model=body.model, base_url=body.base_url)
+    profile = LLMProfile(
+        code="setup_test", provider=body.provider, model=body.model, base_url=body.base_url, api_key_id=selected_key_id
+    )
+
+    async def validate_selected_metadata() -> None:
+        if selected_key_id is not None:
+            async with db() as conn:
+                await credentials.validate_binding(conn, profile)
+
     msgs: list[Message] = [
         {"role": "system", "content": "Ответь JSON по схеме. Поле ok = true, model = твоё имя модели."},
         {"role": "user", "content": "ping"},
@@ -314,7 +324,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             from app.llm.keys import ApiKey, KeyPool
 
             prov = GigaChatProvider(
-                KeyPool([ApiKey(label="setup_test", secret=key, provider="gigachat")]),
+                KeyPool([ApiKey(label="setup_test", secret=key, provider="gigachat", db_id=selected_key_id)]),
                 oauth_url=s.gigachat_oauth_url,
                 base_url=body.base_url or s.gigachat_base_url,
                 scope=s.gigachat_scope,
@@ -332,6 +342,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             )
             if is_openrouter(base):
                 try:
+                    await validate_selected_metadata()
                     info = await prov.fetch_key()
                 except Exception as exc:
                     log.warning("setup_openrouter_key_failed", error=str(exc)[:200])
@@ -344,6 +355,7 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
                         "is_free_tier": info.get("is_free_tier"),
                     }
                 try:
+                    await validate_selected_metadata()
                     available: list[str] | None = await prov.list_models()
                 except Exception as exc:
                     log.warning("setup_openrouter_models_failed", error=str(exc)[:200])

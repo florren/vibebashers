@@ -1,0 +1,799 @@
+{
+  "source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
+  "scope": "production UI + actual API; four explicit synthetic notification fixtures, no seeded real receipts, no HTTP mocks; actor-free read-only scratch DB; Telegram disabled",
+  "results": [
+    {
+      "lang": "ru",
+      "theme": "light",
+      "unknownDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "ru",
+      "theme": "dark",
+      "unknownDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "en",
+      "theme": "light",
+      "unknownDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    },
+    {
+      "lang": "en",
+      "theme": "dark",
+      "unknownDistinct": true,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "nonGetRequests": 0,
+      "failedResponses": 0
+    }
+  ],
+  "tableCount": 94,
+  "before": {
+    "channel_runtime.telegram_chat_rate": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_client_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_conversations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_deliveries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_inbound": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_signal_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_blobs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_migrations": [
+      10,
+      "63a282a08243f71966a92c9e91b8b367"
+    ],
+    "langgraph.checkpoint_writes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoints": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.accounts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_steps": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "98a07ba02ce525258ea28121b7f23319"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "228bc92f4ffbdb38df4de9cac2c0b04f"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.clients": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      1087,
+      "aa1dc872d45d73561d809e98c1af5c97"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "2992fd29b41329571752f92e4ef2b965"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_posts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_replies": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.faults": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_status_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incidents": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_sources": [
+      8,
+      "14e086ef16f4876010ac6d3659b5932f"
+    ],
+    "public.ledger_entries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_api_keys": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "c94e00823e7e77789f4c07e70c7be696"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      365,
+      "246fa5e567c9670ccbf0a2ea1d69911c"
+    ],
+    "public.notifications": [
+      4,
+      "45083ccdb93d5626ef06babf52269590"
+    ],
+    "public.operations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.scenarios": [
+      33,
+      "d0f438ff573c4de4358e450b09084d1e"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "81d67ae44749b79bef350c2b5a90d631"
+    ],
+    "public.settings": [
+      1,
+      "24c6cfe1bb7f05bd73d2b36eeed2ff75"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_runs": [
+      1,
+      "5d70001895d7c5690c0e3b94ea7b2444"
+    ],
+    "public.sim_state": [
+      1,
+      "cfb833613d884cd412efcbfac3fcdaae"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  },
+  "after": {
+    "channel_runtime.telegram_chat_rate": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_client_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_conversations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_deliveries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_inbound": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "channel_runtime.telegram_signal_bindings": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_blobs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoint_migrations": [
+      10,
+      "63a282a08243f71966a92c9e91b8b367"
+    ],
+    "langgraph.checkpoint_writes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "langgraph.checkpoints": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.accounts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.agent_steps": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.audio_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_cases": [
+      859,
+      "8fbeb13619d2e7361ab292c33cf81a1d"
+    ],
+    "public.bench_datasets": [
+      6,
+      "98a07ba02ce525258ea28121b7f23319"
+    ],
+    "public.bench_results": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.bench_runs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.branch_network_history": [
+      1068,
+      "ae91a2c5e63beb5d2c85440f3061fdc8"
+    ],
+    "public.branches": [
+      240,
+      "3edc4f527f77b5d148756a7332a73c78"
+    ],
+    "public.business_rules": [
+      5,
+      "228bc92f4ffbdb38df4de9cac2c0b04f"
+    ],
+    "public.channels": [
+      12,
+      "888e491f047eeae253fc46c1b7558718"
+    ],
+    "public.churn_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.cities": [
+      1121,
+      "bf6a28a256ee9a8cbe261f70599bba11"
+    ],
+    "public.client_products": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_reactions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.client_states": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.clients": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_alerts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.compliance_triggers": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_responses": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.csi_visits_agg": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.db_activity_log": [
+      1087,
+      "aa1dc872d45d73561d809e98c1af5c97"
+    ],
+    "public.dcltv_rates": [
+      31,
+      "7500f338a517cbb4b1dd6c02577f5061"
+    ],
+    "public.demo_assets": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.economics_settings": [
+      1,
+      "2992fd29b41329571752f92e4ef2b965"
+    ],
+    "public.employees": [
+      1440,
+      "3f9266d04e9b78a7f288eb4d63838e31"
+    ],
+    "public.error_codes": [
+      25,
+      "490007e17c0afc209fe9b46db22b508b"
+    ],
+    "public.escalations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_posts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.external_replies": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.faults": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.federal_districts": [
+      8,
+      "fc04c3ee6b11e846a95e84872f336bbc"
+    ],
+    "public.financial_evidence": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.followups": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.gift_catalog": [
+      5,
+      "f1f424bae54aea79edcf61ef28824ca6"
+    ],
+    "public.hitl_feedback": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.hitl_feedback_processing": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.human_decisions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_artifacts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_economics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incident_status_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.incidents": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.ingest_sources": [
+      8,
+      "14e086ef16f4876010ac6d3659b5932f"
+    ],
+    "public.ledger_entries": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_api_keys": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_cassettes": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.llm_profiles": [
+      8,
+      "c94e00823e7e77789f4c07e70c7be696"
+    ],
+    "public.misselling_patterns": [
+      8,
+      "ee6481d72198162067c90886612801fb"
+    ],
+    "public.notification_templates": [
+      365,
+      "246fa5e567c9670ccbf0a2ea1d69911c"
+    ],
+    "public.notifications": [
+      4,
+      "45083ccdb93d5626ef06babf52269590"
+    ],
+    "public.operations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_messages": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.personal_chat_sessions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.product_lines": [
+      15,
+      "a5d55187d23a2e97fe455ed463d73d48"
+    ],
+    "public.product_signal_history": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.products": [
+      4,
+      "24f374577b4795bf1f33e559d8a05f6f"
+    ],
+    "public.psychotypes": [
+      8,
+      "8919c0bba1021cfe3f52dfce731f460d"
+    ],
+    "public.regions": [
+      89,
+      "0a20b82bf7850136ff6e24e091e38d22"
+    ],
+    "public.routing_rules": [
+      40,
+      "c8b9959f56fbc7ed506b060f81d1870f"
+    ],
+    "public.rule_evaluations": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.scenarios": [
+      33,
+      "d0f438ff573c4de4358e450b09084d1e"
+    ],
+    "public.segment_psychotype_mix": [
+      36,
+      "97dc21794cbc4794f60e60786e4a428c"
+    ],
+    "public.segments": [
+      7,
+      "8a6a0b432ea80470415aed56bb3dc9b4"
+    ],
+    "public.service_scripts": [
+      2,
+      "81d67ae44749b79bef350c2b5a90d631"
+    ],
+    "public.settings": [
+      1,
+      "24c6cfe1bb7f05bd73d2b36eeed2ff75"
+    ],
+    "public.signal_types": [
+      10,
+      "6ab13beab7a1a235a8f0f92f57796a08"
+    ],
+    "public.signals": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_events": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.sim_runs": [
+      1,
+      "5d70001895d7c5690c0e3b94ea7b2444"
+    ],
+    "public.sim_state": [
+      1,
+      "cfb833613d884cd412efcbfac3fcdaae"
+    ],
+    "public.sla_matrix": [
+      9,
+      "42765ccc29966181eb4fe970429b627e"
+    ],
+    "public.stt_metrics": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.system_logs": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.systems": [
+      12,
+      "6c45c6415a9ee091ea571c2a5ea1eaf0"
+    ],
+    "public.tariffs": [
+      12,
+      "2458b73f377168e8ebab6293aa755b83"
+    ],
+    "public.tasks": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_actions": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.team_systems": [
+      12,
+      "7e0f24363092f24fd96e4848048f13cc"
+    ],
+    "public.teams": [
+      12,
+      "20282f8746ca4a3a163de1dd4291bc72"
+    ],
+    "public.transcripts": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ],
+    "public.utterances": [
+      0,
+      "d41d8cd98f00b204e9800998ecf8427e"
+    ]
+  }
+}

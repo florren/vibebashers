@@ -62,6 +62,8 @@ def _key_state(item: dict[str, Any]) -> tuple[ApiKey, dict[str, asyncio.Lock]]:
 class BoundPlaceholder:
     """Выбранный provider разрешён в LLM_CHAIN, но env credential для него нет."""
 
+    durable_accounting = True
+
     def __init__(self, name: str) -> None:
         self.name = name
 

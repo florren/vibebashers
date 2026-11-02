@@ -52,7 +52,7 @@ function Row({ n, open, onToggle }: { n: NotificationItem; open: boolean; onTogg
         <span className="shrink-0 text-xs text-muted">{tEnum('channel', n.channel_code)}</span>
         <span className={clsx('min-w-0 flex-1 text-muted', !open && 'truncate')}>{n.subject ? `${n.subject} — ` : ''}{open ? '' : n.body}</span>
         {n.incident_public_id && <IdLink kind="incident" value={n.incident_public_id} />}
-        <Badge tone={n.status === 'sent' || n.status === 'delivered' ? 'ok' : n.status === 'failed' ? 'danger' : 'neutral'}>{tEnum('notifStatus', n.status)}</Badge>
+        <Badge tone={n.status === 'sent' || n.status === 'delivered' ? 'ok' : n.status === 'failed' ? 'danger' : n.status === 'unknown' ? 'warn' : 'neutral'}>{tEnum('notifStatus', n.status)}</Badge>
       </div>
       {open && <pre className="mt-2 whitespace-pre-wrap rounded bg-raised p-2 font-sans text-sm leading-relaxed">{n.body}</pre>}
     </li>

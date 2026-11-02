@@ -180,6 +180,10 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Telegram image и offline smoke без сети
+        run: |
+          docker build -f tgbot/Dockerfile -t cx-pulse-tgbot:ci .
+          docker run --rm --network none cx-pulse-tgbot:ci python -m cx_tgbot.main --offline
       - name: Экспорт собранного candidate image
         run: |
           set -euo pipefail
