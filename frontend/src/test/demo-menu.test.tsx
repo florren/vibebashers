@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/shared/theme', async (importOriginal) => ({
@@ -141,6 +141,23 @@ describe('demo-menu', () => {
     await waitFor(() => expect(calls.some((c) => c.url.includes('/api/sim/baseline/restore'))).toBe(true))
     const baseline = calls.find((c) => c.url.includes('/api/sim/baseline/restore'))
     expect(baseline?.body).toBeUndefined()
+  })
+
+  it('сценарий 13 открывает записанный след без запуска агента или сброса', async () => {
+    const methods: string[] = []
+    installFetch((_url, init) => {
+      methods.push(init?.method ?? 'GET')
+      return undefined
+    })
+    function Location() {
+      return <output data-testid="location">{useLocation().pathname}</output>
+    }
+    render(qcWrap(<><DemoMenu /><Location /></>))
+    useDemoMenu.setState({ open: true })
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('demoMenu.scenario13') }))
+    expect(screen.getByTestId('location')).toHaveTextContent('/trace')
+    expect(useDemoMenu.getState().open).toBe(false)
+    expect(methods.every(method => method === 'GET')).toBe(true)
   })
 
   it('501 показывает Problem', async () => {
