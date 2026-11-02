@@ -48,7 +48,7 @@ export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
   hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
   notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
   tasks: [['trace'], ['journey'], ['tasks'], ['client360']],
-  runs: [['sim-runs'], ['sim-state'], ['metrics'], ['client360']],
+  runs: [['sim-runs'], ['sim-state'], ['metrics'], ['client360'], ['trace']],
   clients: [['journey'], ['clients'], ['client360']],
   metrics: [['journey'], ['metrics']],
   escalations: [['journey'], ['escalations'], ['tickets'], ['incidents']],

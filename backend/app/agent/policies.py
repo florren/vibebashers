@@ -196,6 +196,14 @@ def forbidden_phrases(text: str | None) -> list[str]:
     ]
 
 
+def mass_refund_threshold(policies: dict[str, Any] | None = None) -> int:
+    return int(merged(policies).get("mass_refund_threshold") or DEFAULT_POLICIES["mass_refund_threshold"])
+
+
+def mass_refund_requires_human(pending_count: int, policies: dict[str, Any] | None = None) -> bool:
+    return pending_count >= mass_refund_threshold(policies)
+
+
 def fast_path_allowed(
     *,
     fee_rule: dict[str, Any] | None,
@@ -207,12 +215,11 @@ def fast_path_allowed(
     policies: dict[str, Any] | None = None,
 ) -> tuple[bool, str]:
     """Быстрый путь (ТЗ 21.4): подтверждённое правило refund_fee + политики 9.3, не массовый случай."""
-    p = merged(policies)
     if not fee_rule or fee_rule.get("action") != "refund_fee":
         return False, "нет подтверждённого правила возврата"
     if not fee_rule.get("within_limit", True):
         return False, "сумма выше лимита правила"
-    threshold = int(p.get("mass_refund_threshold") or 50)
+    threshold = mass_refund_threshold(policies)
     if mass_pending >= threshold:
         return False, f"массовый случай ({mass_pending} ≥ {threshold}) → HITL"
     segment = (client or {}).get("segment")

@@ -8,10 +8,11 @@ import random
 from typing import Any
 
 import psycopg
-from scripts.seed.common import J, log
-from scripts.seed.textgen import TextGen
-
 from app.contracts.enums import Channel
+
+from scripts.seed.common import J, log
+from scripts.seed.operations import seed_operations  # noqa: F401 — compatibility for existing callers
+from scripts.seed.textgen import TextGen
 
 FIRST_F = [
     "Анна",
@@ -130,41 +131,6 @@ CITY_SUFFIX = {
 }
 # Каналы берём из контракта: новый канал должен попадать в матрицу baseline.
 CHANNELS_FOR_SIGNALS = list(Channel)
-
-# op_type — enum contracts/events/sim/op.schema.json; оплата по QR = card_payment с method=qr_sbp
-OP_TYPES = {
-    "deposit": ["deposit_open", "deposit_topup", "deposit_topup", "statement"],
-    "debit_card": ["card_payment", "card_payment", "card_payment", "transfer", "login", "statement"],
-    "credit": ["loan_payment", "statement"],
-    "credit_card": ["card_payment", "card_payment", "loan_payment", "limit_request"],
-}
-SYSTEM_PATH = {
-    "deposit_open": ["mobile_app", "promo_engine", "sub_deposits", "core_abs", "notification_gw"],
-    "deposit_topup": ["mobile_app", "sub_deposits", "core_abs"],
-    "deposit_close": ["mobile_app", "sub_deposits", "core_abs"],
-    "card_payment": ["processing", "sub_debit", "core_abs", "notification_gw"],
-    "transfer": ["mobile_app", "antifraud", "processing", "core_abs"],
-    "loan_payment": ["mobile_app", "sub_lending", "core_abs"],
-    "card_issue": ["mobile_app", "sub_debit"],
-    "limit_request": ["mobile_app", "sub_lending"],
-    "promo_apply": ["mobile_app", "promo_engine"],
-    "login": ["mobile_app"],
-    "statement": ["web_bank", "core_abs"],
-}
-MERCHANTS = [
-    "Пятёрочка",
-    "Магнит",
-    "Яндекс Такси",
-    "Wildberries",
-    "Ozon",
-    "Кафе «Ромашка»",
-    "АЗС Лукойл",
-    "Аптека 36,6",
-    "Ситилинк",
-    "Перекрёсток",
-    "Додо Пицца",
-    "РЖД",
-]
 
 
 def luhn_invalid_last4(rnd: random.Random, bin_prefix: str = "220220") -> str:
@@ -306,7 +272,11 @@ def seed_clients(cur: psycopg.Cursor[Any], rnd: random.Random, n_clients: int, s
             ]
         ):
             products.append("credit_card")
+        fallback_product = not products
+        if fallback_product:
+            products.append("debit_card")
         opened_base = sim_now - dt.timedelta(days=rnd.randrange(30, 1500))
+        fallback_rng_state = rnd.getstate() if fallback_product else None
         for p in products:
             terms: dict[str, Any] = {}
             last4 = None
@@ -332,6 +302,8 @@ def seed_clients(cur: psycopg.Cursor[Any], rnd: random.Random, n_clients: int, s
                     "insurance": rnd.random() < 0.4,
                     "monthly_payment_rub": rnd.choice([8900, 15400, 23700, 41200]),
                 }
+            if last4 is not None:
+                terms["masked_number"] = f"**** {last4}"
             cur.execute(
                 "insert into client_products (client_id, product_code, status, terms, card_last4, opened_sim) values (%s, %s, 'active', %s, %s, %s) returning id",
                 (client_id, p, J(terms), last4, opened_base + dt.timedelta(days=rnd.randrange(0, 30))),
@@ -347,6 +319,9 @@ def seed_clients(cur: psycopg.Cursor[Any], rnd: random.Random, n_clients: int, s
                     "insert into accounts (client_id, product_id, number_masked, currency, balance, status) values (%s, %s, %s, 'RUB', %s, 'active')",
                     (client_id, cp_id, f"408** **** {last4 or rnd.randrange(1000, 9999)}", bal),
                 )
+        # Новый обязательный продукт не сдвигает генерацию последующих клиентов/кассет.
+        if fallback_rng_state is not None:
+            rnd.setstate(fallback_rng_state)
         if i % 500 == 0:
             log.info("clients_progress", done=i)
     log.info(
@@ -370,78 +345,6 @@ def ensure_history_run(cur: psycopg.Cursor[Any], seed: int, sim_now: dt.datetime
         (seed, J({"profile": profile}), sim_now - dt.timedelta(days=14), sim_now, J({"source": "seed"})),
     )
     return int(cur.fetchone()[0])
-
-
-def seed_operations(
-    cur: psycopg.Cursor[Any], rnd: random.Random, run_id: int, sim_now: dt.datetime, per_client: int = 6
-) -> None:
-    if cur.execute("select count(*) from operations where run_id = %s", (run_id,)).fetchone()[0]:
-        return
-    rows = cur.execute(
-        "select cp.client_id, cp.product_code, cp.card_last4 from client_products cp where cp.status = 'active'"
-    ).fetchall()
-    qr_total = qr_fee = 0
-    for client_id, product, _last4 in rows:
-        for _ in range(rnd.randrange(max(1, per_client - 3), per_client + 3)):
-            op = rnd.choice(OP_TYPES[product])
-            started = sim_now - dt.timedelta(minutes=rnd.randrange(0, 14 * 24 * 60))
-            amount = {
-                "deposit": rnd.choice([5000, 10000, 50000, 100000]),
-                "debit_card": rnd.choice([190, 450, 890, 1290, 3200, 5800, 12400]),
-                "credit": rnd.choice([8900, 15400, 23700]),
-                "credit_card": rnd.choice([990, 2300, 7800, 15600]),
-            }[product]
-            if op in ("login", "statement", "limit_request"):
-                amount = None
-            method = (
-                ("qr_sbp" if rnd.random() < 0.45 else "card")
-                if op == "card_payment"
-                else "transfer"
-                if op == "transfer"
-                else "online"
-            )
-            fee = 0.0
-            error = None
-            status = "success"
-            if method == "qr_sbp":
-                qr_total += 1
-                if rnd.random() < 0.04:  # 3–5 % QR-операций с ошибочной комиссией (сценарий 8)
-                    fee = round(amount * rnd.choice([0.01, 0.015]) + rnd.choice([0, 90, 150]), 2) or 150.0
-                    error = "PROC-QR-FEE-CHARGED"
-                    qr_fee += 1
-            elif rnd.random() < 0.03:
-                status = "failed"
-                error = {
-                    "deposit": "DEP-TIMEOUT-503",
-                    "debit_card": rnd.choice(["PROC-DOUBLE-DEBIT", "APP-CRASH-PAY", "AF-FALSE-BLOCK"]),
-                    "credit": "LEND-PAYMENT-NOT-POSTED",
-                    "credit_card": "CC-GRACE-MISCALC",
-                }[product]
-            cur.execute(
-                "insert into operations (run_id, client_id, product_code, op_type, system_path, amount_rub, method, merchant, fee_amount, status, error_code, started_sim, finished_sim) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (
-                    run_id,
-                    client_id,
-                    product,
-                    op,
-                    SYSTEM_PATH[op],
-                    amount,
-                    method,
-                    rnd.choice(MERCHANTS) if op == "card_payment" else None,
-                    fee,
-                    status,
-                    error,
-                    started,
-                    started + dt.timedelta(seconds=rnd.randrange(1, 40)),
-                ),
-            )
-    log.info(
-        "operations_done",
-        total=cur.execute("select count(*) from operations where run_id = %s", (run_id,)).fetchone()[0],
-        qr=qr_total,
-        qr_fee=qr_fee,
-        qr_fee_share=round(qr_fee / max(qr_total, 1), 3),
-    )
 
 
 def seed_history_signals(

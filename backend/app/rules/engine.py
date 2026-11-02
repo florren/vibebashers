@@ -66,6 +66,7 @@ async def check_rules(
     signal_id: int,
     agent_run_id: int,
     operations: list[dict[str, Any]],
+    refund_operations: dict[str, list[dict[str, Any]]] | None = None,
     tariff_fee_pct: float = 0.0,
 ) -> list[dict[str, Any]]:
     """Прогоняет активные правила по операциям клиента из контекста; пишет rule_evaluations; возвращает сработавшие."""
@@ -79,7 +80,12 @@ async def check_rules(
         hits: list[dict[str, Any]] = []
         result = "not_matched"
         try:
-            for op in operations:
+            candidates = (
+                refund_operations.get(code, [])
+                if action == "refund_fee" and refund_operations is not None
+                else operations
+            )
+            for op in candidates:
                 ctx = {
                     "operation": op,
                     "tariff": {"fee_pct": tariff_fee_pct},
