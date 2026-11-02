@@ -76,13 +76,21 @@ async def test_scenario_08_on_replay(replay_bank: str, monkeypatch, request) -> 
     assert time.perf_counter() - t0 <= 60.0
 
 
-async def test_changed_seed_context_is_honest_replay_miss(seeded: str) -> None:
+async def test_changed_seed_context_is_honest_replay_miss(seeded: str, monkeypatch, request) -> None:
     """T-017 меняет synthetic bank; его контекст не выдаётся за старую live-запись."""
+    from app.config import get_settings
+
+    monkeypatch.setenv("LLM_PROVIDER", "replay")
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     store = _store()
     fixture = json.loads((CASSETTES.parents[1] / "backend/tests/fixtures/replay_bank_v1.json").read_text())
     recorded = store._index[f"{fixture['source_request_hash']}:{PROFILE.model}"]
     schema = deref("agent/instant_decision")
-    assert store.get("gigachat", PROFILE.model, recorded["messages"], schema) is recorded
+    current = store.get("gigachat", PROFILE.model, recorded["messages"], schema)
+    assert current is not None
+    current_hash = request_hash("gigachat", PROFILE.model, recorded["messages"], schema)
+    assert current["request_hash"] == current_hash
     misses = []
 
     class AuditedReplay(ReplayProvider):
@@ -96,6 +104,13 @@ async def test_changed_seed_context_is_honest_replay_miss(seeded: str) -> None:
 
     scenario = sc.get("qr_fee_public_review")
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        # Проверяем miss именно записанной Pro-модели, не нового default Mock.
+        await conn.execute(
+            "insert into settings(key,value) select 'setup_payload',jsonb_build_object('llm', "
+            "jsonb_build_object('main_profile_id',id,'fast_profile_id',id,'twin_profile_id',id)) "
+            "from llm_profiles where model='GigaChat-3-Pro' and is_active order by id limit 1 "
+            "on conflict(key) do update set value=excluded.value"
+        )
         run_id = await new_run(conn, "changed seed is not recorded bank", scenario_id=scenario["id"])
         now = await sim_now(conn)
         injected = await sc.inject(conn, scenario, run_id, sim_time=now)
@@ -109,4 +124,4 @@ async def test_changed_seed_context_is_honest_replay_miss(seeded: str) -> None:
                 sim_time=now,
             )
             assert state is not None and state["outcome"] == "fallback_mock"
-    assert misses and fixture["source_request_hash"] not in misses
+    assert misses and current_hash not in misses

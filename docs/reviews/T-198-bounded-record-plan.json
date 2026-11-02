@@ -1,0 +1,610 @@
+{
+  "scenario_id": "qr_fee_public_review",
+  "model": "GigaChat-3-Pro",
+  "prompt_version": "v1.1",
+  "source_request_hash": "174508311da29178f016ba3094e36291612a740c37427ff51ec4dedeede099a0",
+  "source_record_sha256": "9fa6dbc1585c3c6bf251c7774779f5f9e6da467ba1ea26f42e792cb82aef03ed",
+  "source_recorded_at": "2026-10-28T07:30:44.410429+00:00",
+  "frozen_bank_sha256": "f07fb885f1f300849fee83a6c3e1cae400d507a5b9e4af085aac92c6361b6bb7",
+  "schema_sha256": "02f49c4b9abaafe1ca12f9c8195e6805ef9f4bfd6b6360f8704aa5f62044b0f9",
+  "request_hash": "9c3165dd136da8c44a1d7a12f9e8efef634cda375fb015f3435373e4f8abe903",
+  "record_required": true,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Ты — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены. Правила: 1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке. 2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность. 3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах. 4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением. 5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно. Задача: быстрое решение по подтверждённому бизнес-правилу (возврат комиссии и публичный ответ). Код проверит политики и выполнит инструменты в фиксированном порядке. Нужно вернуть structured output: 1. classification — тип fee_refund / tariff_terms + tech_fault, product debit_card, error_code из правила, flags (public, rule_confirmed, churn_intent при угрозе ухода), negativity, problem_summary, confidence ≥ 0,75. 2. rule_codes — коды сработавших правил из контекста (например RULE-QR-FEE-001). 3. actions — план инструментов (operation_id и amount_rub из правила/операций): refund_fee → create_incident (fee_refund) → publish_public_reply → notify_client. 4. public_reply_ru — ответ под постом: извинение, факт возврата, приглашение в личный канал, без ПДн и обещаний вне SLA (20–700 символов). 5. client_notice_ru — личное уведомление клиенту о возврате. 6. gift — bonus_points 300 при churn_intent, иначе null или 300 баллов. 7. rationale_ru — почему автономный возврат допустим (ссылка на правило, сумма, идентификация). 8. confidence — уверенность в решении 0–1. Сработавшие правила: [{\"rule_code\":\"RULE-QR-FEE-001\",\"action\":\"refund_fee\",\"team\":\"team_processing\",\"error_code\":\"PROC-QR-FEE-CHARGED\",\"amount_rub\":450.0,\"operation_ids\":[2179],\"within_limit\":true,\"limits\":{\"max_amount_rub\":5000,\"per_client_30d\":3}}] Идентификация: {\"method\":\"authenticated_channel\",\"confidence\":1.0} Контекст: {\"client\":{\"segment\":\"mass\",\"psychotype\":\"anxious\",\"city\":\"Лабытнанги\",\"region_code\":\"89\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"8444\"}],\"operations\":[{\"op_type\":\"card_payment\",\"method\":\"qr_sbp\",\"amount_rub\":3200.0,\"fee_amount\":450.0,\"status\":\"failed\",\"error_code\":\"PROC-QR-FEE-CHARGED\",\"started_sim\":\"2026-11-09T05:40:00+00:00\",\"merchant\":\"Кофейня «Зерно»\"}],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[{\"rule_code\":\"RULE-QR-FEE-001\",\"action\":\"refund_fee\",\"amount_rub\":450.0,\"within_limit\":true}]} Канал: review_portal. Текст: «Оплатил по QR на 3 200 руб., а банк списал комиссию 450 руб. Верните комиссию, иначе оставлю отзыв везде, где смогу.»"
+    },
+    {
+      "role": "user",
+      "content": "Оплатил по QR на 3 200 руб., а банк списал комиссию 450 руб. Верните комиссию, иначе оставлю отзыв везде, где смогу."
+    }
+  ],
+  "wire_messages": [
+    {
+      "role": "system",
+      "content": "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже (все обязательные поля, значения enum — из списка, тексты на русском). Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"classification\", \"rule_codes\", \"actions\", \"public_reply_ru\", \"client_notice_ru\", \"rationale_ru\", \"confidence\"], \"properties\": {\"classification\": {\"title\": \"Выход узла classify (structured output основной модели; хранится в signals.classification); T-239: детерминированные red_words\", \"type\": \"object\", \"additionalProperties\": false, \"required\": [\"signal_type\", \"product\", \"system\", \"cause_hypothesis\", \"criticality\", \"tone\", \"flags\", \"churn_risk\", \"confidence\", \"rationale_ru\", \"summary_ru\", \"sentiment\", \"problem_summary\"], \"properties\": {\"signal_type\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"legal_regulatory\", \"info_request\", \"gratitude\", \"suggestion\", \"churn\"]}, \"secondary_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"legal_regulatory\", \"info_request\", \"gratitude\", \"suggestion\", \"churn\"]}, \"maxItems\": 2, \"description\": \"Например tech_fault + tariff_terms в ключевом сценарии\"}, \"product\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"deposit\", \"debit_card\", \"credit\", \"credit_card\"]}, {\"type\": \"null\"}]}, \"system\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"mobile_app\", \"web_bank\", \"contact_center\", \"social_listening\", \"processing\", \"notification_gw\", \"promo_engine\", \"antifraud\", \"sub_deposits\", \"sub_lending\", \"sub_debit\", \"core_abs\"]}, {\"type\": \"null\"}], \"description\": \"Система-источник по гипотезе\"}, \"error_code\": {\"anyOf\": [{\"type\": \"string\", \"pattern\": \"^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$\", \"description\": \"Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.\", \"examples\": [\"DEP-TIMEOUT-503\", \"PROMO-RATE-MISMATCH\", \"PROC-DOUBLE-DEBIT\", \"NOTIF-DELAY\", \"APP-LOGIN-FAIL\"]}, {\"type\": \"null\"}], \"description\": \"Если найден в логах через инструменты\"}, \"cause_hypothesis\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"info_request\", \"gratitude\", \"suggestion\", \"legal_regulatory\", \"unknown\"]}, \"criticality\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\"]}, \"tone\": {\"type\": \"string\", \"enum\": [\"neutral\", \"positive\", \"irritated\", \"angry\", \"sarcastic\", \"formal\"]}, \"flags\": {\"type\": \"array\", \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"churn_intent\", \"repeat\", \"sarcasm\", \"aggression\", \"mass_impact\", \"public\", \"rule_confirmed\", \"regulator_threat\", \"passive_aggression\", \"repeat_contact_7d\", \"red_word\"]}}, \"entities\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"amount_rub\": {\"type\": [\"number\", \"null\"]}, \"operation_date_sim\": {\"type\": [\"string\", \"null\"]}, \"promo_code\": {\"type\": [\"string\", \"null\"]}, \"mentions\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"enum\": [\"churn\", \"court\", \"regulator\", \"fraud\", \"media\", \"competitor\"]}}, \"masked_card\": {\"type\": [\"string\", \"null\"], \"pattern\": \"^\\\\*{4} \\\\d{4}$\"}}}, \"churn_risk\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 100}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"related_incident_ids\": {\"type\": \"array\", \"items\": {\"type\": \"integer\"}, \"description\": \"Кандидаты на связывание (из find_related_incidents)\"}, \"summary_ru\": {\"type\": \"string\", \"maxLength\": 300}, \"rationale_ru\": {\"type\": \"string\", \"minLength\": 20, \"maxLength\": 1200, \"description\": \"2–4 предложения, показываются CX и жюри\"}, \"language\": {\"type\": \"string\", \"default\": \"ru\"}, \"negativity\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 100, \"description\": \"Уровень негатива текста 0–100 (BRD FR 1.2); копируется из normalization\"}, \"intents\": {\"type\": \"array\", \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"churn_threat\", \"refund_request\", \"complaint\", \"question\", \"public_shaming\", \"regulator_threat\", \"gratitude\"], \"description\": \"Намерения автора текста (ТЗ 7, BRD FR 1.2)\"}}, \"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"neutral\", \"negative\"], \"description\": \"Трёхклассная тональность (ДТЗ FR-2.1); сверяется с порогами negativity ≤33 / 34–66 / ≥67\"}, \"product_line\": {\"type\": \"string\", \"enum\": [\"deposits\", \"mortgage\", \"loans\", \"credit_cards\", \"debit_cards\", \"transfers_payments\", \"mobile_app\", \"investments\", \"insurance\", \"bonuses_subscription\", \"branches_service\", \"support\", \"business_banking\", \"atm_self_service\", \"fraud_security\", \"other\"], \"description\": \"[ЕТЗ FR-2.4] продуктовое направление\"}, \"product_line_confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"secondary_lines\": {\"type\": \"array\", \"maxItems\": 2, \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"deposits\", \"mortgage\", \"loans\", \"credit_cards\", \"debit_cards\", \"transfers_payments\", \"mobile_app\", \"investments\", \"insurance\", \"bonuses_subscription\", \"branches_service\", \"support\", \"business_banking\", \"atm_self_service\", \"fraud_security\", \"other\"]}}, \"signal_level\": {\"type\": \"string\", \"description\": \"[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета\"}, \"problem_summary\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"problem\", \"severity\", \"suggested_team\"], \"description\": \"[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)\", \"properties\": {\"problem\": {\"type\": \"string\", \"minLength\": 10, \"maxLength\": 300}, \"severity\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\", \"critical\"], \"description\": \"problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL\"}, \"suggested_team\": {\"type\": \"string\", \"enum\": [\"team_cx\", \"team_deposits\", \"team_lending\", \"team_debit\", \"team_front\", \"team_processing\", \"team_notifications\", \"team_contact_center\", \"team_promo\", \"team_antifraud\", \"team_compliance\", \"team_branch_network\"]}}}, \"red_words\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"uniqueItems\": true}}}, \"rule_codes\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"string\"}, \"description\": \"Правила, подтверждающие действие; без них быстрый путь запрещён\"}, \"actions\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"tool\", \"args\"], \"properties\": {\"tool\": {\"type\": \"string\", \"enum\": [\"refund_fee\", \"create_incident\", \"publish_public_reply\", \"notify_client\", \"create_task\", \"find_affected_clients\"]}, \"args\": {\"type\": \"object\"}}}, \"description\": \"Порядок исполнения: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)\"}, \"public_reply_ru\": {\"type\": \"string\", \"minLength\": 20, \"maxLength\": 700, \"description\": \"Без ПДн; извинение, факт возврата, приглашение в личный канал\"}, \"client_notice_ru\": {\"type\": \"string\", \"maxLength\": 1000}, \"gift\": {\"type\": [\"object\", \"null\"], \"additionalProperties\": false, \"properties\": {\"catalog_code\": {\"type\": \"string\"}, \"points\": {\"type\": \"integer\", \"minimum\": 0}}}, \"escalate_to_dm\": {\"type\": \"boolean\", \"default\": false}, \"rationale_ru\": {\"type\": \"string\", \"minLength\": 20, \"maxLength\": 800}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}}}\n\nТы — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены. Правила: 1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке. 2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность. 3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах. 4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением. 5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно. Задача: быстрое решение по подтверждённому бизнес-правилу (возврат комиссии и публичный ответ). Код проверит политики и выполнит инструменты в фиксированном порядке. Нужно вернуть structured output: 1. classification — тип fee_refund / tariff_terms + tech_fault, product debit_card, error_code из правила, flags (public, rule_confirmed, churn_intent при угрозе ухода), negativity, problem_summary, confidence ≥ 0,75. 2. rule_codes — коды сработавших правил из контекста (например RULE-QR-FEE-001). 3. actions — план инструментов (operation_id и amount_rub из правила/операций): refund_fee → create_incident (fee_refund) → publish_public_reply → notify_client. 4. public_reply_ru — ответ под постом: извинение, факт возврата, приглашение в личный канал, без ПДн и обещаний вне SLA (20–700 символов). 5. client_notice_ru — личное уведомление клиенту о возврате. 6. gift — bonus_points 300 при churn_intent, иначе null или 300 баллов. 7. rationale_ru — почему автономный возврат допустим (ссылка на правило, сумма, идентификация). 8. confidence — уверенность в решении 0–1. Сработавшие правила: [{\"rule_code\":\"RULE-QR-FEE-001\",\"action\":\"refund_fee\",\"team\":\"team_processing\",\"error_code\":\"PROC-QR-FEE-CHARGED\",\"amount_rub\":450.0,\"operation_ids\":[2179],\"within_limit\":true,\"limits\":{\"max_amount_rub\":5000,\"per_client_30d\":3}}] Идентификация: {\"method\":\"authenticated_channel\",\"confidence\":1.0} Контекст: {\"client\":{\"segment\":\"mass\",\"psychotype\":\"anxious\",\"city\":\"Лабытнанги\",\"region_code\":\"89\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"8444\"}],\"operations\":[{\"op_type\":\"card_payment\",\"method\":\"qr_sbp\",\"amount_rub\":3200.0,\"fee_amount\":450.0,\"status\":\"failed\",\"error_code\":\"PROC-QR-FEE-CHARGED\",\"started_sim\":\"2026-11-09T05:40:00+00:00\",\"merchant\":\"Кофейня «Зерно»\"}],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[{\"rule_code\":\"RULE-QR-FEE-001\",\"action\":\"refund_fee\",\"amount_rub\":450.0,\"within_limit\":true}]} Канал: review_portal. Текст: «Оплатил по QR на 3 200 руб., а банк списал комиссию 450 руб. Верните комиссию, иначе оставлю отзыв везде, где смогу.»"
+    },
+    {
+      "role": "user",
+      "content": "Оплатил по QR на 3 200 руб., а банк списал комиссию 450 руб. Верните комиссию, иначе оставлю отзыв везде, где смогу."
+    }
+  ],
+  "schema": {
+    "title": "Выход быстрого пути (один вызов основной модели: классификация + решение + тексты; ТЗ 21.4)",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "classification",
+      "rule_codes",
+      "actions",
+      "public_reply_ru",
+      "client_notice_ru",
+      "rationale_ru",
+      "confidence"
+    ],
+    "properties": {
+      "classification": {
+        "title": "Выход узла classify (structured output основной модели; хранится в signals.classification); T-239: детерминированные red_words",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signal_type",
+          "product",
+          "system",
+          "cause_hypothesis",
+          "criticality",
+          "tone",
+          "flags",
+          "churn_risk",
+          "confidence",
+          "rationale_ru",
+          "summary_ru",
+          "sentiment",
+          "problem_summary"
+        ],
+        "properties": {
+          "signal_type": {
+            "type": "string",
+            "enum": [
+              "tech_fault",
+              "client_error",
+              "tariff_terms",
+              "service_quality",
+              "fraud_suspicion",
+              "legal_regulatory",
+              "info_request",
+              "gratitude",
+              "suggestion",
+              "churn"
+            ]
+          },
+          "secondary_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tech_fault",
+                "client_error",
+                "tariff_terms",
+                "service_quality",
+                "fraud_suspicion",
+                "legal_regulatory",
+                "info_request",
+                "gratitude",
+                "suggestion",
+                "churn"
+              ]
+            },
+            "maxItems": 2,
+            "description": "Например tech_fault + tariff_terms в ключевом сценарии"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "deposit",
+                  "debit_card",
+                  "credit",
+                  "credit_card"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "mobile_app",
+                  "web_bank",
+                  "contact_center",
+                  "social_listening",
+                  "processing",
+                  "notification_gw",
+                  "promo_engine",
+                  "antifraud",
+                  "sub_deposits",
+                  "sub_lending",
+                  "sub_debit",
+                  "core_abs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Система-источник по гипотезе"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$",
+                "description": "Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.",
+                "examples": [
+                  "DEP-TIMEOUT-503",
+                  "PROMO-RATE-MISMATCH",
+                  "PROC-DOUBLE-DEBIT",
+                  "NOTIF-DELAY",
+                  "APP-LOGIN-FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Если найден в логах через инструменты"
+          },
+          "cause_hypothesis": {
+            "type": "string",
+            "enum": [
+              "tech_fault",
+              "client_error",
+              "tariff_terms",
+              "service_quality",
+              "fraud_suspicion",
+              "info_request",
+              "gratitude",
+              "suggestion",
+              "legal_regulatory",
+              "unknown"
+            ]
+          },
+          "criticality": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "positive",
+              "irritated",
+              "angry",
+              "sarcastic",
+              "formal"
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "churn_intent",
+                "repeat",
+                "sarcasm",
+                "aggression",
+                "mass_impact",
+                "public",
+                "rule_confirmed",
+                "regulator_threat",
+                "passive_aggression",
+                "repeat_contact_7d",
+                "red_word"
+              ]
+            }
+          },
+          "entities": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "amount_rub": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "operation_date_sim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "promo_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mentions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "churn",
+                    "court",
+                    "regulator",
+                    "fraud",
+                    "media",
+                    "competitor"
+                  ]
+                }
+              },
+              "masked_card": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\*{4} \\d{4}$"
+              }
+            }
+          },
+          "churn_risk": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "related_incident_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Кандидаты на связывание (из find_related_incidents)"
+          },
+          "summary_ru": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "rationale_ru": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1200,
+            "description": "2–4 предложения, показываются CX и жюри"
+          },
+          "language": {
+            "type": "string",
+            "default": "ru"
+          },
+          "negativity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Уровень негатива текста 0–100 (BRD FR 1.2); копируется из normalization"
+          },
+          "intents": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "churn_threat",
+                "refund_request",
+                "complaint",
+                "question",
+                "public_shaming",
+                "regulator_threat",
+                "gratitude"
+              ],
+              "description": "Намерения автора текста (ТЗ 7, BRD FR 1.2)"
+            }
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "neutral",
+              "negative"
+            ],
+            "description": "Трёхклассная тональность (ДТЗ FR-2.1); сверяется с порогами negativity ≤33 / 34–66 / ≥67"
+          },
+          "product_line": {
+            "type": "string",
+            "enum": [
+              "deposits",
+              "mortgage",
+              "loans",
+              "credit_cards",
+              "debit_cards",
+              "transfers_payments",
+              "mobile_app",
+              "investments",
+              "insurance",
+              "bonuses_subscription",
+              "branches_service",
+              "support",
+              "business_banking",
+              "atm_self_service",
+              "fraud_security",
+              "other"
+            ],
+            "description": "[ЕТЗ FR-2.4] продуктовое направление"
+          },
+          "product_line_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "secondary_lines": {
+            "type": "array",
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "deposits",
+                "mortgage",
+                "loans",
+                "credit_cards",
+                "debit_cards",
+                "transfers_payments",
+                "mobile_app",
+                "investments",
+                "insurance",
+                "bonuses_subscription",
+                "branches_service",
+                "support",
+                "business_banking",
+                "atm_self_service",
+                "fraud_security",
+                "other"
+              ]
+            }
+          },
+          "signal_level": {
+            "type": "string",
+            "description": "[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета"
+          },
+          "problem_summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "problem",
+              "severity",
+              "suggested_team"
+            ],
+            "description": "[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)",
+            "properties": {
+              "problem": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 300
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ],
+                "description": "problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL"
+              },
+              "suggested_team": {
+                "type": "string",
+                "enum": [
+                  "team_cx",
+                  "team_deposits",
+                  "team_lending",
+                  "team_debit",
+                  "team_front",
+                  "team_processing",
+                  "team_notifications",
+                  "team_contact_center",
+                  "team_promo",
+                  "team_antifraud",
+                  "team_compliance",
+                  "team_branch_network"
+                ]
+              }
+            }
+          },
+          "red_words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        }
+      },
+      "rule_codes": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string"
+        },
+        "description": "Правила, подтверждающие действие; без них быстрый путь запрещён"
+      },
+      "actions": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tool",
+            "args"
+          ],
+          "properties": {
+            "tool": {
+              "type": "string",
+              "enum": [
+                "refund_fee",
+                "create_incident",
+                "publish_public_reply",
+                "notify_client",
+                "create_task",
+                "find_affected_clients"
+              ]
+            },
+            "args": {
+              "type": "object"
+            }
+          }
+        },
+        "description": "Порядок исполнения: деньги → инцидент → публичный ответ → личное уведомление (ТЗ 21.4)"
+      },
+      "public_reply_ru": {
+        "type": "string",
+        "minLength": 20,
+        "maxLength": 700,
+        "description": "Без ПДн; извинение, факт возврата, приглашение в личный канал"
+      },
+      "client_notice_ru": {
+        "type": "string",
+        "maxLength": 1000
+      },
+      "gift": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "catalog_code": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "escalate_to_dm": {
+        "type": "boolean",
+        "default": false
+      },
+      "rationale_ru": {
+        "type": "string",
+        "minLength": 20,
+        "maxLength": 800
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "examples": [
+      {
+        "classification": {
+          "signal_type": "tech_fault",
+          "secondary_types": [
+            "tariff_terms"
+          ],
+          "product": "debit_card",
+          "system": "processing",
+          "error_code": "PROC-QR-FEE-CHARGED",
+          "cause_hypothesis": "tech_fault",
+          "criticality": "medium",
+          "tone": "angry",
+          "flags": [
+            "churn_intent",
+            "public",
+            "rule_confirmed"
+          ],
+          "churn_risk": 78,
+          "negativity": 87,
+          "intents": [
+            "refund_request",
+            "churn_threat"
+          ],
+          "confidence": 0.9,
+          "summary_ru": "Ошибочная комиссия 450 ₽ за QR-оплату",
+          "rationale_ru": "Правило RULE-QR-FEE-001 подтвердило списание комиссии за оплату по СБП, которая по тарифу бесплатна; клиент публично угрожает уходом.",
+          "sentiment": "negative",
+          "problem_summary": {
+            "problem": "Клиенту ошибочно списана комиссия 450 ₽ за оплату по QR; клиент публично угрожает уходом.",
+            "severity": "high",
+            "suggested_team": "team_processing"
+          }
+        },
+        "rule_codes": [
+          "RULE-QR-FEE-001"
+        ],
+        "actions": [
+          {
+            "tool": "refund_fee",
+            "args": {
+              "operation_id": 88123,
+              "amount_rub": 450,
+              "rule_id": "RULE-QR-FEE-001"
+            }
+          },
+          {
+            "tool": "create_incident",
+            "args": {
+              "incident_type": "fee_refund",
+              "status": "resolved"
+            }
+          },
+          {
+            "tool": "publish_public_reply",
+            "args": {
+              "post_id": 17
+            }
+          },
+          {
+            "tool": "notify_client",
+            "args": {
+              "channel": "chat"
+            }
+          }
+        ],
+        "public_reply_ru": "Иван, простите за ошибку: комиссия за оплату по QR списана неправомерно, 450 ₽ уже вернули на карту. Напишите нам в чат приложения — проверим, всё ли в порядке.",
+        "client_notice_ru": "Мы вернули 450 ₽ комиссии за оплату по QR от сегодняшнего дня. Приносим извинения.",
+        "gift": {
+          "catalog_code": "bonus_points",
+          "points": 300
+        },
+        "escalate_to_dm": true,
+        "rationale_ru": "Сумма 450 ₽ ниже лимита автономии, идентификация 0,93, правило подтверждено — возврат выполняется без человека.",
+        "confidence": 0.9
+      }
+    ]
+  },
+  "initial_input_chars": 10593,
+  "initial_input_utf8_bytes": 12827,
+  "initial_payload_utf8_bytes": 14024,
+  "limits": {
+    "http_requests": 3,
+    "oauth_requests": 1,
+    "inference_requests": 2,
+    "input_chars_per_request": 16000,
+    "input_utf8_bytes_per_request": 48000,
+    "payload_bytes_per_request": 64000,
+    "output_tokens_per_request": 1024,
+    "total_output_tokens": 2048,
+    "total_generation_timeout_s": 30
+  },
+  "endpoints": [
+    "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+    "https://api.giga.chat/v1/chat/completions"
+  ],
+  "scope": "GIGACHAT_API_PERS",
+  "database_access": false
+}
