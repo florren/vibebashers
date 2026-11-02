@@ -19,7 +19,13 @@ import httpx
 
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
-from app.llm.credential_boundary import CredentialStreamGuard, observe_stream_usage, reject_reflection, retry_after
+from app.llm.credential_boundary import (
+    CredentialStreamGuard,
+    observe_stream_usage,
+    reject_reflection,
+    response_token_counts,
+    retry_after,
+)
 from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
@@ -250,9 +256,9 @@ class GigaChatProvider:
                 penalize_cancellation=not proactive,
             )
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", f"oauth: {type(e).__name__}") from e
+            raise ProviderError("timeout", f"oauth: {type(e).__name__}") from None
         except httpx.HTTPError as e:
-            raise ProviderError("network", f"oauth: {type(e).__name__}") from e
+            raise ProviderError("network", f"oauth: {type(e).__name__}") from None
         if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
             raise ProviderError("auth", f"oauth HTTP {r.status_code}", status=r.status_code)
         if r.status_code == 429:
@@ -261,7 +267,12 @@ class GigaChatProvider:
             )
         if r.status_code >= 400:
             raise ProviderError("unavailable", f"oauth HTTP {r.status_code}", status=r.status_code)
-        body = r.json()
+        try:
+            body = r.json()
+        except ValueError:
+            raise ProviderError("bad_output", "oauth: некорректный JSON") from None
+        if not isinstance(body, dict):
+            raise ProviderError("bad_output", "oauth: ожидается JSON object")
         # access_token — ожидаемое private поле OAuth, оно не возвращается в API/trace.
         reject_reflection({name: value for name, value in body.items() if name != "access_token"}, [key.secret])
         key.access_token = body["access_token"]
@@ -309,9 +320,9 @@ class GigaChatProvider:
                     timeout=request_timeout(timeout_s),
                 )
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", type(e).__name__) from e
+            raise ProviderError("timeout", type(e).__name__) from None
         except httpx.HTTPError as e:
-            raise ProviderError("network", type(e).__name__) from e
+            raise ProviderError("network", type(e).__name__) from None
         if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
             key.access_token = None
             if r.status_code == 403 and "quota" in r.text.lower():
@@ -348,8 +359,8 @@ class GigaChatProvider:
                 remaining = max(0.0, deadline - time.perf_counter())
                 async with asyncio.timeout(remaining):
                     return await self._chat(key, payload, profile, remaining), key
-            except TimeoutError as exc:
-                raise ProviderError("timeout", "бюджет запроса исчерпан") from exc
+            except TimeoutError:
+                raise ProviderError("timeout", "бюджет запроса исчерпан") from None
             except ProviderError as e:
                 self.pool.mark_error(key, e)
                 last = e
@@ -385,18 +396,23 @@ class GigaChatProvider:
                 remaining = max(0.0, timeout_s - (time.perf_counter() - t0))
                 r, key = await self._with_keys(payload, profile, remaining, total_usage)
             except ProviderError as exc:
-                total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
-                exc.usage = total_usage
+                # Новый wire не подтвердил usage: initial0 или прежний partial
+                # не являются общим расходом. Per-key known observations сохранены.
+                exc.usage = None
                 raise
-            body = r.json()
-            u = body.get("usage", {})
-            total_usage.prompt_tokens += int(u.get("prompt_tokens", 0))
-            total_usage.completion_tokens += int(u.get("completion_tokens", 0))
-            total_usage.key_label = key.label
-            self.pool.add_usage(
-                key,
-                int(u.get("total_tokens", 0)) or int(u.get("prompt_tokens", 0)) + int(u.get("completion_tokens", 0)),
+            try:
+                body = r.json()
+            except ValueError:
+                raise ProviderError("bad_output", "chat: некорректный JSON") from None
+            if not isinstance(body, dict):
+                raise ProviderError("bad_output", "chat: ожидается JSON object")
+            prompt, completion, total = response_token_counts(
+                body.get("usage"), [key.secret, key.access_token], coerce=True
             )
+            total_usage.prompt_tokens += prompt
+            total_usage.completion_tokens += completion
+            total_usage.key_label = key.label
+            self.pool.add_usage(key, total)
             raw = body["choices"][0]["message"]["content"]
             try:
                 obj = extract_json(raw)
@@ -477,11 +493,34 @@ class GigaChatProvider:
                     data = line[5:].strip()
                     if data == "[DONE]":
                         break
-                    chunk = json.loads(data)
-                    delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content")
+                    try:
+                        chunk = json.loads(data)
+                    except ValueError:
+                        raise ProviderError("bad_output", "stream: некорректный JSON", usage=observed) from None
+                    if not isinstance(chunk, dict):
+                        raise ProviderError("bad_output", "stream: ожидается JSON object", usage=observed)
                     if chunk.get("usage"):
-                        observed = observe_stream_usage(observed, chunk["usage"], profile, self.name, key.label)
-                        self.pool.add_usage(key, int(chunk["usage"].get("total_tokens", 0)))
+                        prompt, completion, total = response_token_counts(
+                            chunk["usage"], [key.secret, token], coerce=True
+                        )
+                        observed = observe_stream_usage(
+                            observed,
+                            {"prompt_tokens": prompt, "completion_tokens": completion},
+                            profile,
+                            self.name,
+                            key.label,
+                        )
+                        self.pool.add_usage(key, total)
+                    # Usage-only SSE frame может законно иметь choices=[].
+                    choices = chunk.get("choices") or []
+                    if not isinstance(choices, list) or (choices and not isinstance(choices[0], dict)):
+                        raise ProviderError("bad_output", "stream: неверные choices", usage=observed)
+                    delta_data = (choices[0].get("delta") or {}) if choices else {}
+                    if not isinstance(delta_data, dict):
+                        raise ProviderError("bad_output", "stream: неверный delta", usage=observed)
+                    delta = delta_data.get("content")
+                    if delta is not None and not isinstance(delta, str):
+                        raise ProviderError("bad_output", "stream: неверный content", usage=observed)
                     if delta:
                         safe = guard.feed(delta)
                         if safe:
@@ -494,6 +533,6 @@ class GigaChatProvider:
                 exc.usage = observed
             raise
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", type(e).__name__, usage=observed) from e
+            raise ProviderError("timeout", type(e).__name__, usage=observed) from None
         except httpx.HTTPError as e:
-            raise ProviderError("network", type(e).__name__, usage=observed) from e
+            raise ProviderError("network", type(e).__name__, usage=observed) from None
