@@ -2174,5 +2174,36 @@
       "language": "Language"
     },
     "diffScope": "The count covers API diff fields. The table below highlights all differing response fields."
+  },
+  "db": {
+    "run": "Run #{{id}}",
+    "title": "Database activity",
+    "readonly": "Read only · real changes from audit triggers",
+    "scope": "Run scope",
+    "current": "Baseline + current",
+    "all": "All runs",
+    "table": "Table",
+    "allTables": "All tables",
+    "pause": "Pause updates",
+    "resume": "Resume updates",
+    "refresh": "Refresh",
+    "paused": "Updates paused",
+    "live": "WebSocket + polling",
+    "polling": "Polling · WebSocket unavailable",
+    "legacy": "Legacy events without run_id appear only in all runs",
+    "limit": "Latest 50 rows; changes shown newest first",
+    "counters": "Table counters",
+    "delta": "Counter change",
+    "exact": "Exact",
+    "estimated": "PostgreSQL estimate",
+    "activity": "Change feed",
+    "emptyActivity": "No changes in the selected scope yet",
+    "unknownRun": "Unknown run",
+    "older": "Older changes",
+    "rows": "Latest rows",
+    "masked": "Contacts, secrets and raw LLM payloads are hidden by the server",
+    "emptyRows": "No rows in this scope",
+    "inspect": "Inspect JSON",
+    "inspector": "JSON inspector"
   }
 }

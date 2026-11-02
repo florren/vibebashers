@@ -104,7 +104,9 @@ async def test_cancellation_propagates_and_does_not_trigger_retry():
 async def test_other_http_logging_context_is_preserved(caplog):
     client = TelegramClient(TOKEN, transport=httpx.MockTransport(lambda request: httpx.Response(200)))
     try:
-        with caplog.at_level(logging.INFO):
+        # P1 штатно ставит httpx WARNING; здесь проверяется scope фильтра,
+        # поэтому разрешаем INFO именно у этого logger, с автоматическим restore.
+        with caplog.at_level(logging.INFO, logger="httpx"):
             logging.getLogger("httpx").info("other_provider_safe_event")
         assert "other_provider_safe_event" in caplog.text
     finally:
