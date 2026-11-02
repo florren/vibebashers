@@ -1957,5 +1957,134 @@
       "resolved": "A solution is ready",
       "closed": "Request closed"
     }
+  },
+  "traceGraph": {
+    "mode": "Trace view",
+    "columns": "Columns",
+    "graph": "Graph",
+    "scope": "Run",
+    "apply": "Apply",
+    "scopeHelp": "current — current + baseline; all — all runs; or a run ID",
+    "allScope": "All runs (all) explicitly selected.",
+    "zoom": "Zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "toCenter": "Subject",
+    "keyboard": "Arrows / [ ]: select; Enter: center; Home: subject; End: outcome",
+    "unresolved": "Unknown endpoints are hidden: the subject cannot be identified unambiguously.",
+    "minimap": "Trace minimap",
+    "noPath": "The saved outcome is shown above. Available edges do not contain a continuous path.",
+    "rendered": "In view: {{visible}} of {{total}} nodes",
+    "fans": "Related event groups",
+    "legacyFan": "This older group has samples only. Full expansion needs its recorded parent metadata.",
+    "fanError": "Could not expand the group. Return to its first page and retry.",
+    "page": "Events {{start}}–{{end}} of {{total}}",
+    "previous": "Previous page",
+    "next": "Next page",
+    "inspector": "Node inspector",
+    "summary": "Summary",
+    "relations": "Relations",
+    "data": "Data",
+    "transition": "Navigate",
+    "journey": "Complaint journey",
+    "noTransition": "This node has no navigation link.",
+    "family": {
+      "signal": "Signal",
+      "incident": "Incident",
+      "client": "Client",
+      "action": "Action",
+      "money": "Money",
+      "message": "Message"
+    },
+    "scopeError": "Use current, all, or a positive run ID up to 9223372036854775807.",
+    "hiddenEdges": "Some edges are hidden because an endpoint is absent from this response. Open the group parent trace to inspect it.",
+    "groupParent": "Group parent trace"
+  },
+  "compare": {
+    "title": "AI versus rules",
+    "description": "One text, classified by the selected profile and mock. The source comes from the saved trace.",
+    "text": "Message text",
+    "limit": "{{count}} / 5,000 characters · minimum 3 · shared jury limit 20 requests/min",
+    "channel": "Channel",
+    "chat": "Chat",
+    "client": "Client ID",
+    "optionalClient": "Optional",
+    "profile": "Comparison profile",
+    "currentProfile": "Currently configured",
+    "invalidClient": "Enter a positive integer client ID.",
+    "submit": "Compare",
+    "pending": "Comparing…",
+    "pendingHint": "Both diagnostic runs are executing. Duplicate submission is blocked.",
+    "noEffects": "Signals, money, notifications and HITL remain unchanged.",
+    "examplesTitle": "Challenging examples",
+    "examplesHint": "Synthetic inputs. A click fills the text; responses are computed only after submission.",
+    "empty": "Enter text or select an example",
+    "invalidResponse": "The API did not return both classifications.",
+    "results": "Comparison results",
+    "differences": "Different API fields: {{count}}",
+    "equal": "Classification fields in the API diff match. This does not demonstrate model superiority.",
+    "noDiff": "The API did not return a diff; received fields appear below.",
+    "selected": "Selected profile",
+    "mock": "Mock — rules",
+    "fields": "Classification field comparison",
+    "field": "Field",
+    "changed": "Different",
+    "apiDiff": "Original API diff",
+    "summary": "Summary",
+    "rationale": "Model rationale (original response language)",
+    "trace": "Open run #{{id}}",
+    "traceLoading": "Loading source from trace…",
+    "noModel": "Actual model was not recorded",
+    "fallback": "Mock fallback",
+    "source": {
+      "mock": "Mock",
+      "replay": "Replay cassette",
+      "live": "Live",
+      "unknown": "Unknown source"
+    },
+    "examples": {
+      "sarcasm": {
+        "label": "Sarcasm",
+        "text": "Thanks so much for charging me twice again. Exactly the service I was dreaming of."
+      },
+      "irony": {
+        "label": "Irony",
+        "text": "I love this bank: the app crashes when I confirm a payment. Well done, what can I say."
+      },
+      "typos": {
+        "label": "Typos",
+        "text": "Cant make a trensfer, the ap crashes on confurmation. I need the money today."
+      },
+      "indirect": {
+        "label": "Indirect intent",
+        "text": "While you investigate my issue I have checked another bank’s terms. All that remains is moving my salary."
+      },
+      "multiple": {
+        "label": "Multiple topics",
+        "text": "I opened a promotional deposit but the contract rate is lower. Then the app froze while I contacted support."
+      }
+    },
+    "fieldsLabels": {
+      "signal_type": "Signal type",
+      "secondary_types": "Secondary types",
+      "product": "Product",
+      "system": "System",
+      "error_code": "Error code",
+      "cause_hypothesis": "Cause hypothesis",
+      "criticality": "Criticality",
+      "tone": "Tone",
+      "sentiment": "Sentiment",
+      "flags": "Flags",
+      "churn_risk": "Churn risk",
+      "confidence": "Confidence",
+      "related_incident_ids": "Related incidents",
+      "problem_summary": "Problem / severity / team",
+      "product_line": "Product line",
+      "product_line_confidence": "Product line confidence",
+      "secondary_lines": "Secondary product lines",
+      "red_words": "Red words",
+      "language": "Language"
+    },
+    "diffScope": "The count covers API diff fields. The table below highlights all differing response fields."
   }
 }
