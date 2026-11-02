@@ -105,6 +105,33 @@ chmod/chown/delete чужие existing files. Restart с тем же UID сох�
 валидный restore до idle утверждённой версией, затем откатить image/config;
 не удалять marker/volume для обхода failed guard и не использовать down -v.
 
+### Offline snapshot при недоступном архиве
+
+Только после остановки обоих origins и независимой проверки корректности данных
+и утверждённых миграций оператор может создать новый полный snapshot существующим
+Python API. Эта команда не исправляет неизвестное состояние банка, не выполняет
+seed/reset и не меняет durable marker. DB/profile выбираются существующим ENV;
+секреты не помещаются в argv и не выводятся:
+
+```bash
+PYTHONPATH=backend backend/.venv/bin/python - <<'PY'
+import psycopg
+from app.db.session import psycopg_dsn
+from app.sim import baseline
+from app.sim.maintenance_db import LOCK
+
+with psycopg.connect(psycopg_dsn()) as conn:
+    conn.execute("select pg_advisory_lock(%s,%s)", LOCK)
+    baseline.dump_for_connection(conn)
+PY
+```
+
+В контейнерной среде используется тот же утверждённый image/ENV и shared volume
+в одноразовом процессе без uvicorn. После публикации проверенного snapshot
+запустить main: marker остаётся failed, public закрыт. Затем явно выполнить
+существующий POST restore, который единственный завершает recovery до idle.
+Не заменять эту последовательность удалением marker или ручным phase=idle.
+
 ## Проверка кандидата
 
 До crossprocess расширения frozen200f452: полный backend4shards1224 passed,
@@ -120,3 +147,16 @@ retry, success→idle; seed-before-main bootstrap и refusal существую�
 После исправления неполного auth-refresh fake app полный unit923passed18skip.
 Новый полный four-shard/coverage и isolated real-image smoke ещё выполняются;
 этот checkpoint не объявляет T-040 готовой к merge.
+
+Финальный maintenance freeze2a88a68: полный backend1246passed24skip, четыре
+изолированных checkout/БД, exact collection/revision/union aggregate exit0.
+Первый0082прогон обнаружил5fixturecollision в проверках пустого tmp_path; marker
+перенесён в отдельный tmp_path_factory root без изменения исходных assertions.
+Повтор guard/archive+marker24passed, новый полный четырёхчастный прогон зелёный.
+Real image71passed2.6min на новом named volume, sameUID restart; первый запуск
+имел только browser executable path failure до assertions, повтор с уже
+установленным закреплённым Chromium1217 зелёный.
+Stdlibtrace91passed: control100%, DBlease92%, coordinator92%, baseline86%,
+opaque LLM/contract guards100%. Frontend161passed, lint/typecheck; licenses526.
+[Машинный отчёт](T-040-maintenance-proof.json). Финальный human review и
+отдельная композиция T041 ещё обязательны, общий card не отмечен done.
