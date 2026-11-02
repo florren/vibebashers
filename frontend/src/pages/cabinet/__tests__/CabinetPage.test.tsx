@@ -122,3 +122,12 @@ it('never invents an own product line from the first catalog item when a manager
   expect(localStorage.getItem('cx.ui.productLine')).toBeNull()
   expect(screen.getByLabelText('Направление менеджера (код)')).toBeVisible()
 })
+
+it('mounts the calculator outside hover-transformed cards so fixed bounds belong to the viewport', async () => {
+  show('/cabinet/deposits')
+  await screen.findByText('Главное за период')
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть калькулятор' }))
+  const drawer = screen.getByRole('dialog', { name: 'Калькулятор потерь' })
+  expect(drawer.closest('.card')).toBeNull()
+  expect(await within(drawer).findByLabelText('Пострадавшие')).toBeInTheDocument()
+})
