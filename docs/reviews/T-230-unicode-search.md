@@ -28,3 +28,11 @@ Exact-head CI обязателен перед merge.
 Выделенная БД `cx_t230_unicode_revision`, PostgreSQL16; реальных LLM/Telegram
 не использовали. Исправлен конкретный crash; полная приёмка T-230, включая
 самостоятельный benchmark поиска на10000сигналов, этим пакетом не заявляется.
+
+## Актуальная композиция main2ed39d2
+
+Обычный merge main2ed39d2 дал source77c712f. Обе части integration-файла сохранены: Unicode queries T230 и T017 `replay_bank` с проверкой актуального schema-hash/запретом rekey и нулём fallback/error. `backend/tests/conftest.py`, immutable `backend/tests/fixtures/replay_bank_v1.json` и данные cassette/golden не изменялись относительно main.
+
+Новый bounded composed proof:103 parser/fanout/startup unit passed2.78s;11 actual PostgreSQL trace/journey/search/fanout passed55.71s, включая strict immutable replay, read-only enforcement, run isolation и unchanged performance assertion. БД толькоcx_t230_unicode_revision, акторов перед прогоном0, реальные LLM/каналы не использовались.
+
+Make lint:188frontendpassed, Ruff366files/mypy257modules/drift192/192. Contracts45schemas/162paths, i18n1725keys, TS generation/205taskheaders идемпотентны. Это новый targeted proof, не повторный full backendrun: полный33de487 (1433backend/24skip+173frontend) остаётся source-specific. Exact-headCI/review/merge обязательны; полная T230 search10k benchmark приёмка по-прежнему не заявляется.

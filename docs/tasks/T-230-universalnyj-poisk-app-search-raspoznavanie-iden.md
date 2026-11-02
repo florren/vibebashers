@@ -59,3 +59,5 @@ curl -s 'localhost:8000/api/search?q=sig%20123' | jq '.parsed, .hits[0]'
 ## Ревизия: Unicode digits
 
 Ветка codex/T-230-unicode-search. Устранён ValueError на²/①/1²/፩: isdecimal вместоisdigit сохраняет Unicode decimal и оставляет прочие строки текстом.7новых unit cases и actualPG regression, все прежние assertions сохранены. Полный make test на33de487:1433backend/24skip +173frontend, make lint green; grammar coverage28/28=100%. После merge main d2a4026:103unit+5PGgreen. Подробности/версии:docs/reviews/T-230-unicode-search.md. API/DDL/SQL не меняются; самостоятельная полная приёмка10000сигналов ещё не заявлена.
+
+Новая composition77c712f после ordinarymerge main2ed39d2:103unit2.78s и11actualPG55.71s, включая строгийT017immutable replay/current-hash/no-rekey/0fallback. Fixtures/cassettes/golden не менялись. Make lint188frontend/Ruff366/mypy257/drift192, contracts45/162/i18n1725/TS/tasks205idem. Full33de1433backend/24skip+173frontend остаётся отдельным историческимsourceproof; новогоfullrun и полнойT230search10kприёмкине заявляем. Exact-headCI/rootreview/mergepending.
