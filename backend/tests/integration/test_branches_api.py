@@ -132,6 +132,13 @@ def test_unknown_status_directory_metadata_and_thresholds_remain_explicit(seeded
         pressure = client.get("/api/branches/analytics").json()["pressure"]
         row = next(x for x in pressure if x["region_code"] == region)
         assert row["unknown_status_branches"] == 1 and row["signals_per_open_branch"] is None
+        line = sql.execute("select product_line_code from csi_cohorts order by id limit 1").fetchone()[0]
+        network = client.get("/api/branches/network", params={"product_line": line})
+        assert network.status_code == 200, network.text
+        assert all(
+            item["open_count"] is None and item["closed_count"] is None and item["closed_in_month"] is None
+            for item in network.json()["items"]
+        )
         for threshold in [True, 0, -1, "many", 10**1000, []]:
             sql.execute(
                 "insert into settings(key,value) values('csi_analytics',%s) on conflict(key) do update set value=excluded.value",
@@ -160,3 +167,38 @@ def test_unknown_status_directory_metadata_and_thresholds_remain_explicit(seeded
         assert network.status_code == 200, network.text
         assert network.json()["items"] == [] and network.json()["basis"] == "unavailable_snapshot_time"
         assert client.get("/api/csi/analytics").status_code == 409
+
+
+def test_scoped_network_uses_moscow_calendar_months_in_utc_session(seeded):
+    import datetime as dt
+
+    with psycopg.connect(dsn(seeded), autocommit=True) as sql, TestClient(create_app()) as client:
+        assert sql.execute("show timezone").fetchone()[0] in ("Etc/UTC", "UTC")
+        sql.execute("update branches set product_line_codes='{}'")
+        branch_ids = [r[0] for r in sql.execute("select id from branches order by id limit 4")]
+        dates = [
+            ("2025-12-31T23:30:00+03:00", "2026-02-01T00:00:00+03:00"),
+            ("2026-01-31T23:30:00+03:00", "2026-03-01T00:00:00+03:00"),
+            ("2026-02-01T00:00:00+03:00", None),
+            ("2026-01-01T00:00:00+03:00", "2026-01-31T23:59:59.999999+03:00"),
+        ]
+        for branch_id, (opened, closed) in zip(branch_ids, dates, strict=True):
+            sql.execute(
+                "update branches set product_line_codes=ARRAY['deposits'],opened_sim=%s,closed_sim=%s,branch_status=%s where id=%s",
+                (opened, closed, "closed" if closed else "open", branch_id),
+            )
+        response = client.get("/api/branches/network?product_line=deposits")
+        assert response.status_code == 200, response.text
+        rows = response.json()["items"]
+        assert [row["month"] for row in rows] == [
+            dt.date(i // 12, i % 12 + 1, 1).isoformat() for i in range(2025 * 12 + 11, 2026 * 12 + 11)
+        ]
+        by_month = {r["month"]: r for r in rows}
+        for month, expected in [
+            ("2025-12-01", (1, 0, 1, 0)),
+            ("2026-01-01", (2, 1, 2, 1)),
+            ("2026-02-01", (2, 2, 1, 1)),
+            ("2026-03-01", (1, 3, 0, 1)),
+        ]:
+            row = by_month[month]
+            assert (row["open_count"], row["closed_count"], row["opened_in_month"], row["closed_in_month"]) == expected

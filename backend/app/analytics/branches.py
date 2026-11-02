@@ -54,19 +54,22 @@ async def network(conn: Conn, lines: list[str] | None, region: str | None, month
     rows = await fetch_all(
         conn,
         f"""WITH selected AS MATERIALIZED (SELECT * FROM branches b WHERE {where}),
-        months AS (SELECT generate_series((date_trunc('month',%s::timestamptz AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow')-make_interval(months=>%s),
-           (date_trunc('month',%s::timestamptz AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow'),interval '1 month') AS m)
-        SELECT (m AT TIME ZONE 'Europe/Moscow')::date AS month,
-          CASE WHEN count(*) FILTER(WHERE b.id IS NOT NULL AND (opened_sim IS NULL OR (branch_status='closed' AND closed_sim IS NULL)))=0
-            THEN count(*) FILTER(WHERE opened_sim<m+interval '1 month' AND (closed_sim IS NULL OR closed_sim>=m+interval '1 month'))::int END AS open_count,
-          CASE WHEN count(*) FILTER(WHERE branch_status='closed' AND closed_sim IS NULL)=0
-            THEN count(*) FILTER(WHERE closed_sim<m+interval '1 month')::int END AS closed_count,
+        anchor AS (SELECT date_trunc('month',%s::timestamptz AT TIME ZONE 'Europe/Moscow') AS local_month),
+        months AS (SELECT value::date AS month,
+          value AT TIME ZONE 'Europe/Moscow' AS starts,
+          (value+interval '1 month') AT TIME ZONE 'Europe/Moscow' AS ends
+          FROM anchor CROSS JOIN LATERAL generate_series(local_month-make_interval(months=>%s),local_month,interval '1 month') AS value)
+        SELECT m.month,
+          CASE WHEN count(*) FILTER(WHERE b.id IS NOT NULL AND (opened_sim IS NULL OR (branch_status IS DISTINCT FROM 'open' AND closed_sim IS NULL)))=0
+            THEN count(*) FILTER(WHERE opened_sim<m.ends AND (closed_sim IS NULL OR closed_sim>=m.ends))::int END AS open_count,
+          CASE WHEN count(*) FILTER(WHERE b.id IS NOT NULL AND branch_status IS DISTINCT FROM 'open' AND closed_sim IS NULL)=0
+            THEN count(*) FILTER(WHERE closed_sim<m.ends)::int END AS closed_count,
           CASE WHEN count(*) FILTER(WHERE b.id IS NOT NULL AND opened_sim IS NULL)=0
-            THEN count(*) FILTER(WHERE opened_sim>=m AND opened_sim<m+interval '1 month')::int END AS opened_in_month,
-          CASE WHEN count(*) FILTER(WHERE branch_status='closed' AND closed_sim IS NULL)=0
-            THEN count(*) FILTER(WHERE closed_sim>=m AND closed_sim<m+interval '1 month')::int END AS closed_in_month
-        FROM months LEFT JOIN selected b ON TRUE GROUP BY m ORDER BY m""",
-        [*args, directory["as_of_sim"], months - 1, directory["as_of_sim"]],
+            THEN count(*) FILTER(WHERE opened_sim>=m.starts AND opened_sim<m.ends)::int END AS opened_in_month,
+          CASE WHEN count(*) FILTER(WHERE b.id IS NOT NULL AND branch_status IS DISTINCT FROM 'open' AND closed_sim IS NULL)=0
+            THEN count(*) FILTER(WHERE closed_sim>=m.starts AND closed_sim<m.ends)::int END AS closed_in_month
+        FROM months m LEFT JOIN selected b ON TRUE GROUP BY m.month,m.starts,m.ends ORDER BY m.month""",
+        [*args, directory["as_of_sim"], months - 1],
     )  # noqa: S608 — internal SQL identifiers only.
     return {
         "items": rows,
