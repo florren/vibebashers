@@ -72,8 +72,8 @@ def test_ws_subscribe_and_ping() -> None:
 )
 @pytest.mark.parametrize("with_spa", [False, True])
 def test_v15_stubs_are_problem_json(path: str, card: str, with_spa: bool, tmp_path: Path, monkeypatch) -> None:
-    from app.errors import NotImplementedYet
     from app.config import get_settings
+    from app.errors import NotImplementedYet
 
     dist = tmp_path / "frontend"
     if with_spa:
