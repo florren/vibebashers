@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 const event = {
   id: 'EVT-refund-1',
@@ -115,6 +116,16 @@ for (const theme of ['light', 'dark'])
       await page.goto('/trace/signal/SIG-000123')
       await expect(page.getByText('Лишняя комиссия за QR-оплату')).toBeVisible()
       await expect(page.getByRole('heading', { name: lang === 'ru' ? 'Итоговое решение' : 'Final decision', exact: false })).toBeVisible()
+      for (const format of ['json', 'md'] as const) {
+        const pendingDownload = page.waitForEvent('download')
+        await page.getByRole('button', { name: lang === 'ru' ? (format === 'json' ? 'Скачать JSON' : 'Скачать Markdown') : (format === 'json' ? 'Download JSON' : 'Download Markdown'), exact: true }).click()
+        const download = await pendingDownload
+        expect(download.suggestedFilename()).toBe(`trace-SIG-000123.${format}`)
+        const content = await readFile((await download.path())!, 'utf8')
+        if (format === 'json') {
+          expect(JSON.parse(content)).toMatchObject({ export_version: 1, scope: 'all', trace: { subject: { ref: 'SIG-000123' }, groups: [{ count: 118 }] } })
+        } else expect(content).toContain('450')
+      }
       await page.screenshot({ path: testInfo.outputPath('trace.png'), fullPage: false })
       await page.getByRole('button', { name: /Комиссия возвращена/ }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
