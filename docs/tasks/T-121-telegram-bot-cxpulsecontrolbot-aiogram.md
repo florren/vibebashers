@@ -69,3 +69,14 @@ Compose profile реализованы; обзор: docs/reviews/T-121-delivery-
 финальный contract review/CI и merge ещё впереди. Реальных Telegram calls не было;
 ручной критерий жюри остаётся непроверенным. Старые подразделы выше описывают историю
 подготовки, а не текущую степень реализации.
+
+## Результат реализации и полные проверки
+
+API20/actual0015, durable signed dialogue/outbox, real-capable deliveryworker,
+opt-in grants, explicitinstall/Compose реализованы. Fullsource7acce1b:2097backend
+passed/22skip,331front,34bot. Currentmaincomposition3450afe:1640unit/18skip,
+348front/lint,15PG93.85s, licenses550+36; добавленныйbackend575/62392.30%,
+bot209/21995.43%. Actual4ru/en/themeUI,94tablesunchanged/noexternal/LLM.
+Источники, границы и rollback:docs/reviews/T-121-{delivery-review.md,final-verification.json}.
+Статусin_progress доcontractreview/CI/merge; настоящийжюриTelegramсценарийне
+проверялся и неавторизован. T122readiness/QR иT189managerHITL — отдельные карточки.

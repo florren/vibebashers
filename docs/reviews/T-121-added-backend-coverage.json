@@ -1,0 +1,181 @@
+{
+  "source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
+  "parent": "cbfd9f0e53bafd6b6820c91b182dc6eddfd08b29",
+  "targets": "88unit/actualPG106.84s +18same-runtime ASGI/lifespan tests; no live HTTP",
+  "excluded": [
+    "generated backend/app/db/models.py: source schema/generator/Alembic tested separately"
+  ],
+  "covered": 575,
+  "new_executable": 623,
+  "coverage_pct": 92.29534510433388,
+  "files": {
+    "backend/app/agent/tools/router_tools.py": {
+      "blob": "1d6682a8119b4aa7b87a078376517560fa22b4e3",
+      "new_executable": 3,
+      "covered": 3,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/agent/tools/write.py": {
+      "blob": "27b211747ad62e074c5850a98d3ff8b3e1a6641b",
+      "new_executable": 18,
+      "covered": 15,
+      "missing": [
+        300,
+        301,
+        327
+      ],
+      "coverage_pct": 83.33
+    },
+    "backend/app/api/health.py": {
+      "blob": "b2137d69769df3e857c39843ab479b58cda01432",
+      "new_executable": 0,
+      "covered": 0,
+      "missing": [],
+      "coverage_pct": 100
+    },
+    "backend/app/api/public.py": {
+      "blob": "9066442d15ebfd921d5a0fa776cbab18dc768d26",
+      "new_executable": 124,
+      "covered": 116,
+      "missing": [
+        645,
+        712,
+        748,
+        749,
+        755,
+        765,
+        767,
+        785
+      ],
+      "coverage_pct": 93.55
+    },
+    "backend/app/config.py": {
+      "blob": "2fb4d9bc68b2b31430c80d1862356fca9d21deae",
+      "new_executable": 4,
+      "covered": 4,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/main.py": {
+      "blob": "a13ef6a41311498da8a76d82a5d42542f97f9561",
+      "new_executable": 17,
+      "covered": 17,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/sim/baseline.py": {
+      "blob": "80240693d199a4cef9ba1ae6ed89f0801c1a7edd",
+      "new_executable": 0,
+      "covered": 0,
+      "missing": [],
+      "coverage_pct": 100
+    },
+    "backend/app/sim/run_lifecycle.py": {
+      "blob": "786e9b39a7362c20413398fb00f178c327e699f2",
+      "new_executable": 7,
+      "covered": 7,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/tgbot/__init__.py": {
+      "blob": "53545d62be4a33d0c7df068b076669ecb5f712ae",
+      "new_executable": 0,
+      "covered": 0,
+      "missing": [],
+      "coverage_pct": 100
+    },
+    "backend/app/tgbot/configuration.py": {
+      "blob": "2ae5f4097eb55fed2b7150f163b74b0934709674",
+      "new_executable": 27,
+      "covered": 25,
+      "missing": [
+        39,
+        40
+      ],
+      "coverage_pct": 92.59
+    },
+    "backend/app/tgbot/delivery.py": {
+      "blob": "14e51d249422f1a88295ec902713ddb0847096ca",
+      "new_executable": 149,
+      "covered": 130,
+      "missing": [
+        108,
+        133,
+        139,
+        143,
+        144,
+        147,
+        148,
+        151,
+        177,
+        214,
+        215,
+        222,
+        223,
+        224,
+        243,
+        244,
+        251,
+        260,
+        261
+      ],
+      "coverage_pct": 87.25
+    },
+    "backend/app/tgbot/middleware.py": {
+      "blob": "201c37bbb44c7b18acc00770766a17ece96be943",
+      "new_executable": 57,
+      "covered": 53,
+      "missing": [
+        62,
+        63,
+        64,
+        72
+      ],
+      "coverage_pct": 92.98
+    },
+    "backend/app/tgbot/outbox.py": {
+      "blob": "6264825426a760a20d7736047f6c95ffdcbf7617",
+      "new_executable": 62,
+      "covered": 57,
+      "missing": [
+        34,
+        40,
+        83,
+        115,
+        126
+      ],
+      "coverage_pct": 91.94
+    },
+    "backend/app/tgbot/signature.py": {
+      "blob": "809c5b80e0b5e90fb3512d81044233fd37b4504d",
+      "new_executable": 26,
+      "covered": 26,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/tgbot/storage.py": {
+      "blob": "0666e3c4b55dff51a7e7595025ec59214a472cf3",
+      "new_executable": 62,
+      "covered": 57,
+      "missing": [
+        35,
+        44,
+        58,
+        82,
+        90
+      ],
+      "coverage_pct": 91.94
+    },
+    "backend/app/tgbot/telegram.py": {
+      "blob": "2001233faff70053a40d3d9e3679c66cc09a1848",
+      "new_executable": 67,
+      "covered": 65,
+      "missing": [
+        36,
+        80
+      ],
+      "coverage_pct": 97.01
+    }
+  }
+}
