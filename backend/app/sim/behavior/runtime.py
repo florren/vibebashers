@@ -36,7 +36,7 @@ async def effective_policy(
 async def prepare_run(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime, policy: DemoPolicy) -> None:
     store = BehaviorStore(conn)
     store.require_transaction()
-    row = await store._one("select kind,status from sim_runs where id=%s for update", (run_id,))
+    row = await store._one("select kind,status from sim_runs where id=%s for share", (run_id,))
     if row is None or row[0] not in ("free", "scenario") or row[1] not in ("running", "paused", "interrupted"):
         raise ValueError("behavior требует открытый free/scenario run")
     marker = await store._one("select policy_hash from behavior_runs where run_id=%s", (run_id,))
@@ -65,10 +65,13 @@ async def require_run(conn: psycopg.AsyncConnection[Any], run_id: int, *, policy
     if policy is None:
         return
     store = BehaviorStore(conn)
-    run = await store._one("select kind from sim_runs where id=%s", (run_id,))
+    run = await store._one("select kind,status from sim_runs where id=%s", (run_id,))
     if run is None:
         raise ValueError("behavior run отсутствует")
     if run[0] not in ("free", "scenario"):
+        return
+    current = await store._one("select current_run_id from sim_state where id=1", ())
+    if run[1] not in ("running", "paused", "interrupted") or not current or current[0] != run_id:
         return
     marker = await store._one("select policy_hash from behavior_runs where run_id=%s", (run_id,))
     if marker is not None:
@@ -88,18 +91,23 @@ async def require_run(conn: psycopg.AsyncConnection[Any], run_id: int, *, policy
 
 
 async def state_sink(conn: psycopg.AsyncConnection[Any], run_id: int) -> StateEvidenceSink | None:
-    if configured_policy() is None:
+    policy = configured_policy()
+    if await effective_policy(conn, run_id, policy) is None:
         return None
     await require_run(conn, run_id)
-    row = await BehaviorStore(conn)._one("select 1 from behavior_runs where run_id=%s", (run_id,))
-    return record_agent_state_intent if row else None
+    # Включая inactive legacy без marker: None разрешил бы legacy state UPDATE.
+    return record_agent_state_intent
 
 
 async def twin_sink(conn: psycopg.AsyncConnection[Any], run_id: int, reaction_id: int) -> bool:
-    row = await BehaviorStore(conn)._one("select 1 from behavior_runs where run_id=%s", (run_id,))
-    if row is None:
+    policy = configured_policy()
+    if await effective_policy(conn, run_id, policy) is None:
         return False
-    await BehaviorStore(conn).enqueue_twin(run_id=run_id, reaction_id=reaction_id)
+    store = BehaviorStore(conn)
+    if not await store.active_run(run_id):
+        return True  # Подавлено; legacy Twin care writer также не запускается.
+    await require_run(conn, run_id)
+    await store.enqueue_twin(run_id=run_id, reaction_id=reaction_id)
     return True
 
 
