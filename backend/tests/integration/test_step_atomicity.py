@@ -9,6 +9,8 @@ import uuid
 
 import pytest
 
+from app.contracts.events.behavior.psychotype_params import PsychotypeParams
+from app.sim.behavior.model import complaint_timing
 from app.sim.engine import Simulator
 from app.sim.generators import PendingSignal, World
 from app.sim.rng import SimRng
@@ -157,14 +159,61 @@ async def test_failed_tick_restores_time_rng_pending_and_committed_cache_before_
         assert after == data_before
         state["fail"] = False
         await sim.step(1)
-        assert sim.world.loaded and sim.world.pending == [old_pending]
+        assert sim.world.loaded and sim.world.pending == []
+        durable = await (
+            await conn.execute(
+                "select due_sim,client_id,signal_type,product_code,source_operation_id,source_fault_id,error_code,system_code,correlation_id from behavior_pending_signals where run_id=%s and consumed_sim is null",
+                (sim.run_id,),
+            )
+        ).fetchall()
+        assert durable == [
+            (
+                old_pending.due_sim,
+                client.id,
+                old_pending.signal_type,
+                old_pending.product,
+                old_pending.source_operation_id,
+                committed_id,
+                old_pending.error_code,
+                old_pending.system,
+                old_pending.correlation_id,
+            )
+        ]
+        assert (
+            await (
+                await conn.execute(
+                    "select count(*) from behavior_pending_signals where run_id=%s and source_fault_id=any(%s)",
+                    (sim.run_id, failed_ids),
+                )
+            ).fetchone()
+        ) == (0,)
         assert sim.world.active_faults == [committed_fault]
         assert (999999, "synthetic-uncommitted", None) not in sim.world.team_emulator.done
         assert sim.world.sla_engine._cursor == cursor_before
         assert sim.world.textgen.rnd is sim.rng
         expected_rng = SimRng()
         expected_rng.load_state(before[2])
-        expected_rng.random()  # Только успешная operations попытка.
+        expected_rng.random()  # Только успешная operations попытка, failed draw откатился.
+        raw = (
+            await (
+                await conn.execute(
+                    "select p.params from clients c join psychotypes p on p.code=c.psychotype_code where c.id=%s",
+                    (client.id,),
+                )
+            ).fetchone()
+        )[0]
+        params = PsychotypeParams.model_validate(raw)
+        complaint_timing(params, now, expected_rng)
+        lo, hi = (item.root for item in params.patience_days)
+        expected_rng.uniform(lo, hi)  # Один native failed cause — один patience draw.
+        assert (
+            await (
+                await conn.execute(
+                    "select count(*) from behavior_receipts where run_id=%s and source_kind='fault' and source_id=%s and action='affect'",
+                    (sim.run_id, committed_id),
+                )
+            ).fetchone()
+        ) == (1,)
         assert sim.rng.dump_state() == expected_rng.dump_state()
         row = await (await conn.execute("select fault_id from operations where run_id=%s", (sim.run_id,))).fetchone()
         assert row == (committed_id,)

@@ -8,7 +8,7 @@ import inspect
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, Literal, ParamSpec, TypeVar
 
 import orjson
 import psycopg
@@ -79,7 +79,25 @@ class ClientStateIntent:
     incident_id: int | None
 
 
-StateEvidenceSink = Callable[[psycopg.AsyncConnection[Any], ClientStateIntent], Awaitable[int]]
+@dataclass(frozen=True)
+class StateEvidenceResult:
+    """Принятый запрос либо явное подавление вне активного behavior run."""
+
+    accepted: bool
+    evidence_id: int | None
+    reason: Literal["inactive_run"] | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.accepted) is not bool:
+            raise ValueError("accepted должен быть bool")
+        if self.accepted:
+            if type(self.evidence_id) is not int or self.evidence_id <= 0 or self.reason is not None:
+                raise ValueError("accepted требует positive evidence_id без причины отказа")
+        elif self.evidence_id is not None or self.reason != "inactive_run":
+            raise ValueError("suppressed требует inactive_run без evidence_id")
+
+
+StateEvidenceSink = Callable[[psycopg.AsyncConnection[Any], ClientStateIntent], Awaitable[StateEvidenceResult]]
 
 
 class ToolContext:

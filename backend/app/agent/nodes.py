@@ -3103,9 +3103,17 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
         step_status,
         {"decision": {k: d.get(k) for k in ("incident_action", "router_action", "needs_human")}, "human": human},
         {"actions": actions, "signal_status": sig_status},
-        reasoning="Выполнено: "
+        reasoning="Действия и запросы: "
         + ", ".join(
-            a["action"] + (" (evidence ожидает owner)" if a.get("status") == "pending" else "") for a in actions
+            a["action"]
+            + (
+                " (evidence ожидает owner)"
+                if a.get("status") == "pending"
+                else " (не применено: inactive_run)"
+                if a.get("status") == "suppressed"
+                else ""
+            )
+            for a in actions
         )
         + ".",
     )

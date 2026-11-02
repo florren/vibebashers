@@ -1,7 +1,7 @@
 """Durable evidence/receipt storage: только переданное соединение и внешняя TX.
 
-SQL находится в review proposal до actual0016. Этот модуль не создаёт таблицы,
-не открывает соединения и не подключён к runtime actor.
+Actual0017 принадлежит run. Модуль не создаёт таблицы, не открывает соединения
+и не выполняет commit; внешние producer и Sim owner передают свою TX.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import psycopg
 from psycopg.pq import TransactionStatus
 from psycopg.rows import tuple_row
 
-from app.agent.tools.base import ClientStateIntent
+from app.agent.tools.base import ClientStateIntent, StateEvidenceResult
 
 
 def positive_ids(*values: int) -> None:
@@ -150,6 +150,15 @@ class BehaviorStore:
             return False
         return await self._enqueue(run_id, client_id, "resolution", incident_id, incident[0])
 
+    async def active_run(self, run_id: int) -> bool:
+        """SHARE удерживает status до commit, не беря SimState после money locks."""
+        self.require_transaction()
+        row = await self._one("select kind,status from sim_runs where id=%s for share", (run_id,))
+        if row is None or row[0] not in ("free", "scenario") or row[1] not in ("running", "paused", "interrupted"):
+            return False
+        current = await self._one("select current_run_id from sim_state where id=1", ())
+        return bool(current and current[0] == run_id)
+
     async def _enqueue(self, run_id: int, client_id: int, kind: str, source_id: int, at: dt.datetime) -> bool:
         row = await self._one("select kind,status from sim_runs where id=%s", (run_id,))
         if row is None or row[0] not in ("free", "scenario") or row[1] not in ("running", "paused", "interrupted"):
@@ -180,7 +189,9 @@ async def record_twin_evidence(conn: psycopg.AsyncConnection[Any], run_id: int, 
     return True
 
 
-async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent) -> int:
+async def record_agent_state_intent(
+    conn: psycopg.AsyncConnection[Any], intent: ClientStateIntent
+) -> StateEvidenceResult:
     """Graph TX пишет запрос; actual state меняет только owner после проверки фактов."""
     from app.contracts.enums import ClientState
 
@@ -213,6 +224,12 @@ async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: 
     )
     if actual is None:
         raise ValueError("agent state intent не принадлежит signal/client/run")
+    if not await store.active_run(intent.run_id):
+        return StateEvidenceResult(False, None, "inactive_run")
+    # Проверка policy/legacy выполняется повторно в write TX после status pin.
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, intent.run_id)
     row = await store._one(
         "insert into behavior_agent_intents(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger,observed_sim) "
         "values(%s,%s,%s,%s,%s,%s,%s,%s) on conflict(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger) "
@@ -230,4 +247,4 @@ async def record_agent_state_intent(conn: psycopg.AsyncConnection[Any], intent: 
     )
     assert row is not None
     await store._enqueue(intent.run_id, intent.client_id, "agent_state", row[0], intent.at)
-    return int(row[0])
+    return StateEvidenceResult(True, int(row[0]))

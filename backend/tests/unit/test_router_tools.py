@@ -885,3 +885,25 @@ async def test_behavior_pending_trace_does_not_claim_requested_state_applied(mon
         "status": "pending",
         "evidence_id": 91,
     }
+
+
+async def test_behavior_suppressed_trace_never_claims_historical_state_applied(monkeypatch):
+    async def suppressed(_ctx, client_id, state, *_args):
+        return {
+            "client_id": client_id,
+            "state": "waiting",
+            "requested_state": state,
+            "status": "suppressed",
+            "accepted": False,
+            "evidence_id": None,
+            "reason": "inactive_run",
+        }
+
+    monkeypatch.setattr(nodes.wt, "set_client_state", suppressed)
+    classification = _state("none")["classification"]
+    classification["flags"] = ["churn_intent"]
+    out, _ = await _run_act(monkeypatch, "none", classification=classification)
+    action = next(item for item in out["actions"] if item["action"] == "client_state")
+    assert action["state"] == "waiting" and action["requested_state"] == "churn_intent"
+    assert action["status"] == "suppressed" and action["accepted"] is False
+    assert action["evidence_id"] is None and action["reason"] == "inactive_run"

@@ -568,7 +568,7 @@ async def set_client_state(
     if ctx.dry_run:
         raise ToolError("Client state недоступен в сравнении без побочных эффектов")
     if ctx.state_evidence_sink is not None:
-        evidence_id = await ctx.state_evidence_sink(
+        result = await ctx.state_evidence_sink(
             ctx.conn,
             ClientStateIntent(
                 ctx.run_id, ctx.agent_run_id, client_id, state, trigger, ctx.sim_time, signal_id, incident_id
@@ -584,8 +584,10 @@ async def set_client_state(
             "client_id": client_id,
             "state": actual[0] if actual else "calm",
             "requested_state": state,
-            "status": "pending",
-            "evidence_id": evidence_id,
+            "status": "pending" if result.accepted else "suppressed",
+            "accepted": result.accepted,
+            "evidence_id": result.evidence_id,
+            "reason": result.reason,
         }
     await ctx.conn.execute(
         "update client_states set is_current=false where client_id=%s and run_id=%s and is_current",
