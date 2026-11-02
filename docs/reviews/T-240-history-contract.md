@@ -76,3 +76,16 @@ spike months не выдаётся за наблюдённую каузальн�
 (включая исходный T019 test без ослабления assertions). Новый stage/adapter/coverage
 mypy green; сквозная проверка scripts/seed/run.py отдельно выявляет уже существующий
 fetchone()[0] typing warning вне изменённых строк. Полный make lint/test ещё впереди.
+
+Композиция actual schema9/currenthash кассеты и main2ed сохранена ordinary merges;
+P1 explicit replay/Pro role pinning и maintenance fixture сохранены. Совместный
+stream limiter+bound-provider код сверён с P1 reference43af7af, без обхода RPM.
+34 strict replay/currenthash/miss/limiter targeted tests passed15.42s.
+
+UI source: SourcePlatformBadge в SignalsFeed/SignalDrawer; ru/en известные имена,
+unknown/legacy не выдумывает placeholder, нет href/URL/img. Пять новых UI tests,
+включая фактический click→open карточки. Полный make lint exit0:225 frontend tests,
+Ruff413files/mypy275modules, OpenAPI192/192; licenses550 green. Выполнен штатный
+make sync-contracts с own scratch DB; canonical0013 downgrade comment согласован
+с существующим forward-only mirror, исполняемый SQL не менялся.
+Четыре browser language/theme screenshots и полный make test ещё обязательны.

@@ -206,6 +206,7 @@
     "syncError": "Theme saved locally; settings sync unavailable"
   },
   "signal": {
+    "sourcePlatform": "Source platform",
     "type": {
       "tech_fault": "Technical fault",
       "client_error": "Client error",
