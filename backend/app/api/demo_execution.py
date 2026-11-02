@@ -127,10 +127,14 @@ async def start_demo(request: Request, body: DemoExecutionBody) -> Any:
             await save(conn, rid, config)
         return await get_demo_execution(request)
     assert body.scenario_id is not None
+    from app.sim.scenarios import get as get_scenario
+
+    scenario = get_scenario(body.scenario_id) or {}
+    reset_mode = scenario.get("reset_mode_required") or "counters"
     await run_scenario(
         request,
         body.scenario_id,
-        ScenarioRunRequest(label=f"[DEMO] {body.scenario_id} / {body.team_outcome}"),
+        ScenarioRunRequest(label=f"[DEMO] {body.scenario_id} / {body.team_outcome}", reset_mode=reset_mode),
         start_paused=True,
     )
     config = {**body.model_dump(), "enabled": True, "status": "running", "mode": "demo", "error": None}

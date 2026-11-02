@@ -1,4 +1,5 @@
 id: deposit_promo_rate
+reset_mode_required: baseline
 number: 1
 title_ru: Вклад и промо-ставка
 title_en: Deposit promo rate

@@ -32,6 +32,7 @@ END $$;
 -- Лог изменений для экрана «Данные в БД» (ТЗ 12.2 экран 4d). Пишется триггерами на ключевых таблицах.
 CREATE TABLE db_activity_log (
   id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  run_id      bigint,                                 -- снимок запуска: сохраняется и после DELETE
   table_name  text        NOT NULL,
   op          text        NOT NULL CHECK (op IN ('INSERT','UPDATE','DELETE')),
   pk          text        NOT NULL,
@@ -40,31 +41,42 @@ CREATE TABLE db_activity_log (
 );
 COMMENT ON TABLE db_activity_log IS 'Лента INSERT/UPDATE/DELETE для демонстрации работы агента с БД';
 CREATE INDEX db_activity_log_ts_idx ON db_activity_log (ts DESC);
+CREATE INDEX db_activity_log_run_id_idx ON db_activity_log (run_id, id DESC);
 
 CREATE OR REPLACE FUNCTION log_db_activity() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   v_pk text;
-  v_summary jsonb;
   v_row jsonb;
+  v_run bigint;
+  v_summary jsonb;
 BEGIN
   v_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
-  v_pk := coalesce(v_row->>'id', v_row->>'code', v_row->>'signal_id');
-  IF v_pk IS NULL AND TG_TABLE_NAME = 'csi_visits_agg' THEN
+  v_pk := coalesce(v_row->>'id', v_row->>'code', v_row->>'signal_id', v_row->>'incident_id');
+  IF TG_TABLE_NAME = 'incident_signals' THEN
+    v_pk := jsonb_build_array(v_row->>'incident_id', v_row->>'signal_id')::text;
+  ELSIF TG_TABLE_NAME = 'csi_visits_agg' THEN
     v_pk := jsonb_build_array(v_row->>'branch_id', v_row->>'day', v_row->>'wait_bucket', v_row->>'redirects_bucket')::text;
   END IF;
   IF v_pk IS NULL THEN
     RAISE EXCEPTION USING MESSAGE = 'Unsupported audit primary key on ' || TG_TABLE_NAME;
   END IF;
-  IF TG_OP = 'DELETE' THEN
-    v_summary := jsonb_build_object('deleted', true);
-  ELSE
-    v_summary := CASE WHEN TG_OP = 'UPDATE'
-      THEN (SELECT jsonb_object_agg(key, value) FROM jsonb_each(to_jsonb(NEW))
-            WHERE to_jsonb(OLD) -> key IS DISTINCT FROM value)
-      ELSE jsonb_build_object('status', to_jsonb(NEW) ->> 'status') END;
+  IF TG_TABLE_NAME = 'agent_steps' THEN
+    SELECT sim_run_id INTO v_run FROM agent_runs WHERE id = (v_row->>'run_id')::bigint;
+  ELSIF TG_TABLE_NAME = 'agent_runs' THEN
+    v_run := (v_row->>'sim_run_id')::bigint;
+  ELSIF v_row ? 'run_id' THEN
+    v_run := (v_row->>'run_id')::bigint;
+  ELSIF TG_TABLE_NAME IN ('incident_signals', 'incident_status_history') THEN
+    SELECT run_id INTO v_run FROM incidents WHERE id = (v_row->>'incident_id')::bigint;
   END IF;
-  INSERT INTO db_activity_log(table_name, op, pk, summary) VALUES (TG_TABLE_NAME, TG_OP, v_pk, v_summary);
-  PERFORM pg_notify('db_activity', json_build_object('table', TG_TABLE_NAME, 'op', TG_OP, 'pk', v_pk)::text);
+  -- Аудит содержит только имена изменённых полей, не контакты/промпты/секреты.
+  v_summary := jsonb_build_object('changed_fields', CASE WHEN TG_OP = 'UPDATE'
+    THEN (SELECT coalesce(jsonb_agg(key ORDER BY key), '[]'::jsonb) FROM jsonb_each(v_row)
+          WHERE to_jsonb(OLD)->key IS DISTINCT FROM value)
+    ELSE '[]'::jsonb END);
+  INSERT INTO db_activity_log(run_id, table_name, op, pk, summary)
+    VALUES (v_run, TG_TABLE_NAME, TG_OP, v_pk, v_summary);
+  PERFORM pg_notify('db_activity', json_build_object('table', TG_TABLE_NAME, 'op', TG_OP, 'pk', v_pk, 'run_id', v_run)::text);
   RETURN COALESCE(NEW, OLD);
 END $$;
 
@@ -1839,3 +1851,125 @@ CREATE INDEX IF NOT EXISTS personal_chat_history_idx ON personal_chat_messages(s
 
 CREATE INDEX IF NOT EXISTS personal_chat_rate_idx ON personal_chat_messages(created_at);
 CREATE INDEX IF NOT EXISTS personal_session_rate_idx ON personal_chat_sessions(created_at);
+
+-- T-108: полная наблюдаемость изменений без записи содержимого строк в аудит.
+CREATE TRIGGER incident_signals_activity AFTER INSERT OR UPDATE OR DELETE ON incident_signals FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER incident_status_history_activity AFTER INSERT OR UPDATE OR DELETE ON incident_status_history FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER agent_steps_activity AFTER INSERT OR UPDATE OR DELETE ON agent_steps FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER client_states_activity AFTER INSERT OR UPDATE OR DELETE ON client_states FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER churn_events_activity AFTER INSERT OR UPDATE OR DELETE ON churn_events FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER incident_economics_activity AFTER INSERT OR UPDATE OR DELETE ON incident_economics FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+CREATE TRIGGER faults_activity AFTER INSERT OR UPDATE OR DELETE ON faults FOR EACH ROW EXECUTE FUNCTION log_db_activity();
+
+-- Upstream DDL: langgraph-checkpoint-postgres 3.2.0 (MIT).
+-- https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-postgres
+-- MIT License
+--
+-- Copyright (c) 2024 LangChain, Inc.
+--
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
+-- of this software and associated documentation files (the "Software"), to deal
+-- in the Software without restriction, including without limitation the rights
+-- to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-- copies of the Software, and to permit persons to whom the Software is
+-- furnished to do so, subject to the following conditions:
+--
+-- The above copyright notice and this permission notice shall be included in all
+-- copies or substantial portions of the Software.
+--
+-- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+-- SOFTWARE.
+
+-- T-041: PostgreSQL checkpointer LangGraph, upstream schema 3.2.0.
+CREATE SCHEMA IF NOT EXISTS langgraph;
+-- Runtime не выполняет DDL; владение данными определяется FK к sim_runs.
+
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_migrations (
+    v INTEGER PRIMARY KEY
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoints (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    checkpoint_id TEXT NOT NULL,
+    parent_checkpoint_id TEXT,
+    type TEXT,
+    checkpoint JSONB NOT NULL,
+    metadata JSONB NOT NULL DEFAULT '{}',
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id)
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_blobs (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    channel TEXT NOT NULL,
+    version TEXT NOT NULL,
+    type TEXT NOT NULL,
+    blob BYTEA,
+    PRIMARY KEY (thread_id, checkpoint_ns, channel, version)
+);
+
+CREATE TABLE IF NOT EXISTS langgraph.checkpoint_writes (
+    thread_id TEXT NOT NULL,
+    checkpoint_ns TEXT NOT NULL DEFAULT '',
+    checkpoint_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    idx INTEGER NOT NULL,
+    channel TEXT NOT NULL,
+    type TEXT,
+    blob BYTEA NOT NULL,
+    PRIMARY KEY (thread_id, checkpoint_ns, checkpoint_id, task_id, idx)
+);
+
+ALTER TABLE langgraph.checkpoint_blobs ALTER COLUMN blob DROP not null;
+
+SELECT 1;
+
+CREATE INDEX IF NOT EXISTS checkpoints_thread_id_idx ON langgraph.checkpoints(thread_id);
+
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_thread_id_idx ON langgraph.checkpoint_blobs(thread_id);
+
+CREATE INDEX IF NOT EXISTS checkpoint_writes_thread_id_idx ON langgraph.checkpoint_writes(thread_id);
+
+ALTER TABLE langgraph.checkpoint_writes ADD COLUMN IF NOT EXISTS task_path TEXT NOT NULL DEFAULT '';
+
+INSERT INTO langgraph.checkpoint_migrations(v) SELECT generate_series(0,9) ON CONFLICT DO NOTHING;
+
+ALTER TABLE langgraph.checkpoints ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoints_run_fk') THEN
+  ALTER TABLE langgraph.checkpoints ADD CONSTRAINT checkpoints_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoints_run_idx ON langgraph.checkpoints(run_id);
+
+
+ALTER TABLE langgraph.checkpoint_blobs ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoint_blobs_run_fk') THEN
+  ALTER TABLE langgraph.checkpoint_blobs ADD CONSTRAINT checkpoint_blobs_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoint_blobs_run_idx ON langgraph.checkpoint_blobs(run_id);
+
+
+ALTER TABLE langgraph.checkpoint_writes ADD COLUMN IF NOT EXISTS run_id bigint GENERATED ALWAYS AS (split_part(thread_id, ':', 1)::bigint) STORED;
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='checkpoint_writes_run_fk') THEN
+  ALTER TABLE langgraph.checkpoint_writes ADD CONSTRAINT checkpoint_writes_run_fk FOREIGN KEY (run_id) REFERENCES sim_runs(id) ON DELETE CASCADE;
+ END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS checkpoint_writes_run_idx ON langgraph.checkpoint_writes(run_id);
+
+
+-- Исходный outcome не переопределяется: статус прерывания хранится отдельно.
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS interrupted_at timestamptz;
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS status text GENERATED ALWAYS AS
+ (CASE WHEN outcome IS NULL AND interrupted_at IS NOT NULL THEN 'interrupted'
+       ELSE coalesce(outcome,'running') END) STORED;

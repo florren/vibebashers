@@ -236,7 +236,7 @@ async def test_listener_dispatches_appended_event_to_reply_pipeline(monkeypatch)
         )
         raise asyncio.CancelledError
 
-    conn = SimpleNamespace(execute=AsyncMock(), notifies=notifies)
+    conn = SimpleNamespace(execute=AsyncMock(), notifies=notifies, close=AsyncMock())
     submitted = Mock()
     monkeypatch.setattr(service, "_recover", AsyncMock())
     monkeypatch.setattr(service, "submit_client_reply", submitted)
@@ -246,6 +246,7 @@ async def test_listener_dispatches_appended_event_to_reply_pipeline(monkeypatch)
     except asyncio.CancelledError:
         pass
     submitted.assert_called_once_with(7, 9, stamp)
+    conn.close.assert_awaited_once()
 
 
 async def test_reply_worker_starts_and_stops_with_service(monkeypatch) -> None:

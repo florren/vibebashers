@@ -44,7 +44,7 @@ def test_prepare_and_restore_keep_source(seeded, tmp_path, monkeypatch):
                 repair = baseline._run_csi_repair(scratch, baseline._csi_repair_script())
                 assert repair["added"] == 0 and repair["after"] == repair["total"] == 480
             with psycopg.connect(scratch) as conn:
-                assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0010"
+                assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0011"
                 assert conn.execute("select count(*) from clients").fetchone()[0] == 200
             with psycopg.connect(scratch, autocommit=True) as conn:
                 conn.execute("update clients set display_name='rollback-marker' where id=(select min(id) from clients)")

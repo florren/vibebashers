@@ -30,8 +30,11 @@
 | python | greenlet | 3.5.6 | runtime | MIT AND PSF-2.0 |
 | python | h11 | 0.16.0 | runtime | MIT |
 | python | httpcore | 1.0.9 | runtime | BSD-3-Clause |
+| python | httpcore2 | 2.16.0 | runtime | BSD-3-Clause |
 | python | httptools | 0.9.0 | runtime | MIT |
 | python | httpx | 0.28.1 | runtime | BSD-3-Clause |
+| python | httpx2 | 2.16.0 | runtime | BSD-3-Clause |
+| python | httpx2-jsfetch | 1.0 | runtime | BSD-3-Clause |
 | python | idna | 3.20 | runtime | BSD-3-Clause |
 | python | inflect | 7.6.0 | dev | MIT |
 | python | iniconfig | 2.3.1 | dev | MIT |
@@ -39,9 +42,19 @@
 | python | jaraco-functools | 4.6.0 | dev | MIT |
 | python | jinja2 | 3.1.6 | dev | BSD-3-Clause |
 | python | jiter | 0.18.0 | runtime | MIT |
+| python | jsonpatch | 1.39 | runtime | BSD-3-Clause |
+| python | jsonpointer | 3.7 | runtime | BSD-3-Clause |
 | python | jsonschema | 4.26.0 | runtime | MIT |
 | python | jsonschema-path | 0.5.0 | dev | Apache-2.0 |
 | python | jsonschema-specifications | 2025.9.1 | runtime | MIT |
+| python | langchain-core | 1.7.3 | runtime | MIT |
+| python | langchain-protocol | 0.0.20 | runtime | MIT |
+| python | langgraph | 1.2.19 | runtime | MIT |
+| python | langgraph-checkpoint | 4.3.1 | runtime | MIT |
+| python | langgraph-checkpoint-postgres | 3.2.0 | runtime | MIT |
+| python | langgraph-prebuilt | 1.1.1 | runtime | MIT |
+| python | langgraph-sdk | 0.4.11 | runtime | MIT |
+| python | langsmith | 0.14.16 | runtime | MIT |
 | python | lazy-object-proxy | 1.13.0 | dev | BSD-2-Clause |
 | python | librt | 0.16.0 | dev | MIT |
 | python | mako | 1.4.3 | runtime | MIT |
@@ -55,7 +68,8 @@
 | python | openpyxl | 3.1.5 | runtime | MIT |
 | python | opentelemetry-api | 1.45.1 | runtime | Apache-2.0 |
 | python | orjson | 3.13.0 | runtime | MPL-2.0 AND (Apache-2.0 OR MIT) |
-| python | packaging | 26.3 | dev | Apache-2.0 OR BSD-2-Clause |
+| python | ormsgpack | 1.13.0 | runtime | Apache-2.0 OR MIT |
+| python | packaging | 26.3 | runtime | Apache-2.0 OR BSD-2-Clause |
 | python | pathable | 0.6.0 | dev | Apache-2.0 |
 | python | pathspec | 1.1.1 | dev | MPL-2.0 |
 | python | platformdirs | 4.13.5 | dev | MIT |
@@ -77,6 +91,7 @@
 | python | qrcode | 8.2 | runtime | BSD-3-Clause AND MIT |
 | python | referencing | 0.37.0 | runtime | MIT |
 | python | requests | 2.34.2 | runtime | Apache-2.0 |
+| python | requests-toolbelt | 1.0.0 | runtime | Apache-2.0 |
 | python | rfc3339-validator | 0.1.4 | dev | MIT |
 | python | rpds-py | 2026.9.1 | runtime | MIT |
 | python | ruff | 0.17.1 | dev | MIT |
@@ -87,18 +102,23 @@
 | python | srt | 3.5.3 | runtime | MIT |
 | python | starlette | 1.9.0 | runtime | BSD-3-Clause |
 | python | structlog | 26.1.0 | runtime | MIT OR Apache-2.0 |
+| python | tenacity | 9.2.1 | runtime | Apache-2.0 |
 | python | tqdm | 4.70.1 | runtime | MPL-2.0 AND MIT |
+| python | truststore | 0.10.5 | runtime | MIT |
 | python | typeguard | 4.6.0 | dev | MIT |
 | python | types-pyyaml | 6.0.12.20260906 | dev | Apache-2.0 |
 | python | typing-extensions | 4.16.0 | runtime | PSF-2.0 |
 | python | typing-inspection | 0.4.4 | runtime | MIT |
 | python | tzdata | 2026.5 | runtime | Apache-2.0 |
 | python | urllib3 | 2.8.0 | runtime | MIT |
+| python | uuid-utils | 0.19.0 | runtime | BSD-3-Clause |
 | python | uvicorn | 0.54.0 | runtime | BSD-3-Clause |
 | python | uvloop | 0.23.0 | runtime | MIT |
 | python | vosk | 0.3.45 | runtime | Apache-2.0 |
 | python | watchfiles | 1.3.0 | runtime | MIT |
 | python | websockets | 17.3 | runtime | BSD-3-Clause |
+| python | xxhash | 4.0.2 | runtime | BSD-2-Clause |
+| python | zstandard | 0.25.0 | runtime | BSD-3-Clause |
 | npm | @adobe/css-tools | 4.5.0 | dev | MIT |
 | npm | @alloc/quick-lru | 5.3.0 | dev | MIT |
 | npm | @asamuzakjp/css-color | 3.2.0 | dev | MIT |
