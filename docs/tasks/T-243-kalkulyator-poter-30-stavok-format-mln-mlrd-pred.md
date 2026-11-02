@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 ЕТЗ FR-7.1–7.7 и 6.4 (ТЗ 24.6) поверх калькулятора T-133: без изменения формулы и коэффициентов.
@@ -43,4 +43,13 @@ cd frontend && npx playwright test e2e/calculator-map.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-243-server-calculator` от T241f15, API1.5.24/безDDL.
+Existing read-only preview optionalrate_code→actualcatalog→единственный
+dcltv.compute; old absent behavior сохраняется, ambiguousproduct/system422.
+Подтверждённый actualcatalog31 (exactcanonicalCSV↔DB), новых ставок нет.
+14unit/actualPG green, saved incident fixture совпадает, GET fingerprints
+unchanged/BombLLM0/writeproducer0; new executable7/7coverage100%.
+Shared formatter15/queryhook3tests green; fullfront372/builds/type/lint green.
+Подробный monetary diff/review boundary: docs/reviews/T-243-server-calculator.md.
+До normalT242composition и actualcalculator/map/screens/CI/humanreview
+карточка остаётся in_progress; localarithT242 не принимается окончательно.
