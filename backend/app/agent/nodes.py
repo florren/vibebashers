@@ -17,6 +17,7 @@ import orjson
 
 from app.agent import gifts as giftmod
 from app.agent import policies as pol
+from app.agent import proactive
 from app.agent import sla as slam
 from app.agent.customer_messages import (
     customer_outcome,
@@ -646,6 +647,8 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
     if sig.get("client_id"):
         client = await rt.get_client_profile(deps.ctx, int(sig["client_id"]))
         how, conf = "authenticated_channel", 1.0
+    elif proactive.is_service(sig):
+        how = "internal_service"
     else:
         hint = _contacts_hint_for_match(state, sig)
         match_result = await rt.match_client_by_hints(deps.ctx, hint)
@@ -685,6 +688,8 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
         reasoning = (
             f"Клиент #{client['client_id']} ({client['segment']}, {client['psychotype']}) идентифицирован: {how}."
         )
+    elif how == "internal_service":
+        reasoning = "Служебный мониторинг без личности клиента; адресаты определяются по фактическим операциям сбоя."
     else:
         reasoning = "Клиент не идентифицирован — анонимное/публичное обращение."
     await deps.record_step(
@@ -707,6 +712,12 @@ async def identify_client(state: AgentState, deps: Deps) -> AgentState:
 async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     sig, client = state["signal"], state.get("client")
     ctx: dict[str, Any] = {}
+    native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id) if proactive.is_service(sig) else None
+    if proactive.is_service(sig) and (native is None or not native["affected_count"]):
+        raise ValueError("служебный fault scope не подтверждён native producer/current run")
+    if native:
+        ctx["proactive_fault"] = proactive.summary(native)
+        deps.ctx.sim_time = native["as_of"]
     systems: list[str] = []
     if client:
         ctx["products"] = await rt.get_client_products(deps.ctx, client["client_id"])
@@ -718,7 +729,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
                 systems += op["system_path"]
     else:
         ctx["products"], ctx["operations"] = [], []
-    hint_product = state["normalization"].get("entities", {}).get("product")
+    hint_product = native["product_code"] if native else state["normalization"].get("entities", {}).get("product")
     if sig.get("channel_subtype") == "ui_pers_demo":
         form_product = (sig.get("meta") or {}).get("product_code")
         ctx["form_context"] = {
@@ -731,7 +742,24 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     if hint_product:
         systems += PRODUCT_SYSTEMS.get(hint_product, [])
     systems = list(dict.fromkeys(systems)) or ["processing", "mobile_app"]
-    ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
+    if native:
+        systems = [native["system_code"]]
+        ctx["system_logs"] = {
+            "active_faults": [
+                {
+                    "fault_id": native["id"],
+                    "system": native["system_code"],
+                    "error_code": native["error_code"],
+                    "started_sim": native["started_sim"],
+                    "resolved_sim": None,
+                    "impact_count": native["operation_count"],
+                    "affected_clients": native["affected_count"],
+                }
+            ],
+            "logs": [],
+        }
+    else:
+        ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
     scoped_operations = routing_operations(ctx["operations"], state["normalization"])
     failed = [op for op in scoped_operations if op["status"] == "failed" or op.get("error_code")]
     active = ctx["system_logs"]["active_faults"]
@@ -743,6 +771,16 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         if src:
             error_code, system = src["error_code"], src["system"]
     nearby = [f for f in active if f["error_code"] != error_code]
+    fault_id = int(native["id"]) if native else None
+    if client:
+        fault_id = await proactive.causal_fault(
+            deps.ctx.conn,
+            run_id=deps.ctx.run_id,
+            client_id=client["client_id"],
+            operation_id=failed[0]["operation_id"] if failed else sig.get("source_operation_id"),
+            fault_id=sig.get("source_fault_id"),
+            at=deps.ctx.sim_time,
+        )
     region = (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code")
     ctx["related_incidents"] = await rt.find_related_incidents(
         deps.ctx,
@@ -752,6 +790,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         hint_product or (ctx["products"][0]["product"] if ctx["products"] else None),
         region,
         hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
+        fault_id=fault_id,
     )
     sim = await rt.search_similar_signals(
         deps.ctx, sig.get("text") or "", (client or {}).get("client_id"), exclude_signal_id=sig["id"]
@@ -761,7 +800,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         "error_code": error_code,
         "system": system,
         "failed_operation_id": failed[0]["operation_id"] if failed else None,
-        "fault_id": (failed[0].get("fault_id") if failed else None) or sig.get("source_fault_id"),
+        "fault_id": fault_id,
         "nearby_faults": [f["error_code"] for f in nearby][:3],
     }
     ctx["source"] = {"operation_id": sig.get("source_operation_id"), "fault_id": sig.get("source_fault_id")}
@@ -791,6 +830,7 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
             "similar_signals": len(ctx["similar_signals"]),
             "client_history": ctx["client_history"],
             "hints": ctx["hints"],
+            "proactive_fault": ctx.get("proactive_fault"),
         },
         reasoning=f"Собрано: {len(ctx['operations'])} операций (из них с ошибкой {len(failed)}), активных сбоев {len(ctx['system_logs']['active_faults'])}, связанных инцидентов {len(ctx['related_incidents'])}, похожих сигналов {len(ctx['similar_signals'])}.",
     )
@@ -1416,6 +1456,17 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
     hints = ctx.get("hints") or {}
     rules = ctx.get("rules_matched") or []
     c = dict(obj)
+    native = ctx.get("proactive_fault")
+    if native:
+        c.update(
+            signal_type="tech_fault",
+            cause_hypothesis="tech_fault",
+            product=native["product_code"],
+            system=native["system_code"],
+            error_code=native["error_code"],
+            criticality=native["default_criticality"],
+        )
+        notes.append("Служебный вход: причина подтверждена native fault и фактическими same-run failed operations.")
     stype = c.get("signal_type") or "info_request"
     if any(r["action"] == "refund_fee" and r.get("error_code") == "PROC-QR-FEE-CHARGED" for r in rules):
         if stype not in ("legal_regulatory", "fraud_suspicion"):
@@ -1914,7 +1965,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     rules = ctx.get("rules_matched") or []
     fee_rule = next((r for r in rules if r["action"] == "refund_fee"), None)
     mass_impact = max(
-        [i.get("mass_impact") or 0 for i in ctx.get("related_incidents") or [] if i.get("same_error")] + [1]
+        [i.get("mass_impact") or 0 for i in ctx.get("related_incidents") or [] if i.get("same_error")]
+        + [int((ctx.get("proactive_fault") or {}).get("affected_count") or 1)]
     )
     crit = slam.effective_criticality(c["criticality"], flags, segment, stype, mass_impact)
     complexity = slam.complexity_for(stype, None, flags)
@@ -1951,11 +2003,14 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         c.get("product"),
         (client or {}).get("region_code"),
         hours=int(pol.merged(deps.policies)["dedup_window_sim_hours"]),
+        fault_id=(ctx.get("hints") or {}).get("fault_id")
+        if c.get("error_code") == (ctx.get("hints") or {}).get("error_code")
+        else None,
     )
     ctx["related_incidents"] = related
     link = matching_incident(related, c, incident_type, sig.get("text") or "")
     unidentified = not state.get("client")
-    anonymous_request = unidentified and stype != "gratitude"
+    anonymous_request = unidentified and stype != "gratitude" and not ctx.get("proactive_fault")
     demo_team_task = False
     if stype == "info_request" and (
         sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo"
@@ -2026,6 +2081,10 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         and pol.needs_clarification(c, norm, already_asked=already_asked, policies=deps.policies)
     )
     clarify_kind: str | None = "generic" if clarify else None
+    if ctx.get("proactive_fault"):
+        # Служебному монитору нельзя задавать вопрос от имени несуществующего клиента.
+        # Human/policy checks выше сохраняются; это не разрешение денежных действий.
+        clarify, clarify_kind = False, None
     sarcasm_clarify_path = False
     if not unidentified and human_reason is None and not already_asked:
         if stype == "fraud_suspicion" and not str(ctx.get("hints", {}).get("error_code") or "").startswith("AF-"):
@@ -2165,6 +2224,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         if stype == "gratitude"
         else "ack_received"
     )
+    if ctx.get("proactive_fault"):
+        kind, channel, template, text_ru = "proactive_notice", "proactive", "proactive_fault", None
     client_action = {
         "kind": kind,
         "channel": channel,
@@ -2264,6 +2325,13 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
 async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     """Создаёт запрос HITL и прерывает граф (outcome awaiting_human); чекпоинт — вход этого шага."""
     d, sig = state["decision"], state["signal"]
+    if proactive.is_service(sig):
+        native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id)
+        if native is None or not native["affected_count"]:
+            raise ValueError("служебный fault scope устарел перед HITL effects")
+        deps.ctx.sim_time = native["as_of"]
+        state["context"]["proactive_fault"] = proactive.summary(native)
+        d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     incident_id = await _hitl_incident_id(deps, d)
     if not state.get("client") and not sig.get("client_id") and d.get("incident_action") in ("create", "link_existing"):
         incident_id = await _accept_anonymous_before_hitl(state, deps)
@@ -2393,7 +2461,9 @@ def _act_spec(
         "sla": {**(d.get("sla") or {}), **{k: sla_full.get(k) for k in ("take_due_sim", "report_due_sims")}},
         "mass_impact": (d.get("economics_preview") or {}).get("affected_count") or 1,
         "region_code": (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code"),
-        "fault_id": (state["context"].get("hints") or {}).get("fault_id"),
+        "fault_id": (state["context"].get("hints") or {}).get("fault_id")
+        if c.get("error_code") == (state["context"].get("hints") or {}).get("error_code")
+        else None,
         "problem_summary": c.get("problem_summary"),
         "followup_hours": float(follow.get("wake_in_sim_hours") or 4.0),
         "lang": lang,
@@ -2479,7 +2549,7 @@ async def _accept_anonymous_before_hitl(state: AgentState, deps: Deps) -> int:
         mark("notify_team", notification_id=notice.get("notification_id"))
     lang = deps.ctx.act_frame.spec["lang"]
     message = _anonymous_ack(lang)
-    if "notify_client" not in done:
+    if "notify_client" not in done and not proactive.is_service(sig):
         notice = await router_tools.notify_customer(deps.ctx, str(sig.get("channel") or "chat"), message)
         mark("notify_client", notification_id=notice.get("notification_id"))
     if sig.get("external_post_id") and "feed_reply" not in done:
@@ -2522,11 +2592,66 @@ async def _act_clarify(deps: Deps, d: dict[str, Any], sig: dict[str, Any], mark:
     return int(new_id) if new_id is not None else None
 
 
+async def _notify_proactive(
+    state: AgentState, deps: Deps, incident_id: int, scope: dict[str, Any], lang: str
+) -> dict[str, Any]:
+    """Native fanout в обычном act; existing rows (включая unknown) не переотправляются."""
+    sig = state["signal"]
+    existing = await deps.ctx.fetchall(
+        "select client_id from notifications where run_id=%s and signal_id=%s "
+        "and template_code='proactive_fault' and recipient_type='client'",
+        (deps.ctx.run_id, sig["id"]),
+    )
+    known = {row[0] for row in existing}
+    skipped = 0
+    for person in scope["clients"]:
+        if person["client_id"] in known:
+            continue
+        consents = person["consents"] or {}
+        channel = proactive.preferred_channel(person)
+        if channel is None:
+            skipped += 1
+            continue
+        await wt.notify_client(
+            deps.ctx,
+            person["client_id"],
+            sig["id"],
+            incident_id,
+            channel,
+            "proactive_fault",
+            {
+                "name": mask_name(person["display_name"]),
+                "product_name": person["product_name"],
+                "eta": "being confirmed by the team" if lang == "en" else "уточняется у команды",
+            },
+            segment=person["segment_code"],
+            consents=consents,
+            lang=lang,
+        )
+    statuses = await deps.ctx.fetchall(
+        "select status,count(distinct client_id) from notifications where run_id=%s and signal_id=%s "
+        "and template_code='proactive_fault' and recipient_type='client' group by status",
+        (deps.ctx.run_id, sig["id"]),
+    )
+    return {
+        "affected_clients": scope["affected_count"],
+        "skipped_no_consent_or_channel": skipped,
+        "statuses": dict(statuses),
+    }
+
+
 async def act(state: AgentState, deps: Deps) -> AgentState:
     """Исполнение решения через инструменты записи — идемпотентно (повторный вход не дублирует побочные эффекты)."""
     validate_refund_decision(state)
     await _require_mass_refund_approval(state, deps, "act")
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
+    native = await proactive.service_scope(deps.ctx.conn, sig, deps.ctx.run_id) if proactive.is_service(sig) else None
+    if proactive.is_service(sig) and (native is None or not native["affected_count"]):
+        raise ValueError("служебный fault scope устарел перед effects")
+    if native:
+        deps.ctx.sim_time = native["as_of"]
+        state["context"]["proactive_fault"] = proactive.summary(native)
+        d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]
     step_status = "ok"
@@ -2539,13 +2664,22 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
 
     if d["incident_action"] == "create" and "incident" not in done and c.get("error_code"):
         # гонка параллельных прогонов (массовый сбой): сериализуем создание по коду ошибки и ещё раз ищем открытый инцидент
+        hints = state["context"].get("hints") or {}
+        fault_id = hints.get("fault_id") if c.get("error_code") == hints.get("error_code") else None
         await deps.ctx.conn.execute(
-            "select pg_advisory_xact_lock(hashtext(%s))", (f"incident:{deps.ctx.run_id}:{c['error_code']}",)
+            "select pg_advisory_xact_lock(hashtext(%s))",
+            (
+                f"incident:{deps.ctx.run_id}:fault:{fault_id}"
+                if fault_id is not None
+                else f"incident:{deps.ctx.run_id}:{c['error_code']}",
+            ),
         )
         dup = await deps.ctx.fetchone(
-            "select id from incidents where run_id = %s and error_code = %s and status not in ('closed','rejected','duplicate') "
-            "and created_sim >= %s - interval '4 hours' and agent_run_id <> %s order by id limit 1",
-            (deps.ctx.run_id, c["error_code"], deps.ctx.sim_time, deps.ctx.agent_run_id),
+            "select id from incidents where run_id = %s and status not in ('closed','rejected','duplicate') "
+            "and ((%s::bigint is not null and fault_id=%s) or (%s::bigint is null and fault_id is null "
+            "and error_code=%s and created_sim >= %s - interval '4 hours')) "
+            "and agent_run_id is distinct from %s order by id limit 1",
+            (deps.ctx.run_id, fault_id, fault_id, fault_id, c["error_code"], deps.ctx.sim_time, deps.ctx.agent_run_id),
         )
         if dup:
             d["incident_action"], d["link_incident_id"] = "link_existing", int(dup[0])
@@ -2716,6 +2850,11 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     lang = str(spec.get("lang") or "ru")
     if lang not in ("ru", "en"):
         lang = "ru"
+    if native and incident_id and ca["kind"] == "proactive_notice" and human not in ("reject", "delegate"):
+        report = await _notify_proactive(state, deps, incident_id, native, lang)
+        state["context"]["proactive_report"] = report
+        actions[:] = [action for action in actions if action["action"] != "proactive_notice"]
+        mark("proactive_notice", **report)
     if (refund_total or refund_dup) and ca["kind"] != "none":
         ca = {**ca, "text_ru": _refund_text(ca.get("text_ru") or "", refund_total, refund_dup, lang)}
     if c["signal_type"] == "gratitude" and state.get("llm_source") == "mock":
@@ -2738,7 +2877,12 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
             suffix = " Также начислим " + " и ".join(parts) + " после решения проблемы."
         if parts and ca["kind"] != "none":
             ca = {**ca, "text_ru": ((ca.get("text_ru") or "").rstrip(".") + suffix)[:2000]}
-    if ca["kind"] != "none" and "notify_client" not in done and d.get("router_action") != "request_clarification":
+    if (
+        ca["kind"] != "none"
+        and "notify_client" not in done
+        and d.get("router_action") != "request_clarification"
+        and not native
+    ):
         name = mask_name((client or {}).get("name"))
         summary = re.sub(r"[;,]?\s*тональность.*$", "", c.get("summary_ru") or "").strip().rstrip(".") or (
             c.get("problem_summary") or {}

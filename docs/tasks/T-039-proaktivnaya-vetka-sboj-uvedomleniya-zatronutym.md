@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Агент реагирует на fault.started раньше клиентов (ТЗ 6 шаг 4, сценарий 6).
@@ -55,3 +55,7 @@ link/жалобу. Порядок RNG draws сохранён, rollback/retry и 
 Combined adjacent regression: 49 passed (169.73 s), changed executable line
 coverage 31/31=100%; source SHA в proof JSON. Полный suite/CI остаётся за
 окончательной композицией, completion T-039 этим не утверждается.
+
+## T039 native proactive path: начальный checkpoint
+
+Один internal service signal без личности клиента проходит обычный Mock graph и native consented fanout; actual causal/time/provenance guards и API1.5.25 default-deny внешнего service origin подготовлены. Dependency schema9/owner2PG, ingress13unit, graph/timing5PG, полный unit1787/18skip и contracts45/162 прошли. Automatic wake/recovery/late recipients, actual120/90/30, care proof, итоговые full/coverage/CI и human review ещё в работе. Prevented complaints пока null/not_modelled, не равно Sent. [Отчёт](../reviews/T-039-proactive-fault.md). Статус и критерии всей карточки не объявляются завершёнными.

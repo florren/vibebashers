@@ -5887,7 +5887,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** [ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала */
+        /**
+         * [ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала
+         * @description Внешний origin=proactive и X-Source-Code=fault_monitor возвращают 422 до prepare/записей: это служебный native producer. Внешние интеграции должны передавать origin=api. Enum UnifiedMessage сохраняет proactive для внутреннего DTO; channel=proactive с внешним origin=api остаётся допустимым.
+         */
         post: {
             parameters: {
                 query?: {
