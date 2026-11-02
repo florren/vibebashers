@@ -27,9 +27,7 @@
 
 ## Что сделать
 1. app/sim/behavior/model.py: обработчики op.failed/fault.started (affected), таймер жалобы по complain_delay → создание сигнала (текст из библиотеки T-019 по психотипу/тону) или silent_decline; реакции на notifications (agent_reply/proactive/progress/gift) → care_score по care_weights; повтор/эскалация по repeat_prob/escalation_prob; на каждом sla.tick для waiting/churn_intent розыгрыш hazard по формуле ТЗ 4.5; retained при закрытии с care_score ≥ порога.
-2. Запись client_states (is_current), событий client.* и raw per-tick intent hazard.
-   Existing clients.churn_risk и его контекстная projection сохраняются;
-   новое probability mapping/калибровка — отдельная T-165 с provenance review.
+2. Запись client_states (is_current), событий client.* и raw per-tick intent hazard. Existing clients.churn_risk и его контекстная projection сохраняются; новое probability mapping/калибровка — отдельная T-165 с provenance review.
 3. Все вероятности через rng.py; параметры из psychotypes.params и settings.
 
 ## Критерии приёмки
