@@ -33,6 +33,7 @@ from scripts.seed.clients import (  # noqa: E402
 )
 from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting  # noqa: E402
 from scripts.seed.coverage import compute_coverage  # noqa: E402
+from scripts.seed.faults import seed_faults  # noqa: E402
 from scripts.seed.refs import seed_all_refs  # noqa: E402
 
 
@@ -134,12 +135,16 @@ def main() -> int:
             cur.execute(
                 "truncate signals, incidents, operations, faults, client_states, client_products, accounts, clients, sim_runs restart identity cascade"
             )
-            cur.execute("delete from settings where key in ('seed_done', 'coverage')")
+            cur.execute(
+                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:')"
+            )
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)
         conn.commit()
         run_id = ensure_history_run(cur, seed, sim_now, a.profile)
         seed_operations(cur, rnd, run_id, sim_now, profile=a.profile)
+        conn.commit()
+        seed_faults(cur, rnd, run_id, sim_now, profile=a.profile)
         conn.commit()
         seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()
