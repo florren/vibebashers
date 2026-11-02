@@ -44,6 +44,7 @@ async def dashboard(
         where_s.append("s.received_sim >= %s")
         args_s.append(since)
     ws = " and ".join(where_s)
+    customer_ws = f"{ws} and s.origin is distinct from 'proactive'"
     sig = await fetch_one(
         conn,
         f"""
@@ -52,7 +53,7 @@ async def dashboard(
                count(*) filter (where s.received_sim >= %s) as signals_today,
                count(*) filter (where s.received_sim >= %s and s.classification->>'criticality' = 'high') as critical_today,
                count(*) filter (where (s.classification->'flags') ? 'repeat') as repeats
-        from signals s where {ws}
+        from signals s where {customer_ws}
         """,
         (now - dt.timedelta(hours=24), now - dt.timedelta(hours=24), *args_s),
     )
@@ -64,8 +65,8 @@ async def dashboard(
                count(*) filter (where ar.outcome in ('completed','noise','duplicate') and not ar.needed_human) as autonomous,
                count(*) filter (where ar.needed_human) as hitl,
                count(*) filter (where hd.decision in ('modify','reject')) as human_changed,
-               percentile_cont(0.5) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null) as p50_min,
-               percentile_cont(0.95) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null) as p95_min,
+               percentile_cont(0.5) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null and s.origin is distinct from 'proactive') as p50_min,
+               percentile_cont(0.95) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null and s.origin is distinct from 'proactive') as p95_min,
                percentile_cont(0.5) within group (order by ar.total_latency_ms) as run_latency_p50_ms,
                coalesce(sum(ar.total_tokens), 0) as tokens
         from agent_runs ar join signals s on s.id = ar.signal_id
@@ -98,7 +99,7 @@ async def dashboard(
         f"""
         select c.segment_code, percentile_cont(0.5) within group (order by extract(epoch from (n.sent_sim - s.received_sim)) / 60) as p50_min
         from notifications n join signals s on s.id = n.signal_id join clients c on c.id = n.client_id
-        where n.recipient_type = 'client' and n.sent_sim >= s.received_sim and {ws} group by 1
+        where n.recipient_type = 'client' and n.sent_sim >= s.received_sim and {customer_ws} group by 1
         """,
         tuple(args_s),
     )

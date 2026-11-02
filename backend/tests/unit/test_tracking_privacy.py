@@ -261,7 +261,7 @@ async def test_reply_worker_starts_and_stops_with_service(monkeypatch) -> None:
     async def wait(*_args):
         await pending.wait()
 
-    for name in ("_loop", "_personal_loop", "_reply_loop"):
+    for name in ("_loop", "_personal_loop", "_reply_loop", "_proactive_loop"):
         monkeypatch.setattr(service, name, AsyncMock(side_effect=wait))
     monkeypatch.setattr(operator_feedback, "worker", AsyncMock(side_effect=wait))
     service.start()

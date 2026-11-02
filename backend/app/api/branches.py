@@ -156,5 +156,5 @@ async def branch_detail(
                 "next_offset": offset + limit if len(signals) > limit else None,
                 "basis": "explicit_branch_link",
             },
-            "trace_path": "/trace/branch/" + row["code"],
+            "trace_path": f"/trace/branch/{row['id']}?run_id={run_id}",
         }

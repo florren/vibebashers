@@ -61,7 +61,12 @@ def test_demo_csi_branch_gets_p95_and_actual_plans(migrated_db, monkeypatch):
                 ]
             },
         }
-        for route in ["/api/csi/analytics", "/api/branches/analytics", "/api/branches/" + code]:
+        for route in [
+            "/api/csi/analytics",
+            "/api/branches/analytics",
+            "/api/branches/" + code,
+            "/api/branches/network?product_line=deposits",
+        ]:
             samples = []
             for index in range(30):
                 capture = index == 0

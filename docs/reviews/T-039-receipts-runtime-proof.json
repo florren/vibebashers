@@ -1,0 +1,151 @@
+{
+  "changed_runtime_coverage": {
+    "covered": 129,
+    "statements": 138,
+    "percent": 93.47826086956522
+  },
+  "files": {
+    "backend/app/sim/behavior/cancellation.py": {
+      "covered_lines": 66,
+      "num_statements": 74,
+      "percent_covered": 89.1891891891892
+    },
+    "backend/app/sim/behavior/prevention.py": {
+      "covered_lines": 49,
+      "num_statements": 50,
+      "percent_covered": 98.0
+    },
+    "backend/app/sim/behavior/cancellation_details.py": {
+      "covered_lines": 86,
+      "num_statements": 87,
+      "percent_covered": 98.85057471264368
+    },
+    "backend/app/sim/behavior/owner.py": {
+      "changed_executable": 5,
+      "covered_changed_executable": 5,
+      "missing_changed_lines": []
+    },
+    "backend/app/sim/behavior/signals.py": {
+      "changed_executable": 9,
+      "covered_changed_executable": 9,
+      "missing_changed_lines": []
+    }
+  },
+  "storage_parent": "27a895647b466e93e0ce5004b95337e378c8bb12",
+  "runtime_parent": "ab9acf8ac82d9eb00b7fe649445272d26479718b",
+  "tests": {
+    "passed": 79,
+    "seconds": 193.14,
+    "log": "/tmp/t039-receipts-cutoff-coverage-tests.log",
+    "source": "bc80aec3228fe8cf7f2acd6322313a8ce3b6305b",
+    "runtime_tree_identical_to_final": true
+  },
+  "full_regression": {
+    "source": "0e0db416c10b2761d24637086974b70247874676",
+    "unit_source": "bc80aec3228fe8cf7f2acd6322313a8ce3b6305b",
+    "unit_app_tree_identical_to_final": true,
+    "only_unit_source_tree_difference": "backend/tests/integration/test_cabinet_api.py (test-only exact migration head guard)",
+    "unit": {
+      "passed": 1900,
+      "skipped": 18,
+      "seconds": 63.91
+    },
+    "integration": {
+      "passed": 617,
+      "skipped": 4,
+      "seconds": 3251.23
+    },
+    "scenarios": {
+      "passed": 43,
+      "skipped": 2,
+      "seconds": 270.08
+    },
+    "compliance": {
+      "passed": 31,
+      "seconds": 128.93
+    },
+    "tgbot": {
+      "passed": 43,
+      "seconds": 8.63
+    },
+    "frontend": {
+      "passed": 366,
+      "files": 47
+    },
+    "backend_passed_total": 2591,
+    "backend_skipped_total": 24,
+    "all_project_passed_total": 3000,
+    "log": "/tmp/t039-receipts-final-full.log",
+    "log_sha256": "6661b7a804042e62371ffac44e70d0000c2606101e610e00cf8187e6e7111d0c",
+    "exit_code": 0
+  },
+  "public_api_version": "1.5.22",
+  "final_contract_review_required": true,
+  "source_sha256": {
+    "backend/app/sim/behavior/cancellation.py": "0df3bde24d284f60c139e648d50e93900ec9a15bec7423ec8b12aa12f043a3bb",
+    "backend/app/sim/behavior/prevention.py": "f03353baa78f34d211306e95432489129f5dcfb308fa62c23b95e775262eaf80",
+    "backend/app/sim/behavior/cancellation_details.py": "0fb0223eff9f688879d01a53f2da7179f6370b216cfd6f8565d4433cde4640ca",
+    "backend/app/sim/behavior/owner.py": "a1c3b41bbf2343a2ad9dbc87edc5aa95d2b0b196cbd3af56dffe3b4fcf180fac",
+    "backend/app/sim/behavior/signals.py": "b3037b467b8cf1a21211c5f0041685648fab525defebf3275630169e18e2a29e",
+    "backend/tests/integration/test_behavior_cancellation_runtime.py": "9ebed70b35877f6c6d47192ca34cd4d13c1f023119cd6fd833977d5cf3f16639",
+    "backend/tests/unit/test_behavior_prevention.py": "f51d20b5f47b5f93bb823b405462390c80946978cd908df50e6f0d0a4472db27",
+    "contracts/db/migrations/0019_behavior_cancellation_receipts.sql": "e7ec41700c8dfee7fadd46ddae981dc24d28feb95e0dffb20a3a8beb2bee030f",
+    "backend/tests/integration/test_behavior_cancellation_cutoff.py": "b8f9bcd65dc5ccf005d2fdd63c9c06aa82c8dcdaa49384b389456f2733d7b7b7",
+    "backend/tests/integration/test_cabinet_api.py": "93a6ad0828d396cf95739f03fe72a823368397d78ae73e55c87a5ee4a0270a1b"
+  },
+  "full_unit": {
+    "passed": 1900,
+    "skipped": 18,
+    "seconds": 63.91,
+    "log": "/tmp/t039-receipts-cutoff-full-unit.log"
+  },
+  "checks": {
+    "make_sync_contracts": "green; generated110ORM, no tracked delta",
+    "make_lint": "green; backend490ruff/307mypy; bot12ruff/5mypy; frontend366vitest/47files; inherited DemoMenu1warning0errors",
+    "contracts": "47schemas/163paths; drift193/193",
+    "licenses": "550+36 distributions",
+    "final_alembic_check": "No new upgrade operations detected; /tmp/t039-receipts-final-drift.log"
+  },
+  "historical_5445": {
+    "source": "5445c6cfe118b7a230fc3011f0ea05319cd3bab4",
+    "tests": {
+      "passed": 76,
+      "seconds": 142.69,
+      "log": "/tmp/t039-receipts-runtime-coverage-tests.log"
+    },
+    "full_unit": {
+      "passed": 1900,
+      "skipped": 18,
+      "seconds": 57.0,
+      "log": "/tmp/t039-receipts-full-unit.log"
+    },
+    "changed_runtime_coverage": {
+      "covered": 127,
+      "statements": 136,
+      "percent": 93.38235294117646
+    },
+    "partial_full_integration": {
+      "passed": 173,
+      "skipped": 1,
+      "errors": 36,
+      "seconds": 958.25,
+      "status": "controlled_SIGINT_after_repeated_setup_errors",
+      "root_cause": "cabinet fixture literal0018 vs actual0019",
+      "log": "/tmp/t039-receipts-full-regression.log"
+    }
+  },
+  "cutoff_regression": {
+    "before": {
+      "failed": 3,
+      "seconds": 18.75,
+      "log": "/tmp/t039-receipts-cutoff-before-v2.log"
+    },
+    "after": {
+      "passed": 65,
+      "seconds": 88.28,
+      "log": "/tmp/t039-receipts-cutoff-after.log"
+    },
+    "independent_db": "cx_receipts_cutoff_revision",
+    "codec_and_DDL19_unchanged": true
+  }
+}

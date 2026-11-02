@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Визуализация CSI-аналитики (ТЗ 25.3) в режиме «Тихий».
@@ -42,3 +42,12 @@ cd frontend && npx playwright test e2e/csi.spec.ts
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+### Реализация и локальная проверка
+
+Семь функций на API28, URLscope/preset-safe cache, R7 customboxplot, unknown/sample
+labels, ru/en и альтернативные таблицы реализованы. Исправлен explicit run consumer
+Journey: read-only без compute economics/HITL действий, legacy behavior сохранён.
+Final435frontend/62files, typecheck/lint/motion/обеbuilds green; native UI5/5,
+97table hashes unchanged на CSI→Journey→Replay. [Review/ограничения/source proof](../reviews/T-249-csi-screen.md).
+Parent198/exact-head CI/merge ещё впереди; карточка остаётся in_progress.

@@ -24,7 +24,10 @@ def test_branch_detail_pressure_and_gets_do_not_write(seeded):
         assert data["branch"]["id"] == branch_id
         assert data["signals"]["total"] == data["csi"]["coverage"]["complaints"] == 29
         assert len(data["signals"]["items"]) == 7 and data["signals"]["next_offset"] == 7
-        assert data["trace_path"] == "/trace/branch/" + code
+        trace = client.get(data["trace_path"].replace("/trace/", "/api/trace/", 1))
+        assert trace.status_code == 200, trace.text
+        assert trace.json()["subject"]["ref"] == "VSP-" + code
+        assert "run_id=current" in data["trace_path"]
         response = client.get("/api/branches/analytics")
         assert response.status_code == 200, response.text
         result = response.json()
