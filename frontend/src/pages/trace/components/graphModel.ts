@@ -55,14 +55,16 @@ export function buildGraph(trace: Trace, page?: TraceRelationPage) {
       y: 56 + counts[phase]++ * ROW_GAP })
   }
   const ids = new Set(nodes.map((node) => node.id))
-  const edges = [...new Map([...trace.edges, ...(page?.edges ?? [])]
+  const sourceEdges = [...trace.edges, ...(page?.edges ?? [])]
+  const hiddenEdges = sourceEdges.filter((edge) => !ids.has(edge.from) || !ids.has(edge.to)).length
+  const edges = [...new Map(sourceEdges
     .filter((edge) => ids.has(edge.from) && ids.has(edge.to))
     .map((edge) => [`${edge.from}\0${edge.to}\0${edge.relation_ru}`, edge])).values()]
   const terminalId = trace.terminal.event_ref && ids.has(trace.terminal.event_ref) ? trace.terminal.event_ref : undefined
   const path = directedPath(edges, subjectId, terminalId)
   const reversePath = [...path]
   const pathEdges = new Set(reversePath.slice(1).map((id, index) => `${id}\0${reversePath[index]}`))
-  return { nodes, edges, subjectId, terminalId, path, pathEdges, unresolved: !alias && unknown.size > 0,
+  return { nodes, edges, hiddenEdges, subjectId, terminalId, path, pathEdges, unresolved: !alias && unknown.size > 0,
     width: COLUMN_GAP * 2 + NODE_WIDTH + 64,
     height: Math.max(240, 100 + Math.max(...Object.values(counts), 1) * ROW_GAP) }
 }

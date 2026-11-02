@@ -1996,7 +1996,9 @@
       "money": "Money",
       "message": "Message"
     },
-    "scopeError": "Use current, all, or a positive run ID up to 9223372036854775807."
+    "scopeError": "Use current, all, or a positive run ID up to 9223372036854775807.",
+    "hiddenEdges": "Some edges are hidden because an endpoint is absent from this response. Open the group parent trace to inspect it.",
+    "groupParent": "Group parent trace"
   },
   "compare": {
     "title": "AI versus rules",

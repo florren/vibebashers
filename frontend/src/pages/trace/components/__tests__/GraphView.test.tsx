@@ -83,3 +83,19 @@ it('shows pagination errors without inventing members and refuses expansion of l
   expect(await screen.findByRole('button', { name: /1001/ })).toBeDisabled()
   expect(screen.getByText(/Для старой группы доступны только примеры/)).toBeInTheDocument()
 })
+
+it('identifies each fan parent and exposes its real trace when the anchor is outside the base window', async () => {
+  const trace = traceFixture()
+  trace.groups[0]!.anchor = { kind: 'incident', ref: 'INC-000002', event_id: 'EVT-incident:2' }
+  const page = fanFixture()
+  page.anchor = trace.groups[0]!.anchor
+  page.edges = page.edges.map((edge) => ({ ...edge, from: page.anchor.event_id }))
+  vi.mocked(getTrace).mockResolvedValue(trace)
+  vi.mocked(getTraceRelations).mockResolvedValue(page)
+  mount('/trace/incident/INC-000001?mode=graph&run_id=27')
+  fireEvent.click(await screen.findByRole('button', { name: /1001.*INC-000002/ }))
+  expect(await screen.findByText(/Некоторые связи скрыты/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /След родителя группы/ })).toHaveAttribute('href', '/trace/incident/INC-000002?mode=graph&run_id=27')
+  expect(screen.getByRole('button', { name: 'NTF-000050' })).toBeInTheDocument()
+  expect(getTraceRelations).toHaveBeenCalledWith('incident', 'INC-000002', { direction: 'after', event_kind: 'notification', run_id: '27', limit: 50 })
+})

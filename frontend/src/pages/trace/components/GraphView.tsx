@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ROUTES } from '@/shared/routes'
 import { getTraceRelations, type Trace } from '@/shared/api/trace'
 import { buildGraph, NODE_HEIGHT, NODE_WIDTH, nodeInViewport, type GraphNode, type NodeFamily } from './graphModel'
 
@@ -109,6 +110,7 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
           <span className="text-xs text-muted">{t('traceGraph.keyboard')}</span>
         </div>
         {model.unresolved && <p role="status">{t('traceGraph.unresolved')}</p>}
+        {model.hiddenEdges > 0 && <p role="status">{t('traceGraph.hiddenEdges')}</p>}
         <div ref={viewport} className="trace-graph-viewport" onScroll={(event) => {
           const el = event.currentTarget
           setView({ left: el.scrollLeft, top: el.scrollTop, width: el.clientWidth, height: el.clientHeight })
@@ -153,10 +155,11 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
           <div className="flex flex-wrap gap-2">{trace.groups.map((item, index) => <button key={index} className="btn" aria-pressed={fan === index}
             disabled={!item.anchor || !item.phase || !['signal_created', 'notification'].includes(item.kind)}
             onClick={() => { setFan(fan === index ? null : index); setCursors([undefined]) }}>
-            {t(`traceUi.eventKind.${item.kind}`, { defaultValue: item.kind })} · {item.count}
+            {t(`traceUi.eventKind.${item.kind}`, { defaultValue: item.kind })} · {item.count}{item.anchor ? ` · ${item.anchor.ref}` : ''}
           </button>)}</div>
           {trace.groups.some((item) => !item.anchor || !item.phase) && <p>{t('traceGraph.legacyFan')}</p>}
           {fan != null && <div className="my-2 rounded border border-line p-3">
+            {anchor && <Link className="btn mb-2" to={`${ROUTES.traceObject(anchor.kind, anchor.ref)}?${new URLSearchParams({ mode: 'graph', run_id: scope })}`}>{t('traceGraph.groupParent')} · {anchor.ref}</Link>}
             {fanQuery.isFetching && <p role="status">{t('traceUi.loading')}</p>}
             {fanQuery.isError && <p role="alert">{t('traceGraph.fanError')} <button className="btn" onClick={() => { setCursors([undefined]); void fanQuery.refetch() }}>{t('traceUi.retry')}</button></p>}
             {fanQuery.data && <><p role="status">{t('traceGraph.page', { start: fanQuery.data.items.length ? (cursors.length - 1) * 50 + 1 : 0, end: (cursors.length - 1) * 50 + fanQuery.data.items.length, total: fanQuery.data.total })}</p>

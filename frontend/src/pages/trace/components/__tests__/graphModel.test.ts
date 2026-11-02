@@ -39,6 +39,18 @@ describe('trace graph uses only recorded topology', () => {
     expect(model.nodes.every((node) => node.phase === 'subject' || node.phase === 'after')).toBe(true)
     expect(model.nodes.every((node) => node.x >= 372)).toBe(true)
   })
+  it('keeps every fan item accessible when its recorded anchor is outside the base trace window', () => {
+    const trace = traceFixture()
+    trace.groups[0]!.anchor = { kind: 'incident', ref: 'INC-000002', event_id: 'EVT-incident:2' }
+    const page = fanFixture()
+    page.anchor = trace.groups[0]!.anchor
+    page.edges = page.edges.map((edge) => ({ ...edge, from: page.anchor.event_id }))
+    const model = buildGraph(trace, page)
+    expect(model.nodes).toHaveLength(51)
+    expect(model.hiddenEdges).toBe(50)
+    expect(model.edges).toEqual(trace.edges)
+    expect(model.nodes.some((node) => node.id === page.anchor.event_id)).toBe(false)
+  })
   it('renders event semantics rather than an implementation step as its family', () => {
     const trace = traceFixture(1)
     trace.after[0] = { ...trace.after[0]!, kind: 'public_reply', object_ref: { kind: 'step', ref: 'AS-000001' } }
