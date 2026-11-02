@@ -7,8 +7,8 @@ Production build Vite, Chromium1217, source main1df0024 +T203workingdiff.
 данные источника, не переводились и не подменялись.
 
 12desktop сочетаний ru/en ×light/dark ×feed/manager/compliance и2English
-Manager320×320 (full-page capture). Здесь8EnglishPNG; полный proof
-в docs/reviews/T-203-browser-proof.json, ruPNG сохранены в /tmp.
+Manager320×320 (full-page capture). Здесь14PNG (12desktop ru/en и2узких English); полный proof
+в docs/reviews/T-203-browser-proof.json, исходные PNG также сохранены в /tmp.
 320px — проверка узкого viewport, не приёмка отдельного UI смарт-часов.
 
 QA preview: APP_ENV=test, штатныеAPI/production bundle, Simulator загружен

@@ -19,7 +19,7 @@ Production Chromium1217:12 desktop сочетаний ru/en ×light/dark ×3scre
 фактическая тема проверена; ширина document320px без overflow.
 Отпечатки85publictables до/после совпали. Только собственная synthetic DB;
 entity API не замоканы. Read-only preview загрузил настоящий sim_state,
-но не запускал actors/ticks; LLM был запрещён Bomb,0calls.8EnglishPNG
+но не запускал actors/ticks; LLM был запрещён Bomb,0calls.14PNG обеих языков/тем
 и ограничения QA описаны в docs/screenshots/T-203/README.md.
 Узкий viewport не выдаётся за отдельный UI смарт-часов T-188.
 
