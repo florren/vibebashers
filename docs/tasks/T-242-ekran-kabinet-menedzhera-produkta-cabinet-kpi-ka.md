@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Рабочая поверхность менеджера (ТЗ 24.4) в режиме «Тихий».
@@ -44,4 +44,11 @@ cd frontend && npx playwright test e2e/cabinet.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-242-product-cabinet`, stacked от T241.
+Реализованы семь блоков, scoped API queries/WS invalidation, presets/visibility,
+карта с клавиатурой/hover prefetch/zoom400ms, лента/таблица/фильтры,
+SVG charts без анимации с NULL gaps и synthetic labels, CSI observations,
+сценарный калькулятор по текущим rates/settings. Header/Jury не изменялись.
+15 новых frontend tests, lint/typecheck green. Это implementation checkpoint:
+actual API18 composition, production builds/browser/screenshots и full checks ещё впереди.
+T244 report и T249 полный CSI остаются отдельными задачами, готовность не приписана.
