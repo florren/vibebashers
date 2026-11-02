@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Граф-навигация по связям (референс 2, ТЗ 26.6, 28.5): узлы по типам, выбор центра, раскрытие панели с данными объекта.
@@ -42,4 +42,4 @@ cd frontend && npx playwright test e2e/trace-graph.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-234-trace-graph`, T-234 / `contract-change`. Producer: полное read-only keyset-раскрытие N, optional actual group anchor/phase, OpenAPI 1.5.16 и generated TS/Pydantic. Обоснование, совместимость, измерения и human-review gate — `docs/reviews/T-234-trace-fanout-contract.md`. 38 новых unit/PG passed; покрытие fanout.py 98,65%; p95 страницы50 при10001 связях 123,96 мс, peak258278B. Legacy include/detail и defaultall существующего Trace сохранены; новый endpoint defaultcurrent. SVG/UI и полный DoD ещё в работе; критерии приёмки не закрыты.

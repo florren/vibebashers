@@ -6911,6 +6911,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trace/{kind}/{ref}/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * [АРХ] Полное постраничное раскрытие веера реальных связей (T-234)
+         * @description Только чтение. kind/ref — anchor из группы; include=detail исходного trace не меняет смысл. Cursor привязан к anchor/family/direction/эффективному run scope и ограничивает поздние вставки upper-PK fence. Удаления/изменение связей между страницами могут менять total; это не неизменяемый исторический snapshot.
+         */
+        get: {
+            parameters: {
+                query: {
+                    direction: "before" | "after";
+                    event_kind: "signal_created" | "notification";
+                    /** @description Область исходного trace: current (по умолчанию), id или явный all. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all. */
+                    run_id?: string;
+                    limit?: number;
+                    /** @description Непрозрачный keyset cursor; ASCII, не более 1024 байт */
+                    cursor?: string;
+                };
+                header?: never;
+                path: {
+                    kind: string;
+                    ref: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Реальные события/рёбра текущей страницы; total относится ко всему доступному вееру в scope/fence */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["trace_relation_page.schema"];
+                    };
+                };
+                /** @description Anchor отсутствует в выбранном запуске */
+                404: components["responses"]["Problem"];
+                /** @description Неверные типы/пределы параметров или cursor/context */
+                422: components["responses"]["Problem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/journey/{ref}": {
         parameters: {
             query?: never;
@@ -10755,7 +10809,7 @@ export interface components {
             order_warning?: boolean;
         };
         /**
-         * TraceResponse — GET /api/trace/{kind}/{ref} (ТЗ 28.3)
+         * TraceResponse — GET /api/trace/{kind}/{ref} (ТЗ 28.3; T-234: optional fanout anchors)
          * @example {
          *       "subject": {
          *         "kind": "incident",
@@ -10808,6 +10862,17 @@ export interface components {
                 count: number;
                 sample_refs: string[];
                 expand_hint_ru?: string | null;
+                /**
+                 * @description Фактическая фаза группы; отсутствует в legacy ответах
+                 * @enum {string}
+                 */
+                phase?: "before" | "after";
+                anchor?: {
+                    kind: string;
+                    ref: string;
+                    /** @description Настоящий ID anchor в edges, не выводится из public ref на клиенте */
+                    event_id: string;
+                };
             }[];
             pending: {
                 kind_ru: string;
@@ -10831,6 +10896,42 @@ export interface components {
                 truncated_after?: boolean;
                 build_ms: number;
             };
+        };
+        /**
+         * TraceRelationPage — полное постраничное раскрытие веера (T-234, OpenAPI 1.5.16)
+         * @example {
+         *       "anchor": {
+         *         "kind": "client",
+         *         "ref": "CL-000001",
+         *         "event_id": "EVT-client:1"
+         *       },
+         *       "direction": "after",
+         *       "event_kind": "signal_created",
+         *       "total": 0,
+         *       "items": [],
+         *       "edges": [],
+         *       "next_cursor": null
+         *     }
+         */
+        "trace_relation_page.schema": {
+            anchor: {
+                kind: string;
+                ref: string;
+                event_id: string;
+            };
+            /** @enum {string} */
+            direction: "before" | "after";
+            /** @enum {string} */
+            event_kind: "signal_created" | "notification";
+            /** @description Число доступных объектов в выбранном scope и upper-PK fence; не длина текущей страницы */
+            total: number;
+            items: components["schemas"]["trace_event.schema"][];
+            edges: {
+                from: string;
+                to: string;
+                relation_ru: string;
+            }[];
+            next_cursor: string | null;
         };
         /** @enum {string} */
         journey_message_kind: "ack" | "public_reply" | "status" | "final" | "gift" | "clarification";

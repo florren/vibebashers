@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
+from app.contracts.enums import TraceEventKind, TracePhase
 from app.trace.assembler import assemble
+from app.trace.fanout import decode_cursor, normalize_scope, relation_page
 from app.trace.projections import node_key
 from app.trace.store import read_db
 
@@ -34,3 +36,21 @@ async def trace_object(
         visible = {"EVT-" + node_key(nodes[0]), *(e["id"] for phase in ("before", "after") for e in result[phase])}
         result["edges"] = [edge for edge in result["edges"] if edge["from"] in visible and edge["to"] in visible]
     return result
+
+
+@router.get("/api/trace/{kind}/{ref}/relations", summary="[АРХ] Полное постраничное раскрытие веера реальных связей")
+async def trace_relations(
+    direction: Literal[TracePhase.BEFORE, TracePhase.AFTER],
+    event_kind: Literal[TraceEventKind.SIGNAL_CREATED, TraceEventKind.NOTIFICATION],
+    kind: str = Path(min_length=1, max_length=40),
+    ref: str = Path(min_length=1, max_length=200),
+    run_id: str = "current",
+    limit: int = Query(50, ge=1, le=100),
+    cursor: str | None = None,
+) -> Any:
+    decoded = decode_cursor(cursor)
+    run_id = normalize_scope(run_id)
+    async with read_db() as conn:
+        return await relation_page(
+            conn, kind, ref, direction=direction, event_kind=event_kind, run_id=run_id, limit=limit, cursor=decoded
+        )
