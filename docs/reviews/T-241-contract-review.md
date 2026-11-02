@@ -81,7 +81,7 @@ actor_role. Coverage actual18:200/207 executable lines (97%),53tests55.92s.
 
 Source `42f2488` (обычный merge main, без изменения кабинетного backend):
 - оставшиеся фазы на предшествующем byte-identical cabinet source `e4ac976`: unit **1747 passed / 18 skipped** (51.15 s), scenarios **43 / 2 skipped** (255.03 s), compliance **31** (122.36 s), tgbot **33** (6.17 s);
-- composed `make lint` green: frontend **354**, Ruff **444** formatted, mypy **292** source files, bot **11** formatted / **5** mypy, OpenAPI drift **193 / 193**, missing/extra 0;
+- composed `make lint` green: frontend **354**, Ruff **445** formatted, mypy **292** source files, bot **11** formatted / **5** mypy, OpenAPI drift **193 / 193**, missing/extra 0;
 - actual0018 cabinet API/PG + scope target **65 passed** (139.35 s с coverage): **213 / 217 lines, 98%** пяти новых модулей, manual/automatic audit и anonymous/CSI coverage проверены;
 - `make sync-contracts contracts-check`: ORM110, **45 схем / 163 paths**, source generation без diff; `gen_tasks.py` дважды — **205** cards, второй запуск без нового diff (нормализована одна пустая строка отчёта T240);
 - повторный final backend benchmark на собственной demo5000/2813signals DB: 25 actual GET каждого scope с первым GET; bank p95 **40.49 ms**, direction **24.15 ms**, payload max **45 291 B**; **107** public/private fingerprints unchanged, BombLLM **0**, внешних попыток **0**. `T-241-demo-performance.json` содержит безопасный EXPLAIN ANALYZE/BUFFERS read-only proof.
@@ -93,3 +93,15 @@ Source `42f2488` (обычный merge main, без изменения каби�
 
 Перед merge требуется human approval API1.5.22 / DDL0018 / actor_role semantics.
 T244 report остаётся 501 по своей карточке; guarded report scope проверен (403/422).
+
+## Review base и DAG
+
+Временная local ветка `codex/T-241-contracts17-base` —
+`97fec2220579b7f8f6262906e905543460fff839`: fd4c2ec (T240/P1/T254 до API22)
+ordinary-merge09655b6 (actual17 storage checkpoint) и main73425c9.
+Она сохраняет enabled:false review policy и не содержит поздних ancestors
+c88d947/4c99681 с runtime activation. Эта база не означает завершённый T161.
+Обычный merge базы в T241 `b335c307` не меняет tree относительно bb94309.
+Draft PR направляется в эту временную review base; retarget main только после
+фактического merge P2/DDL16 и T161/DDL17, normal composition и exact-head CI.
+Новая migration fork/rebase/cherry историй не создавались.
