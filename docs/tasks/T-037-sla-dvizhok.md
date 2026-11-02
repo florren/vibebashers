@@ -49,4 +49,4 @@ _Заполняется исполнителем: ветка/PR, что сдел
 
 Основной PG/OS/lifecycle/restore/reset-day набор 43 passed; дополнительные stale/corrupt legacy 3 passed; actual PG16 dump/restore clone 1 passed. Full unit 1727 passed /18 skipped; changed-executable line coverage131/131; Ruff/mypy/contracts/licenses зелёные. Подробности, ограничения, source hashes и rollback: [кандидат review](../reviews/T-037-durable-plan-candidate.md).
 
-Статус `todo` и DoD не закрыты: final scenarios/compliance/полная composition CI и обязательный human event/runtime compatibility review ещё нужны. Техническое разрешение root не является пользовательским одобрением legacy policy. UI SLA warning этим кандидатом не менялся; отдельный новый UI proof не заявлен.
+На runtime `56e62b9` также scenarios43 passed/2 skipped и compliance31 passed. Статус `todo` и DoD не закрыты: полная composition CI и обязательный human event/runtime compatibility review ещё нужны. Техническое разрешение root не является пользовательским одобрением legacy policy. UI SLA warning этим кандидатом не менялся; отдельный новый UI proof не заявлен.

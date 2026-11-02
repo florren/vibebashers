@@ -34,7 +34,7 @@ Root технически разрешил подготовить/провери
 - Changed-executable **line** coverage: **131/131, 100%**, stdlib trace union двух успешных прогонов с проверкой одинаковых source SHA256. Это не branch coverage; [данные](T-037-durable-plan-coverage.json).
 - Ruff/check+format: 455 файлов; mypy: 295 модулей; contracts: 47 схем / 162 OpenAPI paths; license gate: 550 distributions. Новых зависимостей нет.
 
-Aggregate OS/clone evidence и точные source hashes: [proof](T-037-durable-plan-proof.json). Дополнительные scenarios/compliance запущены sequential; результат пока не заявлен. Full composition CI/human review остаются обязательными.
+Aggregate OS/clone evidence и точные source hashes: [proof](T-037-durable-plan-proof.json). На frozen runtime `56e62b9` sequential scenarios: **43 passed / 2 skipped, 239.89 s** (`/tmp/t037-final-scenarios.log`), compliance: **31 passed, 108.43 s** (`/tmp/t037-final-compliance.log`). Full composition CI/human review остаются обязательными; scoped 43+3+1 PG не называется полной integration suite.
 
 Clarify/resume восстанавливаются из actual clarify action и actual incident status/progress facts; позднее ручное возвращение `in_progress` не теряется до следующего due action и не тратит RNG. Неполный legacy blob даёт typed error, а не bool coercion/rebuild. Это не отменяет более строгий existing T161 admission для run без behavior marker.
 
