@@ -136,3 +136,15 @@ it('hydrates and saves attention only, retaining unrelated ui preferences and ci
   expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { attention: null } })
   expect(localStorage.getItem('cx.ui.attention')).toBeNull()
 })
+
+it('layout is opt-in and serializes only its new key, preserving attention/circadian and extra ui values', async () => {
+  useUiTheme.setState({ layout: 'legacy' })
+  vi.mocked(api).mockResolvedValue({ ui: { layout: 'legacy', attention: 'calm', sentinel: true } })
+  vi.mocked(patch).mockResolvedValue(undefined)
+  disconnect = connectThemeSettings(); await flush()
+  expect(useUiTheme.getState().layout).toBe('legacy'); expect(patch).not.toHaveBeenCalled()
+  useUiTheme.getState().setLayout('v2'); await flush()
+  expect(patch).toHaveBeenLastCalledWith('/api/settings', { ui: { layout: 'v2' } })
+  expect(useUiTheme.getState().attention).toBe('calm')
+  expect(localStorage.getItem('cx.ui.layout')).toBe('v2')
+})

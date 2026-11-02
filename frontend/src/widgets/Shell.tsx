@@ -1,3 +1,5 @@
+import { useUiTheme } from '@/shared/theming/store'
+import { ShellV2 } from './ShellV2'
 import { AttentionRuntime } from '@/shared/theming/AttentionRuntime'
 import { UndoToast } from '@/shared/components/UndoToast'
 import { PriorityStrip } from '@/shared/components/PriorityStrip'
@@ -19,6 +21,8 @@ function DemoModeFooter() {
 }
 
 export function Shell() {
+  const layout = useUiTheme(s => s.layout)
+  if (layout === 'v2') return <ShellV2 footer={<DemoModeFooter />} />
   return (
     <div className="app-shell flex h-full min-w-0 flex-col">
       <AttentionRuntime />
