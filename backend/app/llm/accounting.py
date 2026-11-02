@@ -74,9 +74,8 @@ async def _utc_now(conn: psycopg.AsyncConnection[Any]) -> dt.datetime:
     return value.astimezone(dt.UTC)
 
 
-def _minimum(*values: int | None) -> int | None:
-    present = [_counter(value) for value in values if value is not None]
-    return min(present) if present else None
+def _optional_counter(value: int | None) -> int | None:
+    return None if value is None else _counter(value)
 
 
 def _unavailable(exc: Exception) -> ProviderError:
@@ -117,6 +116,9 @@ class BudgetSnapshot:
     usage_as_of: dt.datetime | None
     tokens_remaining: int | None
     requests_remaining: int | None
+    profile_requests_today: int = 0
+    profile_requests_known: bool = False
+    profile_requests_remaining: int | None = None
     refusal: ProviderError | None = field(default=None, repr=False)
 
     def public(self) -> dict[str, Any]:
@@ -130,6 +132,9 @@ class BudgetSnapshot:
             "usage_as_of": self.usage_as_of,
             "tokens_remaining": self.tokens_remaining,
             "requests_remaining": self.requests_remaining,
+            "profile_requests_today": self.profile_requests_today,
+            "profile_requests_known": self.profile_requests_known,
+            "profile_requests_remaining": self.profile_requests_remaining,
         }
 
 
@@ -211,7 +216,7 @@ class PostgresAccounting:
             if current is None:
                 raise AdmissionRefused("quota", "текущая quota configuration профиля отсутствует")
             profile_limit = current["rpd_limit"]
-        return _minimum(key_limit), _minimum(day_limit), _minimum(profile_limit)
+        return _optional_counter(key_limit), _optional_counter(day_limit), _optional_counter(profile_limit)
 
     async def snapshot(self, profile: LLMProfile, facts: KeyFacts, *, timeout_s: float) -> BudgetSnapshot:
         # Read selection state without waiting behind another key's network lease.
@@ -541,7 +546,7 @@ class KeyScope:
             account, day = state["account"], state["key_day"]
             known = bool(account["usage_known"] and not state["unresolved"])
             requests_known = bool(day["requests_known"])
-            token_limit, request_limit, _ = state["limits"]
+            token_limit, request_limit, profile_limit = state["limits"]
             refusal = None
             try:
                 self._validate(state)
@@ -560,6 +565,11 @@ class KeyScope:
                 else None,
                 requests_remaining=max(0, request_limit - day["requests_today"])
                 if requests_known and request_limit is not None
+                else None,
+                profile_requests_today=state["profile_day"]["requests_today"],
+                profile_requests_known=state["profile_day"]["requests_known"],
+                profile_requests_remaining=max(0, profile_limit - state["profile_day"]["requests_today"])
+                if state["profile_day"]["requests_known"] and profile_limit is not None
                 else None,
                 refusal=refusal,
             )
@@ -716,18 +726,6 @@ class Ticket:
 
 def service() -> PostgresAccounting:
     return PostgresAccounting()
-
-
-PUBLIC_OBSERVATION_FIELDS = (
-    "observed_tokens_floor",
-    "usage_known",
-    "usage_source",
-    "usage_as_of",
-    "requests_known",
-    "requests_day",
-    "tokens_remaining",
-    "requests_remaining",
-)
 
 
 def public_observation(item: dict[str, Any], observed: dict[str, Any] | None, day: dt.date) -> dict[str, Any]:

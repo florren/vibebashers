@@ -1116,3 +1116,108 @@ async def test_actual_chain_deadline_keeps_single_source_and_durable_partial_usa
         await provider.aclose()
     observed = await service.snapshot(profile, facts, timeout_s=3)
     assert observed.tokens_used == 2 and observed.requests_today == 1 and not observed.usage_known
+
+
+@pytest.mark.parametrize("slot", ["gigachat1", "gigachat2", "openrouter", "local"])
+async def test_operator_cli_env_sources_are_explicit_reconciled_and_show_profile_day(migrated_db, monkeypatch, slot):
+    import json
+
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli
+
+    suffix = uuid.uuid4().hex
+    provider = "gigachat" if slot.startswith("gigachat") else "openai_compatible"
+    endpoint = f"https://synthetic-{slot}.invalid/v1/{suffix}"
+    secret = f"synthetic-cli-{slot}-{suffix}"
+    field = {
+        "gigachat1": "GIGACHAT_AUTH_KEY_1",
+        "gigachat2": "GIGACHAT_AUTH_KEY_2",
+        "openrouter": "OPENROUTER_API_KEY",
+        "local": "LOCAL_LLM_API_KEY",
+    }[slot]
+    url_field = (
+        "GIGACHAT_BASE_URL"
+        if provider == "gigachat"
+        else ("LOCAL_LLM_BASE_URL" if slot == "local" else "OPENROUTER_BASE_URL")
+    )
+    monkeypatch.setenv("DATABASE_URL", migrated_db)
+    monkeypatch.setenv(field, secret)
+    monkeypatch.setenv(url_field, endpoint)
+    get_settings.cache_clear()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        pid = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,rpd_limit) values(%s,%s,'synthetic','main',%s,2) returning id",
+                    (f"cli-{suffix}", provider, endpoint),
+                )
+            ).fetchone()
+        )[0]
+    args = accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", slot])
+    before = await accounting_cli.execute(args)
+    assert not before["admission_allowed"] and not before["usage_known"] and not before["profile_requests_known"]
+    args = accounting_cli.parser().parse_args(
+        [
+            "reconcile",
+            "--profile-id",
+            str(pid),
+            "--env-slot",
+            slot,
+            "--reconciliation-id",
+            str(uuid.uuid4()),
+            "--as-of",
+            (await now()).isoformat(),
+            "--tokens-used",
+            "0",
+            "--requests-today",
+            "0",
+            "--profile-requests-today",
+            "0",
+            "--confirm",
+            "--reviewed-unknown-origin",
+        ]
+    )
+    receipt = await accounting_cli.execute(args)
+    after = await accounting_cli.execute(
+        accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", slot])
+    )
+    assert after["admission_allowed"] and after["usage_known"] and after["profile_requests_known"]
+    assert after["profile_requests_today"] == 0 and after["profile_requests_remaining"] == 2
+    rendered = json.dumps([before, receipt, after], default=str)
+    assert secret not in rendered and not any(name in rendered for name in ("verifier", "quota_uid", "credential_uid"))
+    get_settings.cache_clear()
+
+
+async def test_operator_cli_keyless_local_and_wrong_env_binding_fail_closed(migrated_db, monkeypatch):
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli
+
+    suffix = uuid.uuid4().hex
+    base = f"http://127.0.0.1:4545/v1/{suffix}"
+    monkeypatch.setenv("DATABASE_URL", migrated_db)
+    monkeypatch.setenv("LOCAL_LLM_BASE_URL", base)
+    monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
+    monkeypatch.delenv("GIGACHAT_AUTH_KEY_2", raising=False)
+    get_settings.cache_clear()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        pid = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,rpd_limit) values(%s,'openai_compatible','synthetic','main',%s,2) returning id",
+                    (f"cli-local-{suffix}", base),
+                )
+            ).fetchone()
+        )[0]
+        args = accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", "local"])
+        profile, facts = await accounting_cli.selection(args)
+        assert facts.secret is None and facts.endpoint == base
+        for wrong in ("gigachat2", "openrouter"):
+            with pytest.raises(ProviderError) as denied:
+                await accounting_cli.selection(
+                    accounting_cli.parser().parse_args(["status", "--profile-id", str(pid), "--env-slot", wrong])
+                )
+            assert denied.value.kind == "auth"
+        await conn.execute("update llm_profiles set base_url=%s where id=%s", (base + "/other", pid))
+        with pytest.raises(ProviderError, match="local env source"):
+            await accounting_cli.selection(args)
+    get_settings.cache_clear()
