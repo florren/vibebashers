@@ -8,9 +8,11 @@ import asyncio
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import Any
 
 from app.llm.base import TIMEOUTS_S, Context, LLMProfile, Message, Provider, ProviderError, Usage
+from app.llm.budget import load_openrouter_budget
 from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START, MockProvider
 from app.llm.openai_compat import OPENROUTER_PROFILE_MODELS, OpenAICompatProvider
 from app.llm.ratelimit import RateLimiter
@@ -295,13 +297,21 @@ def build_chain(settings: Any, *, transport: Any = None) -> ProviderChain:
             if not settings.openrouter_api_key and not settings.local_llm_base_url:
                 log.info("llm_chain_skip", provider=name, reason="нет OPENROUTER_API_KEY / LOCAL_LLM_BASE_URL")
                 continue
+            endpoints: dict[str, str | None] = {}
+            if settings.openrouter_api_key:
+                endpoints[settings.openrouter_base_url.rstrip("/")] = settings.openrouter_api_key
+            if settings.local_llm_base_url:
+                endpoints[settings.local_llm_base_url.rstrip("/")] = getattr(settings, "local_llm_api_key", None)
+            base = settings.openrouter_base_url if settings.openrouter_api_key else settings.local_llm_base_url
             providers.append(
                 OpenAICompatProvider(
-                    settings.openrouter_api_key,
-                    settings.local_llm_base_url or settings.openrouter_base_url,
+                    endpoints[str(base).rstrip("/")],
+                    str(base),
                     transport=transport,
                     budget_usd=float(settings.openrouter_budget_usd),
+                    budget_loader=partial(load_openrouter_budget, float(settings.openrouter_budget_usd)),
                     http_referer=f"http://localhost:{settings.app_port}",
+                    endpoint_keys=endpoints,
                 )
             )
         elif name == "replay":
