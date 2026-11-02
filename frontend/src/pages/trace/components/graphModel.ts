@@ -25,9 +25,9 @@ export function nodeFamily(kind: string): NodeFamily {
   return 'action'
 }
 
-/** Edges never imply a new entity: the one omitted endpoint can only be the subject
- * because assembler filters edges to subject + the complete before/after arrays.
- * Multiple unknown endpoints are refused, including malformed/legacy payloads. */
+/** Ребро не создаёт сущность: единственный отсутствующий endpoint может быть subject,
+ * поскольку assembler фильтрует рёбра по subject и полным before/after массивам.
+ * Несколько неизвестных endpoints не сопоставляются, включая legacy/некорректные ответы. */
 export function buildGraph(trace: Trace, page?: TraceRelationPage) {
   const raw = [...trace.before, ...trace.after]
   const known = new Set(raw.map((event) => event.id))

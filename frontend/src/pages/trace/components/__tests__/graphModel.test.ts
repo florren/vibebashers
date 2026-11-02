@@ -65,7 +65,7 @@ describe('trace graph uses only recorded topology', () => {
     expect(directedPath(edges, 'a').size).toBe(0)
   })
   it('bounds visible DOM for 300 synthetic nodes while retaining keyboard/model access to every node', () => {
-    // Stresses the UI layout, not the API after<=200 contract limit.
+    // Нагрузка на UI-раскладку, без расширения контрактного лимита API after<=200.
     const started = performance.now()
     const model = buildGraph(traceFixture(299))
     const visible = model.nodes.filter((node) => nodeInViewport(node, { left: 0, top: 0, width: 1000, height: 420 }, 1))

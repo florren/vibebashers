@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { event, fanFixture, traceFixture } from '../src/pages/trace/components/__tests__/fixtures'
 
-// Deterministic synthetic UI evidence. The producer has separate actual PG/BombLLM/fingerprint tests.
+// Детерминированные синтетические UI-проверки. Producer отдельно проверяется на PG/BombLLM/fingerprints.
 async function fixture(page: Page, count = 4) {
   await page.route((url) => url.pathname.startsWith('/api/'), async (route) => {
     const url = new URL(route.request().url())

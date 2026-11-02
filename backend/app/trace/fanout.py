@@ -50,8 +50,8 @@ def normalize_scope(run_id: str) -> str:
 
 
 def validate_anchor_ref(kind: str, ref: str) -> None:
-    # isdigit() includes characters such as ² that the shared legacy grammar
-    # passes to int(), which raises ValueError. Decimal Unicode remains valid.
+    # isdigit() включает символы вроде ², которые общий legacy parser передаёт
+    # в int(), вызывая ValueError. Десятичные Unicode-цифры остаются допустимыми.
     if not ref.strip() or len(ref) > 200:
         raise HTTPException(422, "Некорректный ref")
     if ref.isdigit():

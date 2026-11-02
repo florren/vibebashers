@@ -6927,7 +6927,7 @@ export interface paths {
                 query: {
                     direction: "before" | "after";
                     event_kind: "signal_created" | "notification";
-                    /** @description Область исходного trace: current (по умолчанию), id или явный all. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all. */
+                    /** @description Область исходного trace: current (по умолчанию; также пустая строка), явный all или положительный bigint 1..9223372036854775807. Числовой ввод не длиннее 32 символов нормализуется к ID; переполнение/неположительный ID даёт 422 до DB. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all. */
                     run_id?: string;
                     limit?: number;
                     /** @description Непрозрачный keyset cursor; ASCII, не более 1024 байт */

@@ -1,6 +1,6 @@
 import type { Trace, TraceEvent, TraceRelationPage } from '@/shared/api/trace'
 
-// Deliberately synthetic UI fixtures; actual API/PG evidence is checked separately.
+// Намеренно синтетические UI fixtures; настоящий API/PG проверяется отдельно.
 export const event = (id: number, phase: TraceEvent['phase'] = 'after'): TraceEvent => ({
   id: `EVT-notification:${id}`, kind: 'notification', phase, ts_sim: null, ts_real: '2026-11-01T10:00:00Z',
   actor: { kind: 'system', label_ru: 'Система' }, object_ref: { kind: 'notification', ref: `NTF-${String(id).padStart(6, '0')}` },

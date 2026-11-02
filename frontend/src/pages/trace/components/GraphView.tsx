@@ -36,7 +36,7 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
       run_id: scope, limit: 50, ...(cursors.at(-1) ? { cursor: cursors.at(-1)! } : {}),
     }),
     enabled: !!anchor && !!group?.phase && ['signal_created', 'notification'].includes(group.kind),
-    // Only the current fan page is retained: opening all N must not grow the DOM/cache to N.
+    // Храним только текущую страницу веера: раскрытие всех N не раздувает DOM/cache до N.
     gcTime: 0,
   })
   const model = useMemo(() => buildGraph(trace, fanQuery.data), [trace, fanQuery.data])
@@ -58,8 +58,8 @@ export function GraphView({ trace, scope, visited, onVisit }: { trace: Trace; sc
   }, [])
   useEffect(() => { setFan(null); setCursors([undefined]) }, [trace.subject.kind, trace.subject.ref, scope])
   useEffect(() => {
-    // A narrow viewport otherwise opens on an empty BEFORE column. Pan to the
-    // selected real node without taking keyboard focus from the surrounding page.
+    // Узкий viewport иначе открывается на пустой колонке BEFORE. Центрируем
+    // выбранный реальный узел, не забирая клавиатурный фокус со страницы.
     const element = viewport.current
     const node = nodes.get(selectedId)
     if (!element || !node) return

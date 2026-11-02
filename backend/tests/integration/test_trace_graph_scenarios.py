@@ -20,7 +20,7 @@ pytestmark = pytest.mark.integration
 
 
 async def test_graph_real_recorded_scenarios_1_6_8_read_only(seeded, monkeypatch):
-    """Fixture writes precede all read-only evidence; no delivery/live provider involved."""
+    """Fixture-записи создаются до read-only проверок; внешней доставки/live-провайдера нет."""
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     cases = []

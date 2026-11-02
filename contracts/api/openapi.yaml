@@ -2221,7 +2221,7 @@ paths:
         - { name: ref, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 200 } }
         - { name: direction, in: query, required: true, schema: { type: string, enum: [before, after] } }
         - { name: event_kind, in: query, required: true, schema: { type: string, enum: [signal_created, notification] } }
-        - { name: run_id, in: query, schema: { type: string, default: current }, description: "Область исходного trace: current (по умолчанию), id или явный all. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all." }
+        - { name: run_id, in: query, schema: { type: string, maxLength: 32, default: current }, description: "Область исходного trace: current (по умолчанию; также пустая строка), явный all или положительный bigint 1..9223372036854775807. Числовой ввод не длиннее 32 символов нормализуется к ID; переполнение/неположительный ID даёт 422 до DB. UI передаёт выбранный родительский scope; current без текущего запуска не превращается в all. Legacy GET trace сохраняет прежний default all." }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
         - { name: cursor, in: query, schema: { type: string, maxLength: 1024 }, description: "Непрозрачный keyset cursor; ASCII, не более 1024 байт" }
       responses:

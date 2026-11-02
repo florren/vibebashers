@@ -60,7 +60,7 @@ it('pages through all 1001 real-shaped DTO members without retaining all pages i
   expect(getTraceRelations).toHaveBeenCalledTimes(21)
   fireEvent.click(screen.getByRole('button', { name: 'Предыдущая страница' }))
   expect(await screen.findByText('События 951–1000 из 1001')).toBeInTheDocument()
-// 21 sequential page renders share CPU with the full suite; browser pan has its own strict budget.
+// 21 последовательная страница делит CPU с полным suite; browser pan имеет отдельный строгий бюджет.
 }, 15000)
 it('keyboard selects, announces inspector data and centers real trace links with preserved URL scope', async () => {
   mount('/trace/incident/INC-000001?mode=graph&run_id=27')
