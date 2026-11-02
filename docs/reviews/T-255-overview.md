@@ -15,8 +15,8 @@ Proven application source `1c9c365` включает API29/T041c47, clean root J
 ## Проверки final application source
 
 - Make lint green:485frontend/69files,550format/323mypy,bot12/5,drift196/196; обе production builds main/personal green.
--102адресных tests (66unit+36integration, включая actual PG/HTTP/control) green60.43s на actual0020. Initial101/1fixtureF: T039 правильно запретил service origin черезapi. Focused1c9 использует существующую internal normalizer authority fault_monitor/system_logs, все customer/window/N/C/R assertions сохранены.
--8/8actual production browser9.1s: brand/ops×ru/en×light/dark, desktop1440/mobile360, reducedmotion, API↔KPI/CX/exact money,9блоков, contrast text≥4.5/control≥3, отсутствие infinite animation, keyboard SVG→actual TraceHTTP200.24curatedPNG — `docs/screenshots/T-255/`.
+- 102адресных tests (66unit+36integration, включая actual PG/HTTP/control) green60.43s на actual0020. Initial101/1fixtureF: T039 правильно запретил service origin черезapi. Focused1c9 использует существующую internal normalizer authority fault_monitor/system_logs, все customer/window/N/C/R assertions сохранены.
+- 8/8actual production browser9.1s: brand/ops×ru/en×light/dark, desktop1440/mobile360, reducedmotion, API↔KPI/CX/exact money,9блоков, contrast text≥4.5/control≥3, отсутствие infinite animation, keyboard SVG→actual TraceHTTP200.24curatedPNG — `docs/screenshots/T-255/`.
 - Отдельный8route GETwalk включает Overview, Workspace dashboard/signals/HITL, Economics, Engine ownAR и explicit-run JourneyFollow/Replay:114public/private table hashes unchanged,0nonGETattempts/0external/0legacyglobalmoneyKPI/0pageerrors.
 
 Demo5000 seed, nativeMockrun2 и startup abs_backfill завершены ДОfingerprint; настройки fixture PATCH/import вне readonly фазы. Native recorded0ms допускается при реально recorded finished step: это измеренный Mock execution, не неизвестное время. Machine evidence/source hashes/raw counts — `T-255-overview-proof.json`. Gen2 после parent merge идемпотентен206cards. Historical192/6f proof (470frontend/111hashes) сохранён в Git; полный backend2770/24skip относится к runtime1968631, новым полным composed прогоном не называется.
