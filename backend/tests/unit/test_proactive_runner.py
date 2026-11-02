@@ -16,7 +16,7 @@ async def test_fault_wakeups_are_coalesced_without_payload_time_or_database(monk
     service = AgentService(None, None)
     connect = AsyncMock(side_effect=AssertionError("NOTIFY не является фактом для SQL/графа"))
     monkeypatch.setattr(service, "_conn", connect)
-    for event in ("fault.started", "op.failed") * 10:
+    for event in ("fault.started", "op.failed", "scenario.proactive_notified", "scenario.proactive_completed") * 10:
         await service._notification(
             SimpleNamespace(
                 channel="sim_events",
@@ -78,3 +78,90 @@ async def test_proactive_daemon_wake_and_stop_preserve_cancellation(monkeypatch)
     await service.stop()
     assert task.cancelled() and service._proactive_task is None
     assert calls == 2
+
+
+@pytest.mark.parametrize("owned", [True, False])
+async def test_graph_progress_wakes_only_after_commit_and_native_owned_scope(monkeypatch, owned):
+    import datetime as dt
+
+    from app.agent import proactive
+
+    service = AgentService(None, None, sim=SimpleNamespace(run_id=7))
+    committed = []
+
+    async def commit():
+        assert not service._proactive_wake.is_set()
+        committed.append(True)
+
+    conn = SimpleNamespace(commit=commit)
+    clock = AsyncMock(return_value=(7, dt.datetime.now(dt.UTC)) if owned else None)
+    monkeypatch.setattr(proactive, "current_clock", clock)
+    await service._wake_committed_graph(conn, {"run_id": 7})
+    assert committed == [True]
+    assert service._proactive_wake.is_set() is owned
+    clock.assert_awaited_once_with(conn, 7)
+
+
+async def test_noop_graph_completion_and_standalone_caller_never_self_wake_or_read_foreign_scope(monkeypatch):
+    from app.agent import proactive
+
+    scope = AsyncMock(side_effect=AssertionError("No-op не читает/меняет foreign scope"))
+    monkeypatch.setattr(proactive, "current_clock", scope)
+    conn = SimpleNamespace(commit=AsyncMock(side_effect=AssertionError("No-op не commit")))
+    service = AgentService(None, None, sim=SimpleNamespace(run_id=7))
+    await service._wake_committed_graph(conn, None)
+    assert not service._proactive_wake.is_set()
+    standalone = AgentService(None, None)
+    await standalone._wake_committed_graph(conn, {"run_id": 999})
+    assert not standalone._proactive_wake.is_set()
+    scope.assert_not_awaited()
+    conn.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("progress", [False, True])
+async def test_phase_clock_wake_is_only_committed_progress_not_noop_tick(monkeypatch, progress):
+    import datetime as dt
+
+    from app.agent import proactive
+    from app.sim import proactive_phases
+
+    at = dt.datetime.now(dt.UTC)
+    sim = SimpleNamespace(run_id=7, clock=SimpleNamespace(sim_time=at))
+    service = AgentService(None, None, sim=sim)
+
+    class Connection:
+        calls = 0
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def commit(self):
+            if self.calls == 0:
+                assert not service._proactive_wake.is_set()
+            self.calls += 1
+
+        async def execute(self, sql, args):
+            assert sql.startswith("select s.id,a.id,a.outcome,s.origin")
+            assert args == ([],)
+            return SimpleNamespace(fetchall=AsyncMock(return_value=[]))
+
+    conn = Connection()
+    monkeypatch.setattr(service, "_conn", AsyncMock(return_value=conn))
+    monkeypatch.setattr(proactive, "produce", AsyncMock(return_value=[]))
+
+    async def advance(actual, owner):
+        assert actual is conn and owner is sim
+        if progress:
+            sim.clock.sim_time = at + dt.timedelta(minutes=1)
+        return []
+
+    monkeypatch.setattr(proactive_phases, "advance", advance)
+    submit = AsyncMock(side_effect=AssertionError("No-op/clock hint не создаёт foreign graph"))
+    monkeypatch.setattr(service, "submit", submit)
+    await service._proactive_cycle()
+    assert service._proactive_wake.is_set() is progress
+    assert not service._inflight
+    submit.assert_not_called()

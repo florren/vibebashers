@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import datetime as dt
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import orjson
@@ -106,8 +107,13 @@ class AgentService:
             if self.sim is not None:
                 from app.sim.proactive_phases import advance
 
+                clock_before = (self.sim.run_id, self.sim.clock.sim_time)
                 phase_signals = await advance(conn, self.sim)
                 await conn.commit()
+                if (self.sim.run_id, self.sim.clock.sim_time) != clock_before:
+                    # Только hint после committed clock progress. Следующая
+                    # итерация снова читает authoritative run/time из PostgreSQL.
+                    self._proactive_wake.set()
             signal_ids = list(dict.fromkeys([*phase_signals, *await proactive.produce(conn)]))
             # Граф не держит producer TX/run lock через LLM и другие await.
             await conn.commit()
@@ -184,14 +190,23 @@ class AgentService:
                 # Release phase/run/time locks до graph/model. Existing recovery
                 # сам проверяет checkpoint/thread и выбирает pinned AR profiles.
                 await conn.commit()
-                await recover_agent_run(
+                completed = await recover_agent_run(
                     conn, agent_run_id=agent_run_id, chain=self.chain, profile=self.profile, sim_time=at
                 )
+                await self._wake_committed_graph(conn, completed)
             except Exception as exc:
                 if run_id is not None:
                     await fail(conn, run_id, "customer_graph_failed")
                 self.failed += 1
                 log.error("scripted_agent_recovery_failed", agent_run_id=agent_run_id, error_type=type(exc).__name__)
+
+    async def _wake_committed_graph(self, conn: psycopg.AsyncConnection[Any], state: Mapping[str, Any] | None) -> None:
+        if state is None or self.sim is None:
+            return  # No-op/standalone caller не создаёт phase self-waking loop.
+        owned = await proactive.current_clock(conn, int(state["run_id"]))
+        await conn.commit()
+        if owned is not None:
+            self._proactive_wake.set()
 
     def _submit_proactive_resume(self, signal_id: int) -> asyncio.Task[Any]:
         existing = self._by_signal.get(signal_id)
@@ -204,7 +219,10 @@ class AgentService:
         async with self.sem:
             try:
                 async with await self._conn() as conn:
-                    await resume_proactive_fault(conn, signal_id=signal_id, chain=self.chain, profile=self.profile)
+                    state = await resume_proactive_fault(
+                        conn, signal_id=signal_id, chain=self.chain, profile=self.profile
+                    )
+                    await self._wake_committed_graph(conn, state)
             except Exception as exc:
                 self.failed += 1
                 log.warning("proactive_fault_resume_failed", signal_id=signal_id, error_type=type(exc).__name__)
@@ -446,7 +464,16 @@ class AgentService:
             body = orjson.loads(n.payload)
         except orjson.JSONDecodeError:
             return
-        if n.channel == "sim_events" and body.get("event_type") in ("fault.started", "op.failed", "sla.tick"):
+        if n.channel == "sim_events" and body.get("event_type") in (
+            "fault.started",
+            "op.failed",
+            "sla.tick",
+            "scenario.proactive_prepared",
+            "scenario.proactive_notified",
+            "scenario.proactive_complaints",
+            "scenario.proactive_completed",
+            "scenario.proactive_failed",
+        ):
             self._proactive_wake.set()
         if n.channel == "sim_events" and body.get("event_type") == "sla.tick":
             sim_raw = body.get("sim_time")
@@ -589,6 +616,7 @@ class AgentService:
                     state = await process_signal(
                         conn, signal_id=signal_id, chain=self.chain, profile=self.profile, sim_time=sim_time
                     )
+                    await self._wake_committed_graph(conn, state)
                 if state is not None:
                     self.processed += 1
                     if state.get("outcome") == "failed":
@@ -605,4 +633,5 @@ class AgentService:
             state = await resume_after_human(
                 conn, human_decision_id=human_decision_id, chain=self.chain, profile=self.profile, sim_time=sim_time
             )
+            await self._wake_committed_graph(conn, state)
         return dict(state) if state else None

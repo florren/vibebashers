@@ -103,11 +103,17 @@ async def test_insufficient_lite_cohort_fails_without_native_rows(seeded):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         spec = plan(scenario())
         run = await current(conn)
+        journal_before = await (
+            await conn.execute("select * from sim_events where run_id=%s order by id", (run,))
+        ).fetchall()
         with pytest.raises(ScriptedScenarioError, match="insufficient_cohort"):
             await prepare(conn, run, spec)
         assert not await (await conn.execute("select 1 from faults where run_id=%s", (run,))).fetchone()
         assert not await (await conn.execute("select 1 from operations where run_id=%s", (run,))).fetchone()
-        assert not await (await conn.execute("select 1 from sim_events where run_id=%s", (run,))).fetchone()
+        assert (
+            await (await conn.execute("select * from sim_events where run_id=%s order by id", (run,))).fetchall()
+            == journal_before
+        )
 
 
 @pytest.mark.asyncio
@@ -147,6 +153,9 @@ async def test_prepared_partial_failure_rolls_back_all_native_rows_and_rng(mass_
 
     async with await psycopg.AsyncConnection.connect(dsn(mass_seeded)) as conn:
         run = await current(conn)
+        journal_before = await (
+            await conn.execute("select * from sim_events where run_id=%s order by id", (run,))
+        ).fetchall()
         before = await (await conn.execute("select sim_time,rng_state from sim_state where id=1")).fetchone()
         await conn.commit()
         original = EventBus.emit
@@ -166,7 +175,10 @@ async def test_prepared_partial_failure_rolls_back_all_native_rows_and_rng(mass_
                 await prepare(conn, run, plan(scenario()))
         assert not await (await conn.execute("select 1 from faults where run_id=%s", (run,))).fetchone()
         assert not await (await conn.execute("select 1 from operations where run_id=%s", (run,))).fetchone()
-        assert not await (await conn.execute("select 1 from sim_events where run_id=%s", (run,))).fetchone()
+        assert (
+            await (await conn.execute("select * from sim_events where run_id=%s order by id", (run,))).fetchall()
+            == journal_before
+        )
         assert await (await conn.execute("select sim_time,rng_state from sim_state where id=1")).fetchone() == before
         monkeypatch.setattr(EventBus, "emit", original)
         record = await prepare(conn, run, plan(scenario()))

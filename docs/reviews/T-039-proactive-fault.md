@@ -342,3 +342,33 @@ Final source coverage/full make/CI ещё не заявлены. Рекомен�
 — новый изолированный demo profile5000 (`install.sh --profile demo --offline`),
 затем `make scenario ID=mass_notifications`. Существующие datasets/baselines ради
 cohort не удалять: preflight должен честно отказать при недостатке фактов/consents.
+
+
+### Committed progress wake: frozen8a red → focused green
+
+Expanded timid coverage frozen8a7a5a8 завершилась 145 passed/3 failed за756.51s,
+не whole-green. Два prepare assertions предполагали пустой journal, хотя native
+team.runtime_started уже существовал до prepare. Fixtures теперь сравнивают весь
+pre-existing journal до/после reject/rollback; fault/op-zero и clock/RNG assertions
+не ослаблены. Третий отказ — actual main CLI default30s под24-module timid tracer;
+paired native no-tracer на том же8a прошёл1PG28.65s. Таймауты не повышались.
+
+Узкий operational hint будит существующий coalesced Event после committed native
+clock progress и actual owned graph completion, а также committed typed phase
+NOTIFY. DB остаётся единственным authoritative источником eligibility; clear-before-
+recheck и2s fallback сохранены. No-op resume, standalone/foreign caller и clock-noop
+не создают self-waking loop. Новый hint не исполняет model/HTTP, не меняет banking
+clock/due/p/HITL. Hard native CLI30 test проверяется отдельно от functional coverage;
+tracer latency не выдаётся за native timing.
+
+Focused modified-source proof:33 unit passed2.08s;7 PG/ASGI passed61.24s
+(оба prepare journal/rollback cases, actual main CLI30, unknown/no retry, ordinary
+paused/manual и failed-AR guard). Runner mypy и Ruff/format touched files green.
+Logs:/tmp/t039-wake-unit.log,/tmp/t039-wake-focused-pg.log. Expanded failed-run
+coverage1076/1197 changed lines89.89% — только diagnostic frozen8a measurement;
+не относится к новому source и не объявлена successful coverage gate.
+
+Пользователь разрешил недеструктивные change requests до07:00 03.11.2026 МСК;
+root сохраняет concrete source/CI/parent review API25/receipt19. Разрешение не
+распространяется на paid/LLM/Telegram/email/production или отдельно заблокированный
+PR180 forward-only credential cutover. Новых внешних вызовов не выполнялось.
