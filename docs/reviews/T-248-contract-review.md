@@ -33,3 +33,18 @@ Final native51dccc6 без tracer:120GET/4routes, first included, warmup=false; 
 Рекомендуемый code rollback сохраняет новые additive таблицы/историю и отключает новую выдачу согласованным forward-compatible способом. Явный DDL downgrade20 удаляет новые sample snapshots/view/supporting indexes/functions: до него нужен отдельный backup; собственный dump/restore проверен, production downgrade не выполнялся. Неизвестные legacy denominators не чинятся восстановлением предполагаемых данных. Формулы денег, возвраты, HITL, RNG/SimClock и реальные внешние вызовы этим пакетом не меняются. T-249/T-250/T-262/replay-live acceptance остаются отдельными незавершёнными задачами.
 
 Final composed lint:420frontend/58files, Ruff535/mypy318, bot12/5 и drift195/195 green. Contract checker48schemas/165paths green; повтор gen_tasks идемпотентен. Исправлена также stale description scope (current-only вместо baseline+current) и regenerated TS. Это документация фактического поведения, не расширение выдачи. Blanket human authorization до03.11.2026 07:00 Europe/Moscow распространяется только на изменения без деструктивного эффекта; production DDL apply/downgrade и реальные внешние вызовы не выполнялись. Parent197 и exact-head CI обязательны до merge.
+
+## Parent197 native Trace follow-up
+
+Обычная композиция7ba4b9d дала1d5d78b. В единственном EOF conflict unit test сохранены
+оба семейства: CSI exact-ID lookup и terminal-eviction regression. Production delta
+parent — только пересчёт FINAL visible set в assembler после terminal replacement;
+native journal fixture6 больше не предполагает inject-list.
+
+На composed source75unit/actualPG passed90.57с: Trace1/6/8 с настоящим120/90/30,
+CSIanalytics/branch detail и все exact-ID/eviction tests. Application fingerprints
+Trace и CSI guards сохранены. Все13 coverage module SHA и4 benchmark route module
+SHA остаются точными: прежние152coverage/120GET evidence source-qualified и не
+пересчитывались как новый full suite. Parent native isolatedfanout p95 отдельно
+26.385мс<300, page50/10001, peak282061bytes<8MiB; его JSON в parent review.
+Полный exact-head CI нового head обязателен; этот follow-up не закрывает карточку.
