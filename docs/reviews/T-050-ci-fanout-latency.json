@@ -1,0 +1,122 @@
+{
+  "ci": {
+    "head": "d99b8569426a400bb013839ac9c8d645a3c2550e",
+    "checkout_merge": "0bb2015a64808136bf4867d16de271790e50e453",
+    "run_id": 41452304960,
+    "job_id": 125300930611,
+    "job_url": "https://github.com/florren/vibebashers/actions/runs/41452304960/job/125300930611",
+    "test": "tests/integration/test_trace_fanout.py::test_large_fan_page_latency_and_bounded_response",
+    "p95_ms": 305.9006009999621,
+    "threshold_ms": 300,
+    "job_passed": 454,
+    "job_skipped": 1,
+    "job_failed": 1
+  },
+  "comparison": {
+    "p2": {
+      "source": "d99b8569426a400bb013839ac9c8d645a3c2550e",
+      "unmodified_test": {
+        "mode": "actual TestClient/PG, readonly GET, noLLM",
+        "members": 10001,
+        "page_size": 50,
+        "samples_ms": [
+          55.020603991579264,
+          52.5994120107498,
+          52.754397998796776,
+          52.44060800760053,
+          52.91385401505977,
+          52.56797099718824,
+          53.60580698470585,
+          52.75686300592497,
+          53.733340988401324,
+          53.035435994388536
+        ],
+        "p95_ms": 55.020603991579264,
+        "response_items": 50,
+        "python_request_peak_bytes": 269294
+      },
+      "diagnostic_stage_median_ms": {
+        "anchor_resolve": 1.822,
+        "anchor_sql": 1.091,
+        "fan_count_sql": 2.491,
+        "fan_page_sql": 40.395,
+        "maintenance_admission": 0.005,
+        "maintenance_exit": 0.005,
+        "pg_connect": 4.199,
+        "projection": 0.992,
+        "read_db_enter": 4.557,
+        "read_db_exit": 0.252,
+        "relation_page_total": 46.029,
+        "scope_resolve": 0.131
+      },
+      "stage_probe_is_separate_from_unmodified_acceptance_test": true
+    },
+    "parent": {
+      "source": "b85d377b1e5b1843e92e2e8d3621ff9b26e7b06f",
+      "unmodified_test": {
+        "mode": "actual TestClient/PG, readonly GET, noLLM",
+        "members": 10001,
+        "page_size": 50,
+        "samples_ms": [
+          56.52080001891591,
+          53.23263898026198,
+          53.30351501470432,
+          52.89913900196552,
+          53.37744500138797,
+          53.27991000376642,
+          53.38596200454049,
+          53.244501003064215,
+          54.133536003064364,
+          53.377656993689016
+        ],
+        "p95_ms": 56.52080001891591,
+        "response_items": 50,
+        "python_request_peak_bytes": 269357
+      },
+      "diagnostic_stage_median_ms": {
+        "anchor_resolve": 1.797,
+        "anchor_sql": 1.051,
+        "fan_count_sql": 2.496,
+        "fan_page_sql": 40.372,
+        "maintenance_admission": 0.005,
+        "maintenance_exit": 0.005,
+        "pg_connect": 4.218,
+        "projection": 0.975,
+        "read_db_enter": 4.693,
+        "read_db_exit": 0.288,
+        "relation_page_total": 45.915,
+        "scope_resolve": 0.144
+      },
+      "stage_probe_is_separate_from_unmodified_acceptance_test": true
+    }
+  },
+  "runtime_fix_implemented": false,
+  "assertions_weakened": false,
+  "real_llm_or_channel_calls": false,
+  "required_next_step": "main/parent composition and exact-head full CI; if recurring, investigate actual runner/request stages",
+  "byte_identical_hot_paths": [
+    "backend/app/api/trace.py",
+    "backend/app/trace",
+    "backend/app/main.py",
+    "backend/app/sim/maintenance.py",
+    "backend/uv.lock",
+    ".github/workflows/ci.yml"
+  ],
+  "manual_read_only_explain_analyze": {
+    "returned_rows": 51,
+    "rows_identical": true,
+    "current": {
+      "Planning Time": 0.281,
+      "Execution Time": 0.253
+    },
+    "shared_hits": 10,
+    "shared_reads": 0,
+    "jit": null,
+    "bounded_page_candidate": {
+      "Planning Time": 0.129,
+      "Execution Time": 0.287
+    },
+    "candidate_implemented": false,
+    "cache_or_stages_do_not_reproduce_ci_runner": true
+  }
+}

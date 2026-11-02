@@ -40,3 +40,7 @@ T050 остаётся in_progress: отдельными пакетами ещё 
 
 
 Композиция parentT121 b85d377:head34178fd, дерево идентично frozenab6a5eb. Parent теперь прямой предок, diff PR53файла. Проверка owners с явным --allow-cross прошла; L1/L2/L3/L4/L5 разрешены поручением пользователя, отдельный API21/DDL16/финансовый review ещё требуется. Runtime/coverage evidence не изменились.
+
+## PR188 CI: source-qualified latency triage
+
+Exact d99b856: shard3 содержит454 passed/1 skipped и единственный Trace fanout latency failure305.9>300ms. Парные неизменённые локальные тесты P2/parent прошли55.0/56.5ms; hot paths byte-identical, runtime fix не заявлен, порог не снижен. [Диагностика и source-qualified samples](T-050-ci-fanout-latency.md). После обычной композиции main/parent требуется новый exact-head CI. API21/DDL16/external-budget policy пользователь одобрил в родительском review PR188; эта диагностика не меняет согласованную политику.
