@@ -1,0 +1,8 @@
+{
+  "source_request_hash": "174508311da29178f016ba3094e36291612a740c37427ff51ec4dedeede099a0",
+  "source": "data/cassettes/gigachat.jsonl, qr_fee_public_review, v1.1, recorded 2026-10-28T07:30:44.410429+00:00",
+  "sim_time": "2026-11-09T06:00:00+00:00",
+  "operation_sequence": 2178,
+  "client": {"segment": "mass", "psychotype": "anxious", "city": "Лабытнанги", "region_code": "89", "state": "calm", "churn_risk": 0},
+  "product": {"product": "debit_card", "status": "active", "card_last4": "8444"}
+}
