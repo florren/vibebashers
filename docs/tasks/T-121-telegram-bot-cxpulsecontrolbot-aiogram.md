@@ -59,3 +59,13 @@ Pydantic<2.14 не понижал backend2.14.1. License gate530backend/npm+36bo
 Ни middleware, ни новый event transport пока не подключены к действующему route;
 durable dialog/receipts/delivery, CLI/Compose и final API/DDL review ещё в работе.
 Это checkpoint модулей, сервис не объявляется готовым.
+
+## Checkpoint durable transport и доставки (02.11.2026)
+
+API1.5.20/actualDDL0015, signed-before-DB inbound, durable encrypted dialogue/receipt,
+opt-in signal/client grants, aiogram polling, backend delivery worker и optional
+Compose profile реализованы; обзор: docs/reviews/T-121-delivery-review.md.
+Это checkpoint, статус in_progress: новый полный набор, coverage, final UI proof,
+финальный contract review/CI и merge ещё впереди. Реальных Telegram calls не было;
+ручной критерий жюри остаётся непроверенным. Старые подразделы выше описывают историю
+подготовки, а не текущую степень реализации.

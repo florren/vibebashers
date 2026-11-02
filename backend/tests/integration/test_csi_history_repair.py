@@ -100,7 +100,10 @@ def test_csi_repair_failure_rolls_back_and_rejects_unrelated_gaps(seeded, conn, 
         with psycopg.connect(dsn(seeded)) as ac:
             repair.repair(ac, apply=True)
     assert snapshot(conn) == before
-    conn.execute("delete from signals where run_id=%s and channel_code='call'", (rid,))
+    conn.execute(
+        "delete from signals where run_id=%s and channel_code='call' and meta?'generator_hint' and not meta?'t240_supplement'",
+        (rid,),
+    )
     with pytest.raises(repair.RepairError, match="вне CSI"):
         with psycopg.connect(dsn(seeded)) as ac:
             repair.repair(ac)

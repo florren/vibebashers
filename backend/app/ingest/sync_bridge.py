@@ -36,6 +36,14 @@ class _Connection:
     def __init__(self, conn: psycopg.Connection[Any]) -> None:
         self.conn = conn
 
+    @property
+    def info(self) -> Any:
+        return self.conn.info
+
+    @property
+    def autocommit(self) -> bool:
+        return self.conn.autocommit
+
     async def execute(self, sql: str, args: tuple[Any, ...] = ()) -> _Cursor:
         return _Cursor(self.conn.execute(sql, args))
 
@@ -72,3 +80,12 @@ def reconcile_seed_sync(conn: psycopg.Connection[Any], *, run_id: int) -> int:
     if conn.info.transaction_status == TransactionStatus.IDLE:
         conn.execute("select 1")
     return asyncio.run(reconcile_seed_rows(cast(Any, _Connection(conn)), run_id=run_id))
+
+
+def async_seed_connection(conn: psycopg.Connection[Any]) -> Any:
+    """Адаптер существующей внешней seed-транзакции, без второго соединения/commit."""
+    if conn.autocommit:
+        raise ValueError("seed normalizer требует соединение без autocommit")
+    if conn.info.transaction_status == TransactionStatus.IDLE:
+        conn.execute("select 1")
+    return _Connection(conn)

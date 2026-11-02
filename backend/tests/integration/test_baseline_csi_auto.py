@@ -125,7 +125,9 @@ async def test_current_archive_restore_is_noop_for_csi(seeded, conn, restore_env
 
 
 async def test_non_csi_gap_prevents_finished_event(seeded, conn, restore_env):
-    conn.execute("delete from signals where channel_code='chat' and origin='sim'")
+    conn.execute(
+        "delete from signals where channel_code='chat' and meta?'generator_hint' and not meta?'t240_supplement' and origin='sim'"
+    )
     await archive(seeded)
     async with await psycopg.AsyncConnection.connect(dsn(seeded), autocommit=True) as listener:
         await listener.execute("listen runs")

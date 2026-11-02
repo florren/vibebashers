@@ -49,8 +49,11 @@ if [ "$PROFILE" != "$existing_profile" ]; then
 fi
 [ -n "$SEED" ] && sed -i.bak "s|^SIM_SEED=.*|SIM_SEED=$SEED|" .env && rm -f .env.bak
 if [ "$OFFLINE" = 1 ]; then
-  sed -i.bak "s|^LLM_PROVIDER=.*|LLM_PROVIDER=mock|; s|^LLM_CHAIN=.*|LLM_CHAIN=replay,mock|; s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=|" .env && rm -f .env.bak
-  say "режим --offline: LLM replay → mock, бот выключен"
+  sed -i.bak "s|^LLM_PROVIDER=.*|LLM_PROVIDER=mock|; s|^LLM_CHAIN=.*|LLM_CHAIN=replay,mock|" .env && rm -f .env.bak
+  python3 scripts/tgbot_env.py --disable --env-file .env || die "Не удалось выключить Telegram profile"
+  TGBOT=0
+  docker compose --profile telegram stop tgbot
+  say "режим --offline: LLM replay → mock, бот выключен; token сохранён"
 fi
 if [ "$RECORD_CASSETTES" = 1 ]; then
   sed -i.bak "s|^LLM_RECORD=.*|LLM_RECORD=1|" .env && rm -f .env.bak
@@ -59,6 +62,10 @@ fi
 
 PROFILES=()
 [ "$MAILPIT" = 1 ] && PROFILES+=(--profile tools)
+if [ "$TGBOT" = 1 ]; then
+  python3 scripts/tgbot_env.py --enable --env-file .env || die "Для --with-tgbot заполните TELEGRAM_BOT_TOKEN, TGBOT_PUBLIC_BASE_URL и APP_SECRET; секреты не выводятся"
+  PROFILES+=(--profile telegram)
+fi
 if [ "$RESET" = 1 ]; then
   say "сброс: удаляю тома БД"
   docker compose "${PROFILES[@]}" down -v --remove-orphans

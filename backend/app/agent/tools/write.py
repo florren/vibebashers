@@ -286,10 +286,24 @@ async def notify_client(
         body = text_override
     body = PII_RE.sub("****", body)
     status = "sent"
+    tg_config = None
+    real_telegram = False
+    if channel == "telegram_bot":
+        from app.config import get_settings
+        from app.tgbot.configuration import configured
+
+        settings = get_settings()
+        real_telegram = settings.tgbot_enabled
+        if real_telegram:
+            try:
+                tg_config = configured(settings)
+            except ValueError:
+                tg_config = None
+            status = "queued" if tg_config is not None else "failed"
     if consents is not None and channel in ("sms", "email", "push") and consents.get(channel) is False:
         status = "suppressed"
     row = await ctx.fetchone(
-        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()) returning id",
+        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else now() end) returning id",
         (
             ctx.run_id,
             recipient_type,
@@ -301,10 +315,16 @@ async def notify_client(
             subject,
             body,
             status,
-            ctx.sim_time,
+            None if real_telegram else ctx.sim_time,
+            status,
         ),
     )
     nid = int(row[0])  # type: ignore[index]
+    if tg_config is not None:
+        from app.tgbot.outbox import enqueue_notification
+
+        if not await enqueue_notification(ctx.conn, tg_config, nid):
+            status = "failed"
     data = {
         "notification_id": nid,
         "recipient_type": recipient_type,
@@ -315,7 +335,7 @@ async def notify_client(
         "status": status,
         "body": body[:400],
     }
-    await ctx.notify("notifications", "sent", data)
+    await ctx.notify("notifications", status if real_telegram else "sent", data)
     if recipient_type == "public":
         await ctx.notify("feed", "reply", data)
     return data

@@ -875,3 +875,68 @@ async def test_public_compatibility_and_operator_cli_reconcile_use_same_ledger(a
             await conn.execute("select tokens_used,requests_today from llm_api_keys where id=%s", (key_id,))
         ).fetchone()
         assert mirrors == (5, 1)
+
+
+async def test_existing_metadata_refresh_serializes_rpd_and_recomputes_public_remaining(accounting_case, monkeypatch):
+    import asyncio
+    from dataclasses import replace
+
+    from app.api import settings
+    from app.db.session import psycopg_dsn
+    from app.llm import credentials
+
+    service, original, source = accounting_case
+    profile = replace(original, provider="openai_compatible")
+    facts = replace(source, provider="openai_compatible")
+    created = await settings.post_llm_keys(
+        settings.LlmKeyBody(
+            provider="openai_compatible",
+            label="synthetic-metadata",
+            key=facts.secret,
+            endpoint_url=facts.endpoint,
+            tokens_limit=20,
+            rpd_limit=2,
+        )
+    )
+    profile = replace(profile, api_key_id=created["id"], base_url=facts.endpoint)
+    await confirm((service, profile, facts))
+    ready, proceed = asyncio.Event(), asyncio.Event()
+    load_keys = settings.load_keys
+    backend_pids = []
+
+    async def track(conn, **kwargs):
+        backend_pids.append(conn.info.backend_pid)
+        return await load_keys(conn, **kwargs)
+
+    async def metadata(items):
+        next(item for item in items if item["id"] == created["id"])["rpd_limit"] = 3
+        ready.set()
+        await proceed.wait()
+        return True  # Synthetic result; no additional GET/key or any HTTP.
+
+    monkeypatch.setattr(settings, "load_keys", track)
+    monkeypatch.setattr(settings, "_refresh_openai_balances", metadata)
+    task = asyncio.create_task(settings.get_llm_keys())
+    await ready.wait()
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as blocker:
+        async with blocker.transaction():
+            await blocker.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+            proceed.set()
+            async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as observer:
+                async with asyncio.timeout(3):
+                    while True:
+                        waiting = (
+                            await (
+                                await observer.execute(
+                                    "select exists(select 1 from pg_locks where pid=%s and locktype='advisory' and not granted)",
+                                    (backend_pids[0],),
+                                )
+                            ).fetchone()
+                        )[0]
+                        if waiting:
+                            break
+                        await asyncio.sleep(0)
+            assert not task.done()
+        public = next(item for item in await task if item["id"] == created["id"])
+    assert public["rpd_limit"] == public["requests_remaining"] == 3
+    assert public["requests_today"] == 0 and public["requests_known"]

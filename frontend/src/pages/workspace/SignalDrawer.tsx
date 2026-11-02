@@ -1,3 +1,4 @@
+import { SourcePlatformBadge } from '@/shared/components/SourcePlatformBadge'
 import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { ClientProfileLink } from '@/shared/components/ClientProfileLink'
 import { IdLink } from '@/shared/components/IdLink'
@@ -36,6 +37,7 @@ export function SignalDrawer({ id, onClose }: { id: number | null; onClose: () =
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge tone={signalStatusTone(s.status)}>{tEnum('signal.status', s.status)}</Badge>
             <Badge>{tEnum('channel', s.channel_code)}</Badge>
+            <SourcePlatformBadge platform={s.source_platform} />
             {s.origin && <Badge>{tEnum('signal.origin', s.origin)}</Badge>}
             <span className="ml-auto num font-mono text-xs text-muted">{fmtSim(s.received_sim, 'dd.MM.yyyy HH:mm')}</span>
           </div>

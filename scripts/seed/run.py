@@ -37,6 +37,7 @@ from scripts.seed.common import PROFILES, connect, get_setting, log, set_setting
 from scripts.seed.coverage import compute_coverage  # noqa: E402
 from scripts.seed.faults import seed_faults  # noqa: E402
 from scripts.seed.refs import seed_all_refs  # noqa: E402
+from scripts.seed.reviews import seed_reviews  # noqa: E402
 
 
 def preserve_existing(cur: psycopg.Cursor[Any], profile: str) -> int | None:
@@ -155,7 +156,7 @@ def main() -> int:
                 "truncate signals, incidents, operations, faults, client_states, client_products, accounts, clients, sim_runs restart identity cascade"
             )
             cur.execute(
-                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:')"
+                "delete from settings where key in ('seed_done', 'coverage') or starts_with(key, 'seed_fault_history:') or starts_with(key, 'seed_product_reviews:')"
             )
             conn.commit()
         seed_clients(cur, rnd, n_clients, sim_now)
@@ -167,8 +168,10 @@ def main() -> int:
         conn.commit()
         seed_history_signals(cur, rnd, run_id, sim_now, prof["signals"], prof["incidents"], seed)
         conn.commit()
+        seed_reviews(cur, run_id=run_id, anchor=sim_now, seed=seed)
+        conn.commit()
         cov = compute_coverage(cur, run_id)
-        if not cov["sla_cells_ok"] or cov["signal_combos_missing"]:
+        if not cov["sla_cells_ok"] or cov["signal_combos_missing"] or cov["direction_channel_missing"]:
             conn.commit()
             log.error(
                 "seed_coverage_failed",
