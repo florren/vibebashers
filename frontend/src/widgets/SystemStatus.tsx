@@ -12,7 +12,8 @@ export function SystemStatus() {
   const health = useQuery({ queryKey: ['health'], queryFn: () => api<Health>('/api/health'), refetchInterval: 30_000 })
   const demo = useDemoStatus()
   return <section className="m-3 space-y-2 rounded-xl border border-line bg-surface p-3 text-xs" aria-label={t('shell.systemStatus')}>
-    <h2 className="font-semibold">{t('shell.systemStatus')}</h2>
+    <details><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2"><span className="font-semibold">{t('shell.systemStatus')}</span><Badge>{health.isError || demo.isError ? t('shell.unknown') : demo.data?.llm_mode ?? t('shell.unknown')}</Badge></summary>
+    <div className="space-y-2 pt-2">
     {health.isError || demo.isError ? <p role="status">{t('care.errors.service')}</p> : health.isPending || demo.isPending ? <p>{t('shell.statusLoading')}</p> : <>
       <p>{t('shell.service')}: {t(health.data.status === 'ok' ? 'shell.ready' : 'shell.degraded')}</p>
       <p>{t('shell.database')}: {t(health.data.db ? 'shell.available' : 'shell.unavailable')}</p>
@@ -20,5 +21,6 @@ export function SystemStatus() {
       <p>{t('shell.channels')}: STT {demo.data.stt_mode ?? t('shell.unknown')} · Telegram {t(`shell.telegram.${health.data.tgbot ?? 'unknown'}`)}</p>
       <p className="text-muted">{t('shell.configurationHint')}</p>
     </>}
+    </div></details>
   </section>
 }

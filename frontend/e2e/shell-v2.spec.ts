@@ -70,7 +70,9 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         if (width === 1440 || width === 360) await page.screenshot({ path: testInfo.outputPath(`v2-${lang}-${mode}-${width}.png`) })
       }
       await page.setViewportSize({ width: 1440, height: 900 })
-      await page.goto('/workspace?tab=signals'); await expect(page.getByRole('region', { name: lang === 'ru' ? 'Состояние системы' : 'System status' })).toContainText('mock')
+      await page.goto('/workspace?tab=signals'); const status = page.getByRole('region', { name: lang === 'ru' ? 'Состояние системы' : 'System status' }); await expect(status).toContainText('mock')
+      await status.locator('summary').click(); await expect(status.getByText(lang === 'ru' ? 'База данных: доступна' : 'Database: available', { exact: true })).toBeVisible()
+      await status.locator('summary').click()
       await page.getByRole('combobox', { name: lang === 'ru' ? 'Каркас интерфейса' : 'Interface layout' }).selectOption('legacy')
       await expect(page.locator('[data-layout="v2"]')).toHaveCount(0)
       await page.goto('/?tab=signals'); await expect(page).toHaveURL(/\/\?tab=signals$/)

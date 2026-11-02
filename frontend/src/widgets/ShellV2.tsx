@@ -41,12 +41,12 @@ export function ShellV2({ footer }: { footer: ReactNode }) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [navigate, role, demonstrator])
-  const nav = (close?: () => void) => <><Sidebar onNavigate={close} onHelp={() => setHelp(true)} /><SystemStatus /><div className="p-3"><LayoutControl /></div></>
+  const nav = (close?: () => void) => <><div className="min-h-0 flex-1 overflow-y-auto"><Sidebar onNavigate={close} onHelp={() => setHelp(true)} /></div><div className="shrink-0"><SystemStatus /><div className="p-3"><LayoutControl /></div></div></>
   return <div className="app-shell shell-v2 flex h-full min-w-0 flex-col" data-layout="v2">
     <AttentionRuntime />
     <Header v2 showSidebarToggle={small} sidebarOpen={navigationOpen} onOpenSidebar={() => setNavigationOpen(true)} navigation={close => nav(close)} />
     <div className="flex min-h-0 min-w-0 flex-1">
-      {!small && <aside className="w-64 shrink-0 overflow-y-auto border-r border-line bg-surface">{nav()}</aside>}
+      {!small && <aside className="flex min-h-0 w-64 shrink-0 flex-col border-r border-line bg-surface">{nav()}</aside>}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <PriorityStrip /><NightDigest />
         <main className="app-content min-h-0 min-w-0 flex-1 overflow-auto"><Outlet /></main>
