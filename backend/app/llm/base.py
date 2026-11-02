@@ -93,8 +93,11 @@ class LLMProfile:
     supports_tools: bool = True
     supports_stream: bool = True
     extra: dict[str, Any] = field(default_factory=dict)
+    id: int | None = None  # Стабильный public config ID для live quota, не credential identity.
 
     def __post_init__(self) -> None:
+        if self.id is not None and (type(self.id) is not int or self.id < 1):
+            raise ValueError("ID профиля должен быть положительным целым числом")
         self.api_key_id, self.extra = binding_fields(self.api_key_id, self.extra)
 
     def cost(self, prompt: int, completion: int) -> float:

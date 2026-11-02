@@ -233,6 +233,7 @@ def _run_pg_dump(dsn: str, dump_path: Path, snapshot: str | None = None) -> None
         "--no-acl",
         "--exclude-table=public.sim_runs",
         "--exclude-schema=channel_runtime",
+        "--exclude-schema=llm_runtime",
         "-f",
         str(dump_path),
         dsn,
