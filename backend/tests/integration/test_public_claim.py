@@ -203,7 +203,7 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
             appended_after = conn.execute(
                 "select count(*) from sim_events where event_type = 'signal.appended'"
             ).fetchone()
-            assert appended_after and appended_after[0] == appended_before[0]
+            assert appended_after and appended_after[0] == appended_before[0] + 1
 
         for _ in range(4):
             again = _claim(client, region=region, city_id=city_id, product=product_code)

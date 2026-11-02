@@ -34,6 +34,7 @@ ENV_SPEC: dict[str, tuple[str, bool, bool]] = {
     "GIGACHAT_VERIFY_SSL": ("Проверять сертификат (true — нужен CA Минцифры)", False, False),
     "OPENROUTER_API_KEY": ("Ключ OpenRouter / OpenAI-совместимого API", True, False),
     "OPENROUTER_BASE_URL": ("Базовый URL OpenAI-совместимого API", False, False),
+    "LOCAL_LLM_API_KEY": ("Необязательный ключ локального OpenAI-compatible endpoint", True, False),
     "LOCAL_LLM_BASE_URL": (
         "Локальная модель (Ollama / vLLM / LM Studio), например http://host.docker.internal:11434/v1",
         False,

@@ -34,6 +34,24 @@ class Edge(BaseModel):
     relation_ru: str = Field(..., max_length=120)
 
 
+class Phase(StrEnum):
+    """
+    Фактическая фаза группы; отсутствует в legacy ответах
+    """
+
+    before = "before"
+    after = "after"
+
+
+class Anchor(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    kind: str
+    ref: str
+    event_id: str = Field(..., description="Настоящий ID anchor в edges, не выводится из public ref на клиенте")
+
+
 class ObjectRef(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -626,6 +644,8 @@ class Group(BaseModel):
     count: int = Field(..., ge=1)
     sample_refs: list[str] = Field(..., max_length=3)
     expand_hint_ru: str | None = None
+    phase: Phase | None = Field(None, description="Фактическая фаза группы; отсутствует в legacy ответах")
+    anchor: Anchor | None = None
 
 
 class TraceResponse(BaseModel):

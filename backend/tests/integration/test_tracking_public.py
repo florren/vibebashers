@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import uuid
+from email.message import EmailMessage
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -18,10 +20,13 @@ from tests.integration.test_public_claim import _captcha, _dsn, _landing_accepta
 pytestmark = pytest.mark.integration
 
 
-def test_tracking_privacy_and_scenario4(seeded: str, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tracking_privacy_retries_receipt_and_scenario4(seeded: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", seeded)
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("MAILPIT_ENABLED", "true")
     get_settings.cache_clear()
+    messages: list[EmailMessage] = []
+    monkeypatch.setattr("app.tracking_mail._send", messages.append)
     _claim_hits.clear()
     with psycopg.connect(_dsn(seeded)) as conn:
         city_id, region = conn.execute("select id,region_code from cities order by id limit 1").fetchone()
@@ -44,10 +49,18 @@ def test_tracking_privacy_and_scenario4(seeded: str, monkeypatch: pytest.MonkeyP
             token = created["tracking_token"]
             path = f"/api/public/track/{token}"
             assert response.headers["cache-control"] == "no-store"
+            assert len(messages) == 1
+            assert messages[0]["To"] == "guest@example.com"
+            assert created["track_url"] in messages[0].get_content()
             with psycopg.connect(_dsn(seeded)) as conn:
                 parent, run_id = conn.execute(
                     "select id,run_id from signals where tracking_token=%s", (token,)
                 ).fetchone()
+                note = conn.execute(
+                    "select status,body from notifications where signal_id=%s and template_code='tracking_link'",
+                    (parent,),
+                ).fetchone()
+                assert note[0] == "sent" and token not in note[1]
             assert agent.submit.call_args.args[0] == parent
             _landing_acceptance(seeded, parent)
             viewed = client.get(path)
@@ -75,6 +88,22 @@ def test_tracking_privacy_and_scenario4(seeded: str, monkeypatch: pytest.MonkeyP
             assert "Чужое личное сообщение" not in json.dumps(view, ensure_ascii=False)
             assert "Ещё не отправлено" not in json.dumps(view, ensure_ascii=False)
             assert all("client_id" not in note and "incident_id" not in note for note in view["notifications"])
+            key = str(uuid.uuid4())
+            headers = {"Idempotency-Key": key}
+            body = {"text": "Дополнительная информация для проверки обращения"}
+            assert client.post(path, json=body, headers=headers).status_code == 202
+            assert client.post(path, json=body, headers=headers).status_code == 202
+            assert client.post(path, json={"text": "Другой текст"}, headers=headers).status_code == 422
+            assert client.post(path, json={"text": "   "}).status_code == 422
+            with psycopg.connect(_dsn(seeded)) as conn:
+                children = conn.execute("select id,run_id from signals where parent_signal_id=%s", (parent,)).fetchall()
+                assert len(children) == 1 and children[0][1] == run_id
+                assert agent.submit_client_reply.call_args.args[:2] == (parent, children[0][0])
+                events = conn.execute(
+                    "select payload from sim_events where event_type='signal.appended' and payload->>'parent_signal_id'=%s",
+                    (str(parent),),
+                ).fetchall()
+                assert len(events) == 1 and events[0][0]["signal_id"] == children[0][0]
             missing = client.get("/api/public/track/" + "z" * 32)
             assert missing.status_code == 404
             assert "z" * 32 not in missing.text

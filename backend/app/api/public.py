@@ -24,6 +24,8 @@ from app.errors import NotImplementedYet, Problem
 from app.feed import service as feed_svc
 from app.i18n import communication_lang
 from app.ingest.normalizer import create_signal, from_bot, from_landing
+from app.sim.events import EventBus
+from app.tracking_mail import send_tracking_receipt
 
 router = APIRouter(tags=["public"])
 
@@ -429,13 +431,30 @@ async def _tracking_view(conn: Any, signal: dict[str, Any], lang: str | None = N
 
 
 async def _append_signal(
-    conn: Any, parent: dict[str, Any], text: str, *, run_id: int, sim_time: Any, source_code: str
+    conn: Any,
+    parent: dict[str, Any],
+    text: str,
+    *,
+    run_id: int,
+    sim_time: Any,
+    source_code: str,
+    request_id: str | None = None,
 ) -> dict[str, Any]:
     ext = parent.get("external_contact") or {}
     if not isinstance(ext, dict):
         ext = {}
     parent_id = int(parent["id"])
-    external_id = f"track-{parent_id}-{uuid.uuid4().hex[:12]}"
+    external_id = f"track-{parent_id}-{request_id or uuid.uuid4().hex}"
+    if request_id:
+        existing = await fetch_one(
+            conn,
+            "select payload from ingest_messages where source_code=%s and external_id=%s",
+            (source_code, external_id),
+        )
+        if existing and (existing.get("payload") or {}).get("text") != text:
+            raise Problem(
+                422, "Ключ повтора уже использован", "Для нового текста дополнения нужен новый Idempotency-Key"
+            )
     if parent.get("channel_code") == "telegram_bot":
         chat_raw = ext.get("telegram_chat_id")
         if chat_raw is None:
@@ -459,13 +478,31 @@ async def _append_signal(
         )
     channel = "telegram_bot" if parent.get("channel_code") == "telegram_bot" else "landing"
     await _ensure_source(conn, source_code, channel)
-    return await create_signal(conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=False)
+    result = await create_signal(conn, msg, source_code=source_code, run_id=run_id, sim_time=sim_time, emit_event=False)
+    if result.get("status") == "accepted":
+        await EventBus(conn).emit(
+            run_id,
+            "signal.appended",
+            {
+                "signal_id": result["signal_id"],
+                "parent_signal_id": parent_id,
+                "channel": channel,
+                "text": text,
+                "received_sim": sim_time.isoformat(),
+                "origin": "telegram_bot" if channel == "telegram_bot" else "landing",
+            },
+            sim_time,
+        )
+    return result
 
 
-def _submit_public(request: Request, signal_id: int, sim_time: Any) -> None:
+def _submit_public(request: Request, signal_id: int, sim_time: Any, parent_id: int | None = None) -> None:
     agent = getattr(request.app.state, "agent", None)
     if agent is not None and agent.enabled:
-        agent.submit(signal_id, sim_time)
+        if parent_id is None:
+            agent.submit(signal_id, sim_time)
+        else:
+            agent.submit_client_reply(parent_id, signal_id, sim_time)
 
 
 @router.get("/api/public/captcha", summary="Арифметическая антибот-проверка")
@@ -509,6 +546,18 @@ async def post_public_claim(request: Request, body: ClaimBody) -> JSONResponse:
     _submit_public(request, int(res["signal_id"]), sim_time)
     track = str(res.get("tracking_token") or token)
     url = _track_url(request, track)
+    if body.contact.email:
+        async with db() as mail_conn:
+            await send_tracking_receipt(
+                mail_conn,
+                signal_id=int(res["signal_id"]),
+                run_id=run_id,
+                recipient=body.contact.email.strip(),
+                public_id=str(res["public_id"]),
+                url=url,
+                sim_time=sim_time,
+                lang=communication_lang(body.text),
+            )
     return JSONResponse(
         {"public_id": res.get("public_id"), "tracking_token": track, "track_url": url, "qr_svg": _qr_svg(url)},
         status_code=201,
@@ -539,18 +588,34 @@ async def post_public_track_token(request: Request, token: str, body: TrackAppen
     text = body.text.strip()
     if not text:
         raise Problem(422, "Пустое дополнение", "Напишите текст дополнения")
-    async with db() as conn:
+    request_id = request.headers.get("Idempotency-Key")
+    if request_id:
+        try:
+            request_id = str(uuid.UUID(request_id))
+        except ValueError:
+            raise Problem(422, "Неверный ключ повтора", "Используйте UUID для Idempotency-Key") from None
+    async with db() as conn, conn.transaction():
         parent = await fetch_one(
             conn,
-            "select id, channel_code, external_contact from signals where tracking_token = %s",
+            "select id, run_id, channel_code, external_contact from signals where tracking_token = %s for update",
             (token,),
         )
         if not parent:
             raise Problem(404, "Не найдено", "Обращение с такой ссылкой не найдено")
-        run_id, sim_time = await run_context(request, conn)
-        res = await _append_signal(conn, parent, text, run_id=run_id, sim_time=sim_time, source_code="track_append")
-    if res.get("status") != "accepted":
+        _, sim_time = await run_context(request, conn)
+        res = await _append_signal(
+            conn,
+            parent,
+            text,
+            run_id=int(parent["run_id"]),
+            sim_time=sim_time,
+            source_code="track_append",
+            request_id=request_id,
+        )
+    if res.get("status") not in {"accepted", "duplicate"}:
         raise Problem(422, "Дополнение не принято", res.get("error") or "сообщение отклонено нормализатором")
+    if res.get("signal_id"):
+        _submit_public(request, int(res["signal_id"]), sim_time, int(parent["id"]))
     return Response(status_code=202)
 
 

@@ -1,0 +1,138 @@
+{
+  "source_sha256": "efd316e8b838d0e007f9120c488570c7da0dcc5641f9c8a3516b051d1f1b9193",
+  "output_sha256": "d3e797d483c68cc8264821f3d7dacf5ee260021bc7de067223b54af0ae457ea3",
+  "source_revision": "d1710be1219a5f722335f9e478b50c4f73c62f6b",
+  "tools": {
+    "source_restore": "pg_restore (PostgreSQL) 18.6",
+    "output_dump": "pg_dump (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)",
+    "output_restore": "pg_restore (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)",
+    "output_psql": "psql (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)"
+  },
+  "converted": {
+    "alembic": "0010",
+    "counts": {
+      "clients": 200,
+      "signals": 800,
+      "incidents": 150,
+      "operations": 2176,
+      "sim_runs": 1,
+      "csi_visits_agg": 0,
+      "csi_responses": 69
+    }
+  },
+  "restores": [
+    {
+      "aggregate": {
+        "alembic": "0010",
+        "counts": {
+          "clients": 200,
+          "signals": 800,
+          "incidents": 150,
+          "operations": 2176,
+          "sim_runs": 1,
+          "csi_visits_agg": 0,
+          "csi_responses": 69
+        }
+      },
+      "csi_total": 480,
+      "csi_added": 0
+    },
+    {
+      "aggregate": {
+        "alembic": "0010",
+        "counts": {
+          "clients": 200,
+          "signals": 800,
+          "incidents": 150,
+          "operations": 2176,
+          "sim_runs": 1,
+          "csi_visits_agg": 0,
+          "csi_responses": 69
+        }
+      },
+      "csi_total": 480,
+      "csi_added": 0
+    }
+  ],
+  "sql_failure_rollback_marker_preserved": true,
+  "retry_success": true,
+  "original_unchanged": true,
+  "future_schema_chain_validated": false,
+  "schema_drift_check_exit": 0,
+  "canonical_sim_runs_comment_matches": true,
+  "overwrite_output_and_source_refused": true,
+  "nonempty_scratch_refused_without_output": true,
+  "tested_source_revision": "e586ed068ae152ded7bc24921c133c0152c65d98",
+  "test_scope": "actual historical PG18 archive, own isolated PG16; current Alembic0010 only",
+  "legacy_pg_restore16_list_exit": 1,
+  "legacy_pg_restore16_error": "unsupported version (1.16) in file header",
+  "targeted_tests": {
+    "passed": 4,
+    "seconds": 12.28
+  },
+  "full_checks": {
+    "lint": {
+      "exit": 0,
+      "seconds": 25.12,
+      "log": "/tmp/t276-lint.log"
+    },
+    "test": {
+      "exit": 0,
+      "seconds": 1266.22,
+      "log": "/tmp/t276-test.log"
+    }
+  },
+  "converter_source_sha256": "72c285963e10ebaa14ac6ca43f36b1be86b96f2329cdb56103adc3db3bd1d201",
+  "provenance": {
+    "source_sha256": "efd316e8b838d0e007f9120c488570c7da0dcc5641f9c8a3516b051d1f1b9193",
+    "output_sha256": "d3e797d483c68cc8264821f3d7dacf5ee260021bc7de067223b54af0ae457ea3",
+    "output": "prepared-comment-fixed.dump (private scratch artifact; not committed)"
+  },
+  "foreign_keys_checked": 183,
+  "foreign_key_orphans": 0,
+  "public_tables": 85,
+  "full_suite": {
+    "backend_passed": 1423,
+    "backend_skipped": 24,
+    "unit_passed": 1112,
+    "unit_skipped": 18,
+    "integration_passed": 238,
+    "integration_skipped": 4,
+    "scenarios_passed": 42,
+    "scenarios_skipped": 2,
+    "compliance_passed": 31,
+    "frontend_passed": 173
+  },
+  "licenses_check": {
+    "exit": 0,
+    "distributions": 530
+  },
+  "changed_line_coverage": {
+    "source_revision": "e586ed068ae152ded7bc24921c133c0152c65d98",
+    "base_revision": "d1710be1219a5f722335f9e478b50c4f73c62f6b",
+    "tool": "stdlib trace; absolute co_filename filter, no basename ignore cache",
+    "exit": 0,
+    "path": "scripts/seed/prepare_baseline.py",
+    "new_executable": [
+      74,
+      75,
+      77,
+      78,
+      79
+    ],
+    "covered": [
+      74,
+      75,
+      77,
+      79
+    ],
+    "missing": [
+      78
+    ],
+    "percent": 80.0
+  },
+  "coverage_targeted_tests": {
+    "passed": 4,
+    "seconds": 13.14
+  }
+}
