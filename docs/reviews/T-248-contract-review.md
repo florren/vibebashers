@@ -1,0 +1,35 @@
+# T-248: API1.5.28 / DDL0020 — финальная граница для review
+
+Кандидат добавляет read-only CSI/ВСП analytics; после зелёного CI и слияния foundation/actual0019 требуется review техлида по AGENTS.md §7. Рабочая БД/реальные внешние сервисы не использовались. Этот документ не заменяет review и не объявляет карточку done.
+
+## API и совместимость
+
+`GET /api/csi/analytics` вместо501: typed response, current|all|id, period day/week/month/quarter, branch_id1..2147483647, region_code, product_line, limit1..200/offset0..100000, scatter_limit1..5000. Current/id не добавляют baseline; явный all включает историю. Существующий кабинет сохраняет свой прежний baseline+current resolver default. Run/time/direction/region фильтруются до агрегации и пагинации, отсутствие current не раскрывает all. Неверные границы→422, strict foreign direction→403, отсутствующие часы/некорректные настройки→409.
+
+`GET /api/branches` сохраняет прежние items/next_cursor, добавляет metadata/preset и direction filtering. `network` сохраняет global stored history, добавляет direction-specific lifecycle projection с явным basis. Оба directory endpoints имеют private86400 cache и Vary role/direction (CORS добавляет Origin). Справочник доступен без SimClock; неизвестный source/time не превращается в synthetic/сегодняшнюю дату. `GET /api/branches/analytics` и `/{code}` — новые dynamic read-only snapshots. Невидимое strict ВСП→404; manager/preset не является RBAC/подтверждённой личностью. Все header/query параметры и DTO описаны OpenAPI, TS генерируется.
+
+## Числители, знаменатели и время
+
+Raw complaint/scatter/position/heatmap/top counts используют native received_sim и actual CSI details. Direction: явно объявленное направление зарегистрированного sample, иначе фактическое signals.product_line_code, иначе unknown. Это read projection, не запись классификации агента. Тот же выбор используется в branch pressure/detail; branch subset дополнительно учитывает product_line_codes. Native/model trace не переписывается.
+
+Вероятность — только members/visits полной зарегистрированной когорты того же run/branch/declared direction и целиком попавшего в period source observation window. Reader проверяет immutable membership/visits fingerprints в одном READ ONLY REPEATABLE READ snapshot. Новые uncohorted complaint не присоединяются к знаменателю молча. Legacy csi_visits_agg без такого provenance не используется и не backfill-ится. Нет подходящей когорты, неполный snapshot/window или нулевой divisor→null, не0. Response_at и received_sim явно разделены в DTO.
+
+Spearman — average tied ranks ordinal buckets против bucket probabilities; n_buckets — пригодные корзины, не число посетителей. Sample_complaints/visits, counts excluded/partial cohorts и synthetic/mixed source явные; fixed synthetic design не объявляется эмпирической причинностью. Scatter имеет показанные/общие counts, nullable criticality. Quartiles R7 — tenure текущего active roster в выбранных ВСП, каждый сотрудник один раз на общем as_of; missing/future tenure не0. Ни имён сотрудников, ни исходных контактов/URL в ответах нет; summary маскируется.
+
+Pressure = customer signals / known open ВСП выбранного directory subset. Proactive service anchors исключены. Нет open или неизвестный status→ratio null. Deficit определяется только finite-positive settings.csi_analytics.deficit_signals_per_open_branch; без него null, default не придуман. История direction subset берётся из явных snapshot lifecycle dates, а не фильтрацией неразмеченных global aggregates. Closure zones: регион И город, received_sim в [closed,closed+90days); это окно должно пересекать выбранный period. Per-branch строки одного города нельзя складывать как unique signals.
+
+## DDL и регистрация
+
+Actual0020 опирается на actual0019; добавляет csi_cohorts/csi_cohort_visits/csi_cohort_members, scoped audit, composite owner FK, finite observation window, immutable snapshots и integrity view. Signals/CSI details получают только supporting unique indexes; legacy данные не меняются.
+
+`ingest/csi_cohorts.py` — отдельная библиотека регистрации синтетического csi_scoped_v2, не GET и не новый HTTP writer. Caller владеет TX; нужны остановленные часы, свой текущий небазовый run, известный synthetic directory/roster, завершённое окно и явный namespace. Все300 complaints идут через normalizer, accepted payload/owner/details сверяются, точный повтор не пишет; foreign/changed/partial state даёт явный отказ. Исходный csi_v1 не меняется. Автоматическая runtime интеграция demo/сценария15 относится к T-262 и здесь не заявляется готовой.
+
+## Проверки и откат
+
+Frozen composed runtime51dccc6:152 functional unit/actualPG passed429.61с (один timing test отдельно не запускался под tracer); new executable443/476=93.07%,13 modules включая Trace/search lookup. Source hashes и missing lines: [coverage](T-248-final-coverage.json). Этот source включает обычную композицию parent197e5222d3; единственный конфликт версии OpenAPI разрешён сохранением1.5.28 и всех additive полей API1.5.25/24, TS regenerated. API28/DDL20 не откатываются к parent version. Полный unit до последующих уточнений:1944passed/18skip70.50с; это исторический checkpoint, не полный suite нового head. Actual calendar/unknown boundaries10PG passed68.32с; actual Trace/search80passed110.05с. Schema96/actual upgrade/downgrade/drift:15passed; отдельный dump/restore1passed9.79с возвращает10complete cohorts/2400visits/digests/run IDs. Первые неправильные DSN/tooling/test-row-factory попытки сохранены как неуспешные checkpoints.
+
+Final native51dccc6 без tracer:120GET/4routes, first included, warmup=false; p95 CSI28.506мс /branch analytics16.234мс /detail23.121мс /direction network11.615мс.16 actual EXPLAIN plans, fingerprints unchanged. Порог300мс и штатные performance guards не менялись. [Samples/plans/source hashes](T-248-final-performance.json). Final lint/contracts/owners и полный exact-head CI должны быть привязаны к опубликованному head, а не перенесены с исторических runs.
+
+Рекомендуемый code rollback сохраняет новые additive таблицы/историю и отключает новую выдачу согласованным forward-compatible способом. Явный DDL downgrade20 удаляет новые sample snapshots/view/supporting indexes/functions: до него нужен отдельный backup; собственный dump/restore проверен, production downgrade не выполнялся. Неизвестные legacy denominators не чинятся восстановлением предполагаемых данных. Формулы денег, возвраты, HITL, RNG/SimClock и реальные внешние вызовы этим пакетом не меняются. T-249/T-250/T-262/replay-live acceptance остаются отдельными незавершёнными задачами.
+
+Final composed lint:420frontend/58files, Ruff535/mypy318, bot12/5 и drift195/195 green. Contract checker48schemas/165paths green; повтор gen_tasks идемпотентен. Исправлена также stale description scope (current-only вместо baseline+current) и regenerated TS. Это документация фактического поведения, не расширение выдачи. Blanket human authorization до03.11.2026 07:00 Europe/Moscow распространяется только на изменения без деструктивного эффекта; production DDL apply/downgrade и реальные внешние вызовы не выполнялись. Parent197 и exact-head CI обязательны до merge.

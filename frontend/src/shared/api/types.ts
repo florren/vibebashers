@@ -10326,7 +10326,7 @@ export interface components {
                 at: string;
             }[];
         };
-        /** @description Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime, run scope baseline+current/id либо явный all. */
+        /** @description Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime, run scope current-only по умолчанию, выбранный id либо явный all. */
         CsiAnalyticsScope: {
             role: components["schemas"]["CabinetRole"];
             /** @enum {string} */

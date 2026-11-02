@@ -5827,7 +5827,7 @@ components:
           - string
           - 'null'
       description: Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime,
-        run scope baseline+current/id либо явный all.
+        run scope current-only по умолчанию, выбранный id либо явный all.
     CsiComplaint:
       type: object
       additionalProperties: false

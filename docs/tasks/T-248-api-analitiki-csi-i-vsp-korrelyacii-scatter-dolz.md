@@ -52,3 +52,13 @@ _Заполняется исполнителем: ветка/PR, что сдел
 ## API28 / actual0020 checkpoint
 
 CSI и branch read-only API реализованы локально; strict scope, typed DTO, current-only metrics, integrity/unknown и backup проверены.49 PG composition passed152.70с, schema/install15passed и отдельный dump/restore1passed, core/bounds29passed. Initial demo5000 p95≤34.575мс с15 actual plans; final-source performance/full suite/coverage/CI и human API/DDL review ещё требуются. Детали и честные source-specific границы: docs/reviews/T-248-api28-checkpoint.md. Статус остаётся in_progress; T-249/T-250 не закрыты.
+
+### Актуальная композиция API28/DDL20
+
+Read-only CSI/branches, scoped cohort provenance, R7 min/max, календарные границы
+и точные CSI/ВСП Trace links реализованы; parent197 ordinarily composed.
+152unit/actualPG passed429.61с, new443/476=93.07%; native120GET/16EXPLAIN,
+p95≤28.506мс, fingerprints unchanged. Full lint420frontend/Ruff535/mypy318,
+contracts48/165 и drift195 green. [Границы, source hashes и откат](../reviews/T-248-contract-review.md).
+UI T249/T250/T262 и полный exact-head CI остаются отдельными обязательствами;
+карточка целиком не объявляется закрытой до завершения проверки PR/parents.
