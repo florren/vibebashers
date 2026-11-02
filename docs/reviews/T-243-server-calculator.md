@@ -65,3 +65,27 @@ assertions сохранены. Финальный полный составно�
 Карточка in_progress до normalmergeT243→T242, actualserver calculator/map/31rates
 proof, ru/en×themes/screenshots и CI/human financial review двух PR.
 Никаких утверждений о realGiga DoD или полном backend integration rerun.
+
+## Последующая consumer composition: фактические доказательства
+
+T242 обычным merge включила cb115a3; frontend sourcec69a000 больше не содержит
+local arithmetic. Drawer/региональная карточка используют shared query с полным
+input/scope key и AbortSignal, unknown→noquery, known0→server0, cachedrefetch
+error скрывает прежнюю сумму. Catalog rates отображаются с исходными3decimal,
+коэффициенты не округляются перед запросом; result округляется только core.
+
+Composed frontend407tests/55files +make lint447Ruff/292mypy/drift193 green,
+bothproductionbuilds/types/i18n2019keys/tasks205 green. Actual production
+5/5ru/en×themes +31ratecatalog case passed29.8s наc69a000. Дополнительная
+расширенная map/emptycohort проверка1/1passed2.4s: реальный пустой регион
+по API даёт prefill0 и server0; anonymous region сохраняет unknown.
+14curatedPNG и sourceproof находятся в stacked T242 docs/screenshots/T-242.
+Все31codes прошли UIselector→HTTPpreview→serveramount, не только unit mocks.
+Новый `T-243-production-readonly.json`:35actualproductionGET/31codes,107public/private
+fingerprints unchanged, LLM/externalattempt markers absent. Fixture settings
+PATCH фаза отделена от readonly; никаких fakeDBunchanged claims дляbrowsersetup.
+
+T262 canonical `cabinet_red_words_report` scenario14 ещё todo и отсутствует.
+Existing number14 `demo20_branch_queue` — другой сюжет и не подменяет приёмку
+кабинета/отчёта/HITL. До T262/CI/human API24financial review карточка остаётся
+in_progress; реализация calculator/map/31existingrates функционально проверена.
