@@ -69,7 +69,8 @@ def parse(query: str) -> dict[str, str | None]:
         try:
             ref, kind = str(UUID(q)), "correlation"
         except ValueError:
-            if q.isdigit():
+            # int() принимает Unicode decimal, но не все isdigit (например, ²).
+            if q.isdecimal():
                 kind, ref = "number", str(int(q))
             elif re.fullmatch(r"[A-Za-z0-9_-]{24,}", q):
                 kind = "tracking"

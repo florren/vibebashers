@@ -85,10 +85,16 @@ async def test_search_variants_and_explicit_scope(seeded):
             "**** 4512",
             "@unknown",
             "+7 900 ***-**-12",
+            "²",
+            "①",
+            "1²",
+            "፩",
         ):
             SearchResponse.model_validate(await search_objects(conn, q))
         ambiguous = await search_objects(conn, "1")
         assert {"signal", "incident", "client"} <= set(ambiguous["counts_by_kind"])
+        for decimal in ("١", "１"):
+            assert (await search_objects(conn, decimal))["hits"] == ambiguous["hits"]
         assert not (await search_objects(conn, "комиссия", "999999"))["hits"] or all(
             h["run_id"] == "SR-0001" for h in (await search_objects(conn, "комиссия", "999999"))["hits"]
         )
