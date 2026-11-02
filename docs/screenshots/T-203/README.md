@@ -1,6 +1,6 @@
-# T-203: английские экраны
+# T-203: актуальные ru/en экраны
 
-Production build Vite, Chromium1217, source main1df0024 +T203workingdiff.
+Production build Vite, Chromium1217, source composition `c4d4d0a366246fe96691b484111f527a5a252e67` после ordinary merge main2ed39d2.
 Собственная PostgreSQL16 cx_t203_i18n_revision, baseline200клиентов иреальный
 корпусный scenario09_isj через Mock. Englishlabels/Branch0042/Employee
 проверены Playwright. Цитаты, synthetic employee и summary_ru — сохранённые
@@ -17,6 +17,4 @@ ProviderChain.complete_structured заменён Bomb,0calls; все внешн�
 и HTTP mutations блокированы,0attempts. Отпечатки85publictables до/после
 совпали. APIentityresponses не замоканы. Это проверка локализации, не liveLLM.
 
-Первый QA script остановился на неверном selector роли/названия вкладки;
-после исправления selector прошёл. Первый fingerprint script имел missing
-Path import; только успешный повтор с BEFORE/AFTER считается доказательством.
+Новый composed QA повторён после main2ed39d2. Исходная QA-БД не пересидировалась; отдельные PG template tests используют cx_t203_compose_revision. Full make test77fd — исторический source-specific результат, который не выдаётся за новый полный прогон. Представительные новые feed/manager/compliance кадры и320px просмотрены: локализованные подписи читаемы, цитаты/summary_ru остаются данными источника.

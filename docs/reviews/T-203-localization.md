@@ -28,3 +28,12 @@ entity API не замоканы. Read-only preview загрузил насто�
 passed2.92s, i18n1728 и TS generation idempotent. Это дополнительные
 проверки состава, не повторный полный прогон; exact-head CI обязателен.
 Реальные LLM/Telegram/email не вызывались, рабочие БД не изменялись.
+
+
+## Актуальная композиция main2ed39d2
+
+Ordinary merges main4667161/8b225d5/2ed39d2 сохранены, composition `c4d4d0a366246fe96691b484111f527a5a252e67`. Оба набора i18n и все bilingual templates сохранены; production-код дополнительно не менялся.
+
+Новые проверки этого состава: 101 template/startup/refund/streaming unit passed2.95s; оба actualPG catalog/template tests passed9.49s на отдельной cx_t203_compose_revision. Make lint:188 frontend passed, Ruff366files, mypy257modules, drift192/192. Contracts45schemas/162paths, i18n1728keys, TS generation и205 task headers идемпотентны. Обе production-сборки проходят.
+
+Повторный production Chromium QA на compositionc4d: все14 сочетаний (12desktop ru/en×light/dark×3screens +2English320px) прошли,0pageerror/external/mutationattempts/LLMcalls. EntityAPI настоящие, readonly preview безакторов/тиков. Исходная cx_t203_i18n_revision не пересидировалась; 85publictable fingerprints до/после совпали. Новые14PNG сохранены на прежних trackedpaths, proofJSON содержит source_revision c4d для каждого кадра. Эти результаты не подменяют полный backendrun77fd: новый полный backendrun не заявляется, exact-headCI остаётся gate.
