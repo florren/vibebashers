@@ -85,3 +85,16 @@ liveness48/48=100%, middleware2/2, public32/33, health2/2. Hashes и source0708f
 вT-122-backend-coverage.json. Fullsuite на final composition ещё впереди.
 README содержит отдельно обозначенный staticQR бота изТЗCXPulseControlBot и команду
 локального экспорта actualQR; статическое изображение не выдаётся за live readiness.
+
+## Финальная composition перед PR
+
+Source0c4eec0:1661unit/18skip49.35s,353frontend+ESLint/typecheck green9.68s,
+50bot fake SDK/HTTP/CLI green7.17s. Это последовательно выполненные проверки,
+а не полный make test: полный integration/scenario/compliance gate нужен в CI.
+После ordinary merge currentparent42907e6/main db1f73c source49f2872:26corpus
+regressions green; прежние source-qualified coverage/build/UI artifacts сохранены.
+Финальные новые full-suite/CI результаты будут добавлены после их завершения.
+
+Контракт меняется только вперёд: API1.5.23, optional health username + HMAC heartbeat;
+нового DDL нет. Требуется final review техлида по AGENTS§7. Оговорка об одобренной
+S2S проверке не выдаётся за одобрение конкретного нового heartbeat контракта.

@@ -54,3 +54,14 @@ API1.5.23 reserved после22; DDL не добавляется. S2S HMAC пр�
 с lint/typegreen. Contracts45/163, drift193, mypy11green. Полный backend/coverage,
 UI screenshots, final contractreview, CI/merge ещё впереди. Реальных Telegram
 запросов нет. 1080p/5м читаемость — ручной критерий, автоматически не подтверждён.
+
+## Contract-change и evidence перед PR
+
+API1.5.23 добавляет optional health.tgbot_username и signed internal heartbeat;
+paired rollout/rollback и потребители описаны в docs/reviews/T-122-bot-readiness-contract.md.
+При unavailable UI скрывает QR, старые enum health сохранены. DDL нет.
+Source0c4eec0:1661unit/18skip,353frontend+lint/type,50botfake green. Source49f2872
+содержит main db1f73c +parent42907e6,26corpus regressions green. Coverage84/85=98.82%
+и6actual browser variants source0708fd9 в review artifacts; реальные TG не проверялись.
+Final CI и review pending, карточка остаётся in_progress, ручной 1080p/5м критерий
+не выдаётся за автоматически проверенный.
