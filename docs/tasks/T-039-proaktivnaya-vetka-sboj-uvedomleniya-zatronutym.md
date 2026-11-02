@@ -59,3 +59,22 @@ coverage 31/31=100%; source SHA в proof JSON. Полный suite/CI остаё�
 ## T039 native proactive path: начальный checkpoint
 
 Один internal service signal без личности клиента проходит обычный Mock graph и native consented fanout; actual causal/time/provenance guards и API1.5.25 default-deny внешнего service origin подготовлены. Dependency schema9/owner2PG, ingress13unit, graph/timing5PG, полный unit1787/18skip и contracts45/162 прошли. Automatic wake/recovery/late recipients, actual120/90/30, care proof, итоговые full/coverage/CI и human review ещё в работе. Prevented complaints пока null/not_modelled, не равно Sent. [Отчёт](../reviews/T-039-proactive-fault.md). Статус и критерии всей карточки не объявляются завершёнными.
+
+### Native runtime checkpoint: controlled 120/90/30
+
+Automatic fault wake + durable recheck, один internal service AR, late recipients
+через тот же checkpoint, strict causal dedup и metadata link до HITL реализованы.
+Controlled own-PG proof: 120 actual same-run YuFO affected, 90 native Sent/emulated
+chat строго до первой жалобы; care вырос у тех же90 через production behavior
+loader/owner. Все30 последующих normalizer inputs связаны с одним incident,
+mass/economics120, 2 human decisions остаются pending; ledger агента пуст.
+Native owner фиксирует30 first_complaint. Полный unit1800/18skip и focused PG
+concurrency/account/audit/ABS проверки зелёные. [Доказательства и границы](../reviews/T-039-link-lock-order.md),
+[машиночитаемый proof](../reviews/T-039-native-mass-proof.json).
+
+Это не успешный `make scenario`: production YAML пока inject3, phased orchestration
+предстоит отдельно согласовать/реализовать; 5000-client metadata augmentation и
+90/30 consents заданы только own fixture. Prevented complaints остаётся
+null/not_modelled; cancellation provenance proposal, customer aggregate composition,
+итоговые full/coverage/CI и financial/HITL/API25 human review ещё необходимы.
+Статус всей T039 остаётся in_progress, критерии не объявляются закрытыми.

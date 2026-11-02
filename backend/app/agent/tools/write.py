@@ -122,8 +122,12 @@ async def create_incident(
 async def link_signal_to_incident(
     ctx: ToolContext, signal_id: int, incident_id: int, link_type: str = "linked"
 ) -> dict[str, Any]:
+    # До FK INSERT сериализуем linkers: поздний gift/resume FOR UPDATE
+    # иначе повышает уже удерживаемый KEY SHARE навстречу другому linker.
+    # NO KEY UPDATE сохраняет совместимость с human audit FK после account lock.
     scoped = await ctx.fetchone(
-        "select 1 from signals s join incidents i on i.run_id=s.run_id where s.id=%s and i.id=%s and s.run_id=%s",
+        "select 1 from signals s join incidents i on i.run_id=s.run_id "
+        "where s.id=%s and i.id=%s and s.run_id=%s for no key update of i",
         (signal_id, incident_id, ctx.run_id),
     )
     if scoped is None:

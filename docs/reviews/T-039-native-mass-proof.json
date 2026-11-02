@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "base_commit": "44e2225",
+  "source_sha256": {
+    "backend/app/agent/tools/write.py": "2760ff81f8695c3092fef58c370e08061d4c9236885b46ed6400dc9dfccdf2c9",
+    "backend/app/economics/dcltv.py": "e2b2871715affe24370e2271a663a6fe5748f34503ed9329d27eda2d0f9d4e50",
+    "backend/app/agent/runner.py": "78a73c3197ad1e8ace71cf7802c0a1446b5163ea83edfa85e637ea4e8ea816e2",
+    "backend/tests/integration/test_proactive_mass.py": "ccb6703b46c60478bdbeab2f42c5e24bcac4d35d17bb0ff42f7f4cc6d975ab00",
+    "backend/tests/integration/test_proactive_link_concurrency.py": "7b18de961d41cce5194e4e03bc13e74e57fa7fae9b2dfef411b60f535f486561"
+  },
+  "runtime_policy_changed": false,
+  "external_http_calls": 0,
+  "delivery": "native Sent / emulated chat",
+  "controlled_fixture": {
+    "seeded_clients": 200,
+    "metadata_clients_after_augmentation": 5000,
+    "cohort": "120 distinct actual YuFO clients with active debit_card",
+    "explicit_consents": {
+      "proactive_true": 90,
+      "proactive_false": 30
+    }
+  },
+  "verified": {
+    "actual_affected": 120,
+    "sent_before_first_complaint": 90,
+    "care_positive_same_clients": 90,
+    "customer_complaints": 30,
+    "native_owner_first_complaints": 30,
+    "incident_count": 1,
+    "incident_mass": 120,
+    "economics_affected": 120,
+    "pending_human_decisions": 2,
+    "agent_ledger_entries": 0
+  },
+  "owner_timers": {
+    "complaint_cancelled_after_customer_complaint": 10,
+    "complaint_pending": 40,
+    "patience_pending": 120,
+    "repeat_pending": 30
+  },
+  "prevented_complaints": null,
+  "prevention_basis": "not_modelled; Sent and generic cancelled timers are not attribution receipts",
+  "proof": {
+    "pg": {
+      "passed": 3,
+      "seconds": 28.42,
+      "log": "/tmp/t039-mass-owner-proof.log"
+    },
+    "unit": {
+      "passed": 1800,
+      "skipped": 18,
+      "seconds": 54.18,
+      "log": "/tmp/t039-lock-full-unit.log"
+    },
+    "final_link_duplicate_and_abs_pg": {
+      "passed": 5,
+      "seconds": 30.65,
+      "log": "/tmp/t039-final-lock-abs-pg.log",
+      "production_source_same_as_mass_proof": true
+    }
+  },
+  "whole_task_complete": false,
+  "production_scenario_phase_interface_implemented": false,
+  "financial_hitl_review": "pending"
+}
