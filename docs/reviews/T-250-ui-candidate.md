@@ -82,3 +82,66 @@ regression/CI и human contract review ещё обязательны; не за�
 visual приёмка требует scoped presentation correction count glyph без сдвига
 native anchor/координат, затем нового build/native proof. Эти PNG и времена
 остаются доказательством исходного runtime; не приписывать им будущий фикс.
+
+### Visual follow-up проверен
+
+После checkpoint f98 число участников смещено только на18CSSpx ниже native
+anchor (22px цепляло нижний clip edge), neutral cluster ring прозрачен: в dark
+mode он больше не затемняет heat value. Координаты/anchor/radius/toucharea44px,
+aria и полный список участников прежние. Отдельная регрессия проверяет native
+transform, touch circle, отсутствие заливки, отделённую baseline текста и
+keyboard activation того же cluster.
+
+Повтор production main/personal build и4native contexts green: initial298–321ms,
+все directory/analytics/19closed reads729–754ms;97table fingerprints unchanged,
+0HTTP/JS/nonGET/external errors. PNG обновлены и просмотрены, clip/наложение цифр
+устранены. Предыдущие718–752ms/PNG относятся только к f98 и доступны в Git history.
+Full `make lint` теперь512front/74files; backend557format/325mypy,bot12/5,
+OpenAPI drift196/196. Новый итог не приписывается старому20case strict-map proof:
+тот был на f98 при выключенном слое ВСП; glyph покрыт4target unit/native4.
+
+### Portable isolated e2e preparation
+
+`map-branches.spec.ts` — serial settings project, после read-only workers.
+BeforeAll один раз требует явный `E2E_ISOLATED_SCENARIOS` и localhost disposable
+stand, затем GETstate проверяет paused clock и штатный
+`POST /api/scenarios/csi_and_branches/run` создаёт named Mock counters run.
+Native require_mock(capture) проверяет **effective всех3ролей до эффектов**;
+не изменяем настройки provider, не принимаем HD, не делаем baseline reset/delete.
+Clock before/after равен; новый current намеренно остаётся текущим в isolated
+CI project до его cleanup. Previous current не восстанавливается SQL/фиктивным
+resume: его история сохраняется штатным lifecycle. Marker — утверждение
+оператора об ownership, не механизм авторизации приложения. В app.env/config
+он не добавляется, только в environment Playwright от собственного ci_compose.
+
+[Actual self-preparation evidence](T-250-selfprep-proof.json): API202, run4 изrun3,
+все3роли Mock, paused/sameSimTime; histories2/3/4 содержат по301signal. После POST
+четыре browser cases GET-only прошли за8.5s. Нативный detail запрашивается для
+каждого closed code последней directory page: краткий pendingHTTP=0 между batches
+не считается completion. Positive direct>0 assertion сохранён.
+
+Без marker — ожидаемый отказ **до POST**,97fingerprints и current4 неизменны;
+это успешная отрицательная проверка, не ошибочно объявленный зелёным pytest/e2e
+exit. CI helper17pure tests passed0.06s; Ruff helper с project config120 green.
+E2E TypeScript green с `--lib ES2023,DOM,DOM.Iterable`: прежний e2e config без
+DOM.Iterable даёт ошибки существующих Headers/NodeList; исходный config не меняли.
+
+Для своего disposable Mock стенда:
+
+```bash
+E2E_BASE_URL=http://127.0.0.1:18161 E2E_ISOLATED_SCENARIOS=own-scratch \
+  npm exec -- playwright test e2e/map-branches.spec.ts --project=settings --no-deps --workers=1
+```
+
+Команда меняет current на новый named run и сохраняет history; не направлять её
+на рабочий стенд. Изолированный production image CI ещё должен подтвердить
+композицию с настоящими фоновыми actors; APP_ENV=test proof их не запускал.
+Exact-head full backend/CI и final human API30 review всё ещё обязательны.
+
+Final exact-source portable invocation после trim guard:4/4,0skips/0flaky за8.4s,
+API preparation run5 изrun4; attachment IDs/clock и SHA256 отчёта сохранены в
+selfprep proof. Дополнительный whitespace marker также отклоняется до POST,
+97hashes/current5 неизменны. Следующий обязательный этап — actual fresh-image
+seed→baseline completed/stopped→native selfprep4; этот APP_ENV=test результат
+не выдаётся за image/actors proof. Guard проверяет running=false, не требует
+искусственного paused статуса предыдущего header.

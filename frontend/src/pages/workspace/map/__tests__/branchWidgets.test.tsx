@@ -45,3 +45,20 @@ it('analytics separates city zone99 from direct counts and refuses a guessed def
   expect(screen.getByLabelText('Динамика сети: 12 месяцев')).toBeVisible()
   client.clear()
 })
+
+
+it('cluster count separates from the heat-label baseline without moving the native anchor or touch area', () => {
+  const second = { ...point, branch: { ...point.branch, code: 'VSP-0043' } }
+  const grouped = { ...cluster, items: [point, second] }
+  const select = vi.fn()
+  const { container } = render(<svg><BranchLayer clusters={[grouped]} pixelRatio={.5} zoom={4} closed={undefined} selected={null} onSelect={select} /></svg>)
+  const marker = screen.getByRole('button')
+  expect(marker).toHaveAttribute('transform', 'translate(100 150) scale(0.5)')
+  expect(marker).toHaveAttribute('data-branch-codes', 'VSP-0042 VSP-0043')
+  expect(container.querySelector('circle')).toHaveAttribute('r', '22')
+  expect(container.querySelectorAll('circle')[1]).toHaveAttribute('fill', 'none')
+  const count = screen.getByText('2')
+  expect(Number(count.getAttribute('y'))).toBeGreaterThan(12)
+  fireEvent.keyDown(marker, { key: ' ' })
+  expect(select).toHaveBeenCalledWith(grouped)
+})

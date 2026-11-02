@@ -17,8 +17,9 @@ export function BranchLayer({ clusters, pixelRatio, zoom, offsetX = 0, closed, s
       const activate = () => onSelect(cluster)
       return <g key={cluster.key} data-branch-codes={cluster.items.map(point => point.branch.code).join(" ")} role="button" tabIndex={0} aria-label={quiet ? `${label}; ${quiet}` : label} aria-pressed={!multiple && selected === branch.code} className="cursor-pointer focus-visible:outline-none" transform={`translate(${x} ${y}) scale(${unit})`} onClick={event => { event.stopPropagation(); activate() }} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate() } }}>
         <circle r={22} fill="transparent" />
-        <circle r={multiple ? 12 : style?.radius ?? 4} fill={multiple ? 'rgb(var(--surface-2))' : style?.color ?? '#6B7280'} stroke={selected === branch.code ? 'rgb(var(--focus-ring))' : multiple ? 'rgb(var(--ink-muted))' : style?.color ?? '#6B7280'} strokeWidth={multiple || branch.branch_type === 'flagship' ? 2 : 1} strokeDasharray={!multiple ? style?.dash : undefined} opacity={1} />
-        {multiple && <text textAnchor="middle" dominantBaseline="central" fontSize={11} fill="rgb(var(--ink))" pointerEvents="none">{cluster.items.length}</text>}
+        <circle r={multiple ? 12 : style?.radius ?? 4} fill={multiple ? 'none' : style?.color ?? '#6B7280'} stroke={selected === branch.code ? 'rgb(var(--focus-ring))' : multiple ? 'rgb(var(--ink-muted))' : style?.color ?? '#6B7280'} strokeWidth={multiple || branch.branch_type === 'flagship' ? 2 : 1} strokeDasharray={!multiple ? style?.dash : undefined} opacity={1} />
+        {/* Число участников ниже маркера: значение теплового слоя читается в исходной точке. */}
+        {multiple && <text y={18} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="rgb(var(--ink))" stroke="rgb(var(--surface-1))" strokeWidth={3} paintOrder="stroke" pointerEvents="none">{cluster.items.length}</text>}
         {quiet && <text x={x * zoom + offsetX > 480 ? -12 : 12} textAnchor={x * zoom + offsetX > 480 ? 'end' : 'start'} y={4} fontSize={10} fill="rgb(var(--ink-muted))" stroke="rgb(var(--surface-1))" strokeWidth={3} paintOrder="stroke" pointerEvents="none">{quiet}</text>}
         <title>{label}{quiet ? `; ${quiet}` : ''}</title>
       </g>

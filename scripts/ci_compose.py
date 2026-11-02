@@ -191,7 +191,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--performance", action="store_true")
     args = parser.parse_args(argv)
     project = f"cx-ci-{secrets.token_hex(6)}"
-    environment = {**os.environ, "E2E_BASE_URL": f"http://127.0.0.1:{args.port}"}
+    environment = {
+        **os.environ,
+        "E2E_BASE_URL": f"http://127.0.0.1:{args.port}",
+        "E2E_ISOLATED_SCENARIOS": project,
+    }
     with (
         own_env(ROOT / ".env"),
         tempfile.TemporaryDirectory(prefix="cx-ci-compose-") as directory,

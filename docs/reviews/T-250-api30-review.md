@@ -52,3 +52,9 @@ builds green. Native proof и6ранних PG scope/alias cases описаны �
 не восстанавливать БД и не откатывать чужую цепочку migrations. Возврат старого
 UI также возвращает его известную менее строгую Map scope семантику; при таком
 rollback не заявлять current/read-only гарантию этого пакета.
+
+Финальный presentation follow-up и self-prepared e2e не добавляют API/DTO/DDL.
+`make lint` повторён:512front; остальные557/325,12/5,196/196 прежние. E2E beforeAll
+использует существующий API после явного isolated ownership marker; это отдельная
+разрешённая write preparation, не скрытая часть GET-only/fingerprint гарантии.
+[Полные ограничения и команды](T-250-ui-candidate.md).

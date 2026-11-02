@@ -3,157 +3,157 @@
     {
       "lang": "ru",
       "mode": "light",
-      "initial_ms": 323,
-      "branches_all_reads_ms": 752,
+      "initial_ms": 320,
+      "branches_all_reads_ms": 754,
       "closed_reads": 20,
       "requests": [
         {
           "url": "/api/sim/state",
-          "at": 1793660029489
+          "at": 1793661574199
         },
         {
           "url": "/api/settings",
-          "at": 1793660029490
+          "at": 1793661574200
         },
         {
           "url": "/api/refs/channels",
-          "at": 1793660029492
+          "at": 1793661574201
         },
         {
           "url": "/api/refs/segments",
-          "at": 1793660029493
+          "at": 1793661574201
         },
         {
           "url": "/api/health",
-          "at": 1793660029493
+          "at": 1793661574202
         },
         {
           "url": "/api/demo/status",
-          "at": 1793660029493
+          "at": 1793661574202
         },
         {
           "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
-          "at": 1793660029493
+          "at": 1793661574202
         },
         {
           "url": "/api/metrics/overview?run_id=current",
-          "at": 1793660029507
+          "at": 1793661574212
         },
         {
           "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
-          "at": 1793660029568
+          "at": 1793661574276
         },
         {
           "url": "/api/map/zones?run_id=2",
-          "at": 1793660029568
+          "at": 1793661574277
         },
         {
           "url": "/api/refs/teams",
-          "at": 1793660029569
+          "at": 1793661574277
         },
         {
           "url": "/api/hitl/queue?run_id=2",
-          "at": 1793660029569
+          "at": 1793661574277
         },
         {
           "url": "/api/branches?limit=200",
-          "at": 1793660029691
+          "at": 1793661574396
         },
         {
           "url": "/api/cabinet/overview?run_id=current",
-          "at": 1793660029692
+          "at": 1793661574397
         },
         {
           "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
-          "at": 1793660029692
+          "at": 1793661574397
         },
         {
           "url": "/api/branches?limit=200&cursor=S0199",
-          "at": 1793660029728
+          "at": 1793661574435
         },
         {
           "url": "/api/refs/regions",
-          "at": 1793660029808
+          "at": 1793661574513
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660029843
+          "at": 1793661574550
         },
         {
           "url": "/api/branches/S0017?run_id=2&period=week",
-          "at": 1793660029844
+          "at": 1793661574550
         },
         {
           "url": "/api/branches/S0018?run_id=2&period=week",
-          "at": 1793660029844
+          "at": 1793661574551
         },
         {
           "url": "/api/branches/S0032?run_id=2&period=week",
-          "at": 1793660029906
+          "at": 1793661574611
         },
         {
           "url": "/api/branches/S0033?run_id=2&period=week",
-          "at": 1793660029906
+          "at": 1793661574611
         },
         {
           "url": "/api/branches/S0036?run_id=2&period=week",
-          "at": 1793660029906
+          "at": 1793661574612
         },
         {
           "url": "/api/branches/S0038?run_id=2&period=week",
-          "at": 1793660029938
+          "at": 1793661574642
         },
         {
           "url": "/api/branches/S0045?run_id=2&period=week",
-          "at": 1793660029939
+          "at": 1793661574643
         },
         {
           "url": "/api/branches/S0067?run_id=2&period=week",
-          "at": 1793660029939
+          "at": 1793661574643
         },
         {
           "url": "/api/branches/S0072?run_id=2&period=week",
-          "at": 1793660029967
+          "at": 1793661574671
         },
         {
           "url": "/api/branches/S0080?run_id=2&period=week",
-          "at": 1793660029968
+          "at": 1793661574671
         },
         {
           "url": "/api/branches/S0118?run_id=2&period=week",
-          "at": 1793660029968
+          "at": 1793661574671
         },
         {
           "url": "/api/branches/S0149?run_id=2&period=week",
-          "at": 1793660029996
+          "at": 1793661574699
         },
         {
           "url": "/api/branches/S0161?run_id=2&period=week",
-          "at": 1793660029997
+          "at": 1793661574699
         },
         {
           "url": "/api/branches/S0173?run_id=2&period=week",
-          "at": 1793660029997
+          "at": 1793661574699
         },
         {
           "url": "/api/branches/S0183?run_id=2&period=week",
-          "at": 1793660030026
+          "at": 1793661574731
         },
         {
           "url": "/api/branches/S0198?run_id=2&period=week",
-          "at": 1793660030026
+          "at": 1793661574732
         },
         {
           "url": "/api/branches/S0199?run_id=2&period=week",
-          "at": 1793660030026
+          "at": 1793661574732
         },
         {
           "url": "/api/branches/S0238?run_id=2&period=week",
-          "at": 1793660030053
+          "at": 1793661574761
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660030615
+          "at": 1793661575320
         }
       ],
       "forbidden": [],
@@ -173,157 +173,157 @@
     {
       "lang": "ru",
       "mode": "dark",
-      "initial_ms": 296,
-      "branches_all_reads_ms": 735,
+      "initial_ms": 298,
+      "branches_all_reads_ms": 730,
       "closed_reads": 20,
       "requests": [
         {
           "url": "/api/sim/state",
-          "at": 1793660030992
+          "at": 1793661575695
         },
         {
           "url": "/api/settings",
-          "at": 1793660030993
+          "at": 1793661575695
         },
         {
           "url": "/api/refs/channels",
-          "at": 1793660030993
+          "at": 1793661575696
         },
         {
           "url": "/api/refs/segments",
-          "at": 1793660030994
+          "at": 1793661575697
         },
         {
           "url": "/api/health",
-          "at": 1793660030994
+          "at": 1793661575697
         },
         {
           "url": "/api/demo/status",
-          "at": 1793660030994
+          "at": 1793661575697
         },
         {
           "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
-          "at": 1793660030994
+          "at": 1793661575697
         },
         {
           "url": "/api/metrics/overview?run_id=current",
-          "at": 1793660031000
+          "at": 1793661575711
         },
         {
           "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
-          "at": 1793660031063
+          "at": 1793661575768
         },
         {
           "url": "/api/map/zones?run_id=2",
-          "at": 1793660031063
+          "at": 1793661575768
         },
         {
           "url": "/api/refs/teams",
-          "at": 1793660031063
+          "at": 1793661575768
         },
         {
           "url": "/api/hitl/queue?run_id=2",
-          "at": 1793660031063
+          "at": 1793661575769
         },
         {
           "url": "/api/branches?limit=200",
-          "at": 1793660031176
+          "at": 1793661575878
         },
         {
           "url": "/api/cabinet/overview?run_id=current",
-          "at": 1793660031177
+          "at": 1793661575879
         },
         {
           "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
-          "at": 1793660031177
-        },
-        {
-          "url": "/api/refs/regions",
-          "at": 1793660031318
+          "at": 1793661575879
         },
         {
           "url": "/api/branches?limit=200&cursor=S0199",
-          "at": 1793660031319
+          "at": 1793661575916
+        },
+        {
+          "url": "/api/refs/regions",
+          "at": 1793661575988
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660031442
+          "at": 1793661576024
         },
         {
           "url": "/api/branches/S0017?run_id=2&period=week",
-          "at": 1793660031443
+          "at": 1793661576025
         },
         {
           "url": "/api/branches/S0018?run_id=2&period=week",
-          "at": 1793660031443
+          "at": 1793661576025
         },
         {
           "url": "/api/branches/S0032?run_id=2&period=week",
-          "at": 1793660031478
+          "at": 1793661576080
         },
         {
           "url": "/api/branches/S0033?run_id=2&period=week",
-          "at": 1793660031478
+          "at": 1793661576080
         },
         {
           "url": "/api/branches/S0036?run_id=2&period=week",
-          "at": 1793660031479
+          "at": 1793661576080
         },
         {
           "url": "/api/branches/S0038?run_id=2&period=week",
-          "at": 1793660031507
+          "at": 1793661576113
         },
         {
           "url": "/api/branches/S0045?run_id=2&period=week",
-          "at": 1793660031508
+          "at": 1793661576114
         },
         {
           "url": "/api/branches/S0067?run_id=2&period=week",
-          "at": 1793660031508
+          "at": 1793661576114
         },
         {
           "url": "/api/branches/S0072?run_id=2&period=week",
-          "at": 1793660031535
+          "at": 1793661576141
         },
         {
           "url": "/api/branches/S0080?run_id=2&period=week",
-          "at": 1793660031536
+          "at": 1793661576141
         },
         {
           "url": "/api/branches/S0118?run_id=2&period=week",
-          "at": 1793660031536
+          "at": 1793661576142
         },
         {
           "url": "/api/branches/S0149?run_id=2&period=week",
-          "at": 1793660031562
+          "at": 1793661576169
         },
         {
           "url": "/api/branches/S0161?run_id=2&period=week",
-          "at": 1793660031563
+          "at": 1793661576169
         },
         {
           "url": "/api/branches/S0173?run_id=2&period=week",
-          "at": 1793660031563
+          "at": 1793661576170
         },
         {
           "url": "/api/branches/S0183?run_id=2&period=week",
-          "at": 1793660031588
+          "at": 1793661576197
         },
         {
           "url": "/api/branches/S0198?run_id=2&period=week",
-          "at": 1793660031589
+          "at": 1793661576197
         },
         {
           "url": "/api/branches/S0199?run_id=2&period=week",
-          "at": 1793660031589
+          "at": 1793661576197
         },
         {
           "url": "/api/branches/S0238?run_id=2&period=week",
-          "at": 1793660031614
+          "at": 1793661576223
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660032099
+          "at": 1793661576789
         }
       ],
       "forbidden": [],
@@ -335,7 +335,7 @@
         "svg": [
           {
             "w": 762.4375,
-            "h": 401.4375
+            "h": 401.4375305175781
           }
         ]
       }
@@ -343,157 +343,157 @@
     {
       "lang": "en",
       "mode": "light",
-      "initial_ms": 305,
-      "branches_all_reads_ms": 727,
+      "initial_ms": 321,
+      "branches_all_reads_ms": 729,
       "closed_reads": 20,
       "requests": [
         {
           "url": "/api/sim/state",
-          "at": 1793660032485
+          "at": 1793661577182
         },
         {
           "url": "/api/settings",
-          "at": 1793660032485
+          "at": 1793661577183
         },
         {
           "url": "/api/refs/channels",
-          "at": 1793660032486
+          "at": 1793661577184
         },
         {
           "url": "/api/refs/segments",
-          "at": 1793660032486
+          "at": 1793661577184
         },
         {
           "url": "/api/health",
-          "at": 1793660032486
+          "at": 1793661577185
         },
         {
           "url": "/api/demo/status",
-          "at": 1793660032486
+          "at": 1793661577185
         },
         {
           "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
-          "at": 1793660032486
+          "at": 1793661577186
         },
         {
           "url": "/api/metrics/overview?run_id=current",
-          "at": 1793660032493
+          "at": 1793661577199
         },
         {
           "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
-          "at": 1793660032560
+          "at": 1793661577266
         },
         {
           "url": "/api/map/zones?run_id=2",
-          "at": 1793660032560
+          "at": 1793661577268
         },
         {
           "url": "/api/refs/teams",
-          "at": 1793660032560
+          "at": 1793661577268
         },
         {
           "url": "/api/hitl/queue?run_id=2",
-          "at": 1793660032560
+          "at": 1793661577269
         },
         {
           "url": "/api/branches?limit=200",
-          "at": 1793660032690
+          "at": 1793661577395
         },
         {
           "url": "/api/cabinet/overview?run_id=current",
-          "at": 1793660032690
+          "at": 1793661577396
         },
         {
           "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
-          "at": 1793660032691
+          "at": 1793661577396
         },
         {
           "url": "/api/branches?limit=200&cursor=S0199",
-          "at": 1793660032725
+          "at": 1793661577434
         },
         {
           "url": "/api/refs/regions",
-          "at": 1793660032796
+          "at": 1793661577505
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660032830
+          "at": 1793661577542
         },
         {
           "url": "/api/branches/S0017?run_id=2&period=week",
-          "at": 1793660032831
+          "at": 1793661577542
         },
         {
           "url": "/api/branches/S0018?run_id=2&period=week",
-          "at": 1793660032831
+          "at": 1793661577542
         },
         {
           "url": "/api/branches/S0032?run_id=2&period=week",
-          "at": 1793660032883
+          "at": 1793661577593
         },
         {
           "url": "/api/branches/S0033?run_id=2&period=week",
-          "at": 1793660032884
+          "at": 1793661577593
         },
         {
           "url": "/api/branches/S0036?run_id=2&period=week",
-          "at": 1793660032884
+          "at": 1793661577593
         },
         {
           "url": "/api/branches/S0038?run_id=2&period=week",
-          "at": 1793660032915
+          "at": 1793661577624
         },
         {
           "url": "/api/branches/S0045?run_id=2&period=week",
-          "at": 1793660032915
+          "at": 1793661577624
         },
         {
           "url": "/api/branches/S0067?run_id=2&period=week",
-          "at": 1793660032916
+          "at": 1793661577624
         },
         {
           "url": "/api/branches/S0072?run_id=2&period=week",
-          "at": 1793660032945
+          "at": 1793661577653
         },
         {
           "url": "/api/branches/S0080?run_id=2&period=week",
-          "at": 1793660032946
+          "at": 1793661577654
         },
         {
           "url": "/api/branches/S0118?run_id=2&period=week",
-          "at": 1793660032946
+          "at": 1793661577654
         },
         {
           "url": "/api/branches/S0149?run_id=2&period=week",
-          "at": 1793660032975
+          "at": 1793661577682
         },
         {
           "url": "/api/branches/S0161?run_id=2&period=week",
-          "at": 1793660032976
+          "at": 1793661577683
         },
         {
           "url": "/api/branches/S0173?run_id=2&period=week",
-          "at": 1793660032976
+          "at": 1793661577683
         },
         {
           "url": "/api/branches/S0183?run_id=2&period=week",
-          "at": 1793660033003
+          "at": 1793661577713
         },
         {
           "url": "/api/branches/S0198?run_id=2&period=week",
-          "at": 1793660033003
+          "at": 1793661577713
         },
         {
           "url": "/api/branches/S0199?run_id=2&period=week",
-          "at": 1793660033003
+          "at": 1793661577713
         },
         {
           "url": "/api/branches/S0238?run_id=2&period=week",
-          "at": 1793660033030
+          "at": 1793661577741
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660033582
+          "at": 1793661578304
         }
       ],
       "forbidden": [],
@@ -513,157 +513,157 @@
     {
       "lang": "en",
       "mode": "dark",
-      "initial_ms": 297,
-      "branches_all_reads_ms": 718,
+      "initial_ms": 310,
+      "branches_all_reads_ms": 730,
       "closed_reads": 20,
       "requests": [
         {
           "url": "/api/sim/state",
-          "at": 1793660033948
+          "at": 1793661578695
         },
         {
           "url": "/api/settings",
-          "at": 1793660033949
+          "at": 1793661578695
         },
         {
           "url": "/api/refs/channels",
-          "at": 1793660033950
+          "at": 1793661578696
         },
         {
           "url": "/api/refs/segments",
-          "at": 1793660033950
+          "at": 1793661578696
         },
         {
           "url": "/api/health",
-          "at": 1793660033950
+          "at": 1793661578696
         },
         {
           "url": "/api/demo/status",
-          "at": 1793660033950
+          "at": 1793661578697
         },
         {
           "url": "/api/incidents?run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
-          "at": 1793660033950
+          "at": 1793661578697
         },
         {
           "url": "/api/metrics/overview?run_id=current",
-          "at": 1793660033964
+          "at": 1793661578711
         },
         {
           "url": "/api/map/heat?layer=signals&window_hours=168&run_id=2",
-          "at": 1793660034021
+          "at": 1793661578775
         },
         {
           "url": "/api/map/zones?run_id=2",
-          "at": 1793660034021
+          "at": 1793661578776
         },
         {
           "url": "/api/refs/teams",
-          "at": 1793660034021
+          "at": 1793661578776
         },
         {
           "url": "/api/hitl/queue?run_id=2",
-          "at": 1793660034021
+          "at": 1793661578776
         },
         {
           "url": "/api/branches?limit=200",
-          "at": 1793660034140
+          "at": 1793661578896
         },
         {
           "url": "/api/cabinet/overview?run_id=current",
-          "at": 1793660034140
+          "at": 1793661578896
         },
         {
           "url": "/api/branches/analytics?run_id=2&period=week&limit=50&offset=0",
-          "at": 1793660034140
+          "at": 1793661578896
         },
         {
           "url": "/api/branches?limit=200&cursor=S0199",
-          "at": 1793660034176
+          "at": 1793661578932
         },
         {
           "url": "/api/refs/regions",
-          "at": 1793660034248
+          "at": 1793661579007
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660034282
+          "at": 1793661579045
         },
         {
           "url": "/api/branches/S0017?run_id=2&period=week",
-          "at": 1793660034282
+          "at": 1793661579046
         },
         {
           "url": "/api/branches/S0018?run_id=2&period=week",
-          "at": 1793660034283
+          "at": 1793661579046
         },
         {
           "url": "/api/branches/S0032?run_id=2&period=week",
-          "at": 1793660034336
+          "at": 1793661579095
         },
         {
           "url": "/api/branches/S0033?run_id=2&period=week",
-          "at": 1793660034337
+          "at": 1793661579096
         },
         {
           "url": "/api/branches/S0036?run_id=2&period=week",
-          "at": 1793660034337
+          "at": 1793661579096
         },
         {
           "url": "/api/branches/S0038?run_id=2&period=week",
-          "at": 1793660034368
+          "at": 1793661579124
         },
         {
           "url": "/api/branches/S0045?run_id=2&period=week",
-          "at": 1793660034368
+          "at": 1793661579124
         },
         {
           "url": "/api/branches/S0067?run_id=2&period=week",
-          "at": 1793660034368
+          "at": 1793661579124
         },
         {
           "url": "/api/branches/S0072?run_id=2&period=week",
-          "at": 1793660034397
+          "at": 1793661579152
         },
         {
           "url": "/api/branches/S0080?run_id=2&period=week",
-          "at": 1793660034398
+          "at": 1793661579152
         },
         {
           "url": "/api/branches/S0118?run_id=2&period=week",
-          "at": 1793660034398
+          "at": 1793661579152
         },
         {
           "url": "/api/branches/S0149?run_id=2&period=week",
-          "at": 1793660034426
+          "at": 1793661579180
         },
         {
           "url": "/api/branches/S0161?run_id=2&period=week",
-          "at": 1793660034426
+          "at": 1793661579181
         },
         {
           "url": "/api/branches/S0173?run_id=2&period=week",
-          "at": 1793660034426
+          "at": 1793661579181
         },
         {
           "url": "/api/branches/S0183?run_id=2&period=week",
-          "at": 1793660034453
+          "at": 1793661579208
         },
         {
           "url": "/api/branches/S0198?run_id=2&period=week",
-          "at": 1793660034454
+          "at": 1793661579208
         },
         {
           "url": "/api/branches/S0199?run_id=2&period=week",
-          "at": 1793660034454
+          "at": 1793661579208
         },
         {
           "url": "/api/branches/S0238?run_id=2&period=week",
-          "at": 1793660034480
+          "at": 1793661579236
         },
         {
           "url": "/api/branches/S0016?run_id=2&period=week",
-          "at": 1793660035031
+          "at": 1793661579804
         }
       ],
       "forbidden": [],
@@ -675,7 +675,7 @@
         "svg": [
           {
             "w": 762.4375,
-            "h": 485.03125
+            "h": 485.0312194824219
           }
         ]
       }
@@ -718,28 +718,64 @@
   "strict_map_layout": {
     "cases": 20,
     "passed": 20,
-    "seconds": 15.9
+    "seconds": 15.9,
+    "source": "f98ac986 before glyph; branch layer disabled, original20assertions unchanged"
   },
   "portable_native_e2e": {
+    "source": "f98ac986 with externally prepared fixture",
     "cases": 4,
     "passed": 4,
-    "seconds": 6.6
+    "seconds": 6.6,
+    "superseded_self_preparation": "T-250-selfprep-proof.json"
   },
   "source_hashes": {
     "frontend/src/pages/workspace/MapTab.tsx": "05a80086f1c7e730d6c1668b0425742dae2702b5aaa38f55b597eaca56ce1fe3",
     "frontend/src/pages/workspace/WorkspacePage.tsx": "580917758210d8f59b1c831fa5504eeaa3f8ef30490041a1c684e357a481dca4",
     "frontend/src/pages/workspace/map/BranchAnalytics.tsx": "2a682c2b9def12c4fb6bce56753d12f33756c2b1b66544bda05ef45bbe8aafa5",
     "frontend/src/pages/workspace/map/BranchCard.tsx": "fc8c39831991a8efb8b474b80966f7554fb763caf2c282c095425f53f750ca86",
-    "frontend/src/pages/workspace/map/BranchLayer.tsx": "d8e370eb808b5488f3f58e0c09e58bfa6fb97fb4346837151aaedebd7f6f6ba9"
+    "frontend/src/pages/workspace/map/BranchLayer.tsx": "5c90d6936e7afc4b3a4cbdf8260e8a4e33aeffa57f96fbc76b44c07d93922726"
   },
   "screenshots": {
-    "docs/screenshots/T-250/en-dark-detail.png": "668061670ceeadb7d5c6a79daefef77f37d6c7a490260a04098ba50449914145",
-    "docs/screenshots/T-250/en-dark.png": "6ded055b06e069dc5b4813af38c0160f480dfebada6bcc0a8b27f17e98432632",
-    "docs/screenshots/T-250/en-light-detail.png": "ade78c286c798c9f52900cda4826cd7a50c9b0900c3c1eb7797963b4feb563cf",
-    "docs/screenshots/T-250/en-light.png": "7c4eae2a5f115cbc2f79bbafff14a9f2b92c0bc4afb68e3b8527324ecc45bf0f",
-    "docs/screenshots/T-250/ru-dark-detail.png": "1405e2703fd7f351e8b302d658a50ee8789554c8079a5320f0cb1f91325d0748",
-    "docs/screenshots/T-250/ru-dark.png": "9899fedb97f8d51ec657b7c006187f37373388398e21e7dc187db21168d1a5c6",
-    "docs/screenshots/T-250/ru-light-detail.png": "db797209c245de6bdc56a08908403c30187b6ea2471161db97cd2f2bc51d7f4e",
-    "docs/screenshots/T-250/ru-light.png": "31f346a4340cae7fd01af200545fde11c450586b956bffe864561b5d1acce574"
+    "docs/screenshots/T-250/en-dark-detail.png": "a5603f79eeb26cc9a444c765ad13ff40bb039cdd8bd79dd3556c448c440053ea",
+    "docs/screenshots/T-250/en-dark.png": "6734fa3ccdcc1b52b42b3402f4ac79605ad369515a60684483b7460439a48cfd",
+    "docs/screenshots/T-250/en-light-detail.png": "e30a62174710ec8f452fb9bf8aa27be09789b45323532006857fc2b7f51a02b0",
+    "docs/screenshots/T-250/en-light.png": "a90f5186ed0156cb61d3631c872e9cf6e250df9f0a99c9caf9af459d6295eee6",
+    "docs/screenshots/T-250/ru-dark-detail.png": "5a99fe4433d6ec5ecd7c37ae69c0ff0b0587c1db38b01e6f1935e812152363e7",
+    "docs/screenshots/T-250/ru-dark.png": "07b498246e198ca3160a41ae721a7ffa52b6ea83d71ab77abf18857da0dce0e4",
+    "docs/screenshots/T-250/ru-light-detail.png": "dff94307695d9226c7148245fd63f7d18203c3d8414688cb70b47ab57ecf3fb3",
+    "docs/screenshots/T-250/ru-light.png": "f04e1912831de07f41e472b92d825698b33d4dd1b680f0d6eddcf29b6cb9ee20"
+  },
+  "previous_checkpoint": {
+    "sha": "f98ac986242239152c44fbee3e2fad8c475e03e9",
+    "initial_ms": [
+      296,
+      323
+    ],
+    "all_reads_ms": [
+      718,
+      752
+    ],
+    "note": "Измерение до glyph follow-up; предыдущие PNG/proof сохранены Git history, не приписываются исправлению."
+  },
+  "glyph_presentation": {
+    "count_offset_css_px": 18,
+    "cluster_fill": "none",
+    "coordinates_anchor_toucharea_aria_list_unchanged": true,
+    "native_cases": 4,
+    "no_document_overflow": true,
+    "full_lint_frontend_passed": 512
+  },
+  "measurement_source": "Перед API self-preparation run2 был current; после отдельной POST фазы owncurrent4/history2/3 сохранены, см.T-250-selfprep-proof.json.",
+  "production_artifacts": {
+    "frontend/dist/index.html": "eb31d0069f62a7610006b18d46af09a05cd557a15802fd63236415f553cce540",
+    "frontend/dist/assets/index-lyjLZ7KJ.js": "5c925487c22be71f19698ed431f6e644ffe8fc464afba12bd646cc129822040f",
+    "frontend/dist/assets/index-CAjQltic.css": "1617b36029f9b6b9f7cd7abec45cdbf94869b3030a33d629b6ffe1987d03c5b8",
+    "frontend/dist-personal/personal.html": "82dacadda39fe9dddaf3f5b9cc4a7e144200cb8562202abec807c1da583fbce2"
+  },
+  "actual_native_counts": {
+    "clients": 5000,
+    "operations": 600000,
+    "faults": 41,
+    "branches": 240
   }
 }
