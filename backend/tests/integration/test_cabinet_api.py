@@ -10,6 +10,8 @@ from typing import Any
 import psycopg
 import pytest
 import yaml
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
 
@@ -25,7 +27,10 @@ def cabinet_db(migrated_db: str) -> Iterator[str]:
     seeded = _seed(migrated_db, "--profile", "demo", "--clients", "5000")
     assert seeded.returncode == 0, seeded.stderr[-1000:]
     with psycopg.connect(migrated_db.replace("postgresql+psycopg:", "postgresql:"), autocommit=True) as conn:
-        assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0018"
+        assert (
+            conn.execute("select version_num from alembic_version").fetchone()[0]
+            == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
+        )
         assert conn.execute("select count(*) from clients").fetchone()[0] == 5000
     yield migrated_db
 
@@ -377,7 +382,10 @@ def test_actual_18_reapply_and_additive_downgrade_preserve_audit(cabinet_db: str
             [sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT / "backend", capture_output=True, text=True
         )
         assert up.returncode == 0, up.stderr[-1000:]
-        assert sql.execute("select version_num from alembic_version").fetchone()[0] == "0018"
+        assert (
+            sql.execute("select version_num from alembic_version").fetchone()[0]
+            == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
+        )
         assert (
             sql.execute("select actor_role from incident_status_history where id=%s", (audit[0],)).fetchone()[0]
             == "admin"
