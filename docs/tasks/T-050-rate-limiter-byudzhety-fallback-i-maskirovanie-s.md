@@ -46,6 +46,18 @@ pytest backend/tests/unit/test_ratelimit.py
 
 Подтверждён и исправлен обход существующего limiter в `ProviderChain.stream`: acquire перед live candidate, общий deadline ожидания/stream I/O, offline bypass, no fallback после первого чанка, cancellation/close освобождают источник. Значения лимитов, модель/ключи, banking/HITL и contracts не менялись. Targeted 53 passed; lint зелёный; failover statement coverage 82%. Review внешнего API-budget enforcement: `docs/reviews/T-050-stream-limits.md`.
 
-T050 остаётся in_progress: persistence ключевых daily counters и API остатки, queue 20s/global-lock, 429→fast policy и централизованный secret filter требуют отдельных coherent packets; эта доработка не закрывает всю карточку. No live/credentials/DB calls. Подробный read-only audit T050/T047: `/tmp/t050-t047-readonly-audit.json`.
+T050 остаётся in_progress: persistence ключевых daily counters и API остатки, queue 20s/global-lock и 429→fast policy требуют отдельных coherent packets; централизованный secret filter уже слит в PR #170; эта доработка не закрывает всю карточку. No live/credentials/DB calls. Подробный read-only audit T050/T047: `/tmp/t050-t047-readonly-audit.json`.
 
 Полный unit: 925 passed/18 skipped, exit 0; license gate 526 прошёл. Полный DB suite не запускался по границам packet. Подробные evidence/ограничения — в review.
+## Ревизия application secret logging, 2026-11-02
+
+Добавлена единая pure redaction boundary после format_exc_info перед console/JSONL и до HttpStats error retention. Маскируются известные credential fields/labeled strings без чтения env/реальных ключей; nonmutating/idempotent, hints/counters/business IDs сохранены. Подтверждённый T119 unknown-route capability leak закрыт тем же существующим regex/helper и safe_public_path ДО counter keys/ring buffer; API shape/публичные error responses не менялись.
+
+Targeted 37 passed; lint зелёный, coverage redactor/app.logging 100%. Полные evidence/границы: `docs/reviews/T-050-secret-redaction.md`. Нет новых dependencies/DB/live/credential probes или изменений money/HITL. T050 остаётся in_progress; durable counters/rate-policy очередь и fallback требуют отдельных пакетов. Streaming-enforcement реализован отдельно и не смешан с этой веткой.
+
+Полный unit: 953 passed / 18 skipped, exit 0; make lint и license gate 526 прошли. Новый redactor и app.logging имеют 100% statement coverage по stdlib trace. Полный DB/integration suite не запускался: согласованный no-DB packet.
+
+
+Follow-up parent review: named credential containers внутри diagnostic repr теперь маскируются целиком (list/dict/tuple/nested/quoted/escaped), без eval. Truncated/malformed container скрывает остаток строки; outside IDs после balanced container сохраняются. Targeted 59 passed; lint/100% coverage прошли. Подробности и итог полного unit — в `docs/reviews/T-050-secret-redaction.md`.
+
+Follow-up полный unit: 975 passed / 18 skipped, exit 0; source и credentials/environment boundaries сохранены.
