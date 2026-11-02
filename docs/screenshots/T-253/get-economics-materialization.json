@@ -1,0 +1,33 @@
+{
+  "method": "GET",
+  "path": "/api/incidents/{id}/economics",
+  "source_revision": "59da3d314151d7af16b16eeda31eec74057ab183",
+  "before_row_count": 154,
+  "after_row_count": 154,
+  "before_audit_count": 3638,
+  "after_audit_count": 3639,
+  "changed_columns": {
+    "computed_at": {
+      "before_sha_md5": "986e1c18c97a066808b8255a84640ab1",
+      "after_sha_md5": "cb50e8e293a08710da79e4412b996365"
+    }
+  },
+  "unchanged_columns": [
+    "affected_count",
+    "breakdown",
+    "computed_sim",
+    "detractor_share",
+    "incident_id",
+    "no_return_share",
+    "potential_loss_rub",
+    "premium_addon_rub",
+    "prevented_loss_rub",
+    "rate_code",
+    "rate_rub",
+    "realized_loss_rub",
+    "refund_amount_rub",
+    "retention_factor",
+    "retention_source",
+    "run_id"
+  ]
+}
