@@ -20,6 +20,18 @@ export function fmtSim(iso: string | null | undefined, pattern = 'dd.MM HH:mm'):
   return format(utc, pattern, { locale: dateLocale() })
 }
 
+/** Часы оператора: рабочий день симуляции закреплён за Europe/Moscow (ТЗ 4.1). */
+export function fmtSimMoscow(iso: string | null | undefined, pattern: 'dd.MM HH:mm' | 'EEE dd.MM HH:mm' = 'dd.MM HH:mm'): string {
+  const date = simDate(iso)
+  if (!date) return '—'
+  const parts = new Intl.DateTimeFormat(i18n.language.startsWith('en') ? 'en-GB' : 'ru-RU', {
+    timeZone: 'Europe/Moscow', hourCycle: 'h23', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+    ...(pattern.startsWith('EEE') ? { weekday: 'short' as const } : {}),
+  }).formatToParts(date)
+  const part = (name: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === name)?.value ?? ''
+  return `${pattern.startsWith('EEE') ? part('weekday') + ' ' : ''}${part('day')}.${part('month')} ${part('hour')}:${part('minute')}`
+}
+
 export function fmtClock(iso: string | null | undefined): string {
   return fmtSim(iso, 'HH:mm')
 }
