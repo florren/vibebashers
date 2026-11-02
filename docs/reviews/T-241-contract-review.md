@@ -105,3 +105,27 @@ c88d947/4c99681 с runtime activation. Эта база не означает з�
 Draft PR направляется в эту временную review base; retarget main только после
 фактического merge P2/DDL16 и T161/DDL17, normal composition и exact-head CI.
 Новая migration fork/rebase/cherry историй не создавались.
+
+## Customer-only facts: согласованный T039 follow-up
+
+Служебный `origin=proactive` — native-fault anchor без client_id, а не жалоба.
+`v_cabinet_signal_facts` теперь содержит `origin IS DISTINCT FROM 'proactive'`: 
+все cabinet signal cohorts/list totals/live dynamic/source/CSI выводятся из
+клиентских обращений. Technical raw signals/Trace сохраняют service anchor;
+`v_cabinet_incident_facts`, реальные инциденты, saved incident_economics и
+affected fault не фильтруются. Это семантика customer cohorts, не auth/RBAC.
+API22 descriptions уточнены до human review, поле/версия API не менялись.
+DDL18 ещё не применена main: canonical/schema/mirrors нормализованы без новой
+revision/миграционного fork; ORM shape110 неизменна.
+
+Actual proof:69 scoped PG/unit green78.42s; после test-only cleanup fixture-link
+четыре новых service/customer/NULL cases повторены:4passed30.31s.
+Сервисный proactive/clientNULL/channelproactive не виден в customer list/count;
+реальный связанный incident и saved economics неизменны, Trace200/rawsignal
+сохраняются; проверяемые GET fingerprints неизменны. Money materialization
+выполняется только явно при подготовке собственной fixture до readonly фазы.
+Canonical origin остаётся NOT NULL: legacyNULL проверен исполнением фактической
+view SQL над nullable CTE shape, без DROP NOT NULL и записиNULL в таблицу.
+Новый p95 demo guard <300 входит в69target; прежние40.49/24.15ms относятся
+42f2488 и не переименовываются в новый source. OwnUI5000fixture originproactive0,
+её старые screenshots не выдаются за synthetic-service regression.
