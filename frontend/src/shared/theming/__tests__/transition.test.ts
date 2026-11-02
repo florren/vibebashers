@@ -25,3 +25,12 @@ describe('every directed seasonal phase transition, real CSS from both packs', (
   }
 })
 it('defines the required eight-second transition', () => expect(TRANSITION_MS).toBe(8000))
+
+it('interpolates decorative borders and accents as well as surfaces', () => {
+  const a = palette('ops', 'noon'), b = palette('ops', 'night')
+  for (const key of ['line', 'brand']) {
+    expect(transitionPalette(a, b, 0)[key]).toEqual(a[key])
+    expect(transitionPalette(a, b, 1)[key]).toEqual(b[key])
+    expect(transitionPalette(a, b, .5)[key]).toEqual(a[key]!.map((value, i) => Math.round((value + b[key]![i]!) / 2)))
+  }
+})

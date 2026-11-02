@@ -4,7 +4,8 @@ type RGB = [number, number, number]
 export type Palette = Record<string, RGB>
 export const BACKGROUNDS = ['bg', 'surface', 'raised', 'brand-soft', 'trace-before', 'trace-subject', 'trace-after']
 export const FOREGROUNDS = ['ink', 'muted', 'faint', 'brand-foreground', 'ok', 'warn', 'danger', 'info', 'control-line', 'focus-ring', 'brand-strong']
-export const PALETTE_KEYS = [...BACKGROUNDS, ...FOREGROUNDS, 'on-brand']
+export const DECORATIVE = ['line', 'brand']
+export const PALETTE_KEYS = [...BACKGROUNDS, ...FOREGROUNDS, ...DECORATIVE, 'on-brand']
 export const TRANSITION_MS = 8000
 const mix = (a: RGB, b: RGB, t: number): RGB => a.map((v, i) => Math.round(v + (b[i]! - v) * t)) as RGB
 const BLACK: RGB = [0, 0, 0]
@@ -39,6 +40,7 @@ export function transitionPalette(from: Palette, to: Palette, progress: number):
   }
   const polarity = score(BLACK) >= score(WHITE) ? BLACK : WHITE
   for (const key of FOREGROUNDS) out[key] = readable(mix(from[key]!, to[key]!, t), backgrounds, polarity, key === 'control-line' || key === 'focus-ring' ? 3 : 4.5)
+  for (const key of DECORATIVE) out[key] = mix(from[key]!, to[key]!, t)
   out['on-brand'] = contrastRatio(BLACK, out['brand-strong']!) >= contrastRatio(WHITE, out['brand-strong']!) ? BLACK : WHITE
   return out
 }

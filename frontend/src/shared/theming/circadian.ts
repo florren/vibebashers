@@ -54,9 +54,14 @@ export function solarBoundaries(time: number, coordinates: Coordinates = MOSCOW)
 }
 export function solarPhase(time: number, coordinates: Coordinates = MOSCOW): ThemePhase {
   if (!Number.isFinite(time)) return 'morning'
-  const { polar, boundaries } = solarBoundaries(time, coordinates)
-  if (polar) return polar === 'day' ? 'noon' : 'night'
-  for (let i = 0; i < boundaries.length - 1; i++) if (time >= boundaries[i]! && time < boundaries[i + 1]!) return PHASES[i]!
+  const current = solarBoundaries(time, coordinates)
+  if (current.polar) return current.polar === 'day' ? 'noon' : 'night'
+  // Около полярного круга рассвет/сумерки могут пересекать солнечную полночь.
+  for (const offset of [0, -1, 1]) {
+    const sun = offset === 0 ? current : solarBoundaries(time + offset * 86_400_000, coordinates)
+    if (sun.polar) continue
+    for (let i = 0; i < sun.boundaries.length - 1; i++) if (time >= sun.boundaries[i]! && time < sun.boundaries[i + 1]!) return PHASES[i]!
+  }
   return 'night'
 }
 export function circadianPhase(preferences: CircadianPreferences, simTime?: string | null, now = Date.now(), coordinates = readCoordinates()): ThemePhase {
@@ -73,8 +78,9 @@ export function bootstrapCircadian() {
   try {
     const root = document.documentElement
     const storedPack = localStorage.getItem('cx.ui.theme_pack')
-    const storedMode = localStorage.getItem('cx.ui.mode') ?? localStorage.getItem('cx.theme')
-    const mode = ['light', 'dark', 'auto', 'circadian'].includes(storedMode ?? '') ? storedMode : 'light'
+    const storedMode = localStorage.getItem('cx.ui.mode')
+    const legacy = localStorage.getItem('cx.theme')
+    const mode = ['light', 'dark', 'auto', 'circadian'].includes(storedMode ?? '') ? storedMode : legacy === 'dark' || legacy === 'light' ? legacy : 'light'
     const phase = circadianPhase(readCircadian())
     const resolved = mode === 'circadian' ? (phase === 'night' || phase === 'twilight' ? 'dark' : 'light') : mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode
     const attributes = { pack: storedPack === 'ops' ? 'ops' : 'brand', mode: resolved ?? 'light', phase, circadian: String(mode === 'circadian'), density: localStorage.getItem('cx.ui.density') === 'compact' ? 'compact' : 'comfortable' }

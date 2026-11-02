@@ -32,16 +32,24 @@
 5. Юнит-тесты фаз и границ (сим/реальное), контраст для всех фаз × пакетов.
 
 ## Критерии приёмки
-- [ ] Смена фазы плавная 8 с; ручной выбор побеждает автоматику; без API-ключа и сети.
-- [ ] WCAG-контраст проходит во всех фазах; «вспышки» нет.
-- [ ] Режим `sim` меняет фазы при ускорении ×60.
+- [x] Смена фазы плавная 8 с; ручной выбор побеждает автоматику; без API-ключа и сети.
+- [x] WCAG-контраст проходит во всех фазах; «вспышки» нет.
+- [x] Режим `sim` меняет фазы при ускорении ×60.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
-cd frontend && npx vitest run src/shared/theming/circadian
+cd frontend && npx vitest run src/shared/theming
 cd frontend && npx playwright test e2e/circadian.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-252-circadian`; implementation `af8f063`, ordinary merge main `d2a4026`. PR/merge выполняет родительский агент после gates.
+
+Реализованы sim/real/fixed, сезонный offline NOAA расчёт для даты источника, Москва/polar cases, explicit local-only geolocation, общий inline/runtime bootstrap, 8s contrast-guarded interpolation/reduced motion/manual override, ночной декоративный слой и read-only current-run digest с исключениями manager/compliance. Header отдельно исправлен на Europe/Moscow без изменения общего UTC fmtSim.
+
+Контракты/БД/зависимости не меняются; generic settings поддерживает ui.circadian. T-253/T-254 отдельно. Необходимая дискретная смена полярности текста согласована; поверхности переходят непрерывно, foreground guard сохраняет WCAG.
+
+Production synthetic Playwright5/5, actual API/WS Mock-only9 естественных sim.tick ×60; ночь проверена отдельным явным API jump_to, не выдана за естественный переход. Фазовый WCAG36cases +72 directed transitions×101 samples; actual475frames за7924ms, mintext4.500018/control3.0000002. Четыре actual API ru/en light/dark PNG просмотрены и tracked в docs/screenshots/T-252/.
+
+Подробности, границы доказательств, команды и итог полного прогона: [T-252-circadian-verification](../reviews/T-252-circadian-verification.md). Статус остаётся in_progress до полного make test, CI/review/merge; незавершённая приёмка не объявляется готовой.

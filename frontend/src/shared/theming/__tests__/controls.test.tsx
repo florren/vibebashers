@@ -7,12 +7,14 @@ import { api } from '@/shared/api/client'
 import { CircadianControls } from '../CircadianControls'
 import { NightDigest } from '../NightDigest'
 import { useUiTheme } from '../store'
+import { useWs } from '@/shared/ws/client'
 import { DEFAULT_CIRCADIAN } from '../circadian'
 
 vi.mock('@/shared/api/client', () => ({ api: vi.fn() }))
 beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
+  useWs.setState({ sim: null, events: [], seq: 0 })
   document.documentElement.dataset.circadian = 'true'
   document.documentElement.dataset.phase = 'night'
   useUiTheme.setState({ mode: 'circadian', circadian: { ...DEFAULT_CIRCADIAN } })
@@ -47,7 +49,10 @@ it('manual fixed phase wins until explicitly changed and persists', () => {
   expect(document.documentElement.dataset.phase).toBe('night')
   expect(JSON.parse(localStorage.getItem('cx.ui.circadian')!)).toEqual({ source: 'fixed', fixed_phase: 'night' })
 })
-const mountDigest = (route = '/signals') => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter initialEntries={[route]}><NightDigest /></MemoryRouter></QueryClientProvider>)
+const mountDigest = (route = '/signals') => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return { ...render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[route]}><NightDigest /></MemoryRouter></QueryClientProvider>), client }
+}
 it('loads current high-priority signals only, keeps raw text/PII out of the digest', async () => {
   vi.mocked(api).mockResolvedValue({ items: [{ id: 1, public_id: 'SIG-000001', text: 'PRIVATE RAW TEXT' }] })
   mountDigest()
@@ -68,4 +73,18 @@ it('does not query or decorate manual dark mode', () => {
   mountDigest()
   expect(screen.queryByTestId('night-decoration')).not.toBeInTheDocument()
   expect(api).not.toHaveBeenCalled()
+})
+
+it('drops stale current-run results after a real runs event and caches only public IDs', async () => {
+  let finishOld!: (value: unknown) => void
+  vi.mocked(api).mockReturnValueOnce(new Promise((resolve) => { finishOld = resolve })).mockResolvedValue({ items: [{ id: 2, public_id: 'SIG-000002', text: 'PRIVATE RAW TEXT' }] })
+  const { client } = mountDigest()
+  await waitFor(() => expect(api).toHaveBeenCalledTimes(1))
+  await act(async () => { useWs.getState().push({ topic: 'runs', type: 'started', ts: '2026-11-09T06:00:00Z', data: {} }) })
+  await screen.findByText('SIG-000002')
+  await act(async () => { finishOld({ items: [{ id: 1, public_id: 'SIG-000001' }] }) })
+  expect(screen.queryByText('SIG-000001')).not.toBeInTheDocument()
+  expect(screen.queryByText('PRIVATE RAW TEXT')).not.toBeInTheDocument()
+  expect(api).toHaveBeenCalledTimes(2)
+  expect(JSON.stringify(client.getQueryCache().getAll().map((q) => q.state.data))).not.toContain('PRIVATE RAW TEXT')
 })

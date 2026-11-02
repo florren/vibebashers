@@ -6,7 +6,7 @@ const ops = readFileSync('src/shared/theming/ops.css', 'utf8')
 
 // Читаем реальные CSS-токены в порядке root → mode → pack → phase.
 export function tokens(pack: string, mode: string, phase?: string) {
-  const selectors = [':root', ...(mode === 'dark' ? ['.dark'] : []), `html[data-pack='${pack}']`, `html[data-pack='${pack}'][data-mode='${mode}']`, ...(mode === 'dark' ? [`html[data-pack='${pack}'].dark`] : []), ...(phase ? [`html[data-circadian='true'][data-mode='${mode}'][data-phase='${phase}']`] : [])]
+  const selectors = [':root', ...(mode === 'dark' ? ['.dark'] : []), `html[data-pack='${pack}']`, `html[data-pack='${pack}'][data-mode='${mode}']`, ...(mode === 'dark' ? [`html[data-pack='${pack}'].dark`] : []), ...(phase ? ["html[data-circadian='true']", `html[data-circadian='true'][data-mode='${mode}'][data-phase='${phase}']`] : [])]
   const values: Record<string, string> = {}
   const blocks = [...`${base}\n${brand}\n${ops}\n${circadian}`.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
   for (const selector of selectors) {

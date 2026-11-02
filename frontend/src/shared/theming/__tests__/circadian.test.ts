@@ -67,3 +67,35 @@ describe('bootstrap shared with runtime', () => {
     expect(document.documentElement.dataset.mode).toBe('light')
   })
 })
+
+it('matches legacy mode fallback even if the newer preference is corrupted', () => {
+  localStorage.setItem('cx.ui.mode', 'corrupt')
+  localStorage.setItem('cx.theme', 'dark')
+  bootstrapCircadian()
+  expect(document.documentElement.dataset.mode).toBe('dark')
+})
+it('handles near-polar dawn/twilight crossing solar midnight', () => {
+  for (const [latitude, iso, phase] of [
+    [-78, '2026-10-22T23:59:35.305Z', 'dawn'],
+    [-74, '2026-11-03T23:53:59.191Z', 'dawn'],
+    [-71, '2026-01-30T00:05:11.484Z', 'twilight'],
+    [-66, '2026-12-13T23:59:51.969Z', 'dawn'],
+  ] as const) expect(solarPhase(Date.parse(iso), { latitude, longitude: 0 })).toBe(phase)
+})
+it('preserves all seasonal boundaries across a year near both polar circles and date-line longitudes', () => {
+  let checked = 0
+  for (let latitude = -89; latitude <= 89; latitude++) {
+    if (Math.abs(latitude) < 60) continue
+    for (const longitude of [-179, 0, 179]) for (let day = 1; day <= 365; day++) {
+      const coordinates = { latitude, longitude }
+      const sun = solarBoundaries(Date.UTC(2026, 0, day, 12), coordinates)
+      if (sun.polar) continue
+      for (let i = 0; i < PHASES.length; i++) {
+        const phase = solarPhase(sun.boundaries[i]!, coordinates)
+        if (phase !== PHASES[i]) throw new Error(`${latitude}/${longitude}/${day}/${i}: ${phase}`)
+        checked++
+      }
+    }
+  }
+  expect(checked).toBeGreaterThan(200_000)
+})

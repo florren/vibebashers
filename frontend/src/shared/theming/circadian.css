@@ -1,3 +1,5 @@
+/* Подсказки/placeholder в циркадном режиме сохраняют контраст основного muted-текста. */
+html[data-circadian='true'] { --faint: var(--muted); }
 /* Независимые от mode фазовые оттенки; inline bootstrap выставляет фазу до загрузки CSS. */
 html[data-circadian='true'][data-mode='light'][data-phase='dawn'] { --bg: 250 246 241; }
 html[data-circadian='true'][data-mode='light'][data-phase='morning'] { --bg: 246 248 242; }
