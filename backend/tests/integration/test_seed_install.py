@@ -71,7 +71,9 @@ def test_first_install_after_backend_bootstrap_generates_events(migrated_db):
         try:
             await sim.load_state()
             await sim.control("start", label="Проверка чистой установки", start_paused=True)
-            await sim.step(120)
+            # Проверяем полный рабочий день: двухчасовой случайный поток может
+            # законно не содержать жалоб при неизменных вероятностях генерации.
+            await sim.step(480)
             assert sim.stats["ops"] > 0 and sim.stats["signals"] > 0
             return sim.run_id
         finally:

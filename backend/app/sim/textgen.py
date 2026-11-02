@@ -38,8 +38,8 @@ class Generated:
 
 
 class TextGen:
-    def __init__(self, seed: int) -> None:
-        self.rnd = random.Random(seed)
+    def __init__(self, seed: int | random.Random) -> None:
+        self.rnd = seed if isinstance(seed, random.Random) else random.Random(seed)
         self.c = load_yaml("corpus/signal_templates.yaml")
         self.templates: dict[str, dict[str, list[dict[str, Any]]]] = self.c["templates"]
 
