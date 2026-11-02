@@ -315,8 +315,10 @@ async def test_fixed_seed_world_repeats_after_restore(seeded, conn, tmp_path):
         sim = Simulator(dsn=seeded)
         try:
             await sim.load_state()
-            await sim.step(60)
-            await sim.step(60)
+            # Детерминизм сравнивается на рабочем дне, включая тексты; короткий
+            # двухчасовой поток при общем RNG может не содержать ни одного сигнала.
+            for _ in range(8):
+                await sim.step(60)
             await sim.conn.commit()
             events = conn.execute(
                 "select event_type,sim_time from sim_events where run_id=%s order by id", (sim.run_id,)
