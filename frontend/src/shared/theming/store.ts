@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { validAttention, type AttentionMode } from './attention'
 import { applyUiTheme, resolveMode } from './apply'
 import { bootstrapCircadian, readCircadian, type CircadianPreferences } from './circadian'
 import type { ThemeDensity, ThemeMode, ThemePack, ResolvedThemeMode } from './types'
@@ -25,6 +26,8 @@ function readDensity(): ThemeDensity {
 }
 
 export type UiThemeState = {
+  attention: AttentionMode | null
+  setAttention: (attention: AttentionMode | null) => void
   theme_pack: ThemePack
   circadian: CircadianPreferences
   setCircadian: (preferences: CircadianPreferences) => void
@@ -40,6 +43,12 @@ export type UiThemeState = {
 }
 
 export const useUiTheme = create<UiThemeState>((set, get) => ({
+  attention: validAttention(localStorage.getItem('cx.ui.attention')),
+  setAttention: (attention) => {
+    if (attention) localStorage.setItem('cx.ui.attention', attention)
+    else localStorage.removeItem('cx.ui.attention')
+    set({ attention })
+  },
   theme_pack: readPack(),
   circadian: readCircadian(),
   setCircadian: (circadian) => {
