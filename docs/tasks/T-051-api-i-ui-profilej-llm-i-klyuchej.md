@@ -8,7 +8,7 @@
 | Волна | 2 |
 | Слой | `L1` Базис (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Управление провайдерами из настроек: роли main/fast/twin, активность, ключи, лимиты.
@@ -38,4 +38,8 @@ pytest backend/tests/integration/test_llm_settings_api.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+P1, ветка `codex/T-051-runtime-profiles`: backend source checkpoint после объединённой SDK/T-041 базы85fcbaa. Миграция0013, OpenAPI1.5.18: canonical PGP key registry, explicit endpoint/provider binding, private credential UID, per-AR snapshot/hot apply, key-delete409 до явного unbind. Непрозрачный enc1 cutover transactional/idempotent; old-store writes запрещены scoped DB trigger. Публичные projections/validation errors не возвращают key/cipher/privateUID. Provider error bodies безопасны до KeyPool logging; exact credential в успешном model output отклоняется, включая split stream. Known usage сохраняется, response не подменяется.
+
+На source checkpoint:146 pure tests прошли; directed PG11 routing/tracing/profile tests и16 API/bench tests проходили на промежуточном дереве; после расширения no-echo проверок23/25 проходили, два API-case упали из-за cached structlog/capsys test file, fixture исправлен и оба case вместе с API/legacy/cache проверками6/6 прошли. Это не full DoD доказательство окончательного дерева. Mypy255 и targeted ruff/format прошли; code/types сгенерированы только own checkout/scratchDB. Реальные LLM/Telegram/email не вызывались.
+
+До done: обычное объединение maintenance checkpoint297a8459 и актуализация config fingerprint/preflight, narrow Setup UI key select/Save/Check+endpoint/scope, screenshots4варианта, полные lint/test/coverage и CI, human review конкретного DB/credential/external-budget diff. Persistent UTC RPD/attempt ledger остаётся отдельным T-050 P2/0014; numeric policies/customer money/HITL не менялись. Подробности в `docs/reviews/T-051-runtime-profiles.md`.

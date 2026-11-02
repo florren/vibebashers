@@ -108,7 +108,9 @@ async def load_deps(
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
 ) -> Deps:
     if not dry_run:
-        chain, profile = await run_profiles(conn, run_id, chain, profile)
+        chain, profile = await run_profiles(
+            conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
+        )
     ctx = ToolContext(
         conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
     )
@@ -338,7 +340,7 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
-    chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile)
+    chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
     )
@@ -377,7 +379,7 @@ async def process_signal(
         )
     row = await (
         await conn.execute(
-            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s,%s::jsonb) returning id",
             (
                 sig["run_id"],
                 signal_id,
@@ -387,6 +389,7 @@ async def process_signal(
                 GRAPH_VERSION,
                 f"{sig['run_id']}:{signal_id}",
                 sim_time,
+                dumps(chain.role_snapshot),
             ),
         )
     ).fetchone()

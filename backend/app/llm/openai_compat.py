@@ -21,6 +21,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
 from app.llm.budget import budget_value
+from app.llm.credential_boundary import CredentialStreamGuard, reject_reflection
 from app.llm.gigachat import JSON_INSTRUCTION, schema_for_model
 from app.logging import get_logger
 
@@ -170,9 +171,9 @@ class OpenAICompatProvider:
         try:
             r = await self._client.get(f"{base}/key", headers=self._headers(base), timeout=timeout_s)
         except httpx.TimeoutException as e:
-            raise ProviderError("quota", f"key timeout: {e}") from e
+            raise ProviderError("quota", f"key timeout: {type(e).__name__}") from e
         except httpx.HTTPError as e:
-            raise ProviderError("quota", f"key: {e}") from e
+            raise ProviderError("quota", f"key: {type(e).__name__}") from e
         if r.status_code >= 400:
             raise ProviderError("quota", f"key {r.status_code}", status=r.status_code)
         try:
@@ -313,6 +314,13 @@ class OpenAICompatProvider:
             raw = result.choices[0].message.content if result.choices else ""
             raw = raw or ""
             try:
+                reject_reflection(raw, [self._key(base_url)])
+            except ProviderError as exc:
+                if usage_observed:
+                    usage.cost_rub = profile.cost(usage.prompt_tokens, usage.completion_tokens)
+                    exc.usage = usage
+                raise
+            try:
                 obj = extract_json(raw)
                 errors = validate_schema(obj, schema)
             except ProviderError as e:
@@ -349,11 +357,17 @@ class OpenAICompatProvider:
                 stream_options={"include_usage": True} if self._paid(profile, base_url) else {},
             )
             usage_seen = False
+            guard = CredentialStreamGuard([self._key(base_url)])
             async with response:
                 async for chunk in response:
                     usage_seen = usage_seen or (chunk.usage is not None and self._usage_known(chunk.usage))
                     if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
+                        safe = guard.feed(chunk.choices[0].delta.content)
+                        if safe:
+                            yield safe
+            last = guard.finish()
+            if last:
+                yield last
             if self._paid(profile, base_url) and not usage_seen:
                 raise ProviderError("bad_output", "расход платного stream неизвестен: usage отсутствует")
         except APIError as exc:

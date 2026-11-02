@@ -9,17 +9,18 @@ import json
 from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
-from typing import Any
+from typing import Any, cast
 
 from psycopg import Error as DatabaseError
 from psycopg.types.json import Jsonb
 
 from app.agent.prompts import load as load_prompt
 from app.api.common import db, fetch_all, fetch_one
-from app.api.settings import key_plain, load_keys, set_setting
+from app.api.settings import key_plain, load_keys
 from app.bench import runner
 from app.config import get_settings
 from app.errors import Problem
+from app.llm import credentials
 from app.llm.base import LLMProfile, Provider, ProviderError
 from app.llm.budget import load_openrouter_budget
 from app.llm.failover import ProviderChain
@@ -34,6 +35,14 @@ from app.replay.provider import ReplayProvider
 from app.replay.store import CassetteStore
 
 log = get_logger(__name__)
+
+
+async def record_key_usage(conn: Any, key_id: int, tokens: int) -> None:
+    """Compatibility observations: тот же commit, что и bench_result; не T-050 wire ledger."""
+    await conn.execute(
+        "update llm_api_keys set tokens_used=tokens_used+%s,requests_today=(case when requests_day=(now() at time zone 'UTC')::date then requests_today else 0 end)+1,requests_day=(now() at time zone 'UTC')::date,updated_at=now() where id=%s",
+        (tokens, key_id),
+    )
 
 
 class BenchRateLimiter(RateLimiter):
@@ -95,6 +104,8 @@ class BenchService:
             )
             if len(profiles) != len(set(ids)):
                 raise Problem(422, "неизвестный или неактивный профиль")
+            for row in profiles:
+                await credentials.validate_binding(conn, self.profile(row))
             keys = await load_keys(conn)
         cases = [runner.BenchCase(r["id"], str(r["id"]), r["channel_code"], r["text"], r["gold"]) for r in rows]
         return dataset["code"], cases, profiles, keys
@@ -106,7 +117,11 @@ class BenchService:
             if key in values:
                 values[key] = float(values[key])
         values["temperature"] = 0.0  # единые параметры сравнения; профиль twin в БД не меняется
-        return LLMProfile(**values)
+        profile = LLMProfile(**values)
+        from app.llm.run_profiles import _safe
+
+        _safe(profile)
+        return profile
 
     def available_keys(self, provider: str, saved: list[dict[str, Any]]) -> list[dict[str, Any]]:
         settings = get_settings()
@@ -133,6 +148,13 @@ class BenchService:
                 )
         return keys
 
+    def selected_keys(self, profile: LLMProfile, saved: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        keys = self.available_keys(profile.provider, saved)
+        if profile.api_key_id is not None:
+            return [key for key in keys if key.get("id") == profile.api_key_id]
+        target = credentials.endpoint(profile.base_url or credentials.default_endpoint(profile.provider))
+        return [key for key in keys if key.get("id") is None or key.get("endpoint_url") == target]
+
     def remaining(self, keys: list[dict[str, Any]]) -> int | None:
         if any(k.get("tokens_limit") is None for k in keys):
             return None
@@ -151,7 +173,7 @@ class BenchService:
         self, code: str, cases: list[runner.BenchCase], row: dict[str, Any], saved: list[dict[str, Any]], repeats: int
     ) -> dict[str, Any]:
         profile = self.profile(row)
-        keys = self.available_keys(profile.provider, saved)
+        keys = self.selected_keys(profile, saved)
         fc = runner.forecast(
             code, profile, repeats=repeats, cases=cases, key_tokens_remaining=self.remaining(keys) if keys else None
         )
@@ -183,7 +205,7 @@ class BenchService:
             providers.append(ReplayProvider(CassetteStore(settings.cassettes_dir)))
         elif profile.provider == "gigachat":
             pool = []
-            for item in self.available_keys("gigachat", saved):
+            for item in self.selected_keys(profile, saved):
                 label = str(item["label"])
                 secret = item.get("_secret") or key_plain(item)
                 key = self.keys.get(label)
@@ -216,13 +238,14 @@ class BenchService:
             base = profile.base_url or (settings.local_llm_base_url if local else settings.openrouter_base_url)
             if not base:
                 raise ProviderError("unavailable", "LOCAL_LLM_BASE_URL или base_url локального профиля не задан")
-            keys = self.available_keys(profile.provider, saved)
+            keys = self.selected_keys(profile, saved)
             if local:
                 # Ключ локального endpoint выбирается явно; OpenRouter secret не подставляется.
                 keys = [
                     key
                     for key in keys
-                    if profile.extra.get("api_key_id") is not None and key.get("id") == profile.extra["api_key_id"]
+                    if (profile.api_key_id or profile.extra.get("api_key_id")) is not None
+                    and key.get("id") == (profile.api_key_id or profile.extra.get("api_key_id"))
                 ]
 
             def capacity(item: dict[str, Any]) -> int:
@@ -265,6 +288,9 @@ class BenchService:
             )
         else:
             raise ProviderError("unavailable", "провайдер не поддерживается")
+        if profile.api_key_id is not None:
+            for provider in providers:
+                cast(Any, provider).credential_id = profile.api_key_id
         return ProviderChain(providers, append_mock=False, rate_limiter=BenchRateLimiter()), providers, selected_key
 
     async def start(self, dataset_id: int, ids: list[int], repeats: int, dry_run: bool) -> dict[str, Any]:
@@ -323,21 +349,9 @@ class BenchService:
                         if key.provider != "gigachat":
                             usage_updates.append((key, result["prompt_tokens"] + result["completion_tokens"]))
                         if key.db_id is not None:
-                            await conn.execute("select value from settings where key='llm_keys' for update")
-                            stored = await load_keys(conn)
-                            for item in stored:
-                                if item.get("id") == key.db_id:
-                                    item["tokens_used"] = (
-                                        int(item.get("tokens_used") or 0)
-                                        + result["prompt_tokens"]
-                                        + result["completion_tokens"]
-                                    )
-                                    today = datetime.now(UTC).date().isoformat()
-                                    item["requests_today"] = (
-                                        int(item.get("requests_today") or 0) if item.get("requests_day") == today else 0
-                                    ) + 1
-                                    item["requests_day"] = today
-                            await set_setting(conn, "llm_keys", stored)
+                            await record_key_usage(
+                                conn, key.db_id, result["prompt_tokens"] + result["completion_tokens"]
+                            )
                     await conn.execute(
                         "insert into bench_results(run_id,case_id,repeat_no,predicted,correct,json_valid_first_try,retries,latency_ms,prompt_tokens,completion_tokens,fallback_mock) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (
@@ -385,7 +399,8 @@ class BenchService:
                     return
                 # Повторная проверка после ожидания другого прогона того же профиля.
                 async with db() as conn:
-                    saved = await load_keys(conn)
+                    await credentials.validate_binding(conn, self.profile(row))
+                    saved = await load_keys(conn, reveal=True)
                 fc = self.forecast(rec.dataset_code, cases, row, saved, rec.repeats)
                 if not fc["fits_limits"]:
                     raise ProviderError("quota", str(fc["warning"]))

@@ -942,7 +942,12 @@ export interface paths {
                         provider: components["schemas"]["LlmProvider"];
                         label: string;
                         key: string;
-                        tokens_limit?: number;
+                        tokens_limit?: number | null;
+                        rpd_limit?: number | null;
+                        /** @description Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. */
+                        endpoint_url?: string | null;
+                        /** @description GigaChat OAuth scope; по умолчанию configured scope */
+                        scope?: string | null;
                     };
                 };
             };
@@ -990,6 +995,13 @@ export interface paths {
             responses: {
                 /** @description Удалён */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Ключ привязан к профилю; сначала требуется явный unbind */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8020,6 +8032,11 @@ export interface components {
             id?: number;
             provider?: components["schemas"]["LlmProvider"];
             label?: string;
+            key_hint?: string | null;
+            endpoint_url?: string | null;
+            scope?: string | null;
+            /** Format: date-time */
+            created_at?: string | null;
             tokens_used?: number;
             tokens_limit?: number | null;
             requests_today?: number;

@@ -27,7 +27,7 @@ from app.ingest.normalizer import create_signal
 from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim import scenarios
-from app.sim.events import EventBus
+from app.sim.events import EventBus, dumps
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
 from app.sim.teams import TeamEmulator
@@ -72,7 +72,7 @@ def execution_lock(app: Any, *, public_demo: bool) -> Any:
 async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual_only: bool = False) -> bool:
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
-    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile)
+    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile, new=True)
     request = Request({"type": "http", "app": app, "headers": []})
     request.state.demo_sim_time = at
     public_demo = bool((await configuration(conn, run_id)).get("public_demo"))
@@ -222,17 +222,18 @@ async def _compliance_customer_case(
             raise ValueError("Не удалось зарегистрировать проактивное обращение комплаенса")
         sid = int(result["signal_id"])
         await conn.execute("update signals set status='linked',updated_at=now() where id=%s and status='new'", (sid,))
+    chain, main_profile = await run_profiles(conn, run_id, app.state.agent.chain, app.state.agent.profile, new=True)
     ar = (
         await (
             await conn.execute(
-                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'demo-role-v3','demo-execution-v1',%s) returning id",
-                (run_id, sid, incident_id, at),
+                "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('team_emulator',%s,%s,%s,'demo-role-v3','demo-execution-v1',%s,%s::jsonb) returning id",
+                (run_id, sid, incident_id, at, dumps(chain.role_snapshot)),
             )
         ).fetchone()
     )[0]
     ctx = ToolContext(conn, run_id=run_id, agent_run_id=ar, sim_time=at, llm_source=meta["source"])
     await link_signal_to_incident(ctx, sid, incident_id)
-    deps = Deps(ctx=ctx, chain=app.state.agent.chain, profile=app.state.agent.profile)
+    deps = Deps(ctx=ctx, chain=chain, profile=main_profile)
     await deps.record_step(
         "act",
         "ok",
@@ -262,7 +263,7 @@ async def notify_results(
         )
     ).fetchall()
     svc = app.state.agent
-    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile)
+    chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile, new=True)
     for iid, status, summary, breached, sid, cid, text, segment, consents, channel in rows:
         success = status == "closed"
         from app.i18n import communication_lang
@@ -283,8 +284,8 @@ async def notify_results(
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,'customer-result-v2','demo-execution-v1',%s) returning id",
-                    (run_id, sid, iid, at),
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('team_emulator',%s,%s,%s,'customer-result-v2','demo-execution-v1',%s,%s::jsonb) returning id",
+                    (run_id, sid, iid, at, dumps(chain.role_snapshot)),
                 )
             ).fetchone()
         )[0]
@@ -324,7 +325,7 @@ async def notify_results(
 async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) -> None:
     """Событийное время ручных цепочек хранится в профиле; часы фонового банка не двигаются."""
     sim, svc = app.state.sim, app.state.agent
-    chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile)
+    chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile, new=True)
     base_time = dt.datetime.fromisoformat(config["base_time"]) if config.get("public_demo") else sim.clock.sim_time
     if config.get("emulate_humans") and await employees(app, conn, rid, base_time, manual_only=True):
         return
@@ -442,7 +443,7 @@ async def cycle(app: Any) -> None:
     rid = sim.run_id
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
         config = await configuration(conn, rid)
-        chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile)
+        chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile, new=True)
         if sim.run_status not in ("running", "paused") and not config.get("recovery_incidents"):
             return
         if not config and getattr(sim, "full_execution", False):

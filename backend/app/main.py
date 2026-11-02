@@ -29,6 +29,7 @@ from app.llm.failover import ProviderChain, build_chain, default_profile
 from app.llm.gigachat import GigaChatProvider
 from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, openrouter_deactivation_plan
 from app.llm.roles import refresh as refresh_roles
+from app.llm.runtime_provider import clear_runtime_keys
 from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
@@ -157,9 +158,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if app.state.sim is not None:
         await app.state.sim.shutdown()
     await bridge.stop()
-    for provider in app.state.llm_chain.providers:
-        if isinstance(provider, (GigaChatProvider, OpenAICompatProvider)):
-            await provider.aclose()
+    try:
+        for provider in app.state.llm_chain.providers:
+            if isinstance(provider, (GigaChatProvider, OpenAICompatProvider)):
+                await provider.aclose()
+    finally:
+        clear_runtime_keys()
 
 
 def include_api_routers(app: FastAPI) -> list[str]:

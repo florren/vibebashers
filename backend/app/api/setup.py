@@ -17,7 +17,7 @@ from typing import Any, Literal
 import httpx
 from fastapi import APIRouter, Request, Response
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.common import db, fetch_one
 from app.api.settings import (
@@ -27,10 +27,13 @@ from app.api.settings import (
     get_setting,
     key_plain,
     load_keys,
+    public_setup,
     set_setting,
+    validate_setup_llm,
 )
 from app.config import get_settings
 from app.errors import Problem
+from app.llm import credentials
 from app.llm.base import LLMProfile, Message
 from app.llm.budget import load_openrouter_budget
 from app.llm.openai_compat import OpenAICompatProvider, is_openrouter, suggest_replacement
@@ -99,7 +102,7 @@ async def get_setup_status() -> Any:
 
 
 async def _payload(conn: Any) -> dict[str, Any]:
-    saved = await get_setting(conn, "setup_payload", {}) or {}
+    saved = public_setup(await get_setting(conn, "setup_payload", {}) or {})
     out = {k: {**v, **(saved.get(k) or {})} for k, v in DEFAULT_PAYLOAD.items()}
     pol = await get_setting(conn, "policies", {}) or {}
     out["policies"] = {
@@ -121,8 +124,11 @@ async def _payload(conn: Any) -> dict[str, Any]:
 
 @router.put("/api/setup", summary="Сохранить разделы мастера (частично); отмечает соответствующие шаги выполненными")
 async def put_setup(body: dict[str, Any], request: Request) -> Any:
+    if "llm" in body:
+        validate_setup_llm({"llm": body["llm"]})
     async with db() as conn, conn.transaction():
-        saved = await get_setting(conn, "setup_payload", {}) or {}
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        saved = public_setup(await get_setting(conn, "setup_payload", {}) or {})
         for section, val in body.items():
             if section not in SECTION_STEP or not isinstance(val, dict):
                 continue
@@ -153,6 +159,9 @@ async def put_setup(body: dict[str, Any], request: Request) -> Any:
                     if "seed" in val:
                         await conn.execute("update sim_state set seed = %s where id = 1", (int(val["seed"]),))
                 if section == "llm":
+                    credentials.safe_options(val)
+                    if set(val) - {"main_profile_id", "fast_profile_id", "twin_profile_id"}:
+                        raise Problem(422, "Неизвестные поля LLM role configuration")
                     chosen = [val.get(f"{role}_profile_id") for role in ("main", "fast", "twin")]
                     chosen = [pid for pid in chosen if pid is not None]
                     if any(type(pid) is not int or pid <= 0 for pid in chosen):
@@ -174,6 +183,10 @@ async def put_setup(body: dict[str, Any], request: Request) -> Any:
                             )
             await _mark(conn, SECTION_STEP[section])
         await set_setting(conn, "setup_payload", saved)
+        if "llm" in body:
+            from app.llm.run_profiles import capture
+
+            await capture(conn, None)
         payload = await _payload(conn)
     if "llm" in body:
         from app.llm.roles import refresh
@@ -202,7 +215,13 @@ class TestLlmBody(BaseModel):
     model: str
     base_url: str | None = None
     api_key: str | None = None
-    api_key_id: int | None = None
+    api_key_id: int | None = Field(default=None, ge=1, strict=True)
+
+    @model_validator(mode="after")
+    def validate_endpoint(self) -> TestLlmBody:
+        if self.base_url:
+            credentials.endpoint(self.base_url)
+        return self
 
 
 PING_SCHEMA: dict[str, Any] = {
@@ -229,14 +248,32 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
     local_compat = (
         body.provider == "openai_compatible" and bool(body.base_url) and not is_openrouter(body.base_url or "")
     )
+    if body.api_key_id is not None and body.api_key is not None:
+        raise Problem(422, "Передайте api_key либо api_key_id, не оба поля")
     async with db() as conn:
-        if not key and body.api_key_id:
-            item = next((k for k in await load_keys(conn) if int(k["id"]) == body.api_key_id), None)
-            if not item:
-                raise Problem(404, "Ключ не найден")
+        if body.api_key_id is not None:
+            item = await credentials.validate_binding(
+                conn,
+                LLMProfile(
+                    code="setup_test",
+                    provider=body.provider,
+                    model=body.model,
+                    base_url=body.base_url,
+                    api_key_id=body.api_key_id,
+                ),
+                reveal=True,
+            )
+            assert item is not None
             key = key_plain(item)
-        if not key and body.provider != "mock" and not local_compat:
-            stored = [k for k in await load_keys(conn) if k["provider"] == body.provider and k.get("is_active", True)]
+        elif not key and body.provider != "mock" and not local_compat:
+            target = credentials.endpoint(body.base_url or credentials.default_endpoint(body.provider))
+            stored = [
+                item
+                for item in await load_keys(conn, reveal=True)
+                if item["provider"] == body.provider
+                and item.get("is_active", True)
+                and item.get("endpoint_url") == target
+            ]
             if stored:
                 key = key_plain(stored[0])
     if not key and body.provider == "gigachat":
@@ -339,8 +376,9 @@ async def post_setup_test_llm(body: TestLlmBody) -> Any:
             "quota": quota,
         }
     finally:
-        if isinstance(prov, OpenAICompatProvider):
-            await prov.aclose()
+        close = getattr(prov, "aclose", None)
+        if close is not None:
+            await close()
 
 
 class TgBody(BaseModel):

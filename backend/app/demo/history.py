@@ -101,7 +101,7 @@ async def repair_rejected(conn: Any, signal_id: int, run_id: int) -> dict[str, A
     ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=row[4])
     deps = Deps(
         ctx=ctx,
-        chain=ProviderChain([MockProvider()]),
+        chain=ProviderChain([MockProvider()], offline_mode="mock"),
         profile=LLMProfile(code="operator_repair", provider="mock", model="operator", role="main"),
     )
     await conn.execute("update followups set status='cancelled' where id=any(%s)", ([p[0] for p in pending],))

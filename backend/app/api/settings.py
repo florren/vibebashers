@@ -8,14 +8,16 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Request, Response
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.errors import Problem
+from app.llm import credentials
 from app.llm import secrets as sec
+from app.llm.base import binding_fields
 from app.llm.budget import load_openrouter_budget
-from app.llm.openai_compat import OpenAICompatProvider
+from app.llm.openai_compat import OpenAICompatProvider, is_openrouter
 
 router = APIRouter(tags=["settings"])
 
@@ -35,7 +37,30 @@ async def set_setting(conn: Any, key: str, value: Any) -> None:
 
 
 def _mask_keys(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [{k: v for k, v in it.items() if k != "key_enc"} for it in items]
+    return [credentials.public_key(it) for it in items]
+
+
+def public_setup(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    copied = dict(value)
+    if isinstance(copied.get("llm"), dict):
+        copied["llm"] = {
+            key: item
+            for key, item in copied["llm"].items()
+            if key in {"main_profile_id", "fast_profile_id", "twin_profile_id"}
+        }
+    return copied
+
+
+def validate_setup_llm(value: Any) -> None:
+    if not isinstance(value, dict):
+        raise Problem(422, "setup_payload должен быть объектом")
+    selected = value.get("llm") or {}
+    if not isinstance(selected, dict) or set(selected) - {"main_profile_id", "fast_profile_id", "twin_profile_id"}:
+        raise Problem(422, "Неизвестные поля LLM role configuration")
+    if any(item is not None and (type(item) is not int or item < 1) for item in selected.values()):
+        raise Problem(422, "ID профиля должен быть положительным целым числом")
 
 
 # ---- settings map ---------------------------------------------------------
@@ -45,18 +70,30 @@ async def get_settings_map() -> Any:
         rows = await fetch_all(conn, "select key, value, updated_at from settings order by key")
     out: dict[str, Any] = {}
     for r in rows:
-        out[r["key"]] = _mask_keys(list(r["value"] or [])) if r["key"] in SECRET_KEYS else r["value"]
+        value = r["value"]
+        if r["key"] in SECRET_KEYS:
+            value = _mask_keys(list(value or []))
+        elif r["key"] == "setup_payload":
+            value = public_setup(value)
+        out[r["key"]] = value
     return out
 
 
 @router.patch("/api/settings", summary="Частичное обновление настроек (merge по ключам верхнего уровня)")
 async def patch_settings(body: dict[str, Any]) -> Response:
-    async with db() as conn:
+    if SECRET_KEYS & body.keys():
+        raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
+    if "setup_payload" in body:
+        validate_setup_llm(body["setup_payload"])
+    async with db() as conn, conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in body.items():
-            if k in SECRET_KEYS:
-                raise Problem(422, f"Ключ {k} меняется только через /api/settings/llm-keys")
             cur = await get_setting(conn, k)
             await set_setting(conn, k, {**cur, **v} if isinstance(cur, dict) and isinstance(v, dict) else v)
+        if "setup_payload" in body:
+            from app.llm.run_profiles import capture
+
+            await capture(conn, None)
     return Response(status_code=200)
 
 
@@ -68,7 +105,7 @@ EXPORT_TABLES: dict[str, str] = {
     "psychotypes": "select code, name_ru, name_en, params from psychotypes order by code",
     "segment_psychotype_mix": "select segment_code, psychotype_code, share::float from segment_psychotype_mix order by 1, 2",
     "dcltv_rates": "select code, name_ru, name_en, rate_rub::float, maps_to from dcltv_rates order by code",
-    "llm_profiles": "select id, code, provider, model, base_url, role, temperature::float, rpm_limit, rpd_limit, price_in_per_1m::float, price_out_per_1m::float, supports_tools, supports_stream, is_active, extra from llm_profiles order by id",
+    "llm_profiles": "select id, code, provider, model, base_url, api_key_id, role, temperature::float, rpm_limit, rpd_limit, price_in_per_1m::float, price_out_per_1m::float, supports_tools, supports_stream, is_active, extra from llm_profiles order by id",
 }
 
 
@@ -79,21 +116,30 @@ async def get_settings_export() -> Any:
             "exported_at": dt.datetime.now(dt.UTC).isoformat(),
             "version": 1,
             "settings": {
-                r["key"]: r["value"]
+                r["key"]: public_setup(r["value"]) if r["key"] == "setup_payload" else r["value"]
                 for r in await fetch_all(conn, "select key, value from settings")
                 if r["key"] not in SECRET_KEYS
             },
         }
         for name, sql in EXPORT_TABLES.items():
-            out[name] = await fetch_all(conn, sql)
+            rows = await fetch_all(conn, sql)
+            out[name] = [public_profile(row) for row in rows] if name == "llm_profiles" else rows
         out["economics_settings"] = await _economics(conn)
     return out
 
 
 @router.post("/api/settings/import", summary="Импорт настроек из экспорта (перезаписывает одноимённые разделы)")
 async def post_settings_import(body: dict[str, Any]) -> Response:
-    async with db() as conn:
-        for k, v in (body.get("settings") or {}).items():
+    imported = body.get("settings") or {}
+    if not isinstance(imported, dict):
+        raise Problem(422, "settings должен быть объектом")
+    if SECRET_KEYS & imported.keys():
+        raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
+    if "setup_payload" in imported:
+        validate_setup_llm(imported["setup_payload"])
+    async with db() as conn, conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        for k, v in imported.items():
             if k not in SECRET_KEYS:
                 await set_setting(conn, k, v)
         if body.get("sla_matrix"):
@@ -106,6 +152,10 @@ async def post_settings_import(body: dict[str, Any]) -> Response:
             await _put_gifts(conn, [Gift(**r) for r in body["gift_catalog"]])
         if body.get("economics_settings"):
             await _put_economics(conn, EconomicsSettings(**body["economics_settings"]))
+        if "setup_payload" in imported:
+            from app.llm.run_profiles import capture
+
+            await capture(conn, None)
         if body.get("psychotypes") is not None or body.get("segment_psychotype_mix") is not None:
             mix: dict[str, dict[str, float]] = {}
             for r in body.get("segment_psychotype_mix") or []:
@@ -197,6 +247,7 @@ class LlmProfile(BaseModel):
     provider: Literal["gigachat", "openai_compatible", "mock"]
     model: str
     base_url: str | None = None
+    api_key_id: int | None = Field(default=None, ge=1, strict=True)
     role: Literal["main", "fast", "twin", "bench_only"] = "main"
     temperature: float = 0.0
     rpm_limit: int | None = None
@@ -208,25 +259,48 @@ class LlmProfile(BaseModel):
     is_active: bool = True
     extra: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_secret_boundary(self) -> LlmProfile:
+        credentials.safe_options(self.extra)
+        if "api_key_id" in self.extra:
+            raise ValueError("api_key_id задаётся полем профиля, не extra")
+        if self.base_url:
+            credentials.endpoint(self.base_url)
+        return self
+
 
 @router.get("/api/settings/llm-profiles", summary="LLM-профили (main / fast / twin / bench_only)")
 async def get_llm_profiles() -> Any:
     async with db() as conn:
-        return await fetch_all(conn, EXPORT_TABLES["llm_profiles"])
+        rows = await fetch_all(conn, EXPORT_TABLES["llm_profiles"])
+    return [public_profile(row) for row in rows]
+
+
+def public_profile(row: dict[str, Any]) -> dict[str, Any]:
+    try:
+        projected = dict(row)
+        projected["api_key_id"], projected["extra"] = binding_fields(row.get("api_key_id"), row.get("extra") or {})
+        validated = LlmProfile.model_validate(projected)
+    except ValueError as exc:
+        raise Problem(409, "Сохранённый профиль требует безопасной миграции") from exc
+    return {key: projected[key] for key in validated.model_fields_set if key in projected}
 
 
 @router.post("/api/settings/llm-profiles", status_code=201, summary="Добавить LLM-профиль")
 async def post_llm_profiles(body: LlmProfile) -> Response:
-    async with db() as conn:
+    async with db() as conn, conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        await credentials.validate_binding(conn, body)
         if await fetch_one(conn, "select 1 from llm_profiles where code = %s", (body.code,)):
             raise Problem(409, f"Профиль {body.code} уже есть")
         await conn.execute(
-            "insert into llm_profiles (code, provider, model, base_url, role, temperature, rpm_limit, rpd_limit, price_in_per_1m, price_out_per_1m, supports_tools, supports_stream, is_active, extra) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "insert into llm_profiles (code, provider, model, base_url, api_key_id, role, temperature, rpm_limit, rpd_limit, price_in_per_1m, price_out_per_1m, supports_tools, supports_stream, is_active, extra) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 body.code,
                 body.provider,
                 body.model,
                 body.base_url,
+                body.api_key_id,
                 body.role,
                 body.temperature,
                 body.rpm_limit,
@@ -244,19 +318,27 @@ async def post_llm_profiles(body: LlmProfile) -> Response:
 
 @router.patch("/api/settings/llm-profiles/{id}", summary="Изменить LLM-профиль")
 async def patch_llm_profiles_id(id: int, body: LlmProfile, request: Request) -> Response:  # noqa: A002
-    async with db() as conn:
-        if not await fetch_one(conn, "select 1 from llm_profiles where id = %s", (id,)):
+    async with db() as conn, conn.transaction():
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        existing = await fetch_one(conn, "select api_key_id,extra from llm_profiles where id = %s", (id,))
+        if existing is None:
             raise Problem(404, "Профиль не найден")
+        if "api_key_id" not in body.model_fields_set:
+            # PATCH старого клиента не является согласием на unbind→env fallback.
+            bound_id, _ = binding_fields(existing["api_key_id"], existing["extra"])
+            body = body.model_copy(update={"api_key_id": bound_id})
+        await credentials.validate_binding(conn, body)
         saved = await get_setting(conn, "setup_payload", {}) or {}
         if id in ((saved.get("llm") or {}).values()) and not body.is_active:
             raise Problem(422, "Сначала выберите другой профиль для активной роли")
         await conn.execute(
-            "update llm_profiles set code = %s, provider = %s, model = %s, base_url = %s, role = %s, temperature = %s, rpm_limit = %s, rpd_limit = %s, price_in_per_1m = %s, price_out_per_1m = %s, supports_tools = %s, supports_stream = %s, is_active = %s, extra = %s where id = %s",
+            "update llm_profiles set code = %s, provider = %s, model = %s, base_url = %s, api_key_id = %s, role = %s, temperature = %s, rpm_limit = %s, rpd_limit = %s, price_in_per_1m = %s, price_out_per_1m = %s, supports_tools = %s, supports_stream = %s, is_active = %s, extra = %s where id = %s",
             (
                 body.code,
                 body.provider,
                 body.model,
                 body.base_url,
+                body.api_key_id,
                 body.role,
                 body.temperature,
                 body.rpm_limit,
@@ -284,7 +366,11 @@ async def delete_llm_profiles_id(id: int, request: Request) -> Response:  # noqa
         saved = await get_setting(conn, "setup_payload", {}) or {}
         if id in ((saved.get("llm") or {}).values()):
             raise Problem(422, "Сначала выберите другой профиль для активной роли")
-        used = await fetch_one(conn, "select count(*) as n from agent_runs where llm_profile_id = %s", (id,))
+        used = await fetch_one(
+            conn,
+            "select (select count(*) from agent_runs where llm_profile_id=%s)+(select count(*) from sim_runs where llm_profile_id=%s) as n",
+            (id, id),
+        )
         if int((used or {}).get("n") or 0):
             raise Problem(409, "На профиль ссылаются запуски агента — деактивируйте его вместо удаления")
         await conn.execute("delete from llm_profiles where id = %s", (id,))
@@ -294,21 +380,33 @@ async def delete_llm_profiles_id(id: int, request: Request) -> Response:  # noqa
     return Response(status_code=204)
 
 
-# ---- LLM keys (settings.llm_keys, зашифрованы) ---------------------------
+# ---- LLM keys: canonical PGP configuration --------------------------------
 class LlmKeyBody(BaseModel):
     provider: Literal["gigachat", "openai_compatible", "mock"]
     label: str = Field(min_length=1, max_length=80)
-    key: str = Field(min_length=4)
-    tokens_limit: int | None = None
-    rpd_limit: int | None = None
+    key: str = Field(min_length=4, repr=False)
+    tokens_limit: int | None = Field(default=None, ge=0)
+    rpd_limit: int | None = Field(default=None, ge=0)
+    endpoint_url: str | None = None
+    scope: str | None = None
+
+    @model_validator(mode="after")
+    def validate_endpoint(self) -> LlmKeyBody:
+        if self.endpoint_url:
+            credentials.endpoint(self.endpoint_url)
+        if self.scope is not None and (self.provider != "gigachat" or self.scope != get_settings().gigachat_scope):
+            raise ValueError("scope не соответствует провайдеру")
+        return self
 
 
-async def load_keys(conn: Any) -> list[dict[str, Any]]:
-    return list(await get_setting(conn, "llm_keys", []) or [])
+async def load_keys(conn: Any, *, reveal: bool = False) -> list[dict[str, Any]]:
+    return await credentials.list_keys(conn, reveal=reveal)
 
 
 def key_plain(item: dict[str, Any]) -> str:
-    return sec.decrypt(str(item["key_enc"]), get_settings().app_secret)
+    if not isinstance(item.get("_secret"), str):
+        raise Problem(409, "Private credential lookup не выполнен")
+    return str(item["_secret"])
 
 
 def _chain_has_openai(chain: str) -> bool:
@@ -323,17 +421,21 @@ async def _refresh_openai_balances(items: list[dict[str, Any]]) -> bool:
         return False
     changed = False
     for item in items:
-        if item.get("provider") != "openai_compatible" or not item.get("key_enc"):
+        if (
+            item.get("provider") != "openai_compatible"
+            or not item.get("_secret")
+            or not is_openrouter(item.get("endpoint_url") or "")
+        ):
             continue
         try:
             secret = key_plain(item)
         except Exception as exc:
-            item["last_error"] = str(exc)[:300]
+            item["last_error"] = type(exc).__name__
             changed = True
             continue
         prov = OpenAICompatProvider(
             secret,
-            s.openrouter_base_url,
+            item["endpoint_url"],
             budget_usd=s.openrouter_budget_usd,
             budget_loader=partial(load_openrouter_budget, s.openrouter_budget_usd),
             http_referer=f"http://localhost:{s.app_port}",
@@ -341,7 +443,7 @@ async def _refresh_openai_balances(items: list[dict[str, Any]]) -> bool:
         try:
             info = await prov.fetch_key()
         except Exception as exc:
-            item["last_error"] = str(exc)[:300]
+            item["last_error"] = type(exc).__name__
             changed = True
         else:
             item["balance_usd"] = info.get("balance_usd")
@@ -404,54 +506,71 @@ async def _with_openrouter_env_key(items: list[dict[str, Any]]) -> list[dict[str
         try:
             info = await prov.fetch_key()
         except Exception as exc:
-            last_error = str(exc)[:300]
+            last_error = type(exc).__name__
         finally:
             await prov.aclose()
     return public_openrouter_env_key(items, info, key_hint=hint, last_error=last_error)
 
 
-@router.get("/api/settings/llm-keys", summary="API-ключи (значения не возвращаются, только хвост)")
+@router.get("/api/settings/llm-keys", summary="API-ключи (только public projection)")
 async def get_llm_keys() -> Any:
     async with db() as conn:
-        items = await load_keys(conn)
+        items = await load_keys(conn, reveal=not get_settings().is_test)
         if await _refresh_openai_balances(items):
-            await set_setting(conn, "llm_keys", items)
-        masked = _mask_keys(items)
-    return await _with_openrouter_env_key(masked)
+            for item in items:
+                await conn.execute(
+                    "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
+                    (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
+                )
+    return await _with_openrouter_env_key(_mask_keys(items))
 
 
-@router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (шифруется APP_SECRET)")
+@router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (PGP/APP_SECRET)")
 async def post_llm_keys(body: LlmKeyBody) -> Any:
-    async with db() as conn:
-        items = await load_keys(conn)
-        item = {
-            "id": (max((int(i["id"]) for i in items), default=0) + 1),
-            "provider": body.provider,
-            "label": body.label,
-            "key_hint": sec.hint(body.key),
-            "key_enc": sec.encrypt(body.key, get_settings().app_secret),
-            "tokens_used": 0,
-            "tokens_limit": body.tokens_limit,
-            "requests_today": 0,
-            "rpd_limit": body.rpd_limit,
-            "balance_usd": None,
-            "is_active": True,
-            "last_error": None,
-            "created_at": dt.datetime.now(dt.UTC).isoformat(),
-        }
-        items.append(item)
-        await set_setting(conn, "llm_keys", items)
-    return _mask_keys([item])[0]
+    async with db() as conn, conn.transaction():
+        await credentials.migrate_legacy(conn)
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        item = await fetch_one(
+            conn,
+            "insert into llm_api_keys(provider,label,encrypted_key,key_hint,endpoint_url,scope,tokens_limit,rpd_limit,credential_uid) "
+            f"values(%s,%s,pgp_sym_encrypt(%s,%s),%s,%s,%s,%s,%s,%s) returning {credentials.PUBLIC_SQL}",
+            (
+                body.provider,
+                body.label,
+                body.key,
+                get_settings().app_secret,
+                sec.hint(body.key),
+                credentials.endpoint(body.endpoint_url or credentials.default_endpoint(body.provider))
+                if body.provider != "mock"
+                else None,
+                body.scope or (get_settings().gigachat_scope if body.provider == "gigachat" else None),
+                body.tokens_limit,
+                body.rpd_limit,
+                await credentials.identity_uid(conn, body.provider, body.key),
+            ),
+        )
+    assert item is not None
+    return credentials.public_key(item)
 
 
-@router.delete("/api/settings/llm-keys/{id}", status_code=204, summary="Удалить API-ключ")
+@router.delete("/api/settings/llm-keys/{id}", status_code=204, summary="Удалить непривязанный API-ключ")
 async def delete_llm_keys_id(id: int) -> Response:  # noqa: A002
-    async with db() as conn:
-        items = await load_keys(conn)
-        rest = [i for i in items if int(i["id"]) != id]
-        if len(rest) == len(items):
+    async with db() as conn, conn.transaction():
+        await credentials.migrate_legacy(conn)
+        await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+        if await fetch_one(
+            conn,
+            "select id from llm_profiles where api_key_id=%s or extra->'api_key_id'=to_jsonb(%s::integer) limit 1",
+            (id, id),
+        ):
+            raise Problem(409, "Сначала явно отвяжите ключ от профилей")
+        row = await fetch_one(
+            conn,
+            "update llm_api_keys set is_active=false,deleted_at=now(),updated_at=now() where id=%s and deleted_at is null returning id",
+            (id,),
+        )
+        if row is None:
             raise Problem(404, "Ключ не найден")
-        await set_setting(conn, "llm_keys", rest)
     return Response(status_code=204)
 
 

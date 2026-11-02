@@ -1,0 +1,34 @@
+# T-051 P1: configuration → execution
+
+## Статус
+
+Backend source checkpoint, не готовый к merge пакет. База85fcbaa объединяет main SDK6d7e5e и T-04134711ec. Перед итоговыми проверками требуется ordinary merge maintenance297a8459 (0011/0012, API17), затем сохраняется P1 API1.5.18/0013. UI выполняется отдельным focused commit от этого source checkpoint; full DoD/CI/human review ещё впереди.
+
+## Конкретное поведение
+
+- Новый AgentRun получает secret-free snapshot актуальных main/fast/twin до первого LLM. Начатый/HITL/recovered AR использует собственный snapshot. SimRun initial snapshot — metadata; только explicit main override фиксирует INITIAL main parameters, fast/twin остаются актуальными для новых AR.
+- Mutable current-main/default и provider одной роли не переключают authoritative роли другого/старого AR. Только explicit `Settings.llm_provider` и internal `ProviderChain.offline_mode` принудительно переводят все автоматические роли в mock/replay. Не выводим intent из отсутствия env credentials или списка names. Старый явный offline caller получает отдельный provenance snapshot, без придуманной истории legacy AR.
+- Setup `test-llm` и выбранный benchmark profile сохраняют существующий явный diagnostic intent вне автоматического AR режима. Они используют те же binding/SDK budget/close guards; offline0HTTP не заявляется для намеренной diagnostic API проверки.
+- `llm_api_keys` — единственный writable credential source: pgp_sym_encrypt(APP_SECRET), private stable UID, endpoint/scope metadata. ID/UID повторно не выделяются как новая account identity для alias/re-add того же значения. UID/cipher/plain не выдаются API. Unbound profile сохраняет явно документированный legacy env source; выбранный missing/inactive/wrong-provider/wrong-endpoint key не подменяется env.
+- DELETE bound key возвращает409 до явного profile `api_key_id:null`. Отсутствие поля при PATCH старого клиента сохраняет binding. Soft deletion сохраняет identity и отзывает credential для начатых snapshots. Старый bench `extra.api_key_id` поддерживается только как явная read compatibility: нормализуется в public/API field, новые writes в extra запрещены, conflicting значения отвергаются.
+- Legacy enc1 import — одна транзакция под advisory510013, с безопасным конфликтом ID/provider/plain equality. До успешного commit old encrypted row не удаляется. Scoped0013 trigger запрещает INSERT/UPDATE `settings.llm_keys`, включая старую версию приложения; DELETE конвертера разрешён. Это forward migration, не обещание совместимости старого writable приложения: rollback требует остановки app и reviewed recovery/conversion из config backup, затем согласованного source. Нельзя запускать старый writer параллельно или обходить trigger в prod.
+- Повторный cutover не пере-шифровывает строки и не создаёт фиктивный config drift. Specific trigger отключается только в synthetic fixture transaction для моделирования ДО-upgrade row, с finally re-enable/savepoint/rollback.
+- Bound runtime HTTP client закрывается в finally. Giga private per-loop ApiKey/OAuth-lock state сохраняет прежние in-memory usage/health между вызовами, в том числе alias identity; explicit lifespan cleanup после drain разрывает loop/Lock ссылки. Durable admission/reset history не заявляется: T-050 P2 отдельно. Existing bench observations остаются в transaction вместе с result, теперь в canonical store; quota-error fictional tokens_used=limit не персистируется как actual spending.
+
+## Credential boundary
+
+Публичные key projections положительные; private значения и неизвестные будущие private fields не пролезают через generic settings/export/engine DB. Invalid credential/config input errors не включают Pydantic input/ctx. Secret URL/query/fragment/extra и ambiguously shadowed binding не допускаются. Все selected roles/bound metadata проверяются до destructive baseline reset даже без body profile ID; maintenance fingerprint/race integration ещё предстоит.
+
+Giga OAuth/chat error diagnostics сохраняют kind/status/Retry-After/usage/retry behavior, но upstream body и network exception values не идут в KeyPool logs/API. Exact selected credential и Giga bearer token в model raw/parsed JSON вызывают constant bad_output до return/trace/persistence: ответ не маскируется и не подменяется. Known response usage при отказе сохраняется. Stream держит только неоднозначный literal prefix, поэтому split credential не выдаётся по кускам. Обычный trace/text не редактируется. OAuth `access_token` — ожидаемое private поле протокола, никогда не public model output; echo authkey в иных OAuth полях отклоняется. Произвольные сторонние debug handlers/opaque энкодинги не объявляются защищёнными универсально.
+
+## Проверки source checkpoint
+
+-146 pure tests (SDK/Giga/credential/reflection/offline/profile/bench guards),2.85s.
+- PG11routing/tracing/profile tests,47.34s, все исходные model/cost/idempotency assertions сохранены. Два live-routed RecordingProvider fixtures явно задают `LLM_PROVIDER=gigachat` и очищают cache; физически остаются memory Fake без HTTP.
+- PG16 API/bench tests,71.13s на промежуточном дереве. Расширенный набор дал23pass/2fail из-за cached logger в закрытый capsys fixture; fixture устранён, targeted6passed/11deselected,23.29s. Полный окончательный набор будет повторён после maintenance merge.
+- Generation выполнена own checkout и исключительно `cx_profile_hotapply_revision`; ruff/format/mypy255 проходили адресно. Предыдущая база отдельно:1038unit/18skip+22PG+171front, не переносится автоматически на P1.
+- No live LLM, production data, env/key registry inspection, canonical venv mutation, push/PR/main merge.
+
+## Обязательный review перед merge
+
+`contract-change`/`cross-layer`: DB0013 + API1.5.18, source transition/rollback, diagnostic egress boundary, selected-key authority, effective per-AR profile semantics и actual SDK budget guards. Ни rates/default budgets, ни банковские суммы/refund/HITL thresholds не менялись. Usage counters не добавлять в baseline fingerprint; private UID/endpoint/scope/limits/deleted config включить после maintenance composition. Номер0014 сохранён для отдельно reviewed durable operational store.

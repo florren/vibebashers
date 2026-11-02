@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.15
+  version: 1.5.18
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -398,7 +398,10 @@ paths:
                 provider: { $ref: "#/components/schemas/LlmProvider" }
                 label: { type: string }
                 key: { type: string, writeOnly: true }
-                tokens_limit: { type: integer }
+                tokens_limit: { type: [integer, "null"], minimum: 0 }
+                rpd_limit: { type: [integer, "null"], minimum: 0 }
+                endpoint_url: { type: [string, "null"], description: Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. }
+                scope: { type: [string, "null"], description: GigaChat OAuth scope; по умолчанию configured scope }
       responses:
         "201": { description: Создан, content: { application/json: { schema: { $ref: "#/components/schemas/LlmApiKey" } } } }
   /api/settings/llm-keys/{id}:
@@ -408,6 +411,7 @@ paths:
       summary: Удалить ключ
       responses:
         "204": { description: Удалён }
+        "409": { description: Ключ привязан к профилю; сначала требуется явный unbind }
   /api/settings/templates:
     get:
       tags: [settings]
@@ -2852,13 +2856,17 @@ components:
         supports_tools: { type: boolean }
         supports_stream: { type: boolean }
         is_active: { type: boolean }
-        api_key_id: { type: [integer, "null"] }
+        api_key_id: { type: [integer, "null"], minimum: 1 }
     LlmApiKey:
       type: object
       properties:
         id: { type: integer }
         provider: { $ref: "#/components/schemas/LlmProvider" }
         label: { type: string }
+        key_hint: { type: [string, "null"] }
+        endpoint_url: { type: [string, "null"] }
+        scope: { type: [string, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
         tokens_used: { type: integer }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }

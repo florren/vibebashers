@@ -16,6 +16,7 @@ from app.contracts.registry import validate
 from app.db.session import psycopg_dsn
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve
 from app.logging import get_logger
 from app.sim.events import dumps
 
@@ -104,11 +105,12 @@ async def process_feedback(conn: Any, feedback_id: int, chain: ProviderChain, pr
                 (source_ar,),
             )
         ).fetchall()
+        chain, profile = await resolve(conn, rid, chain, profile, new=True)
         arid = (
             await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim) values ('operator_review',%s,%s,%s,%s,'operator-feedback-v1',%s) returning id",
-                    (rid, sid, iid, prompt_version(), sim_time),
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('operator_review',%s,%s,%s,%s,'operator-feedback-v1',%s,%s::jsonb) returning id",
+                    (rid, sid, iid, prompt_version(), sim_time, dumps(chain.role_snapshot)),
                 )
             ).fetchone()
         )[0]

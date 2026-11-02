@@ -19,6 +19,7 @@ import httpx
 
 from app.contracts.registry import validate_schema
 from app.llm.base import LLMProfile, Message, ProviderError, Usage, extract_json
+from app.llm.credential_boundary import CredentialStreamGuard, reject_reflection, retry_after
 from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
@@ -164,7 +165,7 @@ class GigaChatProvider:
                                 raise ProviderError(
                                     "rate_limit",
                                     "models 429",
-                                    retry_after_s=float(response.headers.get("Retry-After", 20)),
+                                    retry_after_s=retry_after(response.headers.get("Retry-After")),
                                 )
                             if response.status_code >= 400:
                                 raise ProviderError("unavailable", f"models {response.status_code}")
@@ -249,18 +250,20 @@ class GigaChatProvider:
                 penalize_cancellation=not proactive,
             )
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", f"oauth: {e}") from e
+            raise ProviderError("timeout", f"oauth: {type(e).__name__}") from e
         except httpx.HTTPError as e:
-            raise ProviderError("network", f"oauth: {e}") from e
+            raise ProviderError("network", f"oauth: {type(e).__name__}") from e
         if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
-            raise ProviderError("auth", f"oauth {r.status_code}: {r.text[:200]}", status=r.status_code)
+            raise ProviderError("auth", f"oauth HTTP {r.status_code}", status=r.status_code)
         if r.status_code == 429:
             raise ProviderError(
-                "rate_limit", "oauth 429", status=429, retry_after_s=float(r.headers.get("Retry-After", 20))
+                "rate_limit", "oauth 429", status=429, retry_after_s=retry_after(r.headers.get("Retry-After"))
             )
         if r.status_code >= 400:
-            raise ProviderError("unavailable", f"oauth {r.status_code}: {r.text[:200]}", status=r.status_code)
+            raise ProviderError("unavailable", f"oauth HTTP {r.status_code}", status=r.status_code)
         body = r.json()
+        # access_token — ожидаемое private поле OAuth, оно не возвращается в API/trace.
+        reject_reflection({name: value for name, value in body.items() if name != "access_token"}, [key.secret])
         key.access_token = body["access_token"]
         key.token_expires_at = float(body.get("expires_at", (time.time() + 1800) * 1000)) / 1000.0
         log.info("gigachat_token", key=key.label, expires_in_s=int(key.token_expires_at - time.time()))
@@ -306,26 +309,26 @@ class GigaChatProvider:
                     timeout=request_timeout(timeout_s),
                 )
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", str(e)) from e
+            raise ProviderError("timeout", type(e).__name__) from e
         except httpx.HTTPError as e:
-            raise ProviderError("network", str(e)) from e
+            raise ProviderError("network", type(e).__name__) from e
         if r.status_code in (401, 403) or _bad_authorization(r.status_code, r.text):
             key.access_token = None
             if r.status_code == 403 and "quota" in r.text.lower():
-                raise ProviderError("quota", r.text[:200], status=403)
-            raise ProviderError("auth", r.text[:200], status=r.status_code)
+                raise ProviderError("quota", "HTTP 403", status=403)
+            raise ProviderError("auth", f"HTTP {r.status_code}", status=r.status_code)
         if r.status_code == 429:
             raise ProviderError(
-                "rate_limit", r.text[:200], status=429, retry_after_s=float(r.headers.get("Retry-After", 20))
+                "rate_limit", "HTTP 429", status=429, retry_after_s=retry_after(r.headers.get("Retry-After"))
             )
         if (
             r.status_code == 402
             or (r.status_code == 403 and "quota" in r.text.lower())
             or (r.status_code == 400 and "token" in r.text.lower() and "limit" in r.text.lower())
         ):
-            raise ProviderError("quota", r.text[:200], status=r.status_code)
+            raise ProviderError("quota", f"HTTP {r.status_code}", status=r.status_code)
         if r.status_code >= 400:
-            raise ProviderError("unavailable", f"{r.status_code}: {r.text[:200]}", status=r.status_code)
+            raise ProviderError("unavailable", f"HTTP {r.status_code}", status=r.status_code)
         return r
 
     async def _with_keys(
@@ -386,7 +389,6 @@ class GigaChatProvider:
                 exc.usage = total_usage
                 raise
             body = r.json()
-            total_usage.model = str(body.get("model") or profile.model)
             u = body.get("usage", {})
             total_usage.prompt_tokens += int(u.get("prompt_tokens", 0))
             total_usage.completion_tokens += int(u.get("completion_tokens", 0))
@@ -396,6 +398,15 @@ class GigaChatProvider:
                 int(u.get("total_tokens", 0)) or int(u.get("prompt_tokens", 0)) + int(u.get("completion_tokens", 0)),
             )
             raw = body["choices"][0]["message"]["content"]
+            try:
+                reject_reflection(raw, [key.secret, key.access_token])
+                if body.get("model") != profile.model:
+                    reject_reflection(body.get("model"), [key.secret, key.access_token])
+            except ProviderError as exc:
+                total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
+                exc.usage = total_usage
+                raise
+            total_usage.model = str(body.get("model") or profile.model)
             try:
                 obj = extract_json(raw)
                 errors = validate_schema(obj, schema)
@@ -429,6 +440,7 @@ class GigaChatProvider:
             raise ProviderError("miss", "профиль openai_compatible")
         key = self.pool.pick()
         token = await self._token(key, timeout_s)
+        guard = CredentialStreamGuard([key.secret, token])
         payload = {
             **profile.extra.get("request", {}),
             "model": profile.model,
@@ -452,10 +464,10 @@ class GigaChatProvider:
                 ) as r,
             ):
                 if r.status_code >= 400:
-                    body = await r.aread()
+                    await r.aread()
                     raise ProviderError(
                         "rate_limit" if r.status_code == 429 else "unavailable",
-                        body[:200].decode(errors="ignore"),
+                        f"HTTP {r.status_code}",
                         status=r.status_code,
                     )
                 async for line in r.aiter_lines():
@@ -466,11 +478,16 @@ class GigaChatProvider:
                         break
                     chunk = json.loads(data)
                     delta = chunk.get("choices", [{}])[0].get("delta", {}).get("content")
-                    if delta:
-                        yield delta
                     if chunk.get("usage"):
                         self.pool.add_usage(key, int(chunk["usage"].get("total_tokens", 0)))
+                    if delta:
+                        safe = guard.feed(delta)
+                        if safe:
+                            yield safe
+                last = guard.finish()
+                if last:
+                    yield last
         except httpx.TimeoutException as e:
-            raise ProviderError("timeout", str(e)) from e
+            raise ProviderError("timeout", type(e).__name__) from e
         except httpx.HTTPError as e:
-            raise ProviderError("network", str(e)) from e
+            raise ProviderError("network", type(e).__name__) from e

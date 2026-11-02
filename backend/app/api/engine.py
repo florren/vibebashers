@@ -126,7 +126,7 @@ async def post_agent_compare(request: Request, body: CompareBody) -> Any:
         raise HTTPException(status_code=422, detail="text слишком короткий")
     guard_jury_rate(request)
     profile = LLMProfile(code="compare", provider="mock", model="mock-rules-v1")
-    chain = getattr(request.app.state, "llm_chain", None) or ProviderChain([MockProvider()])
+    chain = getattr(request.app.state, "llm_chain", None) or ProviderChain([MockProvider()], offline_mode="mock")
     llm_profile = getattr(request.app.state, "llm_profile", None) or profile
     if body.llm_profile_id is not None or body.client_id is not None:
         async with db() as conn:

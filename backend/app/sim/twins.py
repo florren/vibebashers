@@ -163,7 +163,7 @@ class TwinService:
             )
             if remaining < estimate:
                 return None
-            chain, main_profile = await run_profiles(conn, int(run_id), self.chain, self.profile)
+            chain, main_profile = await run_profiles(conn, int(run_id), self.chain, self.profile, new=True)
             profile = chain.profile_for("twin", main_profile)
             profile = dataclasses.replace(
                 profile,
@@ -178,8 +178,8 @@ class TwinService:
             ).fetchone()
             created = await (
                 await conn.execute(
-                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,client_id,llm_profile_id,prompt_version,graph_version,thread_id,started_sim) "
-                    "values('client_twin',%s,%s,%s,%s,%s,%s,'twin-v1',%s,%s) returning id",
+                    "insert into agent_runs(kind,sim_run_id,signal_id,incident_id,client_id,llm_profile_id,prompt_version,graph_version,thread_id,started_sim,llm_profiles_snapshot) "
+                    "values('client_twin',%s,%s,%s,%s,%s,%s,'twin-v1',%s,%s,%s) returning id",
                     (
                         run_id,
                         row["signal_id"],
@@ -189,6 +189,7 @@ class TwinService:
                         prompt.version,
                         f"twin:{notification_id}",
                         sim_time,
+                        Jsonb(chain.role_snapshot),
                     ),
                 )
             ).fetchone()
