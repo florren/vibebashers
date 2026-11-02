@@ -2009,3 +2009,117 @@ END $$;
 DROP TRIGGER IF EXISTS settings_legacy_llm_key_writes ON settings;
 CREATE TRIGGER settings_legacy_llm_key_writes BEFORE INSERT OR UPDATE ON settings
  FOR EACH ROW EXECUTE FUNCTION reject_legacy_llm_key_writes();
+-- T-240: история принадлежит запуску; неизвестное происхождение legacy не угадываем.
+ALTER TABLE product_signal_history
+  ADD COLUMN IF NOT EXISTS run_id bigint REFERENCES sim_runs(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS sentiment_known_count integer,
+  ADD COLUMN IF NOT EXISTS is_partial boolean,
+  ADD COLUMN IF NOT EXISTS coverage_start timestamptz,
+  ADD COLUMN IF NOT EXISTS coverage_end timestamptz;
+ALTER TABLE product_signal_history ALTER COLUMN loss_rub DROP NOT NULL;
+ALTER TABLE product_signal_history ALTER COLUMN loss_rub DROP DEFAULT;
+
+-- Имя старого UNIQUE могло отличаться у оператора: сопоставляем реальные колонки.
+DO $$
+DECLARE old_key record;
+BEGIN
+  FOR old_key IN
+    SELECT c.conname FROM pg_constraint c
+    WHERE c.conrelid = 'product_signal_history'::regclass AND c.contype = 'u'
+      AND (SELECT array_agg(a.attname::text ORDER BY a.attname)
+           FROM unnest(c.conkey) k(attnum)
+           JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.attnum)
+          = ARRAY['month','product_line_code']::text[]
+  LOOP
+    EXECUTE 'ALTER TABLE product_signal_history DROP CONSTRAINT ' || quote_ident(old_key.conname);
+  END LOOP;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conrelid='product_signal_history'::regclass
+                   AND conname='product_signal_history_run_line_month_key') THEN
+    ALTER TABLE product_signal_history ADD CONSTRAINT product_signal_history_run_line_month_key
+      UNIQUE (run_id, product_line_code, month);
+  END IF;
+END $$;
+
+-- Старые строки с NULL owner/quality остаются неизменными. Новые записи и правки
+-- обязаны иметь известный запуск и честный интервал наблюдений, а не default=0.
+CREATE OR REPLACE FUNCTION guard_product_signal_history() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE month_start timestamptz; month_end timestamptz;
+BEGIN
+  IF NEW.run_id IS NULL OR NEW.run_id <= 0 THEN
+    RAISE EXCEPTION 'product history requires known positive run_id' USING ERRCODE='23514';
+  END IF;
+  IF NEW.month <> date_trunc('month', NEW.month::timestamp)::date THEN
+    RAISE EXCEPTION 'product history month must be first day' USING ERRCODE='23514';
+  END IF;
+  IF NEW.sentiment_known_count IS NULL OR NEW.signal_count < 0
+     OR NEW.negative_count < 0 OR NEW.negative_count > NEW.sentiment_known_count
+     OR NEW.sentiment_known_count > NEW.signal_count
+     OR NEW.critical_count < 0 OR NEW.critical_count > NEW.signal_count THEN
+    RAISE EXCEPTION 'product history counts are inconsistent' USING ERRCODE='23514';
+  END IF;
+  month_start := NEW.month::timestamp AT TIME ZONE 'Europe/Moscow';
+  month_end := (NEW.month + INTERVAL '1 month')::timestamp AT TIME ZONE 'Europe/Moscow';
+  IF NEW.coverage_start IS NULL OR NEW.coverage_end IS NULL OR NEW.is_partial IS NULL
+     OR NEW.coverage_start < month_start OR NEW.coverage_end > month_end
+     OR NEW.coverage_start >= NEW.coverage_end
+     OR NEW.is_partial IS DISTINCT FROM (NEW.coverage_start <> month_start OR NEW.coverage_end <> month_end) THEN
+    RAISE EXCEPTION 'product history coverage is inconsistent' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS product_signal_history_guard ON product_signal_history;
+CREATE TRIGGER product_signal_history_guard BEFORE INSERT OR UPDATE ON product_signal_history
+FOR EACH ROW EXECUTE FUNCTION guard_product_signal_history();
+COMMENT ON COLUMN product_signal_history.run_id IS 'NULL только для legacy неизвестного запуска; чтение только явным all';
+COMMENT ON COLUMN product_signal_history.sentiment_known_count IS 'NULL legacy: качество неизвестно; unknown не считается neutral';
+COMMENT ON COLUMN product_signal_history.loss_rub IS 'NULL: потери не наблюдались; synthetic history не выдумывает деньги';
+
+-- T-121 / migration0015: durable Telegram transport после0014.
+-- Операционная схема намеренно без FK в восстанавливаемый public baseline.
+CREATE SCHEMA IF NOT EXISTS channel_runtime;
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_conversations (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    state_enc bytea NOT NULL,
+    revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, chat_id)
+);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_inbound (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    update_id bigint NOT NULL CHECK (update_id >= 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    response_enc bytea NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (bot_id, update_id)
+);
+-- Stable identity позволяет отличить восстановленную notification от новой с тем же id.
+ALTER TABLE public.notifications ADD COLUMN IF NOT EXISTS delivery_key uuid NOT NULL DEFAULT gen_random_uuid();
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_delivery_key_uidx ON public.notifications (delivery_key);
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_deliveries (
+    delivery_key uuid PRIMARY KEY,
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    notification_id bigint NOT NULL,
+    run_id bigint NOT NULL,
+    body_hash text NOT NULL CHECK (body_hash ~ '^[0-9a-f]{64}$'),
+    payload_enc bytea NOT NULL,
+    status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','claimed','sent','failed','unknown','suppressed')),
+    claimed_at timestamptz,
+    completed_at timestamptz,
+    external_ref text,
+    error_code text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CHECK (status <> 'sent' OR (external_ref IS NOT NULL AND completed_at IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS telegram_deliveries_queue_idx
+    ON channel_runtime.telegram_deliveries (created_at, delivery_key) WHERE status = 'queued';
+CREATE TABLE IF NOT EXISTS channel_runtime.telegram_chat_rate (
+    bot_id bigint NOT NULL CHECK (bot_id > 0),
+    chat_id bigint NOT NULL CHECK (chat_id > 0),
+    last_claimed_at timestamptz NOT NULL,
+    PRIMARY KEY (bot_id, chat_id)
+);

@@ -1,0 +1,21 @@
+platforms:
+- code: client_voice
+  name_ru: Отзывы клиентов
+  name_en: Customer reviews
+  type: review_portal
+- code: open_channel
+  name_ru: Открытый канал
+  name_en: Open channel
+  type: telegram_channel
+- code: app_feedback
+  name_ru: Отзывы о приложении
+  name_en: App feedback
+  type: app_store
+- code: customer_forum
+  name_ru: Форум клиентов
+  name_en: Customer forum
+  type: forum
+- code: feedback_board
+  name_ru: Доска обратной связи
+  name_en: Feedback board
+  type: other

@@ -1,0 +1,152 @@
+{
+  "phase": "T240 independent corpus/CLI/pure history checkpoint",
+  "base_revision": "96caa2a596828ccf442a45160246a5bdbb56d082",
+  "data_sha256": "642b41590435ed1680cedf91241b2def46b86e5dd00cc6dfb40dc56ccc1933e9",
+  "reviews": 162,
+  "product_lines": {
+    "deposits": 27,
+    "mortgage": 9,
+    "loans": 15,
+    "credit_cards": 3,
+    "debit_cards": 12,
+    "transfers_payments": 6,
+    "mobile_app": 18,
+    "investments": 6,
+    "insurance": 24,
+    "bonuses_subscription": 9,
+    "branches_service": 9,
+    "support": 6,
+    "business_banking": 9,
+    "atm_self_service": 3,
+    "fraud_security": 6
+  },
+  "criticalities": {
+    "high": 41,
+    "medium": 96,
+    "low": 25
+  },
+  "delivery_plan_cells": 180,
+  "delivery_actual_seed_verified": false,
+  "targeted_tests": {
+    "passed": 45,
+    "pg_tests": 5,
+    "seconds": 28.82
+  },
+  "full_unit": {
+    "passed": 1185,
+    "skipped": 18,
+    "seconds": 34.31
+  },
+  "checks": {
+    "target_coverage": {
+      "exit": 0,
+      "seconds": 29.71
+    },
+    "full_unit": {
+      "exit": 0,
+      "seconds": 35.65
+    }
+  },
+  "coverage": {
+    "tool": "stdlib trace; exact absolute co_filename filter, no basename ignore cache",
+    "exit": 0,
+    "covered": 487,
+    "statements": 515,
+    "percent": 94.56,
+    "files": {
+      "backend/app/corpus/history.py": {
+        "covered": 145,
+        "statements": 148,
+        "missing": [
+          42,
+          128,
+          132
+        ],
+        "percent": 97.97
+      },
+      "backend/app/corpus/importer.py": {
+        "covered": 38,
+        "statements": 42,
+        "missing": [
+          23,
+          25,
+          44,
+          55
+        ],
+        "percent": 90.48
+      },
+      "backend/app/corpus/reviews.py": {
+        "covered": 188,
+        "statements": 202,
+        "missing": [
+          63,
+          81,
+          99,
+          110,
+          111,
+          127,
+          134,
+          139,
+          143,
+          149,
+          176,
+          181,
+          197,
+          198
+        ],
+        "percent": 93.07
+      },
+      "backend/app/corpus/seed_plan.py": {
+        "covered": 75,
+        "statements": 81,
+        "missing": [
+          54,
+          93,
+          95,
+          100,
+          105,
+          109
+        ],
+        "percent": 92.59
+      },
+      "scripts/import_reviews.py": {
+        "covered": 41,
+        "statements": 42,
+        "missing": [
+          62
+        ],
+        "percent": 97.62
+      }
+    }
+  },
+  "lint": {
+    "ruff_check": "green app/tests + new CLI",
+    "ruff_format_files": 369,
+    "mypy_files": 257
+  },
+  "licenses": {
+    "check": "green",
+    "distributions": 530,
+    "new_dependencies": false,
+    "openpyxl": "3.1.5 MIT",
+    "defusedxml": "0.7.1 PSFL installed metadata"
+  },
+  "source_sha256": {
+    "backend/app/corpus/__init__.py": "d8cec46a69447217f4b28aba96796ff1e71b68ba6eeabb2e6a4db133180dcf26",
+    "backend/app/corpus/history.py": "5b89b009fb666e3de377eacf605976235c7ce3747d942cfafb93bb14cbc1cc8d",
+    "backend/app/corpus/importer.py": "ee91c14fa6248e775232dc24e5e26f29f59f4b625121d4d816f9b06e622186ac",
+    "backend/app/corpus/reviews.py": "e93c04c2ee6ff0e173b3ad94cf5a5d48ae5c0907b6bd383362257653c7d30134",
+    "backend/app/corpus/seed_plan.py": "c8a784d31bcbb896784e487f9a62c4f9c220ab491ed527be9b8e9f9e27e9e23b",
+    "scripts/import_reviews.py": "ff441ea0148081263c2306e42d2bb9b549f399c4af3ae9983dfb7ba4e23da9d4"
+  },
+  "not_implemented": [
+    "migration0014/models/DB guard",
+    "history persistence and real baseline tail proof",
+    "actual 180-cell seed and coverage settings integration",
+    "baseline regenerated dump/restore",
+    "maintenance CLI cooperation after P1 composition",
+    "API1.5.19 Signal producer and UI presentation",
+    "full integration/scenarios/compliance/frontend after composition"
+  ],
+  "operational_scope": "Only own cx_t240_corpus_revision PG16, ENV_FILE=/dev/null, mock LLM. No production or remote publication."
+}

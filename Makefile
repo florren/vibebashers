@@ -30,7 +30,7 @@ migrate:                    ## alembic upgrade head (DATABASE_URL из .env/ок
 seed:                       ## сид по профилю PROFILE=lite|demo|stress (E2, T-011…T-016)
 	$(PY) scripts/seed/run.py --profile $(or $(PROFILE),lite)
 
-test: contracts-check test-unit test-integration test-scenarios test-compliance test-front   ## все backend- и frontend-тесты
+test: contracts-check test-unit test-integration test-scenarios test-compliance test-front test-tgbot   ## все backend-, frontend- и tgbot-тесты
 
 test-front:
 	cd frontend && npm test -- --run
@@ -41,11 +41,16 @@ test-compliance:             ## тесты корпуса и детектора 
 test-unit:
 	cd backend && .venv/bin/pytest -q tests/unit
 
+.PHONY: test-tgbot
+test-tgbot:
+	cd tgbot && .venv/bin/pytest -q
+
 test-integration:           ## нужна DATABASE_URL_TEST; без неё — skip
 	cd backend && .venv/bin/pytest -q tests/integration
 
 lint: lint-front
 	cd backend && .venv/bin/ruff check app tests && .venv/bin/ruff format --check app tests && .venv/bin/mypy app
+	cd tgbot && .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/mypy cx_tgbot
 	$(PY) scripts/check_openapi_drift.py
 
 fmt:
@@ -113,3 +118,4 @@ run-summary:                ## явный пересчёт summary заверш�
 
 licenses-check:             ## SPDX gate и свежесть inventory Python/npm, включая dev/platform-only
 	$(PY) scripts/licenses_check.py
+	tgbot/.venv/bin/python scripts/licenses_check.py --project tgbot

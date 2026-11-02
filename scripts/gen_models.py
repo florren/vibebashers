@@ -52,7 +52,7 @@ def main() -> int:
         engine = create_engine(sa_url, connect_args={"options": "-csearch_path=pg_catalog"})
         try:
             reflected = MetaData()
-            for schema in ("public", "langgraph"):
+            for schema in ("public", "langgraph", "channel_runtime"):
                 reflected.reflect(engine, schema=schema, views=False, postgresql_ignore_search_path=True)
             # PostgreSQL/Alembic представляют default public как schema=None.
             # Нормализуем public и FK до генерации, иначе один sim_runs отражается
