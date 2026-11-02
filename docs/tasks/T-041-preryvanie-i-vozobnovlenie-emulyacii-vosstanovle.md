@@ -72,3 +72,8 @@ currentrun: typed409 до effects, freshreload сохраняетT5. Native3RED�
 allpublic table hashes unchanged после отказа, межпроверочнаягонка проверена.
 [Review/границы](../reviews/T-041-stale-control.md). Broader checks/CI впереди,
 общий DoD/карточка целиком не закрыты.
+
+Peer review добавил status-only resurrection и shutdown bypass: оба actualRED,
+плюс скрытый flush error. Followup7GREEN36.48с; typedValueError-compatible stale
+skip/rollback/close, неожиданная storagefailure явно пробрасывается.
+Прежний c92 broader56PG321.86с source-qualified; новый broader/CI ещё обязателен.
