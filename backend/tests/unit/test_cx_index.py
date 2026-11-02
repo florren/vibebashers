@@ -205,3 +205,26 @@ async def test_bad_settings_patch_rejected_before_database(monkeypatch, config):
     with pytest.raises(Problem) as error:
         await settings.patch_settings({"cx_index": config})
     assert error.value.status == 422
+    with pytest.raises(Problem) as error:
+        await settings.post_settings_import({"settings": {"cx_index": config}})
+    assert error.value.status == 422
+
+
+@pytest.mark.parametrize(
+    ("model", "output", "expected"),
+    [
+        ("mock:rules", {}, "mock"),
+        ("replay:giga", {}, "replay"),
+        ("replay/giga", {}, "replay"),
+        ("gigachat:model", {}, "live"),
+        ("openai_compatible:model", {}, "live"),
+        ("legacy-model", {}, "unknown"),
+        (None, [], "unknown"),
+        ("gigachat:model", {"llm_source": "replay"}, "replay"),
+        ("legacy-model", {"source": "mock"}, "mock"),
+    ],
+)
+def test_summary_mode_uses_actual_source_not_requested_profile(model, output, expected):
+    from app.analytics.overview import summary_mode
+
+    assert summary_mode({"model": model, "output": output}) == expected

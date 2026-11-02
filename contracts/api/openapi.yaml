@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.26
+  version: 1.5.29
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -280,9 +280,10 @@ paths:
     patch:
       tags: [settings]
       summary: Изменить настройки (частично)
-      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CxSettingsMap" } } } }
       responses:
         "200": { description: OK }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/settings/env:
     get:
       tags: [settings]
@@ -2514,13 +2515,68 @@ paths:
         "501": { $ref: "#/components/responses/Problem" }
   /api/metrics/cx-index:
     get:
-      tags: [metrics]
-      summary: "[ПРОТО] Демонстрационный индекс CX (ТЗ 26.4)"
+      tags:
+      - metrics
+      summary: '[ПРОТО] Демонстрационный индекс CX'
+      description: Current-only по умолчанию, без неявного baseline. all только явно;
+        отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29
+        semantic proposal.
       parameters:
-        - { $ref: "#/components/parameters/RunId" }
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 19
+          default: current
+          pattern: ^(current|all|[1-9][0-9]{0,18})$
+        description: Положительный bigint <=9223372036854775807, current либо all. ASCII
+          only; неизвестный numeric ID404.
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CxIndex'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+        '503':
+          $ref: '#/components/responses/Problem'
+  /api/metrics/overview:
+    get:
+      tags:
+      - metrics
+      summary: '[ПРОТО] Readonly Обзор: KPI, давление, сохранённые summaries'
+      description: Current-only по умолчанию, без неявного baseline. all только явно;
+        отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29
+        semantic proposal.
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 19
+          default: current
+          pattern: ^(current|all|[1-9][0-9]{0,18})$
+        description: Положительный bigint <=9223372036854775807, current либо all. ASCII
+          only; неизвестный numeric ID404.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsOverview'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+        '503':
+          $ref: '#/components/responses/Problem'
   /api/signals/{id}/normalized:
     get:
       tags: [signals]
@@ -2823,6 +2879,446 @@ components:
               instance: { type: string }
               errors: { type: array, items: { type: object, properties: { loc: { type: array, items: { type: string } }, msg: { type: string } } } }
   schemas:
+    CxWeights:
+      type: object
+      additionalProperties: false
+      required:
+      - negativity
+      - criticality
+      - sla
+      - churn
+      properties:
+        negativity:
+          type: number
+          minimum: 0
+        criticality:
+          type: number
+          minimum: 0
+        sla:
+          type: number
+          minimum: 0
+        churn:
+          type: number
+          minimum: 0
+      anyOf:
+      - properties:
+          negativity: { exclusiveMinimum: 0 }
+      - properties:
+          criticality: { exclusiveMinimum: 0 }
+      - properties:
+          sla: { exclusiveMinimum: 0 }
+      - properties:
+          churn: { exclusiveMinimum: 0 }
+      description: Конечные буквальные коэффициенты; хотя бы один >0. Не нормируются;
+        default по ТЗ 0.4/0.25/0.2/0.15. Даже нулевой вес не скрывает unknown компонента.
+    CxSettingsMap:
+      type: object
+      additionalProperties: true
+      properties:
+        cx_index:
+          type: object
+          additionalProperties: true
+          properties:
+            weights:
+              $ref: '#/components/schemas/CxWeights'
+    MetricsRunScope:
+      type: object
+      additionalProperties: false
+      required:
+      - requested_run_id
+      - resolved_run_id
+      - all_runs
+      - current_missing
+      properties:
+        requested_run_id: &id005
+          type: string
+        resolved_run_id: &id003
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        all_runs:
+          type: boolean
+        current_missing:
+          type: boolean
+    MetricsWindow:
+      type: object
+      additionalProperties: false
+      required:
+      - starts_sim
+      - ends_sim
+      properties:
+        starts_sim: &id001
+          type: string
+          format: date-time
+        ends_sim: *id001
+      description: Окно (starts_sim, ends_sim], authoritative sim clock.
+    CxComponent:
+      type: object
+      additionalProperties: false
+      required:
+      - value
+      - observed_value
+      - known
+      - total
+      - numerator
+      - status
+      - unit
+      - basis
+      properties:
+        value: &id002
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100
+        observed_value: *id002
+        known: &id004
+          type: integer
+          minimum: 0
+        total: *id003
+        numerator: *id003
+        status:
+          type: string
+          enum:
+          - complete
+          - empty
+          - partial
+          - unknown
+        unit:
+          type: string
+          const: percent
+        basis:
+          type: string
+          enum:
+          - recorded_classification
+          - observed_classification_receipts
+          - registered_sla_risk
+      description: value только при полном coverage. observed_value описывает только известную
+        часть; не подставляется в общий индекс. N numerator=сумма записанных negativity,
+        C/R/S=число положительных случаев. unknown total не подменяется нулём.
+    CxComponents:
+      type: object
+      additionalProperties: false
+      required:
+      - negativity
+      - criticality
+      - sla
+      - churn
+      properties:
+        negativity:
+          $ref: '#/components/schemas/CxComponent'
+        criticality:
+          $ref: '#/components/schemas/CxComponent'
+        sla:
+          $ref: '#/components/schemas/CxComponent'
+        churn:
+          $ref: '#/components/schemas/CxComponent'
+    CxIndex:
+      type: object
+      additionalProperties: false
+      required:
+      - demonstration
+      - index
+      - previous_index
+      - delta_hour
+      - as_of_sim
+      - window
+      - previous_window
+      - scope
+      - weights
+      - weights_source
+      - weights_error
+      - default_weights
+      - comparison_basis
+      - components
+      - previous_components
+      - sla_basis
+      - sla_forecast_complete
+      - historical_sla_reason
+      - signals
+      - previous_signals
+      - channel_mix
+      - flow
+      properties:
+        demonstration:
+          type: boolean
+          const: true
+        index: *id002
+        previous_index: *id002
+        delta_hour:
+          type:
+          - number
+          - 'null'
+          minimum: -100
+          maximum: 100
+        as_of_sim: *id001
+        window:
+          $ref: '#/components/schemas/MetricsWindow'
+        previous_window:
+          $ref: '#/components/schemas/MetricsWindow'
+        scope:
+          $ref: '#/components/schemas/MetricsRunScope'
+        weights:
+          anyOf:
+          - $ref: '#/components/schemas/CxWeights'
+          - type: 'null'
+        weights_source:
+          type: string
+          enum:
+          - tz_default
+          - configured
+          - invalid
+        weights_error:
+          type:
+          - string
+          - 'null'
+          enum:
+          - null
+          - invalid_cx_index_weights
+        default_weights:
+          $ref: '#/components/schemas/CxWeights'
+        comparison_basis:
+          type: string
+          const: current_weights_on_observed_states
+        components:
+          $ref: '#/components/schemas/CxComponents'
+        previous_components:
+          $ref: '#/components/schemas/CxComponents'
+        sla_basis:
+          type: string
+          const: registered_sla_risk
+        sla_forecast_complete:
+          type: boolean
+          const: false
+        historical_sla_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - null
+          - historical_sla_evidence_unavailable
+        signals: *id004
+        previous_signals: *id004
+        channel_mix:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - channel_code
+            - signals
+            properties:
+              channel_code: *id005
+              signals: *id004
+        flow:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - bucket
+            - starts_sim
+            - ends_sim
+            - signals
+            properties:
+              bucket:
+                type: integer
+                minimum: 0
+                maximum: 23
+              starts_sim: *id001
+              ends_sim: *id001
+              signals: *id004
+          minItems: 24
+          maxItems: 24
+      description: 'Демонстрационный CX=clamp(100−Σwᵢxᵢ,0,100), не CSI/география/денежная
+        формула. Частичный компонент => index NULL, без перенормировки. previous использует
+        те же ТЕКУЩИЕ веса, но только independently observed immutable classify snapshot+receipt
+        на исторический cutoff. Frozen churn_predicted_sim не publication proof. Historical
+        open SLA без deadline snapshot => unknown. S basis зарегистрированный current-stage
+        native warning либо просрочка: отсутствие события не гарантирует отсутствие прогноза
+        риска. Эти semantics требуют review API29.'
+    OverviewKpi:
+      type: object
+      additionalProperties: false
+      required:
+      - signals_today
+      - critical_today
+      - autonomous_share
+      - agent_response_p50_ms
+      - sla_risk_incidents
+      - saved_rub_exact
+      properties:
+        signals_today: *id004
+        critical_today: *id003
+        autonomous_share: *id002
+        agent_response_p50_ms:
+          type:
+          - number
+          - 'null'
+        sla_risk_incidents: *id003
+        saved_rub_exact:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+      description: today=Europe/Moscow midnight..sim now; остальные cohorts rolling24h,
+        SLA=current open stock. autonomous share=finished completed&&!needed_human / all
+        finished agent runs; response=записанная total_latency_ms, не wall clock age.
+        saved=только stored incident_economics; exact Decimal string без потери копеек,
+        partial=NULL, действительно пустой incident cohort=0.
+    OverviewCoverage:
+      type: object
+      additionalProperties: false
+      required:
+      - signals_today
+      - criticality_known_today
+      - agent_runs
+      - outcome_known
+      - latency_known
+      - incidents
+      - economics_known
+      - sla_known
+      - sla_open
+      properties:
+        signals_today: *id004
+        criticality_known_today: *id004
+        agent_runs: *id004
+        outcome_known: *id004
+        latency_known: *id004
+        incidents: *id004
+        economics_known: *id004
+        sla_known: *id004
+        sla_open: *id004
+    OverviewSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - agent_run_id
+      - signal_id
+      - public_id
+      - started_sim
+      - node
+      - mode
+      - text
+      properties:
+        agent_run_id: *id004
+        signal_id: *id004
+        public_id:
+          type:
+          - string
+          - 'null'
+        started_sim: &id006
+          type:
+          - string
+          - 'null'
+          format: date-time
+        node:
+          type: string
+          enum:
+          - classify
+          - instant_decide
+        mode:
+          type: string
+          enum:
+          - mock
+          - replay
+          - live
+          - unknown
+        text:
+          type: string
+          maxLength: 300
+      description: Маскированная сохранённая summary_ru; это исходный язык, не новая генерация/перевод.
+        Mode только из actual source/model, legacy unknown явно unknown.
+    MetricsOverview:
+      type: object
+      additionalProperties: false
+      required:
+      - as_of_sim
+      - scope
+      - window
+      - today_starts_sim
+      - kpi
+      - coverage
+      - economics_basis
+      - oldest_computed_at
+      - sla_basis
+      - sla_forecast_complete
+      - response_basis
+      - pressure
+      - shift
+      - signals_24h
+      properties:
+        as_of_sim: *id001
+        scope:
+          $ref: '#/components/schemas/MetricsRunScope'
+        window:
+          $ref: '#/components/schemas/MetricsWindow'
+        today_starts_sim: *id001
+        kpi:
+          $ref: '#/components/schemas/OverviewKpi'
+        coverage:
+          $ref: '#/components/schemas/OverviewCoverage'
+        economics_basis:
+          type: string
+          const: saved_incident_economics_only
+        oldest_computed_at: *id006
+        sla_basis:
+          type: string
+          const: registered_sla_risk
+        sla_forecast_complete:
+          type: boolean
+          const: false
+        response_basis:
+          type: string
+          const: recorded_agent_run_latency_ms
+        pressure:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - status
+            - criticality
+            - incidents
+            properties:
+              status: *id005
+              criticality: *id005
+              incidents: *id004
+        shift:
+          type: object
+          additionalProperties: false
+          required:
+          - basis
+          - new_llm_call
+          - limit
+          - total
+          - truncated
+          - items
+          properties:
+            basis:
+              type: string
+              const: saved_classification_compendium
+            new_llm_call:
+              type: boolean
+              const: false
+            limit:
+              type: integer
+              const: 8
+            total: *id004
+            truncated:
+              type: boolean
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OverviewSummary'
+              maxItems: 8
+        signals_24h: *id004
+      description: Один REPEATABLE READ READ ONLY snapshot, без LLM, compute/recompute
+        или materialization writes. До 8 фактически сохранённых summaries за24h по received_sim;
+        total/truncated явно показывают ограничение, текст маскирован/ограничен300. Это
+        компиляция, не новый текст агента. Pressure включает реальные текущие статусы
+        инцидентов, без новой бизнес-классификации.
     CabinetRole:
       type: string
       enum:

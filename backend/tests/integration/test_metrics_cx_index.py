@@ -251,3 +251,360 @@ def test_native_registered_sla_scope_lifecycle_and_unknown(cx_db, sql, native_sl
             and component.total == 1
         )
     assert before == fingerprint(sql)
+
+
+@pytest.mark.asyncio
+async def test_delayed_native_receipt_prevents_future_classification_leak(cx_db, sql, monkeypatch):
+    """Frozen ctx T0 не доказывает publication: native observation появляется в T5."""
+    import asyncio
+    from dataclasses import replace
+
+    from app.agent.graph import load_deps
+    from app.contracts.registry import deref, validate
+    from app.economics.calibration import PIPELINE
+    from app.llm.mock import MockProvider
+    from app.sim.behavior.signals import record_classified
+    from tests.helpers import MOCK_PROFILE, dsn, mock_chain
+    from tests.integration.test_behavior_effect_time import load_sim
+    from tests.integration.test_behavior_inactive import case
+
+    saved = sql.execute(
+        "SELECT sim_time,current_run_id,seed,rng_state,running,day_no FROM sim_state WHERE id=1"
+    ).fetchone()
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    class Delayed(MockProvider):
+        async def complete_structured(self, *args, **kwargs):
+            entered.set()
+            await release.wait()
+            result, usage, meta = await super().complete_structured(*args, **kwargs)
+            result["sentiment"] = "negative"
+            return result, usage, meta
+
+    run = None
+    try:
+        async with await psycopg.AsyncConnection.connect(dsn(cx_db)) as conn:
+            run, client, t0, signal, agent = await case(conn, monkeypatch, cx_db)
+            deps = await load_deps(
+                conn, chain=mock_chain(), profile=MOCK_PROFILE, run_id=run, agent_run_id=agent, sim_time=t0
+            )
+            await conn.commit()
+            sim = await load_sim(cx_db)
+            pending = asyncio.create_task(
+                Delayed().complete_structured(
+                    [{"role": "user", "content": "Сотрудник грубо накричал, обслуживанием недоволен"}],
+                    deref("agent/classification"),
+                    MOCK_PROFILE,
+                    timeout_s=1,
+                )
+            )
+            try:
+                await asyncio.wait_for(entered.wait(), timeout=2)
+                await sim.step(3)
+                t3 = sim.clock.sim_time
+                await sim.step(2)
+                t5 = sim.clock.sim_time
+                release.set()
+                value, _, _ = await asyncio.wait_for(pending, timeout=2)
+                assert not validate(value, "agent/classification")
+                await conn.execute("UPDATE signals SET classification=%s WHERE id=%s", (Jsonb(value), signal))
+                await deps.record_step(
+                    "classify", "ok", {}, value | {"score_pipeline": PIPELINE, "churn_predicted_sim": t0.isoformat()}
+                )
+                await record_classified(deps.ctx, signal)
+                observed = (
+                    await (
+                        await conn.execute("SELECT observed_sim FROM behavior_agent_intents WHERE run_id=%s", (run,))
+                    ).fetchone()
+                )[0]
+                assert observed == t5 and t0 < t3 < t5
+                await conn.commit()
+            finally:
+                release.set()
+                await asyncio.gather(pending, return_exceptions=True)
+                await sim.conn.close()
+
+        # Контрпример unsafe proposal: frozen producer stamp уже <= T3, но receipt ещё в будущем.
+        unsafe_known = sql.execute(
+            "SELECT count(*) FROM agent_steps WHERE run_id=%s AND (output->>'churn_predicted_sim')::timestamptz<=%s",
+            (agent, t3),
+        ).fetchone()[0]
+        assert unsafe_known == 1
+
+        async def at(cutoff):
+            async with await psycopg.AsyncConnection.connect(dsn(cx_db), row_factory=dict_row) as reader:
+                await reader.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                scope = replace(await metrics_scope(reader, str(run)), now=cutoff)
+                return await signal_facts(reader, scope, historical=True)
+
+        before = fingerprint(sql)
+        old, published = await at(t3), await at(t5)
+        assert old["signals"] == published["signals"] == 1
+        assert all(c.known == 0 and c.complete_value is None for c in old["components"].values())
+        assert published["components"]["negativity"].complete_value == value["negativity"]
+        assert published["components"]["criticality"].known == published["components"]["churn"].known == 1
+        assert fingerprint(sql) == before
+
+        # Два canonical snapshots не позволяют угадать, какой был опубликован receipt.
+        sql.execute(
+            "INSERT INTO agent_steps(run_id,seq,node,status,input,output) SELECT run_id,2,node,status,input,output FROM agent_steps WHERE run_id=%s",
+            (agent,),
+        )
+        ambiguous = await at(t5)
+        assert all(c.known == 0 for c in ambiguous["components"].values())
+        sql.execute("DELETE FROM agent_steps WHERE run_id=%s AND seq=2", (agent,))
+
+        # Отсутствующий snapshot и запись другого run не дают historical provenance.
+        sql.execute("UPDATE agent_steps SET status='error' WHERE run_id=%s", (agent,))
+        assert all(c.known == 0 for c in (await at(t5))["components"].values())
+        sql.execute("UPDATE agent_steps SET status='ok' WHERE run_id=%s", (agent,))
+        other = sql.execute(
+            "INSERT INTO sim_runs(kind,label,seed,started_sim) VALUES('free','T256 foreign receipt',42,%s) RETURNING id",
+            (t0,),
+        ).fetchone()[0]
+        try:
+            sql.execute("UPDATE behavior_agent_intents SET run_id=%s WHERE run_id=%s", (other, run))
+            assert all(c.known == 0 for c in (await at(t5))["components"].values())
+            sql.execute("UPDATE behavior_agent_intents SET run_id=%s WHERE run_id=%s", (run, other))
+        finally:
+            sql.execute("DELETE FROM sim_runs WHERE id=%s", (other,))
+
+        # Два независимых matching receipts в одну дату — ambiguous, не last-row-wins.
+        second = sql.execute(
+            "INSERT INTO agent_runs(kind,sim_run_id,signal_id,client_id,started_sim,prompt_version) VALUES('agent',%s,%s,%s,%s,'T256 duplicate') RETURNING id",
+            (run, signal, client, t0),
+        ).fetchone()[0]
+        sql.execute(
+            "INSERT INTO agent_steps(run_id,seq,node,status,input,output) SELECT %s,1,node,status,input,output FROM agent_steps WHERE run_id=%s",
+            (second, agent),
+        )
+        sql.execute(
+            "INSERT INTO behavior_agent_intents(run_id,agent_run_id,client_id,signal_id,incident_id,requested_state,trigger,observed_sim) SELECT run_id,%s,client_id,signal_id,incident_id,requested_state,trigger,observed_sim FROM behavior_agent_intents WHERE run_id=%s",
+            (second, run),
+        )
+        assert all(c.known == 0 for c in (await at(t5))["components"].values())
+    finally:
+        sql.execute(
+            "UPDATE sim_state SET sim_time=%s,current_run_id=%s,seed=%s,rng_state=%s,running=%s,day_no=%s WHERE id=1",
+            (*saved[:3], Jsonb(saved[3]), *saved[4:]),
+        )
+        if run is not None:
+            sql.execute("DELETE FROM sim_runs WHERE id=%s", (run,))
+
+
+@pytest.mark.asyncio
+async def test_snapshot_uses_current_weights_and_refuses_unobserved_previous(cx_db, sql, owned_run):
+    from app.analytics.cx_index_reader import cx_index_snapshot
+
+    run, now = owned_run
+    await put(cx_db, run, now - dt.timedelta(hours=2), classification(50))
+    old = sql.execute("SELECT value FROM settings WHERE key='cx_index'").fetchone()
+    try:
+        sql.execute("DELETE FROM settings WHERE key='cx_index'")
+
+        async def snapshot():
+            async with await psycopg.AsyncConnection.connect(
+                cx_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+            ) as conn:
+                await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                return await cx_index_snapshot(conn, await metrics_scope(conn, str(run)))
+
+        out = await snapshot()
+        assert out["index"] == 80
+        assert out["previous_index"] is None and out["delta_hour"] is None
+        assert out["previous_components"]["negativity"]["known"] == 0
+        assert out["previous_components"]["sla"]["value"] == 0
+        assert out["scope"]["resolved_run_id"] == run
+        assert out["weights_source"] == "tz_default"
+        sql.execute(
+            "INSERT INTO settings(key,value) VALUES('cx_index',%s)",
+            (Jsonb({"weights": {"negativity": 1, "criticality": 0, "sla": 0, "churn": 0}}),),
+        )
+        out = await snapshot()
+        assert out["index"] == 50 and out["weights_source"] == "configured"
+        assert out["comparison_basis"] == "current_weights_on_observed_states"
+    finally:
+        sql.execute("DELETE FROM settings WHERE key='cx_index'")
+        if old:
+            sql.execute("INSERT INTO settings(key,value) VALUES('cx_index',%s)", (Jsonb(old[0]),))
+
+
+@pytest.mark.asyncio
+async def test_historical_open_sla_is_unknown_without_native_deadline_snapshot(cx_db, native_sla_case):
+    from dataclasses import replace
+
+    from app.analytics.cx_index_reader import historical_sla_facts
+
+    async with await psycopg.AsyncConnection.connect(
+        cx_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+    ) as conn:
+        await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        scope = replace(await metrics_scope(conn, str(native_sla_case["run"])), now=native_sla_case["now"])
+        out = await historical_sla_facts(conn, scope)
+        assert out["open_incidents"] == 1
+        assert out["component"].complete_value is None
+        assert out["reason"] == "historical_sla_evidence_unavailable"
+
+
+@pytest.fixture
+def metrics_client(cx_db):
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    with TestClient(create_app()) as client:
+        yield client
+
+
+def test_actual_http_shapes_scopes_and_readonly(metrics_client, sql, owned_run, monkeypatch):
+    from tests.integration.test_cabinet_api import assert_schema
+
+    run, _ = owned_run
+
+    def bomb(*args, **kwargs):
+        raise AssertionError("Metrics GET must not call LLM/money producer")
+
+    monkeypatch.setattr("app.economics.dcltv.compute_incident", bomb)
+    monkeypatch.setattr("app.economics.dcltv.recompute", bomb)
+    monkeypatch.setattr("app.llm.failover.ProviderChain.complete_structured", bomb)
+    before = fingerprint(sql)
+    for path, schema in [("cx-index", "CxIndex"), ("overview", "MetricsOverview")]:
+        response = metrics_client.get("/api/metrics/" + path, params={"run_id": str(run)})
+        assert response.status_code == 200, response.text[:300]
+        value = response.json()
+        assert_schema(value, schema)
+        assert value["scope"]["resolved_run_id"] == run
+        if path == "overview":
+            assert value["kpi"]["saved_rub_exact"] == "0"
+            assert value["kpi"]["autonomous_share"] is None
+            assert value["shift"]["items"] == []
+        assert metrics_client.get("/api/metrics/" + path, params={"run_id": "9223372036854775807"}).status_code == 404
+    assert fingerprint(sql) == before
+
+
+@pytest.mark.parametrize("run", ["", "²", "١", "0", "-1", "9223372036854775808", "1" * 200])
+@pytest.mark.asyncio
+async def test_invalid_http_scope_rejected_before_connection(monkeypatch, run):
+    from fastapi import HTTPException
+
+    from app.api.metrics import get_metrics_cx_index, get_metrics_overview
+
+    def bomb():
+        raise AssertionError("Invalid run must not access DB")
+
+    monkeypatch.setattr("app.trace.store.read_db", bomb)
+    for reader in (get_metrics_cx_index, get_metrics_overview):
+        with pytest.raises(HTTPException) as error:
+            await reader(run)
+        assert error.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_overview_recorded_runs_summary_modes_and_partial_criticality(cx_db, sql, owned_run):
+    from app.analytics.overview import overview_snapshot
+
+    run, now = owned_run
+    signal = await put(cx_db, run, now, classification(50, "high"))
+    await put(cx_db, run, now, None)
+    for seq in range(10):
+        agent = sql.execute(
+            "INSERT INTO agent_runs(kind,sim_run_id,signal_id,prompt_version,started_sim,outcome,finished_at,total_latency_ms,needed_human) VALUES('agent',%s,%s,'T256 recorded',%s,'completed',now(),%s,%s) RETURNING id",
+            (run, signal, now, 100 + seq * 10, bool(seq % 2)),
+        ).fetchone()[0]
+        sql.execute(
+            "INSERT INTO agent_steps(run_id,seq,node,status,input,output,model,finished_at) VALUES(%s,1,'classify','ok','{}',%s,%s,now())",
+            (
+                agent,
+                Jsonb({"summary_ru": "Учебная сводка: contact@example.test, +7 999 123-45-67"}),
+                "mock:mock-rules-v1" if seq != 9 else None,
+            ),
+        )
+    before = fingerprint(sql)
+    async with await psycopg.AsyncConnection.connect(
+        cx_db.replace("postgresql+psycopg:", "postgresql:"), row_factory=dict_row
+    ) as conn:
+        await conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        out = await overview_snapshot(conn, await metrics_scope(conn, str(run)))
+    assert out["kpi"]["signals_today"] == 2
+    assert out["kpi"]["critical_today"] is None
+    assert out["coverage"]["criticality_known_today"] == 1
+    assert out["kpi"]["autonomous_share"] == 50
+    assert out["kpi"]["agent_response_p50_ms"] == 145
+    assert out["shift"]["total"] == 10 and out["shift"]["truncated"] is True
+    assert len(out["shift"]["items"]) == 8
+    assert out["shift"]["items"][0]["mode"] == "unknown"
+    assert out["shift"]["items"][1]["mode"] == "mock"
+    assert all(
+        "contact@example.test" not in item["text"] and "999 123" not in item["text"] for item in out["shift"]["items"]
+    )
+    assert fingerprint(sql) == before
+
+
+@pytest.mark.asyncio
+async def test_http_current_default_weights_patch_and_unknown_config(metrics_client, cx_db, sql, owned_run):
+    run, now = owned_run
+    await put(cx_db, run, now, classification(50))
+    pointer = sql.execute("SELECT current_run_id FROM sim_state WHERE id=1").fetchone()[0]
+    old = sql.execute("SELECT value FROM settings WHERE key='cx_index'").fetchone()
+    try:
+        sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (run,))
+        body = {"cx_index": {"weights": {"negativity": 1, "criticality": 0, "sla": 0, "churn": 0}}}
+        assert metrics_client.patch("/api/settings", json=body).status_code == 200
+        actual = metrics_client.get("/api/metrics/cx-index").json()
+        assert actual["signals"] == 1 and actual["index"] == 50
+        assert actual["scope"]["requested_run_id"] == "current"
+        assert actual["weights"] == body["cx_index"]["weights"]
+        assert metrics_client.get("/api/settings").json()["cx_index"]["weights"] == actual["weights"]
+        before = fingerprint(sql)
+        assert (
+            metrics_client.patch("/api/settings", json={"cx_index": {"weights": {"negativity": 1}}}).status_code == 422
+        )
+        assert fingerprint(sql) == before
+        sql.execute("UPDATE settings SET value='null'::jsonb WHERE key='cx_index'")
+        unknown = metrics_client.get("/api/metrics/cx-index").json()
+        assert unknown["weights_source"] == "invalid" and unknown["weights"] is None and unknown["index"] is None
+        sql.execute("UPDATE sim_state SET current_run_id=NULL WHERE id=1")
+        for path in ("cx-index", "overview"):
+            empty = metrics_client.get("/api/metrics/" + path).json()
+            assert empty["scope"]["current_missing"] and empty["scope"]["resolved_run_id"] is None
+            assert empty["signals" if path == "cx-index" else "signals_24h"] == 0
+    finally:
+        sql.execute("UPDATE sim_state SET current_run_id=%s WHERE id=1", (pointer,))
+        sql.execute("DELETE FROM settings WHERE key='cx_index'")
+        if old:
+            sql.execute("INSERT INTO settings(key,value) VALUES('cx_index',%s)", (Jsonb(old[0]),))
+
+
+def test_overview_exact_stored_money_partial_and_foreign_scope(metrics_client, sql, owned_run, monkeypatch):
+    from decimal import Decimal
+
+    run, now = owned_run
+    incidents = sql.execute(
+        "INSERT INTO incidents(run_id,title,incident_type,team_code,complexity,criticality,priority,status,created_by,created_sim,sla_due_sim,take_due_sim) SELECT %s,'T256 stored money fixture','service_quality','team_debit','easy','low',4,'closed','scenario',%s,%s,%s FROM generate_series(1,11) RETURNING id",
+        (run, now, now, now),
+    ).fetchall()
+    sql.execute(
+        "INSERT INTO incident_economics(incident_id,run_id,affected_count,rate_code,rate_rub,detractor_share,no_return_share,potential_loss_rub,prevented_loss_rub,computed_sim) SELECT id,run_id,1,'bank_average',4050,.15,.2,999999999999.99,999999999999.97,%s FROM incidents WHERE run_id=%s",
+        (now, run),
+    )
+    expected = sql.execute("SELECT sum(prevented_loss_rub) FROM incident_economics WHERE run_id=%s", (run,)).fetchone()[
+        0
+    ]
+    assert expected == Decimal("10999999999999.67") and Decimal(float(expected)) != expected
+
+    def bomb(*args, **kwargs):
+        raise AssertionError("No monetary computation allowed in reader")
+
+    monkeypatch.setattr("app.economics.dcltv.compute", bomb)
+    monkeypatch.setattr("app.economics.dcltv.compute_incident", bomb)
+    monkeypatch.setattr("app.economics.dcltv.recompute", bomb)
+    before = fingerprint(sql)
+    out = metrics_client.get("/api/metrics/overview", params={"run_id": str(run)}).json()
+    assert out["kpi"]["saved_rub_exact"] == str(expected)
+    assert out["coverage"]["incidents"] == out["coverage"]["economics_known"] == 11
+    assert sum(x["incidents"] for x in out["pressure"]) == 11
+    assert fingerprint(sql) == before
+    sql.execute("DELETE FROM incident_economics WHERE incident_id=%s", (incidents[0][0],))
+    partial = metrics_client.get("/api/metrics/overview", params={"run_id": str(run)}).json()
+    assert partial["kpi"]["saved_rub_exact"] is None
+    assert partial["coverage"]["incidents"] == 11 and partial["coverage"]["economics_known"] == 10

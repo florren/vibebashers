@@ -211,10 +211,26 @@ async def get_metrics_economics_live(run_id: str | None = Query(None)) -> Any:
 
 
 @router.get("/api/metrics/cx-index", summary="[ПРОТО] Демонстрационный индекс CX")
-async def get_metrics_cx_index(run_id: str | None = Query(None)) -> Any:
-    from app.errors import NotImplementedYet
+async def get_metrics_cx_index(run_id: str = Query("current", min_length=1, max_length=19)) -> Any:
+    from app.analytics.cabinet_scope import validate_run
+    from app.analytics.cx_index_reader import cx_index_snapshot, metrics_scope
+    from app.trace.store import read_db
 
-    raise NotImplementedYet("T-256")
+    validate_run(run_id)
+    async with read_db() as conn:
+        return await cx_index_snapshot(conn, await metrics_scope(conn, run_id))
+
+
+@router.get("/api/metrics/overview", summary="[ПРОТО] Read-only KPI и сохранённая сводка Обзора")
+async def get_metrics_overview(run_id: str = Query("current", min_length=1, max_length=19)) -> Any:
+    from app.analytics.cabinet_scope import validate_run
+    from app.analytics.cx_index_reader import metrics_scope
+    from app.analytics.overview import overview_snapshot
+    from app.trace.store import read_db
+
+    validate_run(run_id)
+    async with read_db() as conn:
+        return await overview_snapshot(conn, await metrics_scope(conn, run_id))
 
 
 @router.get("/api/metrics/economics/preview", summary="Калькулятор потерь без записи в БД")

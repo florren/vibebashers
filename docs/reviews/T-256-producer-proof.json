@@ -1,0 +1,222 @@
+{
+  "status": "targeted_producer_checkpoint_not_full_acceptance",
+  "scope": "T256 API1.5.29, noDDL/noLLM/no monetary writes",
+  "functional": {
+    "passed": 91,
+    "seconds": 25.86,
+    "source": "/tmp/t256-functional-results.xml",
+    "coverage_instrumented": true
+  },
+  "performance": {
+    "cx-index": {
+      "p95_ms": 26.320954028051347,
+      "samples_ms": [
+        26.320954028051347,
+        24.416995991487056,
+        155.10256902780384,
+        21.88162098173052,
+        22.342582000419497,
+        22.873266017995775,
+        24.24954599700868,
+        21.9678160501644,
+        22.047228005249053,
+        21.960020996630192,
+        22.064219985622913,
+        22.193957993295044,
+        21.84075303375721,
+        21.93712699227035,
+        22.352840984240174,
+        25.360970001202077,
+        23.52755598258227,
+        21.859308006241918,
+        21.864968992304057,
+        22.254193958360702,
+        23.835313972085714,
+        22.50808896496892,
+        21.46352198906243,
+        21.689705026801676,
+        24.122292001266032,
+        22.233343974221498,
+        22.15516398428008,
+        22.61996199376881,
+        21.996310038957745,
+        22.909294988494366
+      ],
+      "clients": 5000,
+      "first_get_included": true
+    },
+    "overview": {
+      "p95_ms": 23.553585982881486,
+      "samples_ms": [
+        22.496486024465412,
+        21.630851959344,
+        23.02758098812774,
+        22.336800990160555,
+        22.68612803891301,
+        22.418837994337082,
+        22.35090802423656,
+        22.92578702326864,
+        22.287797008175403,
+        21.420489996671677,
+        21.837987995240837,
+        22.062105999793857,
+        23.199379036668688,
+        21.751252992544323,
+        22.177836974151433,
+        21.64416800951585,
+        21.824892959557474,
+        22.75243605254218,
+        20.879346993751824,
+        21.5283059515059,
+        22.041367017664015,
+        22.78949599713087,
+        23.285434988792986,
+        21.739410003647208,
+        21.54061000328511,
+        22.094268002547324,
+        23.553585982881486,
+        21.851895027793944,
+        23.497790039982647,
+        23.910689051263034
+      ],
+      "clients": 5000,
+      "first_get_included": true
+    }
+  },
+  "coverage": {
+    "backend/app/analytics/cx_index.py": {
+      "covered_lines": 54,
+      "num_statements": 55,
+      "percent_covered": 98.18181818181819,
+      "percent_covered_display": "98",
+      "missing_lines": 1,
+      "excluded_lines": 0,
+      "percent_statements_covered": 98.18181818181819,
+      "percent_statements_covered_display": "98"
+    },
+    "backend/app/analytics/cx_index_reader.py": {
+      "covered_lines": 120,
+      "num_statements": 121,
+      "percent_covered": 99.17355371900827,
+      "percent_covered_display": "99",
+      "missing_lines": 1,
+      "excluded_lines": 0,
+      "percent_statements_covered": 99.17355371900827,
+      "percent_statements_covered_display": "99"
+    },
+    "backend/app/analytics/overview.py": {
+      "covered_lines": 34,
+      "num_statements": 34,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "percent_statements_covered": 100.0,
+      "percent_statements_covered_display": "100"
+    }
+  },
+  "plans": [
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "927ee670a5ae6e4c7f9ca12f64a5da2e286ab59b672d028a414916324e6e56ae",
+      "execution_ms": 0.048,
+      "plan_cost": 8.17,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "02a8b408e7187ae3fa46b79032db7cb406884760d08e110f7118c538287cc23d",
+      "execution_ms": 0.011,
+      "plan_cost": 8.17,
+      "actual_rows": 0,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "ba5dcab2fe4d649737ce6bdf6cc3e36173ee555a7dd5e4085e89f8f55c0d37a9",
+      "execution_ms": 1.544,
+      "plan_cost": 1076.09,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.api.common.fetch_all",
+      "query_sha256": "f8957f0139763a08b00808c9c08e5145da7b96e3d1bfca1a5fd0c43d59a0e0c2",
+      "execution_ms": 1.395,
+      "plan_cost": 377.36,
+      "actual_rows": 240,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "5d0dc32054b4993a5f89c8990fb7d27b25b5737375fe6a52343ca363766a8f64",
+      "execution_ms": 0.83,
+      "plan_cost": 472.02,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "6103ad0747a602a8ee49d45b76f7f5acc0909a625e7e655e0cd7a85df6932bc8",
+      "execution_ms": 0.729,
+      "plan_cost": 310.15,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.cx_index_reader.fetch_one",
+      "query_sha256": "ba5dcab2fe4d649737ce6bdf6cc3e36173ee555a7dd5e4085e89f8f55c0d37a9",
+      "execution_ms": 0.795,
+      "plan_cost": 1076.09,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.api.common.fetch_all",
+      "query_sha256": "f8957f0139763a08b00808c9c08e5145da7b96e3d1bfca1a5fd0c43d59a0e0c2",
+      "execution_ms": 0.936,
+      "plan_cost": 377.36,
+      "actual_rows": 240,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.overview.fetch_one",
+      "query_sha256": "f0534e5c84b1c7764ad509bec6a6254542e59fff8956f736191299a5f248654e",
+      "execution_ms": 0.485,
+      "plan_cost": 610.78,
+      "actual_rows": 1,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.overview.fetch_all",
+      "query_sha256": "9c9f772d0dcd2dbce5029eba79e64101f32f02806295aa650287b31dfa38258f",
+      "execution_ms": 0.411,
+      "plan_cost": 213.82,
+      "actual_rows": 24,
+      "jit": null
+    },
+    {
+      "reader": "app.analytics.overview.fetch_all",
+      "query_sha256": "44df7c91b3dfeee88aaded8008d590ef57350acf43961ac643ec4380ad276066",
+      "execution_ms": 0.022,
+      "plan_cost": 30.36,
+      "actual_rows": 0,
+      "jit": null
+    }
+  ],
+  "runtime_sha256": {
+    "backend/app/analytics/cx_index.py": "b68c52c2a203522000993addbd3f12898951c5b27062b81d0dad6db33719daa8",
+    "backend/app/analytics/cx_index_reader.py": "59a9027ff55681ebe71e761495c6cbae5d847898ab05bb06b8a9e7b2e65039bb",
+    "backend/app/analytics/overview.py": "b09a71b9aa7537a2b6525e048e7ec97b018f9f55693218854e7f28cf1f60a2b8",
+    "backend/app/api/metrics.py": "b941d7e060eb75230247f6c3daeaf0ea1342eb5f086c8d6453021e72b0f1a7a2",
+    "backend/app/api/settings.py": "af5fd6108e551c87fc92eca79a20ba110da628957cafdf947c7caa78bdd10e31"
+  },
+  "notes": [
+    "Native30GET/endpoint inclfirst separate from coverage. No warmup/ANALYZE/retry/threshold change.",
+    "Functional coverage uses Python tracer; 91 tests incl exact stored money fixture 10999999999999.67.",
+    "GET /api/settings remains legacy generic map; typed PATCH validates new weights, invalid stored config is explicit unknown in CX endpoint.",
+    "EXPLAIN ANALYZE executed only SELECT in READ ONLY transaction after native measurement.",
+    "Full suite/composed CI and T255/T257 UI not yet complete."
+  ]
+}

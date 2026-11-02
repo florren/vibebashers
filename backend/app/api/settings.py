@@ -63,6 +63,21 @@ def validate_setup_llm(value: Any) -> None:
         raise Problem(422, "ID профиля должен быть положительным целым числом")
 
 
+def validate_cx_index(value: Any) -> None:
+    from app.analytics.cx_index import validated_weights
+
+    config = value
+    if not isinstance(config, dict):
+        raise Problem(422, "cx_index должен быть объектом")
+    if "weights" in config:
+        try:
+            validated_weights(config["weights"])
+        except ValueError as exc:
+            raise Problem(
+                422, "cx_index.weights: четыре явных конечных неотрицательных веса, хотя бы один положительный"
+            ) from exc
+
+
 # ---- settings map ---------------------------------------------------------
 @router.get("/api/settings", summary="Все настройки стенда (ключ → значение)")
 async def get_settings_map() -> Any:
@@ -86,18 +101,7 @@ async def patch_settings(body: dict[str, Any]) -> Response:
     if "setup_payload" in body:
         validate_setup_llm(body["setup_payload"])
     if "cx_index" in body:
-        from app.analytics.cx_index import validated_weights
-
-        config = body["cx_index"]
-        if not isinstance(config, dict):
-            raise Problem(422, "cx_index должен быть объектом")
-        if "weights" in config:
-            try:
-                validated_weights(config["weights"])
-            except ValueError as exc:
-                raise Problem(
-                    422, "cx_index.weights: четыре явных конечных неотрицательных веса, хотя бы один положительный"
-                ) from exc
+        validate_cx_index(body["cx_index"])
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in body.items():
@@ -150,6 +154,8 @@ async def post_settings_import(body: dict[str, Any]) -> Response:
         raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
     if "setup_payload" in imported:
         validate_setup_llm(imported["setup_payload"])
+    if "cx_index" in imported:
+        validate_cx_index(imported["cx_index"])
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in imported.items():

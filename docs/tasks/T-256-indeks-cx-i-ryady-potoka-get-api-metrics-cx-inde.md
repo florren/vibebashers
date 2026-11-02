@@ -40,4 +40,4 @@ pytest backend/tests/unit/test_cx_index.py backend/tests/integration/test_metric
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-256-cx-index`, база clean T-244 `b971710`. [Source audit и plan](../reviews/T-256-cx-index-design.md). Чистая формула/coverage/unknown/delta реализована: 27 unit passed; Ruff check/format passed. API29, reader, PG/performance и review ещё впереди; приёмка не отмечена. T-255/T-257 будут отдельными stacked ветками.
+Ветка `codex/T-256-cx-index`, исходная база clean T-244 `b971710`; ordinary composition T244CI8f сохранена. [API29 semantics/proof/rollback](../reviews/T-256-cx-index-design.md), [samples/coverage/планы](../reviews/T-256-producer-proof.json). Реализованы typed readonly CX/Overview, current-only scope, weights PATCH/import, registered SLA/unknown и independent historical receipts.91functionalunit/actualPGHTTP green; native demo5000 p95 CX26.321ms/Overview23.554ms, firstGET included/порог300; analytics208/210 statements99%; make lint green429front/311mypy/drift194. Full make test/CI/review впереди, карточка не закрыта; T255/T257 отдельные stacked ветки. Нет LLM/денежных writes/DDL.
