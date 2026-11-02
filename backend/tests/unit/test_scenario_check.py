@@ -41,3 +41,23 @@ async def test_all_scenarios_returns_failure_when_any_is_not_executed(monkeypatc
     monkeypatch.setattr(scenario_check, "run_one", check)
     assert await scenario_check.main() == 1
     assert checked == ["unsupported", "supported"]
+
+
+async def test_journey_alias_selects_readonly_scenario_with_explicit_live_recording(monkeypatch):
+    checked = []
+
+    async def check(base, dsn, scenario, wait):
+        checked.append((scenario["id"], scenario["_recording_source"]))
+        return True
+
+    monkeypatch.setattr(
+        scenario_check.sys, "argv", ["scenario_check.py", "journey_three_trajectories", "--recording-source", "live"]
+    )
+    monkeypatch.setattr(
+        scenario_check.sc,
+        "load_all",
+        lambda: [{"id": "customer_journey", "number": 12, "aliases": ["journey_three_trajectories"]}, {"id": "other"}],
+    )
+    monkeypatch.setattr(scenario_check, "run_one", check)
+    assert await scenario_check.main() == 0
+    assert checked == [("customer_journey", "live")]
