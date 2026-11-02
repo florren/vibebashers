@@ -1,9 +1,11 @@
-"""T-240: только синтетические отзывы/названия и reserved source URLs."""
+"""T-240/T-247: структурные и текстовые проверки синтетических корпусов."""
 
+import json
 import re
 from pathlib import Path
 
 from app.corpus.reviews import parse_reviews, platforms
+from app.sim.csi_corpus import generate
 
 ROOT = Path(__file__).resolve().parents[3]
 CORPUS = ROOT / "data/corpus/reviews/product_lines_v1/reviews.json"
@@ -17,3 +19,15 @@ def test_no_pii_and_no_real_bank_names_or_urls() -> None:
         assert ".invalid/" in row.source_url
     for platform in platforms().values():
         assert not re.search(r"https?://|www\.", platform.name_ru + platform.name_en)
+
+
+def test_no_pii_in_synthetic_csi_corpus():
+    corpus = generate()
+    forbidden = {"display_name", "name", "phone", "email", "chat_id", "account", "card_number", "address"}
+    for row in corpus["complaints"] + corpus["employees"]:
+        assert not forbidden.intersection(row)
+    for row in corpus["complaints"]:
+        text = row["complaint_ru"]
+        assert text.startswith("Учебная жалоба:")
+        assert not re.search(r"https?://|www\.|[\w.+-]+@[\w.-]+|\+?\d[\d ()-]{8,}\d", text)
+    assert "Authorization" not in json.dumps(corpus)

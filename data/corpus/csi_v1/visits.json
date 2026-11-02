@@ -1,0 +1,842 @@
+[
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "0-5",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "5-15",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "15-30",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "0",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "1",
+    "visits": 20
+  },
+  {
+    "branch_code": "0042",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0107",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0211",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0315",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0418",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0520",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0633",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0741",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0856",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  },
+  {
+    "branch_code": "0962",
+    "day": "2026-11-09",
+    "wait_bucket": "30+",
+    "redirects_bucket": "2+",
+    "visits": 20
+  }
+]
