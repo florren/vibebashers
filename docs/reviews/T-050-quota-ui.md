@@ -17,4 +17,16 @@ Raw usage_source и private поля/credential UID не рендерятся.
 
 Проверки на начальном source:24target frontend (5quota,10binding,9bench) green3.47s,
 полный330frontend+lint/typecheck green10.70s. Это до final backend-parent composition.
-4actual UI screenshots и final composition/CI ещё впереди; не заявляются.
+После обычной composition backend79bb448 + frontend9daea7d: source9e8ed4e,
+354 frontend tests + ESLint/motion + tsc green; production main/personal builds green.
+4actual production ru/en×themes cases1920×1080: legacy17=Unknown, confirmed0=0,
+confirmed123/4, incomplete floor5 + one cancelled synthetic reservation. Fixture
+подготовлен только в собственной cx_quota_ui_revision через canonical key API и
+accounting reconcile/admit/unknown; реального provider HTTP не было. Это специально
+заданные synthetic observations, а не статистика живого провайдера.
+101public/channel_runtime/langgraph/llm_runtime table fingerprints неизменны,
+0page errors/failed responses/browser external/nonGET. Backend DNS/socket guard и
+LLM bomb не сработали. SQL connection допускает legacy SELECT FOR UPDATE; SQL
+read-only не заявляется. Screenshots и source-qualified hashes: screenshots/T-050/.
+Русская широкая таблица сохраняет штатную горизонтальную прокрутку.
+CI и финансовое review всего P2 остаются отдельно; этот UI checkpoint их не заменяет.
