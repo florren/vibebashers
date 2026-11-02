@@ -60,3 +60,33 @@ Markdown.
 329 frontend, Ruff/formatter 377 файлов, mypy 258 source files. Первое выполнение
 выявило только порядок imports четырёх новых tests; он исправлен без изменения
 assertions. Следующий gate — последовательный `make test` на отдельной БД.
+
+
+## Финальная локальная проверка d1a4197
+
+Последовательный `make test`: 1410 unit / 18 skip, 284 integration / 2 skip,
+43 scenarios / 2 skip, 31 compliance; всего 1768 backend passed / 22 skip,
+329 frontend passed. `make lint` зелёный: frontend lint/types/tests,
+Ruff/formatter 377 файлов, mypy 258, drift 192/192. Runtime после этого source
+не менялся. CI и merge остаются отдельными gate.
+
+Финальное покрытие: 46 targeted unit/actual PG tests за 12.92s,
+146/152 новых исполняемых строк (96.05%), hashes и строки в
+`T-235-final-coverage.json`. Первый coverage-прогон остановился на setup:
+системный pg_dump18 несовместим с PG16. Повтор с локальным PG16 client прошёл;
+тесты/assertions не менялись.
+
+Actual localhost HTTP benchmark на отдельном PostgreSQL16.15: demo5000,
+600000 операций, PostgreSQL ограничен 4 CPU / 2GiB, API/client закреплены
+на тех же четырёх CPU. 47 запросов проверены до замера, затем по25 повторов:
+1175 timed GET, всего1222. Все47 p95 меньше300ms; худший132.993ms.
+84 streaming table fingerprints совпали до/после; structured LLM и external
+network guards не сработали. Seed включая dump занял22.509s. Детали по каждому
+запросу: `T-235-demo5000-performance.json`. Это последовательный actor-free
+замер после validation warmup, не доказательство задержек под активным Sim.
+Временные API/PG остановлены; рабочая БД не использовалась.
+
+Actual browser proof остаётся source-qualified ae7141d (10 вариантов), CI
+Playwright — четыре mocked API cases; различие описано выше. Replay-корпус
+с законченными native agent traces и нагрузка активного Sim остаются зависимыми
+приёмочными условиями; карточка не закрывается фиктивно.
