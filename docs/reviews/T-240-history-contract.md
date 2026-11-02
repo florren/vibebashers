@@ -50,3 +50,29 @@ passed; standalone legacy/reapply/FK/CASCADE PG test passed (7.14 s). Changed
 backend Ruff/mypy green; contracts_check:45 schemas/162 paths; actual PG16
 `alembic check`: No new upgrade operations detected. Полный regression на этом
 checkpoint ещё не запускался; прежние independent proof не расширяются автоматически.
+
+## Следующий seed checkpoint
+
+Actual seed теперь добавляет 162 canonical reviews и 151 недостающий channel
+instance; date mapping только seed: исходный source_date сохраняется, экземпляр
+сдвигается относительно immutable reference_anchor, offset явно записан.
+Исходные 800 T019 signals не меняются. Для их прежнего noise denominator и
+общей hard доли добавлены 48 настоящих hard templates и 1 настоящий noise.
+На lite/200 fixture итог1162, hard_share>=25%, generated noise ровно3%.
+Все180 direction×channel и прежние480 type×product×channel cells покрыты.
+
+История180 rows; mapped tail313 совпадает с actual по каждой line/source/severity
+ячейке (0% отклонение). Unmapped849 записан явно: неоднозначный старый cohort
+не получает направление по догадке. Новые editorial rows имеют status classified,
+не фиктивный ответ/AR и не очередь runtime агента. CSI15 связано с существующими
+branch FK; voice/branch channels — только синтетический текст, не STT/audio.
+Фактических fault→physical-line связей у старого cohort нет: пустое множество
+spike months не выдаётся за наблюдённую каузальность. Pure spike-механика ранее
+проверена отдельно; actual источник остаётся явно ограниченным.
+
+Повтор stage проверяет corpus SHA/seed/canonical UTC anchor и сохраняет rows/IDs;
+другой корпус требует явного rebuild. Injected save failure откатывает все
+новые signals и receipt; затем retry проходит. 3 actual PG tests passed23.71s
+(включая исходный T019 test без ослабления assertions). Новый stage/adapter/coverage
+mypy green; сквозная проверка scripts/seed/run.py отдельно выявляет уже существующий
+fetchone()[0] typing warning вне изменённых строк. Полный make lint/test ещё впереди.
