@@ -279,3 +279,31 @@ B prevention actor не подтянут и prevented остаётся null. Who
 coverage/source composition с исправленным B reader ещё не выполнены. Из parent
 унаследован один trailing-space warning в T-241-contract-review.md:112; чужой
 frozen report не переписывался, runtime/DDL это не меняет.
+
+### API25 compatibility: identified fee legacy ≠ external authority
+
+Предварительный red на неизменённом T174 regression:1 failed8.21s, IngestError
+before SQL. Старый helper посылал source_code=api/origin=proactive; API25 этот
+внешний вход намеренно запрещает. При этом прежняя финансовая проверка separate
+explicit fee case не должна исчезнуть: внутреннее обнаружение комиссии не
+разрешает закрыть pending deposit того же клиента.
+
+Согласованная test-only реконструкция pre-API25 state: signal создаётся штатным
+normalizer с origin=api, затем в setup контролируемый UPDATE восстанавливает
+только persisted origin=proactive и прежний accepted payload.origin. Нет direct
+INSERT signals, permissive production flag или выдуманного authorised fee
+producer. Далее обычный process_signal проверяет все прежние ledger54.72,
+completed fee/deposit-status-unchanged/no-issued-deposit-gift assertions.
+Отдельный parametrized case проверяет документированную migration внешнего
+caller: origin=api с прежним channel=proactive; новый negative проверяет reserved
+origin reject без ingest/AR/financial writes. Все3PG прошли21.28s.
+
+Ни fault_monitor(NULL client/failed technical cohort), ни compliance не выдаётся
+за identified fee detector. Новый runtime fee producer этой T039 не создаётся;
+исторические origin строки не backfill/переписываются. Различие external API
+migration и legacy stored origin сохраняется в final API25 human review.
+
+Composed whole unit e318:1955 passed/19 skipped66.28s с credential/transport
+variables удалёнными через env -u. Первый safe-blank/false environment дал
+2expected-precedence failures ('' вместо None и override synthetic _env_file
+TG enabled); code/assertions для этого не менялись, это не runtime fix.
