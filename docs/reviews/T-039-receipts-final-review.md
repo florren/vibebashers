@@ -40,6 +40,14 @@ Actual PG counterexample с настоящим incident_signals link: resolution
 
 Frozen5445 full integration был остановлен только своему runner через SIGINT после повторяющихся setup errors: **173 passed,1 skipped,36 errors,958.25s**. Все36errors — literal0018 в cabinet fixture против actual0019, не disk/connection exhaustion. Отдельный test-only c7c0554 проверяет exact ScriptDirectory.current_head в обоих местах; все36 cabinet cases прошли96.86s, прежние0018reapply/downgrade/data/audit assertions сохранены. Частичный прогон не fullgreen; финальная композиция/остальные sequential phases/CI ещё впереди. Source hashes/исторические значения сохранены в proof JSON.
 
+## Финальная проверенная композиция
+
+Обычный merge cutoff child + отдельного cabinet fixture fix: **0e0db416c10b2761d24637086974b70247874676**, clean sourcefreeze. Последовательный regression завершился exit0: integration **617 passed,4 skipped,3251.23s**; scenarios **43 passed,2 skipped,270.08s**; compliance **31 passed,128.93s**; tgbot **43 passed,8.63s**. Make lint на этом source: backend490Ruff/307mypy, bot12Ruff/5mypy, frontend366Vitest/47files/typecheck. Contracts47schemas/163paths/drift193=193, licenses550+36 green; final Alembic check — No new upgrade operations detected.
+
+Unit **1900 passed,18 skipped,63.91s** выполнен на bc80aec: application и unit trees побайтно идентичны0e; единственное tree отличие — проверенный в полном integration test-only cabinet head guard. Суммарно backend **2591 passed/24 skipped**, frontend366, bot43. Это source-qualified последовательные фазы, а не один общий pytest invocation. Targeted/coverage наборы не добавлены к total повторно. Исторический interrupted5445 остаётся отдельной неуспешной попыткой. Inherited Alembic deprecation, unknown pytest.live marker и DemoMenu refresh warning не подавлялись, ошибок нет.
+
+Текущий source проверен на actual0019, не на будущих CSI20/A2 API25 consumers; их composition/CI и final DDL/consumer human review отдельно. OpenAPI по-прежнему1.5.22, API27 не расходуется. Вариант B для реализации одобрен пользователем; эта проверка не является автоматическим merge approval.
+
 ## Rollback и операционная граница
 
 DDL0019 требует штатного maintenance/migration окна: ALTER/CHECK может ждать writers. Меняется DB contract fingerprint; старому baseline не подставляется выдуманная metadata. Downgrade сохраняет audit column/историю, физический DROP не выполняется. При rollback приложения keep0019 migration/contract knowledge, остановить actors штатно; старый app может писать NULL, новый reader обязан сохранить unknown. Receipt/status не разрывать и не backfill вручную для получения красивого счётчика. Рабочие БД не изменялись.

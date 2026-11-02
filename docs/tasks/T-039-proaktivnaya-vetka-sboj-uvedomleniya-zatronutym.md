@@ -117,3 +117,9 @@ care120, modelled prevented-by-resolution0 при complete provenance,
 означает завершение всех trajectories; это observed-current snapshot.
 Legacy NULL receipt даёт None/incomplete, даже при Sent120; immutable phase не
 переписывается. Final coverage/full/CI/API25+receipt19 review ещё впереди.
+Receipts packet final source0e0db41:2591backend passed/24skip,366frontend,43bot;
+changed runtime coverage129/138=93.48%. Targeted T5/T8/T9 native PG доказывает
+logical vs observation cutoff и отсутствие credit уже поступившей жалобе.
+[Source-qualified proof](../reviews/T-039-receipts-runtime-proof.json).
+Final DDL19/consumer review и композиция proactive API25 остаются отдельными;
+полная T039 этим отчётом не закрывается. Реальных внешних вызовов/prod не было.
