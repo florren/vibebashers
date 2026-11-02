@@ -123,3 +123,26 @@ customer/HITL, timing/recovery/runner, прежние finance/map/anonymous cons
 Чистая формула/ingress/runner: 19 unit passed/1.08s; Ruff/mypy dCLTV зелёные.
 Полный unit financial candidate: 1800 passed/18 skipped/54.16s. Full всей T039 и
 exact-head CI ещё не выполнялись; actual120/90/30 остаётся следующим proof.
+
+### Existing owner preflight и customer dashboard
+
+Подтверждены две дополнительные regressions нового источника: current legacy
+run без behavior marker принимал automatic anchor до graph.require_run;
+service-only run показывал customer signals_total=1. Producer теперь вызывает
+существующий require_run после run SHARE и до writes. Legacy/mismatched policy
+error не меняет signals/ingest/events. Новая policy не вводится.
+
+Dashboard использует отдельный customer_ws (`origin IS DISTINCT FROM proactive`)
+для customer counts/response latency/first-response-by-segment. Raw AR/tokens/
+agent latency и реальные incident/economics остаются полными. Общий where_s не
+расширяется origin predicate, incident query не получает выдуманный i.origin.
+Existing external channel=proactive с origin=api по-прежнему customer input.
+Actual regression показывает0 customer signals при1 raw AR, неизменные tokens,
+incident и stored economics; после обычного API input customer count1.
+
+14 actual-PG regressions passed/95.74s, включая повторный native120/90/30;
+полный unit1800 passed/18 skipped/52.25s, Ruff и mypy двух production modules
+зелёные. Lazy dashboard economics refresh НЕ менялся: HTTP endpoint на этом
+base по-прежнему использует прежний default refresh=True. Read-only proof относится
+к явному dashboard(...refresh_economics=False); глобальный readonly HTTP claim
+этим пакетом не делается. T241 view18 принадлежит другому owner и здесь не менялся.

@@ -294,3 +294,36 @@ async def test_fault_resolution_during_fanout_rechecks_each_send_and_rolls_back_
         assert any("scope устарел перед инструментом" in error for error in state["errors"])
         assert not await (await conn.execute("select 1 from notifications where run_id=%s", (run,))).fetchone()
         assert not await (await conn.execute("select 1 from incidents where run_id=%s", (run,))).fetchone()
+
+
+@pytest.mark.asyncio
+async def test_native_producer_rejects_legacy_owner_before_automatic_ingest(seeded):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        run = await new_run(conn, "T039 legacy producer preflight")
+        at = await sim_now(conn)
+        client = (await (await conn.execute("select id from clients order by id limit 1")).fetchone())[0]
+        fid = await fault(conn, run, at)
+        await operation(conn, run, fid, client, at)
+        # Только own fixture: имитируем сохранённый pre-upgrade run с историей.
+        await conn.execute("delete from behavior_runs where run_id=%s", (run,))
+        before = await (
+            await conn.execute(
+                "select (select count(*) from signals where run_id=%s),"
+                "(select count(*) from ingest_messages where run_id=%s),"
+                "(select count(*) from sim_events where run_id=%s)",
+                (run, run, run),
+            )
+        ).fetchone()
+        with pytest.raises(ValueError, match="Legacy run"):
+            await proactive.produce(conn)
+        assert (
+            await (
+                await conn.execute(
+                    "select (select count(*) from signals where run_id=%s),"
+                    "(select count(*) from ingest_messages where run_id=%s),"
+                    "(select count(*) from sim_events where run_id=%s)",
+                    (run, run, run),
+                )
+            ).fetchone()
+            == before
+        )

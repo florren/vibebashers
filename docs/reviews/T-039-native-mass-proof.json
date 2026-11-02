@@ -6,7 +6,10 @@
     "backend/app/economics/dcltv.py": "e2b2871715affe24370e2271a663a6fe5748f34503ed9329d27eda2d0f9d4e50",
     "backend/app/agent/runner.py": "78a73c3197ad1e8ace71cf7802c0a1446b5163ea83edfa85e637ea4e8ea816e2",
     "backend/tests/integration/test_proactive_mass.py": "ccb6703b46c60478bdbeab2f42c5e24bcac4d35d17bb0ff42f7f4cc6d975ab00",
-    "backend/tests/integration/test_proactive_link_concurrency.py": "7b18de961d41cce5194e4e03bc13e74e57fa7fae9b2dfef411b60f535f486561"
+    "backend/tests/integration/test_proactive_link_concurrency.py": "7b18de961d41cce5194e4e03bc13e74e57fa7fae9b2dfef411b60f535f486561",
+    "backend/app/agent/proactive.py": "5e9fdba3e7fa1922e2f28544433069d5cd6bab4d9cc4d8bb0c950585ff1fa9a6",
+    "backend/app/analytics/dashboard.py": "78ffc4ae3c8f8225667e212a5169abfea39450916a634d1325bf82ab614638cd",
+    "backend/tests/integration/test_proactive_dashboard.py": "4befdf45b71199c3ff8b22b4f6608fdbd8512dee4aad5391cb811ef7ad320b76"
   },
   "runtime_policy_changed": false,
   "external_http_calls": 0,
@@ -57,6 +60,18 @@
       "seconds": 30.65,
       "log": "/tmp/t039-final-lock-abs-pg.log",
       "production_source_same_as_mass_proof": true
+    },
+    "owner_dashboard_followup_pg": {
+      "passed": 14,
+      "seconds": 95.74,
+      "log": "/tmp/t039-owner-dashboard-pg.log",
+      "includes_same_native_mass_proof": true
+    },
+    "owner_dashboard_followup_unit": {
+      "passed": 1800,
+      "skipped": 18,
+      "seconds": 52.25,
+      "log": "/tmp/t039-owner-dashboard-full-unit.log"
     }
   },
   "whole_task_complete": false,

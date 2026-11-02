@@ -13,6 +13,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.ingest.normalizer import create_signal
+from app.sim.behavior.runtime import require_run
 from app.sim.behavior.store import BehaviorStore
 
 SOURCE = "fault_monitor"
@@ -239,6 +240,7 @@ async def produce(conn: psycopg.AsyncConnection[Any]) -> list[int]:
     run_id, at = clock
     if await BehaviorStore(conn).current_effect_time(run_id) is None:
         return []
+    await require_run(conn, run_id)
     clock = await current_clock(conn, run_id)
     if clock is None:
         return []
