@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from contextlib import asynccontextmanager
 
 import httpx
@@ -71,6 +72,27 @@ async def test_actual_get_matrix_and_write_detector(seeded, monkeypatch):
                 )
             ).fetchone()
         )[0]
+        await conn.execute(
+            "insert into incident_signals(incident_id,signal_id,link_type,linked_sim) values(%s,%s,'primary',%s)",
+            (iid, sid, now),
+        )
+        for index in range(120):
+            message = from_api_signal(
+                {
+                    "channel_code": "chat",
+                    "client_id": cid,
+                    "text": f"Синтетическое повторное обращение {index}",
+                    "external_id": f"t235-fanout-{index}",
+                },
+                origin="jury",
+            )
+            child = await create_signal(
+                conn, message, source_code="api", run_id=rid, sim_time=now + dt.timedelta(minutes=1), emit_event=False
+            )
+            await conn.execute(
+                "insert into incident_signals(incident_id,signal_id,linked_sim) values(%s,%s,%s)",
+                (iid, child["signal_id"], now + dt.timedelta(minutes=1)),
+            )
         task = (
             await (
                 await conn.execute(
@@ -182,7 +204,7 @@ async def test_actual_get_matrix_and_write_detector(seeded, monkeypatch):
     )
     scenario = scenarios.get("search_and_trace")
     assert await scenario_check.run_one("http://test", dsn(seeded), scenario, 0)
-    assert len(methods) == 43  # 17prefixes +9formats +17traces, без write endpoints.
+    assert len(methods) == 47  # 17prefixes +9formats +17traces +4contexts, без write endpoints.
     assert set(methods) == {"GET"}
     assert llm_calls == []
     original = trace.assemble

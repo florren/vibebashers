@@ -6,7 +6,7 @@ import httpx
 import pytest
 from app.search.grammar import PREFIXES
 
-from scripts.read_model_check import FORMATS, SearchCase, check_search, check_trace, recorded_cases
+from scripts.read_model_check import FORMATS, SearchCase, check_search, check_trace, recorded_cases, recorded_contexts
 
 
 def search_payload(ref="SIG-000001"):
@@ -49,7 +49,10 @@ async def test_search_acceptance_requires_real_match_and_safe_response(problem):
     assert case.query not in repr(case)
 
 
-@pytest.mark.parametrize("problem", [None, "wrong_ref", "schema", "not_found", "network", "not_json"])
+@pytest.mark.parametrize(
+    "problem",
+    [None, "wrong_ref", "schema", "not_found", "network", "not_json", "causal", "pending", "fanout", "contact"],
+)
 async def test_trace_acceptance_rejects_wrong_subject_and_missing_sections(problem):
     case = SearchCase("prefix:SIG", "SIG-000001", "signal", "SIG-000001")
     payload = {
@@ -68,6 +71,8 @@ async def test_trace_acceptance_rejects_wrong_subject_and_missing_sections(probl
     }
     if problem == "schema":
         del payload["terminal"]
+    if problem == "contact":
+        payload["subject"]["title_ru"] = "synthetic@example.com"
 
     def respond(request):
         if problem == "network":
@@ -80,7 +85,13 @@ async def test_trace_acceptance_rejects_wrong_subject_and_missing_sections(probl
         base_url="http://test",
         transport=httpx.MockTransport(respond),
     ) as http:
-        assert await check_trace(http, case) is (problem is None)
+        assert await check_trace(
+            http,
+            case,
+            causal=problem == "causal",
+            pending=problem == "pending",
+            minimum_fanout=120 if problem == "fanout" else 0,
+        ) is (problem is None)
 
 
 async def test_missing_recorded_evidence_is_not_a_pass_or_silent_skip():
@@ -98,4 +109,12 @@ async def test_missing_recorded_evidence_is_not_a_pass_or_silent_skip():
         "manifest:formats",
         *(f"prefix:{p}" for p in PREFIXES),
         *(f"format:{f}" for f in FORMATS),
+    }
+    contexts, missing_contexts = await recorded_contexts(Empty())
+    assert contexts == []
+    assert set(missing_contexts) == {
+        "context:causal_signal",
+        "context:causal_incident",
+        "context:pending",
+        "context:fanout",
     }

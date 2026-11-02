@@ -23,3 +23,10 @@ Discovery SQL работает в read-only транзакции; отсутст
 `T-235-checkpoint-coverage.json`. Соседние search/trace regressions: 118 passed
 за 1.55s. Первый sandbox запуск завис на TestClient и был остановлен;
 успешный повтор выполнен без ограничивающего TestClient sandbox.
+
+Следующий checkpoint добавляет два причинных следа с непустыми before/after,
+pending для незавершённого инцидента и веер ≥120 сигналов. Fixture создаёт
+120 повторов через normalizer; проверены 47 GET и прежние запреты записи/LLM.
+24 адресных unit/actual PG теста прошли за 8.77s. Raw contact в отображаемом
+тексте Trace также даёт FAIL. Coverage artifact выше относится к c4d53ab;
+покрытие расширенного checkpoint будет пересчитано отдельно.
