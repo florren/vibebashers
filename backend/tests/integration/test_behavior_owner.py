@@ -777,9 +777,21 @@ async def test_agent_sink_is_pending_atomic_and_never_treats_request_as_closure(
             assert (await owner.episode(run, client))["state"] == "waiting"
             assert (await owner.episode(run, client))["closed_sim"] is None
             # Только actual persisted classification flag подтверждает churn intent.
+            from app.contracts.registry import deref
+            from app.economics.calibration import PIPELINE
+            from app.llm.mock import MockProvider
+
+            classified, _, _ = await MockProvider().complete_structured(
+                [{"role": "user", "content": "Сотрудник грубо ответил, я уйду из банка"}],
+                deref("agent/classification"),
+                MOCK_PROFILE,
+                timeout_s=1,
+            )
+            classified["flags"] = ["churn_intent"]
+            await conn.execute("update signals set classification=%s where id=%s", (Jsonb(classified), signal))
             await conn.execute(
-                "update signals set classification=jsonb_build_object('flags',jsonb_build_array('churn_intent')) where id=%s",
-                (signal,),
+                "insert into agent_steps(run_id,seq,node,status,input,output) values(%s,1,'classify','ok','{}',%s)",
+                (agent, Jsonb(classified | {"score_pipeline": PIPELINE})),
             )
             await set_client_state(ctx, client, "churn_intent", "agent:verified_flag", signal)
             await owner.advance(run_id=run, to_sim=due)

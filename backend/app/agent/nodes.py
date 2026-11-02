@@ -1001,6 +1001,9 @@ async def instant_decide(state: AgentState, deps: Deps) -> AgentState:
         usage=meta.get("usage"),
         latency_ms=int(meta.get("latency_ms") or 0),
     )
+    from app.sim.behavior.signals import record_classified
+
+    await record_classified(deps.ctx, int(sig["id"]))
     return state
 
 
@@ -1711,6 +1714,9 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
         usage=meta.get("usage"),
         latency_ms=int(meta.get("latency_ms") or 0),
     )
+    from app.sim.behavior.signals import record_classified
+
+    await record_classified(deps.ctx, int(sig["id"]))
     return state
 
 

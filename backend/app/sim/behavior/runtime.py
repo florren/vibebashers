@@ -71,7 +71,9 @@ async def capture(conn: psycopg.AsyncConnection[Any], run_id: int) -> None:
     for row in await rows.fetchall():
         await store.enqueue_operation(run_id=run_id, operation_id=row[0])
     rows = await conn.execute(
-        "select n.id from notifications n where exists(select 1 from operations o where o.run_id=n.run_id and o.client_id=n.client_id and o.status='failed') "
+        "select n.id from notifications n where (exists(select 1 from operations o where o.run_id=n.run_id and o.client_id=n.client_id and o.status='failed') "
+        "or exists(select 1 from behavior_runtime b where b.run_id=n.run_id and b.client_id=n.client_id) "
+        "or exists(select 1 from behavior_agent_intents x where x.run_id=n.run_id and x.client_id=n.client_id)) "
         "and n.run_id=%s and n.status in ('sent','delivered') and n.recipient_type in ('client','public') "
         "and not exists(select 1 from behavior_evidence e where e.run_id=n.run_id and e.client_id=n.client_id and e.source_kind='notification' and e.source_id=n.id) order by n.sent_sim,n.id",
         (run_id,),
@@ -79,7 +81,9 @@ async def capture(conn: psycopg.AsyncConnection[Any], run_id: int) -> None:
     for row in await rows.fetchall():
         await store.enqueue_notification(run_id=run_id, notification_id=row[0])
     rows = await conn.execute(
-        "select c.id from client_reactions c where exists(select 1 from operations o where o.run_id=c.run_id and o.client_id=c.client_id and o.status='failed') "
+        "select c.id from client_reactions c where (exists(select 1 from operations o where o.run_id=c.run_id and o.client_id=c.client_id and o.status='failed') "
+        "or exists(select 1 from behavior_runtime b where b.run_id=c.run_id and b.client_id=c.client_id) "
+        "or exists(select 1 from behavior_agent_intents x where x.run_id=c.run_id and x.client_id=c.client_id)) "
         "and c.run_id=%s and not exists(select 1 from behavior_evidence e where e.run_id=c.run_id and e.client_id=c.client_id and e.source_kind='twin_reaction' and e.source_id=c.id) order by c.reacted_sim,c.id",
         (run_id,),
     )
@@ -109,6 +113,33 @@ async def capture(conn: psycopg.AsyncConnection[Any], run_id: int) -> None:
         + cause
         + "where o.run_id=%s and o.status='failed' and i.status in ('resolved','closed') and coalesce(i.resolved_sim,i.closed_sim) is not null "
         "and not exists(select 1 from behavior_evidence x where x.run_id=o.run_id and x.client_id=o.client_id and x.source_kind='resolution' and x.source_id=i.id) order by at,i.id,o.client_id",
+        (run_id,),
+    )
+    for client, incident, at in await rows.fetchall():
+        await store._enqueue(run_id, client, "resolution", incident, at)
+
+    # Already-complained signal cause не получает выдуманный operation FK.
+    signal_cause = (
+        " from behavior_runtime b join behavior_receipts r on r.run_id=b.run_id and r.client_id=b.client_id "
+        "and r.source_kind='signal' and r.action='cause:'||b.episode_no::text "
+        "join signals s on s.id=r.source_id and s.run_id=b.run_id and s.client_id=b.client_id "
+        "join incident_signals x on x.signal_id=s.id join incidents i on i.id=x.incident_id and i.run_id=b.run_id "
+    )
+    rows = await conn.execute(
+        "select distinct b.client_id,e.id,e.sim_time"
+        + signal_cause
+        + "join sim_events e on e.run_id=i.run_id and e.payload->>'incident_id'=i.id::text "
+        "where b.run_id=%s and e.event_type in ('sla.breached','sla.report_missing','sla.first_response_overdue') "
+        "and not exists(select 1 from behavior_evidence q where q.run_id=b.run_id and q.client_id=b.client_id and q.source_kind='sla' and q.source_id=e.id) order by e.sim_time,e.id,b.client_id",
+        (run_id,),
+    )
+    for client, event, at in await rows.fetchall():
+        await store._enqueue(run_id, client, "sla", event, at)
+    rows = await conn.execute(
+        "select distinct b.client_id,i.id,coalesce(i.resolved_sim,i.closed_sim) at"
+        + signal_cause
+        + "where b.run_id=%s and i.status in ('resolved','closed') and coalesce(i.resolved_sim,i.closed_sim) is not null "
+        "and not exists(select 1 from behavior_evidence q where q.run_id=b.run_id and q.client_id=b.client_id and q.source_kind='resolution' and q.source_id=i.id) order by at,i.id,b.client_id",
         (run_id,),
     )
     for client, incident, at in await rows.fetchall():
