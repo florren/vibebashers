@@ -5,15 +5,16 @@ import { useUiTheme } from './store'
 import { validCircadian, type CircadianPreferences } from './circadian'
 import type { ThemeDensity, ThemeMode, ThemePack } from './types'
 
-type Preferences = { attention: AttentionMode | null; theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity; circadian: CircadianPreferences }
+type Preferences = { layout: 'legacy' | 'v2'; attention: AttentionMode | null; theme_pack: ThemePack; mode: ThemeMode; density: ThemeDensity; circadian: CircadianPreferences }
 const PENDING = 'cx.ui.pending'
 let saveQueue = Promise.resolve()
-const KEYS = ['theme_pack', 'mode', 'density', 'circadian', 'attention'] as const
+const KEYS = ['theme_pack', 'mode', 'density', 'circadian', 'attention', 'layout'] as const
 
 function validated(value: unknown): Partial<Preferences> {
   if (!value || typeof value !== 'object') return {}
   const obj = value as Record<string, unknown>
   const out: Partial<Preferences> = {}
+  if (obj.layout === 'legacy' || obj.layout === 'v2') out.layout = obj.layout
   if (obj.theme_pack === 'brand' || obj.theme_pack === 'ops') out.theme_pack = obj.theme_pack
   if (['light', 'dark', 'auto', 'circadian'].includes(String(obj.mode))) out.mode = obj.mode as ThemeMode
   if (obj.density === 'compact' || obj.density === 'comfortable') out.density = obj.density

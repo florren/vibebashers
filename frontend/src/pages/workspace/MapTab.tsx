@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RUSSIA, MAP_WIDTH as W, MAP_HEIGHT as H, russiaProjection } from '@/shared/geo/russia'
@@ -19,7 +20,9 @@ const ZONE_FILL: Record<string, string> = { green: '#8fcf9a', yellow: '#f2c94c',
 
 export function MapTab() {
   const { t } = useTranslation()
-  const [mode, setMode] = useState<Mode>('heat')
+  const [params, setParams] = useSearchParams()
+  const mode: Mode = params.get('map_mode') === 'zones' ? 'zones' : 'heat'
+  const setMode = (mode: Mode) => setParams(p => { if (mode === 'zones') p.set('map_mode', mode); else p.delete('map_mode'); return p }, { replace: true })
   const [layer, setLayer] = useState<MapLayer>('signals')
   const [win, setWin] = useState(24 * 7)
   const [runScope, setRunScope] = useState<'current' | 'all'>('all')
