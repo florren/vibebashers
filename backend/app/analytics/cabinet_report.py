@@ -61,11 +61,7 @@ def warning_current(row: dict[str, Any], now: dt.datetime) -> bool:
         return parsed if parsed.tzinfo is not None else None
 
     stage = timestamp(row.get("stage_sim"))
-    if stage is None:
-        if row["status"] != "new":
-            return False
-        stage = timestamp(row.get("created_sim"))
-    elif row.get("stage_status") != row["status"]:
+    if stage is None or row.get("stage_status") != row["status"]:
         return False
     release = timestamp(row.get("release_sim"))
     if release is not None and stage is not None:

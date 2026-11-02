@@ -189,6 +189,7 @@ def test_warning_requires_native_current_stage_deadline_and_nonterminal_state():
         {"status": "resolved"},
         {"stage_status": "resolved"},
         {"stage_sim": None},
+        {"stage_sim": None, "status": "new", "stage_status": None},
         {"release_sim": now},
         {"stage_sim": row["warning_sim"]},
         {"warning_sim": now + dt.timedelta(minutes=1)},
