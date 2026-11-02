@@ -8091,7 +8091,24 @@ export interface components {
             scope?: string | null;
             /** Format: date-time */
             created_at?: string | null;
+            /** @description Legacy hint до явного reconciliation; при usage_known=false не означает полный расход */
             tokens_used?: number;
+            /** @description Неоткатываемый подтверждённый app-observed или operator-declared floor */
+            readonly observed_tokens_floor?: number;
+            /** @description Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint */
+            readonly usage_known?: boolean;
+            readonly usage_source?: string;
+            /** Format: date-time */
+            readonly usage_as_of?: string | null;
+            readonly requests_known?: boolean;
+            /**
+             * Format: date
+             * @description Реальная UTC дата operational counter; не SimClock
+             */
+            readonly requests_day?: string;
+            /** @description null — остаток неизвестен или лимит не задан; не0 */
+            readonly tokens_remaining?: number | null;
+            readonly requests_remaining?: number | null;
             tokens_limit?: number | null;
             requests_today?: number;
             rpd_limit?: number | null;

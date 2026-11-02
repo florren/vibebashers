@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.19
+  version: 1.5.21
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -2886,7 +2886,15 @@ components:
         endpoint_url: { type: [string, "null"] }
         scope: { type: [string, "null"] }
         created_at: { type: [string, "null"], format: date-time }
-        tokens_used: { type: integer }
+        tokens_used: { type: integer, description: Legacy hint до явного reconciliation; при usage_known=false не означает полный расход }
+        observed_tokens_floor: { type: integer, minimum: 0, readOnly: true, description: Неоткатываемый подтверждённый app-observed или operator-declared floor }
+        usage_known: { type: boolean, readOnly: true, description: Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint }
+        usage_source: { type: string, readOnly: true }
+        usage_as_of: { type: [string, "null"], format: date-time, readOnly: true }
+        requests_known: { type: boolean, readOnly: true }
+        requests_day: { type: string, format: date, readOnly: true, description: Реальная UTC дата operational counter; не SimClock }
+        tokens_remaining: { type: [integer, "null"], minimum: 0, readOnly: true, description: null — остаток неизвестен или лимит не задан; не0 }
+        requests_remaining: { type: [integer, "null"], minimum: 0, readOnly: true }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
         rpd_limit: { type: [integer, "null"] }

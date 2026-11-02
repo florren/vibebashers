@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.errors import Problem
-from app.llm import credentials
+from app.llm import accounting, credentials
 from app.llm import secrets as sec
 from app.llm.base import binding_fields
 from app.llm.budget import load_openrouter_budget
@@ -524,7 +524,18 @@ async def get_llm_keys() -> Any:
                     "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
                     (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
                 )
-    return await _with_openrouter_env_key(_mask_keys(items))
+    public = await _with_openrouter_env_key(_mask_keys(items))
+    env_card = next((item for item in public if item.get("id", 0) < 0), None)
+    if env_card is not None:
+        settings = get_settings()
+        async with db() as conn:
+            observed = await accounting.attach_env_observation(
+                conn,
+                env_card,
+                accounting.KeyFacts("openai_compatible", settings.openrouter_api_key, settings.openrouter_base_url),
+            )
+        public = [observed if item is env_card else item for item in public]
+    return _mask_keys(public)
 
 
 @router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (PGP/APP_SECRET)")
@@ -551,7 +562,8 @@ async def post_llm_keys(body: LlmKeyBody) -> Any:
                 await credentials.identity_uid(conn, body.provider, body.key),
             ),
         )
-    assert item is not None
+        assert item is not None
+        item = (await accounting.attach_public_observations(conn, [item]))[0]
     return credentials.public_key(item)
 
 

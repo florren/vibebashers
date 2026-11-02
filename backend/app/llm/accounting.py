@@ -95,6 +95,10 @@ class KeyFacts:
     db_id: int | None = None
     paid: bool = False
 
+    def __post_init__(self) -> None:
+        if self.endpoint is not None:
+            object.__setattr__(self, "endpoint", credentials.endpoint(self.endpoint))
+
     def verifier(self) -> bytes:
         if not self.secret and not self.endpoint:
             raise AdmissionRefused("auth", "для anonymous accounting требуется endpoint")
@@ -362,6 +366,7 @@ class PostgresAccounting:
                     "updated_at=clock_timestamp() where uid=%s",
                     (tokens_used, source, as_of, scope.uid),
                 )
+                await sync_mirrors(conn, scope.uid)
         return {"id": str(reconciliation_id), "idempotent": False, "source": source, "as_of": as_of.isoformat()}
 
     @asynccontextmanager
@@ -582,6 +587,7 @@ class KeyScope:
                 "where utc_day=%s and ((scope_type='key' and scope_id=%s) or (scope_type='profile' and scope_id=%s))",
                 (state["now"], state["day"], str(self.uid), state["profile_scope"]),
             )
+            await sync_mirrors(self.conn, self.uid)
         return Ticket(self, attempt_id)
 
 
@@ -601,6 +607,7 @@ class Ticket:
             raise AdmissionRefused("bad_output", "total usage меньше суммы prompt/completion")
         conn = self.scope.conn
         async with conn.transaction():
+            await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
             account = await (
                 await conn.execute("select * from llm_runtime.credentials where uid=%s for update", (self.scope.uid,))
             ).fetchone()
@@ -639,6 +646,7 @@ class Ticket:
                 "usage_as_of=clock_timestamp(),updated_at=clock_timestamp() where uid=%s",
                 (floor, known, source, self.scope.uid),
             )
+            await sync_mirrors(conn, self.scope.uid)
         self.terminal = self.terminal or final or attempt["state"] in ("known", "reconciled")
 
     async def unknown(self, kind: str = "unavailable") -> None:
@@ -670,3 +678,125 @@ class Ticket:
 
 def service() -> PostgresAccounting:
     return PostgresAccounting()
+
+
+PUBLIC_OBSERVATION_FIELDS = (
+    "observed_tokens_floor",
+    "usage_known",
+    "usage_source",
+    "usage_as_of",
+    "requests_known",
+    "requests_day",
+    "tokens_remaining",
+    "requests_remaining",
+)
+
+
+def public_observation(item: dict[str, Any], observed: dict[str, Any] | None, day: dt.date) -> dict[str, Any]:
+    """Compatibility tokens_used retains an unverified hint until explicit reconciliation."""
+    data = observed or {}
+    floor = _counter(int(data.get("confirmed_tokens") or 0))
+    reconciled = bool(data.get("reconciled"))
+    known = bool(data.get("usage_known") and not data.get("pending"))
+    used = floor if reconciled else max(_counter(int(item.get("tokens_used") or 0)), floor)
+    daily = data.get("daily_requests")
+    requests_known = bool(data.get("daily_known"))
+    # A registered scope's new UTC day starts at known0 app attempts; unknown
+    # token origin remains separately unknown and still blocks budgeted admission.
+    created = data.get("created_at")
+    if daily is None and created is not None and created.astimezone(dt.UTC).date() < day:
+        daily, requests_known = 0, True
+    if not reconciled:
+        legacy_day = item.get("requests_day", data.get("legacy_requests_day"))
+        legacy_daily = int(item.get("requests_today") or 0) if legacy_day in (None, day, day.isoformat()) else 0
+        daily = max(int(daily or 0), legacy_daily)
+    source = str(data.get("usage_source") or "legacy_unverified")
+    if source == "unknown":
+        source = "legacy_unverified"
+    if data.get("pending") and known is False and reconciled:
+        source = "app_observed_incomplete"
+    limit, rpd = item.get("tokens_limit"), item.get("rpd_limit")
+    return {
+        "tokens_used": used,
+        "observed_tokens_floor": floor,
+        "usage_known": known,
+        "usage_source": source,
+        "usage_as_of": data.get("usage_as_of"),
+        "requests_today": int(daily or 0),
+        "requests_known": requests_known,
+        "requests_day": day,
+        "tokens_remaining": max(0, int(limit) - floor) if known and limit is not None else None,
+        "requests_remaining": max(0, int(rpd) - int(daily or 0)) if requests_known and rpd is not None else None,
+    }
+
+
+async def attach_public_observations(
+    conn: psycopg.AsyncConnection[Any], items: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Read-only metadata join: no decrypt or implicit reconciliation/known0."""
+    try:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute("select (clock_timestamp() at time zone 'UTC')::date as day")
+            clock = await cur.fetchone()
+            assert clock is not None
+            day = clock["day"]
+            await cur.execute(
+                "select k.id,k.requests_day as legacy_requests_day,c.confirmed_tokens,c.usage_known,c.usage_source,c.usage_as_of,c.created_at,"
+                "d.requests_today as daily_requests,d.requests_known as daily_known,"
+                "exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid) as reconciled,"
+                "exists(select 1 from llm_runtime.wire_attempts w where w.credential_uid=c.uid and w.state in ('reserved','unknown') and w.reconciliation_id is null) as pending "
+                "from llm_api_keys k left join llm_runtime.credential_aliases a on a.config_uid=k.credential_uid "
+                "left join llm_runtime.credentials c on c.uid=a.credential_uid "
+                "left join llm_runtime.daily_usage d on d.scope_type='key' and d.scope_id=c.uid::text and d.utc_day=%s "
+                "where k.id=any(%s)",
+                (day, [item["id"] for item in items if item.get("id") is not None]),
+            )
+            observed = {row["id"]: dict(row) for row in await cur.fetchall()}
+        return [{**item, **public_observation(item, observed.get(item.get("id")), day)} for item in items]
+    except psycopg.Error as exc:
+        raise _unavailable(exc) from None
+
+
+async def attach_env_observation(
+    conn: psycopg.AsyncConnection[Any], item: dict[str, Any], facts: KeyFacts
+) -> dict[str, Any]:
+    """Existing env card uses its private identity, never hint-based accounting."""
+    try:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute("select (clock_timestamp() at time zone 'UTC')::date as day")
+            clock = await cur.fetchone()
+            assert clock is not None
+            day = clock["day"]
+            await cur.execute(
+                "select c.confirmed_tokens,c.usage_known,c.usage_source,c.usage_as_of,c.created_at,"
+                "d.requests_today as daily_requests,d.requests_known as daily_known,"
+                "exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid) as reconciled,"
+                "exists(select 1 from llm_runtime.wire_attempts w where w.credential_uid=c.uid and w.state in ('reserved','unknown') and w.reconciliation_id is null) as pending "
+                "from llm_runtime.credentials c left join llm_runtime.daily_usage d "
+                "on d.scope_type='key' and d.scope_id=c.uid::text and d.utc_day=%s where c.verifier=%s",
+                (day, facts.verifier()),
+            )
+            observed = await cur.fetchone()
+        return {**item, **public_observation(item, dict(observed) if observed else None, day)}
+    except psycopg.Error as exc:
+        raise _unavailable(exc) from None
+
+
+async def sync_mirrors(conn: psycopg.AsyncConnection[Any], credential_uid: uuid.UUID | None = None) -> None:
+    """Derived compatibility columns only; never increment or infer usage from them.
+
+    Call while holding configuration lock, or while the restore coordinator owns
+    the exclusive maintenance boundary before writers resume. Unknown legacy hints
+    remain intact until an explicit reconciliation has recorded their provenance.
+    """
+    await conn.execute(
+        "with clock as(select (clock_timestamp() at time zone 'UTC')::date as day) "
+        "update llm_api_keys k set tokens_used=c.confirmed_tokens,"
+        "requests_today=coalesce(d.requests_today,0),requests_day=clock.day,updated_at=now() "
+        "from clock cross join llm_runtime.credential_aliases a join llm_runtime.credentials c on c.uid=a.credential_uid "
+        "left join llm_runtime.daily_usage d on d.scope_type='key' and d.scope_id=c.uid::text "
+        "and d.utc_day=clock.day "
+        "where k.credential_uid=a.config_uid and (%s::uuid is null or c.uid=%s) "
+        "and exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid)",
+        (credential_uid, credential_uid),
+    )

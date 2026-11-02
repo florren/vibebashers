@@ -798,3 +798,80 @@ async def test_durable_quota_health_never_fabricates_spent_tokens(accounting_cas
         assert observed.tokens_used == 0 and not observed.usage_known and observed.requests_today == 1
     finally:
         await provider.aclose()
+
+
+async def test_public_compatibility_and_operator_cli_reconcile_use_same_ledger(accounting_case):
+    from dataclasses import replace
+
+    from app.api import settings
+    from app.db.session import psycopg_dsn
+    from app.llm import accounting_cli, credentials
+
+    service, template, original_facts = accounting_case
+    created = await settings.post_llm_keys(
+        settings.LlmKeyBody(
+            provider="gigachat",
+            label="synthetic-cli",
+            key=original_facts.secret,
+            endpoint_url=original_facts.endpoint,
+            tokens_limit=20,
+            rpd_limit=2,
+        )
+    )
+    key_id = created["id"]
+    assert created["tokens_used"] == 0 and created["observed_tokens_floor"] == 0
+    assert not created["usage_known"] and created["tokens_remaining"] is None
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        await conn.execute("update llm_api_keys set tokens_used=17 where id=%s", (key_id,))
+        profile_id = (
+            await (
+                await conn.execute(
+                    "insert into llm_profiles(code,provider,model,role,base_url,api_key_id,rpd_limit) values(%s,'gigachat','synthetic','main',%s,%s,2) returning id",
+                    (template.code, original_facts.endpoint, key_id),
+                )
+            ).fetchone()
+        )[0]
+    before = next(item for item in await settings.get_llm_keys() if item["id"] == key_id)
+    assert before["tokens_used"] == 17  # Original legacy migration compatibility assertion remains valid.
+    assert before["observed_tokens_floor"] == 0 and not before["usage_known"]
+    assert before["usage_source"] == "legacy_unverified" and before["tokens_remaining"] is None
+    args = accounting_cli.parser().parse_args(
+        [
+            "reconcile",
+            "--profile-id",
+            str(profile_id),
+            "--key-id",
+            str(key_id),
+            "--reconciliation-id",
+            str(uuid.uuid4()),
+            "--as-of",
+            (await now()).isoformat(),
+            "--tokens-used",
+            "0",
+            "--requests-today",
+            "0",
+            "--profile-requests-today",
+            "0",
+            "--confirm",
+            "--reviewed-unknown-origin",
+        ]
+    )
+    receipt = await accounting_cli.execute(args)
+    assert not receipt["idempotent"]
+    assert (await accounting_cli.execute(args))["idempotent"]
+    profile = replace(template, id=profile_id, api_key_id=key_id, base_url=original_facts.endpoint)
+    facts = replace(original_facts, db_id=key_id)
+    async with service.key_scope(profile, facts, timeout_s=3) as scope:
+        ticket = await scope.admit()
+        await ticket.observe(2, 3, final=True)
+    after = next(item for item in await settings.get_llm_keys() if item["id"] == key_id)
+    assert after["tokens_used"] == after["observed_tokens_floor"] == 5 and after["usage_known"]
+    assert after["tokens_remaining"] == 15 and after["requests_today"] == 1 and after["requests_remaining"] == 1
+    assert set(after) == set(credentials.PUBLIC_FIELDS)
+    assert not {"uid", "verifier", "credential_uid", "quota_uid", "_secret"} & after.keys()
+    assert facts.secret not in str(after) + str(receipt)
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), autocommit=True) as conn:
+        mirrors = await (
+            await conn.execute("select tokens_used,requests_today from llm_api_keys where id=%s", (key_id,))
+        ).fetchone()
+        assert mirrors == (5, 1)
