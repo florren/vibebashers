@@ -29,3 +29,8 @@ T-247 ещё in_progress: глобальная csi_visits_agg не имеет ru
 Все дальнейшие API/DDL изменения получат отдельный concrete review.
 Подробные команды и границы — data/corpus/csi_v1/README.md.
 Откат текущего пакета — revert файлов; рабочих данных он не меняет.
+
+
+На frozen source `3068e32` выполнены `make lint` (330 frontend tests, Ruff384, mypy259, drift192/192) и полный backend unit: **1440 passed /18 skipped,33,06 с**. Contracts45/162 и owners с согласованным cross-layer прошли. Первый unit-запуск в ограниченном sandbox завис и остановлен; он не считается успешным. Повтор с localhost-доступом к собственной fixture завершился успешно.
+
+Перед PR обычным merge добавлен актуальный main `be49a8d`; оба corpus runtime SHA совпадают с проверенными. Полный CI конечного head остаётся merge gate.

@@ -51,3 +51,5 @@ _Заполняется исполнителем: ветка/PR, что сдел
 11 unit/actual-PG tests passed; coverage generator 41/41 statements, CLI79/80. Correlations на corpus выше критериев, synthetic/no-PII checks и побайтовая регенерация проходят. Runtime probabilities, API/DDL и рабочие данные не менялись. Подробности: `docs/reviews/T-247-csi-corpus.md`.
 
 Статус in_progress: безопасная загрузка `csi_visits_agg` требует run/cohort provenance вместе с T-248. Нельзя считать корпус полной runtime CSI-аналитикой или выдавать unknown знаменатель за ноль. Полные проверки текущего PR ещё выполняются.
+
+Полные локальные проверки source3068e32:1440 unit passed/18 skipped, make lint330frontend/Ruff384/mypy259/drift192. Перед PR включён mainbe49a8d обычным merge; corpus SHA неизменны. Final CI обязателен.
