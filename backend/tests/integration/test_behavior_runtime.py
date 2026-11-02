@@ -43,7 +43,9 @@ async def setup(conn, monkeypatch, url):
     return run, client, now, sim
 
 
-async def failed(conn, run, client, now):
+async def declared_fault(conn, run, now, *, duration_min=90):
+    from app.sim.events import EventBus
+
     fault = (
         await (
             await conn.execute(
@@ -52,6 +54,30 @@ async def failed(conn, run, client, now):
             )
         ).fetchone()
     )[0]
+    product, severity = await (
+        await conn.execute("select product_code,default_criticality from error_codes where code='DEP-TIMEOUT-503'")
+    ).fetchone()
+    await EventBus(conn).emit(
+        run,
+        "fault.started",
+        {
+            "fault_id": fault,
+            "system": "sub_deposits",
+            "error_code": "DEP-TIMEOUT-503",
+            "product": product,
+            "severity": severity,
+            "started_sim": now.isoformat(),
+            "expected_duration_min": duration_min,
+            "impact_count": 0,
+            "affected_clients": 0,
+        },
+        now,
+    )
+    return fault
+
+
+async def failed(conn, run, client, now):
+    fault = await declared_fault(conn, run, now)
     op = (
         await (
             await conn.execute(
@@ -214,10 +240,7 @@ async def test_fresh_marker_and_tick_rollback_retry_are_atomic(seeded, monkeypat
 async def test_real_world_failed_operations_use_one_owner_without_legacy_complaints(seeded, monkeypatch):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run, _, now, sim = await setup(conn, monkeypatch, seeded)
-        await conn.execute(
-            "insert into faults(run_id,system_code,error_code,started_sim) values(%s,'sub_deposits','DEP-TIMEOUT-503',%s)",
-            (run, now),
-        )
+        await declared_fault(conn, run, now)
         await conn.commit()
         world = await sim._ensure_world()
         person = next(item for item in world.clients if item.psychotype == "anxious" and "deposit" in item.products)
@@ -474,8 +497,9 @@ async def test_live_graph_and_clock_keep_owned_state_hazard_and_rng_unchanged(se
         assert result["outcome"] in ("completed", "deferred", "awaiting_human", "fallback_mock"), result.get("errors")
         assert active.rng.dump_state() == rng
         await active._ensure_world()
-        # Штатный TeamEmulator.load закрепляет план своими draw. После load
-        # admission и часы live не должны добавлять behavior hazard draws.
+        # load читает native планы без RNG. В simulation execution планировщик
+        # команд работает отдельно; admission/clock не добавляют hazard draws.
+        assert active.rng.dump_state() == rng
         clock_rng = active.rng.dump_state()
         await active.control("pause")
         await active.control("resume")

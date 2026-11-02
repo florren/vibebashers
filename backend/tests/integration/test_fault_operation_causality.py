@@ -30,14 +30,34 @@ async def test_future_fault_never_fails_earlier_operation_and_keeps_rng_retry(se
                 )
             ).fetchone()
         )[0]
+        await EventBus(conn).emit(
+            run,
+            "fault.started",
+            {
+                "fault_id": fault,
+                "system": "sub_deposits",
+                "error_code": "DEP-TIMEOUT-503",
+                "started_sim": now.isoformat(),
+                "expected_duration_min": 90,
+            },
+            now,
+        )
         await conn.commit()
 
         async def batch(starts: dt.datetime, *, rollback: bool):
-            await conn.execute("update faults set started_sim=%s where id=%s", (starts, fault))
+            await conn.execute("update faults set started_sim=%s where id=%s", (now, fault))
             await conn.commit()
             rng = SimRng(918)
             world = World(conn, EventBus(conn), rng, run, intensities={"op": 120})
             await world.load()
+            # После load меняется authoritative row: cache времени намеренно
+            # устарел, как и в прочих boundary cases этого файла.
+            await conn.execute("update faults set started_sim=%s where id=%s", (starts, fault))
+            events_before = await (
+                await conn.execute(
+                    "select event_type,payload,correlation_id from sim_events where run_id=%s order by id", (run,)
+                )
+            ).fetchall()
             client = next(row for row in world.clients if "deposit" in row.products)
             client.products = ["deposit"]
             world.clients, world.scale = [client], 1.0
@@ -65,8 +85,13 @@ async def test_future_fault_never_fails_earlier_operation_and_keeps_rng_retry(se
                     await (await conn.execute("select count(*) from operations where run_id=%s", (run,))).fetchone()
                 ) == (0,)
                 assert (
-                    await (await conn.execute("select count(*) from sim_events where run_id=%s", (run,))).fetchone()
-                ) == (0,)
+                    await (
+                        await conn.execute(
+                            "select event_type,payload,correlation_id from sim_events where run_id=%s order by id",
+                            (run,),
+                        )
+                    ).fetchall()
+                ) == events_before
                 await conn.rollback()
             assert captured is not None
             return captured

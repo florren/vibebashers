@@ -58,6 +58,11 @@
     },
     "started_sim": {
       "$ref": "../common.schema.json#/$defs/sim_time"
+    },
+    "expected_duration_min": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Явный запланированный срок нового сбоя; отсутствует в legacy событиях."
     }
   }
 }

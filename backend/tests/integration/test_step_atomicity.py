@@ -12,6 +12,7 @@ import pytest
 from app.contracts.events.behavior.psychotype_params import PsychotypeParams
 from app.sim.behavior.model import complaint_timing
 from app.sim.engine import Simulator
+from app.sim.events import EventBus
 from app.sim.generators import PendingSignal, World
 from app.sim.rng import SimRng
 from app.sim.sla import SlaEngine
@@ -51,6 +52,27 @@ async def test_failed_tick_restores_time_rng_pending_and_committed_cache_before_
         "clients": {client.id},
         "corr": uuid.uuid4(),
     }
+    # Современный recovery не угадывает metadata: fixture заранее объявляет
+    # известный schedule и пять настоящих committed cause rows.
+    await EventBus(conn).emit(
+        sim.run_id,
+        "fault.started",
+        {
+            "fault_id": committed_id,
+            "system": "sub_deposits",
+            "error_code": "DEP-TIMEOUT-503",
+            "started_sim": now.isoformat(),
+            "expected_duration_min": 30,
+        },
+        now,
+        correlation_id=committed_fault["corr"],
+    )
+    for _ in range(5):
+        await conn.execute(
+            "insert into operations(run_id,client_id,product_code,op_type,system_path,amount_rub,method,fee_amount,status,error_code,fault_id,started_sim,finished_sim) "
+            "values(%s,%s,'deposit','statement',ARRAY['sub_deposits'],1,'card',0,'failed','DEP-TIMEOUT-503',%s,%s,%s)",
+            (sim.run_id, client.id, committed_id, now, now),
+        )
     world.active_faults = [copy.deepcopy(committed_fault)]
     old_pending = PendingSignal(
         now + dt.timedelta(days=2),
