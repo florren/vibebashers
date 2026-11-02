@@ -1,3 +1,6 @@
+import { useSearchParams } from 'react-router-dom'
+import { ScopedRunBoundary } from '@/shared/layout/ScopedRunBoundary'
+import { ScopedMetrics } from '@/pages/overview/ScopedMetrics'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +12,12 @@ import { ErrorBox, Tabs } from '@/shared/ui'
 import { formatMoney as fmtRub } from './money'
 
 export function EconomicsPage() {
+  const [params] = useSearchParams()
+  const scope = params.get('run_id')
+  return scope === null ? <LegacyEconomicsPage /> : <ScopedRunBoundary requested={scope}>{resolved => <ScopedMetrics run={resolved} />}</ScopedRunBoundary>
+}
+
+function LegacyEconomicsPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'assumptions' | 'fact'>('assumptions')
   const [affected, setAffected] = useState(12)

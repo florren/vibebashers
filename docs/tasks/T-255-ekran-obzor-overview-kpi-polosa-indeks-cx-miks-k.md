@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 «Обзор» по прототипу 2.4 на реальных API (ТЗ 26.4, 14.1).
@@ -33,8 +33,8 @@
 
 ## Критерии приёмки
 - [ ] Ровно блоки ТЗ 26.4; значения совпадают с API; индекс CX считается по формуле 14.1.
-- [ ] В «Тихом» режиме не более 9 блоков и нет мигания.
-- [ ] Скриншоты `brand` и `ops`, две темы, два языка.
+- [x] В «Тихом» режиме не более 9 блоков и нет мигания.
+- [x] Скриншоты `brand` и `ops`, две темы, два языка.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,4 +44,4 @@ cd frontend && npx playwright test e2e/overview.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-255-overview`, отдельный consumer от T256. Реализованы9реальных блоков, scoped drilldowns/WS/unknown/exact money; подробности и границы — `docs/reviews/T-255-overview.md`, source/proof — `T-255-overview-proof.json`,24PNG — `docs/screenshots/T-255/`. Локально make lint470frontend+backend/bot/type/drift green, обе production builds,8/8actual browser; отдельный6route read-only walk111table hashes unchanged. Исторический fullbackend относится к1968631. Полная приёмка/DoD ждут API29+T041 composition, root Journey consumerfix и exactheadCI; новые backend/contract/money/HITL policy изменения в этом UI пакете отсутствуют.

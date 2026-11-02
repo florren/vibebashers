@@ -27,15 +27,15 @@ function heatColor(intensity: number): string {
 }
 const ZONE_FILL: Record<string, string> = { green: '#8fcf9a', yellow: '#f2c94c', red: '#e2574c' }
 
-export function MapTab() {
+export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope?: string; onRunScopeChange?: (value: string) => void }) {
   const { t, i18n } = useTranslation()
   const [params, setParams] = useSearchParams()
   const mode: Mode = params.get('map_mode') === 'zones' ? 'zones' : 'heat'
   const setMode = (mode: Mode) => setParams(p => { if (mode === 'zones') p.set('map_mode', mode); else p.delete('map_mode'); return p }, { replace: true })
   const [layer, setLayer] = useState<MapLayer>('signals')
   const [win, setWin] = useState(24 * 7)
-  const runScope = params.get('run_id') ?? 'current'
-  const setRunScope = (value: string) => setParams(previous => { previous.set('run_id', value); return previous }, { replace: true })
+  const runScope = externalScope ?? params.get('run_id') ?? 'current'
+  const setRunScope = (value: string) => { if (externalScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setParams(previous => { previous.set('run_id', value); return previous }, { replace: true }) }
   const [branchesOn, setBranchesOn] = useState(false)
   const [binding, setBinding] = useState(() => localStorage.getItem('cx.ui.productLine') ?? '')
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null)

@@ -21,16 +21,17 @@ function DemoModeFooter() {
 }
 
 export function Shell() {
-  const { pathname } = useLocation()
-  const cabinet = pathname === '/cabinet' || pathname.startsWith('/cabinet/')
+  const { pathname, search } = useLocation()
+  const explicitScope = new URLSearchParams(search).has('run_id')
+  const contained = explicitScope || pathname === '/overview' || pathname === '/cabinet' || pathname.startsWith('/cabinet/')
   const layout = useUiTheme(s => s.layout)
   if (layout === 'v2') return <ShellV2 footer={<DemoModeFooter />} />
   return (
     <div className="app-shell flex h-full min-w-0 flex-col">
       <AttentionRuntime />
       <Header />
-      {!cabinet && <PriorityStrip />}
-      {!cabinet && <NightDigest />}
+      {!contained && <PriorityStrip />}
+      {!contained && <NightDigest />}
       <main className="app-content min-h-0 min-w-0 flex-1">
         <Outlet />
       </main>

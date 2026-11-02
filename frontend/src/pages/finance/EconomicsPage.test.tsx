@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -12,7 +13,7 @@ vi.mock('@/pages/workspace/DashboardTab', () => ({ DashboardTab: () => <div>Фа
 afterEach(cleanup)
 it('показывает результат backend и пересчитывает изменение числа клиентов', async () => {
   vi.mocked(api).mockResolvedValue({ potential_loss_rub: 631.52, formula_ru: '12 × 10 % × 50 % × 1052,53 = 631,52 ₽' })
-  render(<QueryClientProvider client={new QueryClient()}><EconomicsPage /></QueryClientProvider>)
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/economics']}><EconomicsPage /></MemoryRouter></QueryClientProvider>)
   expect(await screen.findByText(/12 × 10 %/)).toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Пострадавшие'), { target: { value: '24' } })
   await waitFor(() => expect(api).toHaveBeenCalledWith('/api/metrics/economics/preview', expect.objectContaining({ query: expect.objectContaining({ affected: 24 }) })))

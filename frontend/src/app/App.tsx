@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { OverviewPage } from '@/pages/overview/OverviewPage'
 import { ReportPage } from '@/pages/cabinet/ReportPage'
 import { CabinetPage } from '@/pages/cabinet/CabinetPage'
 import { PendingScreen, WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
@@ -51,7 +52,7 @@ export function App() {
           <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspaceEntry />} />
             <Route path="workspace" element={<WorkspacePage />} />
-            <Route path="overview" element={<PendingScreen title={t('shell.overview')} />} />
+            <Route path="overview" element={<OverviewPage />} />
             <Route path="cabinet" element={<CabinetPage />} />
             <Route path="cabinet/:productLine" element={<CabinetPage />} />
             <Route path="csi" element={<CsiPage />} />
