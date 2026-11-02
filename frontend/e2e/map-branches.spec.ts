@@ -7,7 +7,7 @@ type Directory = components['schemas']['BranchDirectoryResponse']
 // Темы меняются только в browser GET; бизнес-ответы API не подменяются.
 // Settings project имеет один worker и запускается после всех read-only файлов.
 test.describe.configure({ mode: 'serial' })
-let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string }
+let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number }
 test.beforeAll(async ({ request, baseURL }) => {
   const owner = process.env.E2E_ISOLATED_SCENARIOS?.trim()
   if (!owner || !baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname)) throw new Error('Нужны E2E_ISOLATED_SCENARIOS и собственный disposable localhost стенд; preparation не выполнялась')
@@ -15,6 +15,18 @@ test.beforeAll(async ({ request, baseURL }) => {
   expect(beforeResponse.status()).toBe(200)
   const before = await beforeResponse.json()
   expect(before.running, 'Чужой активный clock автоматически не останавливается').toBe(false)
+  if (before.current_run_id != null) {
+    let cursor: string | undefined
+    const seen = new Set<string>()
+    do {
+      const prior = await request.get('/api/agent/runs', { params: { run_id: String(before.current_run_id), limit: 500, ...(cursor ? { cursor } : {}) } })
+      expect(prior.status()).toBe(200)
+      const data = await prior.json()
+      expect(data.items.filter((row: { outcome: string | null }) => row.outcome == null)).toHaveLength(0)
+      cursor = data.next_cursor ?? undefined
+      if (cursor) { expect(seen.has(cursor), 'Cursor не должен образовывать цикл').toBe(false); seen.add(cursor) }
+    } while (cursor)
+  }
   // Native T262 preflight проверяет effective Mock всех ролей до любых эффектов.
   const response = await request.post('/api/scenarios/csi_and_branches/run', { data: { label: 'T250 Playwright isolated map branches', reset_mode: 'counters', seed: 42 } })
   expect(response.status(), 'Нужен effective Mock и доступная native CSI preparation; live/replay не подменяются').toBe(202)
@@ -29,7 +41,19 @@ test.beforeAll(async ({ request, baseURL }) => {
   const after = await afterResponse.json()
   expect(after.current_run_id).toBe(run.id); expect(after.running).toBe(false)
   expect(Date.parse(after.sim_time)).toBe(Date.parse(before.sim_time))
-  preparation = { previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner }
+  // У настоящего image работают actors. До read-only фазы все301 received
+  // проходят normal graph; awaiting_human/deferred не требуют human accept.
+  let observed = { received: 0, agent_runs: 0, active: 0 }
+  await expect.poll(async () => {
+    const signals = await request.get('/api/signals', { params: { run_id: String(run.id), limit: 1 } })
+    const agents = await request.get('/api/agent/runs', { params: { run_id: String(run.id), limit: 500 } })
+    expect(signals.status()).toBe(200); expect(agents.status()).toBe(200)
+    const source = await signals.json(), data = await agents.json()
+    expect(data.next_cursor).toBeNull()
+    observed = { received: source.total, agent_runs: data.total, active: data.items.filter((row: { outcome: string | null }) => row.outcome == null).length }
+    return observed
+  }, { timeout: 25_000 }).toEqual({ received: 301, agent_runs: 301, active: 0 })
+  preparation = { previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner, ...observed }
 })
 for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
   test(`ВСП: native counts, карточка и scope ${language} ${mode}`, async ({ browser, baseURL }, info) => {
@@ -38,6 +62,13 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
     const forbidden: string[] = [], failures: string[] = [], pending = new Set<Request>()
     const details = new Map<string, Detail>(), directory = new Map<string, string | null | undefined>(), bodies: Promise<void>[] = []
+    const responses: { url: string; status: number }[] = [], bodyErrors: string[] = []
+    const trackBody = (body: Promise<void>, source: string) => {
+      // Контекст сохраняем сразу; rejected promise остаётся в bodies и ниже
+      // обязательно await: ошибка не превращается в успешный/пустой response.
+      void body.catch(error => bodyErrors.push(source + ': ' + String(error)))
+      bodies.push(body)
+    }
     let directoryComplete = false
     try {
       await context.addInitScript(({ language, mode }) => {
@@ -62,11 +93,12 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       page.on('requestfailed', request => { pending.delete(request); failures.push(request.url() + ' ' + request.failure()?.errorText) })
       page.on('response', response => {
         const path = new URL(response.url()).pathname
+        responses.push({ url: path + new URL(response.url()).search, status: response.status() })
         if (response.status() >= 400) failures.push(response.status() + ' ' + path)
-        if (path === '/api/branches' && response.ok()) bodies.push(response.json().then((data: Directory) => {
+        if (path === '/api/branches' && response.ok()) trackBody(response.json().then((data: Directory) => {
           data.items.forEach(branch => directory.set(branch.code, branch.branch_status)); if (data.next_cursor == null) directoryComplete = true
-        }))
-        if (/^\/api\/branches\/(?!analytics$)[^/]+$/.test(path) && response.ok()) bodies.push(response.json().then((detail: Detail) => { details.set(detail.branch.code, detail) }))
+        }), path + ' status=' + response.status())
+        if (/^\/api\/branches\/(?!analytics$)[^/]+$/.test(path) && response.ok()) trackBody(response.json().then((detail: Detail) => { details.set(detail.branch.code, detail) }), path + ' status=' + response.status())
       })
       await page.goto('/workspace?tab=map')
       await expect(page).toHaveURL(/run_id=current/)
@@ -76,7 +108,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(page.getByRole('heading', { name: language === 'ru' ? 'Динамика сети: 12 месяцев' : 'Network history: 12 months', exact: true })).toBeVisible()
       // Между партиями pending=0 — это не завершение всего fanout. Ждём native
       // последнюю directory page и detail для каждого реально закрытого ВСП.
-      await expect.poll(() => directoryComplete && [...directory].filter(([, status]) => status === 'closed').every(([code]) => details.has(code))).toBe(true)
+      await expect.poll(() => bodyErrors.length > 0 || directoryComplete && [...directory].filter(([, status]) => status === 'closed').every(([code]) => details.has(code))).toBe(true)
       await expect.poll(() => pending.size).toBe(0); await Promise.all(bodies)
       const target = [...details.values()].find(row => row.branch.branch_status === 'closed' && row.signals.total > 0)
       expect(target, 'Нужен actual closed branch с direct signal, не city-zone proxy').toBeTruthy()
@@ -97,7 +129,9 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await toggle.click(); await expect(page.getByTestId('branch-layer')).toHaveCount(0)
       expect(forbidden).toEqual([]); expect(failures).toEqual([])
     } finally {
-      await context.unrouteAll({ behavior: 'wait' }); await context.close()
+      await context.unrouteAll({ behavior: 'wait' })
+      await info.attach('native-network.json', { body: JSON.stringify({ responses, forbidden, failures, bodyErrors }), contentType: 'application/json' })
+      await context.close()
     }
   })
 }
