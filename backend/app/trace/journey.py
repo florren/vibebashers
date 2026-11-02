@@ -43,8 +43,31 @@ def seconds(start: str | None, end: str | None) -> float | None:
 
 def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     lane = []
+    subject = nodes[0] if nodes else None
+    signal = subject["data"] if subject and subject["kind"] == "signal" else {}
+    scoped = "client_id" in signal
+    own_posts = {
+        node["data"].get("external_post_id")
+        for node in nodes
+        if scoped
+        and node["kind"] == "signal"
+        and node["data"].get("client_id") == signal["client_id"]
+        and (signal["client_id"] is not None or node["data"]["id"] == signal["id"])
+        and node["data"].get("external_post_id") is not None
+    }
     for n in nodes:
         k, d = n["kind"], n["data"]
+        if scoped and k == "reply" and d.get("post_id") not in own_posts:
+            continue
+        if scoped and k == "reaction" and d.get("client_id") != signal["client_id"]:
+            continue
+        if k == "notification" and scoped:
+            # Общий инцидент содержит доставки нескольким клиентам. В дорожке
+            # сигнала показываем его адресата, включая подарок без signal_id.
+            if d.get("client_id") != signal["client_id"]:
+                continue
+            if signal["client_id"] is None and d.get("signal_id") != signal["id"]:
+                continue
         if (
             k == "notification"
             and d.get("recipient_type") == "client"
