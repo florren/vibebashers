@@ -143,6 +143,10 @@ async def link_signal_to_incident(
         "then array_append(i.flags,'mass_impact') else i.flags end,updated_at=now() from impact p where i.id=p.id",
         (ctx.sim_time, incident_id, ctx.run_id),
     )
+    await ctx.conn.execute(
+        "update agent_runs set incident_id=%s where id=%s and sim_run_id=%s and signal_id=%s",
+        (incident_id, ctx.agent_run_id, ctx.run_id, signal_id),
+    )
     from app.economics import dcltv
 
     await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)

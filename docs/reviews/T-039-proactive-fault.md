@@ -37,3 +37,32 @@ Ordinary merge T1615d7c427 добавляет общий per-tool native effect-
 Один native signal/AR сохраняется, когда impact увеличивается после первого прохода. Private resume-only entry допускается только для того же deferred AR, durable followup checkpoint и verified fault/run; ingestion payload не задаёт этот контекст. Исполняется существующий act с ограниченным набором инструментов link/mass/economics/notifications, без повторного routing, смены incident status, модели, gift или выплат. Decision/human state и token totals сохраняются.
 
 4 actual PG passed (24.75s): поздний новый адресат на новом соединении, persisted unknown не переотправляется, caller cancellation после durable entry с последующим recovery того же thread и два конкурирующих wakeup. В каждом случае один AR/incident/scheduled followup и один initial normalize/classify/decide; native mass/economics увеличиваются до2 без изменения формулы. Это не утверждение OS SIGKILL proof: cancellation проверена event barrier на настоящих PostgreSQL checkpoints и другом соединении.
+
+### Причинная metadata-связь до обязательного HITL
+
+Два actual-PG counterexample воспроизведены без изменения policy: identified
+`ultra_vip` обращение ожидает HITL и не получает `incident_signals`; при двух
+same-code faults более свежая операция B подменяет явный source A. Исправление
+отдаёт приоритет citation только после same-run/client/time/system/cause
+validation и native `fault.started` provenance. Конфликтующая/будущая/чужая
+citation не заменяется другой операцией; без citation несколько валидных fault
+candidates дают `None`, а не выбор самого свежего. Причинный as-of — native
+`signals.received_sim`, не более позднее effect time.
+
+Для verified `link_existing` перед HITL выполняется только существующий
+логируемый `link_signal_to_incident`: native link, AR incident header и штатное
+обновление mass/economics. Новых маршрутов, возвратов, подарков, принятия решения
+человека или запуска `act` этот шаг не выполняет. Уже ожидающий human incident
+принимает следующую metadata-связь; прежние pending decisions не заменяются.
+Это новая metadata/HITL boundary для отдельного финального human review, не
+покрытая прежними approval финансовых PR. Формулы, лимиты и права не менялись.
+
+Проверки: две исходные regressions — 2 passed/14.78s; расширенная композиция
+HITL + fault/timing + late/recovery — 17 passed/108.10s до последнего сужения
+native-event/catalog validation. Окончательный targeted результат фиксируется
+следующим checkpoint; full всей T039 ещё не заявлен.
+
+Окончательный causal/HITL checkpoint: 3 actual-PG regressions passed/20.56s
+(включая повторный pending HITL и negative native provenance); полный unit
+1797 passed/18 skipped/57.73s; Ruff выбранных файлов и mypy трёх изменённых
+production modules зелёные. Весь T039 `make test` ещё не выполнялся на этом head.

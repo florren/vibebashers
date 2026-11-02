@@ -180,17 +180,36 @@ async def causal_fault(
     operation_id: int | None,
     fault_id: int | None,
     at: dt.datetime,
+    candidate_operation_ids: list[int] | None = None,
 ) -> int | None:
     """Источник клиента обязан иметь реальную same-run/client failed operation."""
     found = await rows(
         conn,
-        "select o.fault_id from operations o where o.run_id=%s and o.client_id=%s "
+        "select distinct o.fault_id from operations o join faults f on f.id=o.fault_id "
+        "join error_codes e on e.code=f.error_code and e.system_code=f.system_code "
+        "where o.run_id=%s and o.client_id=%s "
         "and o.fault_id is not null and o.started_sim<=%s and behavior_valid_failed_operation(o.id,%s) "
-        "and ((%s::bigint is not null and o.id=%s) or (%s::bigint is null and o.fault_id=%s)) "
-        "order by o.started_sim,o.id limit 1",
-        (run_id, client_id, at, run_id, operation_id, operation_id, operation_id, fault_id),
+        "and exists(select 1 from sim_events v where v.run_id=o.run_id and v.event_type='fault.started' "
+        "and v.payload->>'fault_id'=f.id::text and v.sim_time<=%s) "
+        "and (%s::bigint is null or o.fault_id=%s) "
+        "and ((%s::bigint is not null and o.id=%s) or "
+        "(%s::bigint is null and (%s::bigint is not null or o.id=any(%s::bigint[]))))",
+        (
+            run_id,
+            client_id,
+            at,
+            run_id,
+            at,
+            fault_id,
+            fault_id,
+            operation_id,
+            operation_id,
+            operation_id,
+            fault_id,
+            candidate_operation_ids or [],
+        ),
     )
-    return int(found[0]["fault_id"]) if found else None
+    return int(found[0]["fault_id"]) if len(found) == 1 else None
 
 
 async def require_active_effect(

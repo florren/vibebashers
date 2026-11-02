@@ -784,6 +784,10 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
         ctx["system_logs"] = await rt.get_system_logs(deps.ctx, systems)
     scoped_operations = routing_operations(ctx["operations"], state["normalization"])
     failed = [op for op in scoped_operations if op["status"] == "failed" or op.get("error_code")]
+    if sig.get("source_operation_id") is not None:
+        failed = [op for op in failed if op["operation_id"] == sig["source_operation_id"]]
+    elif sig.get("source_fault_id") is not None:
+        failed = [op for op in failed if op.get("fault_id") == sig["source_fault_id"]]
     active = ctx["system_logs"]["active_faults"]
     # error_code/система — только по фактам клиента (его неуспешные операции); активные сбои без операции — лишь подсказка
     error_code = failed[0]["error_code"] if failed else None
@@ -799,10 +803,17 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
             deps.ctx.conn,
             run_id=deps.ctx.run_id,
             client_id=client["client_id"],
-            operation_id=failed[0]["operation_id"] if failed else sig.get("source_operation_id"),
+            operation_id=sig.get("source_operation_id"),
             fault_id=sig.get("source_fault_id"),
-            at=deps.ctx.sim_time,
+            at=dt.datetime.fromisoformat(sig["received_sim"]),
+            candidate_operation_ids=[op["operation_id"] for op in failed],
         )
+        if fault_id is not None and (sig.get("source_operation_id") or sig.get("source_fault_id")):
+            source_fault = await deps.ctx.fetchone(
+                "select error_code,system_code from faults where id=%s and run_id=%s", (fault_id, deps.ctx.run_id)
+            )
+            if source_fault:
+                error_code, system = source_fault
     region = (client or {}).get("region_code") or (sig.get("geo") or {}).get("region_code")
     ctx["related_incidents"] = await rt.find_related_incidents(
         deps.ctx,
@@ -1663,10 +1674,10 @@ async def _hitl_incident_id(deps: Deps, decision: dict[str, Any]) -> int | None:
     if decision.get("incident_action") != "link_existing" or not decision.get("link_incident_id"):
         return None
     iid = int(decision["link_incident_id"])
-    row = await deps.ctx.fetchone("select status from incidents where id = %s", (iid,))
+    row = await deps.ctx.fetchone("select status from incidents where id = %s and run_id=%s", (iid, deps.ctx.run_id))
     if not row:
         return None
-    if "awaiting_human" in wt.STATUS_TRANSITIONS.get(str(row[0]), set()):
+    if row[0] == "awaiting_human" or "awaiting_human" in wt.STATUS_TRANSITIONS.get(str(row[0]), set()):
         return iid
     return None
 
@@ -2371,6 +2382,30 @@ async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     if native:
         d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     incident_id = await _hitl_incident_id(deps, d)
+    # Причинная связь — metadata, а не исполнение ожидающего решения человека.
+    # Повторно проверяем факты на момент обращения, не более поздние операции.
+    hints = state.get("context", {}).get("hints") or {}
+    client = state.get("client")
+    if incident_id is not None and client and hints.get("fault_id") is not None:
+        fault_id = await proactive.causal_fault(
+            deps.ctx.conn,
+            run_id=deps.ctx.run_id,
+            client_id=client["client_id"],
+            operation_id=sig.get("source_operation_id"),
+            fault_id=sig.get("source_fault_id") or hints["fault_id"],
+            at=dt.datetime.fromisoformat(sig["received_sim"]),
+        )
+        verified = await deps.ctx.fetchone(
+            "select 1 from incidents where id=%s and run_id=%s and fault_id=%s",
+            (incident_id, deps.ctx.run_id, fault_id),
+        )
+        if fault_id != hints["fault_id"] or verified is None:
+            raise ValueError("причинная связь с incident устарела перед HITL")
+        await wt.link_signal_to_incident(deps.ctx, sig["id"], incident_id)
+        if not any(a.get("action") == "incident" and a.get("incident_id") == incident_id for a in state["actions"]):
+            state["actions"].append(
+                {"action": "incident", "incident_id": incident_id, "linked": True, "metadata_only": True}
+            )
     if not state.get("client") and not sig.get("client_id") and d.get("incident_action") in ("create", "link_existing"):
         incident_id = await _accept_anonymous_before_hitl(state, deps)
 
