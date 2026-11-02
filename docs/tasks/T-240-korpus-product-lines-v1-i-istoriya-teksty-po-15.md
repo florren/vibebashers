@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L2` Симулятор и данные (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Данные для кабинета: размеченные тексты по направлениям, справочник площадок с названиями, детерминированная история 12 месяцев, согласованная с реальными 14 днями (ТЗ 24.5, 20.7 № 36, 50, 70).
@@ -46,4 +46,13 @@ pytest backend/tests/unit/test_no_pii.py
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Независимая фаза в `codex/T-240-review-corpus` от T019 `96caa2a`: 162 review
+с точными 3×54 долями, catalog площадок, bounded local JSON/CSV/XLSX CLI через
+normalizer, отдельная baseline-only seed projection и pure monthly builder.
+45 targeted passed (5 actual PG), 1185 unit passed/18 skipped; coverage 94.56%,
+Ruff/mypy/licenses green. Подробности: [phase proof](../reviews/T-240-independent-phase.md).
+
+Это **не done**: migration0014/actual0013 composition, реальный seed180 coverage,
+history persistence/tail/dump, CLI maintenance cooperation и API1.5.19/UI ещё
+впереди. Старый type×product×channel код не менялся; CSI/audio metadata не
+выдумывались. Реальные LLM/production не использовались.
