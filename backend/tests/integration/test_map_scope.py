@@ -82,3 +82,21 @@ def test_map_zones_current_never_credits_foreign_audio_alert(seeded):
         sql.execute("update sim_state set current_run_id=null where id=1")
         assert metrics(client, code, "current") == (0, 0, 0, 0, 0, 0)
         assert metrics(client, code, "all") == all_values
+
+
+def test_map_unknown_layer_is_an_explicit_validation_error(seeded):
+    with TestClient(create_app()) as client:
+        for layer in ("garbage", "", "INCIDENTS", "churn risk"):
+            response = client.get("/api/map/heat", params={"layer": layer, "run_id": "all"})
+            assert response.status_code == 422, (layer, response.status_code)
+
+
+def test_map_documented_and_runtime_layer_aliases_are_identical(seeded):
+    with TestClient(create_app()) as client:
+        for alias, canonical in (("incidents_open", "incidents"), ("churn_risk", "churn")):
+            params = {"window_hours": 720, "run_id": "all"}
+            actual = client.get("/api/map/heat", params={**params, "layer": alias})
+            expected = client.get("/api/map/heat", params={**params, "layer": canonical})
+            assert actual.status_code == expected.status_code == 200
+            assert any(row["value"] > 0 for row in expected.json())
+            assert actual.json() == expected.json(), (alias, canonical)

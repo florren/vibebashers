@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
@@ -15,7 +15,14 @@ from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 
 router = APIRouter(tags=["map"])
 
-LAYERS = ("signals", "critical", "incidents", "churn")
+LAYERS = {
+    "signals": "signals",
+    "critical": "critical",
+    "incidents": "incidents",
+    "incidents_open": "incidents",
+    "churn": "churn",
+    "churn_risk": "churn",
+}
 
 
 async def _map_run_id(conn: Any, requested: str | None) -> int | None:
@@ -39,13 +46,14 @@ async def _sim_now(conn: Any) -> dt.datetime:
 
 @router.get("/api/map/heat", summary="Агрегаты по субъектам РФ для тепловой карты")
 async def get_map_heat(
-    layer: str = Query("signals", description="signals | critical | incidents | churn"),
+    layer: str = Query("signals", description="signals | critical | incidents (incidents_open) | churn (churn_risk)"),
     window_hours: int = Query(24, ge=1, le=24 * 30),
     run_id: str | None = Query(None, description="current (по умолчанию) | all | <id>"),
 ) -> Any:
     """Регион сигнала — гео сигнала (`signals.geo.region_code`), иначе регион клиента. Интенсивность нормирована к максимуму слоя (0..1)."""
     if layer not in LAYERS:
-        layer = "signals"
+        raise HTTPException(422, "layer: signals | critical | incidents | incidents_open | churn | churn_risk")
+    layer = LAYERS[layer]
     async with db() as conn:
         rid = await _map_run_id(conn, run_id)
         now = await _sim_now(conn)
