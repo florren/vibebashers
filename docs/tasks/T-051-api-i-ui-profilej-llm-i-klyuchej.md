@@ -38,7 +38,6 @@ pytest backend/tests/integration/test_llm_settings_api.py
 ```
 
 ## Отчёт субагента
-
 P1 код готов к review в codex/T-051-runtime-profiles, API1.5.18/DB0013. Новый AR hotapplies текущие main/fast/twin; начатый/HITL/recovered AR pinned собственным secret-free snapshot. Explicit SimRun main ID фиксирует initial main parameters; остальные роли актуальны для нового AR. Canonical PGP registry, transactional enc1 cutover, private stable UID/endpoint binding, DELETE409 до явного unbind, positive public projections и validation/error/stream credential boundary реализованы. Forced mock/replay не даёт HTTP автоматическим ролям; intentional Setup/bench diagnostics сохраняют прежний intent. Реальных вызовов P1 не было.
 
 Setup UIa631386 объединён: selected ID/null Save/Check, endpoint/scope/key metadata, writeOnly field cleanup, explicit server validation без guessedURL.4 production fakeAPI screenshots ru/en×light/dark и189 Vitest UIcheckpoint; composed frontend220. Source сохраняет maintenance297, финансовые guards main и quota stream policy8b; main e839/causal T108962 объединён ordinary merge.
