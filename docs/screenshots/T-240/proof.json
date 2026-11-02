@@ -1,0 +1,83 @@
+{
+  "source_revision": "b6c26593a9b4c3e3850ede8e68be7c770bcd2a67",
+  "cases": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "known_public_id": "SIG-001112",
+      "unknown_public_id": "SIG-001114",
+      "known_badge": "Отзывы клиентов",
+      "unknown_fallback": "Площадка отсутствует в строке и drawer; обычные channel/status badges сохранены",
+      "known_row_and_drawer": true,
+      "unknown_row_and_drawer": true,
+      "platform_links_or_images": 0,
+      "errors": [],
+      "external": [],
+      "writes": [],
+      "failed": [],
+      "image": "platform-ru-light.png"
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "known_public_id": "SIG-001112",
+      "unknown_public_id": "SIG-001114",
+      "known_badge": "Отзывы клиентов",
+      "unknown_fallback": "Площадка отсутствует в строке и drawer; обычные channel/status badges сохранены",
+      "known_row_and_drawer": true,
+      "unknown_row_and_drawer": true,
+      "platform_links_or_images": 0,
+      "errors": [],
+      "external": [],
+      "writes": [],
+      "failed": [],
+      "image": "platform-ru-dark.png"
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "known_public_id": "SIG-001112",
+      "unknown_public_id": "SIG-001114",
+      "known_badge": "Customer reviews",
+      "unknown_fallback": "Площадка отсутствует в строке и drawer; обычные channel/status badges сохранены",
+      "known_row_and_drawer": true,
+      "unknown_row_and_drawer": true,
+      "platform_links_or_images": 0,
+      "errors": [],
+      "external": [],
+      "writes": [],
+      "failed": [],
+      "image": "platform-en-light.png"
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "known_public_id": "SIG-001112",
+      "unknown_public_id": "SIG-001114",
+      "known_badge": "Customer reviews",
+      "unknown_fallback": "Площадка отсутствует в строке и drawer; обычные channel/status badges сохранены",
+      "known_row_and_drawer": true,
+      "unknown_row_and_drawer": true,
+      "platform_links_or_images": 0,
+      "errors": [],
+      "external": [],
+      "writes": [],
+      "failed": [],
+      "image": "platform-en-dark.png"
+    }
+  ],
+  "schema_revision": "0014",
+  "signal_count": 1162,
+  "tables_fingerprinted": 85,
+  "all_table_fingerprints_equal": true,
+  "before_after_fingerprint_sha256": "f954f4ddce636a1495217779ff980c882576d62531b133babdcfe99e84cea1d8",
+  "llm_attempts": 0,
+  "external_server_attempts": 0,
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "seed_profile": "lite --clients 200",
+  "browser": "Chromium 1217, Playwright pinned project dependency",
+  "preview": "APP_ENV=test, Mock only, actor-free Simulator loaded from real DB; PGOPTIONS default_transaction_read_only=on"
+}

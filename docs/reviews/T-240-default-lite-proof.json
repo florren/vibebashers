@@ -1,0 +1,63 @@
+{
+  "source_head": "4211db730b72443d4f7579f9bd76809923a1e98a",
+  "scope": "own scratch PG16; lite1000; actual schema0014 only",
+  "baseline": {
+    "history_sha256": "8ba69cbd6cb76695a86ebad589812a376d36dd8a088701233c5394fdacc40484",
+    "counts": {
+      "clients": 1000,
+      "operations": 24000,
+      "signals": 1168,
+      "product_signal_history": 180,
+      "csi_responses": 84
+    },
+    "receipt": {
+      "seed": 42,
+      "anchor": "2026-11-09T06:00:00+00:00",
+      "supplement": {
+        "hard": 53,
+        "noise": 2
+      },
+      "history_rows": 180,
+      "corpus_sha256": "d70ad54df4ea4c1d40d8b3a34d13dbb4678d808ea20ddc69755a325b5b01e19f",
+      "moved_instance": true,
+      "offset_seconds": 2160000.0,
+      "reference_anchor": "2026-10-15T09:00:00+03:00",
+      "canonical_reviews": 162,
+      "coverage_instances": 151,
+      "unmapped_actual_count": 855
+    },
+    "direction_cells": 180,
+    "old_cells": 480,
+    "hard_share": 0.25,
+    "mapped_tail": 313,
+    "tail_cells": 104,
+    "tail_deviation_percent": 0,
+    "csi_original": 69,
+    "csi_t240": 15,
+    "alembic_head": "0014"
+  },
+  "repeat_exact_history_and_counts": true,
+  "restore_exact_history_and_counts": true,
+  "dump_sha256": "30e64596296a803dff72eef3cfbc694e318870f4df2374632d48dfa7eace2778",
+  "dump_bytes": 1438372,
+  "source_sha256": {
+    "scripts/seed/reviews.py": "90fb5cfc7214a3a25541e5e5bf2491b91004e986057b5ca374d771f52c9ffeb5",
+    "backend/app/corpus/history.py": "a8fbca4754387c25a9d5ec0bcca4cf0c731adc36eea8ca657a458793d625f5f6",
+    "contracts/db/migrations/0014_product_history_scope.sql": "10d3ab56f64b88a1ec936abcd5cb493666400affc6431cc5c50a1b4efd738c89"
+  },
+  "no_real_llm_or_prod": true,
+  "actual_linked_fault_months": 0,
+  "future_schema_versions_not_verified": [
+    "0015",
+    "0016",
+    "0017"
+  ],
+  "immutable_artifact_directory": "/tmp/t240-default-lite-proof-u6g1jydz",
+  "fresh_build_twice_equal": true,
+  "fresh_build_matches_persisted": true,
+  "archive_header": [
+    "Dump Version: 1.15-0",
+    "Dumped from database version: 16.15 (Debian 16.15-1.pgdg13+2)",
+    "Dumped by pg_dump version: 16.15 (Debian 16.15-1.pgdg13+2)"
+  ]
+}
