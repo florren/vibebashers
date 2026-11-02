@@ -143,6 +143,9 @@ async def link_signal_to_incident(
         "then array_append(i.flags,'mass_impact') else i.flags end,updated_at=now() from impact p where i.id=p.id",
         (ctx.sim_time, incident_id, ctx.run_id),
     )
+    from app.economics import dcltv
+
+    await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "updated", brief)
     return brief

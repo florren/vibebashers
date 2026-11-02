@@ -2696,7 +2696,7 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     await _require_mass_refund_approval(state, deps, "act")
     d, c, sig, client = state["decision"], state["classification"], state["signal"], state.get("client")
     native = await _native_service_scope(state, deps, for_effect=True)
-    if native:
+    if native and not state["context"].get("proactive_resume_only"):
         d.setdefault("economics_preview", {})["affected_count"] = native["affected_count"]
     done = {a["action"] for a in state["actions"]}
     actions = state["actions"]
@@ -2707,6 +2707,37 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
 
     def mark(action: str, **kw: Any) -> None:
         actions.append({"action": action, **kw})
+
+    if state["context"].pop("proactive_resume_only", False):
+        if native is None or incident_id is None or (d.get("client_action") or {}).get("kind") != "proactive_notice":
+            raise ValueError("нет подтверждённого служебного checkpoint для поздней рассылки")
+        if d.get("needs_human") and human not in ("accept", "modify"):
+            raise ValueError("поздняя рассылка не обходит обязательное решение человека")
+        target = await deps.ctx.fetchone(
+            "select id from incidents where id=%s and run_id=%s and fault_id=%s "
+            "and status not in ('closed','rejected','duplicate')",
+            (incident_id, deps.ctx.run_id, native["id"]),
+        )
+        if target is None:
+            raise ValueError("служебный incident scope устарел перед поздней рассылкой")
+        # Единственный producer обновляет mass/economics без смены статуса,
+        # маршрута, решения человека или повторного запуска модели.
+        await wt.link_signal_to_incident(deps.ctx, sig["id"], incident_id)
+        report = await _notify_proactive(
+            state, deps, incident_id, native, _act_spec(d, c, sig, client, sla_full, state)["lang"]
+        )
+        state["context"]["proactive_report"] = report
+        actions[:] = [action for action in actions if action["action"] != "proactive_notice"]
+        mark("proactive_notice", **report)
+        state["current_node"] = "followup_monitor"
+        await deps.record_step(
+            "act",
+            "ok",
+            {"phase": "late_native_recipients", "fault_id": native["id"]},
+            {"proactive_report": report},
+            reasoning="Поздние адресаты подтверждены native операциями: только недостающие уведомления; модель и маршрут повторно не исполнялись.",
+        )
+        return state
 
     if d["incident_action"] == "create" and "incident" not in done and c.get("error_code"):
         # гонка параллельных прогонов (массовый сбой): сериализуем создание по коду ошибки и ещё раз ищем открытый инцидент

@@ -31,3 +31,9 @@ API1.5.25: внешний origin=proactive и новый reserved source fault_m
 ## Common effect-time composition
 
 Ordinary merge T1615d7c427 добавляет общий per-tool native effect-time callback. T039 делегирует ему время, добавляя только service-specific fault-window/current-run check перед каждым side effect; отдельного глобального time setter нет. На композиции12 actual PG passed (65.18s), включая original T161 delayed-notice/refund financial timestamp cases. Deterministic resolution между двумя отправками:1 passed (7.26s); весь act rollback, нет native notifications/incident от откатившейся попытки. Новый guard не разрешает отправку после закрытия fault и не выдаёт queued за доставку.
+
+## Поздние адресаты и strict checkpoint
+
+Один native signal/AR сохраняется, когда impact увеличивается после первого прохода. Private resume-only entry допускается только для того же deferred AR, durable followup checkpoint и verified fault/run; ingestion payload не задаёт этот контекст. Исполняется существующий act с ограниченным набором инструментов link/mass/economics/notifications, без повторного routing, смены incident status, модели, gift или выплат. Decision/human state и token totals сохраняются.
+
+4 actual PG passed (24.75s): поздний новый адресат на новом соединении, persisted unknown не переотправляется, caller cancellation после durable entry с последующим recovery того же thread и два конкурирующих wakeup. В каждом случае один AR/incident/scheduled followup и один initial normalize/classify/decide; native mass/economics увеличиваются до2 без изменения формулы. Это не утверждение OS SIGKILL proof: cancellation проверена event barrier на настоящих PostgreSQL checkpoints и другом соединении.
