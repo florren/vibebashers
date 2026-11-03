@@ -52,7 +52,7 @@
       "personal: passed"
     ],
     "openapi_drift": "197/197 passed",
-    "required_exact_head_ci": "Previous4107 all4backend shards/frontend/lint/contracts/db/images passed; Overview race fixed by moving Jury last; final exact-head CI pending",
+    "required_exact_head_ci": "837eec6: full CI passed: contracts/db/tests, backend shards0/1/2/3, frontend,lint,e2e,images,owners,mirror; nightly skipped as configured",
     "individual_ci_limitations": {
       "202": "cold report p95 411.76ms exceeds300ms; triage in progress",
       "205": "base conflict prevents PR merge CI; included in joint integration",
@@ -128,5 +128,18 @@
     "e2e_fixture_lifecycle": "1fbeb341e92ebde7d963379081967391b02bbec7",
     "209": "6042b8bb74739c24b85d50e48498b20cff1f0af2",
     "jury_input_isolation": "b11c1309821e499ba607c708f40b5fd1e718d347"
+  },
+  "release_merge": {
+    "pr": 207,
+    "method": "squash",
+    "main": "1c022fe1a95bef0d1b45cb3e404f8d760eef0a8c",
+    "tested_head": "837eec6ee102986425722d5f223c44acd6e08c73",
+    "trees_equal": true,
+    "reason": "GitHub405 Merge commits are not allowed on this repository",
+    "source_heads_preserved": true,
+    "separate_feature_prs": "20 closed as incorporated/superseded, not individually merged",
+    "workspace_main": "1c022fe",
+    "canonical_main": "1c022fe",
+    "canonical_local_env": "user LLM_CHAIN preserved with upstream new variables by conflict-free three-way merge; private backup outsideGit; value not published"
   }
 }
