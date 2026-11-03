@@ -52,7 +52,7 @@
       "personal: passed"
     ],
     "openapi_drift": "197/197 passed",
-    "required_exact_head_ci": "pending",
+    "required_exact_head_ci": "PR207 f6c5af8 running backend shards; e2e RED repeats known preparation/scope/fixture blockers",
     "individual_ci_limitations": {
       "202": "cold report p95 411.76ms exceeds300ms; triage in progress",
       "205": "base conflict prevents PR merge CI; included in joint integration",
@@ -78,6 +78,13 @@
     },
     "contracts": "48 schemas /167 OpenAPI paths passed",
     "tasks_generation": "two runs, tracked diff idempotent",
-    "owners": "--base main requires layer selection; --allow-cross passed for authorized L1-L5 release integration"
+    "owners": "--base main requires layer selection; --allow-cross passed for authorized L1-L5 release integration",
+    "backend_unit": {
+      "passed": 2162,
+      "skipped": 19,
+      "seconds": 66.97,
+      "source": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+      "log_sha256": "d3b89aef0ef463ae30dc015d73662d1c563cb4ac57afbf7a8ea00724f5e17fc5"
+    }
   }
 }
