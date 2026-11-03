@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
 // Проверенные read-only API и браузерные mocks; новые файлы по умолчанию идут serial.
-const scenarioFiles = ['map-branches.spec.ts']
+const scenarioFiles = ['map-branches.spec.ts', 't262-native.spec.ts']
 const inputFiles = ['new-signal-modal.spec.ts']
 const readOnlyFiles = ['fonts.spec.ts', 'journey-modes.spec.ts', 'map-layout.spec.ts', 'mobile.spec.ts', 'trace-journey.spec.ts', 'engine_compare.spec.ts']
 
