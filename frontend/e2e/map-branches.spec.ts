@@ -26,6 +26,8 @@ async function nativeItems<T>(request: APIRequestContext, path: string, scope: R
 test.describe.configure({ mode: 'serial' })
 let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number; missing: number; duplicate: number; foreign: number; failed: number }
 test.beforeAll(async ({ request, baseURL }) => {
+  // Только новая write-preparation фаза; UI tests сохраняют config timeout30s.
+  test.setTimeout(75_000)
   const owner = process.env.E2E_ISOLATED_SCENARIOS?.trim()
   if (!owner || !baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname)) throw new Error('Нужны E2E_ISOLATED_SCENARIOS и собственный disposable localhost стенд; preparation не выполнялась')
   const beforeResponse = await request.get('/api/sim/state')
@@ -67,7 +69,12 @@ test.beforeAll(async ({ request, baseURL }) => {
       failed: agents.filter(row => row.outcome === 'failed').length,
     }
     return observed
-  }, { timeout: 25_000 }).toEqual({ received: 301, agent_runs: 301, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 })
+  }, { timeout: 60_000 }).toEqual({ received: 301, agent_runs: 301, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 })
+  const ready = await request.get('/api/sim/state')
+  expect(ready.status()).toBe(200)
+  const finalState = await ready.json()
+  expect(finalState.current_run_id).toBe(run.id); expect(finalState.running).toBe(false)
+  expect(Date.parse(finalState.sim_time)).toBe(Date.parse(before.sim_time))
   preparation = { previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner, ...observed }
 })
 for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {

@@ -145,3 +145,31 @@ selfprep proof. Дополнительный whitespace marker также отк
 seed→baseline completed/stopped→native selfprep4; этот APP_ENV=test результат
 не выдаётся за image/actors proof. Guard проверяет running=false, не требует
 искусственного paused статуса предыдущего header.
+
+### Actual image: подготовка отдельно от UI budget
+
+Clean runtime0a6 после обычных root202/201 merges собран в dedicated `:ci`
+imageb98d…; новый strict isolated project подтвердил фактический fresh
+`baseline/completed`, running=false, без подгонки status/current. Initial API
+preparation прошла. Первый UI run упал на `response.json ProtocolNoData`;
+[исходный stack/fresh-state evidence](T-250-image-first-attempt.json) сохранён,
+это не объявляется доказанной единственной race причиной. Второй probe выявил
+ошибочное предположение harness о total; typed lists теперь обходятся только
+через реальные items/next_cursor≤500, без нового API поля.
+
+[25s RED с native counters](T-250-image-backlog-attempt.json): все301signals и
+301durable received events сохранены; обработано188primary AR/distinct188,
+active4/failed0. UI фаза ещё не запускалась. Это очередь реальных301graphs,
+а не ошибка/потеря полученных входов. По этому измерению root технически
+согласовал новый preparation bound60s и только beforeAll hook75s. UI tests30s,
+Map≤3s/API300ms guards и business параметры не меняются; retries/HD accept/
+forced outcomes/LLM fallback отсутствуют.
+
+Stabilization использует kind=agent и точное равенство301source IDs множеству
+primary AR.signal_id; missing/duplicate/foreign/failed0, все outcomes non-null.
+Awaiting_human/deferred допустимы, human решения не принимаются. Previous active
+AR проверяются по всем страницам до POST. Native clock/current/paused повторно
+проверяются после очереди. Network diagnostics сохраняют request status,
+requestfailed/pageerrors/body read errors; rejected promise обязательно await,
+не подменяется empty success. Actual image4 всё ещё pending до успешного повтора;
+свои failed projects/volumes полностью очищены, primary/prod не затрагивались.
