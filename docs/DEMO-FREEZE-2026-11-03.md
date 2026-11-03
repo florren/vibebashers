@@ -1,6 +1,6 @@
 # Карточка ведущего: freeze demo
 
-**Черновик, не репетиция.** Минуты — план. Основа `4107a01396ec8bffccb6746945cf996f9ade894f` (T0926f066 + preparation1fb + recovery report). До общего фриза нужны фиксированный candidate, exact CI и fresh-image проверка. Report gate300ms не менялся: локально144,5ms и CI207 shard3 GREEN; product fix не было. Режим только Mock; существующие PITCH/DEMO не изменены.
+**Черновик, не репетиция.** Минуты — план. Основа `4107a01396ec8bffccb6746945cf996f9ade894f` (T0926f066 + preparation1fb + recovery report). До общего фриза нужны фиксированный candidate, exact CI и fresh-image проверка. Report gate300ms не менялся: локально144,5ms и CI207 shard3 GREEN; product fix не было. Режим только Mock; Прежнее содержание DEMO сохранено; PITCH PR176 не изменён.
 
 До выхода оператор на собственной synthetic копии штатно готовит два counters run:
 
@@ -15,7 +15,7 @@
 - **0:30–1:30.** `/csi?run_id=C&period=month`, preset `cx_lead`, без направления. Жалобы/scatter/sample. «300 наблюдений / 2400 визитов; дополнительное обращение не добавляет знаменатель. Корреляция синтетическая, неизвестное не ноль».
 - **1:30–2:15.** `/workspace?tab=map&run_id=C`, кнопка «ВСП», 7 дней, cluster → карточка. «Прямое N этой ветки — не city90-day count». Branch Trace не входит в основной показ: правильный PK в ссылке не делает generic карточку полным адаптером T233. Далее используем доказанный native Signal Journey/Trace. Окно Map week не выдавать за month CSI.
 - **2:15–3:30.** `/cabinet/deposits?run_id=K&period=week`, `product_manager`, binding deposits. «Только красные слова» → legal case. **STOP: ждёт человека.** Снять фильтр, показать ordinary input как отдельное доказательство route. Роли — пресеты, не auth.
-- **3:30–4:15.** `/cabinet/deposits/report?run_id=K&period=week`: выводы, unknown и XLSX. Только при зелёном неизменном gate300ms на выбранном candidate. Fallback — подписанный source/run export как файл, не live GET.
+- **3:30–4:15.** `/cabinet/deposits/report?run_id=K&period=week`: выводы, unknown и XLSX. Только при зелёном неизменном gate300ms на выбранном candidate. Fallback — экспорт с явными source/run как файл, не live GET.
 - **4:15–5:00.** `/journey/<actual-SIG>?run_id=K&mode=presenter` → actual step/client lane/Trace. «Показываем сделанное и ожидаемое; pending не completed». Никаких кликов accept/refund/gift.
 
 ## 8 минут

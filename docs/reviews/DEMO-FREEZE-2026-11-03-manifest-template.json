@@ -30,7 +30,7 @@
     "blocks": []
   },
   "write_phase": "preparation_only; optional manual input in8min mustbe separatelymarked",
-  "draft_sha256": "8ad836859c76c874d0729053592e66cf5f4227f1bd8e35e9dd98bd8cce42734f",
+  "draft_sha256": "e47605311093984dd37d1831fc826dedaff10fd26ae1b305f509cbfeea134952",
   "actions_executed": [],
   "mass_preparation_only": {
     "drain_seconds": 120,
