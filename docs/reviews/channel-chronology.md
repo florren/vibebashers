@@ -121,3 +121,20 @@ logic не менялась; строгие KPI/403/Resume assertions сохра
 После исправлений все12 адресных ru/en/theme cases на настоящем активном
 demo5000 прошли (33.3s), бюджеты90s/300ms не менялись. Полный168 повтор
 запускается отдельно, без ослабления assertions/таймаутов/retries.
+
+## Strict snapshot и active demo browser follow-up
+
+Последующий full demo run выявил настоящий frontend cache defect: после ACK
+strict policy старый soft KPI оставался видимым при 403 refetch. Cabinet теперь
+сбрасывает несовместимый cache и закрывает stale drawer/calculator. Детерминированная
+регрессия удерживает запрос pending: RED 1 failed/9 passed → GREEN10passed.
+После изменения: full581 frontend tests/81files, typecheck, lint и обе сборки passed.
+
+Static Client360 fixtures теперь фиксируют WebSocket вместе с REST; число reads
+и прежний 300ms budget сохранены. Overview сверяет реальные UI responses своего
+resolved run вместо более раннего независимого GET. Shell ждёт видимую карту,
+а не отсутствие сетевой активности у live application.
+Native isolated Docker Compose demo5000: 34/34 targeted browser cases passed
+(report/cabinet/interrupted/Client360/overview/shell, ru/en и темы), 1.1min.
+Seed wall24.0716s; maximum APIp95 34.7262ms, violations[].
+Это не заменяет full168 и final composed backend/CI gate.

@@ -11,6 +11,7 @@ async function fixtureApi(page: Page, mode = 'light') {
   let reads = 0
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
+  await page.routeWebSocket('**/ws/stream', ws => { ws.onMessage(() => {}) })
   await page.route('**/api/**', async route => {
     const url = new URL(route.request().url())
     const path = url.pathname

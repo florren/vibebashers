@@ -81,8 +81,10 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         }
         if (width >= 1024) {
           await page.goto('/workspace?tab=map')
-          await page.waitForLoadState('networkidle')
-          const box = await page.getByRole('img', { name: lang === 'ru' ? 'Карта России — где болит' : 'Map of Russia — where it hurts' }).boundingBox()
+          const map = page.getByRole('img', { name: lang === 'ru' ? 'Карта России — где болит' : 'Map of Russia — where it hurts' })
+          await expect(map).toBeVisible()
+          await expect(map.locator('path').first()).toBeVisible()
+          const box = await map.boundingBox()
           expect(box).not.toBeNull(); expect(box!.y + box!.height).toBeLessThanOrEqual(height)
           priorityResponse = await openSignals()
         }

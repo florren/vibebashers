@@ -84,6 +84,28 @@ it('keeps a strict error visible and never fabricates KPI zeros', async () => {
   expect(container.querySelector('[data-block="cabinet-kpi"]')).toBeNull()
 })
 
+it('сбрасывает soft snapshot после ACK strict, пока новый запрос ещё ожидает 403', async () => {
+  const originalApi = vi.mocked(api).getMockImplementation()!
+  let rejectStrict!: (error: ApiError) => void
+  const strict = new Promise<never>((_, reject) => { rejectStrict = reject })
+  vi.mocked(patch).mockImplementation(async () => {
+    vi.mocked(api).mockImplementation((path, options) => path === '/api/cabinet/overview' ? strict : originalApi(path, options))
+  })
+  localStorage.setItem('cx.ui.productLine', 'deposits')
+  useViewPreset.setState({ role: 'product_manager' })
+  const { container } = show('/cabinet?product_line=all')
+  await screen.findByText('Главное за период')
+  try {
+    fireEvent.change(screen.getByLabelText('Видимость'), { target: { value: 'strict' } })
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/api/settings', { cabinet: { visibility: 'strict' } }))
+    await waitFor(() => expect(container.querySelector('[data-block="cabinet-kpi"]')).toBeNull())
+  } finally {
+    await act(async () => { rejectStrict(new ApiError(403, { title: 'Scope forbidden' }, '403 Forbidden')) })
+  }
+  await screen.findByText(i18n.t('care.errors.request'))
+  expect(container.querySelector('[data-block="cabinet-kpi"]')).toBeNull()
+})
+
 it('restores the full local role/filter/presenter snapshot with Undo', async () => {
   useViewPreset.setState({ demonstrator: true })
   show('/cabinet?region=77')

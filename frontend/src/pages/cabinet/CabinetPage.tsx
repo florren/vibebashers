@@ -57,7 +57,11 @@ export function CabinetPage() {
   const table = useQuery(signalsOptions(filters, headers))
   const recent = useQuery(signalsOptions({ ...scope, region: region ?? undefined, red_words: filters.red_words, limit: 20, sort: 'date', direction: 'desc' }, headers))
   const regional = useQuery({ ...signalsOptions({ ...scope, region: region ?? undefined, red_words: filters.red_words, limit: 20, sort: 'date', direction: 'desc' }, headers), enabled: Boolean(region) })
-  const visibility = useMutation({ mutationFn: (value: 'soft' | 'strict') => patch('/api/settings', { cabinet: { visibility: value } }), onSuccess: () => cache.invalidateQueries({ queryKey: ['cabinet'] }) })
+  const visibility = useMutation({ mutationFn: (value: 'soft' | 'strict') => patch('/api/settings', { cabinet: { visibility: value } }), onSuccess: () => {
+    setSelectedSignal(null); setCalculator(false)
+    // Старый soft snapshot уже не соответствует принятой сервером policy.
+    return cache.resetQueries({ queryKey: ['cabinet'] })
+  } })
   useCabinetEvents()
   useEffect(() => { setSelectedSignal(null); setCalculator(false) }, [line, role, binding, runId])
   const update = (key: string, value: string | null) => {
