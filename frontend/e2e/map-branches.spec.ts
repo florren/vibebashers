@@ -1,13 +1,30 @@
-import { expect, test, type Request } from '@playwright/test'
+import { expect, test, type Request, type APIRequestContext } from '@playwright/test'
 import type { components } from '../src/shared/api/types'
 type Detail = components['schemas']['BranchDetailResponse']
 type Directory = components['schemas']['BranchDirectoryResponse']
+type AgentList = components['schemas']['AgentRunList']
+type Signals = components['schemas']['SignalList']
+
+
+async function nativeItems<T>(request: APIRequestContext, path: string, scope: Record<string, string>): Promise<T[]> {
+  let cursor: string | undefined
+  const seen = new Set<string>(), rows: T[] = []
+  do {
+    const response = await request.get(path, { params: { ...scope, limit: 500, ...(cursor ? { cursor } : {}) } })
+    expect(response.status()).toBe(200)
+    const data: { items?: T[]; next_cursor?: string | null } = await response.json()
+    if (!Array.isArray(data.items) || !Object.hasOwn(data, 'next_cursor') || data.next_cursor !== null && typeof data.next_cursor !== 'string') throw new Error(path + ': malformed native page')
+    rows.push(...data.items); cursor = data.next_cursor ?? undefined
+    if (cursor) { expect(seen.has(cursor), 'Cursor не должен образовывать цикл').toBe(false); seen.add(cursor) }
+  } while (cursor)
+  return rows
+}
 
 // Только disposable synthetic стенд: preparation меняет current и сохраняет прежнюю историю.
 // Темы меняются только в browser GET; бизнес-ответы API не подменяются.
 // Settings project имеет один worker и запускается после всех read-only файлов.
 test.describe.configure({ mode: 'serial' })
-let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number }
+let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number; missing: number; duplicate: number; foreign: number; failed: number }
 test.beforeAll(async ({ request, baseURL }) => {
   const owner = process.env.E2E_ISOLATED_SCENARIOS?.trim()
   if (!owner || !baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname)) throw new Error('Нужны E2E_ISOLATED_SCENARIOS и собственный disposable localhost стенд; preparation не выполнялась')
@@ -16,16 +33,8 @@ test.beforeAll(async ({ request, baseURL }) => {
   const before = await beforeResponse.json()
   expect(before.running, 'Чужой активный clock автоматически не останавливается').toBe(false)
   if (before.current_run_id != null) {
-    let cursor: string | undefined
-    const seen = new Set<string>()
-    do {
-      const prior = await request.get('/api/agent/runs', { params: { run_id: String(before.current_run_id), limit: 500, ...(cursor ? { cursor } : {}) } })
-      expect(prior.status()).toBe(200)
-      const data = await prior.json()
-      expect(data.items.filter((row: { outcome: string | null }) => row.outcome == null)).toHaveLength(0)
-      cursor = data.next_cursor ?? undefined
-      if (cursor) { expect(seen.has(cursor), 'Cursor не должен образовывать цикл').toBe(false); seen.add(cursor) }
-    } while (cursor)
+    const prior = await nativeItems<NonNullable<AgentList['items']>[number]>(request, '/api/agent/runs', { run_id: String(before.current_run_id) })
+    expect(prior.filter(row => row.outcome == null)).toHaveLength(0)
   }
   // Native T262 preflight проверяет effective Mock всех ролей до любых эффектов.
   const response = await request.post('/api/scenarios/csi_and_branches/run', { data: { label: 'T250 Playwright isolated map branches', reset_mode: 'counters', seed: 42 } })
@@ -43,16 +52,22 @@ test.beforeAll(async ({ request, baseURL }) => {
   expect(Date.parse(after.sim_time)).toBe(Date.parse(before.sim_time))
   // У настоящего image работают actors. До read-only фазы все301 received
   // проходят normal graph; awaiting_human/deferred не требуют human accept.
-  let observed = { received: 0, agent_runs: 0, active: 0 }
+  let observed = { received: 0, agent_runs: 0, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 }
   await expect.poll(async () => {
-    const signals = await request.get('/api/signals', { params: { run_id: String(run.id), limit: 1 } })
-    const agents = await request.get('/api/agent/runs', { params: { run_id: String(run.id), limit: 500 } })
-    expect(signals.status()).toBe(200); expect(agents.status()).toBe(200)
-    const source = await signals.json(), data = await agents.json()
-    expect(data.next_cursor).toBeNull()
-    observed = { received: source.total, agent_runs: data.total, active: data.items.filter((row: { outcome: string | null }) => row.outcome == null).length }
+    const source = await nativeItems<NonNullable<Signals['items']>[number]>(request, '/api/signals', { run_id: String(run.id) })
+    const agents = await nativeItems<NonNullable<AgentList['items']>[number]>(request, '/api/agent/runs', { run_id: String(run.id), kind: 'agent' })
+    const sourceIds = new Set(source.map(row => row.id)), agentIds = new Set(agents.map(row => row.signal_id))
+    expect(source.every(row => Number.isSafeInteger(row.id) && row.id! > 0)).toBe(true)
+    expect(agents.every(row => Number.isSafeInteger(row.signal_id) && row.signal_id! > 0 && row.kind === 'agent')).toBe(true)
+    observed = {
+      received: sourceIds.size, agent_runs: agentIds.size, active: agents.filter(row => row.outcome == null).length,
+      missing: [...sourceIds].filter(id => !agentIds.has(id)).length,
+      duplicate: source.length - sourceIds.size + agents.length - agentIds.size,
+      foreign: [...agentIds].filter(id => !sourceIds.has(id!)).length,
+      failed: agents.filter(row => row.outcome === 'failed').length,
+    }
     return observed
-  }, { timeout: 25_000 }).toEqual({ received: 301, agent_runs: 301, active: 0 })
+  }, { timeout: 25_000 }).toEqual({ received: 301, agent_runs: 301, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 })
   preparation = { previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner, ...observed }
 })
 for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
