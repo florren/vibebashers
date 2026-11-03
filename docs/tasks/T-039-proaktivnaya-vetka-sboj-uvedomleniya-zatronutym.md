@@ -142,3 +142,34 @@ AST valid, diff check green; явная дополнительная прове�
 генератора даёт те же169 замечаний до/после (он вне штатной backend lint цели).
 Runtime/контракты не изменены; новый exact-head CI обязателен. Финальные review
 API/DDL/financial/HITL и parent prerequisites остаются обязательными до merge.
+
+### Freeze follow-up: часы tick и native financial observation
+
+Native Team.take выявил два воспроизводимых отказа: in-memory T1 при DB clockT0
+и stale cached mass после роста actual same-run cohort. Подготовлено транзакционное
+обновление часов до эффектов, отдельный economics observation time при сохранении
+плановых team/SLA timestamps, проверенное monotonic обновление native cohort cache.
+Завышенные counter/future/foreign/invalid lineage по-прежнему дают отказ.
+Unit2178passed/19skipped, ruff/mypy328passed, contracts48schemas/167paths passed.
+Native extended47passed и финальный повтор41passed; new statement execution48/53
+(90.57%, sys.settrace/AST). Отдельный human money review ещё требуется;
+статус всей карточки этим дополнением не меняется.
+Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.md).
+
+### Freeze follow-up: canonical shared systems
+
+Обычная product/system эвристика переписывала проверенные producer facts для
+трёх допустимых shared-system combinations. RED3native unit/3ordinary controls и
+3actual PG failures воспроизведены. Подготовлено однострочное сохранение verified
+native scope; ordinary heuristic и financial guards сохранены. GREEN13unit;
+GREEN15PG (shared systems,9negative economics,3HITL); ruff/mypy328passed.
+Full2185unitpassed/19skipped; contracts48/167passed.
+Composition/CI и human review требуются.
+[Review/откат](../reviews/native-service-classification-facts.md).
+
+### Подтверждение freeze follow-up
+
+Пользователь явно подтвердил финансовую границу PR #214 при зелёном общем CI.
+Также подтверждён PR #215 (verified native catalog facts), без отключения guards.
+Объединённый full2196unit/19skip прошёл; финальные local composition/CI gates
+ещё обязательны. Полный acceptance карточки этим не объявляется закрытым.

@@ -45,3 +45,8 @@ pytest backend/tests/integration/test_public_reviews.py
 
 ## Отчёт субагента
 Ветка `feat/b06-b16-abs-feed`. `backend/app/feed/service.py`: `create_post` (событие `review.posted`), `link_signal`, `publish_reply` (санитизация ПДн/обещаний, латентность от `posted_at`, статусы `replied|escalated_to_dm`, события `review.replied|escalated_to_dm`), `feed_stats`. Посты создаются для публичных каналов в генераторе симулятора (`_emit_signal`) и в нормализаторе (сценарии, жюри, API); `signals.external_post_id` ↔ `external_posts.signal_id`. API `POST /api/public/reviews` (сопоставление по `client_products.card_last4`), `GET /api/public/feed[/{id}]`, `POST /api/feed/{id}/reply`, `GET /api/feed/stats`. Тесты: `tests/unit/test_feed_sanitize.py`, `tests/integration/test_abs_feed.py`.
+
+
+### Проверка хронологии перед фризом — 03.11.2026
+
+Ветка `codex/channel-chronology`: исправлены общие wall-clock даты /feed, transaction-start timestamp публичного ответа, сортировка PersonalChat и LiveJourney с offsets/microseconds и own-run clock Telegram ACK. API/DDL без изменений. 2178 unit / 19 skipped, 580 frontend, 13 финальных новых PG, 52 смежных PG regression и 4 browser cases. Реальные внешние вызовы не выполнялись. Один legacy gift timestamp остаётся открытым; 100% покрытия/чистоты истории не заявляется. Границы доказательств и повторяемый audit: `docs/reviews/channel-chronology.md`.

@@ -296,7 +296,7 @@ async def test_warning_once(monkeypatch: pytest.MonkeyPatch) -> None:
     store.add_incident(created_sim=created, sla_due_sim=due, complexity="medium")
     at = dt.datetime(2026, 11, 9, 15, 30, tzinfo=MSK)
     assert remaining_pct(created, due, at, complexity="medium") < 25.0
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
 
     async def track(ctx: ToolContext, incident_id: int, status: str, reason: str | None = None, fields=None):
@@ -316,7 +316,7 @@ async def test_breach_from_fix_proposed_escalates_via_in_progress(monkeypatch: p
     created = dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK)
     due = dt.datetime(2026, 11, 9, 17, 0, tzinfo=MSK)
     store.add_incident(created_sim=created, sla_due_sim=due, status="fix_proposed")
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
     transitions: list[str] = []
 
@@ -343,7 +343,7 @@ async def test_breach_without_fsm_path_leaves_incident_untouched(monkeypatch: py
     due = dt.datetime(2026, 11, 9, 17, 0, tzinfo=MSK)
     store.add_incident(created_sim=created, sla_due_sim=due, status="fix_proposed")
     monkeypatch.setitem(STATUS_TRANSITIONS, "fix_proposed", {"fix_deployed"})
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
 
     async def track(ctx: ToolContext, incident_id: int, status: str, reason: str | None = None, fields=None):
@@ -374,12 +374,12 @@ async def test_outcome_class_recomputed_after_closed(monkeypatch: pytest.MonkeyP
     )
     compute_calls: list[int] = []
 
-    async def record_compute(conn: Any, incident_id: int, *, sim_time: dt.datetime | None = None) -> dict[str, Any]:
+    async def record_compute(ctx: ToolContext, incident_id: int) -> dict[str, Any]:
         compute_calls.append(incident_id)
         store.incidents[incident_id]["outcome_class"] = "closed_in_sla"
         return {"outcome_class": "closed_in_sla"}
 
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", record_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", record_compute)
     eng = await _engine(store)
     await eng.tick(closed, closed + dt.timedelta(minutes=15))
     assert compute_calls == [1]
@@ -392,7 +392,7 @@ async def test_breach_escalates(monkeypatch: pytest.MonkeyPatch) -> None:
     created = dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK)
     due = dt.datetime(2026, 11, 9, 17, 0, tzinfo=MSK)
     store.add_incident(created_sim=created, sla_due_sim=due, status="in_progress")
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
 
     async def track(ctx: ToolContext, incident_id: int, status: str, reason: str | None = None, fields=None):
@@ -417,7 +417,7 @@ async def test_report_missing_second_escalates(monkeypatch: pytest.MonkeyPatch) 
     d1 = add_working_days(created, 3)
     d2 = add_working_days(created, 6)
     store.add_incident(created_sim=created, report_due_sims=[d1, d2], sla_due_sim=add_working_days(created, 10))
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
 
     async def set_status(ctx: ToolContext, iid: int, st: str, reason: str | None = None, fields=None):
@@ -437,7 +437,7 @@ async def test_repeat_tick_no_duplicate_events(monkeypatch: pytest.MonkeyPatch) 
     created = dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK)
     due = dt.datetime(2026, 11, 9, 17, 0, tzinfo=MSK)
     store.add_incident(created_sim=created, sla_due_sim=due)
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
     monkeypatch.setattr("app.sim.sla.update_incident", _noop_update)
     await eng.tick(created, due)
@@ -461,7 +461,7 @@ async def test_progress_report_blocks_missing(monkeypatch: pytest.MonkeyPatch) -
             "published_sim": due_report,
         }
     )
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
     monkeypatch.setattr("app.sim.sla.update_incident", _noop_update)
     await eng.tick(created, due_report)
@@ -474,7 +474,7 @@ async def test_take_overdue(monkeypatch: pytest.MonkeyPatch) -> None:
     created = dt.datetime(2026, 11, 9, 9, 0, tzinfo=MSK)
     take_due = dt.datetime(2026, 11, 9, 10, 0, tzinfo=MSK)
     store.add_incident(created_sim=created, take_due_sim=take_due, taken_sim=None, status="routed")
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
     monkeypatch.setattr("app.sim.sla.update_incident", _noop_update)
     await eng.tick(created, take_due + dt.timedelta(minutes=1))
@@ -498,7 +498,7 @@ async def test_first_response_overdue_by_segment(monkeypatch: pytest.MonkeyPatch
     store.add_incident(status="in_progress")
     store.signals[1] = {"id": 1, "run_id": 1, "received_sim": received, "segment_code": segment}
     store.incident_signals.append((1, 1))
-    monkeypatch.setattr("app.sim.sla.dcltv.compute_incident", _noop_compute)
+    monkeypatch.setattr("app.sim.sla.observe_incident_economics", _noop_compute)
     eng = await _engine(store)
     monkeypatch.setattr("app.sim.sla.update_incident", _noop_update)
     await eng.tick(received, received + dt.timedelta(minutes=minutes + 30))

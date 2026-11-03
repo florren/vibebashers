@@ -1,13 +1,15 @@
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+
+const labels = Object.fromEntries(['ru', 'en'].map(lang => [lang,
+  JSON.parse(readFileSync(new URL(`../src/shared/i18n/${lang}.json`, import.meta.url), 'utf8')),
+]))
 
 const runId = process.env.E2E_REPORT_RUN_ID ?? 'current'
 
 for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] as const) {
-  test(`report ${lang}/${mode}: actual API, scoped read-only SVG and A4`, async ({ page, request }, info) => {
-    const apiResponse = await request.get('/api/cabinet/report', { params: { product_line: 'all', period: 'quarter', run_id: runId, lang } })
-    expect(apiResponse.status()).toBe(200)
-    const report = await apiResponse.json()
+  test(`report ${lang}/${mode}: actual API, scoped read-only SVG and A4`, async ({ page }, info) => {
     const mutations: string[] = [], external: string[] = []
     await page.route('**/*', route => {
       const url = new URL(route.request().url())
@@ -17,7 +19,15 @@ for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] a
     })
     await page.addInitScript(({ lang, mode }) => { localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', mode); localStorage.setItem('cx.ui.role', 'cx_lead') }, { lang, mode })
     await page.emulateMedia({ reducedMotion: 'reduce' })
+    // При активной симуляции два GET — разные snapshots. Сверяем ответ именно этого UI.
+    const renderedReport = page.waitForResponse(response => {
+      const url = new URL(response.url())
+      return url.pathname === '/api/cabinet/report' && url.searchParams.get('lang') === lang && !url.searchParams.has('format')
+    })
     await page.goto('/cabinet/all/report?period=quarter&run_id=' + encodeURIComponent(runId))
+    const apiResponse = await renderedReport
+    expect(apiResponse.status()).toBe(200)
+    const report = await apiResponse.json()
     const root = page.locator('[data-report]')
     await expect(root.locator('[data-report-page]')).toHaveCount(3)
     await expect(root.locator('.report-summary')).toContainText(report.summary[0])
@@ -25,7 +35,7 @@ for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] a
       const hasData = code === 'daily' ? report.overview.daily.some((row: { potential_loss_rub: number | null; prevented_loss_rub: number | null }) => row.potential_loss_rub != null || row.prevented_loss_rub != null) : code === 'monthly' ? report.overview.monthly.length > 0 : report.overview.sources.length > 0
       const chart = root.locator(`[data-report-chart="${code}"]`)
       await expect(chart.locator('svg')).toHaveCount(hasData ? 1 : 0)
-      if (!hasData) await expect(chart).toContainText(lang === 'ru' ? 'Нет' : 'No')
+      if (!hasData) await expect(chart).toHaveText(labels[lang].cabinet[code === 'daily' ? 'noSavedEconomics' : 'noData'])
     }
     await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
     await expect(root.getByRole('heading', { name: lang === 'ru' ? 'Главное за период' : 'Period summary' })).toBeVisible()

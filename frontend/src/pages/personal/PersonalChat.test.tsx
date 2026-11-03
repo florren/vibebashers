@@ -29,6 +29,25 @@ beforeEach(async()=>{
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.clearAllMocks()})
 function mount(){const qc=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});render(<QueryClientProvider client={qc}><PersonalChat/></QueryClientProvider>);return qc}
 
+it.each([
+ ['2026-11-03T12:00:00+03:00', '2026-11-03T09:00:01Z'],
+ ['2026-11-03T09:00:00.123400+00:00', '2026-11-03T09:00:00.123500Z'],
+])('вопрос предшествует ответу при разных RFC3339 offsets/точности: %s', async (question, answer) => {
+ history={messages:[{public_id:'SIG-000001',text:'Вопрос клиента',status:'answered',received_at:question}],answers:[{id:1,text:'Ответ банка',at:answer}]}
+ mount()
+ await screen.findByText('Ответ банка')
+ expect(Array.from(document.querySelectorAll('article p.whitespace-pre-wrap')).map(el=>el.textContent)).toEqual(['Вопрос клиента','Ответ банка'])
+})
+
+it('сохраняет реальное чередование реплик внутри одной миллисекунды',async()=>{
+ history={messages:[
+  {public_id:'SIG-000001',text:'Вопрос один',status:'answered',received_at:'2026-11-03T09:00:00.123100Z'},
+  {public_id:'SIG-000002',text:'Вопрос два',status:'answered',received_at:'2026-11-03T09:00:00.123300Z'},
+ ],answers:[{id:1,text:'Ответ один',at:'2026-11-03T09:00:00.123200Z'},{id:2,text:'Ответ два',at:'2026-11-03T09:00:00.123400Z'}]}
+ mount();await screen.findByText('Ответ два')
+ expect(Array.from(document.querySelectorAll('article p.whitespace-pre-wrap')).map(el=>el.textContent)).toEqual(['Вопрос один','Ответ один','Вопрос два','Ответ два'])
+})
+
 it('отправляет анонимное обращение и показывает реальный ответ собственного API без операторской навигации',async()=>{
  mount()
  expect(await screen.findByRole('option',{name:'Дебетовая карта'})).toBeInTheDocument()

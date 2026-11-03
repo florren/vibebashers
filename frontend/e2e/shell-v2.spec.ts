@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIResponse } from '@playwright/test'
 
 // Настоящий local API; смена layout допускает только ui PATCH, бизнес-мутации запрещены.
 for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
@@ -8,10 +8,17 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     const prioritySamples: object[] = []
     const errors: string[] = [], external: string[] = [], writes: string[] = []
     page.on('pageerror', e => errors.push(e.message))
-    await page.route('**/*', route => {
+    const prioritySnapshots = new Map<string, Promise<APIResponse>>()
+    await page.route('**/*', async route => {
       const r = route.request(), u = new URL(r.url())
       if (!['127.0.0.1', 'localhost'].includes(u.hostname)) { external.push(u.hostname); return route.abort() }
       if (!['GET', 'HEAD'].includes(r.method()) && u.pathname !== '/api/settings') { writes.push(r.method() + ' ' + u.pathname); return route.abort() }
+      // Layout/keyboard assertions используют неизменный настоящий priority snapshot этого test.
+      if (u.pathname === '/api/incidents' && u.searchParams.get('sort') === 'priority' && u.searchParams.get('limit') === '3') {
+        let response = prioritySnapshots.get(u.href)
+        if (!response) { response = route.fetch(); prioritySnapshots.set(u.href, response) }
+        return route.fulfill({ response: await response })
+      }
       return route.continue()
     })
     await page.addInitScript(({ lang }) => localStorage.setItem('cx.lang', lang), { lang })
@@ -61,7 +68,15 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await page.getByRole('navigation', { name: navName }).getByRole('link', { name: lang === 'ru' ? 'Финансовый эффект' : 'Financial impact', exact: true }).click()
       await expect(page).toHaveURL(/\/finance$/)
       const openSignals = async () => {
-        const response = page.waitForResponse(result => { const url = new URL(result.url()); return url.pathname === '/api/incidents' && url.searchParams.get('sort') === 'priority' && url.searchParams.get('limit') === '3' })
+        const response = page.waitForResponse(result => { const url = new URL(result.url()); return url.pathname === '/api/incidents' && url.searchParams.get('sort') === 'priority' && url.searchParams.get('limit') === '3' }).then(async result => {
+          // Poll предыдущей страницы тоже может завершиться при navigation; его browser body уже недоступен.
+          // Native route snapshot независим от lifecycle страницы и идентичен выданному UI body.
+          const source = prioritySnapshots.get(result.url())
+          expect(source).toBeDefined()
+          const native = await source!
+          expect(native.status()).toBe(result.status())
+          return { status: result.status(), url: result.url(), body: await native.json() }
+        })
         await page.goto('/workspace?tab=signals')
         return response
       }
@@ -81,18 +96,20 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         }
         if (width >= 1024) {
           await page.goto('/workspace?tab=map')
-          await page.waitForLoadState('networkidle')
-          const box = await page.getByRole('img', { name: lang === 'ru' ? 'Карта России — где болит' : 'Map of Russia — where it hurts' }).boundingBox()
+          const map = page.getByRole('img', { name: lang === 'ru' ? 'Карта России — где болит' : 'Map of Russia — where it hurts' })
+          await expect(map).toBeVisible()
+          await expect(map.locator('path').first()).toBeVisible()
+          const box = await map.boundingBox()
           expect(box).not.toBeNull(); expect(box!.y + box!.height).toBeLessThanOrEqual(height)
           priorityResponse = await openSignals()
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-        expect(priorityResponse.status()).toBe(200)
-        const priorityQuery = new URL(priorityResponse.url()).searchParams
+        expect(priorityResponse.status).toBe(200)
+        const priorityQuery = new URL(priorityResponse.url).searchParams
         const current = (await (await request.get('/api/sim/state')).json()).current_run_id
         expect(['current', String(current)]).toContain(priorityQuery.get('run_id'))
         expect(priorityQuery.getAll('status')).toEqual(['new', 'classified', 'routed', 'in_progress', 'fix_proposed', 'fix_deployed', 'awaiting_human', 'awaiting_client', 'verifying', 'escalated'])
-        const priorityItems = (await priorityResponse.json()).items
+        const priorityItems = priorityResponse.body.items
         expect(Array.isArray(priorityItems)).toBe(true); expect(priorityItems.length).toBeLessThanOrEqual(3)
         prioritySamples.push({ width, run: current, query: priorityQuery.toString(), ids: priorityItems.map((item: { id: number }) => item.id) })
         const strip = page.getByRole('region', { name: lang === 'ru' ? 'Приоритеты' : 'Priorities', exact: true })

@@ -7,9 +7,9 @@ from typing import Any
 
 import psycopg
 
+from app.agent.incident_observation import observe_incident_economics
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import STATUS_TRANSITIONS, render_template, update_incident
-from app.economics import dcltv
 from app.logging import get_logger
 from app.sim.clock import MSK, WORK_END, WORK_START, add_working_days, is_working_day, is_working_time
 from app.sim.events import EventBus, dumps
@@ -151,11 +151,18 @@ class SlaEngine:
         for at in sla_tick_times(t0, t1):
             if self._cursor is not None and at <= self._cursor:
                 continue
-            await self._tick_at(at)
+            await self._tick_at(at, economics_time=t1)
             self._cursor = at
 
-    async def _tick_at(self, sim_time: dt.datetime) -> None:
-        ctx = ToolContext(self.conn, run_id=self.run_id, agent_run_id=0, sim_time=sim_time, llm_source="mock")
+    async def _tick_at(self, sim_time: dt.datetime, *, economics_time: dt.datetime | None = None) -> None:
+        ctx = ToolContext(
+            self.conn,
+            run_id=self.run_id,
+            agent_run_id=0,
+            sim_time=sim_time,
+            llm_source="mock",
+            economics_time=economics_time,
+        )
         cur = await self.conn.execute(
             "select id, status, team_code, created_sim, take_due_sim, sla_due_sim, report_due_sims, "
             "complexity, sla_breached, outcome_class, agent_run_id "
@@ -204,7 +211,7 @@ class SlaEngine:
         incident_id = int(iid)
         if str(status) == "closed":
             if not outcome_class or str(outcome_class) == "open":
-                await dcltv.compute_incident(self.conn, incident_id, sim_time=sim_time)
+                await observe_incident_economics(ctx, incident_id)
             return
         created = _parse_ts(created_sim)
         due = _parse_ts(sla_due_sim)
@@ -275,7 +282,7 @@ class SlaEngine:
                     },
                     sim_time,
                 )
-                await dcltv.compute_incident(self.conn, incident_id, sim_time=sim_time)
+                await observe_incident_economics(ctx, incident_id)
 
         reports = [_parse_ts(x) for x in (report_due_sims or [])]
         for due_report in reports:
@@ -355,7 +362,7 @@ class SlaEngine:
             )
 
         if str(status) in ("resolved", "closed") and (not outcome_class or str(outcome_class) == "open"):
-            await dcltv.compute_incident(self.conn, incident_id, sim_time=sim_time)
+            await observe_incident_economics(ctx, incident_id)
 
     async def _process_first_response(self, ctx: ToolContext, sim_time: dt.datetime) -> None:
         cur = await self.conn.execute(

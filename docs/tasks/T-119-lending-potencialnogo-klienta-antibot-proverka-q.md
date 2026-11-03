@@ -57,3 +57,8 @@ npx playwright test e2e/landing.spec.ts
 Самостоятельно работают форма, captcha/consent/лимит, нормализатор, немедленный dispatch агента, success public_id/QR/ссылка и GET API истории. Маршрут `/track/:token` добавляет следующий stacked T-120: первая ветка показывает правильную ссылку, но переход требует слияния T-120. Это явная зависимость карточек; промежуточного stub или mock production API нет. Сценарий 4 соответствует `anonymous_handoff`: реальный API/normalizer/graph с mock LLM создаёт инцидент и отправляет ack_received; это не финальное решение проблемы.
 
 Контракты, схема и зависимости не менялись. Скриншоты формы ru/en/light/dark: `docs/screenshots/public-tracking/landing-{ru,en}-{light,dark}.png`. Самостоятельная ветка проверена: make lint (147 frontend tests, Ruff, mypy, OpenAPI drift), обе production-сборки, 6 backend privacy/claim/scenario4 integration/unit tests, 5 Playwright cases формы (ru/en/light/dark и выдача ссылки). Статус in_progress сохраняется до полного DoD, включая отдельно не выполненную live GigaChat проверку.
+
+
+### Проверка хронологии перед фризом — 03.11.2026
+
+Ветка `codex/channel-chronology`: исправлены общие wall-clock даты /feed, transaction-start timestamp публичного ответа, сортировка PersonalChat и LiveJourney с offsets/microseconds и own-run clock Telegram ACK. API/DDL без изменений. 2178 unit / 19 skipped, 580 frontend, 13 финальных новых PG, 52 смежных PG regression и 4 browser cases. Реальные внешние вызовы не выполнялись. Один legacy gift timestamp остаётся открытым; 100% покрытия/чистоты истории не заявляется. Границы доказательств и повторяемый audit: `docs/reviews/channel-chronology.md`.

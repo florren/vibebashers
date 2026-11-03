@@ -1,30 +1,44 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIResponse } from '@playwright/test'
 import { formatExactRub } from '../src/shared/lib/exactMoney'
 
 const requested = process.env.E2E_OVERVIEW_RUN_ID ?? 'current'
 for (const pack of ['brand','ops'] as const) for (const lang of ['ru','en'] as const) for (const mode of ['light','dark'] as const) {
-  test(`overview actual nine blocks ${pack}/${lang}/${mode}`, async ({page,request},info)=>{
+  test(`overview actual nine blocks ${pack}/${lang}/${mode}`, async ({page,request,playwright,baseURL},info)=>{
+    const cleanup=await playwright.request.newContext({baseURL,timeout:10_000})
     const settings=await(await request.get('/api/settings')).json()
     const oldUi=settings.ui??null, attention=pack==='ops'?'control_room':'calm'
     const writes:string[]=[],external:string[]=[],errors:string[]=[],forbiddenQueries:string[]=[]
     try {
       // Fixture setup идёт ДО readonly browser phase; import восстанавливает весь namespace.
       expect((await request.patch('/api/settings',{data:{ui:{layout:'v2',lang,mode,theme_pack:pack,attention}}})).status()).toBe(200)
-      const response=await request.get('/api/metrics/overview',{params:{run_id:requested}})
-      expect(response.status()).toBe(200)
-      const overview=await response.json(), run=overview.scope.all_runs?'all':String(overview.scope.resolved_run_id)
-      expect(overview.scope.current_missing).toBe(false)
-      const cxResponse=await request.get('/api/metrics/cx-index',{params:{run_id:run}})
-      expect(cxResponse.status()).toBe(200)
-      const cx=await cxResponse.json()
-      const signalPage=await(await request.get('/api/signals',{params:{run_id:run,since_sim:cx.window.starts_sim,limit:40}})).json()
-      const expectedPoints=(signalPage.items??[]).filter((row: {origin?:string;received_sim:string;classification?:{negativity?:number}|null})=>{const n=row.classification?.negativity,at=Date.parse(row.received_sim);return row.origin!=='proactive'&&at>Date.parse(cx.window.starts_sim)&&at<=Date.parse(cx.window.ends_sim)&&typeof n==='number'&&Number.isInteger(n)&&n>=0&&n<=100}).length
       page.on('pageerror',error=>errors.push(error.message))
       page.on('request',req=>{const url=new URL(req.url());if(['/api/metrics/dashboard','/api/metrics/economics','/api/metrics/economics/live','/api/metrics/economics/fact','/api/metrics/economics/preview'].includes(url.pathname))forbiddenQueries.push(url.pathname)})
-      await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(url.origin!==new URL(info.project.use.baseURL as string).origin){external.push(url.origin);return route.abort()}if(!['GET','HEAD'].includes(req.method())){writes.push(req.method()+' '+url.pathname);return route.abort()}return route.continue()})
+      const snapshots=new Map<string,Promise<APIResponse>>()
+      // Один реальный API snapshot для визуальных assertions; live polling не меняет источник посреди проверки.
+      await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());if(url.origin!==new URL(info.project.use.baseURL as string).origin){external.push(url.origin);return route.abort()}if(!['GET','HEAD'].includes(req.method())){writes.push(req.method()+' '+url.pathname);return route.abort()}
+        if(['/api/metrics/overview','/api/metrics/cx-index','/api/signals'].includes(url.pathname)){
+          let response=snapshots.get(url.href)
+          if(!response){response=route.fetch();snapshots.set(url.href,response)}
+          return route.fulfill({response:await response})
+        }
+        return route.continue()
+      })
       await page.addInitScript(({lang,mode,pack,attention})=>{localStorage.setItem('cx.lang',lang);localStorage.setItem('cx.ui.mode',mode);localStorage.setItem('cx.ui.theme_pack',pack);localStorage.setItem('cx.ui.layout','v2');localStorage.setItem('cx.ui.attention',attention);localStorage.setItem('cx.ui.role','cx_lead')},{lang,mode,pack,attention})
       await page.emulateMedia({reducedMotion:mode==='dark'?'reduce':'no-preference'})
+      const matchesRun=(url:URL)=>requested==='current'?/^[1-9][0-9]*$/.test(url.searchParams.get('run_id')??''):url.searchParams.get('run_id')===requested
+      const renderedOverview=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/api/metrics/overview'&&url.searchParams.get('run_id')===requested})
+      const renderedCx=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/api/metrics/cx-index'&&matchesRun(url)})
+      const renderedSignals=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname==='/api/signals'&&matchesRun(url)&&url.searchParams.get('limit')==='40'&&url.searchParams.has('since_sim')})
       await page.goto('/overview?run_id='+encodeURIComponent(requested))
+      const response=await renderedOverview;expect(response.status()).toBe(200)
+      const overview=await response.json(), run=overview.scope.all_runs?'all':String(overview.scope.resolved_run_id)
+      expect(overview.scope.current_missing).toBe(false)
+      const cxResponse=await renderedCx;expect(cxResponse.status()).toBe(200)
+      expect(new URL(cxResponse.url()).searchParams.get('run_id')).toBe(run)
+      const signalResponse=await renderedSignals;expect(signalResponse.status()).toBe(200)
+      expect(new URL(signalResponse.url()).searchParams.get('run_id')).toBe(run)
+      const cx=await cxResponse.json(), signalPage=await signalResponse.json()
+      const expectedPoints=(signalPage.items??[]).filter((row: {origin?:string;received_sim:string;classification?:{negativity?:number}|null})=>{const n=row.classification?.negativity,at=Date.parse(row.received_sim);return row.origin!=='proactive'&&at>Date.parse(cx.window.starts_sim)&&at<=Date.parse(cx.window.ends_sim)&&typeof n==='number'&&Number.isInteger(n)&&n>=0&&n<=100}).length
       const root=page.locator('[data-overview]')
       await expect(root.locator('[data-block]')).toHaveCount(9)
       await expect(root).toHaveAttribute('data-attention',attention)
@@ -64,7 +78,8 @@ for (const pack of ['brand','ops'] as const) for (const lang of ['ru','en'] as c
       await info.attach('source-summary.json',{body:JSON.stringify({run,index:cx.index,expectedProjectionPoints:expectedPoints,keyboardTraceActivated:expectedPoints>0,attention,pack,lang,mode,browserWrites:writes.length,externalRequests:external.length,palette}),contentType:'application/json'})
       expect(writes).toEqual([]);expect(external).toEqual([]);expect(errors).toEqual([]);expect(forbiddenQueries).toEqual([])
     } finally {
-      expect((await request.post('/api/settings/import',{data:{settings:{ui:oldUi}}})).status()).toBe(200)
+      try { expect((await cleanup.post('/api/settings/import',{data:{settings:{ui:oldUi}}})).status()).toBe(200) }
+      finally { await cleanup.dispose() }
     }
   })
 }

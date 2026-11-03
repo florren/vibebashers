@@ -164,7 +164,11 @@ async def _claim(conn: Connection, config: TransportConfiguration) -> Claim | No
 async def _finish(conn: Connection, claim: Claim, status: str, code: str | None, external_ref: str | None) -> None:
     async with conn.transaction():
         await conn.execute("set local lock_timeout='5s'")
-        sim = await (await conn.execute("select sim_time from sim_state where id=1")).fetchone()
+        # Пока HTTP ожидает ACK, оператор может выбрать другой run с другими часами.
+        # Реальная доставка подтверждена; sim time вне своего current run неизвестен.
+        sim = await (
+            await conn.execute("select sim_time from sim_state where id=1 and current_run_id=%s", (claim.run_id,))
+        ).fetchone()
         sent_sim = sim["sim_time"] if status == "sent" and sim else None
         row = await (
             await conn.execute(

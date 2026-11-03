@@ -87,3 +87,8 @@ bot209/21995.43%. Actual4ru/en/themeUI,94tablesunchanged/noexternal/LLM.
 headers/body и notification status. Конкретный final diff, paired rollout,
 forward-only rollback и проверки: docs/reviews/T-121-delivery-review.md.
 Согласование service-to-service исключения не заменяет этот final review.
+
+
+### Проверка хронологии перед фризом — 03.11.2026
+
+Ветка `codex/channel-chronology`: исправлены общие wall-clock даты /feed, transaction-start timestamp публичного ответа, сортировка PersonalChat и LiveJourney с offsets/microseconds и own-run clock Telegram ACK. API/DDL без изменений. 2178 unit / 19 skipped, 580 frontend, 13 финальных новых PG, 52 смежных PG regression и 4 browser cases. Реальные внешние вызовы не выполнялись. Один legacy gift timestamp остаётся открытым; 100% покрытия/чистоты истории не заявляется. Границы доказательств и повторяемый audit: `docs/reviews/channel-chronology.md`.

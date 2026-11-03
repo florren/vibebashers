@@ -45,3 +45,8 @@ npx playwright test e2e/feed.spec.ts
 
 ## Отчёт субагента
 Ветка `feat/b06-b16-abs-feed`. `frontend/src/pages/feed/FeedPage.tsx` (маршрут `/feed`, пункт «Лента»): полоса статистики (посты/отвечено/опознано/p50/возвращено/авто-HITL), форма публикации отзыва (площадка, ник, 4 цифры карты), карточки постов со статусом, типом сигнала, латентностью и ссылкой на инцидент; правая панель — ветка ответов (ручной ответ сотрудника), связи (пост/сигнал/инцидент/уверенность) и виджет «АБС (эмуляция)» со счетами и проводками, возврат подсвечен. Хуки `useFeed/usePost/useFeedStats/useAbsAccounts/usePublishReview/useManualReply`, WS-топики `feed`, `abs`. Проверено скриншотом Playwright без ошибок консоли.
+
+
+### Проверка хронологии перед фризом — 03.11.2026
+
+Ветка `codex/channel-chronology`: исправлены общие wall-clock даты /feed, transaction-start timestamp публичного ответа, сортировка PersonalChat и LiveJourney с offsets/microseconds и own-run clock Telegram ACK. API/DDL без изменений. 2178 unit / 19 skipped, 580 frontend, 13 финальных новых PG, 52 смежных PG regression и 4 browser cases. Реальные внешние вызовы не выполнялись. Один legacy gift timestamp остаётся открытым; 100% покрытия/чистоты истории не заявляется. Границы доказательств и повторяемый audit: `docs/reviews/channel-chronology.md`.

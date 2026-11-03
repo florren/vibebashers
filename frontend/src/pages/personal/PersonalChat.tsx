@@ -1,3 +1,4 @@
+import { compareMessageTimes } from '@/shared/lib/messageTime'
 import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
 import { DeviceSelector } from '@/shared/layout/device'
 import { useEffect, useRef, useState } from 'react'
@@ -17,6 +18,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   if (!r.ok) throw new PersonalError(data.detail ?? data.title ?? `HTTP ${r.status}`, r.status, Math.min(60, Math.max(1, Number(r.headers.get('retry-after')) || 3)))
   return data as T
 }
+
 
 export function PersonalChat() {
   const { t, i18n } = useTranslation()
@@ -60,7 +62,7 @@ export function PersonalChat() {
   const entries = [
     ...(history.data?.messages ?? []).map(m => ({ key:m.public_id,role:'user',text:m.text,at:m.received_at,code:m.public_id,name:m.display_name })),
     ...(history.data?.answers ?? []).map(a => ({ key:`answer-${a.id}`,role:'agent',text:a.text,at:a.at,code:'',name:undefined })),
-  ].sort((a,b) => a.at.localeCompare(b.at))
+  ].sort((a,b) => compareMessageTimes(a.at,b.at))
   const lastKey = entries.map(e=>e.key).join(',')
   useEffect(() => { bottom.current?.scrollIntoView?.({ block:'nearest', behavior:'smooth' }) },[lastKey])
   const reset = useMutation({ mutationFn: () => request('/api/personal/reset',{}), onSuccess: () => { qc.removeQueries({queryKey:['personal']}); window.location.reload() } })

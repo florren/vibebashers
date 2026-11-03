@@ -43,6 +43,42 @@ async def current_clock(
     return (int(found[0]["id"]), found[0]["sim_time"]) if found else None
 
 
+async def refresh_service_impacts(
+    conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime, *, incident_id: int | None = None
+) -> dt.datetime | None:
+    """Обновить cache cohort только из проверенных same-run operations; не чинит завышенный counter."""
+    from app.economics import dcltv
+
+    incidents = await rows(
+        conn,
+        "select i.id,i.run_id,i.fault_id,i.system_code,i.error_code,i.mass_impact from incidents i "
+        "where i.run_id=%s and (%s::bigint is null or i.id=%s) "
+        "and (%s::bigint is not null or i.status not in ('closed','resolved','duplicate','rejected')) "
+        "and exists(select 1 from incident_signals x join signals s on s.id=x.signal_id "
+        "left join ingest_messages m on m.signal_id=s.id and m.source_code='fault_monitor' "
+        "where x.incident_id=i.id and (m.id is not null or "
+        "(s.origin='proactive' and s.channel_code='proactive' and s.channel_subtype='system_logs')))",
+        (run_id, incident_id, incident_id, incident_id),
+    )
+    if not incidents:
+        return None
+    clock = await current_clock(conn, run_id)
+    observed_at = max(at, clock[1]) if clock else at
+    for incident in incidents:
+        native = await dcltv.native_service_cohort(conn, incident, observed_at)
+        if native is None:
+            continue
+        affected = native[0]
+        if int(incident["mass_impact"] or 0) > affected:
+            raise ValueError("fault_monitor economics: cohort/mass не согласованы; повторите native scope validation")
+        await conn.execute(
+            "update incidents set mass_impact=%s,flags=case when %s>=3 and not ('mass_impact'=any(flags)) "
+            "then array_append(flags,'mass_impact') else flags end where id=%s and run_id=%s and mass_impact<%s",
+            (affected, affected, incident["id"], run_id, affected),
+        )
+    return observed_at
+
+
 async def configuration(conn: psycopg.AsyncConnection[Any]) -> dict[str, Any]:
     """Назначение CX — данные ТЗ6.9, существующие teams; никакого silent fallback."""
     found = await rows(

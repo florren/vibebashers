@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from app.agent import gifts as agent_gifts
+from app.agent.incident_observation import observe_incident_economics
 from app.agent.tools.base import ClientStateIntent, ToolContext, ToolError, mask_name, tool
 from app.sim.events import dumps
 
@@ -151,9 +152,7 @@ async def link_signal_to_incident(
         "update agent_runs set incident_id=%s where id=%s and sim_run_id=%s and signal_id=%s",
         (incident_id, ctx.agent_run_id, ctx.run_id, signal_id),
     )
-    from app.economics import dcltv
-
-    await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
+    await observe_incident_economics(ctx, incident_id)
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "updated", brief)
     return brief
@@ -229,9 +228,7 @@ async def update_incident(
         ):
             await ctx.conn.execute(f"update incidents set {k} = %s, updated_at = now() where id = %s", (v, incident_id))  # noqa: S608 — k из белого списка
     # Экономика обновляется до WS-события, в том числе без выдачи подарка.
-    from app.economics import dcltv
-
-    await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
+    await observe_incident_economics(ctx, incident_id)
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "status", {**brief, "from_status": cur, "reason": reason})
     if transitioned and status in ("resolved", "closed"):
@@ -330,7 +327,7 @@ async def notify_client(
     if consents is not None and channel in ("sms", "email", "push") and consents.get(channel) is False:
         status = "suppressed"
     row = await ctx.fetchone(
-        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else now() end) returning id",
+        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else clock_timestamp() end) returning id",
         (
             ctx.run_id,
             recipient_type,

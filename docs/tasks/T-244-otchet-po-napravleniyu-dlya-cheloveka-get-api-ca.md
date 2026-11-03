@@ -54,3 +54,8 @@ Runtime `3898630`: 125 native unit/PG passed; production browser 5/5, 8 actual H
 Report coverage 205/209 (файлы byte-identical final), shared SQL helper 31/31. Lint: 416 frontend tests, Ruff 452 files, mypy 294 files, drift 193 methods. Обе production builds, contracts и generator idempotence зелёные. Исторический полный `make lint test` на `3f42ae8` отделён от final scoped proof. Approval/merge status ведётся в PR196; exact-head CI ещё требуется; T-249/T-262 не закрываются.
 
 CI follow-up PR196: runtime `734c8a7` устраняет allocation overhead без изменения wire/API26/money semantics; strict403 fixture задана явно. Native affected125 passed, production browser5/5, full lint421frontend, helper coverage32/32; исходные CI380.888ms иsoft200 сохранены. [Source-qualified red→green proof](../reviews/T-244-ci-regressions.md). Карточка остаётсяin_progress до exact-head CI/merge.
+
+
+### Регрессия empty report в nightly — 03.11.2026
+
+В общем freeze QA PR #212 исправлен неправильный assertion «Нет»/«No» для daily без сохранённой экономики: теперь точное равенство правильному ru/en i18n key, включая отдельный noSavedEconomics. Предыдущий nightly41611773482 воспроизвёл2ru failures; продуктовый copy/денежные формулы не меняются. Проверки SVG/экспорта/scope/A4/read-only сохранены. Полный повтор demo/performance проверяется отдельно; evidence в docs/reviews/channel-chronology.md.
