@@ -49,7 +49,7 @@ for (const lang of ['ru', 'en']) for (const theme of ['light', 'dark']) {
       .toEqual([post.posted_at, post.replies[0]!.published_at])
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme)
     await page.screenshot({ path: info.outputPath('feed-chronology.png'), fullPage: true })
-    await page.goto('/personal.html')
+    await page.goto(process.env.E2E_PERSONAL_BASE_URL ?? '/personal.html')
     await expect(page.locator('article p.whitespace-pre-wrap')).toHaveText(['Вопрос один', 'Ответ один', 'Вопрос два', 'Ответ два'])
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme)
     await page.screenshot({ path: info.outputPath('personal-chronology.png'), fullPage: true })

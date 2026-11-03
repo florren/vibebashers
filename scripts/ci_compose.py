@@ -18,7 +18,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def isolate(config: dict[str, Any], project: str, image: str, port: int, directory: Path) -> dict[str, Any]:
+def isolate(
+    config: dict[str, Any],
+    project: str,
+    image: str,
+    port: int,
+    directory: Path,
+    *,
+    expose_personal: bool = False,
+) -> dict[str, Any]:
     if not project.startswith("cx-ci-") or image != "cx-pulse-backend:ci" or not 1024 <= port <= 65535:
         raise ValueError("CI требует свой project, image :ci и непривилегированный port")
     config["name"] = project
@@ -96,14 +104,23 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
             "protocol": "tcp",
         }
     ]
+    if expose_personal:
+        config["services"]["personal"]["ports"] = [
+            {
+                "target": 9999,
+                "published": "0",
+                "host_ip": "127.0.0.1",
+                "protocol": "tcp",
+            }
+        ]
     return config
 
 
-def wait_health(base: str, timeout: float = 120) -> None:
+def wait_health(base: str, timeout: float = 120, *, path: str = "/api/health") -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(base + "/api/health", timeout=3) as response:
+            with urllib.request.urlopen(base + path, timeout=3) as response:
                 if json.load(response).get("status") == "ok":
                     return
         except (OSError, ValueError):
@@ -218,7 +235,14 @@ def main(argv: list[str] | None = None) -> int:
             text=True,
             check=True,
         )
-        config = isolate(json.loads(compiled.stdout), project, args.image, args.port, Path(directory))
+        config = isolate(
+            json.loads(compiled.stdout),
+            project,
+            args.image,
+            args.port,
+            Path(directory),
+            expose_personal=True,
+        )
         config_path = Path(directory) / "compose.json"
         config_path.write_text(json.dumps(config))
         command = ["docker", "compose", "-p", project, "-f", str(config_path)]
@@ -257,6 +281,17 @@ def main(argv: list[str] | None = None) -> int:
             seed_seconds = time.perf_counter() - seed_started
             subprocess.run([*command, "restart", "backend", "personal"], check=True)
             wait_health(environment["E2E_BASE_URL"])
+            personal_address = subprocess.run(
+                [*command, "port", "personal", "9999"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            host, personal_port = personal_address.rsplit(":", 1)
+            if host != "127.0.0.1" or not personal_port.isdecimal() or not 1024 <= int(personal_port) <= 65535:
+                raise ValueError("CI personal требует отдельный localhost port")
+            environment["E2E_PERSONAL_BASE_URL"] = f"http://{personal_address}"
+            wait_health(environment["E2E_PERSONAL_BASE_URL"], path="/api/personal/health")
             if args.performance:
                 report = performance(environment["E2E_BASE_URL"], seed_seconds)
                 destination = ROOT / "frontend/performance-results"

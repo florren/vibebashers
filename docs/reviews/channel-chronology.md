@@ -38,13 +38,20 @@
   зелёный; assertions/production code ради этого не менялись.
 - Frontend: 580 passed, 81 files; typecheck и обе build (operator/personal).
 - Browser: 4 passed, ru/en × light/dark; по три screenshot на вариант.
-  Это настоящий Chromium на Feed, PersonalChat и LiveJourney с синтетическими API fixtures, не native backend
-  и не доказательство реальной внешней доставки. POST запрещён перехватом.
+  Это настоящий Chromium на Feed, PersonalChat и LiveJourney с синтетическими API fixtures, API замокан (не доказательство реальной внешней доставки). POST запрещён перехватом.
+  Повтор на compiled assets двух настоящих FastAPI surfaces (operator и
+  personal root /): 4 passed, 4.0s. Vite-only proof не заменяет этот повтор.
+  CI harness публикует personal только на динамическом localhost port,
+  получает адрес через compose port и ждёт /api/personal/health.
+  Изоляция/default compatibility harness: 18 unit passed.
+  Первый CI дал 4 browser failures из-за неверного origin personal.html;
+  assertions/timeout/retries сохранены, исправлен именно адрес сервиса.
 - Ruff/formatter, mypy, frontend lint; contracts check: 48 схем, 167 путей.
-- Предыдущая итерация новых PG cases: 13 passed, 69.09s; 6 emulated channels через
+- Финальная итерация PG: 23 passed, 124.20s (19 новых + 4 effect-time).
+  До добавления старых notification transactions: 13 passed, 69.09s; 6 emulated channels через
   штатный normalizer, 3 автора публичного ответа, 4 ACK/run варианта.
   Добавлены 6 старых-транзакций cases для notify_client; итоговый
-  green gate — полный CI с этими дополнительными assertions.
+  После clock_timestamp все шесть проходят в составе финальных 23 tests.
 - Дополнительно 5 существующих PG tests feed/gift/terminal gift passed.
 - Полный CI PR — отдельный merge gate; локальные проверки его не заменяют.
 
@@ -70,7 +77,7 @@ first resolution 12.11.2026 10:24Z. Реальное время обеих за�
 В gift producer найдено чтение глобального sim_state вместо собственных
 часов контекста; причинность именно старой записи этим ещё не доказана.
 Изменение gift issuance/ручных HITL timestamps требует отдельного review
-по AGENTS.md §5.1/§6.3 и не включено в этот пакет.
+по AGENTS.md §5.1 и не включено в этот пакет.
 
 `sent/delivered` здесь — сохранённый статус эмуляции, не доказательство
 внешнего получения. Неизвестные anchors/clocks явно выведены отдельно;
