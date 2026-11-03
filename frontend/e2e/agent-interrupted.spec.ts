@@ -8,6 +8,8 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     let activeRoutes = 0
     const run = { id: 42, kind: 'agent', signal_id: 7, llm_profile_code: 'mock', prompt_version: 'v1', outcome: null, status: 'interrupted', interrupted_at: '2026-11-02T00:00:00Z', needed_human: false, total_tokens: 12, total_latency_ms: 50, started_at: '2026-11-02T00:00:00Z', finished_at: null, current_node: 'decide', steps: [{ seq: 1, node: 'classify', status: 'ok' }] }
     await context.addInitScript(({ lang, mode }) => { localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', mode) }, { lang, mode })
+    // GET fixture interrupted не должна смешиваться с live tick чужой симуляции.
+    await context.routeWebSocket('**/ws/stream', ws => { ws.onMessage(() => {}) })
     await context.route('**/api/**', async route => {
       activeRoutes++
       try {

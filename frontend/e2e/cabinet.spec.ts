@@ -14,7 +14,6 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     expect(direction).toBeTruthy(); expect(foreign).toBeTruthy()
     const line = direction.code as string
     const headers = { 'X-Cx-Role': 'product_manager', 'X-Cx-Product-Line': line }
-    const api = await (await request.get(`/api/cabinet/overview?product_line=${encodeURIComponent(line)}&period=month&run_id=current`, { headers })).json()
     const errors: string[] = [], external: string[] = [], forbiddenWrites: string[] = [], globalQueries: string[] = [], calls: string[] = [], previewQueries: string[] = []
     page.on('pageerror', error => errors.push(error.message))
     page.on('request', req => { const url = new URL(req.url()); if (url.pathname === '/api/metrics/economics/preview') previewQueries.push(url.search); if (url.pathname.startsWith('/api/cabinet/')) calls.push(url.pathname + url.search); if (['/api/incidents', '/api/signals'].includes(url.pathname)) globalQueries.push(url.pathname + url.search) })
@@ -38,7 +37,13 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
     const ownPath = `/cabinet/${encodeURIComponent(line)}?period=month&run_id=current`
     try {
       await request.patch('/api/settings', { data: { ui: { layout: 'v2', mode, theme_pack: 'brand', attention: 'calm' }, cabinet: { visibility: 'soft' } } })
+      const ownOverview = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return url.pathname === '/api/cabinet/overview' && url.searchParams.get('product_line') === line
+      })
       await page.goto(ownPath)
+      const ownResponse = await ownOverview; expect(ownResponse.status()).toBe(200)
+      const api = await ownResponse.json()
       const root = page.locator('[data-cabinet]'), header = root.locator('[data-block="cabinet-header"]')
       await expect(root.locator('[data-block]')).toHaveCount(7)
       await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
@@ -132,9 +137,18 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(root.getByRole('button', { name: text.openCalc, exact: true })).toBeFocused()
       await header.getByRole('combobox', { name: text.role, exact: true }).selectOption('product_manager')
       await expect.poll(async () => (await (await request.get('/api/cabinet/overview', { headers })).json()).scope.product_lines).toEqual([line])
+      const allOverview = page.waitForResponse(response => {
+        const url = new URL(response.url())
+        return url.pathname === '/api/cabinet/overview' && url.searchParams.get('product_line') === 'all' && response.request().headers()['x-cx-role'] === 'product_manager'
+      })
       await header.getByRole('combobox', { name: text.line, exact: true }).selectOption('all')
-      await expect(root.locator('[data-block="cabinet-kpi"]')).toContainText(String(initial.kpi.signals))
+      const allResponse = await allOverview; expect(allResponse.status()).toBe(200)
+      await expect(root.locator('[data-block="cabinet-kpi"]')).toContainText(String((await allResponse.json()).kpi.signals))
+      const strictSaved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/settings' && response.request().method() === 'PATCH')
+      const strictBlocked = page.waitForResponse(response => new URL(response.url()).pathname === '/api/cabinet/overview' && response.status() === 403)
       await header.getByRole('combobox', { name: text.visibility, exact: true }).selectOption('strict')
+      expect((await strictSaved).status()).toBe(200)
+      expect((await strictBlocked).status()).toBe(403)
       await expect(root.locator('[data-block="cabinet-kpi"]')).toHaveCount(0)
       const forbidden = await request.get(`/api/cabinet/signals?product_line=${encodeURIComponent(foreign.code)}`, { headers })
       expect(forbidden.status()).toBe(403)

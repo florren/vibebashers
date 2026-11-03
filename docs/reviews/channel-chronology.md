@@ -110,3 +110,14 @@ nightly дал 2 report browser failures на ru/light и ru/dark. Daily chart
 Проверки отсутствия SVG, JSON/XLSX, scope, read-only и A4 сохранены;
 product copy/formulas не меняются, timeout/retries прежние. Полный
 изолированный demo/performance + browser повтор запускается на candidate.
+
+Полный локальный demo/performance повтор показал дополнительные гонки
+тестов при активной симуляции: 8 failed/142 passed, 18 зависимых scenarios
+не запускались. Report/Cabinet сравнивали UI с отдельным более ранним GET;
+теперь сравнивается JSON ответа самого UI и ожидается ACK settings +
+реальный403 strict scope. Static interrupted AR fixture теперь согласована
+по GET и WS: live ticks не подменяют её состояние. Production/UI business
+logic не менялась; строгие KPI/403/Resume assertions сохранены.
+После исправлений все12 адресных ru/en/theme cases на настоящем активном
+demo5000 прошли (33.3s), бюджеты90s/300ms не менялись. Полный168 повтор
+запускается отдельно, без ослабления assertions/таймаутов/retries.
