@@ -173,3 +173,28 @@ AR проверяются по всем страницам до POST. Native clo
 requestfailed/pageerrors/body read errors; rejected promise обязательно await,
 не подменяется empty success. Actual image4 всё ещё pending до успешного повтора;
 свои failed projects/volumes полностью очищены, primary/prod не затрагивались.
+
+### Исторический actual-image GREEN до Trace-ID исправления
+
+Image b98d… (runtime0a6/host test59e), fresh lite200 baseline/completed,
+seed5.31s: portable4/4 за49.36s (preparation включена),0skips/flaky. После301
+actual primary graphs:301signals/301received events/301distinct AR,active0/failed0.
+Затем GET-only native4 ru/en×themes: initial298–336ms, всеbranch reads738–757ms;
+97public fingerprints (включая events/AR/sim_state clock/RNG) равны. Private
+operational namespaces не объявляются неизменными. Модели/actors настоящие,
+provider Mock явный; business API native, UIsettings — только theme fixture.
+[Полный исторический proof](T-250-image-pre-trace-proof.json), PNG в image/.
+Own project/PG/volumes/network удалены штатным cleanup. Результат относится
+к source до consumer Trace-ID fix, не подменяет последующую проверку.
+
+### Numeric branch reference: исправление consumer
+
+Root review обнаружил: code0042 трактуется Trace API как PK42 (в native refs
+это другое ВСП); реальный code0042 имеет PK1. Backend lookup priority не меняется.
+BranchCard теперь строит Trace URI из data.branch.id, closure table — row.branch_id;
+видимый code и runquery сохраняются. Generator acceptance уточняет `{id}`.
+Unit с code0042/id1 сначала RED (ожидаемые2IDlinks отсутствуют), после исправления
+28targeted map tests green. ActualPG на своей cx_map_branches_revision:
+GET /api/trace/branch/1→VSP-0042, /0042→другой branchPK42;1passed8.20s.
+API30/DTO/production backend не меняются. Новый build/native4/image4 обязателен;
+старые97hashes остаются историческими, не приписываются этому исправлению.

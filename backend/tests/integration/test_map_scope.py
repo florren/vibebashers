@@ -100,3 +100,19 @@ def test_map_documented_and_runtime_layer_aliases_are_identical(seeded):
             assert actual.status_code == expected.status_code == 200
             assert any(row["value"] > 0 for row in expected.json())
             assert actual.json() == expected.json(), (alias, canonical)
+
+
+def test_numeric_branch_trace_ref_is_primary_id_without_changing_lookup_priority(seeded):
+    with psycopg.connect(dsn(seeded), autocommit=True) as conn:
+        branch = conn.execute("select id from branches where code='0042'").fetchone()
+        assert branch is not None and branch[0] != 42
+        decoy = conn.execute("select code from branches where id=42").fetchone()
+        assert decoy is not None and decoy[0] != "0042"
+    with TestClient(create_app()) as client:
+        # Числовой ref по-прежнему означает PK: frontend обязан использовать id.
+        correct = client.get(f"/api/trace/branch/{branch[0]}", params={"run_id": "all"})
+        wrong = client.get("/api/trace/branch/0042", params={"run_id": "all"})
+        assert correct.status_code == wrong.status_code == 200
+        assert correct.json()["subject"]["ref"] == "VSP-0042"
+        assert wrong.json()["subject"]["ref"] == "VSP-" + decoy[0].removeprefix("VSP-")
+        assert wrong.json()["subject"]["ref"] != correct.json()["subject"]["ref"]

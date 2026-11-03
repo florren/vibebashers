@@ -1,0 +1,27 @@
+{
+  "source": "own APP_ENV=test actual API run5/demo5000, no actors/models called; not image measurement",
+  "cases": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "sections": 4,
+      "network_months": 12,
+      "forbidden": [],
+      "errors": [],
+      "queries": [
+        "http://127.0.0.1:18161/api/branches/analytics?run_id=5&period=week&limit=50&offset=0"
+      ]
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "sections": 4,
+      "network_months": 12,
+      "forbidden": [],
+      "errors": [],
+      "queries": [
+        "http://127.0.0.1:18161/api/branches/analytics?run_id=5&period=week&limit=50&offset=0"
+      ]
+    }
+  ]
+}

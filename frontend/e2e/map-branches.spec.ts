@@ -143,7 +143,7 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         await expect(member).toContainText(String(target!.signals.total)); await member.click()
       }
       await expect(page.getByRole('heading', { name: code, exact: true })).toBeVisible()
-      await expect(page.locator(`a.block[href="/trace/branch/${code}?run_id=${run}"]`)).toBeVisible()
+      await expect(page.locator(`a.block[href="/trace/branch/${target!.branch.id}?run_id=${run}"]`)).toBeVisible()
       await expect(page.locator('a[href*="/trace/signal/"]').first()).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       await page.screenshot({ path: info.outputPath('branch.png'), fullPage: true })
