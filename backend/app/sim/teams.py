@@ -265,7 +265,7 @@ class TeamEmulator:
                 _parse_ts(take_due_sim),
                 _parse_ts(sla_due_sim),
                 [_parse_ts(x) for x in (report_due_sims or [])],
-                str(system_code),
+                system_code,
                 product_code,
             )
             await self.bus.emit(
@@ -333,7 +333,7 @@ class TeamEmulator:
         take_due_sim: dt.datetime,
         sla_due_sim: dt.datetime,
         report_due_sims: list[dt.datetime],
-        system_code: str,
+        system_code: str | None,
         product_code: str | None,
     ) -> IncidentPlan:
         if self.demo_outcome:
@@ -407,9 +407,12 @@ class TeamEmulator:
         return plan
 
     def _maybe_regression(
-        self, profile: dict[str, Any], origin_system: str, product_code: str | None
+        self, profile: dict[str, Any], origin_system: str | None, product_code: str | None
     ) -> dict[str, Any] | None:
         if self.rng.random() >= float(profile.get("p_regression") or 0):
+            return None
+        # Без исходной системы и продукта нет доказанного соседства для регрессии.
+        if not origin_system or product_code is None:
             return None
         candidates = [
             code

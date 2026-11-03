@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 from fastapi import HTTPException
 
-from app.api.common import fetch_one
+from app.api.common import fetch_all, fetch_one
 from app.search.grammar import parse
 from app.trace.assembler import assemble
 from app.trace.privacy import mask
@@ -41,7 +41,9 @@ def seconds(start: str | None, end: str | None) -> float | None:
     )
 
 
-def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def client_messages(
+    nodes: list[dict[str, Any]], *, conversation_signal_ids: set[int] | None = None
+) -> list[dict[str, Any]]:
     lane = []
     subject = nodes[0] if nodes else None
     signal = subject["data"] if subject and subject["kind"] == "signal" else {}
@@ -61,13 +63,16 @@ def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # основанием показывать частную доставку другому клиенту инцидента.
         signal = anchors[0] if len(anchors) == 1 else {"id": None, "client_id": None}
     scoped = "client_id" in signal
+    own_signals = set(conversation_signal_ids or ())
+    if signal.get("id") is not None:
+        own_signals.add(signal["id"])
     own_posts = {
         node["data"].get("external_post_id")
         for node in nodes
         if scoped
         and node["kind"] == "signal"
         and node["data"].get("client_id") == signal["client_id"]
-        and (signal["client_id"] is not None or node["data"]["id"] == signal["id"])
+        and (signal["client_id"] is not None or node["data"]["id"] in own_signals)
         and node["data"].get("external_post_id") is not None
     }
     if subject and subject["kind"] == "post":
@@ -83,7 +88,7 @@ def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # сигнала показываем его адресата, включая подарок без signal_id.
             if d.get("client_id") != signal["client_id"]:
                 continue
-            if signal["client_id"] is None and (signal["id"] is None or d.get("signal_id") != signal["id"]):
+            if signal["client_id"] is None and (signal["id"] is None or d.get("signal_id") not in own_signals):
                 continue
         if (
             k == "notification"
@@ -130,7 +135,11 @@ def client_messages(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def build_journey(
-    trace: dict[str, Any], nodes: list[dict[str, Any]], notes: dict[str, str] | None = None
+    trace: dict[str, Any],
+    nodes: list[dict[str, Any]],
+    notes: dict[str, str] | None = None,
+    *,
+    conversation_signal_ids: set[int] | None = None,
 ) -> dict[str, Any]:
     events = [
         project(
@@ -143,6 +152,7 @@ def build_journey(
         )
         for i, n in enumerate(nodes)
         if n["kind"] not in {"client", "employee", "branch", "rule", "error_code", "sim_run", "agent_run"}
+        and (conversation_signal_ids is None or n["kind"] != "signal" or n["data"]["id"] in conversation_signal_ids)
     ]
     grouped = {s: [e for e in events if EVENT_STAGE[e["kind"]] == s] for s in STAGES}
     for values in grouped.values():
@@ -188,7 +198,7 @@ def build_journey(
                 {"label_ru": "Заметка ведущего", "value_ru": notes[stage][:200], "masked": False}
             )
         stages.append({"stage": stage, "status": status, "events": values})
-    lane = client_messages(nodes)
+    lane = client_messages(nodes, conversation_signal_ids=conversation_signal_ids)
     first = min((e["ts_real"] for e in events if e["kind"] == "signal_created"), default=None)
     first_reply = next((m["delivered_at"] for m in lane if m["channel_code"] != "client_reaction"), None)
     delay = seconds(first, first_reply)
@@ -220,6 +230,30 @@ async def journey(conn: Conn, ref: str, run_id: str = "current", presenter: bool
     if kind == "number":
         kind = "signal"
     trace, nodes = await assemble(conn, kind, ref, run_id=run_id)
+    conversation_signal_ids = None
+    subject = nodes[0]
+    if subject["kind"] == "signal" and subject["data"].get("client_id") is None:
+        # Только штатная membership personal, а не общий NULL client или parent hint.
+        messages = await fetch_all(
+            conn,
+            "SELECT 'signal' AS kind,to_jsonb(s) AS data,s.run_id AS scope_id "
+            "FROM personal_chat_messages m JOIN signals s ON s.id=m.signal_id "
+            "WHERE m.session_id=(SELECT session_id FROM personal_chat_messages WHERE signal_id=%s) "
+            "AND s.run_id=%s AND s.client_id IS NULL ORDER BY m.id LIMIT 200",
+            (subject["data"]["id"], subject["scope_id"]),
+        )
+        if messages:
+            conversation_signal_ids = {message["data"]["id"] for message in messages}
+            notices = await fetch_all(
+                conn,
+                "SELECT 'notification' AS kind,to_jsonb(n) AS data,n.run_id AS scope_id "
+                "FROM notifications n WHERE n.signal_id=ANY(%s) AND n.run_id=%s "
+                "AND n.client_id IS NULL AND n.recipient_type='client' AND n.status IN ('sent','delivered') "
+                "ORDER BY n.id LIMIT 200",
+                (list(conversation_signal_ids), subject["scope_id"]),
+            )
+            seen = {node_key(node) for node in nodes}
+            nodes = [*nodes, *(node for node in [*messages, *notices] if node_key(node) not in seen)]
     notes = None
     if presenter:
         rid = nodes[0].get("scope_id")
@@ -228,7 +262,7 @@ async def journey(conn: Conn, ref: str, run_id: str = "current", presenter: bool
         all_notes = yaml.safe_load((Path(__file__).parent / "notes/journey_notes.yaml").read_text())
         number = 8 if "qr" in scenario else 11 if "sarcasm" in scenario else 1 if "deposit" in scenario else None
         notes = all_notes.get(number)
-    return build_journey(trace, nodes, notes)
+    return build_journey(trace, nodes, notes, conversation_signal_ids=conversation_signal_ids)
 
 
 async def latest(conn: Conn, origin: str, run_id: str) -> dict[str, Any]:

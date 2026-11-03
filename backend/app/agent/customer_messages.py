@@ -5,6 +5,16 @@ from typing import Any
 from app.agent.gifts import _gift_label
 
 
+def personal_status_help(text: str, lang: str) -> str | None:
+    """Подсказка по существующему чату без выдуманного текущего статуса."""
+    normalized = text.casefold()
+    if not ("статус" in normalized and "обращени" in normalized):
+        return None
+    if lang == "en":
+        return "Updates about your case appear in this chat. Keep the SIG code shown next to your message. The assistant will post the outcome here when it is available."
+    return "Обновления по вашему обращению появляются в этом чате. Сохраните код SIG рядом с вашим сообщением. Когда результат рассмотрения будет готов, помощник сообщит его здесь."
+
+
 def gratitude_text(lang: str) -> str:
     if lang == "en":
         return "Thank you for your kind words! We are glad we could help. Please contact us if you have any further questions."

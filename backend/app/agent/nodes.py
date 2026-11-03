@@ -24,6 +24,7 @@ from app.agent.customer_messages import (
     emulated_team_pending,
     gratitude_text,
     has_emulated_verification,
+    personal_status_help,
 )
 from app.agent.matching import log_ru
 from app.agent.prompts import load as load_prompt
@@ -2058,10 +2059,23 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     ctx["related_incidents"] = related
     link = matching_incident(related, c, incident_type, sig.get("text") or "")
     unidentified = not state.get("client")
-    anonymous_request = unidentified and stype != "gratitude" and not ctx.get("proactive_fault")
+    status_help = (
+        personal_status_help(text, _client_lang(norm.get("language"), text))
+        if unidentified
+        and stype == "info_request"
+        and not fee_rule
+        and state.get("llm_source") == "mock"
+        and sig.get("channel_subtype") == "ui_pers_demo"
+        and sig.get("parent_signal_id") is not None
+        and ctx.get("conversation")
+        else None
+    )
+    anonymous_request = unidentified and stype != "gratitude" and not ctx.get("proactive_fault") and not status_help
     demo_team_task = False
-    if stype == "info_request" and (
-        sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo"
+    if (
+        stype == "info_request"
+        and not status_help
+        and (sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo")
     ):
         # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
         demo_team_task = bool(
@@ -2256,6 +2270,8 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     if anonymous_request:
         kind = "public_reply_and_dm" if public else "acknowledge"
         text_ru = _anonymous_ack(signal_lang)
+    if status_help:
+        kind, text_ru = "reply", status_help
     question = (d.get("clarification_question_ru") or ca.get("question_ru") or "").strip() or None
     if clarify and clarify_kind == "identify":
         question = _fixed_question("identify", signal_lang)

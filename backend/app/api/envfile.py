@@ -66,6 +66,8 @@ def _strip_value(raw: str) -> str:
     v = raw.strip()
     if v[:1] in ("'", '"') and v.endswith(v[0]) and len(v) >= 2:
         return v[1:-1]
+    if v.startswith("#"):
+        return ""
     # отрезаем inline-комментарий «  # ...»
     return re.split(r"\s+#", v, maxsplit=1)[0].strip()
 
@@ -86,6 +88,8 @@ def _hint(v: str) -> str:
 
 
 def _quote(v: str) -> str:
+    if not v:
+        return '""'
     return v if re.fullmatch(r"[A-Za-z0-9_./:,+\-@=]*", v) else '"' + v.replace('"', '\\"') + '"'
 
 
@@ -105,7 +109,7 @@ def write_env_file(path: Path, updates: dict[str, str | None]) -> None:
             seen.add(key)
             val = updates[key]
             comment = ""
-            cm = re.search(r"\s+(#.*)$", m.group(2)) if m else None
+            cm = re.search(r"(?:^|\s+)(#.*)$", m.group(2)) if m else None
             if cm and not (m and m.group(2).strip()[:1] in ("'", '"')):
                 comment = " " * max(1, 33 - len(key) - 1 - len(_quote(val or ""))) + cm.group(1)
             out.append(f"{key}={_quote(val or '')}{comment}")

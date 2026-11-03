@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Profile = Literal["lite", "demo", "stress"]
@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     stt_model_path: str | None = Field(
         default=None, description="Каталог модели Vosk (например, data/models/vosk-model-small-ru-0.22)"
     )
+
+    @field_validator("stt_model_path", mode="before")
+    @classmethod
+    def legacy_empty_stt_path(cls, value: str | None) -> str | None:
+        # Старый шаблон KEY= #comment dotenv читал как путь из текста комментария.
+        return None if isinstance(value, str) and value.lstrip().startswith("#") else value
+
     env_file: str | None = Field(
         default=None,
         description="Файл .env, который редактирует мастер настройки; по умолчанию первый существующий из .env, ../.env",
