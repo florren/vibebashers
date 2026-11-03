@@ -155,3 +155,14 @@ Native extended47passed и финальный повтор41passed; new statemen
 (90.57%, sys.settrace/AST). Отдельный human money review ещё требуется;
 статус всей карточки этим дополнением не меняется.
 Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.md).
+
+### Freeze follow-up: canonical shared systems
+
+Обычная product/system эвристика переписывала проверенные producer facts для
+трёх допустимых shared-system combinations. RED3native unit/3ordinary controls и
+3actual PG failures воспроизведены. Подготовлено однострочное сохранение verified
+native scope; ordinary heuristic и financial guards сохранены. GREEN13unit;
+GREEN15PG (shared systems,9negative economics,3HITL); ruff/mypy328passed.
+Full2185unitpassed/19skipped; contracts48/167passed.
+Composition/CI и human review требуются.
+[Review/откат](../reviews/native-service-classification-facts.md).
