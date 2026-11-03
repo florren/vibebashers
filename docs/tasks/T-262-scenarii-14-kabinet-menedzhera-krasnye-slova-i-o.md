@@ -53,3 +53,11 @@ modules byte-identicala7,210/225новыхстрок93.33%; engineproof отде
 Старый make lint444frontend/Ruff546/mypy322 source-qualified, finalbackendstatic Ruff549/mypy322,contracts48/165 GREEN;
 точный CI ещё gate. UI/replay mandatoryunknown, overallpassedFalse/карточка
 не done; нового live recording не было. [Root proof](../reviews/T-262-composed-coverage.json).
+
+
+Дополнение native UI:9/9RO C5/K6(97fingerprints unchanged), затем9/9default fresh
+C7/K8 черезAPI.37PNG ru/en×themes/mobile; XLSX,961,cohort301/300/2400,closedN,
+recordedMockJourney16frames/3Mock с pendingHITL безaccept; strictTSC green.
+[Source-qualified review/proof](../reviews/T-262-native-ui-acceptance.md).
+Новый E2E целиком остаётся gate общегоCI. Provider replay/menu не выдумывались,
+overallT262 not_verified/карточка не done; устный хронометраж не измерен.

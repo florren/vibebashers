@@ -1,0 +1,908 @@
+{
+  "application_base": "40db068f8406d52d77a54ffdb564f0dcd8ead78c",
+  "runtime_equivalent_to": "837eec6ee102986425722d5f223c44acd6e08c73",
+  "assets": "actual T092production build6f0668e, frontend/src/config/lock identical to application base",
+  "strict_tsc": "passed Node22.23.4, typesnode, ES2022/DOM/DOM.Iterable",
+  "test_sha256": "3b86e311d698ec6471d085865cd03ae26008caf44fc305872fb47d3e885d6128",
+  "read_only_existing_runs": {
+    "stats": {
+      "startTime": "2026-11-03T06:26:54.915Z",
+      "duration": 15921.35,
+      "expected": 9,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "fingerprints": {
+      "exit": 0,
+      "tables": 97,
+      "unchanged": true,
+      "changed": [],
+      "source_run_ids": [
+        5,
+        6
+      ],
+      "actors": "disabled APP_ENV=test, PG read-only, same paused clock",
+      "result": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/t262-resume/native9-result.json"
+    },
+    "source_note": "same spec before prior-actor guard changed to bounded poll; no runtime code changes"
+  },
+  "fresh_preparation": {
+    "stats": {
+      "startTime": "2026-11-03T06:37:11.928Z",
+      "duration": 52945.793,
+      "expected": 9,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "receipts": [
+      {
+        "case": "T262 cabinet native legal/route/961/XLSX ru/light",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "ru",
+        "mode": "light",
+        "previewRate": 961,
+        "affectedScenarioAssumption": 1000000,
+        "xlsxSha256": "6639972b03ea19995715f7c310e85f21200b0f824b78420dfee4841e3f4a32df",
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=ru",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=ru&format=xlsx",
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc"
+          ]
+        }
+      },
+      {
+        "case": "T262 cabinet native legal/route/961/XLSX ru/dark",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "ru",
+        "mode": "dark",
+        "previewRate": 961,
+        "affectedScenarioAssumption": 1000000,
+        "xlsxSha256": "e6da40edae674259be640b2b5dae54bd46c49aa862cc3b20039f8e85939454ef",
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=ru",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=ru&format=xlsx",
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc"
+          ]
+        }
+      },
+      {
+        "case": "T262 cabinet native legal/route/961/XLSX en/light",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "en",
+        "mode": "light",
+        "previewRate": 961,
+        "affectedScenarioAssumption": 1000000,
+        "xlsxSha256": "3015504e96ad8b26b6b52be909374f1530e01180416e145a6d69de321fee36f0",
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=en",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=en&format=xlsx",
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc"
+          ]
+        }
+      },
+      {
+        "case": "T262 cabinet native legal/route/961/XLSX en/dark",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "en",
+        "mode": "dark",
+        "previewRate": 961,
+        "affectedScenarioAssumption": 1000000,
+        "xlsxSha256": "1c616279efc38224fcae751d2ef6623cac9c8e9947054551cd531506a98117be",
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=en",
+            "/api/cabinet/report?product_line=deposits&period=week&run_id=8&lang=en&format=xlsx",
+            "/api/cabinet/overview?product_line=deposits&period=week&run_id=8",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&sort=date&direction=desc&limit=20&offset=0",
+            "/api/cabinet/signals?product_line=deposits&period=week&run_id=8&limit=20&sort=date&direction=desc"
+          ]
+        }
+      },
+      {
+        "case": "T262 CSI native 301/300/2400 and closed branch ru/light",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "ru",
+        "mode": "light",
+        "csi": {
+          "coverage": {
+            "complaints": 301,
+            "branch_known": 301,
+            "direction_known": 300,
+            "employee_known": 300,
+            "cohort_bound": 300,
+            "scatter_total": 300,
+            "uncohorted": 1,
+            "time_basis": "native_received_sim"
+          },
+          "probabilities": {
+            "overlapping_cohorts": 10,
+            "incomplete_cohorts": 0,
+            "partial_window_cohorts": 0,
+            "complete_cohorts": 10,
+            "synthetic": true,
+            "sample_complaints": 300,
+            "sample_visits": 2400,
+            "time_basis": "cohort_response_at",
+            "scope": "registered_complete_cohorts",
+            "legacy_denominators_usable": false,
+            "mixed_sources": false,
+            "wait": {
+              "buckets": [
+                {
+                  "bucket": "0-5",
+                  "complaints": 30,
+                  "visits": 600,
+                  "probability": 0.05
+                },
+                {
+                  "bucket": "5-15",
+                  "complaints": 60,
+                  "visits": 600,
+                  "probability": 0.1
+                },
+                {
+                  "bucket": "15-30",
+                  "complaints": 90,
+                  "visits": 600,
+                  "probability": 0.15
+                },
+                {
+                  "bucket": "30+",
+                  "complaints": 120,
+                  "visits": 600,
+                  "probability": 0.2
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 4
+            },
+            "redirects": {
+              "buckets": [
+                {
+                  "bucket": "0",
+                  "complaints": 50,
+                  "visits": 800,
+                  "probability": 0.0625
+                },
+                {
+                  "bucket": "1",
+                  "complaints": 100,
+                  "visits": 800,
+                  "probability": 0.125
+                },
+                {
+                  "bucket": "2+",
+                  "complaints": 150,
+                  "visits": 800,
+                  "probability": 0.1875
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 3
+            }
+          },
+          "top10": [
+            5,
+            6,
+            7,
+            8,
+            4,
+            9,
+            1,
+            2,
+            3,
+            10
+          ]
+        },
+        "branch": {
+          "id": 17,
+          "code": "S0016",
+          "status": "closed",
+          "directSignals": 1
+        },
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/csi/analytics?run_id=7&period=month&offset=0&limit=50&scatter_limit=1000",
+            "/api/cabinet/overview?run_id=current",
+            "/api/cabinet/overview?run_id=current",
+            "/api/branches/analytics?run_id=7&period=week&limit=50&offset=0",
+            "/api/branches/S0016?run_id=7&period=week",
+            "/api/branches/S0017?run_id=7&period=week",
+            "/api/branches/S0018?run_id=7&period=week",
+            "/api/branches/S0032?run_id=7&period=week",
+            "/api/branches/S0033?run_id=7&period=week",
+            "/api/branches/S0036?run_id=7&period=week",
+            "/api/branches/S0038?run_id=7&period=week",
+            "/api/branches/S0045?run_id=7&period=week",
+            "/api/branches/S0067?run_id=7&period=week",
+            "/api/branches/S0072?run_id=7&period=week",
+            "/api/branches/S0080?run_id=7&period=week",
+            "/api/branches/S0118?run_id=7&period=week",
+            "/api/branches/S0149?run_id=7&period=week",
+            "/api/branches/S0161?run_id=7&period=week",
+            "/api/branches/S0173?run_id=7&period=week",
+            "/api/branches/S0183?run_id=7&period=week",
+            "/api/branches/S0198?run_id=7&period=week",
+            "/api/branches/S0199?run_id=7&period=week",
+            "/api/branches/S0238?run_id=7&period=week",
+            "/api/branches/S0016?run_id=7&period=week"
+          ]
+        }
+      },
+      {
+        "case": "T262 CSI native 301/300/2400 and closed branch ru/dark",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "ru",
+        "mode": "dark",
+        "csi": {
+          "coverage": {
+            "complaints": 301,
+            "branch_known": 301,
+            "direction_known": 300,
+            "employee_known": 300,
+            "cohort_bound": 300,
+            "scatter_total": 300,
+            "uncohorted": 1,
+            "time_basis": "native_received_sim"
+          },
+          "probabilities": {
+            "overlapping_cohorts": 10,
+            "incomplete_cohorts": 0,
+            "partial_window_cohorts": 0,
+            "complete_cohorts": 10,
+            "synthetic": true,
+            "sample_complaints": 300,
+            "sample_visits": 2400,
+            "time_basis": "cohort_response_at",
+            "scope": "registered_complete_cohorts",
+            "legacy_denominators_usable": false,
+            "mixed_sources": false,
+            "wait": {
+              "buckets": [
+                {
+                  "bucket": "0-5",
+                  "complaints": 30,
+                  "visits": 600,
+                  "probability": 0.05
+                },
+                {
+                  "bucket": "5-15",
+                  "complaints": 60,
+                  "visits": 600,
+                  "probability": 0.1
+                },
+                {
+                  "bucket": "15-30",
+                  "complaints": 90,
+                  "visits": 600,
+                  "probability": 0.15
+                },
+                {
+                  "bucket": "30+",
+                  "complaints": 120,
+                  "visits": 600,
+                  "probability": 0.2
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 4
+            },
+            "redirects": {
+              "buckets": [
+                {
+                  "bucket": "0",
+                  "complaints": 50,
+                  "visits": 800,
+                  "probability": 0.0625
+                },
+                {
+                  "bucket": "1",
+                  "complaints": 100,
+                  "visits": 800,
+                  "probability": 0.125
+                },
+                {
+                  "bucket": "2+",
+                  "complaints": 150,
+                  "visits": 800,
+                  "probability": 0.1875
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 3
+            }
+          },
+          "top10": [
+            5,
+            6,
+            7,
+            8,
+            4,
+            9,
+            1,
+            2,
+            3,
+            10
+          ]
+        },
+        "branch": {
+          "id": 17,
+          "code": "S0016",
+          "status": "closed",
+          "directSignals": 1
+        },
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/csi/analytics?run_id=7&period=month&offset=0&limit=50&scatter_limit=1000",
+            "/api/cabinet/overview?run_id=current",
+            "/api/cabinet/overview?run_id=current",
+            "/api/branches/analytics?run_id=7&period=week&limit=50&offset=0",
+            "/api/branches/S0016?run_id=7&period=week",
+            "/api/branches/S0017?run_id=7&period=week",
+            "/api/branches/S0018?run_id=7&period=week",
+            "/api/branches/S0032?run_id=7&period=week",
+            "/api/branches/S0033?run_id=7&period=week",
+            "/api/branches/S0036?run_id=7&period=week",
+            "/api/branches/S0038?run_id=7&period=week",
+            "/api/branches/S0045?run_id=7&period=week",
+            "/api/branches/S0067?run_id=7&period=week",
+            "/api/branches/S0072?run_id=7&period=week",
+            "/api/branches/S0080?run_id=7&period=week",
+            "/api/branches/S0118?run_id=7&period=week",
+            "/api/branches/S0149?run_id=7&period=week",
+            "/api/branches/S0161?run_id=7&period=week",
+            "/api/branches/S0173?run_id=7&period=week",
+            "/api/branches/S0183?run_id=7&period=week",
+            "/api/branches/S0198?run_id=7&period=week",
+            "/api/branches/S0199?run_id=7&period=week",
+            "/api/branches/S0238?run_id=7&period=week",
+            "/api/branches/S0016?run_id=7&period=week"
+          ]
+        }
+      },
+      {
+        "case": "T262 CSI native 301/300/2400 and closed branch en/light",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "en",
+        "mode": "light",
+        "csi": {
+          "coverage": {
+            "complaints": 301,
+            "branch_known": 301,
+            "direction_known": 300,
+            "employee_known": 300,
+            "cohort_bound": 300,
+            "scatter_total": 300,
+            "uncohorted": 1,
+            "time_basis": "native_received_sim"
+          },
+          "probabilities": {
+            "overlapping_cohorts": 10,
+            "incomplete_cohorts": 0,
+            "partial_window_cohorts": 0,
+            "complete_cohorts": 10,
+            "synthetic": true,
+            "sample_complaints": 300,
+            "sample_visits": 2400,
+            "time_basis": "cohort_response_at",
+            "scope": "registered_complete_cohorts",
+            "legacy_denominators_usable": false,
+            "mixed_sources": false,
+            "wait": {
+              "buckets": [
+                {
+                  "bucket": "0-5",
+                  "complaints": 30,
+                  "visits": 600,
+                  "probability": 0.05
+                },
+                {
+                  "bucket": "5-15",
+                  "complaints": 60,
+                  "visits": 600,
+                  "probability": 0.1
+                },
+                {
+                  "bucket": "15-30",
+                  "complaints": 90,
+                  "visits": 600,
+                  "probability": 0.15
+                },
+                {
+                  "bucket": "30+",
+                  "complaints": 120,
+                  "visits": 600,
+                  "probability": 0.2
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 4
+            },
+            "redirects": {
+              "buckets": [
+                {
+                  "bucket": "0",
+                  "complaints": 50,
+                  "visits": 800,
+                  "probability": 0.0625
+                },
+                {
+                  "bucket": "1",
+                  "complaints": 100,
+                  "visits": 800,
+                  "probability": 0.125
+                },
+                {
+                  "bucket": "2+",
+                  "complaints": 150,
+                  "visits": 800,
+                  "probability": 0.1875
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 3
+            }
+          },
+          "top10": [
+            5,
+            6,
+            7,
+            8,
+            4,
+            9,
+            1,
+            2,
+            3,
+            10
+          ]
+        },
+        "branch": {
+          "id": 17,
+          "code": "S0016",
+          "status": "closed",
+          "directSignals": 1
+        },
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/csi/analytics?run_id=7&period=month&offset=0&limit=50&scatter_limit=1000",
+            "/api/cabinet/overview?run_id=current",
+            "/api/cabinet/overview?run_id=current",
+            "/api/branches/analytics?run_id=7&period=week&limit=50&offset=0",
+            "/api/branches/S0016?run_id=7&period=week",
+            "/api/branches/S0017?run_id=7&period=week",
+            "/api/branches/S0018?run_id=7&period=week",
+            "/api/branches/S0032?run_id=7&period=week",
+            "/api/branches/S0033?run_id=7&period=week",
+            "/api/branches/S0036?run_id=7&period=week",
+            "/api/branches/S0038?run_id=7&period=week",
+            "/api/branches/S0045?run_id=7&period=week",
+            "/api/branches/S0067?run_id=7&period=week",
+            "/api/branches/S0072?run_id=7&period=week",
+            "/api/branches/S0080?run_id=7&period=week",
+            "/api/branches/S0118?run_id=7&period=week",
+            "/api/branches/S0149?run_id=7&period=week",
+            "/api/branches/S0161?run_id=7&period=week",
+            "/api/branches/S0173?run_id=7&period=week",
+            "/api/branches/S0183?run_id=7&period=week",
+            "/api/branches/S0198?run_id=7&period=week",
+            "/api/branches/S0199?run_id=7&period=week",
+            "/api/branches/S0238?run_id=7&period=week",
+            "/api/branches/S0016?run_id=7&period=week"
+          ]
+        }
+      },
+      {
+        "case": "T262 CSI native 301/300/2400 and closed branch en/dark",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "language": "en",
+        "mode": "dark",
+        "csi": {
+          "coverage": {
+            "complaints": 301,
+            "branch_known": 301,
+            "direction_known": 300,
+            "employee_known": 300,
+            "cohort_bound": 300,
+            "scatter_total": 300,
+            "uncohorted": 1,
+            "time_basis": "native_received_sim"
+          },
+          "probabilities": {
+            "overlapping_cohorts": 10,
+            "incomplete_cohorts": 0,
+            "partial_window_cohorts": 0,
+            "complete_cohorts": 10,
+            "synthetic": true,
+            "sample_complaints": 300,
+            "sample_visits": 2400,
+            "time_basis": "cohort_response_at",
+            "scope": "registered_complete_cohorts",
+            "legacy_denominators_usable": false,
+            "mixed_sources": false,
+            "wait": {
+              "buckets": [
+                {
+                  "bucket": "0-5",
+                  "complaints": 30,
+                  "visits": 600,
+                  "probability": 0.05
+                },
+                {
+                  "bucket": "5-15",
+                  "complaints": 60,
+                  "visits": 600,
+                  "probability": 0.1
+                },
+                {
+                  "bucket": "15-30",
+                  "complaints": 90,
+                  "visits": 600,
+                  "probability": 0.15
+                },
+                {
+                  "bucket": "30+",
+                  "complaints": 120,
+                  "visits": 600,
+                  "probability": 0.2
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 4
+            },
+            "redirects": {
+              "buckets": [
+                {
+                  "bucket": "0",
+                  "complaints": 50,
+                  "visits": 800,
+                  "probability": 0.0625
+                },
+                {
+                  "bucket": "1",
+                  "complaints": 100,
+                  "visits": 800,
+                  "probability": 0.125
+                },
+                {
+                  "bucket": "2+",
+                  "complaints": 150,
+                  "visits": 800,
+                  "probability": 0.1875
+                }
+              ],
+              "spearman": 1,
+              "n_buckets": 3
+            }
+          },
+          "top10": [
+            5,
+            6,
+            7,
+            8,
+            4,
+            9,
+            1,
+            2,
+            3,
+            10
+          ]
+        },
+        "branch": {
+          "id": 17,
+          "code": "S0016",
+          "status": "closed",
+          "directSignals": 1
+        },
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": [
+            "/api/csi/analytics?run_id=7&period=month&offset=0&limit=50&scatter_limit=1000",
+            "/api/cabinet/overview?run_id=current",
+            "/api/cabinet/overview?run_id=current",
+            "/api/branches/analytics?run_id=7&period=week&limit=50&offset=0",
+            "/api/branches/S0016?run_id=7&period=week",
+            "/api/branches/S0017?run_id=7&period=week",
+            "/api/branches/S0018?run_id=7&period=week",
+            "/api/branches/S0032?run_id=7&period=week",
+            "/api/branches/S0033?run_id=7&period=week",
+            "/api/branches/S0036?run_id=7&period=week",
+            "/api/branches/S0038?run_id=7&period=week",
+            "/api/branches/S0045?run_id=7&period=week",
+            "/api/branches/S0067?run_id=7&period=week",
+            "/api/branches/S0072?run_id=7&period=week",
+            "/api/branches/S0080?run_id=7&period=week",
+            "/api/branches/S0118?run_id=7&period=week",
+            "/api/branches/S0149?run_id=7&period=week",
+            "/api/branches/S0161?run_id=7&period=week",
+            "/api/branches/S0173?run_id=7&period=week",
+            "/api/branches/S0183?run_id=7&period=week",
+            "/api/branches/S0198?run_id=7&period=week",
+            "/api/branches/S0199?run_id=7&period=week",
+            "/api/branches/S0238?run_id=7&period=week",
+            "/api/branches/S0016?run_id=7&period=week"
+          ]
+        }
+      },
+      {
+        "case": "T262 recorded Mock journey replay preserves pending human boundary; not LLM cassette proof",
+        "C": 7,
+        "K": 8,
+        "sim_time": "2026-11-09T06:00:00+00:00",
+        "legal": {
+          "id": 2369,
+          "ref": "SIG-002369"
+        },
+        "legalHd": 262,
+        "mode": "UI recording replay of actual Mock history; not provider replay cassette",
+        "recordingFrames": 16,
+        "mockSourceFrames": 3,
+        "ordinary": {
+          "id": 2370,
+          "public_id": "SIG-002370"
+        },
+        "models": [
+          "mock:mock-rules-v1"
+        ],
+        "input_hashes": {
+          "xlsx_sha256": "0393a68e216c86ce06b93c6686a5cbe933a52afe79a93e27d7558ebb9e50fd5d",
+          "cohort_sha256": "3040d2ebc2d78caff138974965184ff87eaabccf98e5e94282a5cbee08a2e59b",
+          "closed_branch_code": "S0016"
+        },
+        "traffic": {
+          "forbidden": [],
+          "errors": [],
+          "scoped": []
+        }
+      }
+    ],
+    "phase": "APP_ENV=dev/Mock; two new counters runs through actual API, preparation writes expected; no whole-bank-readonly claim",
+    "primary_ars": {
+      "7": {
+        "count": 301,
+        "active": 0,
+        "failed": 0
+      },
+      "8": {
+        "count": 2,
+        "active": 0,
+        "failed": 0
+      }
+    },
+    "human_decisions": {
+      "196": null,
+      "262": null
+    }
+  },
+  "screenshots_sha256": {
+    "docs/reviews/screenshots/T-262-native/T262-closed-branch-en-light.png": "42c2f180de1147e18d93817915f254ac2900be7ed0aca94ffedf89a85ad90469",
+    "docs/reviews/screenshots/T-262-native/T262-csi-charts-en-light.png": "53b7dd5b30fd8c01b249448651de222d751819d22355b327a134ebc02caea2d0",
+    "docs/reviews/screenshots/T-262-native/T262-csi-en-light-mobile.png": "49d6f6867aa01f9e8410ccb8ea5602a339966a9ac010167d57ddc3250b030a12",
+    "docs/reviews/screenshots/T-262-native/T262-csi-en-light.png": "cb227762809545eca1de4f2ee847ec26e9350c49b28d3c5dfbd5589b1c65f182",
+    "docs/reviews/screenshots/T-262-native/T262-csi-sample-en-light.png": "282c7a8d3804971ea24462268697c0e40a3a03c0446296170c937c1c346f74a9",
+    "docs/reviews/screenshots/T-262-native/T262-closed-branch-en-dark.png": "05c1b2100dc14a638e241c19a251f3c77f6cb9e40a3f87cfc985f29d913b412a",
+    "docs/reviews/screenshots/T-262-native/T262-csi-charts-en-dark.png": "5a38dcf2d9ed588f3125b74700ee4a3644ad26adf30871d281cdf108f455b2ad",
+    "docs/reviews/screenshots/T-262-native/T262-csi-en-dark-mobile.png": "53538fbf1bda184cddf25bdbec8a51a9e65d37e51149e82af8500c6dfebedc93",
+    "docs/reviews/screenshots/T-262-native/T262-csi-en-dark.png": "7c2292620da666b890eb528510c9919fd569f88ce7e5757c012bb7fc0c97a2b1",
+    "docs/reviews/screenshots/T-262-native/T262-csi-sample-en-dark.png": "d14124dd60f2247c8bf267bd2b0a1c4e7cd42ea37a97c38a8416efcba0c6f3dd",
+    "docs/reviews/screenshots/T-262-native/T262-closed-branch-ru-light.png": "78301623ca32d1c37d02048d1cf97ff01718696a0fb36e62512ae060ac467d7d",
+    "docs/reviews/screenshots/T-262-native/T262-csi-charts-ru-light.png": "70ed5b0f9c30f8efc24199c59f93ad605200641702007a799c4e10fa4842f428",
+    "docs/reviews/screenshots/T-262-native/T262-csi-ru-light-mobile.png": "0c6549c26a8b4ce7339336efc266e4c4646c9c158e1d7c0e932a7383cfa67e91",
+    "docs/reviews/screenshots/T-262-native/T262-csi-ru-light.png": "deb55e98f023d2136dcfc3162d86894312141b495b236b256c4aade248717ee4",
+    "docs/reviews/screenshots/T-262-native/T262-csi-sample-ru-light.png": "6012e9d05234f714f9de82c39d4c468753fb4e6d8f1d0a053d2ec9b20a40c626",
+    "docs/reviews/screenshots/T-262-native/T262-closed-branch-ru-dark.png": "c269f567aefbbf35220e3f3791e26a9ad720745ce0d79d4c6f10a3d1cbaa6837",
+    "docs/reviews/screenshots/T-262-native/T262-csi-charts-ru-dark.png": "988523d6a1dfb507e1830215b5148950572407fb68e9548356dc99a594d0dc79",
+    "docs/reviews/screenshots/T-262-native/T262-csi-ru-dark-mobile.png": "33dc2a603173e253711df2491ef898c8f42b141822897097e6cb78711d2b5d10",
+    "docs/reviews/screenshots/T-262-native/T262-csi-ru-dark.png": "1a5486b1420e8a16318ce087868e4d35241209e34d72e9eefb0ca6a5f275f1c9",
+    "docs/reviews/screenshots/T-262-native/T262-csi-sample-ru-dark.png": "bea1c6c76ec36118e321cafd2a8a162ea418aaf160a7a8c9ad4e90ca111d7686",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-ru-light-mobile.png": "d607381531a7269c7c1664ef1fa73e61b898d8e2a1fba45500d4b7d7d853c1fb",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-ru-light.png": "e99734e0fda46728701f27f05901d0e3cdcc7bfa042cce902f1ca89c1bca62a1",
+    "docs/reviews/screenshots/T-262-native/T262-calculator-ru-light.png": "e4d1536740754f9fa00451496868ab813dafe85d41437d976a795e35432f7b44",
+    "docs/reviews/screenshots/T-262-native/T262-report-ru-light.png": "c75356a6a2e9cbcaa03898d8081397c52765c1dc4ba49d40e0ee386853a2f698",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-en-light-mobile.png": "e937fbe8090c5e0e6d7bce46f82901dcacc68aebe32669035aa85f261744158a",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-en-light.png": "93c6f655525a16a889be39cb726b68609410d7b77b606bf99bfc1ca5182875fa",
+    "docs/reviews/screenshots/T-262-native/T262-calculator-en-light.png": "80dc29c303f63f26bfdc8b56f09a878ae34fcc96c369e64d18410efb53ce25fb",
+    "docs/reviews/screenshots/T-262-native/T262-report-en-light.png": "3a8f4814374a85f01cb20a84a395842e5e8248a204e131fff263f49ed8a5c41d",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-en-dark-mobile.png": "7b79b7145e35ba54b20e7eb71f84e38930d6e2ea8f8da7031cf0ab5680572508",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-en-dark.png": "974da2782d6cd2bd2d7d23f9233294f7fe90098dc7333498a41c029c0fdcc852",
+    "docs/reviews/screenshots/T-262-native/T262-calculator-en-dark.png": "8e0370aa64c6497d41bd04d5d24c40f0964023c9d68df8fbc3cdc71f0808e78e",
+    "docs/reviews/screenshots/T-262-native/T262-report-en-dark.png": "fa65708917ce04b3b5f0a0d9a544ced445089eb7b78b6b93fdd998d6fe004681",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-ru-dark-mobile.png": "2a0af2bb31f74a03fab3d599a7a1fe16b2c20e069adcbba693a52bb76ebc1544",
+    "docs/reviews/screenshots/T-262-native/T262-cabinet-ru-dark.png": "ed76a7ba54c7276d4fa2befb11a9232e04a453087a5fc737be03e7b3894e4caa",
+    "docs/reviews/screenshots/T-262-native/T262-calculator-ru-dark.png": "69c7d9ef4257c1d56133ef07b35ea9a2dfde538ce73a61f6deb2d58133a71195",
+    "docs/reviews/screenshots/T-262-native/T262-report-ru-dark.png": "2e69388c687560a486acee20f9b2bcd9328bbad6a10ae537bc180b872f48b0bf",
+    "docs/reviews/screenshots/T-262-native/T262-recorded-Mock-replay-pending.png": "6b51db123b4037de38fed9215381c529776571ce3bdf68ac87dbdec56f97a0bb"
+  },
+  "overall_T262": "not_verified: new real LLM replay cassettes/menu acceptance remain outside freeze",
+  "historical_red": "8passed/1failed: wrong test required Mock label on last human frame; corrected to require genuine Mock-labelled LLM frames plus pending human at end",
+  "rollback": "tests/docs only; no API/DDL/money/HITL policy changes"
+}
