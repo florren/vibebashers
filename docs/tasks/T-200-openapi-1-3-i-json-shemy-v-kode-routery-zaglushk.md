@@ -46,3 +46,14 @@ python scripts/check_openapi_drift.py --tags feed,abs,rules,compliance,stt,demo
 
 ## Отчёт субагента
 Коммит B01. `scripts/gen_api_stubs.py` создал 25 роутеров по тегам (156 операций, 0 операций без покрытия) — каждая заглушка поднимает `NotImplementedYet('T-xxx')` с номером карточки реализации (таблица `CARD_BY_TAG`); существующие файлы не перезаписываются. `scripts/check_openapi_drift.py` сравнивает пути+методы OpenAPI ↔ FastAPI в обе стороны (учитывает `_IncludedRouter` FastAPI ≥0.125), подключён в CI (job `tests`) и `make lint`. Отклонения: в OpenAPI нет operationId — имена функций строятся из метода и пути.
+
+### Регрессия metadata версии runtime API
+
+В отдельной `codex/fix-runtime-openapi-version` исправлено расхождение runtime
+`1.4.0` и canonical `1.5.29`, которое пропускал route-only drift. Версия FastAPI
+теперь читается из canonical YAML; checker обнаруживает version-only mismatch.
+10 целевых проверок GREEN, покрытие 17/17 новых строк, mypy324; независимое review
+и actual API30 Docker layout probe без сети прошли.
+[Review и ограничения](../reviews/T-200-runtime-api-version.md).
+Новых DTO, DDL и canonical version нет. Exact-head CI и parent merge ожидаются;
+это дополнение не объявляет весь исходный объём из 94 карточек завершённым.
