@@ -1,0 +1,46 @@
+{
+  "status": "draft_not_rehearsed_before_global_freeze",
+  "source_heads": [
+    "4107a01396ec8bffccb6746945cf996f9ade894f"
+  ],
+  "final_integration_head": null,
+  "runtime_API": "1.5.31",
+  "migration": "0020",
+  "C_csi_run_id": null,
+  "K_cabinet_run_id": null,
+  "clock_before": null,
+  "clock_after": null,
+  "effective_providers": null,
+  "csi_expected": {
+    "signals": 301,
+    "registered_members": 300,
+    "visits": 2400,
+    "extra_uncohorted": 1
+  },
+  "native_drain_observed": null,
+  "safe_object_ids": {},
+  "cohort_hash": null,
+  "xlsx_hash": null,
+  "rehearsal_5min": {
+    "status": "not_measured",
+    "blocks": []
+  },
+  "rehearsal_8min": {
+    "status": "not_measured",
+    "blocks": []
+  },
+  "write_phase": "preparation_only; optional manual input in8min mustbe separatelymarked",
+  "draft_sha256": "8ad836859c76c874d0729053592e66cf5f4227f1bd8e35e9dd98bd8cce42734f",
+  "actions_executed": [],
+  "mass_preparation_only": {
+    "drain_seconds": 120,
+    "hook_seconds": 150,
+    "product_deadlines_changed": false
+  },
+  "preflight_sha256": "2d4e22419d265aeb0878a0c92d4b0f103ffa9ddfa42a586d598be81770b11774",
+  "report_gate": {
+    "p95_limit_ms": 300,
+    "product_fix": false,
+    "candidate_actual_rehearsal_ms": "not_measured"
+  }
+}
