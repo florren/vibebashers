@@ -39,5 +39,9 @@ poll/150s hook, UI30s. Предыдущие actors действительно о
 [Machine proof](T-262-native-ui-proof.json). Whole T262 остаётся in_progress:
 согласованные реальные новые cassette responses и пункты DemoMenu не получены.
 Имеющийся script/doc freeze честно указывает эти ограничения.5/8минутный устный
-хронометраж ведущего этим техническим прогоном не проверялся. Общий exact-head CI
-нового E2E и его интеграция с lifecycle Jury ещё обязательны.
+хронометраж ведущего этим техническим прогоном не проверялся. Полный local composed E2E на369c2834:164/164passed6.6минут, fresh isolated
+Compose/PG16 с настоящим image08719e3d, Node22.23.4/Chromium147. Порядок
+read-only58→settings88→scenarios13→inputs5 сохраняет все прежние155случаев и
+добавляет9native. UI30s/retries0/p95report300ms сохранены;20 штатных generated
+PNG архивированы внеGit и восстановлены побайтно изHEAD. Полный required CI
+нового PR ещё обязателен до merge.
