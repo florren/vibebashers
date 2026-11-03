@@ -22,12 +22,13 @@ async function nativeItems<T>(request: APIRequestContext, path: string, scope: R
 
 // Только disposable synthetic стенд: preparation меняет current и сохраняет прежнюю историю.
 // Темы меняются только в browser GET; бизнес-ответы API не подменяются.
-// Settings project имеет один worker и запускается после всех read-only файлов.
+// Scenarios project имеет один worker и запускается после settings/read-only файлов.
 test.describe.configure({ mode: 'serial' })
-let preparation: { previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number; missing: number; duplicate: number; foreign: number; failed: number }
+let preparation: { setup_duration_ms: number; previous_run_id: number | null; run_id: number; sim_time: string; owner: string; received: number; agent_runs: number; active: number; missing: number; duplicate: number; foreign: number; failed: number }
 test.beforeAll(async ({ request, baseURL }) => {
-  // Только новая write-preparation фаза; UI tests сохраняют config timeout30s.
-  test.setTimeout(75_000)
+  // Только preparation budget: на CI205/301 графов за60s, на host301/301 за~39s.
+  // Отдельный конечный drain сохраняет все301/active0/failed0 assertions; UI остаётся30s.
+  test.setTimeout(150_000)
   const owner = process.env.E2E_ISOLATED_SCENARIOS?.trim()
   if (!owner || !baseURL || !['localhost', '127.0.0.1'].includes(new URL(baseURL).hostname)) throw new Error('Нужны E2E_ISOLATED_SCENARIOS и собственный disposable localhost стенд; preparation не выполнялась')
   const beforeResponse = await request.get('/api/sim/state')
@@ -39,6 +40,7 @@ test.beforeAll(async ({ request, baseURL }) => {
     expect(prior.filter(row => row.outcome == null)).toHaveLength(0)
   }
   // Native T262 preflight проверяет effective Mock всех ролей до любых эффектов.
+  const setupStarted = Date.now()
   const response = await request.post('/api/scenarios/csi_and_branches/run', { data: { label: 'T250 Playwright isolated map branches', reset_mode: 'counters', seed: 42 } })
   expect(response.status(), 'Нужен effective Mock и доступная native CSI preparation; live/replay не подменяются').toBe(202)
   const result = await response.json(), run = result.run
@@ -69,13 +71,13 @@ test.beforeAll(async ({ request, baseURL }) => {
       failed: agents.filter(row => row.outcome === 'failed').length,
     }
     return observed
-  }, { timeout: 60_000 }).toEqual({ received: 301, agent_runs: 301, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 })
+  }, { timeout: 120_000 }).toEqual({ received: 301, agent_runs: 301, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 })
   const ready = await request.get('/api/sim/state')
   expect(ready.status()).toBe(200)
   const finalState = await ready.json()
   expect(finalState.current_run_id).toBe(run.id); expect(finalState.running).toBe(false)
   expect(Date.parse(finalState.sim_time)).toBe(Date.parse(before.sim_time))
-  preparation = { previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner, ...observed }
+  preparation = { setup_duration_ms: Date.now() - setupStarted, previous_run_id: before.current_run_id, run_id: run.id, sim_time: after.sim_time, owner, ...observed }
 })
 for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
   test(`ВСП: native counts, карточка и scope ${language} ${mode}`, async ({ browser, baseURL }, info) => {
