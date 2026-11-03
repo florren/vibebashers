@@ -61,9 +61,9 @@ async def due(conn: psycopg.AsyncConnection[Any], run_id: int, at: dt.datetime) 
         ):
             raise ValueError("World timer client snapshot не совпадает с FK")
         if any(
-            not isinstance(snapshot[key], str) or not snapshot[key]
-            for key in ("segment", "psychotype", "region_code", "city", "card_last4")
-        ):
+            not isinstance(snapshot[key], str) for key in ("segment", "psychotype", "region_code", "city", "card_last4")
+        ) or any(not snapshot[key] for key in ("segment", "psychotype", "region_code", "card_last4")):
+            # City может быть неизвестен: World сохраняет именно пустую строку.
             raise ValueError("World timer требует строковые client attributes")
         if not isinstance(snapshot["products"], list) or any(
             not isinstance(item, str) for item in snapshot["products"]

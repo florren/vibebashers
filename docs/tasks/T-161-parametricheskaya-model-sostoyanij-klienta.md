@@ -149,3 +149,8 @@ Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.
 Пользователь явно подтвердил финансовую границу PR #214 при зелёном общем CI.
 Объединённый full2196unit/19skip прошёл; финальные local composition/CI gates
 ещё обязательны. Полный acceptance карточки этим не объявляется закрытым.
+
+
+### Исправления длинного soak 2026-11-04
+
+Durable World timer допускает неизвестный city как пустую строку; типы и обязательные client attributes остаются строгими. PG restart и None/number negative controls пройдены. Подробности и rollback: [freeze-defects](../reviews/freeze-defects-2026-11-04.md). Общий 14-day/CI gate ещё выполняется; acceptance карточки не закрывается.

@@ -2397,7 +2397,14 @@ async def wait_human(state: AgentState, deps: Deps) -> AgentState:
     # Повторно проверяем факты на момент обращения, не более поздние операции.
     hints = state.get("context", {}).get("hints") or {}
     client = state.get("client")
-    if incident_id is not None and client and hints.get("fault_id") is not None:
+    if (
+        incident_id is not None
+        and client
+        and hints.get("fault_id") is not None
+        and state["classification"].get("error_code") == hints.get("error_code")
+    ):
+        # Как в decide/_act_spec: историческая failed operation не привязывает
+        # к fault жалобу, классификация которой описывает другую проблему.
         fault_id = await proactive.causal_fault(
             deps.ctx.conn,
             run_id=deps.ctx.run_id,

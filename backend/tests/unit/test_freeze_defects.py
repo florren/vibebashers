@@ -1,9 +1,12 @@
 """Регрессии дефектов, воспроизведённых при приёмке стенда."""
 
 import datetime as dt
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
+from app.agent import nodes
 from app.api.envfile import read_env_file, write_env_file
 from app.config import Settings
 from app.contracts.registry import validate
@@ -91,3 +94,23 @@ def test_env_hash_value_is_not_an_unquoted_whitespace_comment(tmp_path, raw):
     path = tmp_path / ".env"
     path.write_text(f"APP_SECRET={raw}\n")
     assert read_env_file(path)["APP_SECRET"] == "#literal"
+
+
+async def test_matching_fault_scope_still_rejects_stale_hitl_before_request(monkeypatch):
+    monkeypatch.setattr(nodes, "_native_service_scope", AsyncMock(return_value=None))
+    monkeypatch.setattr(nodes, "_hitl_incident_id", AsyncMock(return_value=7))
+    monkeypatch.setattr(nodes.proactive, "causal_fault", AsyncMock(return_value=None))
+    request = AsyncMock(side_effect=AssertionError("stale scope must not request approval"))
+    monkeypatch.setattr(nodes.wt, "request_human_decision", request)
+    state = {
+        "decision": {"incident_action": "link_existing", "link_incident_id": 7},
+        "signal": {"id": 1, "received_sim": "2026-11-09T09:00:00Z"},
+        "classification": {"error_code": "NOTIF-DELAY"},
+        "context": {"hints": {"fault_id": 3, "error_code": "NOTIF-DELAY"}},
+        "client": {"client_id": 10},
+        "actions": [],
+    }
+    deps = SimpleNamespace(ctx=SimpleNamespace(run_id=2, conn=object(), fetchone=AsyncMock(return_value=None)))
+    with pytest.raises(ValueError, match="причинная связь с incident устарела"):
+        await nodes.wait_human(state, deps)
+    request.assert_not_awaited()

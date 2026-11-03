@@ -29,6 +29,18 @@
    Если цепочка физически не помещается в SLA, план помечается late. Сами due,
    p_sla_breach и длительности не меняются; штатная FSM не расширяется.
    Есть отдельные unit short-SLA/clarify и actual PG FSM/restart регрессии.
+6. Дальнейший native прогон выявил остановку durable World timer на пустом
+   необязательном city. Сохраняется исходная пустая строка; строковый тип city,
+   обязательные segment/psychotype/region/card и остальные snapshot guards
+   проверяются прежним reader. PG подтверждает restart с пустым city и отказ
+   для None/числа без продвижения часов.
+7. Generic client_error перед HITL ошибочно привязывался к unrelated исторической
+   failed operation из hints. Условие causal recheck приведено к условию
+   decide/_act_spec: классифицированный error_code должен совпасть с hint.
+   Genuine fault recheck, same-run/client/time guards и обязательный HITL
+   сохранены. Actual PG generic case остаётся awaiting_human; ledger пуст.
+   Отдельный unit запрещает запрос HITL при stale matching fault scope;
+   existing causal/future/foreign/ambiguity PG controls проходят.
 
 API/DDL/events, формулы денег, пороги, ставки, HITL и численные параметры
 симуляции не меняются. Cross-layer согласован пользователем в исходной задаче.
@@ -37,6 +49,8 @@ API/DDL/events, формулы денег, пороги, ставки, HITL и �
 граница требует human review по AGENTS.md §5.1 до merge. Старые сохранённые
 некорректные планы не переписываются: для них нужен новый run или отдельный review
 восстановления. Ложных release/verify/history записей при откате не добавляется.
+Для исправления 7 также нужен final human review границы HITL. Отказ проверки
+реального causal scope не превращается в автоматическое согласие/проводку.
 
 ## Проверки
 
