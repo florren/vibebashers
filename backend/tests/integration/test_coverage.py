@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
+
 from app.contracts.enums import Channel
 from tests.integration.conftest import _seed
 
@@ -53,7 +55,15 @@ def test_reference_counts(conn) -> None:
     assert conn.execute("select count(*) from branches where code = '0042'").fetchone()[0] == 1
     assert conn.execute("select count(*) from business_rules where code = 'RULE-QR-FEE-001'").fetchone()[0] == 1
     assert conn.execute("select count(*) from error_codes where code = 'PROC-QR-FEE-CHARGED'").fetchone()[0] == 1
-    assert conn.execute("select count(*) from scenarios").fetchone()[0] == 33
+    scenario_ids = {row[0] for row in conn.execute("select id from scenarios")}
+    new_ids = {"cabinet_red_words_report", "csi_and_branches"}
+    legacy_ids = {
+        yaml.safe_load(path.read_text(encoding="utf-8"))["id"]
+        for path in (ROOT / "data/scenarios").glob("[0-9][0-9]_*.yaml")
+    }
+    assert len(legacy_ids) == 33
+    assert len(scenario_ids) == 35
+    assert scenario_ids == legacy_ids | new_ids
     assert conn.execute("select count(*) from bench_datasets").fetchone()[0] >= 5
     assert abs(float(conn.execute("select sum(population_share) from segments").fetchone()[0]) - 1.0) < 1e-6
     for seg, total in conn.execute("select segment_code, sum(share) from segment_psychotype_mix group by 1").fetchall():
