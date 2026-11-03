@@ -52,7 +52,7 @@
       "personal: passed"
     ],
     "openapi_drift": "197/197 passed",
-    "required_exact_head_ci": "Final composition pending; oldf6 backendshard3/coldreport passed, remaining shard2 checked separately",
+    "required_exact_head_ci": "Previous4107 all4backend shards/frontend/lint/contracts/db/images passed; Overview race fixed by moving Jury last; final exact-head CI pending",
     "individual_ci_limitations": {
       "202": "cold report p95 411.76ms exceeds300ms; triage in progress",
       "205": "base conflict prevents PR merge CI; included in joint integration",
@@ -96,16 +96,37 @@
     },
     "full_image_e2e": {
       "passed": 155,
-      "seconds": 324,
+      "duration_reported": "5.7m",
+      "source": "4107a013 + playwright input isolation b11c130; docs-only209 has no runtime effects",
+      "full_standard_dockerfile_build": "passed",
+      "image": "sha256:08719e3d4439ba611d4ab4f32f0fc6cc2db745752793f052df6eab4b339cafdf",
+      "review": "CI-207-jury-input-isolation-proof.json"
+    },
+    "test_infra_identity": "All4files match checked1fbeb341 source manifest",
+    "full_db_recovery": {
+      "tables": 114,
+      "sequences": 60,
+      "schemas": 4,
+      "same_cluster_roundtrip": "passed; source unchanged",
+      "populated_langgraph": "restored",
+      "private_quota_and_tgbot_tables": "13 empty: only schema/empty-state recovery verified",
+      "review": "FREEZE-2026-11-03-full-db-recovery.md"
+    },
+    "previous_full_image_e2e": {
+      "passed": 155,
       "source": "3e9e592 +4fixture files (1fbeb341)",
       "composition_limit": "T092 not included in image155; final exact-head CI required",
-      "review": "CI-206-e2e-proof.json"
-    }
+      "review": "CI-206-e2e-proof.json",
+      "duration_reported": "5.4min"
+    },
+    "demo_docs": "PR209 included, draft/not_measured, no whole-card completion claim"
   },
-  "composed_application_head": "384de07e2513312bc1447468fb9c2a6e2f4e9b7c",
+  "composed_application_head": "da5a202931f70bf3f808667967721ad590a44cf3",
   "additional_heads": {
     "208": "6f0668e63d118108e010b666e2e40a5150d761ac",
     "cold_diagnostics": "75e2a0a7786f0d8e7e476790003a667c0f01cfae",
-    "e2e_fixture_lifecycle": "1fbeb341e92ebde7d963379081967391b02bbec7"
+    "e2e_fixture_lifecycle": "1fbeb341e92ebde7d963379081967391b02bbec7",
+    "209": "6042b8bb74739c24b85d50e48498b20cff1f0af2",
+    "jury_input_isolation": "b11c1309821e499ba607c708f40b5fd1e718d347"
   }
 }
