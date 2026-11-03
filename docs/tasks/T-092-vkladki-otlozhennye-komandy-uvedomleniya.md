@@ -8,7 +8,7 @@
 | Волна | 4 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Спящие обращения с причиной и временем пробуждения; нагрузка команд и дисциплина отчётов; центр исходящих сообщений.
@@ -28,7 +28,7 @@
 
 ## Критерии приёмки
 - [ ] Пропущенный отчёт команды виден как reports_missing с подсветкой.
-- [ ] Фильтр по клиенту в уведомлениях работает из Клиента 360.
+- [x] Фильтр по клиенту в уведомлениях работает из Клиента 360.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -37,4 +37,4 @@ npx playwright test e2e/tabs_misc.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-092-client-notifications`: Client360→Notifications с client_id и сохранением run scope, строгий invalid-ID отказ, отсутствие старой cached выдачи, сброс только client filter. Найденный actual404 gift_catalog исправлен через существующий useGifts/GET settings/gifts, без изменения подарков/денежных правил/API/DDL. RED12→GREEN24, полный574frontend/80files, eslint/typecheck/обе сборки; native4ru/en×themes+mobile,97fingerprints unchanged/0browserwrites/0external. [Review/proof](../reviews/T-092-client-notifications.md). Reports_missing acceptance и общий exact-head CI остаются gate; карточка не done.

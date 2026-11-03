@@ -17,6 +17,7 @@ async function fixtureApi(page: Page, mode = 'light') {
     if (!path.startsWith('/api/')) { await route.continue(); return }
     let body: unknown = {}
     if (path === '/api/clients/17/360') { reads++; body = profile }
+    else if (path === '/api/settings/gifts') body = client360Refs.gift_catalog
     else if (path.startsWith('/api/refs/')) body = client360Refs[path.split('/').at(-1)!] ?? []
     else if (path === '/api/sim/state') body = { current_run_id: 42, sim_time: '2026-10-20T11:00:00Z', running: false, speed: 1 }
     else if (path === '/api/sim/runs') body = { items: [{ id: 42, label: 'Проверка клиента' }] }

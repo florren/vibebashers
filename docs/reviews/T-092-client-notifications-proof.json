@@ -1,0 +1,359 @@
+{
+  "base": "f6c5af804d05dc42e5bf95098e8f2e667d0e7b2b",
+  "source_sha256": {
+    "frontend/e2e/client360.spec.ts": "a71a3e38cb44b56fe316e2b6e029b967db0d63c17327791546060d6a8c249d4b",
+    "frontend/src/pages/client/Client360Page.tsx": "355aff3bfcc7451896a6b22620e020b68297f697e7e0f6c6b7c6832ee39a31d3",
+    "frontend/src/pages/client/__tests__/client360.test.tsx": "7491ba6c1ae918ef9c6e51270dc2b94a77649ebf2553cf1763351d5cac9e1400",
+    "frontend/src/pages/workspace/NotificationsTab.tsx": "8325e05f30cca6c6f6bd673a64f27fd069a62243dfef6e892b7700c6506d2116",
+    "frontend/src/shared/api/hooks.ts": "5b8133eff7a5056f2e4e6a97013fb68a4d3901467fd00237784ab42781521308",
+    "frontend/src/shared/i18n/en.json": "c62a00e98a45d8b5607fdd3da1aded9c8b0a6507c9a687cac5677569d1aa4d4e",
+    "frontend/src/shared/i18n/ru.json": "994546036c8ef0e92d9e8d3c7c59f5776a85c0ba2f9394062b911e7c2a50f39b",
+    "frontend/src/test/notifications.test.tsx": "f63a3ebc23a5575475efbf581c8ebce2982cacfa761852740c2d2acadcef6bf0"
+  },
+  "canonical_api": "1.5.31 unchanged",
+  "backend_or_ddl_changes": false,
+  "unit_regression": {
+    "first_red": "12 failed /11 passed before client filter",
+    "gift_catalog_red": "1 failed /12 intentionally deselected before existing GET correction",
+    "target_final": "24 passed /2 files,2.67s",
+    "full_final": "574 passed /80 files,16.02s",
+    "lint_typecheck": "passed",
+    "production_builds": [
+      "main passed",
+      "personal passed"
+    ]
+  },
+  "native_inputs": [
+    {
+      "client_id": 1,
+      "signal_id": 1163,
+      "agent_run_id": 1,
+      "compare_run_id": null,
+      "run_id": 2,
+      "notification_ids": [
+        1
+      ]
+    },
+    {
+      "client_id": 2,
+      "signal_id": 1164,
+      "agent_run_id": 2,
+      "compare_run_id": null,
+      "run_id": 2,
+      "notification_ids": [
+        4
+      ]
+    },
+    {
+      "client_id": 1,
+      "signal_id": 1165,
+      "agent_run_id": 3,
+      "compare_run_id": null,
+      "run_id": 3,
+      "notification_ids": [
+        6,
+        1
+      ]
+    }
+  ],
+  "frozen_notification_sql_reference": [
+    {
+      "id": 1,
+      "run_id": 2,
+      "client_id": 1,
+      "signal_id": 1163,
+      "recipient_type": "client",
+      "status": "sent"
+    },
+    {
+      "id": 2,
+      "run_id": 2,
+      "client_id": null,
+      "signal_id": 1163,
+      "recipient_type": "team",
+      "status": "sent"
+    },
+    {
+      "id": 3,
+      "run_id": 2,
+      "client_id": null,
+      "signal_id": 1164,
+      "recipient_type": "team",
+      "status": "sent"
+    },
+    {
+      "id": 4,
+      "run_id": 2,
+      "client_id": 2,
+      "signal_id": 1164,
+      "recipient_type": "client",
+      "status": "sent"
+    },
+    {
+      "id": 5,
+      "run_id": 3,
+      "client_id": null,
+      "signal_id": 1165,
+      "recipient_type": "team",
+      "status": "sent"
+    },
+    {
+      "id": 6,
+      "run_id": 3,
+      "client_id": 1,
+      "signal_id": 1165,
+      "recipient_type": "client",
+      "status": "sent"
+    },
+    {
+      "id": 7,
+      "run_id": 3,
+      "client_id": null,
+      "signal_id": 1165,
+      "recipient_type": "team",
+      "status": "sent"
+    },
+    {
+      "id": 8,
+      "run_id": 3,
+      "client_id": 1,
+      "signal_id": null,
+      "recipient_type": "client",
+      "status": "sent"
+    },
+    {
+      "id": 9,
+      "run_id": 3,
+      "client_id": 1,
+      "signal_id": 1165,
+      "recipient_type": "client",
+      "status": "sent"
+    }
+  ],
+  "browser": {
+    "cases": [
+      {
+        "lang": "ru",
+        "mode": "light",
+        "client_id": 1,
+        "other_client_id": 2,
+        "run_id": 2,
+        "current_run_id": 3,
+        "resize_initial_width": 360,
+        "resize_final_width": 360,
+        "notification_ids": [
+          1
+        ],
+        "other_notification_ids": [
+          4
+        ],
+        "current_notification_ids": [
+          9,
+          8,
+          6
+        ],
+        "all_notification_ids": [
+          9,
+          8,
+          6,
+          1
+        ],
+        "requests": [
+          "?run_id=2&limit=100&client_id=1",
+          "?run_id=2&limit=100&client_id=1&recipient_type=client",
+          "?run_id=2&limit=100&recipient_type=client",
+          "?run_id=2&limit=100&client_id=2",
+          "?run_id=3&limit=100&client_id=1",
+          "?run_id=all&limit=100&client_id=1"
+        ],
+        "forbidden": [],
+        "errors": [],
+        "failed": []
+      },
+      {
+        "lang": "ru",
+        "mode": "dark",
+        "client_id": 1,
+        "other_client_id": 2,
+        "run_id": 2,
+        "current_run_id": 3,
+        "resize_initial_width": 650,
+        "resize_final_width": 360,
+        "notification_ids": [
+          1
+        ],
+        "other_notification_ids": [
+          4
+        ],
+        "current_notification_ids": [
+          9,
+          8,
+          6
+        ],
+        "all_notification_ids": [
+          9,
+          8,
+          6,
+          1
+        ],
+        "requests": [
+          "?run_id=2&limit=100&client_id=1",
+          "?run_id=2&limit=100&client_id=1&recipient_type=client",
+          "?run_id=2&limit=100&recipient_type=client",
+          "?run_id=2&limit=100&client_id=2",
+          "?run_id=3&limit=100&client_id=1",
+          "?run_id=all&limit=100&client_id=1"
+        ],
+        "forbidden": [],
+        "errors": [],
+        "failed": []
+      },
+      {
+        "lang": "en",
+        "mode": "light",
+        "client_id": 1,
+        "other_client_id": 2,
+        "run_id": 2,
+        "current_run_id": 3,
+        "resize_initial_width": 678,
+        "resize_final_width": 360,
+        "notification_ids": [
+          1
+        ],
+        "other_notification_ids": [
+          4
+        ],
+        "current_notification_ids": [
+          9,
+          8,
+          6
+        ],
+        "all_notification_ids": [
+          9,
+          8,
+          6,
+          1
+        ],
+        "requests": [
+          "?run_id=2&limit=100&client_id=1",
+          "?run_id=2&limit=100&client_id=1&recipient_type=client",
+          "?run_id=2&limit=100&recipient_type=client",
+          "?run_id=2&limit=100&client_id=2",
+          "?run_id=3&limit=100&client_id=1",
+          "?run_id=all&limit=100&client_id=1"
+        ],
+        "forbidden": [],
+        "errors": [],
+        "failed": []
+      },
+      {
+        "lang": "en",
+        "mode": "dark",
+        "client_id": 1,
+        "other_client_id": 2,
+        "run_id": 2,
+        "current_run_id": 3,
+        "resize_initial_width": 360,
+        "resize_final_width": 360,
+        "notification_ids": [
+          1
+        ],
+        "other_notification_ids": [
+          4
+        ],
+        "current_notification_ids": [
+          9,
+          8,
+          6
+        ],
+        "all_notification_ids": [
+          9,
+          8,
+          6,
+          1
+        ],
+        "requests": [
+          "?run_id=2&limit=100&client_id=1",
+          "?run_id=2&limit=100&client_id=1&recipient_type=client",
+          "?run_id=2&limit=100&recipient_type=client",
+          "?run_id=2&limit=100&client_id=2",
+          "?run_id=3&limit=100&client_id=1",
+          "?run_id=all&limit=100&client_id=1"
+        ],
+        "forbidden": [],
+        "errors": [],
+        "failed": []
+      }
+    ],
+    "business_api": "native; only GET/settings UI presentation overridden",
+    "writes": 0,
+    "external_requests": 0
+  },
+  "read_only": {
+    "tables": 97,
+    "unchanged": true,
+    "changed": [],
+    "exit": 0,
+    "output": "{\"passed\":4,\"writes\":0,\"external_requests\":0}\n"
+  },
+  "independent_static_review": {
+    "source_head": "f6c5af804d05dc42e5bf95098e8f2e667d0e7b2b",
+    "diff_sha256": "b5460189be53b5ba9067286844ae4926f6926d5319bafd8d90e1f9935b4d2535",
+    "files_sha256": {
+      "frontend/e2e/client360.spec.ts": "a71a3e38cb44b56fe316e2b6e029b967db0d63c17327791546060d6a8c249d4b",
+      "frontend/src/pages/client/Client360Page.tsx": "355aff3bfcc7451896a6b22620e020b68297f697e7e0f6c6b7c6832ee39a31d3",
+      "frontend/src/pages/client/__tests__/client360.test.tsx": "7491ba6c1ae918ef9c6e51270dc2b94a77649ebf2553cf1763351d5cac9e1400",
+      "frontend/src/pages/workspace/NotificationsTab.tsx": "8325e05f30cca6c6f6bd673a64f27fd069a62243dfef6e892b7700c6506d2116",
+      "frontend/src/shared/api/hooks.ts": "5b8133eff7a5056f2e4e6a97013fb68a4d3901467fd00237784ab42781521308",
+      "frontend/src/shared/i18n/en.json": "c62a00e98a45d8b5607fdd3da1aded9c8b0a6507c9a687cac5677569d1aa4d4e",
+      "frontend/src/shared/i18n/ru.json": "994546036c8ef0e92d9e8d3c7c59f5776a85c0ba2f9394062b911e7c2a50f39b",
+      "frontend/src/test/notifications.test.tsx": "f63a3ebc23a5575475efbf581c8ebce2982cacfa761852740c2d2acadcef6bf0"
+    },
+    "review": "independent static; no repo edits; no frontend/test/build invoked",
+    "findings": [],
+    "verified_static": [
+      "Client360 link carries same client and selected run scope",
+      "Positive decimal safe-int client_id required; invalid branch disables query and hides cached data",
+      "Cache key contains client_id/run_id; prior placeholderData removed",
+      "Clear action deletes only client_id, preserves run/tab/other query",
+      "ru/en additions symmetric",
+      "Root regression tests cover current/all/42 links, scope+recipient, clear, delayed second-client and invalid IDs",
+      "Client360 useGifts() reads existing GET /api/settings/gifts; GiftCatalogItem[] code/name_ru/name_en compatible with existing refName; no mutation hook used. Invalid /api/refs/gift_catalog removed and regression requires correct path; e2e fixture updated."
+    ],
+    "tests": "Root reports RED12→GREEN23; reviewer did not rerun while image/mobile resource slot active",
+    "native_proof": "/tmp/t092-notifications-readonly-proof.json",
+    "limitation": "Allowed DB currently has0notifications; positive cross-client/cross-run API filtering not dynamically proven. No fixture fabrication.",
+    "previous_diff_sha256": "3669ad2c10bf0a5a4b317b28b4f8cfe3e4932606e02480c840979c2d8d215638",
+    "followup": "8-file WIP: adjacent real404 fixed read-only; root fullfrontend/build/native4 pending; reviewer no test/browser/DB rerun."
+  },
+  "limitations": [
+    "Whole T092 reports_missing acceptance not repeated; card remains in_progress",
+    "Full exact-head CI still required",
+    "Native preparation emitted further legitimate asynchronous notifications; SQL reference frozen after writer stop",
+    "Immediate resize width was transient650/678; bounded1s poll verifies settled360; no application layout fix claimed",
+    "Initial harness failures and native404 retained separately, not reported as passing"
+  ],
+  "logs_sha256": {
+    "/tmp/t092-red.log": "294170b1d8dcafa1112229378c5d6e9e39bab9a96d5d53e32f0cb0d4b060602d",
+    "/tmp/t092-gifts-red.log": "acb0a218b293171c2414d2a5832e697a367a885d679d124dddcb58bbf2db6d78",
+    "/tmp/t092-target-final.log": "c9d2db1e21151904106fdf303b5e85a97b1483b1dfd7ae5011b562c2c2b231b9",
+    "/tmp/t092-final-lint-test.log": "3d4236714ec658ba67dd61b34b59eb7ef783833896e8093ff75d56a992459e7e",
+    "/tmp/t092-final-build.log": "458b5e6298927c2241bc6e9698006ddf08ce92fb415b89303272bf91db35c8ca"
+  },
+  "screenshots_sha256": {
+    "docs/reviews/screenshots/T-092/notifications-en-dark-mobile.png": "9bd50d5caa54823d00936dfa400c87f4e939e2e657a6fe08349b985dc077a945",
+    "docs/reviews/screenshots/T-092/notifications-en-dark.png": "af918dd5b4f10ed54d6701a4241003cd271b8e75718fe0d103237a1245f19477",
+    "docs/reviews/screenshots/T-092/notifications-en-light-mobile.png": "590608492ef844074f2ae13fbf7818af09d65ae29216f148565efc49b0db1058",
+    "docs/reviews/screenshots/T-092/notifications-en-light.png": "70319cf7993448a19787dc99b1aaed987db810feeefe208f69a2bb71169950c6",
+    "docs/reviews/screenshots/T-092/notifications-ru-dark-mobile.png": "54f816fad5dddf44ed44889f668d97dfb9c46ff521286e1724eba43d27b9393f",
+    "docs/reviews/screenshots/T-092/notifications-ru-dark.png": "b4e0608a12dbdefd2314089188acd7fe2ae6889a9a900a7253cac7e7ea9ad7e4",
+    "docs/reviews/screenshots/T-092/notifications-ru-light-mobile.png": "a530e550f392c3ba383b93176026cfdbedfd051dcafe33f150c74760f1d79df2",
+    "docs/reviews/screenshots/T-092/notifications-ru-light.png": "b62a000f49f54b01ed2465bab81b9d4151cc48f51443fb84c7afe7e892683e94"
+  },
+  "owners": {
+    "normal_layer_check": "requires cross-layer: L1 review/screenshots and L5 existing e2e fixture",
+    "authorized_cross_layer_check": "--card92 --allow-cross passed",
+    "contracts": "48schemas/167paths passed",
+    "tasks_generator": "two runs idempotent"
+  }
+}
