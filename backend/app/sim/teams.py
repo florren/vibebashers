@@ -381,14 +381,16 @@ class TeamEmulator:
         release_at = add_working_hours(chain_start, max(2.0, span_to_close * 0.55))
         verify_at = add_working_hours(chain_start, max(3.0, span_to_close * 0.75))
         if not sla_breach:
-            verify_at = min(verify_at, add_working_hours(sla_due_sim, -1.0))
+            verify_at = min(verify_at, _before_working_hours(sla_due_sim, 1.0))
         close_at = max(close_at, add_working_hours(verify_at, 0.5))
         if last_report and not sla_breach:
             close_at = max(close_at, last_report)
         if not sla_breach:
             close_at = min(close_at, sla_due_sim)
-        if verify_at >= close_at:
-            verify_at = add_working_hours(close_at, -0.5)
+        # Короткий SLA не переносит проверку в прошлое, перед RCA/решением/релизом.
+        # Невместившийся план честно опаздывает, сохраняя причинный порядок и FSM.
+        verify_at = max(verify_at, release_at)
+        close_at = max(close_at, add_working_hours(verify_at, 0.5))
         steps.extend(
             [
                 PlannedStep("rca", rca_at),
@@ -403,7 +405,7 @@ class TeamEmulator:
             ]
         )
         steps.extend(reports)
-        plan = IncidentPlan(incident_id, team_code, sla_breach, do_clarify, steps)
+        plan = IncidentPlan(incident_id, team_code, sla_breach or close_at > sla_due_sim, do_clarify, steps)
         return plan
 
     def _maybe_regression(

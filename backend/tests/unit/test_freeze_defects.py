@@ -8,7 +8,7 @@ from app.api.envfile import read_env_file, write_env_file
 from app.config import Settings
 from app.contracts.registry import validate
 from app.llm.mock import analyze
-from app.sim.clock import MSK
+from app.sim.clock import MSK, add_working_hours
 from app.sim.teams import _plan_blob
 from app.trace.journey import client_messages
 from tests.unit.test_teams import MemStore, _emu, _World
@@ -30,6 +30,21 @@ async def test_missing_origin_cannot_plan_a_cross_system_regression(system, prod
         )
         == []
     )
+
+
+@pytest.mark.parametrize("clarify", [False, True])
+def test_short_sla_never_places_verification_before_release(clarify):
+    store = MemStore()
+    emu, _, _ = _emu(store)
+    start = dt.datetime(2026, 11, 9, 9, tzinfo=MSK)
+    due = add_working_hours(start, 2)
+    profile = {"take_hours": [1, 1], "p_clarify": int(clarify), "p_sla_breach": 0, "p_regression": 0}
+    plan = emu._build_plan(
+        1, "team_deposits", profile, start, add_working_hours(start, 1), due, [], "sub_deposits", "deposit"
+    )
+    at = {step.action: step.at for step in plan.steps}
+    assert at["take"] <= at["rca"] <= at["fix_decision"] <= at["release"] <= at["verify"] < at["close"]
+    assert at["close"] > due and plan.sla_breach
 
 
 def test_gratitude_does_not_swallow_a_followup_question():
