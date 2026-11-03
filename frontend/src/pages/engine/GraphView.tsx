@@ -20,6 +20,7 @@ export function GraphView({
   visited,
   current,
   outcome,
+  executionStatus,
   failed = new Set<string>(),
   compact = false,
   selectedNode,
@@ -37,6 +38,7 @@ export function GraphView({
   visited: Set<string>
   current: string | null
   outcome: string | null
+  executionStatus?: string
 }) {
   const { t } = useTranslation()
   const markerId = useId().replace(/:/g, '')
@@ -114,12 +116,14 @@ export function GraphView({
       {nodes.map((n) => {
         const p = pos.get(n.id!)
         if (!p) return null
-        const isCur = current === n.id && (outcome == null || outcome === 'awaiting_human')
+        const interrupted = current === n.id && executionStatus === 'interrupted'
+        const isCur = !interrupted && current === n.id && (outcome == null || outcome === 'awaiting_human')
         const done = visited.has(n.id!)
         const error = failed.has(n.id!)
         return (
           <g
             key={n.id}
+            data-execution-status={interrupted ? 'interrupted' : isCur ? 'running' : undefined}
             transform={`translate(${p.x},${p.y})`}
             role={onNodeSelect ? 'button' : undefined}
             tabIndex={onNodeSelect ? 0 : undefined}
@@ -153,6 +157,7 @@ export function GraphView({
               )}
             />
             {isCur && <rect width={W} height={nodeHeight} rx={10} className="status-indicator fill-none stroke-brand" strokeWidth={3} />}
+            {interrupted && <rect width={W} height={nodeHeight} rx={10} className="fill-none stroke-warn" strokeWidth={3} />}
             <text x={12} y={18} className={clsx('text-[11.5px] font-medium', done || isCur ? 'fill-ink' : 'fill-muted')}>
               {tEnum('engine.node', n.id)}
             </text>

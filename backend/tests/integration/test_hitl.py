@@ -409,6 +409,13 @@ def test_expire_hitl_timeout_without_team_cx(seeded: str, conn: psycopg.Connecti
 
 
 def test_agent_recover_runs_expire_hitl(seeded: str, conn: psycopg.Connection) -> None:
+    from tests.helpers import new_run
+
+    async def running_live_fixture():
+        async with await psycopg.AsyncConnection.connect(_dsn(seeded)) as ac:
+            await new_run(ac, "t077-startup-expire", kind="live")
+
+    asyncio.run(running_live_fixture())
     cid = _client(conn, "ultra_vip")
     signal_id, _ = asyncio.run(
         _ingest_and_run(
@@ -428,6 +435,8 @@ def test_agent_recover_runs_expire_hitl(seeded: str, conn: psycopg.Connection) -
     async def _recover() -> None:
         svc = AgentService(_chain(), PROFILE, dsn=_dsn(seeded), concurrency=1)
         await svc._recover()
+        if svc._inflight:
+            await asyncio.gather(*list(svc._inflight))
 
     asyncio.run(_recover())
     assert conn.execute("select decision from human_decisions where id = %s", (hd[0],)).fetchone()[0] is None

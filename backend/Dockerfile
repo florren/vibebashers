@@ -26,6 +26,8 @@ COPY scripts/ /scripts/
 COPY --from=frontend /fe/dist /frontend/dist
 COPY --from=frontend /fe/dist-personal /frontend/dist-personal
 RUN uv sync --frozen --no-dev
+# Единственный rw mount принадлежит backend; sticky dir поддерживает UID isolated CI runner.
+RUN install -d -m1777 /run/cx-maintenance
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --retries=12 CMD curl -fs http://localhost:8000/api/health || exit 1
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

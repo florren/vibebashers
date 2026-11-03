@@ -1,0 +1,21 @@
+{
+  "source_revision": "43af7af1651d421bcf30b3899339f64a4d0caf8b",
+  "old_schema_revision": "8b225d56f315dc839aa13db5515c4096b6a4a2d2",
+  "old_schema_sha256": "64dd736c187e5169708e1f866c3b77e99a7a1c2b4c47fda654ea9159c39855df",
+  "scratch_database": "cx_profile_hotapply_legacy_0010_v2",
+  "migration_sha256": {
+    "0011_db_activity_scope.sql": "5ef74cc4204897899c3e504d60f46ddc4c50c852fed71d3d0e20e5bfc79b9770",
+    "0012_agent_checkpoints.sql": "bdc19953c32fa6f75cc97806ef889b5050509930cbaa6c1dd816cc2f7b00c5fb",
+    "0013_runtime_profiles.sql": "4d0b3e6c6130281a5842b4a87fa194083632f2ab62ca0b95b9e5cd037bcb3699"
+  },
+  "sequential_0011_0012_0013_repeat_idempotent": true,
+  "existing_sim_run_and_agent_outcomes_preserved": true,
+  "legacy_ar_snapshot_remains_null_no_invented_history": true,
+  "checkpoint_schema_created": true,
+  "existing_cipher_and_usage_preserved": true,
+  "legacy_writer_blocked_23514": true,
+  "bound_key_delete_restricted": true,
+  "enc1_cutover_repeat_stable": true,
+  "public_projection_no_plain_cipher_private_uid": true,
+  "no_external_calls": true
+}

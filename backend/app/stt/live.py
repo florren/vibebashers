@@ -16,6 +16,7 @@ from app.compliance.transcripts import _finding, _finish_report
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
+from app.sim.maintenance import writer
 from app.stt import registry, speakers
 from app.stt.base import STTResult, pcm_split_stereo
 
@@ -314,6 +315,7 @@ def request_stop(session_id: int) -> None:
         playback.stop.set()
 
 
+@writer("audio")
 async def play_wav(app: Any, session_id: int, path: str, *, provider_code: str | None, channels: int) -> None:
     """Читает WAV чанками в реальном темпе и кормит ту же LiveSession. Частичные наружу не шлёт, байты не сохраняет."""
     live = LiveSession(app, session_id, provider_code=provider_code, sample_rate=_FILE_SAMPLE_RATE, channels=channels)

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.16
+  version: 1.5.18
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -398,7 +398,10 @@ paths:
                 provider: { $ref: "#/components/schemas/LlmProvider" }
                 label: { type: string }
                 key: { type: string, writeOnly: true }
-                tokens_limit: { type: integer }
+                tokens_limit: { type: [integer, "null"], minimum: 0 }
+                rpd_limit: { type: [integer, "null"], minimum: 0 }
+                endpoint_url: { type: [string, "null"], description: Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. }
+                scope: { type: [string, "null"], description: GigaChat OAuth scope; по умолчанию configured scope }
       responses:
         "201": { description: Создан, content: { application/json: { schema: { $ref: "#/components/schemas/LlmApiKey" } } } }
   /api/settings/llm-keys/{id}:
@@ -408,6 +411,7 @@ paths:
       summary: Удалить ключ
       responses:
         "204": { description: Удалён }
+        "409": { description: Ключ привязан к профилю; сначала требуется явный unbind }
   /api/settings/templates:
     get:
       tags: [settings]
@@ -517,7 +521,7 @@ paths:
       summary: "История запусков эмуляции (ТЗ 4.6)"
       parameters:
         - { name: status, in: query, schema: { type: array, items: { type: string, enum: [running, paused, interrupted, completed, stopped, archived] } }, style: form, explode: false }
-        - { name: kind, in: query, schema: { type: string, enum: [baseline, free, scenario] } }
+        - { name: kind, in: query, schema: { type: string, enum: [baseline, free, scenario, live] } }
         - { $ref: "#/components/parameters/Limit" }
         - { $ref: "#/components/parameters/Cursor" }
       responses:
@@ -596,9 +600,11 @@ paths:
     get:
       tags: [sim]
       summary: "Экспорт запуска (JSON с summary и агрегатами или CSV событий)"
+      description: "После archive JSON читается из сохранённого файла; CSV событий недоступен (409), поскольку строки запуска удалены."
       parameters: [{ name: format, in: query, schema: { type: string, enum: [json, csv], default: json } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, additionalProperties: true } }, text/csv: { schema: { type: string } } } }
+        "409": { $ref: "#/components/responses/Problem" }
   /api/sim/runs/compare:
     get:
       tags: [sim]
@@ -642,7 +648,7 @@ paths:
       summary: "Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)"
       description: "Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409."
       requestBody:
-        content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string } } } } }
+        content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string }, seed: { type: integer }, llm_profile_id: { type: integer } } } } }
       responses:
         "202": { description: Запущен, content: { application/json: { schema: { type: object, properties: { run: { $ref: "#/components/schemas/SimRun" }, client_id: { type: integer } } } } } }
         "409": { $ref: "#/components/responses/Problem" }
@@ -2869,13 +2875,17 @@ components:
         supports_tools: { type: boolean }
         supports_stream: { type: boolean }
         is_active: { type: boolean }
-        api_key_id: { type: [integer, "null"] }
+        api_key_id: { type: [integer, "null"], minimum: 1 }
     LlmApiKey:
       type: object
       properties:
         id: { type: integer }
         provider: { $ref: "#/components/schemas/LlmProvider" }
         label: { type: string }
+        key_hint: { type: [string, "null"] }
+        endpoint_url: { type: [string, "null"] }
+        scope: { type: [string, "null"] }
+        created_at: { type: [string, "null"], format: date-time }
         tokens_used: { type: integer }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
@@ -2978,7 +2988,7 @@ components:
       required: [id, kind, label, status, seed, started_sim]
       properties:
         id: { type: integer, format: int64 }
-        kind: { type: string, enum: [baseline, free, scenario] }
+        kind: { type: string, enum: [baseline, free, scenario, live] }
         label: { type: string }
         scenario_id: { type: [string, "null"] }
         seed: { type: integer }
@@ -3042,6 +3052,8 @@ components:
         title_en: { type: string }
         description_ru: { type: string }
         duration_sim_hours: { type: number }
+        reset_mode_required: { type: [string, "null"], enum: [baseline, null], description: "Обязательный reset из YAML сценария; null — режим выбирает пользователь" }
+        runnable: { type: boolean, description: "В текущем коде есть исполняемый вход inject/file; UI не предлагает недоступный запуск" }
         last_run_at: { type: [string, "null"], format: date-time }
         last_result: { type: [object, "null"], properties: { passed: { type: boolean }, checks: { type: array, items: { type: object } } } }
     ExternalContact:
@@ -3426,6 +3438,8 @@ components:
         llm_profile_code: { type: string }
         prompt_version: { type: string }
         outcome: { type: [string, "null"] }
+        status: { type: string, enum: [running, interrupted, completed, awaiting_human, deferred, failed, fallback_mock, cancelled], description: "Состояние исполнения; interrupted не подменяет бизнес-исход outcome." }
+        interrupted_at: { type: [string, "null"], format: date-time, description: "Реальное время обнаруженного прерывания; очищается при Resume." }
         needed_human: { type: boolean }
         total_tokens: { type: integer }
         total_latency_ms: { type: integer }

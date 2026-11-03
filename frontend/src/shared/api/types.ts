@@ -942,7 +942,12 @@ export interface paths {
                         provider: components["schemas"]["LlmProvider"];
                         label: string;
                         key: string;
-                        tokens_limit?: number;
+                        tokens_limit?: number | null;
+                        rpd_limit?: number | null;
+                        /** @description Точный endpoint credential; по умолчанию endpoint провайдера из конфигурации. Без credentials/query/fragment. */
+                        endpoint_url?: string | null;
+                        /** @description GigaChat OAuth scope; по умолчанию configured scope */
+                        scope?: string | null;
                     };
                 };
             };
@@ -990,6 +995,13 @@ export interface paths {
             responses: {
                 /** @description Удалён */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Ключ привязан к профилю; сначала требуется явный unbind */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1432,7 +1444,7 @@ export interface paths {
             parameters: {
                 query?: {
                     status?: ("running" | "paused" | "interrupted" | "completed" | "stopped" | "archived")[];
-                    kind?: "baseline" | "free" | "scenario";
+                    kind?: "baseline" | "free" | "scenario" | "live";
                     limit?: components["parameters"]["Limit"];
                     cursor?: components["parameters"]["Cursor"];
                 };
@@ -1741,7 +1753,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Экспорт запуска (JSON с summary и агрегатами или CSV событий) */
+        /**
+         * Экспорт запуска (JSON с summary и агрегатами или CSV событий)
+         * @description После archive JSON читается из сохранённого файла; CSV событий недоступен (409), поскольку строки запуска удалены.
+         */
         get: {
             parameters: {
                 query?: {
@@ -1767,6 +1782,7 @@ export interface paths {
                         "text/csv": string;
                     };
                 };
+                409: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -1987,6 +2003,8 @@ export interface paths {
                          */
                         reset_mode?: "none" | "counters" | "baseline";
                         label?: string;
+                        seed?: number;
+                        llm_profile_id?: number;
                     };
                 };
             };
@@ -8068,6 +8086,11 @@ export interface components {
             id?: number;
             provider?: components["schemas"]["LlmProvider"];
             label?: string;
+            key_hint?: string | null;
+            endpoint_url?: string | null;
+            scope?: string | null;
+            /** Format: date-time */
+            created_at?: string | null;
             tokens_used?: number;
             tokens_limit?: number | null;
             requests_today?: number;
@@ -8174,7 +8197,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             /** @enum {string} */
-            kind: "baseline" | "free" | "scenario";
+            kind: "baseline" | "free" | "scenario" | "live";
             label: string;
             scenario_id?: string | null;
             seed: number;
@@ -8253,6 +8276,13 @@ export interface components {
             title_en?: string;
             description_ru?: string;
             duration_sim_hours?: number;
+            /**
+             * @description Обязательный reset из YAML сценария; null — режим выбирает пользователь
+             * @enum {string|null}
+             */
+            reset_mode_required?: "baseline" | null;
+            /** @description В текущем коде есть исполняемый вход inject/file; UI не предлагает недоступный запуск */
+            runnable?: boolean;
             /** Format: date-time */
             last_run_at?: string | null;
             last_result?: {
@@ -8761,6 +8791,16 @@ export interface components {
             llm_profile_code?: string;
             prompt_version?: string;
             outcome?: string | null;
+            /**
+             * @description Состояние исполнения; interrupted не подменяет бизнес-исход outcome.
+             * @enum {string}
+             */
+            status?: "running" | "interrupted" | "completed" | "awaiting_human" | "deferred" | "failed" | "fallback_mock" | "cancelled";
+            /**
+             * Format: date-time
+             * @description Реальное время обнаруженного прерывания; очищается при Resume.
+             */
+            interrupted_at?: string | null;
             needed_human?: boolean;
             total_tokens?: number;
             total_latency_ms?: number;

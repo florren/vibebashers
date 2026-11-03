@@ -1,17 +1,20 @@
-"""Граф агента (T-056): узлы, рёбра, запуск прохода и возобновление после HITL. Лёгкий собственный раннер вместо LangGraph:
-чекпоинт = вход шага wait_human (agent_steps.input), thread_id = agent_runs.thread_id = f"{run_id}:{signal_id}"."""
+"""Граф LangGraph (T-056/T-041), PostgreSQL checkpoints и штатное возобновление HITL."""
 
 from __future__ import annotations
 
 import dataclasses
 import datetime as dt
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 import orjson
 import psycopg
+from langchain_core.runnables import RunnableConfig, RunnableLambda
+from langgraph.graph import END, StateGraph
+from langsmith import tracing_context
 
 from app.agent import nodes
+from app.agent.checkpoints import TransactionalSaver
 from app.agent.nodes import Deps
 from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
@@ -20,6 +23,7 @@ from app.agent.tools.base import ToolContext
 from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
+from app.llm.run_profiles import resolve as run_profiles
 from app.logging import get_logger
 from app.sim.events import dumps
 
@@ -103,6 +107,10 @@ async def load_deps(
     dry_run: bool = False,
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
 ) -> Deps:
+    if not dry_run:
+        chain, profile = await run_profiles(
+            conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
+        )
     ctx = ToolContext(
         conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
     )
@@ -216,52 +224,100 @@ async def _finish(
     )
 
 
-async def run_graph(state: AgentState, deps: Deps, conn: psycopg.AsyncConnection[Any]) -> AgentState:
-    """Исполняет узлы от state.current_node до close или остановки на wait_human. Каждый узел — своя транзакция."""
-    node = state.get("current_node") or "ingest"
-    while True:
-        fn = NODES.get(node)
-        if fn is None:
-            raise RuntimeError(f"узел {node} не найден")
-        try:
-            await deps.begin_step(node)
-            await conn.commit()
-            state = await fn(state, deps)
-            await conn.commit()
-        except Exception as exc:
-            await conn.rollback()
-            log.exception("agent_node_failed", node=node, signal_id=state["signal"]["id"])
-            state["errors"].append(f"{node}: {type(exc).__name__}: {str(exc)[:200]}")
-            try:
-                await deps.record_step(
-                    node,
-                    "error",
-                    {"node": node},
-                    {"error": state["errors"][-1]},
-                    reasoning=f"Ошибка узла {node}; проход завершён с failed.",
-                )
-                await conn.execute(
-                    "update signals set status = 'error', updated_at = now() where id = %s", (state["signal"]["id"],)
-                )
-                await _finish(conn, deps, state, "failed", state["errors"][-1])
-                await conn.commit()
-            except Exception:  # noqa: BLE001
-                await conn.rollback()
-            state["outcome"] = "failed"
-            return state
+async def _execute_node(node: str, state: AgentState, deps: Deps, conn: psycopg.AsyncConnection[Any]) -> AgentState:
+    """Один узел; durable saver фиксирует выход вместе с его эффектами."""
+    fn = NODES[node]
+    try:
+        await deps.begin_step(node)
+        await conn.commit()
+        state = await fn(state, deps)
+    except Exception as exc:
+        await conn.rollback()
+        log.exception("agent_node_failed", node=node, signal_id=state["signal"]["id"])
+        state["errors"].append(f"{node}: {type(exc).__name__}: {str(exc)[:200]}")
+        await deps.record_step(
+            node,
+            "error",
+            {"node": node},
+            {"error": state["errors"][-1]},
+            reasoning=f"Ошибка узла {node}; проход завершён с failed.",
+        )
+        await conn.execute("update signals set status='error',updated_at=now() where id=%s", (state["signal"]["id"],))
+        await _finish(conn, deps, state, "failed", state["errors"][-1])
+        state["outcome"] = "failed"
+        state["current_node"] = END
+    else:
         if node == "wait_human" and state.get("outcome") == "awaiting_human":
             await _finish(conn, deps, state, "awaiting_human")
-            await conn.commit()
-            return state
-        if node == "followup_monitor" and state.get("outcome") == "deferred":
+        elif node == "followup_monitor" and state.get("outcome") == "deferred":
             await _finish(conn, deps, state, "deferred")
-            await conn.commit()
-            return state
-        if node == "close":
+        elif node == "close":
             await _finish(conn, deps, state, state.get("outcome") or "completed")
-            await conn.commit()
-            return state
-        node = state["current_node"]
+    if hasattr(deps, "tokens"):
+        state["recording"] = {
+            "tokens": dict(deps.tokens),
+            "seq": len(deps.steps),
+            "text_bytes_used": deps.text_bytes_used,
+        }
+    # Тот же JSON boundary, который ранее использовали checkpoint wait_human.
+    return orjson.loads(dumps(state))  # type: ignore[no-any-return]
+
+
+def _terminal(node: str, state: AgentState) -> bool:
+    return (
+        node == "close"
+        or (node == "wait_human" and state.get("outcome") == "awaiting_human")
+        or (node == "followup_monitor" and state.get("outcome") == "deferred")
+    )
+
+
+async def run_graph(
+    state: AgentState, deps: Deps, conn: psycopg.AsyncConnection[Any], *, recover: bool = False
+) -> AgentState:
+    """Каждый узел — superstep LangGraph; sync durability до следующего узла."""
+    graph = StateGraph(AgentState)
+
+    def wrap(node: str) -> Callable[[AgentState], Awaitable[AgentState]]:
+        async def execute(value: AgentState) -> AgentState:
+            if saver is None:
+                result = await _execute_node(node, value, deps, conn)
+                await conn.commit()
+            else:
+                async with saver.owner_lock:
+                    result = await _execute_node(node, value, deps, conn)
+            return result
+
+        return execute
+
+    def route(node: str) -> Callable[[AgentState], str]:
+        def next_node(value: AgentState) -> str:
+            return END if _terminal(node, value) else value["current_node"]
+
+        return next_node
+
+    targets = [*NODES, END]
+    for node in NODES:
+        graph.add_node(node, RunnableLambda(wrap(node)))
+        graph.add_conditional_edges(node, route(node), targets)
+    graph.set_conditional_entry_point(lambda value: value.get("current_node") or "ingest", targets)
+    saver = None if deps.ctx.dry_run else TransactionalSaver(conn)
+    compiled = graph.compile(checkpointer=saver)
+    config: RunnableConfig = {"configurable": {"thread_id": state["thread_id"]}, "recursion_limit": 100}
+    was_autocommit = conn.autocommit
+    if was_autocommit and saver is not None:
+        await conn.set_autocommit(False)
+    try:
+        # Внешняя телеметрия не входит в архитектуру проекта.
+        with tracing_context(enabled=False):
+            result = await compiled.ainvoke(None if recover else state, config, durability="sync")
+        await conn.commit()
+        return cast(AgentState, result)
+    except BaseException:
+        await conn.rollback()
+        raise
+    finally:
+        if was_autocommit and saver is not None:
+            await conn.set_autocommit(True)
 
 
 async def process_signal(
@@ -284,16 +340,23 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
+    chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
     )
     pv = prompt_version()
-    profile_row = await (
-        await conn.execute(
-            "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
-            (profile.code,),
-        )
-    ).fetchone()
+    pinned_id = chain.role_profile_ids.get("main")
+    if pinned_id is not None:
+        profile_row = await (
+            await conn.execute("select id,price_in_per_1m,price_out_per_1m from llm_profiles where id=%s", (pinned_id,))
+        ).fetchone()
+    else:
+        profile_row = await (
+            await conn.execute(
+                "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
+                (profile.code,),
+            )
+        ).fetchone()
     if profile_row is None:
         profile_row = await (
             await conn.execute(
@@ -304,6 +367,7 @@ async def process_signal(
     llm_profile_id = int(profile_row[0]) if profile_row else None
     if (
         profile_row
+        and not chain.role_profiles_pinned
         and profile.price_in_per_1m == 0
         and profile.price_out_per_1m == 0
         and (float(profile_row[1] or 0) or float(profile_row[2] or 0))
@@ -315,7 +379,7 @@ async def process_signal(
         )
     row = await (
         await conn.execute(
-            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s,%s::jsonb) returning id",
             (
                 sig["run_id"],
                 signal_id,
@@ -325,6 +389,7 @@ async def process_signal(
                 GRAPH_VERSION,
                 f"{sig['run_id']}:{signal_id}",
                 sim_time,
+                dumps(chain.role_snapshot),
             ),
         )
     ).fetchone()
@@ -359,6 +424,64 @@ async def _restore_recording_state(conn: psycopg.AsyncConnection[Any], deps: Dep
     deps.tokens.update(prompt=int(row[0]), completion=int(row[1]), latency_ms=int(row[2]), cost=float(row[3] or 0))
     deps.steps = [{"seq": i + 1, "node": "?", "status": "ok"} for i in range(int(row[4]))]
     deps.text_bytes_used = int(row[5])
+
+
+async def recover_agent_run(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    agent_run_id: int,
+    chain: ProviderChain,
+    profile: LLMProfile,
+    sim_time: dt.datetime,
+) -> AgentState | None:
+    """Продолжить тот же AR; отсутствие legacy checkpoint не разрешает переиграть эффекты."""
+    locked = await (
+        await conn.execute(
+            "select pg_try_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+    ).fetchone()
+    if not locked or not locked[0]:
+        return None
+    try:
+        row = await (
+            await conn.execute(
+                "select sim_run_id,thread_id,outcome from agent_runs where id=%s and kind='agent'",
+                (agent_run_id,),
+            )
+        ).fetchone()
+        if row is None or row[2] is not None:
+            return None
+        saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": row[1]}})
+        if saved is None:
+            raise ValueError("legacy-проход без durable checkpoint: требуется отдельное ручное восстановление")
+        values = saved.checkpoint["channel_values"]
+        state = cast(AgentState, values.get("__start__", values))
+        if state.get("agent_run_id") != agent_run_id or state.get("run_id") != row[0]:
+            raise ValueError("checkpoint не соответствует восстанавливаемому проходу")
+        deps = await load_deps(
+            conn, chain=chain, profile=profile, run_id=int(row[0]), agent_run_id=agent_run_id, sim_time=sim_time
+        )
+        await _restore_recording_state(conn, deps)
+        recording = state.get("recording") or {}
+        if recording.get("tokens"):
+            deps.tokens.update(recording["tokens"])
+        await conn.execute("update agent_runs set interrupted_at=null,error=null where id=%s", (agent_run_id,))
+        node = state.get("current_node") or "ingest"
+        await deps.record_step(
+            node,
+            "retry",
+            {"agent_run_id": agent_run_id},
+            {"recovery": "durable_checkpoint"},
+            reasoning="Продолжение после прерывания: повтор незавершённого узла из PostgreSQL checkpoint.",
+        )
+        await conn.commit()
+        return await run_graph(state, deps, conn, recover=True)
+    finally:
+        await conn.rollback()
+        await conn.execute(
+            "select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+        await conn.commit()
 
 
 async def resume_after_followup(
@@ -519,6 +642,7 @@ async def wake_due_followups(
     profile: LLMProfile,
     incident_id: int | None = None,
     signal_id: int | None = None,
+    run_id: int | None = None,
 ) -> int:
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
@@ -529,9 +653,10 @@ async def wake_due_followups(
             "and (%s::bigint is null or (f.signal_id=%s and f.reason='awaiting_client')) "
             "and (%s::bigint is null or exists(select 1 from agent_steps checkpoint where checkpoint.run_id=f.agent_run_id "
             "and checkpoint.node='followup_monitor')) "
+            "and (%s::bigint is null or s.run_id=%s) "
             f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
             "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
-            (sim_time, incident_id, incident_id, signal_id, signal_id, signal_id),
+            (sim_time, incident_id, incident_id, signal_id, signal_id, signal_id, run_id, run_id),
         )
     ).fetchall()
     resumed = 0
@@ -584,6 +709,7 @@ async def expire_hitl(
     sim_time: dt.datetime,
     chain: ProviderChain,
     profile: LLMProfile,
+    run_id: int | None = None,
 ) -> None:
     """Просроченные HITL: эскалация cx_lead при наличии team_cx, иначе безопасный modify+resume."""
     pol_row = await (await conn.execute("select value from settings where key = 'policies'")).fetchone()
@@ -594,8 +720,9 @@ async def expire_hitl(
         await conn.execute(
             "select hd.id, hd.agent_run_id, hd.signal_id, hd.incident_id, ar.sim_run_id from human_decisions hd "
             "join agent_runs ar on ar.id = hd.agent_run_id left join signals s on s.id=hd.signal_id "
-            f"where hd.decision is null and hd.requested_sim <= %s and not {LEGACY_MOCK_SQL}",
-            (cutoff,),
+            f"where hd.decision is null and hd.requested_sim <= %s and not {LEGACY_MOCK_SQL} "
+            "and (%s::bigint is null or ar.sim_run_id=%s)",
+            (cutoff, run_id, run_id),
         )
     ).fetchall()
     if not rows:

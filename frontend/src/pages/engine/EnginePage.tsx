@@ -1,3 +1,4 @@
+import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { EntityFilter } from '@/shared/components/EntityFilter'
 import { JourneyLink } from '@/shared/components/JourneyLink'
 import { clsx } from 'clsx'
@@ -61,7 +62,7 @@ export function EnginePage() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs">#{r.id}</span>
                     <Badge tone={r.outcome === 'completed' ? 'ok' : r.outcome === 'awaiting_human' ? 'warn' : r.outcome === 'failed' ? 'danger' : 'info'}>
-                      {tEnum('engine.outcome', r.outcome ?? 'running')}
+                      {tEnum('engine.outcome', agentRunStatus(r))}
                     </Badge>
                     {r.needed_human && <Badge tone="warn">HITL</Badge>}
                     <span className="ml-auto num text-[11px] text-muted">{fmtMs(r.total_latency_ms)}</span>
@@ -123,7 +124,7 @@ function GraphTab({ runId }: { runId: number | null }) {
         {runId ? ` · ${t('common.runId', { id: runId })}` : ''}
       </div>
       <div className="card p-3">
-        <GraphView graph={g.data!} visited={visited} current={run.data?.current_node ?? null} outcome={run.data?.outcome ?? null} />
+        <GraphView graph={g.data!} visited={visited} current={run.data?.current_node ?? null} outcome={run.data?.outcome ?? null} executionStatus={agentRunStatus(run.data)} />
       </div>
       {!runId && <Empty title={t('engine.selectRun')} />}
     </div>

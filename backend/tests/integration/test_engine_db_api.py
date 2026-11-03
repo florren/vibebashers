@@ -181,6 +181,9 @@ def test_audit_downgrade_upgrade_preserves_evidence_and_notifies(seeded):
     import subprocess
     import sys
 
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
     from app.realtime.notify import route
 
     with psycopg.connect(dsn(seeded), autocommit=True) as conn:
@@ -197,7 +200,10 @@ def test_audit_downgrade_upgrade_preserves_evidence_and_notifies(seeded):
         assert result.returncode == 0, result.stderr[-1000:]
     with psycopg.connect(dsn(seeded), autocommit=True) as listener, psycopg.connect(dsn(seeded)) as conn:
         assert conn.execute("select count(*) from db_activity_log").fetchone()[0] == before
-        assert conn.execute("select version_num from alembic_version").fetchone()[0] == "0011"
+        assert (
+            conn.execute("select version_num from alembic_version").fetchone()[0]
+            == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
+        )
         from app.api.engine import DB_ALLOW
 
         triggers = conn.execute("select tgname from pg_trigger where not tgisinternal").fetchall()

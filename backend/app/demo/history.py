@@ -1,5 +1,6 @@
 """#131: аудит исторических связей; явное восстановление ошибочного ожидания после отказа."""
 
+import json
 from typing import Any
 
 from app.agent.nodes import Deps
@@ -10,6 +11,7 @@ from app.i18n import communication_lang, declined_action_text
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
 from app.llm.mock import MockProvider
+from app.llm.run_profiles import no_llm_snapshot
 
 
 async def audit(conn: Any, run_id: int | None, limit: int = 200) -> dict[str, Any]:
@@ -93,15 +95,15 @@ async def repair_rejected(conn: Any, signal_id: int, run_id: int) -> dict[str, A
     arid = (
         await (
             await conn.execute(
-                "insert into agent_runs(kind,sim_run_id,signal_id,client_id,prompt_version,graph_version,started_sim) values ('team_emulator',%s,%s,%s,%s,'operator-repair-v1',%s) returning id",
-                (run_id, signal_id, row[0], version, row[4]),
+                "insert into agent_runs(kind,sim_run_id,signal_id,client_id,prompt_version,graph_version,started_sim,llm_profiles_snapshot) values ('team_emulator',%s,%s,%s,%s,'operator-repair-v1',%s,%s::jsonb) returning id",
+                (run_id, signal_id, row[0], version, row[4], json.dumps(no_llm_snapshot())),
             )
         ).fetchone()
     )[0]
     ctx = ToolContext(conn, run_id=run_id, agent_run_id=arid, sim_time=row[4])
     deps = Deps(
         ctx=ctx,
-        chain=ProviderChain([MockProvider()]),
+        chain=ProviderChain([MockProvider()], offline_mode="mock"),
         profile=LLMProfile(code="operator_repair", provider="mock", model="operator", role="main"),
     )
     await conn.execute("update followups set status='cancelled' where id=any(%s)", ([p[0] for p in pending],))

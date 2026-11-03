@@ -21,6 +21,7 @@ from app.config import get_settings
 from app.ingest.normalizer import create_signal
 from app.ingest.synthetic import is_mock_source
 from app.logging import get_logger
+from app.sim.maintenance import writer_lease
 
 log = get_logger(__name__)
 
@@ -145,22 +146,23 @@ async def polling_worker(stop: asyncio.Event) -> None:
         except TimeoutError:
             pass
         try:
-            async with db() as conn:
-                rows = await fetch_all(
-                    conn,
-                    "select code, kind, channel_code, config, enabled, interval_s, last_polled_at, cursor, is_external, stats "
-                    "from ingest_sources where enabled and kind = 'polling' and interval_s >= 5",
-                )
-                now = dt.datetime.now(dt.UTC)
-                for row in rows:
-                    if is_mock_source(row):
-                        continue  # Синтетика только по явной команде, не по реальному таймеру.
-                    last = row.get("last_polled_at")
-                    if last is not None and (now - last).total_seconds() < int(row["interval_s"]):
-                        continue
-                    url = (row.get("config") or {}).get("url")
-                    if get_settings().profile == "demo" and (row.get("is_external") or is_external_url(url)):
-                        continue
-                    await poll_source(conn, row)
+            async with writer_lease("poll"):
+                async with db() as conn:
+                    rows = await fetch_all(
+                        conn,
+                        "select code, kind, channel_code, config, enabled, interval_s, last_polled_at, cursor, is_external, stats "
+                        "from ingest_sources where enabled and kind = 'polling' and interval_s >= 5",
+                    )
+                    now = dt.datetime.now(dt.UTC)
+                    for row in rows:
+                        if is_mock_source(row):
+                            continue  # Синтетика только по явной команде, не по реальному таймеру.
+                        last = row.get("last_polled_at")
+                        if last is not None and (now - last).total_seconds() < int(row["interval_s"]):
+                            continue
+                        url = (row.get("config") or {}).get("url")
+                        if get_settings().profile == "demo" and (row.get("is_external") or is_external_url(url)):
+                            continue
+                        await poll_source(conn, row)
         except Exception as exc:  # noqa: BLE001 — воркер не должен ронять процесс
             log.warning("ingest_poll_failed", error=str(exc)[:200])
