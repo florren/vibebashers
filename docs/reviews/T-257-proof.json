@@ -177,5 +177,20 @@
     "new-signal-ru-light-desktop.png": "7273bbb6baf299b2a53c7860377aa1316358d5e7f7445145590c90860f658f2a",
     "new-signal-ru-light-mobile-result.png": "0d8104b57e9e311c56b9ac0d3cba23a442f2915cb8b08e3f1be3d2cf4ae1be19",
     "new-signal-ru-light-mobile-top.png": "da1afae17db2b2f75453478d0dd4f2d9c37a98111464593fcb92626d5c0b0eb5"
+  },
+  "root_final_composition": {
+    "runtime": "05f69691ddc033377cfffd56f33948c6d176092b",
+    "parent_map": "4516b741fe03d5a8b2f24fe40797fd7da8e9a267",
+    "source_identity_27a3": {
+      "contracts/api/openapi.yaml": "d04951c7606c262f05d59168ad7205e4be0d60d645ff07e44af333ef7adb6c64",
+      "frontend/src/widgets/JuryModal.tsx": "6fa40b8f6d849e8931b1cf96464cedf5d46242b6864fc89e44e3297c5a654d25",
+      "frontend/src/widgets/Header.tsx": "d651a0206c0facd41a0d8e942e2367fead1c73cb90c74ef0d78ffabcf979b584",
+      "frontend/src/shared/audio/VoiceInput.tsx": "22d5b8b2962cd3f20aea9f616f7784e3e5397eb71f41bfedec71efd84ac14cec",
+      "frontend/src/pages/compliance/LiveMeeting.tsx": "02dd8431113e7c4666974e4234a596cd5968e3d8b84106d2e48ddff90c9d8ea8",
+      "backend/app/stt/registry.py": "d1d7d8b5e60b27518c5615aef3bbe50d840ac42b57c72724e9c1f7421ef76a9f"
+    },
+    "root_checks": "28backend2.81s;556frontend/79;Ruff560/mypy326/bot12/5/drift196;correct npm run build both modes",
+    "native_browser": "prior5/5sourcequalified components unchanged;notnewwholeheadrun",
+    "ci": "pending"
   }
 }

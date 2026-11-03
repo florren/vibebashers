@@ -24,3 +24,23 @@ Rollback: возврат UI/registry commit возвращает прежний 
 - 13 PNG в `docs/screenshots/T-257`; просмотрены desktop ru/light, mobile en/dark result и ru/dark top: текст/controls читаемы, overflow guard green. Машинные source/result/hash — `T-257-proof.json`.
 
 Исторические498/516 frontend и первые actual resize failures относятся к предыдущим source и не выдаются за финальные проверки. Сохранённый локальный failing evidence `/tmp/t257-browser-first.log`, первый output directory `/tmp/t257-browser-results`; final — отдельные файлы. Полный backend `make test` на этом новом API31 source не повторялся: изменённая STT граница покрыта unit/HTTP/PG, общий full/exact-head CI ещё обязателен. Реальные mic/STT и качественная проверка распознавания намеренно не выполнялись. Карточка остаётся in_progress до parent review/CI и полного DoD; T206 целиком этим PR не закрывается.
+
+## Root: финальная композиция
+
+Runtime05f6969 обычными merge включает final Map4516 (runtime d1fc),
+T262 test compatibility05ee и metadata PR204. API31, JuryModal/Header/VoiceInput/
+LiveMeeting/STT registry побайтно совпадают с проверенным27a3; numeric Trace links
+и metadata относятся к проверенным родителям. Public runtime OpenAPI теперь
+объявляет canonical1.5.31.
+
+Root28backend targets GREEN2.81s (STT/metadata/source contract), Ruff560/mypy326,
+bot12/5, drift196/196; полный frontend **556/79files** GREEN. Штатный `npm run build`
+успешно собрал main и personal. Первоначальная shell-проверка дополнительно вызвала
+несуществующий alias `build:personal` после успешной штатной сборки; её failed log
+сохранён, затем только правильный `npm run build` повторён успешно. Это command
+correction, source не менялся.
+
+Прежний actual production browser5/5 и13PNG source-qualified для неизменённых
+Jury/STT/resize компонентов; повторным browser run нового wholehead не называется.
+Final Map имеет собственный новый image proof родителя. Полный exact-headCI
+и интеграция вmain остаются обязательными.
