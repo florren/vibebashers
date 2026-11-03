@@ -25,7 +25,7 @@ export function BranchCard({ data, error, loading, runId, close }: { data: Branc
       <Field k={t('branchMap.csiResponses')} v={value(noCurrent ? null : data.csi.coverage.complaints)} />
       <Field k={t('branchMap.sample')} v={`${value(data.csi.probabilities.sample_complaints)} / ${value(data.csi.probabilities.sample_visits)}`} /></dl>
       <p className="p-3 text-xs text-muted">{t('branchMap.directBasis')}</p>
-      <Link className="block px-3 pb-3 text-sm text-brand hover:underline" to={`/trace/branch/${encodeURIComponent(data.branch.code)}?run_id=${encodeURIComponent(runId)}`}>{t('branchMap.trace')}</Link>
+      <Link className="block px-3 pb-3 text-sm text-brand hover:underline" to={`/trace/branch/${encodeURIComponent(String(data.branch.id))}?run_id=${encodeURIComponent(runId)}`}>{t('branchMap.trace')}</Link>
       <ul className="max-h-40 overflow-auto border-t border-line p-3">{data.signals.items.map(signal => <li key={signal.signal_ref}><IdLink kind="signal" value={signal.signal_ref} runId={runId} /></li>)}</ul>
       {!noCurrent && <p className="px-3 text-xs text-muted">{t('branchMap.signalPreview', { shown: data.signals.items.length, total: data.signals.total })}</p>}
       <p className="p-3 text-xs text-muted">{t('branchMap.snapshot', { time: data.scope.sim_time })}</p>

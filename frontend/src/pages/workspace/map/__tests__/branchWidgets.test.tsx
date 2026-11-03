@@ -32,7 +32,7 @@ it('closed count is native direct linkage; missing/error stays unknown and keybo
 it('card keeps unknown CSI sample and scoped internal links without external href or invented address', () => {
   const { container } = render(<MemoryRouter><BranchCard data={detail} error={null} loading={false} runId="19" close={vi.fn()} /></MemoryRouter>)
   expect(screen.getByText('Неизвестно / Неизвестно')).toBeVisible()
-  expect(container.querySelector('a[href="/trace/branch/VSP-0042?run_id=19"]')).not.toBeNull()
+  expect(container.querySelector('a[href="/trace/branch/42?run_id=19"]')).not.toBeNull()
   expect(container.querySelector('a[href^="http"]')).toBeNull()
 })
 
@@ -61,4 +61,16 @@ it('cluster count separates from the heat-label baseline without moving the nati
   expect(Number(count.getAttribute('y'))).toBeGreaterThan(12)
   fireEvent.keyDown(marker, { key: ' ' })
   expect(select).toHaveBeenCalledWith(grouped)
+})
+
+it('decimal code0042 remains visible but both Trace links address the actual primary key', () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const numericDetail = { ...detail, branch: { ...detail.branch, id: 1, code: '0042' }, scope: { ...detail.scope, branch_id: 1 } }
+  const numericAnalytics = { ...analytics, closure_zones: { ...analytics.closure_zones, items: [{ ...analytics.closure_zones.items[0]!, branch_id: 1, branch_code: '0042' }] } }
+  const { container } = render(<QueryClientProvider client={client}><MemoryRouter><BranchCard data={numericDetail} error={null} loading={false} runId="19" close={vi.fn()} /><BranchAnalytics data={numericAnalytics} runId="19" region={null} onRegion={vi.fn()} offset={0} onOffset={vi.fn()} /></MemoryRouter></QueryClientProvider>)
+  expect(screen.getAllByText('0042')).toHaveLength(2)
+  expect(container.querySelectorAll('a[href="/trace/branch/1?run_id=19"]')).toHaveLength(2)
+  expect(container.querySelector('a[href="/trace/branch/0042?run_id=19"]')).toBeNull()
+  expect(container.querySelector('a[href="/trace/branch/42?run_id=19"]')).toBeNull()
+  client.clear()
 })
