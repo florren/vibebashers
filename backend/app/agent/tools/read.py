@@ -17,9 +17,9 @@ WINDOW_H = 72
 async def get_client_profile(ctx: ToolContext, client_id: int) -> dict[str, Any] | None:
     row = await ctx.fetchone(
         "select c.id, c.display_name, c.segment_code, c.psychotype_code, c.region_code, ci.name_ru, c.social_handles, c.consents, c.contacts, c.churn_risk, s.first_response_min, s.tone, s.hitl_required, s.personal_manager, "
-        "(select state from client_states where client_id = c.id and is_current order by id desc limit 1) "
+        "(select cs.state from client_states cs join sim_runs sr on sr.id=cs.run_id where cs.client_id=c.id and cs.is_current and (cs.run_id=%s or sr.kind='baseline') order by (cs.run_id=%s) desc,cs.id desc limit 1) "
         "from clients c join cities ci on ci.id = c.city_id join segments s on s.code = c.segment_code where c.id = %s",
-        (client_id,),
+        (ctx.run_id, ctx.run_id, client_id),
     )
     if not row:
         return None
@@ -132,6 +132,7 @@ async def find_related_incidents(
     product: str | None,
     region_code: str | None,
     hours: int = 4,
+    fault_id: int | None = None,
 ) -> list[dict[str, Any]]:
     """Открытые инциденты: по error_code/системе/продукту/региону в окне hours сим-часов + открытые инциденты клиента (любое время)."""
     since = ctx.sim_time - dt.timedelta(hours=hours)
@@ -141,10 +142,12 @@ async def find_related_incidents(
         "(p.error_code is not null and i.error_code = p.error_code) as same_error, "
         "(select left(s.text,600) from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id order by s.id limit 1) "
         "from incidents i, p where i.run_id = %s and i.status not in ('closed','rejected','duplicate') and ("
+        "  (%s::bigint is not null and i.fault_id=%s) or "
+        "  (%s::bigint is null and i.fault_id is null and ("
         "  (p.client_id is not null and i.primary_client_id = p.client_id) or "
         "  (i.created_sim >= p.since and ((p.error_code is not null and i.error_code = p.error_code) or (p.system is not null and i.system_code = p.system and i.product_code = p.product) or (p.region_code is not null and i.region_code = p.region_code and i.product_code = p.product and i.mass_impact >= 3)))"
-        ") order by same_error desc, i.created_sim desc limit 8",
-        (client_id, error_code, system, product, region_code, since, ctx.run_id),
+        "))) order by same_error desc, i.created_sim desc limit 8",
+        (client_id, error_code, system, product, region_code, since, ctx.run_id, fault_id, fault_id, fault_id),
     )
     return [
         {

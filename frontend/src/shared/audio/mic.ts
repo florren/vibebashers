@@ -92,3 +92,10 @@ export async function startMic(opts: { channels: 1 | 2; onFrame: (pcm: ArrayBuff
 export function micSupported(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof AudioWorkletNode !== 'undefined'
 }
+
+
+/** Native secure context учитывает небезопасных ancestors; localhost его не обходит. */
+export function microphoneOriginAllowed(location: Pick<Location, 'protocol' | 'hostname'>, secureContext: boolean): boolean {
+  const local = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname.toLowerCase())
+  return secureContext && (location.protocol === 'https:' || location.protocol === 'http:' && local)
+}

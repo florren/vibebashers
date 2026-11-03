@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.18
+  version: 1.5.31
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -160,7 +160,8 @@ paths:
                   db: { type: boolean }
                   setup_completed: { type: boolean }
                   llm: { type: object, additionalProperties: { type: string, enum: [ok, error, disabled] } }
-                  tgbot: { type: string, enum: [running, disabled, error] }
+                  tgbot: { type: string, enum: [running, disabled, error], description: running требует свежего signed poll proof и активного delivery worker; token сам по себе не readiness }
+                  tgbot_username: { type: [string, "null"], description: Только проверенный getMe username свежего polling service }
                   sim_running: { type: boolean }
                   version: { type: string }
 
@@ -280,9 +281,10 @@ paths:
     patch:
       tags: [settings]
       summary: Изменить настройки (частично)
-      requestBody: { required: true, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CxSettingsMap" } } } }
       responses:
         "200": { description: OK }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/settings/env:
     get:
       tags: [settings]
@@ -646,11 +648,11 @@ paths:
     post:
       tags: [scenarios]
       summary: "Запустить сценарий как отдельный запуск эмуляции (ТЗ 4.6, 18)"
-      description: "Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409."
+      description: "Эквивалент POST /api/sim/runs с kind=scenario. Сценарии с именованными клиентами (1, 4, 7) требуют reset_mode=baseline, иначе 409. Сценарий6 mass_notifications — scripted/deferred: проверка actual cohort/consents до нового run (409 insufficient_cohort/consents), native prepared source и paused часы, затем bounded journal phases без inject3. Для journal-owned run Resume/step/jump/reset отклоняются409; Stop/новый run доступны. Только native interrupted AR из его journal восстанавливается по существующему strict checkpoint, без обхода awaiting_human/pinned profiles. Failed AR требует ручного разбора. Lite не обещает120 подходящих клиентов. Отчёт использует только owner modelled_prevented_by_resolution с quality/provenance: complete допускает честный0, legacy NULL/incomplete остаются unknown; Sent/care/already-complained не считаются предотвращёнными жалобами."
       requestBody:
         content: { application/json: { schema: { type: object, properties: { speed_preset: { type: string, enum: [demo_5min, day_12min, realtime] }, reset_mode: { type: string, enum: [none, counters, baseline], default: counters }, label: { type: string }, seed: { type: integer }, llm_profile_id: { type: integer } } } } }
       responses:
-        "202": { description: Запущен, content: { application/json: { schema: { type: object, properties: { run: { $ref: "#/components/schemas/SimRun" }, client_id: { type: integer } } } } } }
+        "202": { description: Запущен (scripted — paused), content: { application/json: { schema: { type: object, properties: { run: { $ref: "#/components/schemas/SimRun" }, client_id: { type: [integer, "null"], description: "null для internal service anchor, без вымышленного клиента" } } } } } }
         "409": { $ref: "#/components/responses/Problem" }
 
   # ---------------------------------------------------------------- signals
@@ -805,6 +807,8 @@ paths:
   /api/incidents/{id}/actions:
     parameters: [{ $ref: "#/components/parameters/IdPath" }]
     post:
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
       tags: [incidents]
       summary: Действие сотрудника CX над инцидентом
       requestBody:
@@ -854,6 +858,8 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HitlItem" } } } }
     post:
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
       tags: [hitl]
       summary: Решение или подтверждение запроса; продолжение только для активного wait_human
       requestBody:
@@ -968,17 +974,22 @@ paths:
       tags: [map]
       summary: Агрегаты по субъектам РФ для тепловой карты
       parameters:
-        - { name: layer, in: query, schema: { type: string, enum: [signals, critical, incidents_open, churn_risk], default: signals } }
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: layer, in: query, schema: { type: string, enum: [signals, critical, incidents_open, churn_risk, incidents, churn], default: signals } }
         - { name: window_hours, in: query, schema: { type: integer, default: 24 } }
       responses:
+        "422": { $ref: "#/components/responses/Problem" }
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RegionHeat" } } } } }
   /api/map/regions/{code}/cities:
     parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
     get:
       tags: [map]
       summary: Drill-down субъект → города
-      parameters: [{ name: window_hours, in: query, schema: { type: integer, default: 24 } }]
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: window_hours, in: query, schema: { type: integer, default: 24 } }
       responses:
+        "422": { $ref: "#/components/responses/Problem" }
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CityHeat" } } } } }
 
   # ---------------------------------------------------------------- metrics
@@ -996,6 +1007,10 @@ paths:
       tags: [metrics]
       summary: Калькулятор потерь без записи в БД
       parameters:
+        - name: rate_code
+          in: query
+          description: Явная ставка из actual dcltv_rates; неизвестная — 422. Не сочетается с product/system. Без параметра прежний автоматический выбор, segment/shares не меняются. Только чтение, единая формула dcltv.compute.
+          schema: { type: string, minLength: 1, maxLength: 120 }
         - { name: affected, in: query, schema: { type: integer, default: 12, minimum: 0, maximum: 100000000 } }
         - { name: product, in: query, schema: { type: string } }
         - { name: system, in: query, schema: { type: string } }
@@ -1004,6 +1019,7 @@ paths:
         - { name: no_return_share, in: query, schema: { type: number, default: 0.5, minimum: 0, maximum: 1 } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/IncidentEconomics" } } } }
+        "422": { $ref: "#/components/responses/Problem" }
 
   /api/metrics/economics:
     get:
@@ -1292,36 +1308,87 @@ paths:
       responses:
         "200": { description: SVG, content: { image/svg+xml: { schema: { type: string } } } }
         "404": { $ref: "#/components/responses/Problem", description: Бот выключен }
-  /api/internal/tgbot/inbound:
+        "503": { $ref: "#/components/responses/Problem", description: Нет свежего poll proof или delivery worker }
+  /api/internal/tgbot/heartbeat:
     post:
       tags: [public]
-      summary: Внутренний приём сообщений от сервиса tgbot (только из docker-сети)
+      summary: Подписанное подтверждение успешного Telegram polling
+      description: |
+        Только service-to-service HMAC, как inbound; подпись привязана к этому path.
+        Сервис передаёт username из getMe после успешного getUpdates. Не вызывает Bot API из backend.
+        Ephemeral proof истекает через90реальных секунд; restart/rotation требует нового proof.
+        Не создаёт signals/notifications/run и не является подтверждением доставки.
+      parameters:
+        - { name: X-CX-Tg-Timestamp, in: header, required: true, schema: { type: string, pattern: '^[0-9]{1,12}$' } }
+        - { name: X-CX-Tg-Signature, in: header, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [chat_id, text, kind]
+              additionalProperties: false
+              required: [bot_id, username, credential_ref]
               properties:
-                chat_id: { type: integer }
+                bot_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                username: { type: string, minLength: 5, maxLength: 32, description: ASCII username из getMe; оканчивается bot без учёта регистра }
+                credential_ref: { type: string, pattern: '^[0-9a-f]{64}$', writeOnly: true, description: HMAC-SHA256 internal_secret от domain cx-tgbot-credential-v1 и token; raw token не передаётся }
+      responses:
+        "200": { description: Proof принят, content: { application/json: { schema: { type: object, required: [accepted], properties: { accepted: { type: boolean, const: true } } } } } }
+        "401": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem", description: Другой bot namespace }
+        "413": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
+  /api/internal/tgbot/inbound:
+    post:
+      tags: [public]
+      summary: Подписанный durable приём сообщений от сервиса tgbot
+      description: |
+        HMAC-SHA256 точного body/method/path и UTC timestamp с окном ±60с; body ≤32768 bytes.
+        Старые kind сохранены, но все callers должны передавать bot_id/update_id и подпись.
+        Это service-to-service transport; пользовательский логин/RBAC не добавляется.
+        Повтор bot_id/update_id с тем же body/chat возвращает receipt без новых side effects;
+        другой body/chat даёт409. accepted означает DB commit, не физическую доставку.
+      parameters:
+        - { name: X-CX-Tg-Timestamp, in: header, required: true, schema: { type: string, pattern: '^[0-9]{1,12}$' } }
+        - { name: X-CX-Tg-Signature, in: header, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chat_id, bot_id, update_id, text, kind]
+              properties:
+                chat_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                bot_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                update_id: { type: integer, minimum: 0, maximum: 9223372036854775807 }
                 username: { type: string }
-                kind: { type: string, enum: [start, is_client, not_client, free_text, contact, region, append] }
-                text: { type: string }
+                kind: { type: string, enum: [start, is_client, not_client, free_text, contact, region, append, message, callback] }
+                text: { type: string, maxLength: 4000 }
                 payload: { type: object, additionalProperties: true }
       responses:
         "200":
-          description: Что ответить пользователю
+          description: Durable receipt и текст поставленного в очередь ответа
           content:
             application/json:
               schema:
                 type: object
+                required: [accepted, update_id, notification_id, reply_text]
                 properties:
+                  accepted: { type: boolean, const: true }
+                  update_id: { type: integer, minimum: 0, maximum: 9223372036854775807 }
+                  notification_id: { type: integer }
                   reply_text: { type: string }
                   buttons: { type: array, items: { type: object, properties: { text: { type: string }, data: { type: string } } } }
                   signal_id: { type: [integer, "null"] }
                   tracking_token: { type: [string, "null"] }
-
+        "401": { $ref: "#/components/responses/Problem", description: Неверная подпись или timestamp }
+        "409": { $ref: "#/components/responses/Problem", description: Несовместимый bot namespace или конфликт update_id }
+        "413": { $ref: "#/components/responses/Problem", description: Body превышает32768 bytes }
+        "422": { $ref: "#/components/responses/Problem", description: Невалидные поля события }
+        "503": { $ref: "#/components/responses/Problem", description: Transport не настроен либо maintenance }
 
   # ===================== v1.3 — внешние площадки (ТЗ 21) =====================
   /api/public/reviews:
@@ -1789,6 +1856,7 @@ paths:
                   partial_latency_ms: { type: [integer, "null"] }
                   final_latency_ms: { type: [integer, "null"] }
                   error: { type: [string, "null"] }
+        "422": { $ref: "#/components/responses/Problem" }
 
   # ===================== v1.3 — меню демонстратора и подстраховка (ТЗ 5.4, 12.7) =====================
   /api/demo/status:
@@ -1907,6 +1975,7 @@ paths:
     post:
       tags: [ingest]
       summary: "[ДТЗ FR-1.2–1.3] Приём сообщения (или массива) в единой схеме; нормализация, матчинг клиента, создание сигнала"
+      description: "Внешний origin=proactive и X-Source-Code=fault_monitor возвращают 422 до prepare/записей: это служебный native producer. Внешние интеграции должны передавать origin=api. Enum UnifiedMessage сохраняет proactive для внутреннего DTO; channel=proactive с внешним origin=api остаётся допустимым."
       parameters: [{ name: source, in: query, schema: { type: string, default: rest_default }, description: "Код адаптера ingest_sources" }]
       requestBody:
         required: true
@@ -2072,6 +2141,8 @@ paths:
           description: OK
           content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/Escalation" } }, next_cursor: { type: [string, "null"] } } } } }
     post:
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
       tags: [escalations]
       summary: Ручная эскалация оператором (created_by = human)
       requestBody:
@@ -2094,6 +2165,8 @@ paths:
   /api/escalations/{id}/ack:
     parameters: [{ $ref: "#/components/parameters/IdPath" }]
     post:
+      parameters:
+        - { $ref: "#/components/parameters/CxRole" }
       tags: [escalations]
       summary: Руководитель принял эскалацию (acknowledged) или закрыл (resolved | dismissed) с резолюцией
       requestBody:
@@ -2275,14 +2348,15 @@ paths:
         - { $ref: "#/components/parameters/CxProductLine" }
         - name: product_line
           in: query
-          schema: { $ref: "../events/common.schema.json#/$defs/product_line" }
+          schema: { type: string, description: "Код направления; явный all снимает soft preset; strict запрещает выход из scope" }
         - name: period
           in: query
           schema: { type: string, enum: [day, week, month, quarter], default: week }
         - { $ref: "#/components/parameters/RunId" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CabinetOverview" } } } }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/cabinet/report:
     get:
       tags: [cabinet]
@@ -2293,7 +2367,7 @@ paths:
         - name: product_line
           in: query
           required: true
-          schema: { $ref: "../events/common.schema.json#/$defs/product_line" }
+          schema: { type: string, description: "Код направления; явный all снимает soft preset; strict запрещает выход из scope" }
         - name: period
           in: query
           schema: { type: string, enum: [day, week, month, quarter], default: month }
@@ -2301,16 +2375,111 @@ paths:
           in: query
           schema: { type: string, enum: [json, xlsx], default: json }
         - { $ref: "#/components/parameters/RunId" }
+        - name: lang
+          in: query
+          schema: { type: string, enum: [ru, en], default: ru }
       responses:
-        "200": { description: OK }
-        "501": { $ref: "#/components/responses/Problem" }
+        "200":
+          description: "Один scoped read-only snapshot; <=10000 signals/incidents/runs each, <=5 MiB JSON и XLSX; превышение — 413 без усечения. Сравнение периодов — только наблюдения, полнота не подтверждена."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CabinetReport' }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "413": { $ref: "#/components/responses/Problem" }
   /api/roles:
     get:
       tags: [cabinet]
       summary: "[ЕТЗ] Пресеты ролей кабинета (ТЗ 24.1)"
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CabinetRoles" } } } }
         "501": { $ref: "#/components/responses/Problem" }
+  /api/cabinet/signals:
+    get:
+      tags:
+      - cabinet
+      summary: '[ЕТЗ] Сигналы кабинета, сортировка и фильтры'
+      parameters:
+      - $ref: '#/components/parameters/CxRole'
+      - $ref: '#/components/parameters/CxProductLine'
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          description: Код направления; явный all снимает soft preset; strict запрещает
+            выход из scope
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+          default: week
+      - $ref: '#/components/parameters/RunId'
+      - name: region
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+      - name: channel
+        in: query
+        schema:
+          type: string
+      - name: red_words
+        in: query
+        description: "true — только red_word; false — без presentation preset; отсутствие — OR preset для compliance_officer, остальные роли без фильтра. Overview не меняется."
+        schema:
+          type: boolean
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - date
+          - level
+          - region
+          default: date
+      - name: direction
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: desc
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CabinetSignals'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
   /api/ingest/csi:
     post:
       tags: [ingest]
@@ -2344,55 +2513,313 @@ paths:
   /api/csi/analytics:
     get:
       tags: [csi]
-      summary: "[ЕТЗ] Аналитика CSI (ТЗ 25.2)"
+      summary: "[ЕТЗ] Read-only аналитика CSI с run/direction/coverage (ТЗ25.3)"
       parameters:
         - { $ref: "#/components/parameters/CxRole" }
-        - name: branch_id
-          in: query
-          schema: { type: integer }
-        - { $ref: "#/components/parameters/RunId" }
+        - { $ref: "#/components/parameters/CxProductLine" }
+        - { name: branch_id, in: query, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+        - { name: run_id, in: query, schema: { type: string, default: current, maxLength: 32 } }
+        - { name: product_line, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: region_code, in: query, schema: { type: string, maxLength: 20 } }
+        - { name: period, in: query, schema: { type: string, enum: [day, week, month, quarter], default: week } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 100000, default: 0 } }
+        - { name: scatter_limit, in: query, schema: { type: integer, minimum: 1, maximum: 5000, default: 1000 } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        "200": { description: "Один read-only snapshot; явные границы sample и неизвестных данных", content: { application/json: { schema: { $ref: "#/components/schemas/CsiAnalyticsResponse" } } } }
+        "403": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/branches:
     get:
-      tags: [branches]
-      summary: "[ЕТЗ] Справочник ВСП (ТЗ 25.3)"
+      tags:
+      - branches
+      summary: '[ЕТЗ] Справочник ВСП: strict direction, TTL 24h'
       parameters:
-        - name: region_code
-          in: query
-          schema: { type: string }
-        - name: status
-          in: query
-          schema: { $ref: "../events/common.schema.json#/$defs/branch_status" }
-        - { $ref: "#/components/parameters/Limit" }
-        - { $ref: "#/components/parameters/Cursor" }
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - open
+          - closed
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          maxLength: 32
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDirectoryResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
   /api/branches/network:
     get:
-      tags: [branches]
-      summary: "[ЕТЗ] Динамика сети ВСП (ТЗ 25.3)"
+      tags:
+      - branches
+      summary: '[ЕТЗ] История сети ВСП с явным provenance'
       parameters:
-        - name: region_code
-          in: query
-          schema: { type: string }
-        - name: months
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 24, default: 12 }
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: months
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 24
+          default: 12
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchNetworkResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /api/branches/analytics:
+    get:
+      tags:
+      - branches
+      summary: '[ЕТЗ] Давление сигналов и зоны закрытия ВСП'
+      parameters:
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+          maxLength: 32
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: region_code
+        in: query
+        schema:
+          type: string
+          maxLength: 20
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+          default: week
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+      responses:
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchAnalyticsResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
+  /api/branches/{code}:
+    get:
+      tags:
+      - branches
+      summary: '[ЕТЗ] Карточка ВСП и явно связанные сигналы'
+      parameters:
+      - { $ref: "#/components/parameters/CxRole" }
+      - { $ref: "#/components/parameters/CxProductLine" }
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 32
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          default: current
+          maxLength: 32
+      - name: product_line
+        in: query
+        schema:
+          type: string
+          maxLength: 80
+      - name: period
+        in: query
+        schema:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+          default: week
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+      responses:
+        '200':
+          description: Read-only snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchDetailResponse'
+        '403':
+          $ref: '#/components/responses/Problem'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+        '422':
+          $ref: '#/components/responses/Problem'
   /api/metrics/cx-index:
     get:
-      tags: [metrics]
-      summary: "[ПРОТО] Демонстрационный индекс CX (ТЗ 26.4)"
+      tags:
+      - metrics
+      summary: '[ПРОТО] Демонстрационный индекс CX'
+      description: Current-only по умолчанию, без неявного baseline. all только явно;
+        отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29
+        semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim
+        или native observed receipt выбранного запуска дают 409 temporal_context_conflict
+        до live projection (all проверяет все запуски). Это defensive boundary,
+        не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
       parameters:
-        - { $ref: "#/components/parameters/RunId" }
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 19
+          default: current
+          pattern: ^(current|all|[1-9][0-9]{0,18})$
+        description: Положительный bigint <=9223372036854775807, current либо all. ASCII
+          only; неизвестный numeric ID404.
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
-        "501": { $ref: "#/components/responses/Problem" }
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CxIndex'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+          description: temporal_context_conflict — известное native evidence позже global as_of.
+        '422':
+          $ref: '#/components/responses/Problem'
+        '503':
+          $ref: '#/components/responses/Problem'
+  /api/metrics/overview:
+    get:
+      tags:
+      - metrics
+      summary: '[ПРОТО] Readonly Обзор: KPI, давление, сохранённые summaries'
+      description: Current-only по умолчанию, без неявного baseline. all только явно;
+        отсутствующий current даёт пустой cohort. Ни записей, ни внешних вызовов. API29
+        semantic proposal. Global as_of общий для всех scope; будущие started_sim/finished_sim
+        или native observed receipt выбранного запуска дают 409 temporal_context_conflict
+        до live projection (all проверяет все запуски). Это defensive boundary,
+        не historical reconstruction; публикация API29 зависит от T041 stale-controller fence.
+      parameters:
+      - name: run_id
+        in: query
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 19
+          default: current
+          pattern: ^(current|all|[1-9][0-9]{0,18})$
+        description: Положительный bigint <=9223372036854775807, current либо all. ASCII
+          only; неизвестный numeric ID404.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsOverview'
+        '404':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+          description: temporal_context_conflict — известное native evidence позже global as_of.
+        '422':
+          $ref: '#/components/responses/Problem'
+        '503':
+          $ref: '#/components/responses/Problem'
   /api/signals/{id}/normalized:
     get:
       tags: [signals]
@@ -2672,8 +3099,8 @@ components:
     CxRole:
       name: X-Cx-Role
       in: header
-      schema: { type: string }
-      description: "[ЕТЗ] Пресет роли кабинета (фильтр представления, не авторизация)"
+      schema: { $ref: "#/components/schemas/CabinetRole" }
+      description: "[ЕТЗ] Пресет роли, не авторизация. По умолчанию cx_lead; неизвестная роль 422 в cabinet и audit writes"
     CxProductLine:
       name: X-Cx-Product-Line
       in: header
@@ -2695,6 +3122,1420 @@ components:
               instance: { type: string }
               errors: { type: array, items: { type: object, properties: { loc: { type: array, items: { type: string } }, msg: { type: string } } } }
   schemas:
+    CxWeights:
+      type: object
+      additionalProperties: false
+      required:
+      - negativity
+      - criticality
+      - sla
+      - churn
+      properties:
+        negativity:
+          type: number
+          minimum: 0
+        criticality:
+          type: number
+          minimum: 0
+        sla:
+          type: number
+          minimum: 0
+        churn:
+          type: number
+          minimum: 0
+      anyOf:
+      - properties:
+          negativity: { exclusiveMinimum: 0 }
+      - properties:
+          criticality: { exclusiveMinimum: 0 }
+      - properties:
+          sla: { exclusiveMinimum: 0 }
+      - properties:
+          churn: { exclusiveMinimum: 0 }
+      description: Конечные буквальные коэффициенты; хотя бы один >0. Не нормируются;
+        default по ТЗ 0.4/0.25/0.2/0.15. Даже нулевой вес не скрывает unknown компонента.
+    CxSettingsMap:
+      type: object
+      additionalProperties: true
+      properties:
+        cx_index:
+          type: object
+          additionalProperties: true
+          properties:
+            weights:
+              $ref: '#/components/schemas/CxWeights'
+    MetricsRunScope:
+      type: object
+      additionalProperties: false
+      required:
+      - requested_run_id
+      - resolved_run_id
+      - all_runs
+      - current_missing
+      properties:
+        requested_run_id: &id005
+          type: string
+        resolved_run_id: &id003
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        all_runs:
+          type: boolean
+        current_missing:
+          type: boolean
+    MetricsWindow:
+      type: object
+      additionalProperties: false
+      required:
+      - starts_sim
+      - ends_sim
+      properties:
+        starts_sim: &id001
+          type: string
+          format: date-time
+        ends_sim: *id001
+      description: Окно (starts_sim, ends_sim], authoritative sim clock.
+    CxComponent:
+      type: object
+      additionalProperties: false
+      required:
+      - value
+      - observed_value
+      - known
+      - total
+      - numerator
+      - status
+      - unit
+      - basis
+      properties:
+        value: &id002
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 100
+        observed_value: *id002
+        known: &id004
+          type: integer
+          minimum: 0
+        total: *id003
+        numerator: *id003
+        status:
+          type: string
+          enum:
+          - complete
+          - empty
+          - partial
+          - unknown
+        unit:
+          type: string
+          const: percent
+        basis:
+          type: string
+          enum:
+          - recorded_classification
+          - observed_classification_receipts
+          - registered_sla_risk
+      description: value только при полном coverage. observed_value описывает только известную
+        часть; не подставляется в общий индекс. N numerator=сумма записанных negativity,
+        C/R/S=число положительных случаев. unknown total не подменяется нулём.
+    CxComponents:
+      type: object
+      additionalProperties: false
+      required:
+      - negativity
+      - criticality
+      - sla
+      - churn
+      properties:
+        negativity:
+          $ref: '#/components/schemas/CxComponent'
+        criticality:
+          $ref: '#/components/schemas/CxComponent'
+        sla:
+          $ref: '#/components/schemas/CxComponent'
+        churn:
+          $ref: '#/components/schemas/CxComponent'
+    CxIndex:
+      type: object
+      additionalProperties: false
+      required:
+      - demonstration
+      - index
+      - previous_index
+      - delta_hour
+      - as_of_sim
+      - window
+      - previous_window
+      - scope
+      - weights
+      - weights_source
+      - weights_error
+      - default_weights
+      - comparison_basis
+      - components
+      - previous_components
+      - sla_basis
+      - sla_forecast_complete
+      - historical_sla_reason
+      - signals
+      - previous_signals
+      - channel_mix
+      - flow
+      properties:
+        demonstration:
+          type: boolean
+          const: true
+        index: *id002
+        previous_index: *id002
+        delta_hour:
+          type:
+          - number
+          - 'null'
+          minimum: -100
+          maximum: 100
+        as_of_sim: *id001
+        window:
+          $ref: '#/components/schemas/MetricsWindow'
+        previous_window:
+          $ref: '#/components/schemas/MetricsWindow'
+        scope:
+          $ref: '#/components/schemas/MetricsRunScope'
+        weights:
+          anyOf:
+          - $ref: '#/components/schemas/CxWeights'
+          - type: 'null'
+        weights_source:
+          type: string
+          enum:
+          - tz_default
+          - configured
+          - invalid
+        weights_error:
+          type:
+          - string
+          - 'null'
+          enum:
+          - null
+          - invalid_cx_index_weights
+        default_weights:
+          $ref: '#/components/schemas/CxWeights'
+        comparison_basis:
+          type: string
+          const: current_weights_on_observed_states
+        components:
+          $ref: '#/components/schemas/CxComponents'
+        previous_components:
+          $ref: '#/components/schemas/CxComponents'
+        sla_basis:
+          type: string
+          const: registered_sla_risk
+        sla_forecast_complete:
+          type: boolean
+          const: false
+        historical_sla_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - null
+          - historical_sla_evidence_unavailable
+        signals: *id004
+        previous_signals: *id004
+        channel_mix:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - channel_code
+            - signals
+            properties:
+              channel_code: *id005
+              signals: *id004
+        flow:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - bucket
+            - starts_sim
+            - ends_sim
+            - signals
+            properties:
+              bucket:
+                type: integer
+                minimum: 0
+                maximum: 23
+              starts_sim: *id001
+              ends_sim: *id001
+              signals: *id004
+          minItems: 24
+          maxItems: 24
+      description: 'Демонстрационный CX=clamp(100−Σwᵢxᵢ,0,100), не CSI/география/денежная
+        формула. Частичный компонент => index NULL, без перенормировки. previous использует
+        те же ТЕКУЩИЕ веса, но только independently observed immutable classify snapshot+receipt
+        на исторический cutoff. Frozen churn_predicted_sim не publication proof. Historical
+        open SLA без deadline snapshot => unknown. S basis зарегистрированный current-stage
+        native warning либо просрочка: отсутствие события не гарантирует отсутствие прогноза
+        риска. Эти semantics требуют review API29.'
+    OverviewKpi:
+      type: object
+      additionalProperties: false
+      required:
+      - signals_today
+      - critical_today
+      - autonomous_share
+      - agent_response_p50_ms
+      - sla_risk_incidents
+      - saved_rub_exact
+      properties:
+        signals_today: *id004
+        critical_today: *id003
+        autonomous_share: *id002
+        agent_response_p50_ms:
+          type:
+          - number
+          - 'null'
+        sla_risk_incidents: *id003
+        saved_rub_exact:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+      description: today=Europe/Moscow midnight..sim now; остальные cohorts rolling24h,
+        SLA=current open stock. autonomous share=finished completed&&!needed_human / all
+        finished agent runs; response=записанная total_latency_ms, не wall clock age.
+        saved=только stored incident_economics; exact Decimal string без потери копеек,
+        partial=NULL, действительно пустой incident cohort=0.
+    OverviewCoverage:
+      type: object
+      additionalProperties: false
+      required:
+      - signals_today
+      - criticality_known_today
+      - agent_runs
+      - outcome_known
+      - latency_known
+      - incidents
+      - economics_known
+      - sla_known
+      - sla_open
+      properties:
+        signals_today: *id004
+        criticality_known_today: *id004
+        agent_runs: *id004
+        outcome_known: *id004
+        latency_known: *id004
+        incidents: *id004
+        economics_known: *id004
+        sla_known: *id004
+        sla_open: *id004
+    OverviewSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - agent_run_id
+      - signal_id
+      - public_id
+      - started_sim
+      - node
+      - mode
+      - text
+      properties:
+        agent_run_id: *id004
+        signal_id: *id004
+        public_id:
+          type:
+          - string
+          - 'null'
+        started_sim: &id006
+          type:
+          - string
+          - 'null'
+          format: date-time
+        node:
+          type: string
+          enum:
+          - classify
+          - instant_decide
+        mode:
+          type: string
+          enum:
+          - mock
+          - replay
+          - live
+          - unknown
+        text:
+          type: string
+          maxLength: 300
+      description: Маскированная сохранённая summary_ru; это исходный язык, не новая генерация/перевод.
+        Mode только из actual source/model, legacy unknown явно unknown.
+    MetricsOverview:
+      type: object
+      additionalProperties: false
+      required:
+      - as_of_sim
+      - scope
+      - window
+      - today_starts_sim
+      - kpi
+      - coverage
+      - economics_basis
+      - oldest_computed_at
+      - sla_basis
+      - sla_forecast_complete
+      - response_basis
+      - pressure
+      - shift
+      - signals_24h
+      properties:
+        as_of_sim: *id001
+        scope:
+          $ref: '#/components/schemas/MetricsRunScope'
+        window:
+          $ref: '#/components/schemas/MetricsWindow'
+        today_starts_sim: *id001
+        kpi:
+          $ref: '#/components/schemas/OverviewKpi'
+        coverage:
+          $ref: '#/components/schemas/OverviewCoverage'
+        economics_basis:
+          type: string
+          const: saved_incident_economics_only
+        oldest_computed_at: *id006
+        sla_basis:
+          type: string
+          const: registered_sla_risk
+        sla_forecast_complete:
+          type: boolean
+          const: false
+        response_basis:
+          type: string
+          const: recorded_agent_run_latency_ms
+        pressure:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - status
+            - criticality
+            - incidents
+            properties:
+              status: *id005
+              criticality: *id005
+              incidents: *id004
+        shift:
+          type: object
+          additionalProperties: false
+          required:
+          - basis
+          - new_llm_call
+          - limit
+          - total
+          - truncated
+          - items
+          properties:
+            basis:
+              type: string
+              const: saved_classification_compendium
+            new_llm_call:
+              type: boolean
+              const: false
+            limit:
+              type: integer
+              const: 8
+            total: *id004
+            truncated:
+              type: boolean
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OverviewSummary'
+              maxItems: 8
+        signals_24h: *id004
+      description: Один REPEATABLE READ READ ONLY snapshot, без LLM, compute/recompute
+        или materialization writes. До 8 фактически сохранённых summaries за24h по received_sim;
+        total/truncated явно показывают ограничение, текст маскирован/ограничен300. Это
+        компиляция, не новый текст агента. Pressure включает реальные текущие статусы
+        инцидентов, без новой бизнес-классификации.
+    CabinetRole:
+      type: string
+      enum:
+      - cx_operator
+      - cx_lead
+      - product_manager
+      - product_head
+      - compliance_officer
+      - bank_head
+      - admin
+    CabinetProductLine:
+      type: object
+      required:
+      - code
+      - name_ru
+      - name_en
+      - rate_code
+      - owner_team_code
+      - owner_is_proxy
+      - product_codes
+      properties:
+        code:
+          type: string
+        name_ru:
+          type: string
+        name_en:
+          type: string
+        rate_code:
+          type:
+          - string
+          - 'null'
+        owner_team_code:
+          type:
+          - string
+          - 'null'
+        owner_is_proxy:
+          type: boolean
+        product_codes:
+          type: array
+          items:
+            type: string
+    CabinetRegion:
+      type: object
+      required:
+      - identified_signals
+      - identified_clients
+      - lat
+      - lon
+      - code
+      - name_ru
+      - name_en
+      - signals
+      - negative
+      - critical
+      - affected_clients
+      - negativity_index
+      - zone
+      - critical_count
+      - copilot_index
+      - zone_index
+      properties:
+        lat: { type: [number, "null"] }
+        lon: { type: [number, "null"] }
+        code:
+          type: string
+        name_ru:
+          type: string
+        name_en:
+          type: string
+        signals:
+          type: integer
+        negative:
+          type: integer
+        critical:
+          type: integer
+        identified_signals: { type: integer, description: "Сигналы с известным client_id" }
+        identified_clients: { type: integer, description: "Различные известные клиенты; не весь охват при partial coverage" }
+        affected_clients:
+          type: [integer, "null"]
+          description: "NULL если хотя бы один сигнал не идентифицирован; 0 только для действительно пустой группы"
+        negativity_index:
+          type:
+          - number
+          - 'null'
+        zone:
+          type: string
+          enum:
+          - red
+          - yellow
+          - green
+        critical_count:
+          type: integer
+        copilot_index:
+          type:
+          - number
+          - 'null'
+        zone_index:
+          type: number
+    CabinetSignal:
+      type: object
+      required:
+      - signal_type
+      - client_public_id
+      - id
+      - public_id
+      - run_id
+      - product_line_code
+      - received_sim
+      - sentiment
+      - criticality
+      - region_code
+      - channel_code
+      - source_platform
+      - client_id
+      - flags
+      - red_words
+      - status
+      - summary
+      - sla_due_sim
+      - incidents
+      properties:
+        signal_type: { type: [string, "null"] }
+        client_public_id: { type: [string, "null"] }
+        id:
+          type: integer
+        public_id:
+          type: string
+        run_id:
+          type: integer
+        product_line_code:
+          type:
+          - string
+          - 'null'
+        received_sim:
+          type: string
+          format: date-time
+        sentiment:
+          type:
+          - string
+          - 'null'
+        criticality:
+          type:
+          - string
+          - 'null'
+        region_code:
+          type:
+          - string
+          - 'null'
+        channel_code:
+          type: string
+        source_platform:
+          anyOf:
+          - $ref: '#/components/schemas/SourcePlatform'
+          - type: 'null'
+        client_id:
+          type:
+          - integer
+          - 'null'
+        flags:
+          type: array
+          items:
+            type: string
+        red_words:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        summary:
+          type: string
+        sla_due_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        incidents:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - public_id
+            - status
+            properties:
+              id:
+                type: integer
+              public_id:
+                type: string
+              status:
+                type: string
+    CabinetSignals:
+      description: Обращения клиентов; служебные origin=proactive anchors исключены из списка/total. Technical Trace/raw history и реальные инциденты/экономика сохраняются.
+      type: object
+      required:
+      - items
+      - total
+      - next_offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetSignal'
+        total:
+          type: integer
+        next_offset:
+          type:
+          - integer
+          - 'null'
+    CabinetReport:
+      type: object
+      required:
+      - lang
+      - overview
+      - summary_ru
+      - summary
+      - kpi
+      - charts
+      - previous
+      - signals
+      - top_problems
+      - attention
+      - attention_total
+      - red_phrase_signals
+      - red_phrase_action
+      - method
+      - money_exact
+      - red_phrase_attention
+      - sla_warning_count
+      - sla_warning_note
+      properties:
+        lang:
+          type: string
+          enum:
+          - ru
+          - en
+        overview:
+          $ref: '#/components/schemas/CabinetOverview'
+        summary_ru:
+          type: array
+          items:
+            type: string
+        summary:
+          type: array
+          items:
+            type: string
+        kpi:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - label
+            - value
+            - unit
+            - delta
+            - verdict
+            - delta_unit
+            properties:
+              code:
+                type: string
+                enum:
+                - signals
+                - negative
+                - critical
+                - loss
+                - prevented
+                - incidents
+              label:
+                type: string
+              value:
+                type:
+                - number
+                - 'null'
+                description: Текущее наблюдаемое значение. Для RUB точные суммы — в money_exact;
+                  numeric используется для совместимой визуализации.
+              unit:
+                type: string
+              delta:
+                type:
+                - number
+                - 'null'
+                description: 'Наблюдаемая разница: counts, процентные пункты или RUB по
+                  delta_unit; NULL при отсутствии знаменателя/полной сохранённой экономики.
+                  Для денег точный источник money_exact.kpi.*_delta_rub.'
+              verdict:
+                type: string
+              delta_unit:
+                type: string
+                enum:
+                - count
+                - percentage_points
+                - RUB
+        charts:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - title_insight
+            - note
+            properties:
+              code:
+                type: string
+                enum:
+                - daily
+                - monthly
+                - sources
+              title_insight:
+                type: string
+              note:
+                type: string
+        previous:
+          type: object
+          required:
+          - since_sim
+          - sim_time
+          - signals
+          - note
+          - kpi
+          properties:
+            since_sim:
+              type: string
+              format: date-time
+            sim_time:
+              type: string
+              format: date-time
+            signals:
+              type: integer
+            note:
+              type: string
+            kpi:
+              type: object
+              required:
+              - signals
+              - sentiment_known
+              - negative
+              - criticality_known
+              - critical
+              - incidents
+              - economics_known
+              - potential_loss_rub
+              - prevented_loss_rub
+              - negative_share
+              - critical_share
+              properties:
+                signals:
+                  type: integer
+                sentiment_known:
+                  type: integer
+                negative:
+                  type: integer
+                criticality_known:
+                  type: integer
+                critical:
+                  type: integer
+                incidents:
+                  type: integer
+                economics_known:
+                  type: integer
+                potential_loss_rub:
+                  type:
+                  - number
+                  - 'null'
+                prevented_loss_rub:
+                  type:
+                  - number
+                  - 'null'
+                negative_share:
+                  type:
+                  - number
+                  - 'null'
+                critical_share:
+                  type:
+                  - number
+                  - 'null'
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetSignal'
+        top_problems:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            - sla_warning_current
+            - sla_warning_event_id
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              clients:
+                type:
+                - integer
+                - 'null'
+              identified_clients:
+                type: integer
+              region:
+                type: string
+              status:
+                type: string
+              team:
+                type: string
+              action:
+                type: string
+              sla_warning_current:
+                type: boolean
+                description: Только native warning той же стадии/срока; false не доказывает
+                  отсутствие риска при неполной истории.
+              sla_warning_event_id:
+                type:
+                - integer
+                - 'null'
+        attention:
+          type: array
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - clients
+            - identified_clients
+            - region
+            - status
+            - team
+            - action
+            - recommendation
+            - sla_warning_current
+            - sla_warning_event_id
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              clients:
+                type:
+                - integer
+                - 'null'
+              identified_clients:
+                type: integer
+              region:
+                type: string
+              status:
+                type: string
+              team:
+                type: string
+              action:
+                type: string
+              recommendation:
+                type: string
+              sla_warning_current:
+                type: boolean
+                description: Только native warning той же стадии/срока; false не доказывает
+                  отсутствие риска при неполной истории.
+              sla_warning_event_id:
+                type:
+                - integer
+                - 'null'
+        attention_total:
+          type: integer
+        red_phrase_signals:
+          type: integer
+        red_phrase_action:
+          type: string
+        method:
+          type: object
+          required:
+          - formula_ru
+          - formula_note
+          - rules_version
+          - rules_note
+          - app_version
+          - run_public_id
+          - requested_run
+          - synthetic
+          - terms
+          - generated_sim
+          - signal_limit
+          - byte_limit
+          properties:
+            formula_ru:
+              type: array
+              items:
+                type: string
+            formula_note:
+              type: string
+            rules_version:
+              type: array
+              items:
+                type: object
+                required:
+                - code
+                - version
+                properties:
+                  code:
+                    type: string
+                  version:
+                    type: integer
+            rules_note:
+              type: string
+            app_version:
+              type: string
+            run_public_id:
+              type: array
+              items:
+                type: string
+            requested_run:
+              type: string
+            synthetic:
+              type: string
+            terms:
+              type: string
+            generated_sim:
+              type: string
+              format: date-time
+            signal_limit:
+              type: integer
+              const: 10000
+            byte_limit:
+              type: integer
+              const: 5242880
+        money_exact:
+          type: object
+          required:
+          - kpi
+          - daily
+          - monthly
+          - previous
+          properties:
+            kpi:
+              type: object
+              required:
+              - potential_loss_rub
+              - prevented_loss_rub
+              - potential_loss_delta_rub
+              - prevented_loss_delta_rub
+              properties:
+                potential_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                potential_loss_delta_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_delta_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+            daily:
+              type: array
+              items:
+                type: object
+                required:
+                - day
+                - potential_loss_rub
+                - prevented_loss_rub
+                properties:
+                  day:
+                    type: string
+                    format: date
+                  potential_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+                  prevented_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+            monthly:
+              type: array
+              items:
+                type: object
+                required:
+                - month
+                - potential_loss_rub
+                properties:
+                  month:
+                    type: string
+                    format: date
+                  potential_loss_rub:
+                    type:
+                    - string
+                    - 'null'
+                    pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                    description: Точная десятичная сумма RUB из сохранённых facts; text
+                      в XLSX исключает потерю копеек.
+            previous:
+              type: object
+              required:
+              - potential_loss_rub
+              - prevented_loss_rub
+              properties:
+                potential_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+                prevented_loss_rub:
+                  type:
+                  - string
+                  - 'null'
+                  pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+                  description: Точная десятичная сумма RUB из сохранённых facts; text
+                    в XLSX исключает потерю копеек.
+        red_phrase_attention:
+          type: array
+          maxItems: 10
+          description: До 10 первых по времени red-word сигналов; полный набор в signals,
+            общее число red_phrase_signals. Только записанные связанные команды, иначе
+            unknown.
+          items:
+            type: object
+            required:
+            - public_id
+            - problem
+            - team
+            properties:
+              public_id:
+                type: string
+              problem:
+                type: string
+              team:
+                type: string
+        sla_warning_count:
+          type: integer
+          minimum: 0
+          description: Количество подтверждённых native warnings текущей стадии, не прогноз
+            полного риска.
+        sla_warning_note:
+          type: string
+    CabinetOverview:
+      description: Signal cohorts считают обращения клиентов, без служебных origin=proactive anchors; unknown legacy origin сохраняется. Реальные incident/economics facts не исключаются.
+      type: object
+      required:
+      - scope
+      - product_lines
+      - kpi
+      - regions
+      - top_regions
+      - sources
+      - daily
+      - monthly
+      - csi
+      - history_note
+      - economics_note
+      properties:
+        scope:
+          type: object
+          required:
+          - role
+          - visibility
+          - product_lines
+          - run_ids
+          - period
+          - since_sim
+          - sim_time
+          properties:
+            role:
+              type: string
+              enum:
+              - cx_operator
+              - cx_lead
+              - product_manager
+              - product_head
+              - compliance_officer
+              - bank_head
+              - admin
+            visibility:
+              type: string
+              enum:
+              - soft
+              - strict
+            product_lines:
+              type:
+              - array
+              - 'null'
+              items:
+                type: string
+            run_ids:
+              type:
+              - array
+              - 'null'
+              items:
+                type: integer
+            period:
+              type: string
+              enum:
+              - day
+              - week
+              - month
+              - quarter
+            since_sim:
+              type: string
+              format: date-time
+            sim_time:
+              type: string
+              format: date-time
+        product_lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetProductLine'
+        kpi:
+          type: object
+          required:
+          - signals
+          - sentiment_known
+          - negative
+          - criticality_known
+          - critical
+          - mapped
+          - no_geo
+          - incidents
+          - economics_known
+          - potential_loss_rub
+          - prevented_loss_rub
+          - oldest_computed_at
+          - negative_share
+          - critical_share
+          properties:
+            signals:
+              type: integer
+            sentiment_known:
+              type: integer
+            negative:
+              type: integer
+            criticality_known:
+              type: integer
+            critical:
+              type: integer
+            mapped:
+              type: integer
+            no_geo:
+              type: integer
+            incidents:
+              type: integer
+            economics_known:
+              type: integer
+            potential_loss_rub:
+              type:
+              - number
+              - 'null'
+            prevented_loss_rub:
+              type:
+              - number
+              - 'null'
+            oldest_computed_at:
+              type:
+              - string
+              - 'null'
+              format: date-time
+            negative_share:
+              type:
+              - number
+              - 'null'
+            critical_share:
+              type:
+              - number
+              - 'null'
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetRegion'
+        top_regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CabinetRegion'
+        sources:
+          type: array
+          items:
+            type: object
+            required:
+            - platform
+            - signals
+            properties:
+              platform:
+                anyOf:
+                - $ref: '#/components/schemas/SourcePlatform'
+                - type: 'null'
+              signals:
+                type: integer
+        daily:
+          type: array
+          items:
+            type: object
+            required:
+            - day
+            - signals
+            - incidents
+            - economics_known
+            - potential_loss_rub
+            - prevented_loss_rub
+            properties:
+              day:
+                type: string
+                format: date
+              signals:
+                type:
+                - integer
+                - 'null'
+              incidents:
+                type:
+                - integer
+                - 'null'
+              economics_known:
+                type:
+                - integer
+                - 'null'
+              potential_loss_rub:
+                type:
+                - number
+                - 'null'
+              prevented_loss_rub:
+                type:
+                - number
+                - 'null'
+        monthly:
+          type: array
+          items:
+            type: object
+            required:
+            - month
+            - signals
+            - sentiment_known
+            - negative
+            - critical
+            - potential_loss_rub
+            - is_synthetic
+            - is_partial
+            - quality_unknown
+            - coverage_start
+            - coverage_end
+            properties:
+              month:
+                type: string
+                format: date
+              signals:
+                type: integer
+              sentiment_known:
+                type:
+                - integer
+                - 'null'
+              negative:
+                type: integer
+              critical:
+                type: integer
+              potential_loss_rub:
+                type:
+                - number
+                - 'null'
+              is_synthetic:
+                type: boolean
+              is_partial:
+                type:
+                - boolean
+                - 'null'
+              quality_unknown:
+                type: boolean
+              coverage_start:
+                type:
+                - string
+                - 'null'
+                format: date-time
+              coverage_end:
+                type:
+                - string
+                - 'null'
+                format: date-time
+        csi:
+          type: object
+          required:
+          - branch_known
+          - wait_known
+          - responses
+          - branches
+          - average_wait_min
+          properties:
+            branch_known: { type: integer }
+            wait_known: { type: integer }
+            responses:
+              type: integer
+            branches:
+              type: [integer, "null"]
+            average_wait_min:
+              type:
+              - number
+              - 'null'
+        history_note:
+          type: string
+        economics_note:
+          type: string
+    CabinetRoles:
+      type: object
+      required:
+      - default_role
+      - items
+      properties:
+        default_role:
+          type: string
+          enum:
+          - cx_operator
+          - cx_lead
+          - product_manager
+          - product_head
+          - compliance_officer
+          - bank_head
+          - admin
+        items:
+          type: array
+          items:
+            type: object
+            required:
+            - code
+            - name_ru
+            - name_en
+            - scope
+            - default_red_words
+            - default_compliance_filter
+            properties:
+              code:
+                type: string
+                enum:
+                - cx_operator
+                - cx_lead
+                - product_manager
+                - product_head
+                - compliance_officer
+                - bank_head
+                - admin
+              name_ru:
+                type: string
+              name_en:
+                type: string
+              scope:
+                type: string
+                enum:
+                - one
+                - configured
+                - all
+              default_compliance_filter: { type: boolean, description: "OR: red_word, legal_regulatory, связанный incident_type misselling; только фильтр списка" }
+              default_red_words:
+                type: boolean
     DemoExecutionRequest:
       type: object
       additionalProperties: false
@@ -2886,10 +4727,18 @@ components:
         endpoint_url: { type: [string, "null"] }
         scope: { type: [string, "null"] }
         created_at: { type: [string, "null"], format: date-time }
-        tokens_used: { type: integer }
+        tokens_used: { type: integer, description: Legacy hint до явного reconciliation; при usage_known=false не означает полный расход }
+        observed_tokens_floor: { type: integer, minimum: 0, readOnly: true, description: Неоткатываемый подтверждённый app-observed или operator-declared floor }
+        usage_known: { type: boolean, readOnly: true, description: Подтверждён полный app-scoped расход; false запрещает считать remaining по legacy hint }
+        usage_source: { type: string, readOnly: true }
+        usage_as_of: { type: [string, "null"], format: date-time, readOnly: true }
+        requests_known: { type: boolean, readOnly: true }
+        requests_day: { type: string, format: date, readOnly: true, description: Реальная UTC дата operational counter; не SimClock }
+        tokens_remaining: { type: [integer, "null"], minimum: 0, readOnly: true, description: null — остаток неизвестен или лимит не задан; не0 }
+        requests_remaining: { type: [integer, "null"], minimum: 0, readOnly: true }
         tokens_limit: { type: [integer, "null"] }
         requests_today: { type: integer }
-        rpd_limit: { type: [integer, "null"] }
+        rpd_limit: { type: [integer, "null"], description: Настроенный app key cap; у legacy env card без сохранённого alias null. Provider-reported tier не является этим cap; profile scopes независимы }
         balance_usd: { type: [number, "null"], description: OpenRouter — из GET /api/v1/key }
         is_active: { type: boolean }
         last_error: { type: [string, "null"] }
@@ -3066,9 +4915,19 @@ components:
         region_code: { type: string }
         city_id: { type: integer }
         telegram_chat_id: { type: integer }
+    SourcePlatform:
+      type: object
+      required: [code, name_ru, name_en, type]
+      properties:
+        code: { type: string }
+        name_ru: { type: string }
+        name_en: { type: string }
+        type: { type: string, enum: [review_portal, telegram_channel, app_store, forum, other] }
+      description: Известная площадка из catalog; только текст, без URL и внешних ссылок
     Signal:
       type: object
       properties:
+        source_platform: { anyOf: [{ $ref: "#/components/schemas/SourcePlatform" }, { type: "null" }] }
         tags: { type: array, items: { type: string } }
         run_id: { type: integer }
         run_public_id: { type: string }
@@ -3189,6 +5048,7 @@ components:
         to_status: { type: string }
         actor_type: { type: string }
         actor_ref: { type: [string, "null"] }
+        actor_role: { anyOf: [{ $ref: "#/components/schemas/CabinetRole" }, { type: "null" }] }
         reason: { type: [string, "null"] }
         changed_sim: { type: string, format: date-time }
     Artifact:
@@ -3223,7 +5083,7 @@ components:
         template_code: { type: [string, "null"] }
         subject: { type: [string, "null"] }
         body: { type: string }
-        status: { type: string }
+        status: { type: string, description: "unknown — Bot API мог принять сообщение, но подтверждение не получено; автоматического resend нет" }
         sent_sim: { type: [string, "null"], format: date-time }
         client_id: { type: [integer, "null"] }
         incident_id: { type: [integer, "null"] }
@@ -3304,6 +5164,7 @@ components:
         waiting_minutes: { type: number }
         decision: { type: [string, "null"] }
         decided_by: { type: [string, "null"] }
+        actor_role: { anyOf: [{ $ref: "#/components/schemas/CabinetRole" }, { type: "null" }] }
     HitlFeedback:
       type: object
       required: [id, human_decision_id, idempotency_key, comment, recorded_by, recorded_sim, recorded_at]
@@ -4918,3 +6779,1128 @@ components:
       properties:
         messages: { type: array, items: { type: object, required: [public_id, text, status, received_at], properties: { public_id: { type: string }, text: { type: string }, display_name: { type: string, maxLength: 120 }, status: { type: string }, received_at: { type: string, format: date-time } } } }
         answers: { type: array, items: { type: object, required: [id, text, at], properties: { id: { type: integer }, text: { type: string }, at: { type: string, format: date-time } } } }
+
+    CsiAnalyticsScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      - run_ids
+      - period
+      - since_sim
+      - sim_time
+      - branch_id
+      - region_code
+      properties:
+        role:
+          $ref: '#/components/schemas/CabinetRole'
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+        run_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+            minimum: 1
+            format: int64
+        period:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+        since_sim:
+          type: string
+          format: date-time
+        sim_time:
+          type: string
+          format: date-time
+        branch_id:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+        region_code:
+          type:
+          - string
+          - 'null'
+      description: Пресеты представления не являются авторизацией; время периода относительно текущего native SimTime,
+        run scope current-only по умолчанию, выбранный id либо явный all.
+    CsiComplaint:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - csi_no
+      - received_sim
+      - response_at
+      - branch_id
+      - branch_code
+      - region_code
+      - product_line_code
+      - direction_source
+      - position
+      - wait_min
+      - service_min
+      - redirects
+      - criticality
+      - summary
+      properties:
+        signal_ref:
+          type: string
+        csi_no:
+          type:
+          - string
+          - 'null'
+          pattern: ^CSI-\d{3,6}$
+        received_sim:
+          type: string
+          format: date-time
+        response_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        branch_id:
+          type:
+          - integer
+          - 'null'
+        branch_code:
+          type:
+          - string
+          - 'null'
+        region_code:
+          type:
+          - string
+          - 'null'
+        product_line_code:
+          type:
+          - string
+          - 'null'
+        direction_source:
+          type: string
+          enum:
+          - cohort_declared
+          - classified
+          - unknown
+        position:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        wait_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        service_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        redirects:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        criticality:
+          type:
+          - string
+          - 'null'
+          enum:
+          - high
+          - medium
+          - low
+          - null
+        summary:
+          type: string
+          maxLength: 500
+      description: Нет имён/контактов сотрудников. direction_source отличает объявленное направление синтетической когорты
+        от classifier. response_at есть только у зарегистрированного sample; received_sim не подменяется.
+    CsiScatterPoint:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - wait_min
+      - service_min
+      - criticality
+      - branch_code
+      properties:
+        signal_ref:
+          type: string
+        wait_min:
+          type: number
+          minimum: 0
+        service_min:
+          type: number
+          minimum: 0
+        criticality:
+          type:
+          - string
+          - 'null'
+          enum:
+          - high
+          - medium
+          - low
+          - null
+        branch_code:
+          type:
+          - string
+          - 'null'
+    CsiPosition:
+      type: object
+      additionalProperties: false
+      required:
+      - position
+      - complaints
+      - known_employees
+      - anonymous_complaints
+      properties:
+        position:
+          type:
+          - string
+          - 'null'
+        complaints:
+          type: integer
+          minimum: 0
+        known_employees:
+          type: integer
+          minimum: 0
+        anonymous_complaints:
+          type: integer
+          minimum: 0
+    CsiTenureGroup:
+      type: object
+      additionalProperties: false
+      required:
+      - group
+      - employees
+      - known_tenure
+      - minimum
+      - maximum
+      - q1
+      - median
+      - q3
+      properties:
+        group:
+          type: string
+          enum:
+          - with_complaints
+          - without_complaints
+        employees:
+          type: integer
+          minimum: 0
+        known_tenure:
+          type: integer
+          minimum: 0
+        minimum:
+          type: [integer, 'null']
+          minimum: 0
+        maximum:
+          type: [integer, 'null']
+          minimum: 0
+        q1:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        median:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        q3:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+      description: Каждый текущий активный сотрудник выбранных ВСП учитывается один раз; стаж на общем as_of_sim. Missing/future
+        position_since_sim не становится нулевым стажем. Квартили R7/percentile_cont; whiskers — наблюдённые min/max, не выдуманные percentiles.
+    CsiHeatmapRegion:
+      type: object
+      additionalProperties: false
+      required:
+      - region_code
+      - complaints
+      properties:
+        region_code:
+          type:
+          - string
+          - 'null'
+        complaints:
+          type: integer
+          minimum: 0
+    CsiTopBranch:
+      type: object
+      additionalProperties: false
+      required:
+      - branch_id
+      - branch_code
+      - branch_name
+      - region_code
+      - complaints
+      - average_wait_min
+      properties:
+        branch_id:
+          type: integer
+          minimum: 1
+        branch_code:
+          type: string
+        branch_name:
+          type: string
+          maxLength: 200
+        region_code:
+          type: string
+        complaints:
+          type: integer
+          minimum: 0
+        average_wait_min:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+    CsiProbabilityBucket:
+      type: object
+      additionalProperties: false
+      required:
+      - bucket
+      - complaints
+      - visits
+      - probability
+      properties:
+        bucket:
+          type: string
+          enum:
+          - 0-5
+          - 5-15
+          - 15-30
+          - 30+
+          - '0'
+          - '1'
+          - 2+
+        complaints:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        visits:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        probability:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          maximum: 1
+      description: Числитель и знаменатель относятся только к полным зарегистрированным когортам. Нет подходящей когорты
+        или visits=0 — probability=null; unknown не подменяется нулём.
+    CsiProbabilityAxis:
+      type: object
+      additionalProperties: false
+      required:
+      - buckets
+      - spearman
+      - n_buckets
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiProbabilityBucket'
+          minItems: 3
+          maxItems: 4
+        spearman:
+          type:
+          - number
+          - 'null'
+          minimum: -1
+          maximum: 1
+        n_buckets:
+          type: integer
+          minimum: 0
+          maximum: 4
+      description: Spearman по ordinal bucket и bucket probability с average tied ranks; n_buckets — число пригодных
+        корзин, не число посетителей. Constant series/n<2 — null; это не причинность на уровне людей.
+    CsiProbabilities:
+      type: object
+      additionalProperties: false
+      required:
+      - overlapping_cohorts
+      - incomplete_cohorts
+      - partial_window_cohorts
+      - complete_cohorts
+      - synthetic
+      - sample_complaints
+      - sample_visits
+      - time_basis
+      - scope
+      - legacy_denominators_usable
+      - mixed_sources
+      - wait
+      - redirects
+      properties:
+        overlapping_cohorts:
+          type: integer
+          minimum: 0
+        incomplete_cohorts:
+          type: integer
+          minimum: 0
+        partial_window_cohorts:
+          type: integer
+          minimum: 0
+        complete_cohorts:
+          type: integer
+          minimum: 0
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        sample_complaints:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        sample_visits:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        time_basis:
+          type: string
+          const: cohort_response_at
+        scope:
+          type: string
+          const: registered_complete_cohorts
+        legacy_denominators_usable:
+          type: boolean
+          const: false
+        mixed_sources:
+          type: boolean
+        wait:
+          $ref: '#/components/schemas/CsiProbabilityAxis'
+        redirects:
+          $ref: '#/components/schemas/CsiProbabilityAxis'
+      description: Read-only integrity проверяет immutable membership/visits digests в том же MVCC snapshot. Частичное
+        observation window не даёт вероятности. Legacy csi_visits_agg без run/cohort provenance не используется. synthetic
+        относится только к sample, не ко всей популяции жалоб; mixed/no sample остаётся null.
+    CsiAnalyticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - scope
+      - coverage
+      - complaints
+      - scatter
+      - positions
+      - tenure
+      - heatmap
+      - top_branches
+      - probabilities
+      properties:
+        scope:
+          $ref: '#/components/schemas/CsiAnalyticsScope'
+        coverage:
+          type: object
+          additionalProperties: false
+          required:
+          - complaints
+          - branch_known
+          - direction_known
+          - employee_known
+          - cohort_bound
+          - scatter_total
+          - uncohorted
+          - time_basis
+          properties:
+            complaints:
+              type: integer
+              minimum: 0
+            branch_known:
+              type: integer
+              minimum: 0
+            direction_known:
+              type: integer
+              minimum: 0
+            employee_known:
+              type: integer
+              minimum: 0
+            cohort_bound:
+              type: integer
+              minimum: 0
+            scatter_total:
+              type: integer
+              minimum: 0
+            uncohorted:
+              type: integer
+              minimum: 0
+            time_basis:
+              type: string
+              const: native_received_sim
+        complaints:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiComplaint'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+        scatter:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - shown
+          - has_more
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiScatterPoint'
+              maxItems: 5000
+            total:
+              type: integer
+              minimum: 0
+            shown:
+              type: integer
+              minimum: 0
+            has_more:
+              type: boolean
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiPosition'
+        tenure:
+          type: object
+          additionalProperties: false
+          required:
+          - groups
+          - unit
+          - as_of_sim
+          - population
+          properties:
+            groups:
+              type: array
+              items:
+                $ref: '#/components/schemas/CsiTenureGroup'
+              minItems: 2
+              maxItems: 2
+            unit:
+              type: string
+              const: days
+            as_of_sim:
+              type: string
+              format: date-time
+            population:
+              type: string
+              const: current_active_branch_roster
+        heatmap:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiHeatmapRegion'
+        top_branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/CsiTopBranch'
+          maxItems: 10
+        probabilities:
+          $ref: '#/components/schemas/CsiProbabilities'
+      description: 'T-248: описательная CSI аналитика. Жалобы фильтруются по native_received_sim; вероятности — по полной
+        зарегистрированной когорте и source observation window. Все поля сохраняют unknown, GET не пишет данные и не
+        вызывает LLM.'
+    BranchDirectoryMetadata:
+      type: object
+      additionalProperties: false
+      required:
+      - mode
+      - synthetic
+      - as_of_sim
+      - scope
+      properties:
+        mode:
+          type:
+          - string
+          - 'null'
+          enum:
+          - synthetic
+          - snapshot_file
+          - null
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        as_of_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        scope:
+          type: string
+          const: global_directory_snapshot
+    BranchPresetScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      properties:
+        role:
+          type: string
+          enum:
+          - cx_operator
+          - cx_lead
+          - product_manager
+          - product_head
+          - compliance_officer
+          - bank_head
+          - admin
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+    BranchRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - code
+      - name_ru
+      - region_code
+      - region_okato
+      - city_name
+      - desks
+      - branch_type
+      - branch_status
+      - lat
+      - lon
+      - address_ru
+      - hours_ru
+      - opened_sim
+      - closed_sim
+      - product_line_codes
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        code:
+          type: string
+        name_ru:
+          type: string
+        region_code:
+          type: string
+        region_okato:
+          type:
+          - string
+          - 'null'
+        city_name:
+          type: string
+        desks:
+          type: integer
+          minimum: 0
+        branch_type:
+          type:
+          - string
+          - 'null'
+          enum:
+          - flagship
+          - standard
+          - additional
+          - mobile
+          - null
+        branch_status:
+          type:
+          - string
+          - 'null'
+          enum:
+          - open
+          - closed
+          - null
+        lat:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+        lon:
+          type:
+          - string
+          - 'null'
+          pattern: ^-?[0-9]+(?:\.[0-9]+)?$
+        address_ru:
+          type:
+          - string
+          - 'null'
+        hours_ru:
+          type:
+          - string
+          - 'null'
+        opened_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        closed_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        product_line_codes:
+          type: array
+          items:
+            type: string
+      description: Координаты сохраняют прежнюю decimal-string сериализацию; manager contacts/employee names отсутствуют.
+    BranchDirectoryResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      - scope
+      - directory
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchRecord'
+          maxItems: 200
+        next_cursor:
+          type:
+          - string
+          - 'null'
+        scope:
+          $ref: '#/components/schemas/BranchPresetScope'
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+    BranchNetworkItem:
+      type: object
+      additionalProperties: false
+      required:
+      - month
+      - open_count
+      - closed_count
+      - opened_in_month
+      - closed_in_month
+      properties:
+        month:
+          type: string
+          format: date
+        open_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        closed_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        opened_in_month:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        closed_in_month:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+    BranchNetwork:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - synthetic
+      - basis
+      - directory
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchNetworkItem'
+          maxItems: 24
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        basis:
+          type: string
+          enum:
+          - stored_global_history
+          - scoped_directory_lifecycle
+          - unavailable_snapshot_time
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+      description: Без direction сохраняются исходные агрегаты branch_network_history; direction subset восстанавливается
+        по явным датам directory snapshot. Это отдельный provenance, не фильтрация неразмеченной истории. Missing dates
+        →unknown.
+    BranchNetworkResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - synthetic
+      - basis
+      - directory
+      - scope
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchNetworkItem'
+          maxItems: 24
+        synthetic:
+          type:
+          - boolean
+          - 'null'
+        basis:
+          type: string
+          enum:
+          - stored_global_history
+          - scoped_directory_lifecycle
+          - unavailable_snapshot_time
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+        scope:
+          $ref: '#/components/schemas/BranchPresetScope'
+    BranchPressure:
+      type: object
+      additionalProperties: false
+      required:
+      - region_code
+      - branches
+      - open_branches
+      - closed_branches
+      - unknown_status_branches
+      - signals
+      - signals_per_open_branch
+      - deficit
+      properties:
+        region_code:
+          type:
+          - string
+          - 'null'
+        branches:
+          type: integer
+          minimum: 0
+        open_branches:
+          type: integer
+          minimum: 0
+        closed_branches:
+          type: integer
+          minimum: 0
+        unknown_status_branches:
+          type: integer
+          minimum: 0
+        signals:
+          type: integer
+          minimum: 0
+        signals_per_open_branch:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+        deficit:
+          type:
+          - boolean
+          - 'null'
+      description: 'Числитель: customer signals в явном run/period/direction; proactive anchors исключены. Знаменатель:
+        open ВСП выбранного directory subset. Нет open/неизвестный status →ratio null. Deficit только при положительном
+        явно настроенном пороге.'
+    BranchClosureZone:
+      type: object
+      additionalProperties: false
+      required:
+      - branch_id
+      - branch_code
+      - region_code
+      - city_id
+      - closed_sim
+      - signals
+      - first_signal_sim
+      - last_signal_sim
+      properties:
+        branch_id:
+          type: integer
+          minimum: 1
+        branch_code:
+          type: string
+        region_code:
+          type: string
+        city_id:
+          type: integer
+          minimum: 1
+        closed_sim:
+          type: string
+          format: date-time
+        signals:
+          type: integer
+          minimum: 0
+        first_signal_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_signal_sim:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    BranchAnalyticsScope:
+      type: object
+      additionalProperties: false
+      required:
+      - role
+      - visibility
+      - product_lines
+      - run_ids
+      - period
+      - since_sim
+      - sim_time
+      - region_code
+      properties:
+        role:
+          $ref: '#/components/schemas/CabinetRole'
+        visibility:
+          type: string
+          enum:
+          - soft
+          - strict
+        product_lines:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+        run_ids:
+          type:
+          - array
+          - 'null'
+          items:
+            type: integer
+            minimum: 1
+            format: int64
+        period:
+          type: string
+          enum:
+          - day
+          - week
+          - month
+          - quarter
+        since_sim:
+          type: string
+          format: date-time
+        sim_time:
+          type: string
+          format: date-time
+        region_code:
+          type:
+          - string
+          - 'null'
+    BranchAnalyticsResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - scope
+      - pressure
+      - deficit_threshold
+      - deficit_basis
+      - network
+      - closure_zones
+      - directory
+      properties:
+        scope:
+          $ref: '#/components/schemas/BranchAnalyticsScope'
+        pressure:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchPressure'
+        deficit_threshold:
+          type:
+          - number
+          - 'null'
+          exclusiveMinimum: 0
+        deficit_basis:
+          type: string
+          const: signals_per_open_branch_strictly_above_configured_threshold
+        network:
+          $ref: '#/components/schemas/BranchNetwork'
+        closure_zones:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          - window_days
+          - basis
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/BranchClosureZone'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+            window_days:
+              type: integer
+              const: 90
+            basis:
+              type: string
+              const: same_region_and_city_after_closure
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+      description: Current-only default, explicit all/id; baseline не примешивается. Closure — per-branch строки с точным
+        совпадением региона/города и received_sim в 90 дней после закрытия; строки одного города не суммируются как
+        unique signals. settings.csi_analytics.deficit_signals_per_open_branch отсутствует →unknown, выдуманного default
+        нет.
+    BranchSignal:
+      type: object
+      additionalProperties: false
+      required:
+      - signal_ref
+      - received_sim
+      - channel_code
+      - status
+      properties:
+        signal_ref:
+          type: string
+        received_sim:
+          type: string
+          format: date-time
+        channel_code:
+          type: string
+        status:
+          type: string
+    BranchDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+      - branch
+      - directory
+      - scope
+      - csi
+      - signals
+      - trace_path
+      properties:
+        branch:
+          $ref: '#/components/schemas/BranchRecord'
+        directory:
+          $ref: '#/components/schemas/BranchDirectoryMetadata'
+        scope:
+          $ref: '#/components/schemas/CsiAnalyticsScope'
+        csi:
+          type: object
+          additionalProperties: false
+          required:
+          - coverage
+          - probabilities
+          properties:
+            coverage:
+              type: object
+              additionalProperties: false
+              required:
+              - complaints
+              - branch_known
+              - direction_known
+              - employee_known
+              - cohort_bound
+              - scatter_total
+              - uncohorted
+              - time_basis
+              properties:
+                complaints:
+                  type: integer
+                  minimum: 0
+                branch_known:
+                  type: integer
+                  minimum: 0
+                direction_known:
+                  type: integer
+                  minimum: 0
+                employee_known:
+                  type: integer
+                  minimum: 0
+                cohort_bound:
+                  type: integer
+                  minimum: 0
+                scatter_total:
+                  type: integer
+                  minimum: 0
+                uncohorted:
+                  type: integer
+                  minimum: 0
+                time_basis:
+                  type: string
+                  const: native_received_sim
+            probabilities:
+              $ref: '#/components/schemas/CsiProbabilities'
+        signals:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          - total
+          - next_offset
+          - basis
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/BranchSignal'
+              maxItems: 200
+            total:
+              type: integer
+              minimum: 0
+            next_offset:
+              type:
+              - integer
+              - 'null'
+              minimum: 0
+            basis:
+              type: string
+              const: explicit_branch_link
+        trace_path:
+          type: string
+      description: 'Сигналы связаны с ВСП явно: CSI branch_id или geo.vsp_code. Географическая близость не выдаётся
+        за связь. Метрики read-only и не кэшируются 24 часа; TTL относится к directory/network endpoints.'

@@ -1,0 +1,1881 @@
+{
+  "source_commit": "1c9c36515f8eb517824f6b93b723366fe81ae840",
+  "schema": "0020",
+  "database_clients": 5000,
+  "historical_checkpoint": "192267bf3dc4695fa4b56e06cf82637650c20db6",
+  "historical_proof": "git:192267b:docs/reviews/T-255-overview-proof.json",
+  "full_lint": {
+    "frontend_passed": 485,
+    "frontend_files": 69,
+    "formatted_python": 550,
+    "backend_mypy_files": 323,
+    "bot_formatted": 12,
+    "bot_mypy_files": 5,
+    "openapi_methods": 196
+  },
+  "composed_targets": {
+    "passed": 102,
+    "seconds": 60.43,
+    "source": "/tmp/t255-composed-targets-final.xml",
+    "initial_failure": "101pass/1fixturefail: T039 correctly rejected proactive through api; internal normalizer authority fixed1c9, original asserts preserved"
+  },
+  "production_builds": [
+    "main",
+    "personal"
+  ],
+  "browser": {
+    "stats": {
+      "startTime": "2026-11-02T23:23:32.320Z",
+      "duration": 9127.581,
+      "expected": 8,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "samples": [
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "calm",
+        "pack": "brand",
+        "lang": "ru",
+        "mode": "light",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.760713308355131,
+          "control": 3.1834204505648223
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "calm",
+        "pack": "brand",
+        "lang": "ru",
+        "mode": "dark",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.693474677774179,
+          "control": 4.672395027039239
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "calm",
+        "pack": "brand",
+        "lang": "en",
+        "mode": "light",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.760713308355131,
+          "control": 3.1834204505648223
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "calm",
+        "pack": "brand",
+        "lang": "en",
+        "mode": "dark",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.693474677774179,
+          "control": 4.672395027039239
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "control_room",
+        "pack": "ops",
+        "lang": "ru",
+        "mode": "light",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.731663798508433,
+          "control": 3.7235393346869596
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "control_room",
+        "pack": "ops",
+        "lang": "ru",
+        "mode": "dark",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 6.170110298168288,
+          "control": 4.975942400349283
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "control_room",
+        "pack": "ops",
+        "lang": "en",
+        "mode": "light",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 4.731663798508433,
+          "control": 3.7235393346869596
+        }
+      },
+      {
+        "run": "2",
+        "index": 76.8,
+        "expectedProjectionPoints": 3,
+        "keyboardTraceActivated": true,
+        "attention": "control_room",
+        "pack": "ops",
+        "lang": "en",
+        "mode": "dark",
+        "browserWrites": 0,
+        "externalRequests": 0,
+        "palette": {
+          "text": 6.170110298168288,
+          "control": 4.975942400349283
+        }
+      }
+    ],
+    "png_count": 24,
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile_width": 360,
+    "reduced_motion": "dark cases"
+  },
+  "readonly_route_walk": {
+    "database": "cx_overview_ui_revision",
+    "readOnlyPhaseOnly": true,
+    "settingsSetupAndRestoreOutsideFingerprint": true,
+    "tables": 114,
+    "before": {
+      "channel_runtime.telegram_chat_rate": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_client_bindings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_conversations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_deliveries": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_inbound": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_signal_bindings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "langgraph.checkpoint_blobs": {
+        "md5": "8f293517c7f289997ad4a393f1080406",
+        "rows": 451
+      },
+      "langgraph.checkpoint_migrations": {
+        "md5": "c17f84b0e81e68e91d4e5b9a2d6f9ffd",
+        "rows": 10
+      },
+      "langgraph.checkpoint_writes": {
+        "md5": "0e88c7fceea6616d6cfa98423908c4b8",
+        "rows": 875
+      },
+      "langgraph.checkpoints": {
+        "md5": "27e89c152d4f601dd0b7bb9c996261e6",
+        "rows": 54
+      },
+      "llm_runtime.credential_aliases": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.credentials": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.daily_usage": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.identity_settings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.profile_scopes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.reconciliations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.wire_attempts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.accounts": {
+        "md5": "d4f00b517da806c100d41ea4958f707d",
+        "rows": 8415
+      },
+      "public.agent_runs": {
+        "md5": "7d58d36e698401883bfdc869e74c84b4",
+        "rows": 19
+      },
+      "public.agent_steps": {
+        "md5": "e1696f36fbebd7cd095c8ce0aa1ef28c",
+        "rows": 55
+      },
+      "public.alembic_version": {
+        "md5": "87fc89de7f0cc20f0055f0f435523e79",
+        "rows": 1
+      },
+      "public.audio_sessions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_agent_intents": {
+        "md5": "5c830d2f1b7f5b689a770247e3e8ad2c",
+        "rows": 3
+      },
+      "public.behavior_causes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_evidence": {
+        "md5": "067e2f1681f6851717b69695903a5548",
+        "rows": 3
+      },
+      "public.behavior_pending_signals": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_receipts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_runs": {
+        "md5": "30d8b4919b54fdab53a1babf20b667fd",
+        "rows": 1
+      },
+      "public.behavior_runtime": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_tick_receipts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_work": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.bench_cases": {
+        "md5": "1357deafc3a9a67dcf5eca92c1073dfe",
+        "rows": 859
+      },
+      "public.bench_datasets": {
+        "md5": "622379ac5f91218e2bb6f14d5f66166c",
+        "rows": 6
+      },
+      "public.bench_results": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.bench_runs": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.branch_network_history": {
+        "md5": "bfd8c5d56ad486955feb667a5e2ed241",
+        "rows": 1068
+      },
+      "public.branches": {
+        "md5": "22972e44b78910a821beac054cf73c96",
+        "rows": 240
+      },
+      "public.business_rules": {
+        "md5": "f1a8afd75c5abc13ba0f04051c47a28a",
+        "rows": 5
+      },
+      "public.channels": {
+        "md5": "c3066c8e2636067d0693547754cd30aa",
+        "rows": 12
+      },
+      "public.churn_events": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.cities": {
+        "md5": "0e2296efb63d8d150c396ee001b92a47",
+        "rows": 1121
+      },
+      "public.client_products": {
+        "md5": "17e1c3ed0859c471c117bfb1fa0c739b",
+        "rows": 9562
+      },
+      "public.client_reactions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.client_states": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.clients": {
+        "md5": "d22d4d82c35262dbefcf80ca3ef1a524",
+        "rows": 5000
+      },
+      "public.compliance_alerts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.compliance_triggers": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohort_members": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohort_visits": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohorts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_responses": {
+        "md5": "5ed4740ea4b18ffe7a66ca6e7250adcf",
+        "rows": 220
+      },
+      "public.csi_visits_agg": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.db_activity_log": {
+        "md5": "f45e97afbd197892c3581f2971c6433b",
+        "rows": 423173
+      },
+      "public.dcltv_rates": {
+        "md5": "82180d58dea3c5c6d98d776b4c10df6b",
+        "rows": 31
+      },
+      "public.demo_assets": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.economics_settings": {
+        "md5": "0289494c5e117341e0954e786ef211a8",
+        "rows": 1
+      },
+      "public.employees": {
+        "md5": "f49477b2cf6fff7e174ae4ddaa881720",
+        "rows": 1440
+      },
+      "public.error_codes": {
+        "md5": "bb7d559667532f75d4f211ee9df48465",
+        "rows": 25
+      },
+      "public.escalations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.external_posts": {
+        "md5": "a97034ca6a5f1951fdb63d2ee0495709",
+        "rows": 163
+      },
+      "public.external_replies": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.faults": {
+        "md5": "9312fdba718939b03e2983444529451e",
+        "rows": 41
+      },
+      "public.federal_districts": {
+        "md5": "1fe3f68c25c5bae4a8176c9df6223782",
+        "rows": 8
+      },
+      "public.financial_evidence": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.followups": {
+        "md5": "d74658f686ddcc09187b1cf431fcad3d",
+        "rows": 4
+      },
+      "public.gift_catalog": {
+        "md5": "120b6eefe9e361ee6538335d595036b0",
+        "rows": 5
+      },
+      "public.hitl_feedback": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.hitl_feedback_processing": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.human_decisions": {
+        "md5": "d65fdcdb8a1c618cbda9b47b927e14c9",
+        "rows": 1
+      },
+      "public.incident_artifacts": {
+        "md5": "e4604797a48993a1366a27be0097b3da",
+        "rows": 10
+      },
+      "public.incident_economics": {
+        "md5": "abb1f705ab3f34b8be0e8544ad10428e",
+        "rows": 2
+      },
+      "public.incident_signals": {
+        "md5": "b9c7628053350e297d3d4604c1e0c7a0",
+        "rows": 402
+      },
+      "public.incident_status_history": {
+        "md5": "d912ba92e6d72ce5c2267ca3fa35a5a9",
+        "rows": 420
+      },
+      "public.incidents": {
+        "md5": "23d34a5b70c05e726bb20d8862007427",
+        "rows": 402
+      },
+      "public.ingest_messages": {
+        "md5": "cbe50d593f3f93b9b554ace3867e3ba4",
+        "rows": 521
+      },
+      "public.ingest_sources": {
+        "md5": "789b104ce597938a0b5288e06fd48cf4",
+        "rows": 10
+      },
+      "public.ledger_entries": {
+        "md5": "52bfde1c1c14bc08227b6761612274dc",
+        "rows": 413173
+      },
+      "public.llm_api_keys": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.llm_cassettes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.llm_profiles": {
+        "md5": "61411e2ef600929cfd31faeb45b7959a",
+        "rows": 8
+      },
+      "public.misselling_patterns": {
+        "md5": "56cd9f72995a0ea012a59ef3133ebf3a",
+        "rows": 8
+      },
+      "public.notification_templates": {
+        "md5": "ca8806d28540a045410c18e6e9c714a3",
+        "rows": 389
+      },
+      "public.notifications": {
+        "md5": "b8df323d33095a3f83324cba63a70de4",
+        "rows": 8
+      },
+      "public.operations": {
+        "md5": "e34d624bd2f8f5638c3645a603a87b00",
+        "rows": 600000
+      },
+      "public.personal_chat_messages": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.personal_chat_sessions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.product_lines": {
+        "md5": "1d3ee65e258cc631304100ba21251846",
+        "rows": 15
+      },
+      "public.product_signal_history": {
+        "md5": "9acacc75c42427b3440434b3513a9079",
+        "rows": 180
+      },
+      "public.products": {
+        "md5": "0a06fb05803cbab026dc21a78504a441",
+        "rows": 4
+      },
+      "public.psychotypes": {
+        "md5": "30350b7768d6d2ea1e4b1fbf795de458",
+        "rows": 8
+      },
+      "public.regions": {
+        "md5": "d2769eaae35cb6e21d3da4345fe44f32",
+        "rows": 89
+      },
+      "public.routing_rules": {
+        "md5": "973ae870504459185f635d7c6066a6db",
+        "rows": 40
+      },
+      "public.rule_evaluations": {
+        "md5": "c8c7404b8cbc693ee2a9526df0b7fb0e",
+        "rows": 15
+      },
+      "public.scenarios": {
+        "md5": "66a87d7b757a116c5e3c3332fcc52738",
+        "rows": 33
+      },
+      "public.segment_psychotype_mix": {
+        "md5": "e8f2441a3899dbc3a2d8a5da155d6102",
+        "rows": 36
+      },
+      "public.segments": {
+        "md5": "d49ec70ab0542361d107be78d801bd28",
+        "rows": 7
+      },
+      "public.service_scripts": {
+        "md5": "186fe1e53129983fac750aa05274ec7f",
+        "rows": 2
+      },
+      "public.settings": {
+        "md5": "16f679e849bed8f22d4a6c0b4847144b",
+        "rows": 7
+      },
+      "public.signal_types": {
+        "md5": "45c06637e8fb54bff1bbad1e1b801302",
+        "rows": 10
+      },
+      "public.signals": {
+        "md5": "efc64098d2991b38bac5b346422a1701",
+        "rows": 2816
+      },
+      "public.sim_events": {
+        "md5": "a62a5be6ae68f9f3d73a43e4a63235ff",
+        "rows": 262
+      },
+      "public.sim_runs": {
+        "md5": "c605811006dc502c78c1d3c8794b2205",
+        "rows": 2
+      },
+      "public.sim_state": {
+        "md5": "9ff1d30a2bc78e8f139525e12065b347",
+        "rows": 1
+      },
+      "public.sla_matrix": {
+        "md5": "45523074e6ecb84ff5b1b2700b096a76",
+        "rows": 9
+      },
+      "public.stt_metrics": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.system_logs": {
+        "md5": "7c591b2c54cd733187025e8d979c5fe3",
+        "rows": 632
+      },
+      "public.systems": {
+        "md5": "b5f2c44ba3cf17a14c726a2f80443510",
+        "rows": 12
+      },
+      "public.tariffs": {
+        "md5": "46ddfd2fa1b9495a486941f4bde8c18e",
+        "rows": 12
+      },
+      "public.tasks": {
+        "md5": "09c873739dddb9735e3a0e4664b2fbbc",
+        "rows": 1
+      },
+      "public.team_actions": {
+        "md5": "52966fb6c2c6f42ab6325a0f7078271e",
+        "rows": 14
+      },
+      "public.team_systems": {
+        "md5": "de062f5b73a0d8db32e10be15d264655",
+        "rows": 12
+      },
+      "public.teams": {
+        "md5": "e164568049b33b1736c51d105702c4ed",
+        "rows": 12
+      },
+      "public.transcripts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.utterances": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      }
+    },
+    "after": {
+      "channel_runtime.telegram_chat_rate": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_client_bindings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_conversations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_deliveries": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_inbound": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "channel_runtime.telegram_signal_bindings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "langgraph.checkpoint_blobs": {
+        "md5": "8f293517c7f289997ad4a393f1080406",
+        "rows": 451
+      },
+      "langgraph.checkpoint_migrations": {
+        "md5": "c17f84b0e81e68e91d4e5b9a2d6f9ffd",
+        "rows": 10
+      },
+      "langgraph.checkpoint_writes": {
+        "md5": "0e88c7fceea6616d6cfa98423908c4b8",
+        "rows": 875
+      },
+      "langgraph.checkpoints": {
+        "md5": "27e89c152d4f601dd0b7bb9c996261e6",
+        "rows": 54
+      },
+      "llm_runtime.credential_aliases": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.credentials": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.daily_usage": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.identity_settings": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.profile_scopes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.reconciliations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "llm_runtime.wire_attempts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.accounts": {
+        "md5": "d4f00b517da806c100d41ea4958f707d",
+        "rows": 8415
+      },
+      "public.agent_runs": {
+        "md5": "7d58d36e698401883bfdc869e74c84b4",
+        "rows": 19
+      },
+      "public.agent_steps": {
+        "md5": "e1696f36fbebd7cd095c8ce0aa1ef28c",
+        "rows": 55
+      },
+      "public.alembic_version": {
+        "md5": "87fc89de7f0cc20f0055f0f435523e79",
+        "rows": 1
+      },
+      "public.audio_sessions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_agent_intents": {
+        "md5": "5c830d2f1b7f5b689a770247e3e8ad2c",
+        "rows": 3
+      },
+      "public.behavior_causes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_evidence": {
+        "md5": "067e2f1681f6851717b69695903a5548",
+        "rows": 3
+      },
+      "public.behavior_pending_signals": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_receipts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_runs": {
+        "md5": "30d8b4919b54fdab53a1babf20b667fd",
+        "rows": 1
+      },
+      "public.behavior_runtime": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_tick_receipts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.behavior_work": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.bench_cases": {
+        "md5": "1357deafc3a9a67dcf5eca92c1073dfe",
+        "rows": 859
+      },
+      "public.bench_datasets": {
+        "md5": "622379ac5f91218e2bb6f14d5f66166c",
+        "rows": 6
+      },
+      "public.bench_results": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.bench_runs": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.branch_network_history": {
+        "md5": "bfd8c5d56ad486955feb667a5e2ed241",
+        "rows": 1068
+      },
+      "public.branches": {
+        "md5": "22972e44b78910a821beac054cf73c96",
+        "rows": 240
+      },
+      "public.business_rules": {
+        "md5": "f1a8afd75c5abc13ba0f04051c47a28a",
+        "rows": 5
+      },
+      "public.channels": {
+        "md5": "c3066c8e2636067d0693547754cd30aa",
+        "rows": 12
+      },
+      "public.churn_events": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.cities": {
+        "md5": "0e2296efb63d8d150c396ee001b92a47",
+        "rows": 1121
+      },
+      "public.client_products": {
+        "md5": "17e1c3ed0859c471c117bfb1fa0c739b",
+        "rows": 9562
+      },
+      "public.client_reactions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.client_states": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.clients": {
+        "md5": "d22d4d82c35262dbefcf80ca3ef1a524",
+        "rows": 5000
+      },
+      "public.compliance_alerts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.compliance_triggers": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohort_members": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohort_visits": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_cohorts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.csi_responses": {
+        "md5": "5ed4740ea4b18ffe7a66ca6e7250adcf",
+        "rows": 220
+      },
+      "public.csi_visits_agg": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.db_activity_log": {
+        "md5": "f45e97afbd197892c3581f2971c6433b",
+        "rows": 423173
+      },
+      "public.dcltv_rates": {
+        "md5": "82180d58dea3c5c6d98d776b4c10df6b",
+        "rows": 31
+      },
+      "public.demo_assets": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.economics_settings": {
+        "md5": "0289494c5e117341e0954e786ef211a8",
+        "rows": 1
+      },
+      "public.employees": {
+        "md5": "f49477b2cf6fff7e174ae4ddaa881720",
+        "rows": 1440
+      },
+      "public.error_codes": {
+        "md5": "bb7d559667532f75d4f211ee9df48465",
+        "rows": 25
+      },
+      "public.escalations": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.external_posts": {
+        "md5": "a97034ca6a5f1951fdb63d2ee0495709",
+        "rows": 163
+      },
+      "public.external_replies": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.faults": {
+        "md5": "9312fdba718939b03e2983444529451e",
+        "rows": 41
+      },
+      "public.federal_districts": {
+        "md5": "1fe3f68c25c5bae4a8176c9df6223782",
+        "rows": 8
+      },
+      "public.financial_evidence": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.followups": {
+        "md5": "d74658f686ddcc09187b1cf431fcad3d",
+        "rows": 4
+      },
+      "public.gift_catalog": {
+        "md5": "120b6eefe9e361ee6538335d595036b0",
+        "rows": 5
+      },
+      "public.hitl_feedback": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.hitl_feedback_processing": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.human_decisions": {
+        "md5": "d65fdcdb8a1c618cbda9b47b927e14c9",
+        "rows": 1
+      },
+      "public.incident_artifacts": {
+        "md5": "e4604797a48993a1366a27be0097b3da",
+        "rows": 10
+      },
+      "public.incident_economics": {
+        "md5": "abb1f705ab3f34b8be0e8544ad10428e",
+        "rows": 2
+      },
+      "public.incident_signals": {
+        "md5": "b9c7628053350e297d3d4604c1e0c7a0",
+        "rows": 402
+      },
+      "public.incident_status_history": {
+        "md5": "d912ba92e6d72ce5c2267ca3fa35a5a9",
+        "rows": 420
+      },
+      "public.incidents": {
+        "md5": "23d34a5b70c05e726bb20d8862007427",
+        "rows": 402
+      },
+      "public.ingest_messages": {
+        "md5": "cbe50d593f3f93b9b554ace3867e3ba4",
+        "rows": 521
+      },
+      "public.ingest_sources": {
+        "md5": "789b104ce597938a0b5288e06fd48cf4",
+        "rows": 10
+      },
+      "public.ledger_entries": {
+        "md5": "52bfde1c1c14bc08227b6761612274dc",
+        "rows": 413173
+      },
+      "public.llm_api_keys": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.llm_cassettes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.llm_profiles": {
+        "md5": "61411e2ef600929cfd31faeb45b7959a",
+        "rows": 8
+      },
+      "public.misselling_patterns": {
+        "md5": "56cd9f72995a0ea012a59ef3133ebf3a",
+        "rows": 8
+      },
+      "public.notification_templates": {
+        "md5": "ca8806d28540a045410c18e6e9c714a3",
+        "rows": 389
+      },
+      "public.notifications": {
+        "md5": "b8df323d33095a3f83324cba63a70de4",
+        "rows": 8
+      },
+      "public.operations": {
+        "md5": "e34d624bd2f8f5638c3645a603a87b00",
+        "rows": 600000
+      },
+      "public.personal_chat_messages": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.personal_chat_sessions": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.product_lines": {
+        "md5": "1d3ee65e258cc631304100ba21251846",
+        "rows": 15
+      },
+      "public.product_signal_history": {
+        "md5": "9acacc75c42427b3440434b3513a9079",
+        "rows": 180
+      },
+      "public.products": {
+        "md5": "0a06fb05803cbab026dc21a78504a441",
+        "rows": 4
+      },
+      "public.psychotypes": {
+        "md5": "30350b7768d6d2ea1e4b1fbf795de458",
+        "rows": 8
+      },
+      "public.regions": {
+        "md5": "d2769eaae35cb6e21d3da4345fe44f32",
+        "rows": 89
+      },
+      "public.routing_rules": {
+        "md5": "973ae870504459185f635d7c6066a6db",
+        "rows": 40
+      },
+      "public.rule_evaluations": {
+        "md5": "c8c7404b8cbc693ee2a9526df0b7fb0e",
+        "rows": 15
+      },
+      "public.scenarios": {
+        "md5": "66a87d7b757a116c5e3c3332fcc52738",
+        "rows": 33
+      },
+      "public.segment_psychotype_mix": {
+        "md5": "e8f2441a3899dbc3a2d8a5da155d6102",
+        "rows": 36
+      },
+      "public.segments": {
+        "md5": "d49ec70ab0542361d107be78d801bd28",
+        "rows": 7
+      },
+      "public.service_scripts": {
+        "md5": "186fe1e53129983fac750aa05274ec7f",
+        "rows": 2
+      },
+      "public.settings": {
+        "md5": "16f679e849bed8f22d4a6c0b4847144b",
+        "rows": 7
+      },
+      "public.signal_types": {
+        "md5": "45c06637e8fb54bff1bbad1e1b801302",
+        "rows": 10
+      },
+      "public.signals": {
+        "md5": "efc64098d2991b38bac5b346422a1701",
+        "rows": 2816
+      },
+      "public.sim_events": {
+        "md5": "a62a5be6ae68f9f3d73a43e4a63235ff",
+        "rows": 262
+      },
+      "public.sim_runs": {
+        "md5": "c605811006dc502c78c1d3c8794b2205",
+        "rows": 2
+      },
+      "public.sim_state": {
+        "md5": "9ff1d30a2bc78e8f139525e12065b347",
+        "rows": 1
+      },
+      "public.sla_matrix": {
+        "md5": "45523074e6ecb84ff5b1b2700b096a76",
+        "rows": 9
+      },
+      "public.stt_metrics": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.system_logs": {
+        "md5": "7c591b2c54cd733187025e8d979c5fe3",
+        "rows": 632
+      },
+      "public.systems": {
+        "md5": "b5f2c44ba3cf17a14c726a2f80443510",
+        "rows": 12
+      },
+      "public.tariffs": {
+        "md5": "46ddfd2fa1b9495a486941f4bde8c18e",
+        "rows": 12
+      },
+      "public.tasks": {
+        "md5": "09c873739dddb9735e3a0e4664b2fbbc",
+        "rows": 1
+      },
+      "public.team_actions": {
+        "md5": "52966fb6c2c6f42ab6325a0f7078271e",
+        "rows": 14
+      },
+      "public.team_systems": {
+        "md5": "de062f5b73a0d8db32e10be15d264655",
+        "rows": 12
+      },
+      "public.teams": {
+        "md5": "e164568049b33b1736c51d105702c4ed",
+        "rows": 12
+      },
+      "public.transcripts": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      },
+      "public.utterances": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "rows": 0
+      }
+    },
+    "changed": [],
+    "routes": [
+      "/overview?run_id=2",
+      "/workspace?tab=dashboard&run_id=2",
+      "/economics?run_id=2",
+      "/workspace?tab=signals&run_id=2",
+      "/workspace?tab=hitl&run_id=2",
+      "/engine/1?run_id=2",
+      "/journey/SIG-002814?run_id=2",
+      "/journey/SIG-002814?run_id=2&mode=replay"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/runs",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/cx-index",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/hitl/queue",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs/3/decision-chain",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/teams",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/hitl/queue",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/signals",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/teams",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/hitl/queue",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/hitl/queue",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/teams",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/hitl/queue",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/metrics/overview",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/graph",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs/1",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs/1/decision-chain",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/graph",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/products",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/teams",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/journey/SIG-002814",
+        "run": "2"
+      },
+      {
+        "method": "GET",
+        "path": "/api/signals/2814",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/agent/runs/1",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/sim/state",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/settings",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/channels",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/refs/segments",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/demo/status",
+        "run": null
+      },
+      {
+        "method": "GET",
+        "path": "/api/journey/SIG-002814",
+        "run": "2"
+      }
+    ],
+    "responses": [
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/runs",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/agent/runs",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/teams",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/teams",
+        "status": 200
+      },
+      {
+        "path": "/api/signals",
+        "status": 200
+      },
+      {
+        "path": "/api/hitl/queue",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/teams",
+        "status": 200
+      },
+      {
+        "path": "/api/hitl/queue",
+        "status": 200
+      },
+      {
+        "path": "/api/hitl/queue",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/metrics/overview",
+        "status": 200
+      },
+      {
+        "path": "/api/agent/graph",
+        "status": 200
+      },
+      {
+        "path": "/api/agent/runs",
+        "status": 200
+      },
+      {
+        "path": "/api/agent/runs",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/agent/graph",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/products",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/teams",
+        "status": 200
+      },
+      {
+        "path": "/api/journey/SIG-002814",
+        "status": 200
+      },
+      {
+        "path": "/api/sim/state",
+        "status": 200
+      },
+      {
+        "path": "/api/settings",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/channels",
+        "status": 200
+      },
+      {
+        "path": "/api/refs/segments",
+        "status": 200
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/demo/status",
+        "status": 200
+      },
+      {
+        "path": "/api/journey/SIG-002814",
+        "status": 200
+      }
+    ],
+    "writes": [],
+    "external": [],
+    "forbidden": [],
+    "errors": [],
+    "journeyExplicitFollowAndReplayIncluded": true
+  },
+  "fixture_preparation": {
+    "schema": "0020",
+    "profile": "demo",
+    "clients": 5000,
+    "native_mock_fixture": {
+      "run_id": 2,
+      "signal_ids": [
+        2814,
+        2815,
+        2816
+      ],
+      "agent_runs": [
+        {
+          "id": 1,
+          "outcome": "completed",
+          "recorded_latency_ms": 0
+        },
+        {
+          "id": 2,
+          "outcome": "awaiting_human",
+          "recorded_latency_ms": 0
+        },
+        {
+          "id": 3,
+          "outcome": "deferred",
+          "recorded_latency_ms": 1
+        }
+      ],
+      "actual_models": [
+        "mock:mock-rules-v1"
+      ]
+    },
+    "startup_abs_backfill_before_fingerprint": true,
+    "settings_setup_restore_outside_fingerprint": true,
+    "no_external_or_real_media": true
+  },
+  "ui_source_sha256": {
+    "frontend/e2e/overview.spec.ts": "6630087251aa04280f28bda774f93fb507488adf15bdc3676c910c20109ee504",
+    "frontend/src/app/App.tsx": "8df418b28891c68e679c9c8e68007b5e68d2fa9fe1a72359e42443cfbc43f69a",
+    "frontend/src/pages/engine/EnginePage.tsx": "57a28596e345e80ff9fbebfb7d658d85e1c514a5ad51e33efe358da16f10f438",
+    "frontend/src/pages/engine/ScopedEngine.tsx": "f8e43c7ca49277b314942f24b01a1f36f4f53c5a16245f9c27637389eab2aaf8",
+    "frontend/src/pages/engine/scoped.ts": "2c6e8b241b076d3edbe156ffbe14a4dc4a8e1967230e85892ea6bf2a9605fdde",
+    "frontend/src/pages/finance/EconomicsPage.test.tsx": "0afd0b049f49b680eb9885113fb631b1e831be51db039ba3539d4f5262f27e64",
+    "frontend/src/pages/finance/EconomicsPage.tsx": "e9c36b28d30aa547c5af59218e6f84e21621971191a9c80c53b3879c9839f756",
+    "frontend/src/pages/overview/OverviewChart.tsx": "479fdb3f5433cb17ac8a2d7a28885222b79daed08f0faa470a793af771c8e4d3",
+    "frontend/src/pages/overview/OverviewPage.tsx": "da1382ac2614bdaa78313443174e147a286a839be51ea29d91afbf98ad8d7ef6",
+    "frontend/src/pages/overview/ScopedMetrics.tsx": "83d8265658fd375d61ee9fa9258479a0e95dccdcb924877b78e3d9b4ea76769d",
+    "frontend/src/pages/overview/SignalProjection.tsx": "881e0445b704fc1690e79580b3d72e0fd49fa7eb63f79259ffdfbded595d4b00",
+    "frontend/src/pages/overview/__tests__/Drilldown.test.tsx": "e91ecef30380c815e51c1dc18a07cef5e25cc23f851d5046f87d5040e34d1d36",
+    "frontend/src/pages/overview/__tests__/OverviewPage.test.tsx": "203f8ab8de4faef66a4e7b3db9ce02af8fcb0135aa7fbadc10442e91bd9f967a",
+    "frontend/src/pages/overview/__tests__/fixtures.ts": "fa4d79192513d0aacb9e193175771e8aca87ec9c0678b9f3f2323cebfc036a14",
+    "frontend/src/pages/overview/__tests__/model.test.ts": "aa596f53c31d3e74cd5421669a821878bd7875aca3049a0f28c91bd230e5ac68",
+    "frontend/src/pages/overview/__tests__/realtime.test.ts": "1ac7d40b103c55dca42479552a79c009c15ee9bb74d4b7a7965fa8bf5f77638a",
+    "frontend/src/pages/overview/api.ts": "9d8eb6b7fcf96147b42931d33f46cd2b1ff4c9f35b19b584ebfb8d5cf4414b97",
+    "frontend/src/pages/overview/model.ts": "6e85d119f3183f50c1f87ec334b7bbedc26d277026835261d3fa5027836c31de",
+    "frontend/src/pages/workspace/DeferredList.tsx": "f05c1aa00280e69b2d61a05308d3b075a2bbf442b7854f56c34a5e5dc222575c",
+    "frontend/src/pages/workspace/HitlQueue.tsx": "724b6e5a2db9d8a78c58e584a5815d501f19109d6d9653a67433e9cd84cd51b2",
+    "frontend/src/pages/workspace/IncidentsBoard.tsx": "bdfbac4d68ff802c7b7dc8a6b69576ba23a8616afa5335a578987081595b296a",
+    "frontend/src/pages/workspace/MapTab.tsx": "0a02013f572d01cb32a31ff0bd38444cb886f5f8d46ea41e64346544619ef7c9",
+    "frontend/src/pages/workspace/NotificationsTab.tsx": "8dc8cada51a4d353cb4103e06f675333fbe6b9c1cbbecd5ea700ed4ffed72e97",
+    "frontend/src/pages/workspace/SignalsFeed.tsx": "ac03d79db77efa2f0ea13365ab42d2fe8522f2fb22f6bcc3fda3a27b7e348a1b",
+    "frontend/src/pages/workspace/TasksTab.tsx": "d227063a772f4c8ff8494a87f39b605f7eb23e05da155f2093c8aa590c4f731f",
+    "frontend/src/pages/workspace/TeamsTab.tsx": "324d81868b4c36c1d6258def62667201e943cd9f93b43223c555d2fd64873c03",
+    "frontend/src/pages/workspace/TicketsTab.tsx": "07c3626e4b1050be99e40466f0c1ce90cbdfac2a12aa9b63688e342fca752812",
+    "frontend/src/pages/workspace/WorkspacePage.tsx": "5f34a91e52914b536e330e0d9813431f8257b8a5a7ac26e5efd9e28ac13bb5fb",
+    "frontend/src/shared/api/hooks.ts": "c7da39163756d17a5700dcdc63c097d9bf038fb8d1a65c89373d9218fefe6f98",
+    "frontend/src/shared/api/overview.ts": "cbee9c1828e38318b645ab84200621a311adcc8f189f01a26e830dfbced91946",
+    "frontend/src/shared/layout/ScopedRunBoundary.tsx": "6ad4fbe81a058aab4675477bc28e7cd3c972b3708808f3554dc4b22e899e1eb0",
+    "frontend/src/shared/lib/privacy.ts": "4d43c983ce100d489962b70c5c0971af72d24479e549fff6c80f7f1fa30e0e29",
+    "frontend/src/shared/ws/client.ts": "e184edff607aa675363535b9f36f1f8418b04908ae7661b5426f22517126886f",
+    "frontend/src/widgets/Shell.tsx": "bbd1ea821afedddc09475edf0c67f650d45f37fa58ad8bd1761f202be41d0b59",
+    "frontend/src/widgets/ShellV2.tsx": "87f9b1b40ae3e8fe08cf32244032501b823a3362a34ea8f10d4a741b6a380355"
+  },
+  "backend_app_tree_sha": "70d6cd75e7afb30867d9f068e2aea664a383bcf6",
+  "parent201_backend_app_tree_sha": "70d6cd75e7afb30867d9f068e2aea664a383bcf6",
+  "limits": [
+    "Historical full backend2770/24skip belongs1968631; final composition verified102targets, not another full backend",
+    "No live/paid LLM, STT, mail or Telegram tested",
+    "Exact parent CI and review gate remain"
+  ],
+  "publication_composition": {
+    "parent_api29": "1d248e2d075bbb132182f6910bf5584c81668c8f",
+    "ordinary_merge": "336bb1ab629f52375ee170c15b150e1c3e268c63",
+    "application_sources_unchanged_from_proven_source": true,
+    "postmerge_gen2_idempotent_cards": 206,
+    "privacy_test_restored_exact_parent_docstring_no_assertion_change": true
+  }
+}

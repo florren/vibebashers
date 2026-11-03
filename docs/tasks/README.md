@@ -239,7 +239,7 @@
 | [T-258](T-258-vizualnaya-regressiya-i-a11y-pakety-tem-rezhimy.md) Визуальная регрессия и a11y: пакеты тем × режимы × фазы на ключевых экранах, axe, проверка ≤ 9 блоков | E21 | L5 | `SA-QA` | M | — | T-252, T-253, T-254 |
 | [T-259](T-259-lokalizaciya-v1-5-ru-en-dlya-ekranov-puti-sleda.md) Локализация v1.5: ru/en для экранов пути, следа, кабинета, CSI, обзора; подписи enum; проверка полноты | E13 | L1 | `SA-i18n` | S | — | T-226, T-232, T-242, T-249, T-254 |
 | [T-260](T-260-dokumentaciya-v1-5-demo-skript-bloki-e-f-rukovod.md) Документация v1.5: демо-скрипт (блоки E–F), руководство, ADR-0008…0011, лицензии, обновление README и CHANGELOG | E12 | L1 | `SA-Docs` | S | — | T-229, T-235, T-153 |
-| [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md) Сценарии 14 «Кабинет менеджера: красные слова и отчёт» и 15 «CSI и ВСП»: YAML, кассеты, автотесты, блок F демо-скрипта | E19 | L5 | `SA-QA` | M | — | T-242, T-249, T-250, T-239 |
+| [T-262](T-262-scenarii-14-kabinet-menedzhera-krasnye-slova-i-o.md) Сценарии 14 «Кабинет менеджера: красные слова и отчёт» и 15 «CSI и ВСП»: YAML, кассеты, автотесты, блок F демо-скрипта | E19 | L5 | `SA-QA` | M | — | T-242, T-249, T-250, T-239, T-238 |
 | [T-264](T-264-ekran-finansovogo-effekta-i-sravnenie-modelej.md) Экран финансового эффекта и сравнение моделей | E24 | L2 | `SA-Economics` | L | — | T-131, T-132, T-093, T-202 |
 | [T-265](T-265-kalibrovka-veroyatnosti-ottoka-i-dokazatelstva-s.md) Калибровка вероятности оттока и доказательства штрафа | E24 | L2 | `SA-Economics` | L | — | T-264 |
 | [T-266](T-266-filtr-produktov-finansovogo-effekta-i-lokalnyj-s.md) Фильтр продуктов финансового эффекта и локальный стенд | E24 | L2 | `SA-Economics` | M | — | T-265 |
@@ -1101,6 +1101,7 @@ graph LR
   T249 --> T262
   T250 --> T262
   T239 --> T262
+  T238 --> T262
   T007 --> T263
   T131 --> T264
   T132 --> T264

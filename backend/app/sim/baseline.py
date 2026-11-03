@@ -232,6 +232,8 @@ def _run_pg_dump(dsn: str, dump_path: Path, snapshot: str | None = None) -> None
         "--no-owner",
         "--no-acl",
         "--exclude-table=public.sim_runs",
+        "--exclude-schema=channel_runtime",
+        "--exclude-schema=llm_runtime",
         "-f",
         str(dump_path),
         dsn,
@@ -560,6 +562,9 @@ async def restore(
 
     async with await psycopg.AsyncConnection.connect(dsn, autocommit=False) as new_conn:
         await _restore_sim_runs(new_conn, sim_rows)
+        from app.llm.accounting import sync_mirrors
+
+        await sync_mirrors(new_conn)
         if runs_backup and runs_backup.is_dir():
             if runs_dir.exists():
                 shutil.rmtree(runs_dir)

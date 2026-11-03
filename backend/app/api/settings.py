@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.api.common import db, fetch_all, fetch_one
 from app.config import get_settings
 from app.errors import Problem
-from app.llm import credentials
+from app.llm import accounting, credentials
 from app.llm import secrets as sec
 from app.llm.base import binding_fields
 from app.llm.budget import load_openrouter_budget
@@ -63,6 +63,21 @@ def validate_setup_llm(value: Any) -> None:
         raise Problem(422, "ID профиля должен быть положительным целым числом")
 
 
+def validate_cx_index(value: Any) -> None:
+    from app.analytics.cx_index import validated_weights
+
+    config = value
+    if not isinstance(config, dict):
+        raise Problem(422, "cx_index должен быть объектом")
+    if "weights" in config:
+        try:
+            validated_weights(config["weights"])
+        except ValueError as exc:
+            raise Problem(
+                422, "cx_index.weights: четыре явных конечных неотрицательных веса, хотя бы один положительный"
+            ) from exc
+
+
 # ---- settings map ---------------------------------------------------------
 @router.get("/api/settings", summary="Все настройки стенда (ключ → значение)")
 async def get_settings_map() -> Any:
@@ -85,6 +100,8 @@ async def patch_settings(body: dict[str, Any]) -> Response:
         raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
     if "setup_payload" in body:
         validate_setup_llm(body["setup_payload"])
+    if "cx_index" in body:
+        validate_cx_index(body["cx_index"])
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in body.items():
@@ -137,6 +154,8 @@ async def post_settings_import(body: dict[str, Any]) -> Response:
         raise Problem(422, "llm_keys меняется только через /api/settings/llm-keys")
     if "setup_payload" in imported:
         validate_setup_llm(imported["setup_payload"])
+    if "cx_index" in imported:
+        validate_cx_index(imported["cx_index"])
     async with db() as conn, conn.transaction():
         await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
         for k, v in imported.items():
@@ -479,7 +498,9 @@ def public_openrouter_env_key(
         "tokens_used": 0,
         "tokens_limit": None,
         "requests_today": 0,
-        "rpd_limit": None if info is None else info.get("rpd_limit"),
+        # Provider-reported tier is informational, not a configured application
+        # key cap. Profile limits remain independently enforced by their scope.
+        "rpd_limit": None,
         "balance_usd": None if info is None else info.get("balance_usd"),
         "is_active": True,
         "last_error": last_error,
@@ -519,12 +540,28 @@ async def get_llm_keys() -> Any:
     async with db() as conn:
         items = await load_keys(conn, reveal=not get_settings().is_test)
         if await _refresh_openai_balances(items):
-            for item in items:
-                await conn.execute(
-                    "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
-                    (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
-                )
-    return await _with_openrouter_env_key(_mask_keys(items))
+            # Existing provider metadata refresh also changes RPD configuration;
+            # serialize it with admission/config snapshots, without extra HTTP.
+            async with conn.transaction():
+                await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
+                for item in items:
+                    await conn.execute(
+                        "update llm_api_keys set balance_usd=%s,rpd_limit=%s,last_error=%s,updated_at=now() where id=%s",
+                        (item.get("balance_usd"), item.get("rpd_limit"), item.get("last_error"), item["id"]),
+                    )
+                items = await accounting.attach_public_observations(conn, items)
+    public = await _with_openrouter_env_key(_mask_keys(items))
+    env_card = next((item for item in public if item.get("id", 0) < 0), None)
+    if env_card is not None:
+        settings = get_settings()
+        async with db() as conn:
+            observed = await accounting.attach_env_observation(
+                conn,
+                env_card,
+                accounting.KeyFacts("openai_compatible", settings.openrouter_api_key, settings.openrouter_base_url),
+            )
+        public = [observed if item is env_card else item for item in public]
+    return _mask_keys(public)
 
 
 @router.post("/api/settings/llm-keys", status_code=201, summary="Сохранить API-ключ (PGP/APP_SECRET)")
@@ -551,7 +588,8 @@ async def post_llm_keys(body: LlmKeyBody) -> Any:
                 await credentials.identity_uid(conn, body.provider, body.key),
             ),
         )
-    assert item is not None
+        assert item is not None
+        item = (await accounting.attach_public_observations(conn, [item]))[0]
     return credentials.public_key(item)
 
 

@@ -1,0 +1,165 @@
+{
+  "source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+  "run_id": "4",
+  "warning_event_id": 251,
+  "incident_public_id": "INC-000402",
+  "fixture": "demo5000 plus real normalizer/tool/SlaEngine native warning; sole compute_incident materializes fixture before read-only phase",
+  "normal_cases": 5,
+  "http_export_gets": 8,
+  "large_cases": 2,
+  "all_phases_passed": true,
+  "large_money": {
+    "source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+    "run_id": "4",
+    "warning_event_id": 251,
+    "incident_public_id": "INC-000402",
+    "fixture": "stored Decimal transport-boundary fixture, not calibrated estimates; valid numeric14,2 rows; known prior 1.01/2.02 and distinct .99/.98/.97 values/deltas",
+    "rows": 401,
+    "potential": "213999999999996.99",
+    "prevented": "213999999999992.99",
+    "potential_delta": "213999999999995.98",
+    "prevented_delta": "213999999999990.97",
+    "potential_previous": "1.01",
+    "prevented_previous": "2.02",
+    "results": [
+      {
+        "lang": "ru",
+        "mode": "light",
+        "pages": 3,
+        "visible_exact_money": [
+          "213 999 999 999 996,99 ₽",
+          "213 999 999 999 992,99 ₽",
+          "213 999 999 999 995,98 ₽",
+          "213 999 999 999 990,97 ₽"
+        ],
+        "normalized_exact_money": [
+          "213999999999996,99₽",
+          "213999999999992,99₽",
+          "213999999999995,98₽",
+          "213999999999990,97₽"
+        ],
+        "pdf_text_exact": true,
+        "non_get_attempts": 0,
+        "external_attempts": 0,
+        "page_errors": 0
+      },
+      {
+        "lang": "en",
+        "mode": "dark",
+        "pages": 3,
+        "visible_exact_money": [
+          "213,999,999,999,996.99 ₽",
+          "213,999,999,999,992.99 ₽",
+          "213,999,999,999,995.98 ₽",
+          "213,999,999,999,990.97 ₽"
+        ],
+        "normalized_exact_money": [
+          "213999999999996.99₽",
+          "213999999999992.99₽",
+          "213999999999995.98₽",
+          "213999999999990.97₽"
+        ],
+        "pdf_text_exact": true,
+        "non_get_attempts": 0,
+        "external_attempts": 0,
+        "page_errors": 0
+      }
+    ]
+  },
+  "read_only_phases": {
+    "normal": {
+      "tables": 107,
+      "unchanged": true,
+      "fingerprint_sha256": "1a93af03529f3ac9e37e1db00c26c63bd64c07cd532ecb3fb299f37e381038fa",
+      "llm_guard_marker": false,
+      "external_guard_marker": false
+    },
+    "export": {
+      "tables": 107,
+      "unchanged": true,
+      "fingerprint_sha256": "1a93af03529f3ac9e37e1db00c26c63bd64c07cd532ecb3fb299f37e381038fa",
+      "llm_guard_marker": false,
+      "external_guard_marker": false
+    },
+    "large": {
+      "tables": 107,
+      "unchanged": true,
+      "fingerprint_sha256": "9ce4b00645bbdbe4d4d631b96b01e03ab85db4f428d1be0a59dc93f0a816682f",
+      "llm_guard_marker": false,
+      "external_guard_marker": false
+    }
+  },
+  "http_exports": {
+    "source": "3898630619c50332091cee0a7aa14618b7afc0ee",
+    "http_gets": 8,
+    "results": [
+      {
+        "lang": "ru",
+        "product_line": "all",
+        "json_bytes": 1800907,
+        "xlsx_bytes": 170413,
+        "signals": 2814,
+        "json_xlsx_consistent": true,
+        "money_exact": true,
+        "xlsx_sha256": "f69cd56464083e1d8751b161b930ea9c8c6bf334a2438233df2e3d12f11dcec1"
+      },
+      {
+        "lang": "ru",
+        "product_line": "deposits",
+        "json_bytes": 73322,
+        "xlsx_bytes": 17385,
+        "signals": 38,
+        "json_xlsx_consistent": true,
+        "money_exact": true,
+        "xlsx_sha256": "89aa62d1f4589b42e0f6697b47141292f3bb6d31cc314409752d452500d59531"
+      },
+      {
+        "lang": "en",
+        "product_line": "all",
+        "json_bytes": 1797931,
+        "xlsx_bytes": 166696,
+        "signals": 2814,
+        "json_xlsx_consistent": true,
+        "money_exact": true,
+        "xlsx_sha256": "fe90c743c6e7dbd2a127aaa128ba2bf567667d4838e9b178bfa974e0f133d1c3"
+      },
+      {
+        "lang": "en",
+        "product_line": "deposits",
+        "json_bytes": 71527,
+        "xlsx_bytes": 16194,
+        "signals": 38,
+        "json_xlsx_consistent": true,
+        "money_exact": true,
+        "xlsx_sha256": "bc1e99e7070023252b61d75c6f2abaddba8bd89d36b92b93a8bc0ac1202a028b"
+      }
+    ]
+  },
+  "artifacts": {
+    "export-en-all.xlsx": "fe90c743c6e7dbd2a127aaa128ba2bf567667d4838e9b178bfa974e0f133d1c3",
+    "export-ru-all.xlsx": "f69cd56464083e1d8751b161b930ea9c8c6bf334a2438233df2e3d12f11dcec1",
+    "large-en-page1.png": "857eb1ffd17697acabcca7c4e6b2c5db313185841ffa6c16638189d175418ef8",
+    "large-en-page2.png": "3c28f0ecc788b4173fe2171ef1033580971fc2c851203781dd0bf9bda349e2ad",
+    "large-en-page3.png": "bdaafc4d7b739636abc20197b0a0c6977812c6862531d9b906f723d3bf27716c",
+    "large-ru-page1.png": "590ae4a386b968e413a03643e03358ee4586a28815d0fdbac8e6f154a065806a",
+    "large-ru-page2.png": "b542f1dfa348cd298a9c254e49791c7b4ea4bded5a2686f879f52dcdf384a584",
+    "large-ru-page3.png": "e9783df85809c57217365241ac9ea27d3b784d21792d65ebf699b7416ebd8810",
+    "normal-en-page3.png": "9675dddbb39e06e831a75d7bfd80d8e0ce4787bd1568278cb9cfecbf2ed799e7",
+    "normal-ru-page3.png": "6683a47be1a7058ea9e0684431548544bcfea52870fa0debfe8b0c171da08668",
+    "report-en-dark-mobile.png": "15a042cee99567c1616f976240b82b04fab2e94958691ac32141cc1503442bde",
+    "report-en-dark.pdf": "fa6850dd5a6ec41a03dce55e9a1d190612fa18af31803b8edce25be543d1bb08",
+    "report-en-dark.png": "8ea9b539191d287d809a13909a1e4bb00adc1bde23e003b8fbe899621eb1305b",
+    "report-en-light.pdf": "3c529528d994554687577bdccc93c402ca3b177d1e434de745d0c1e969aeb535",
+    "report-en-light.png": "d3f29de8838bea8c3b95acdf75983cf699470540c36ab7ab737a18ba0505c3f7",
+    "report-large-en-dark.pdf": "2accf409f5312864f798fb34b413c9ccbc40c938e9b4ec4212393008075b79e6",
+    "report-large-en-dark.png": "5c40a9c208cb3f62c7b150e75dbd9afed6325f8e918bb3768a6ad1c99e0f3f9a",
+    "report-large-ru-light.pdf": "c06802d419a53cef1212d8a9eca8778952a4de4039751a3e1fcfef78346b8e5e",
+    "report-large-ru-light.png": "2e9d79874d054078374dca445c4ca00f446a5b17c1ce94e43476570bb5c9c903",
+    "report-ru-dark.pdf": "f2cfbf36a2b15dd7e5fc8e232872c5659be71d500b4d246f2ebdc9cc2df2543b",
+    "report-ru-dark.png": "9f1d8bfc4df74c7082c666f6e33c9b3759f3bf03342d8acf2b3924fd45167f1f",
+    "report-ru-light-mobile.png": "5519115d73df8d913d9ff4e2a5911285febe6823e82279e0083ede7fe27cbfd7",
+    "report-ru-light.pdf": "8b4cb1dfd8756d22d63141a2c8d41cbe09fcb1f8e0b5cdc978c88e304e2d8e3d",
+    "report-ru-light.png": "66af4651c8d54be5f52df53a18c9619563894dd40c87bda772585c918d2ad6a5"
+  },
+  "visual_inspection": "PNG page renders inspected after final source; see contract review for scope and historical counterexample"
+}

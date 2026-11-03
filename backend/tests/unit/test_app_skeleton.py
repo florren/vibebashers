@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -66,10 +68,29 @@ def test_ws_subscribe_and_ping() -> None:
 
 @pytest.mark.parametrize(
     ("path", "card"),
-    [("/api/cabinet/overview", "T-241"), ("/api/csi/analytics", "T-247")],
+    [("/api/test-v15-stub/cabinet", "T-241"), ("/api/test-v15-stub/csi", "T-247")],
 )
-def test_v15_stubs_are_problem_json(path: str, card: str) -> None:
-    with TestClient(create_app()) as client:
+@pytest.mark.parametrize("with_spa", [False, True])
+def test_v15_stubs_are_problem_json(path: str, card: str, with_spa: bool, tmp_path: Path, monkeypatch) -> None:
+    from app.config import get_settings
+    from app.errors import NotImplementedYet
+
+    dist = tmp_path / "frontend"
+    if with_spa:
+        (dist / "assets").mkdir(parents=True)
+        (dist / "index.html").write_text("<!doctype html><title>test SPA</title>")
+    monkeypatch.setenv("FRONTEND_DIST", str(dist))
+    get_settings.cache_clear()
+    app = create_app()
+
+    @app.get(path)
+    async def stub() -> None:
+        raise NotImplementedYet(card)
+
+    # Test-only API объявляется перед catchall, как настоящие routers в create_app.
+    app.router.routes.insert(0, app.router.routes.pop())
+    assert any(getattr(route, "name", None) == "spa" for route in app.router.routes) == with_spa
+    with TestClient(app) as client:
         response = client.get(path)
     assert response.status_code == 501
     assert response.headers["content-type"].startswith("application/problem+json")

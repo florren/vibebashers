@@ -18,9 +18,11 @@ from app.db.session import psycopg_dsn
 from app.errors import NotImplementedYet
 from app.llm.run_profiles import capture
 from app.sim import runs as run_svc
+from app.sim import scenario_acceptance as acceptance
 from app.sim import scenarios as sc
 from app.sim.engine import Simulator
 from app.sim.maintenance import spawn_writer
+from app.sim.proactive_scenario import ScriptedScenarioError, plan, preflight
 
 router = APIRouter(tags=["scenarios"])
 
@@ -56,12 +58,16 @@ async def run_scenario(
         raise HTTPException(status_code=404, detail="сценарий не найден")
     if not sc.is_runnable(scenario):
         raise NotImplementedYet(str(scenario.get("requires") or "B07"))
+    scripted = plan(scenario)
+    start_paused = start_paused or scripted is not None
     body = body or ScenarioRunRequest()
     if scenario.get("reset_mode_required") == "baseline" and body.reset_mode != "baseline":
         raise HTTPException(409, "Для этого сценария требуется явный reset_mode=baseline")
     try:
         async with db() as conn, conn.transaction():
-            await capture(conn, body.llm_profile_id)
+            snapshot = await capture(conn, body.llm_profile_id)
+            if acceptance.is_acceptance(scenario):
+                acceptance.require_mock(snapshot)
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
     if body.reset_mode == "baseline":
@@ -69,9 +75,15 @@ async def run_scenario(
 
         await _restore_baseline(request, main_profile_id=body.llm_profile_id)
     async with db() as conn:
+        if scripted is not None:
+            try:
+                await preflight(conn, scripted)
+            except ScriptedScenarioError as exc:
+                raise HTTPException(409, str(exc)) from None
         await sc.ensure_registered(conn, scenario)
     sim: Simulator = request.app.state.sim
     svc = agent_service(request)
+    start_paused = start_paused or (acceptance.is_acceptance(scenario) and scenario.get("start_paused") is True)
     if start_paused:
         await sim.control("pause")
     try:
@@ -87,6 +99,11 @@ async def run_scenario(
         )
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
+    if scripted is not None:
+        try:
+            await sim.prepare_scenario(scripted)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
     if body.speed_preset:
         await sim.control("set_preset", preset=body.speed_preset)
     run_id = sim.run_id
@@ -95,11 +112,18 @@ async def run_scenario(
     transcript: dict[str, Any] | None = None
     async with db() as conn:
         try:
-            if sc.is_transcript(scenario):
+            if scripted is not None:
+                pass  # Native source уже atomic prepared; graph стартует producer worker.
+            elif acceptance.is_acceptance(scenario) and id == "csi_and_branches":
+                # db() autocommit: reservation TX завершается до import TX.
+                # Ошибка import не освобождает namespace для чужого запуска.
+                await acceptance.reserve_csi(conn, run_id)
+                await acceptance.prepare_csi(conn, run_id)
+            elif sc.is_transcript(scenario):
                 transcript = await sc.inject_transcript(conn, scenario, run_id, sim_time=sim.clock.sim_time)
             else:
                 injected = await sc.inject(conn, scenario, run_id, sim_time=sim.clock.sim_time)
-        except LookupError as exc:
+        except (LookupError, acceptance.PreparationError) as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         await conn.execute("update scenarios set last_run_at = now() where id = %s", (id,))
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as tconn:  # кортежные строки для run_svc

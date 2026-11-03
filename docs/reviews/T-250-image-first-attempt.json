@@ -1,0 +1,35 @@
+{
+  "project": "cx-ci-t250-40f82080b886",
+  "base": "http://127.0.0.1:18162",
+  "source": "0a6efd10525a890ff3cdfe8c3383a9be48ca9405",
+  "image": "sha256:b98d406eeaed349bf623a7b53d107b99469140e8130fa2c38ce2fa0a540db03a",
+  "stages": [
+    "fresh_up"
+  ],
+  "seed_seconds": 5.465596139023546,
+  "fresh_state": {
+    "current_run_id": 1,
+    "sim_time": "2026-11-09T06:00:00+00:00",
+    "running": false,
+    "header_status": "completed",
+    "header_kind": "baseline"
+  },
+  "own_project_cleaned": true,
+  "error_type": "CalledProcessError",
+  "error": "Command '['npm', 'exec', '--', 'playwright', 'test', 'e2e/map-branches.spec.ts', '--project=settings', '--no-deps', '--workers=1', '--output=/tmp/t250-image-portable-results', '--reporter=json']' returned non-zero exit status 1.",
+  "portable_failure": {
+    "stats": {
+      "startTime": "2026-11-02T23:46:16.571Z",
+      "duration": 6336.09,
+      "expected": 0,
+      "skipped": 3,
+      "unexpected": 1,
+      "flaky": 0
+    },
+    "errors": [
+      "Error: response.json: Protocol error (Network.getResponseBody): No data found for resource with given identifier\n\n  67 |           data.items.forEach(branch => directory.set(branch.code, branch.branch_status)); if (data.next_cursor == null) directoryComplete = true\n  68 |         }))\n> 69 |         if (/^\\/api\\/branches\\/(?!analytics$)[^/]+$/.test(path) && response.ok()) bodies.push(response.json().then((detail: Detail) => { details.set(detail.branch.code, detail) }))\n     |                                                                                                        ^\n  70 |       })\n  71 |       await page.goto('/workspace?tab=map')\n  72 |       await expect(page).toHaveURL(/run_id=current/)\n    at Page.<anonymous> (/home/asb/Documents/ChatGPT/vibebashers/t250-map-branches/frontend/e2e/map-branches.spec.ts:69:104)"
+    ],
+    "request_body_failure_path": "Не зафиксирован первым harness; следующий recorder сохраняет path/status/requestfailed/pageerrors.",
+    "interpretation": "Stabilization hypothesis, не доказанная единственная причина. Ошибка не скрывается и не объявляется green."
+  }
+}

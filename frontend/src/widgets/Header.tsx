@@ -17,6 +17,7 @@ import { DeviceSelector } from '@/shared/layout/device'
 import { useMobileLayout } from '@/shared/layout/device-store'
 import { Badge, Drawer } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
+import { BotQrButton } from './BotQrButton'
 
 const SPEEDS = [1, 10, 60, 120, 300]
 
@@ -67,12 +68,13 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
     if (!longTriggered.current) navigate(v2 ? '/overview' : '/')
   }
 
-  if (mobile) return <>
+  return <>{mobile ? <>
     <header className="mobile-header shrink-0 border-b border-line bg-surface">
       <div className="flex min-h-14 items-center gap-2 px-3 py-2">
         <button type="button" className="btn btn-primary mobile-icon" aria-label={t('app.title')} onPointerDown={onLogoDown} onPointerUp={onLogoUp} onPointerLeave={clearPress} onPointerCancel={clearPress}><Activity size={20} /></button>
         <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
         <GlobalSearch compact />
+        <BotQrButton compact />
         <button className="btn mobile-icon" aria-label={t('device.openMenu')} aria-expanded={menu} onClick={e => { e.currentTarget.focus(); setMenu(true) }}><Menu size={21} /></button>
       </div>
       <div className={clsx('flex items-center justify-between px-3 text-muted', v2 ? 'flex-wrap gap-x-2 gap-y-0 pb-1 text-[12px] leading-tight' : 'gap-2 pb-2 text-xs')}>
@@ -103,10 +105,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         </section>
       </div>
     </Drawer>
-    <JuryModal open={jury} onClose={() => setJury(false)} />
-  </>
-
-  return (
+  </> : (
     <header className="desktop-header flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-line bg-surface px-3">
       <div className="flex items-center gap-2">
         <button
@@ -192,6 +191,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
       <button className="btn btn-sm" onClick={() => setJury(true)}>
         <MessageSquarePlus size={13} /> {t(v2 ? 'shell.newSignal' : 'common.jury')}
       </button>
+      <BotQrButton />
       <span className={clsx('flex items-center gap-1 text-xs', wsStatus === 'open' ? 'text-muted' : 'text-danger')} title="WebSocket">
         <span className={clsx('h-1.5 w-1.5 rounded-full', wsStatus === 'open' ? 'bg-ok' : wsStatus === 'connecting' ? 'bg-warn' : 'bg-danger')} />
         {v2 && wsStatus === 'open' ? t('shell.live') : t(`ws.${wsStatus}`)}
@@ -207,9 +207,8 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
       {v2 && <RoleSelector />}
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <DeviceSelector />
-      <JuryModal open={jury} onClose={() => setJury(false)} />
     </header>
-  )
+  )}<JuryModal open={jury} onClose={() => setJury(false)} /></>
 }
 
 function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {

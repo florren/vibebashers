@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { clsx } from 'clsx'
 import { Mic, Square } from 'lucide-react'
 import { useSttProviders } from '@/shared/api/hooks'
-import { micSupported, startMic, type MicHandle } from './mic'
+import { micSupported, microphoneOriginAllowed, startMic, type MicHandle } from './mic'
 import { startWebSpeech, webSpeechSupported } from './webSpeech'
 import type { Schemas } from '@/shared/api/client'
+import { selectedDefaultProvider } from './providerSelection'
 
-/** «Надиктовать» (T-206): офлайн — пишем PCM16 и отправляем в POST /api/stt/transcribe (Vosk); иначе — Web Speech API браузера. */
+/** «Надиктовать» (T-206): используем только явно выбранный default из API; browser требует явного включения. */
 export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly = false, maxSeconds = 120 }: { onText: (text: string) => void; onInterim?: (text: string) => void; onVoice?: (meta: Schemas['VoiceMeta']) => void; className?: string; serverOnly?: boolean; maxSeconds?: number }) {
   const { t } = useTranslation()
   const prov = useSttProviders()
@@ -22,25 +23,49 @@ export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly =
     const timer = window.setTimeout(() => { void stopRef.current?.() }, maxSeconds * 1000)
     return () => window.clearTimeout(timer)
   }, [rec, maxSeconds])
-  const speechRef = useRef<{ stop: () => void } | null>(null)
-  const serverOk = (prov.data ?? []).some((p) => p.available && p.code !== 'browser') && micSupported()
-  const mode: 'server' | 'browser' | null = serverOk ? 'server' : !serverOnly && webSpeechSupported() ? 'browser' : null
+  const speechRef = useRef<ReturnType<typeof startWebSpeech> | null>(null)
+  const activeProvider = useRef<string | null>(null)
+  const selected = prov.isError ? null : selectedDefaultProvider(prov.data ?? [])
+  const secure = microphoneOriginAllowed(window.location, window.isSecureContext === true)
+  const mode: 'server' | 'browser' | null = !selected ? null : selected.code === 'browser'
+    ? !serverOnly && webSpeechSupported() ? 'browser' : null
+    : micSupported() ? 'server' : null
 
   useEffect(() => () => {
     micRef.current?.stop()
-    speechRef.current?.stop()
+    speechRef.current?.abort()
   }, [])
+  useEffect(() => {
+    if (!rec || secure && mode && activeProvider.current === selected?.code) return
+    micRef.current?.stop(); micRef.current = null
+    speechRef.current?.abort(); speechRef.current = null
+    chunks.current = []
+    setRec(false)
+  }, [rec, secure, mode, selected?.code])
+  if (!secure) {
+    return <span className="text-xs text-muted">{t('voice.secureRequired')}</span>
+  }
+  if (prov.isError) return <span role="status" className="text-xs text-muted">{t('voice.providersUnavailable')}</span>
   if (!mode) return null
 
   const start = async () => {
+    if (!selected || !mode) return
+    activeProvider.current = selected.code ?? null
     setErr(null)
     try {
       if (mode === 'server') {
         chunks.current = []
         micRef.current = await startMic({ channels: 1, onFrame: (pcm) => chunks.current.push(pcm) })
       } else {
+        const finalTranscripts: string[] = []
         speechRef.current = startWebSpeech({
-          onResult: (text, isFinal) => (isFinal ? onText(text) : onInterim?.(text)),
+          onResult: (text, isFinal) => {
+            if (!isFinal) { onInterim?.(text); return }
+            finalTranscripts.push(text)
+            onText(text)
+            // Известен только финальный текст: длительность аудио и средняя уверенность не измерены.
+            onVoice?.({ stt_provider: 'browser', transcript_raw: finalTranscripts.join(' ') })
+          },
           onError: (e) => e !== 'no-speech' && setErr(e),
         })
       }
@@ -96,6 +121,7 @@ export function VoiceInput({ onText, onInterim, onVoice, className, serverOnly =
       >
         {rec ? <Square size={14} /> : <Mic size={14} />} {busy ? t('voice.busy') : rec ? t('voice.stop') : t('voice.start')}
       </button>
+      {selected?.external_service && <span className="text-xs text-muted">{t('voice.externalHint')}</span>}
       {err && <span className="text-xs text-danger">{err}</span>}
     </span>
   )

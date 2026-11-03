@@ -1,0 +1,79 @@
+{
+  "proven_runtime": "1c9c36515f8eb517824f6b93b723366fe81ae840",
+  "publication_application_source": "55c3627515e7eeb22482f77bd3305fd77c48532d",
+  "parent_api29": "1d248e2d075bbb132182f6910bf5584c81668c8f",
+  "application_and_target_tests_equal_to_proven_runtime": {
+    "backend/app": {
+      "proven_source": "70d6cd75e7afb30867d9f068e2aea664a383bcf6",
+      "publication_source": "70d6cd75e7afb30867d9f068e2aea664a383bcf6"
+    },
+    "frontend/src": {
+      "proven_source": "fad1a7c2a29cc000201ab6d0d640cf99b09fd4cf",
+      "publication_source": "fad1a7c2a29cc000201ab6d0d640cf99b09fd4cf"
+    },
+    "contracts/api/openapi.yaml": {
+      "proven_source": "a943bce739c3bd4a7e1fecf526b453f3f4f2b852",
+      "publication_source": "a943bce739c3bd4a7e1fecf526b453f3f4f2b852"
+    },
+    "frontend/e2e/overview.spec.ts": {
+      "proven_source": "107bd4f784045487b6e2811faf33ee26bbccea3c",
+      "publication_source": "107bd4f784045487b6e2811faf33ee26bbccea3c"
+    },
+    "backend/tests/integration/test_metrics_cx_index.py": {
+      "proven_source": "9651ac079621fa27126f79dd214e02ff78095f2e",
+      "publication_source": "9651ac079621fa27126f79dd214e02ff78095f2e"
+    },
+    "backend/tests/integration/test_metrics_temporal_publication.py": {
+      "proven_source": "97a6f4c79dc76903c9616b25d1c32ebf14a76396",
+      "publication_source": "97a6f4c79dc76903c9616b25d1c32ebf14a76396"
+    },
+    "backend/tests/integration/test_sim_stale_control.py": {
+      "proven_source": "4549444bff11e7bcefb2e53ba9decf8e18021774",
+      "publication_source": "4549444bff11e7bcefb2e53ba9decf8e18021774"
+    },
+    "backend/tests/unit/test_sim_shutdown.py": {
+      "proven_source": "816968773b059f78d95430e4a32f3b5f9f7c58db",
+      "publication_source": "816968773b059f78d95430e4a32f3b5f9f7c58db"
+    }
+  },
+  "inherited_producer_equal_to_parent": {
+    "backend/app": {
+      "api29_parent": "70d6cd75e7afb30867d9f068e2aea664a383bcf6",
+      "publication_source": "70d6cd75e7afb30867d9f068e2aea664a383bcf6"
+    },
+    "contracts/api/openapi.yaml": {
+      "api29_parent": "a943bce739c3bd4a7e1fecf526b453f3f4f2b852",
+      "publication_source": "a943bce739c3bd4a7e1fecf526b453f3f4f2b852"
+    },
+    "frontend/src/shared/api/types.ts": {
+      "api29_parent": "d2836147d4d068d513b57efe652b69cf6f36fe2b",
+      "publication_source": "d2836147d4d068d513b57efe652b69cf6f36fe2b"
+    },
+    "backend/tests/integration/test_metrics_cx_index.py": {
+      "api29_parent": "9651ac079621fa27126f79dd214e02ff78095f2e",
+      "publication_source": "9651ac079621fa27126f79dd214e02ff78095f2e"
+    },
+    "backend/tests/integration/test_metrics_temporal_publication.py": {
+      "api29_parent": "97a6f4c79dc76903c9616b25d1c32ebf14a76396",
+      "publication_source": "97a6f4c79dc76903c9616b25d1c32ebf14a76396"
+    },
+    "backend/tests/integration/test_sim_stale_control.py": {
+      "api29_parent": "4549444bff11e7bcefb2e53ba9decf8e18021774",
+      "publication_source": "4549444bff11e7bcefb2e53ba9decf8e18021774"
+    },
+    "backend/tests/unit/test_sim_shutdown.py": {
+      "api29_parent": "816968773b059f78d95430e4a32f3b5f9f7c58db",
+      "publication_source": "816968773b059f78d95430e4a32f3b5f9f7c58db"
+    }
+  },
+  "checks": {
+    "frontend": 485,
+    "frontend_files": 69,
+    "targeted_unit_pg": 102,
+    "production_browser": 8,
+    "unchanged_readonly_tables": 114,
+    "route_walk": 8,
+    "gen2_idempotent_cards": 206
+  },
+  "limitation": "No new full backend claim; exact-head CI and parent review remain required"
+}

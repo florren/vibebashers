@@ -16,7 +16,7 @@ type View = 'tickets' | 'escalations'
 const T_STATUSES = ['open', 'in_progress', 'resolved', 'closed', 'rejected'] as const
 const E_STATUSES = ['open', 'acknowledged', 'resolved', 'dismissed'] as const
 
-export function TicketsTab({ runId }: { runId: number | undefined }) {
+export function TicketsTab({ runId }: { runId: string | number | undefined }) {
   const { t } = useTranslation()
   const [view, setView] = useState<View>('tickets')
   const [tStatus, setTStatus] = useState<string[]>(['open', 'in_progress'])

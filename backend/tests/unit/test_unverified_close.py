@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from psycopg.types.json import Jsonb
 
 from app.agent import nodes
 from app.agent.nodes import close
@@ -46,9 +47,13 @@ async def test_instant_decision_persists_contract_source(provider, source, monke
     assert deps.ctx.llm_source == source
     conn.execute.assert_awaited_once()
     args = conn.execute.await_args.args[1]
-    assert json.loads(args[0])["signal_type"] == "tariff_terms"
-    assert json.loads(args[1])["incident_action"] == "create"
-    assert args[2] == 3
+    classification = args[0].obj if isinstance(args[0], Jsonb) else json.loads(args[0])
+    decision = args[4].obj if isinstance(args[4], Jsonb) else json.loads(args[4])
+    assert classification["signal_type"] == "tariff_terms"
+    assert decision["incident_action"] == "create"
+    assert args[2] is None
+    assert args[3] is True
+    assert args[5] == 3
     output = deps.record_step.await_args.args[3]
     assert output["score_pipeline"] == "agent-score-v1"
     assert output["churn_predicted_sim"] == "2026-11-09T06:00:00+00:00"

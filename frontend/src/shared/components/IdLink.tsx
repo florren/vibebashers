@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/shared/routes'
 
-export function IdLink({ kind, value }: { kind: string; value: string | number | null | undefined }) {
+export function IdLink({ kind, value, runId }: { kind: string; value: string | number | null | undefined; runId?: string }) {
   const { t } = useTranslation()
   const [copy, setCopy] = useState<'idle' | 'done' | 'error'>('idle')
   if (value == null || value === '') return <span>—</span>
@@ -11,7 +11,7 @@ export function IdLink({ kind, value }: { kind: string; value: string | number |
   return (
     <span className="inline-flex items-center gap-1 font-mono text-xs" onClick={(e) => e.stopPropagation()}>
       <Link
-        to={ROUTES.traceObject(kind, ref)}
+        to={`${ROUTES.traceObject(kind, ref)}${runId ? `?run_id=${encodeURIComponent(runId)}` : ''}`}
         title={t('traceUi.kind.' + kind, { defaultValue: kind })}
         aria-label={t('traceUi.openId', { ref })}
         className="text-brand hover:underline"

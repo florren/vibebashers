@@ -58,6 +58,9 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
                     (Path(outer["source"]) / relative).parent.mkdir(parents=True, exist_ok=True)
         service.pop("container_name", None)
         service["ports"] = []
+    # Long polling/egress не входит в browser candidate. Bot image отдельно
+    # проверяется --network none; все новые inbound/delivery tests используют fake HTTP.
+    config["services"].pop("tgbot", None)
     config["services"]["postgres"]["environment"] = {
         "POSTGRES_USER": "cx",
         "POSTGRES_PASSWORD": "cx",
@@ -80,6 +83,7 @@ def isolate(config: dict[str, Any], project: str, image: str, port: int, directo
                 "LLM_RECORD": "false",
                 "STT_PROVIDER": "none",
                 "TELEGRAM_BOT_TOKEN": "",
+                "TGBOT_ENABLED": "false",
                 "MAILPIT_ENABLED": "false",
                 "LOG_DIR": "/tmp/cx-logs",
             }
@@ -187,7 +191,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--performance", action="store_true")
     args = parser.parse_args(argv)
     project = f"cx-ci-{secrets.token_hex(6)}"
-    environment = {**os.environ, "E2E_BASE_URL": f"http://127.0.0.1:{args.port}"}
+    environment = {
+        **os.environ,
+        "E2E_BASE_URL": f"http://127.0.0.1:{args.port}",
+        "E2E_ISOLATED_SCENARIOS": project,
+    }
     with (
         own_env(ROOT / ".env"),
         tempfile.TemporaryDirectory(prefix="cx-ci-compose-") as directory,

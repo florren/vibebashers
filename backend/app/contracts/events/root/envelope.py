@@ -556,6 +556,10 @@ class SignalStatus(StrEnum):
 
 
 class Envelope(BaseModel):
+    """
+    v1.5.25: добавлено типизированное семейство scenario.proactive_* для bounded native phase journal; existing families/fields сохранены.
+    """
+
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -563,8 +567,8 @@ class Envelope(BaseModel):
     run_id: Id = Field(..., description="Запуск эмуляции (sim_runs.id), ТЗ 4.6 — обязателен для всех событий")
     event_type: str = Field(
         ...,
-        description="Семейство.подтип. Полный перечень — в sim/*.schema.json и behavior/client_event.schema.json (enum event_type у каждого payload); v1.3: review.* (sim/review), abs.* (sim/abs), compliance.* (compliance/session_event), demo.failover (demo/failover); v1.4: ingest.* (ingest/ingest_event), escalation.* (sim/escalation), zone.changed (sim/zone)",
-        pattern="^(op|fault|client_error|signal|team|sla|client|agent|review|abs|compliance|demo|ingest|escalation|zone)\\.[a-z_]+$",
+        description="Семейство.подтип. Полный перечень — в sim/*.schema.json и behavior/client_event.schema.json (enum event_type у каждого payload); v1.3: review.* (sim/review), abs.* (sim/abs), compliance.* (compliance/session_event), demo.failover (demo/failover); v1.4: ingest.* (ingest/ingest_event), escalation.* (sim/escalation), zone.changed (sim/zone); scenario.proactive_* — bounded native phase journal (sim/scenario_proactive)",
+        pattern="^(op|fault|client_error|signal|team|sla|client|agent|review|abs|compliance|demo|ingest|escalation|zone|scenario)\\.[a-z_]+$",
     )
     sim_time: SimTime
     real_time: AwareDatetime

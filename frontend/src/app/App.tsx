@@ -1,5 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { PendingScreen, WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
+import { OverviewPage } from '@/pages/overview/OverviewPage'
+import { ReportPage } from '@/pages/cabinet/ReportPage'
+import { CabinetPage } from '@/pages/cabinet/CabinetPage'
+import { WorkspaceEntry } from '@/shared/layout/LayoutRoutes'
 import { DeviceLayoutRuntime } from '@/shared/layout/device'
 import { EconomicsPage } from '@/pages/finance/EconomicsPage'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
@@ -22,6 +24,7 @@ import { ManagerPage } from '@/pages/manager/ManagerPage'
 import { TracePage } from '@/pages/trace'
 import { JourneyPage } from '@/pages/journey'
 import { FinancePage } from '@/pages/finance/FinancePage'
+import { CsiPage } from '@/pages/csi/CsiPage'
 import { SetupPage } from '@/pages/setup/SetupPage'
 
 function OperatorRuntime() {
@@ -31,7 +34,6 @@ function OperatorRuntime() {
 }
 
 export function App() {
-  const { t } = useTranslation()
   const qc = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 5000, refetchOnWindowFocus: false } } }), [])
   return (
     <QueryClientProvider client={qc}>
@@ -44,13 +46,14 @@ export function App() {
             <Route path="landing" element={<ClaimPage />} />
             <Route path="track/:token" element={<TrackingPage />} />
           </Route>
+          <Route path="cabinet/:productLine/report" element={<ReportPage />} />
           <Route element={<><OperatorRuntime /><Shell /></>}>
             <Route index element={<WorkspaceEntry />} />
             <Route path="workspace" element={<WorkspacePage />} />
-            <Route path="overview" element={<PendingScreen title={t('shell.overview')} />} />
-            <Route path="cabinet" element={<PendingScreen title={t('shell.cabinet')} />} />
-            <Route path="cabinet/:productLine" element={<PendingScreen title={t('shell.cabinet')} />} />
-            <Route path="csi" element={<PendingScreen title={t('shell.csi')} />} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="cabinet" element={<CabinetPage />} />
+            <Route path="cabinet/:productLine" element={<CabinetPage />} />
+            <Route path="csi" element={<CsiPage />} />
             <Route path="clients/:id" element={<Client360Page />} />
             <Route path="incidents/:id" element={<IncidentPage />} />
             <Route path="engine" element={<EnginePage />} />

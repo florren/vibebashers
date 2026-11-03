@@ -1,0 +1,97 @@
+{
+  "full_source": "7acce1b22925fb13e6881f6f3a819f2f5e8c7e2c",
+  "full_command": "make test",
+  "full_exit": 0,
+  "full_results": {
+    "unit": {
+      "passed": 1633,
+      "skipped": 18,
+      "seconds": 47.15
+    },
+    "integration": {
+      "passed": 390,
+      "skipped": 2,
+      "seconds": 2275.64
+    },
+    "scenarios": {
+      "passed": 43,
+      "skipped": 2,
+      "seconds": 277.27
+    },
+    "compliance": {
+      "passed": 31,
+      "seconds": 117.76
+    },
+    "frontend": {
+      "passed": 331
+    },
+    "tgbot": {
+      "passed": 34,
+      "seconds": 7.58
+    }
+  },
+  "backend_total_passed": 2097,
+  "backend_total_skipped": 22,
+  "composition_source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
+  "composition_note": "tree identical93f180b after ancestry-only currentT240cbfd merge; latestP1e6/main501 and Unicode fix included; no full monolithic make on this composition claimed",
+  "composition_checks": {
+    "unit": {
+      "passed": 1640,
+      "skipped": 18,
+      "seconds": 49.81
+    },
+    "frontend_lint_type_vitest": 348,
+    "backend_ruff_files": 432,
+    "backend_mypy_modules": 283,
+    "bot_ruff_files": 11,
+    "bot_mypy_modules": 5,
+    "openapi_drift": {
+      "spec": 192,
+      "code": 192
+    },
+    "target_pg_delivery_dialogue_public": {
+      "passed": 15,
+      "seconds": 93.85
+    },
+    "licenses": {
+      "backend_npm": 550,
+      "tgbot": 36
+    },
+    "all_added_backend_coverage": {
+      "covered": 575,
+      "new_executable": 623,
+      "percent": 92.29534510433388,
+      "targets": "88unitPG106.84s+18same-runtime ASGI/lifespan15.64s"
+    },
+    "bot_coverage": {
+      "covered": 209,
+      "statements": 219,
+      "percent": 95.4337899543379,
+      "tests": 43,
+      "seconds": 15.12
+    }
+  },
+  "actual_ui": {
+    "source": "3450afe5cddbb51a09a952a8b775337e4fd7755f",
+    "variants": 4,
+    "tables_unchanged": 94,
+    "external": 0,
+    "non_get": 0,
+    "llm": 0,
+    "scope": "explicit four synthetic status fixtures, actor-free Mock-only readonly DB, no HTTP mocks; not real Telegram receipts"
+  },
+  "no_live_telegram": true,
+  "remaining": [
+    "exact-head CI",
+    "final API20/DDL15 techlead review",
+    "real Telegram jury/5m projector criterion requires separate authorization/manual proof; T122 health/QR and T189 manager callbacks separate"
+  ],
+  "runtime_hashes": {
+    "backend/app/main.py": "a13ef6a41311498da8a76d82a5d42542f97f9561",
+    "backend/app/api/public.py": "9066442d15ebfd921d5a0fa776cbab18dc768d26",
+    "backend/app/tgbot/delivery.py": "14e51d249422f1a88295ec902713ddb0847096ca",
+    "backend/app/agent/tools/write.py": "27b211747ad62e074c5850a98d3ff8b3e1a6641b",
+    "contracts/api/openapi.yaml": "b4f286e6a944075e025bded48990a6d9b06ff980",
+    "contracts/db/migrations/0015_telegram_transport.sql": "32a7c0c6fa86573e34e9c505c6086e0ed22cea92"
+  }
+}

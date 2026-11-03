@@ -1,3 +1,4 @@
+import { SourcePlatformBadge } from '@/shared/components/SourcePlatformBadge'
 import { ResponsiveFilters } from '@/shared/layout/ResponsiveFilters'
 import { useUndo } from '@/shared/ui/undo'
 import { clsx } from 'clsx'
@@ -17,16 +18,18 @@ const TYPES = Object.values(SignalType) as string[]
 const STATUSES = Object.values(SignalStatus) as string[]
 const CHANNELS = (Object.values(Channel) as string[]).filter((c) => !['voice_input', 'branch_audio', 'api', 'internal'].includes(c))
 
-export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOpen: (id: number) => void }) {
+export function SignalsFeed({ runId, onOpen, runScope, onRunScopeChange }: { runId: number | undefined; onOpen: (id: number) => void; runScope?: string; onRunScopeChange?: (value: string) => void }) {
   const { t } = useTranslation()
-  const [scope, setScope] = useState<'all' | 'current'>('all')
+  const [localScope, setLocalScope] = useState('all')
+  const scope = runScope ?? localScope
+  const setScope = (value: string) => { if (runScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setLocalScope(value) }
   const [q, setQ] = useState('')
   const [personalOnly, setPersonalOnly] = useState(false)
   const [types, setTypes] = useState<string[]>([])
   const [statuses, setStatuses] = useState<string[]>([])
   const [channels, setChannels] = useState<string[]>([])
   const query = useMemo(
-    () => ({ run_id: scope === 'all' ? 'all' : runId ?? 'current', q: q || undefined, tag: personalOnly ? 'ui_pers_demo' : undefined, signal_type: types, status: statuses, channel: channels, limit: 100 }),
+    () => ({ run_id: scope === 'current' ? runId ?? 'current' : scope, q: q || undefined, tag: personalOnly ? 'ui_pers_demo' : undefined, signal_type: types, status: statuses, channel: channels, limit: 100 }),
     [runId, scope, q, personalOnly, types, statuses, channels],
   )
   const list = useSignalPages(query)
@@ -42,7 +45,7 @@ export function SignalsFeed({ runId, onOpen }: { runId: number | undefined; onOp
           <Search size={13} className="pointer-events-none absolute left-2 top-2.5 text-faint" />
           <input className="input w-full pl-7" value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('continuity.signalSearch')} maxLength={200} placeholder={t('continuity.signalSearch')} />
         </label>
-        <label className="block text-xs text-muted">{t('continuity.scope')}<select className="input mt-1 w-full" value={scope} onChange={e => setScope(e.target.value as typeof scope)}><option value="all">{t('continuity.allRuns')}</option><option value="current">{t('continuity.currentRun')}</option></select></label>
+        <label className="block text-xs text-muted">{t('continuity.scope')}<select className="input mt-1 w-full" value={scope} onChange={e => setScope(e.target.value)}><option value="all">{t('continuity.allRuns')}</option><option value="current">{t('continuity.currentRun')}</option>{scope !== 'all' && scope !== 'current' && <option value={scope}>{t('overviewUi.selectedRun', { run: scope })}</option>}</select></label>
         <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={personalOnly} onChange={e=>setPersonalOnly(e.target.checked)}/>ui_pers_demo</label>
         <FilterGroup title={t('common.type')} items={TYPES} value={types} onChange={setTypes} label={(c) => tEnum('signal.type', c)} />
         <FilterGroup title={t('common.status')} items={STATUSES} value={statuses} onChange={setStatuses} label={(c) => tEnum('signal.status', c)} />
@@ -107,6 +110,7 @@ export function SignalRow({
           <span className="mb-1 block break-words font-mono text-xs text-info">{s.public_id}{s.run_public_id && ` · ${s.run_public_id}`}{(s.incident_refs ?? []).length > 0 && ` → ${s.incident_refs!.join(', ')}`}</span>
           <span className="flex flex-wrap items-center gap-1.5">
             <Badge tone="neutral">{tEnum('channel', s.channel_code)}</Badge>
+            <SourcePlatformBadge platform={s.source_platform} />
             {c?.signal_type && <Badge tone="info">{tEnum('signal.type', c.signal_type)}</Badge>}
             {c?.criticality && c.criticality !== 'low' && <Badge tone={criticalityTone(c.criticality)}>{tEnum('incident.criticality', c.criticality)}</Badge>}
             {s.sentiment && s.sentiment !== 'neutral' && <Badge tone={sentimentTone(s.sentiment)}>{tEnum('signal.sentiment', s.sentiment)}</Badge>}

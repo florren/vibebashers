@@ -57,3 +57,6 @@ data/runs/
 data/maintenance/
 # Локальный staging ограниченных live-записей; в Git идут только проверенные кассеты.
 /var/recordings/
+
+# Локальные результаты CI и native performance tests.
+/test-results/

@@ -42,16 +42,17 @@ export const TOPICS = ['signals', 'agent', 'incidents', 'notifications', 'hitl',
 
 /** Какие запросы инвалидировать по топику (ключи react-query). */
 export const WS_TOPIC_QUERY_KEYS: Record<string, string[][]> = {
-  signals: [['trace'], ['journey'], ['search'], ['signals'], ['map']],
+  signals: [['trace'], ['journey'], ['search'], ['signals'], ['map'], ['metrics', 'overview'], ['metrics', 'cx-index']],
   incidents: [['trace'], ['journey'], ['search'], ['incidents'], ['tickets'], ['teams'], ['metrics'], ['map']],
-  agent: [['trace'], ['journey'], ['agent'], ['signals']],
-  hitl: [['trace'], ['journey'], ['hitl'], ['signals']],
+  agent: [['trace'], ['journey'], ['agent'], ['signals'], ['metrics', 'overview'], ['metrics', 'cx-index']],
+  hitl: [['trace'], ['journey'], ['hitl'], ['signals'], ['metrics', 'overview']],
   notifications: [['trace'], ['journey'], ['notifications'], ['incidents']],
   tasks: [['trace'], ['journey'], ['tasks'], ['client360']],
   db: [['db']],
   runs: [['db'], ['sim-runs'], ['sim-state'], ['metrics'], ['client360'], ['trace']],
   clients: [['journey'], ['clients'], ['client360']],
   metrics: [['journey'], ['metrics']],
+  sim: [['metrics', 'overview'], ['metrics', 'cx-index']],
   escalations: [['journey'], ['escalations'], ['tickets'], ['incidents']],
   tickets: [['tickets'], ['incidents']],
   compliance: [['compliance'], ['transcripts']],
@@ -106,6 +107,8 @@ export function connectWs(qc: QueryClient): () => void {
         return
       }
       if (m.topic === 'sim') {
+        // Только новые readonly metrics: legacy dashboard/economics на tick не запускаются.
+        if (m.type === 'sim.tick') invalidate('sim')
         if (m.type === 'sim.tick' || m.type === 'sim.control') useWs.getState().setSim(m.data as SimState)
         if (m.type === 'sim.control') {
           void qc.invalidateQueries({ queryKey: ['sim-runs'] })

@@ -250,6 +250,9 @@ async def resolve(
                 raise ValueError("неверный профиль LLM в снимке запуска")
             try:
                 profile = LLMProfile(**values)
+                if profile.id is not None and ids.get(role) is not None and profile.id != ids[role]:
+                    raise ValueError("ID профиля не совпадает со снимком роли")
+                profile = dataclasses.replace(profile, id=ids.get(role) or profile.id)
             except TypeError as exc:
                 raise ValueError("неверные поля профиля LLM в снимке запуска") from exc
             _safe(profile)

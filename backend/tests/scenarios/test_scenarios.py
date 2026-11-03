@@ -1,6 +1,7 @@
 """Автотесты демо-сценариев ТЗ §18 на mock-модели (T-142).
 
-Каждый сценарий с секцией `inject` в data/scenarios/*.yaml: отдельный запуск → инъекция сообщений → агент → `evaluate`.
+Обычный сценарий: отдельный запуск → инъекция сообщений → агент → `evaluate`.
+Prepared native script: штатный HTTP entry → journal worker → реальные фазы → `evaluate`.
 Проверки с ok=None (нужны пакеты B05–B09, B14) не считаются провалом, но печатаются в отчёте.
 """
 
@@ -13,12 +14,30 @@ from app.agent.graph import process_signal
 from app.compliance.transcripts import analyze_transcript
 from app.sim import scenarios as sc
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
+from tests.integration.test_proactive_prepare import mass_seeded as mass_seeded
+from tests.proactive_runtime import offline_main_runtime, run_prepared_mass_case
 
-RUNNABLE = [s for s in sc.load_all() if sc.is_runnable(s)]
+# T262 имеет отдельную native acceptance fixture (XLSX/scoped registration).
+RUNNABLE = [s for s in sc.load_all() if sc.is_runnable(s) and s.get("kind") != "acceptance"]
 
 
 @pytest.mark.parametrize("scenario", RUNNABLE, ids=[f"{s['number']:02d}-{s['id']}" for s in RUNNABLE])
-async def test_scenario(seeded: str, scenario: dict) -> None:
+async def test_scenario(seeded: str, scenario: dict, request, monkeypatch, tmp_path) -> None:
+    if "script" in scenario:
+        # Prepared native source не создаёт жалобы в inject: выполнить штатный
+        # HTTP entry/journal worker, а затем проверить actual evidence без live.
+        database_url = request.getfixturevalue("mass_seeded")
+        async with offline_main_runtime(database_url, monkeypatch, tmp_path) as (app, external):
+            run_id = await run_prepared_mass_case(app, database_url, monkeypatch)
+            async with await psycopg.AsyncConnection.connect(dsn(database_url)) as conn:
+                result = await sc.evaluate(conn, scenario, run_id)
+                assert result["passed"] is True, result["checks"]
+                assert all(check["ok"] is True for check in result["checks"]), result["checks"]
+                assert result["counts"]["affected"] == 120
+                assert result["counts"]["notified_before_first_complaint"] >= 90
+                assert result["counts"]["complaints"] == result["counts"]["deduplicated"] == 30
+            assert external == []
+        return
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
         run_id = await new_run(conn, f"test {scenario['id']}", scenario_id=scenario["id"])
         now = await sim_now(conn)
@@ -53,9 +72,13 @@ async def test_scenario(seeded: str, scenario: dict) -> None:
 
 
 def test_all_scenarios_listed() -> None:
-    """Все 33 сценария, включая 20 тематических входов ТЗ, присутствуют; у незапускаемых указан пакет, который их включит."""
+    """Все 35 сценариев, включая неизменённые 33 прежних входа, присутствуют; у незапускаемых указан пакет, который их включит."""
     items = sc.load_all()
-    assert [s["number"] for s in items] == list(range(1, 34))
+    assert [s["number"] for s in items] == list(range(1, 36))
+    assert [(s["id"], s["tz_number"]) for s in items[33:]] == [
+        ("cabinet_red_words_report", 14),
+        ("csi_and_branches", 15),
+    ]
     for s in items:
         if not sc.is_runnable(s):
             assert s.get("requires"), s["id"]

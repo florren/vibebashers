@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { VoiceInput } from '@/shared/audio/VoiceInput'
 import i18n from '@/shared/i18n'
 
-vi.mock('@/shared/api/hooks', () => ({ useSttProviders: () => ({ data: [{ code: 'vosk', available: true }] }) }))
-vi.mock('@/shared/audio/mic', () => ({
+vi.mock('@/shared/api/hooks', () => ({ useSttProviders: () => ({ data: [{ code: 'vosk', available: true, is_default: true }] }) }))
+vi.mock('@/shared/audio/mic', async original => ({
+  ...await original<typeof import('@/shared/audio/mic')>(),
   micSupported: () => true,
   startMic: async ({ onFrame }: { onFrame: (pcm: ArrayBuffer) => void }) => {
     onFrame(new ArrayBuffer(32_000))
@@ -13,7 +14,8 @@ vi.mock('@/shared/audio/mic', () => ({
 }))
 
 describe('offline voice input metadata', () => {
-  beforeEach(async () => { await i18n.changeLanguage('ru') })
+  beforeEach(async () => { await i18n.changeLanguage('ru'); vi.stubGlobal('isSecureContext', true) })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('passes the actual server transcript/provider and recorded duration to the claim', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ text: 'Проверьте операцию', provider: 'vosk', latency_ms: 32 }), { status: 200 })))

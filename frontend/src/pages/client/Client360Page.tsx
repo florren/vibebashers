@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/shared/api/client'
-import { useRefs, useSimRuns } from '@/shared/api/hooks'
+import { useGifts, useRefs, useSimRuns } from '@/shared/api/hooks'
 import { IdLink } from '@/shared/components/IdLink'
 import { tEnum } from '@/shared/i18n'
 import { fmtRub, fmtSim } from '@/shared/lib/format'
@@ -32,7 +32,7 @@ export function Client360Profile({ id, runId, hours, onScope }: { id: number | n
   const runs = useSimRuns()
   const segments = useRefs('segments')
   const products = useRefs('products')
-  const catalog = useRefs('gift_catalog')
+  const catalog = useGifts()
   const [signalId, setSignalId] = useState<number | null>(null)
   const data = query.data
   const state = data?.current_state
@@ -61,6 +61,7 @@ export function Client360Profile({ id, runId, hours, onScope }: { id: number | n
             {runs.data?.items?.map(run => <option key={run.id} value={run.id}>{run.label} · {t('client360.runNumber', { id: run.id })}</option>)}
           </select></label>
           <label className="text-sm">{t('client360.operationWindow')}<select className="input ml-2" value={hours} onChange={event => change(runId, Number(event.target.value))}>{![24, 72, 168].includes(hours) && <option value={hours}>{t('client360.hours', { count: hours })}</option>}{[24, 72, 168].map(value => <option key={value} value={value}>{t('client360.hours', { count: value })}</option>)}</select></label>
+          {data && id !== null && <Link className="btn btn-sm" to={'/workspace?' + new URLSearchParams({ tab: 'notifications', client_id: String(id), run_id: runId }).toString()}>{t('client360.notifications')}</Link>}
           <button className="btn btn-sm" disabled={query.isFetching || id == null} onClick={() => void query.refetch()}>{t('client360.refresh')}</button>
         </div>
         <p className="text-xs text-muted">{t('client360.scopeHint')} {t('client360.limitHint')}</p>

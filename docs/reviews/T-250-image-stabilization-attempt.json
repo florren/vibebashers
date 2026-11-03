@@ -1,0 +1,35 @@
+{
+  "project": "cx-ci-t250-44c99d090ee9",
+  "base": "http://127.0.0.1:18162",
+  "source": "96e7e825c654f78164d371902e0f67ddefb08225",
+  "image_source": "0a6efd10525a890ff3cdfe8c3383a9be48ca9405",
+  "image": "sha256:b98d406eeaed349bf623a7b53d107b99469140e8130fa2c38ce2fa0a540db03a",
+  "stages": [
+    "fresh_up"
+  ],
+  "seed_seconds": 5.326581052970141,
+  "fresh_state": {
+    "current_run_id": 1,
+    "sim_time": "2026-11-09T06:00:00+00:00",
+    "running": false,
+    "header_status": "completed",
+    "header_kind": "baseline"
+  },
+  "own_project_cleaned": true,
+  "error_type": "CalledProcessError",
+  "error": "Command '['npm', 'exec', '--', 'playwright', 'test', 'e2e/map-branches.spec.ts', '--project=settings', '--no-deps', '--workers=1', '--output=/tmp/t250-image-portable-results', '--reporter=json']' returned non-zero exit status 1.",
+  "portable_failure": {
+    "stats": {
+      "startTime": "2026-11-03T00:00:07.218Z",
+      "duration": 26374.349,
+      "expected": 0,
+      "skipped": 3,
+      "unexpected": 1,
+      "flaky": 0
+    },
+    "errors": [
+      "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 3\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"active\": 0,\u001b[39m\n\u001b[32m-   \"agent_runs\": 301,\u001b[39m\n\u001b[32m-   \"received\": 301,\u001b[39m\n\u001b[31m+   \"active\": 4,\u001b[39m\n\u001b[31m+   \"agent_runs\": undefined,\u001b[39m\n\u001b[31m+   \"received\": undefined,\u001b[39m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 25000ms exceeded while waiting on the predicate\n\n  45 |   // проходят normal graph; awaiting_human/deferred не требуют human accept.\n  46 |   let observed = { received: 0, agent_runs: 0, active: 0 }\n> 47 |   await expect.poll(async () => {\n     |   ^\n  48 |     const signals = await request.get('/api/signals', { params: { run_id: String(run.id), limit: 1 } })\n  49 |     const agents = await request.get('/api/agent/runs', { params: { run_id: String(run.id), limit: 500 } })\n  50 |     expect(signals.status()).toBe(200); expect(agents.status()).toBe(200)\n    at /home/asb/Documents/ChatGPT/vibebashers/t250-map-branches/frontend/e2e/map-branches.spec.ts:47:3"
+    ],
+    "root_cause": "Harness assumed total on paginated lists; actual common.page returns items/next_cursor. No runtime/301 completion claim."
+  }
+}

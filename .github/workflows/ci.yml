@@ -113,6 +113,8 @@ jobs:
       - run: cd frontend && npm ci
       - name: Backend lint и типы
         run: cd backend && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy app
+      - name: Telegram transport — изолированное окружение, lint и fake tests
+        run: cd tgbot && uv sync --frozen && uv run --frozen ruff check . && uv run --frozen ruff format --check . && uv run --frozen mypy cx_tgbot && uv run --frozen pytest -q
       - name: Frontend lint и типы
         run: cd frontend && npm run lint && npm run typecheck
       - name: Лицензии и i18n
@@ -178,6 +180,10 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Telegram image и offline smoke без сети
+        run: |
+          docker build -f tgbot/Dockerfile -t cx-pulse-tgbot:ci .
+          docker run --rm --network none cx-pulse-tgbot:ci python -m cx_tgbot.main --offline
       - name: Экспорт собранного candidate image
         run: |
           set -euo pipefail

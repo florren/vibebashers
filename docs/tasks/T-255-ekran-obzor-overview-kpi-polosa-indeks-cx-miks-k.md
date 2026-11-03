@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 «Обзор» по прототипу 2.4 на реальных API (ТЗ 26.4, 14.1).
@@ -32,9 +32,9 @@
 5. vitest, e2e, скриншоты обеих тем и пакетов.
 
 ## Критерии приёмки
-- [ ] Ровно блоки ТЗ 26.4; значения совпадают с API; индекс CX считается по формуле 14.1.
-- [ ] В «Тихом» режиме не более 9 блоков и нет мигания.
-- [ ] Скриншоты `brand` и `ops`, две темы, два языка.
+- [x] Ровно блоки ТЗ 26.4; значения совпадают с API; индекс CX считается по формуле 14.1.
+- [x] В «Тихом» режиме не более 9 блоков и нет мигания.
+- [x] Скриншоты `brand` и `ops`, две темы, два языка.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -44,4 +44,4 @@ cd frontend && npx playwright test e2e/overview.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-255-overview`,9реальных блоков и scoped drilldowns/WS/unknown/exact money. API29/T041/Journey/CSI API28/receipts DDL19 stack обычной композицией уже включены; новый RBAC/денежные/HITL policy не вводятся. Final application source1c9/55c byte-identical по manifest. Make lint485frontend/69files+backend/bot/type/drift green, обе production builds,102targets(66unit+36integration)green60.43s,8/8actual browser9.1s и24PNG. Explicit JourneyFollow/Replay входят в8route GETwalk114tablehashesunchanged; fixture/startup writes вне readonly фазы. Gen2 идемпотентен206cards. Подробности/source boundaries — `docs/reviews/T-255-overview.md`, machine proof и identity manifest рядом. ExactheadCI/parentreview/merge остаются pending; in_progress/общийDoD не закрыт.

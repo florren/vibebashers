@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 from psycopg.rows import tuple_row
@@ -201,7 +201,16 @@ async def create_signal(
     run_id: int | None = None,
     sim_time: dt.datetime | None = None,
     emit_event: bool = True,
+    _internal_producer: Literal["fault_monitor", "compliance"] | None = None,
 ) -> dict[str, Any]:
+    # Это keyword Python caller, не поле внешнего DTO. REST/file/poll adapters
+    # не получают authority через source_code или произвольный body.origin.
+    if (msg.get("origin") == "proactive" and _internal_producer is None) or (
+        source_code == "fault_monitor" and _internal_producer != "fault_monitor"
+    ):
+        raise IngestError(
+            "origin=proactive и fault_monitor зарезервированы для native producer; используйте origin=api"
+        )
     if msg.get("channel") == "csi_survey":
         async with conn.transaction():
             return await _create_signal(

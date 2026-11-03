@@ -1,0 +1,23 @@
+{
+  "file": "backend/app/sim/behavior/care.py",
+  "sha256": "80c0a2c8f5061d5c49731f821a22fdcdeb0b95359d9564a85a019106ac9bd541",
+  "covered": 177,
+  "executable": 190,
+  "coverage": 93.16,
+  "missing_lines": [
+    64,
+    68,
+    84,
+    87,
+    97,
+    103,
+    127,
+    131,
+    144,
+    160,
+    163,
+    192,
+    194
+  ],
+  "pytest_exit": 0
+}

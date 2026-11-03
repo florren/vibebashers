@@ -1,0 +1,155 @@
+{
+  "source": "51dccc6f436583b6bc368c616c6e9316418f6185",
+  "base": "e347e87a3aba39c52a499b474d9ccb6aafaa9662",
+  "tests": "152 passed, 1 timing deselected,429.61s; timings under coverage are not benchmarks",
+  "files": {
+    "backend/app/analytics/branch_scope.py": {
+      "covered": 23,
+      "statements": 27,
+      "covered_new": 23,
+      "statements_new": 27,
+      "missing_new": [
+        22,
+        23,
+        25,
+        26
+      ],
+      "sha256": "d9d20240c2d006fb97efe852ecf627af53c4f750fc2b4f698ddcb451b23c8889"
+    },
+    "backend/app/analytics/branches.py": {
+      "covered": 56,
+      "statements": 60,
+      "covered_new": 56,
+      "statements_new": 60,
+      "missing_new": [
+        88,
+        91,
+        107,
+        108
+      ],
+      "sha256": "ecfc2011f4152421fbd5eb25696c077606b4a17556f07691206354c29c25c320"
+    },
+    "backend/app/analytics/cabinet_scope.py": {
+      "covered": 89,
+      "statements": 95,
+      "covered_new": 7,
+      "statements_new": 8,
+      "missing_new": [
+        130
+      ],
+      "sha256": "5df6acfe715d1404fd3200e3c62dc557b536060914339b86ac554ee75006d863"
+    },
+    "backend/app/analytics/csi.py": {
+      "covered": 93,
+      "statements": 95,
+      "covered_new": 93,
+      "statements_new": 95,
+      "missing_new": [
+        93,
+        210
+      ],
+      "sha256": "338e849e05503a945144043013e08cbb287e343fe9bd4dd330f78f60dc9aa63f"
+    },
+    "backend/app/analytics/csi_statistics.py": {
+      "covered": 52,
+      "statements": 52,
+      "covered_new": 52,
+      "statements_new": 52,
+      "missing_new": [],
+      "sha256": "b991d08a369471384ff2d03a36b06d123f9f8ea34773bef78e460ae8cdbd9f89"
+    },
+    "backend/app/api/branches.py": {
+      "covered": 56,
+      "statements": 58,
+      "covered_new": 46,
+      "statements_new": 48,
+      "missing_new": [
+        42,
+        43
+      ],
+      "sha256": "489eb11a3df608378ab350bd164337f63cfccbadf6621010a8154ba58830e531"
+    },
+    "backend/app/api/csi.py": {
+      "covered": 14,
+      "statements": 14,
+      "covered_new": 11,
+      "statements_new": 11,
+      "missing_new": [],
+      "sha256": "458ef4f774e695b74b2693b3397cfa85d26b7d4bbbb3c95da9e1f7b88802df31"
+    },
+    "backend/app/ingest/csi_cohorts.py": {
+      "covered": 109,
+      "statements": 127,
+      "covered_new": 109,
+      "statements_new": 127,
+      "missing_new": [
+        74,
+        78,
+        81,
+        85,
+        89,
+        90,
+        97,
+        105,
+        120,
+        127,
+        143,
+        149,
+        166,
+        172,
+        189,
+        192,
+        225,
+        268
+      ],
+      "sha256": "304c9ac3dfeed99de2f380ee71cd9ff106b7fe671ef3d8aeca9b934264f04902"
+    },
+    "backend/app/search/cases.py": {
+      "covered": 8,
+      "statements": 73,
+      "covered_new": 0,
+      "statements_new": 1,
+      "missing_new": [
+        21
+      ],
+      "sha256": "f6c6ef62fd96f1d7b23bffc9527806b12fa72aa9df64b4393e4775b92716de62"
+    },
+    "backend/app/search/grammar.py": {
+      "covered": 34,
+      "statements": 35,
+      "covered_new": 6,
+      "statements_new": 7,
+      "missing_new": [
+        90
+      ],
+      "sha256": "36cf9b9e5c7255a103e8293981d94ae30b8db2501363c42824eaa65c2bf8be1b"
+    },
+    "backend/app/search/service.py": {
+      "covered": 71,
+      "statements": 81,
+      "covered_new": 3,
+      "statements_new": 3,
+      "missing_new": [],
+      "sha256": "3905fab9ecfe08112ef6e62ae0404db50e1e43d8a1b6f60a36f8402eda830b52"
+    },
+    "backend/app/sim/csi_scoped_corpus.py": {
+      "covered": 34,
+      "statements": 34,
+      "covered_new": 34,
+      "statements_new": 34,
+      "missing_new": [],
+      "sha256": "83ad244f21704d96c91266bf7d9369c1b2c368e13ff69d9afdf551d31d643521"
+    },
+    "backend/app/trace/store.py": {
+      "covered": 72,
+      "statements": 83,
+      "covered_new": 3,
+      "statements_new": 3,
+      "missing_new": [],
+      "sha256": "ad87c146be2318ffd87dae063d92d62c357ac31ab2711ef711bc68ffd0c3f0e7"
+    }
+  },
+  "covered_new": 443,
+  "statements_new": 476,
+  "percent_new": 93.0672268907563
+}

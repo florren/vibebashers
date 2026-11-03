@@ -8,7 +8,7 @@
 | Волна | 8 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Серверная часть кабинета (ТЗ 24.1, 24.4–24.5): KPI, ряды, источники, топ-5 регионов, список сигналов — одним быстрым запросом.
@@ -43,4 +43,17 @@ curl -s -H 'X-Cx-Role: product_manager' -H 'X-Cx-Product-Line: deposits' localho
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-241-cabinet-api`, normal composition T240/P1/T254/actual17/main73425c9.
+Actual API1.5.22/DDL0018: read-only overview/signals/roles, soft/strict,
+baseline+current run scope, nullable client/CSI coverage, saved economics,
+заявленный actor_role audit без изменения HITL/денежной политики.
+Human contract/audit review обязателен; подробный diff/rollback и версионные
+доказательства — `docs/reviews/T-241-contract-review.md`.
+Финальный API/PG target65 green, coverage213/217 (98%); composed lint green
+(front354), contracts45/163, drift193/193, generators/205cards идемпотентны.
+Demo5000/2813signals: bank p95 40.49ms / direction24.15ms, 107 fingerprints
+unchanged, LLM/external attempts0. Actual fresh18/reapply/downgrade→upgrade
+сохраняет audit. Исходный full gate дал11producer failures; focused fixes и15PG
+исходных lifecycle/composite/lease cases green, legacy fixture проверена отдельно.
+Оставшиеся unit1747/scenarios43/compliance31/bot33 green; full exact-head CI
+и human approval ожидаются, статус не done. T242 — отдельная stacked UI ветка.

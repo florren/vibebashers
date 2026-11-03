@@ -1,0 +1,335 @@
+{
+  "application_source": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+  "test_infra_sha256": {
+    "frontend/playwright.config.ts": "4436bc5edf6470a95fb617ac3f27d14b7f2f9efb28f2332bc4b57e3d06ef9599",
+    "frontend/e2e/map-branches.spec.ts": "03e45046e71040a92bee563f94fb86394111214cd42dc0b1def859986338b8dd",
+    "frontend/e2e/new-signal-modal.spec.ts": "ec6628a9caf01b0352a5abc9e7ef8ecd823c1cea4b1529d9fa8065a08a3aa6dd",
+    "frontend/e2e/shell-v2.spec.ts": "11c7dcbc1c2f06e0cc5815fee7dc0b90db4b9c41048100c4864622c141f48c7e"
+  },
+  "case_preservation": {
+    "unchanged_case_count": 155,
+    "same_case_identifiers": true,
+    "old": {
+      "read-only": 58,
+      "settings": 97
+    },
+    "new": {
+      "read-only": 58,
+      "settings": 93,
+      "scenarios": 4
+    }
+  },
+  "full_actual_image": {
+    "project": "cx-ci-f3f60993d079",
+    "passed": 155,
+    "failed": 0,
+    "skipped": 0,
+    "duration_reported": "5.4min",
+    "exit_code": 0,
+    "log_sha256": "636a1d318bbad56cc44e330ae6075fef5509f741cca8adf1b8b5e08b5cb30ddc",
+    "t092_included": false,
+    "cold_dockerfile_build": "not_passed_offline_apt_cache_missing",
+    "offline_source_overlay": "existing dependencies; locks exact; full backend/contracts/scripts and tested production assets copied",
+    "actual_data_bind": {
+      "tracked_data_files": 148,
+      "different": []
+    }
+  },
+  "native_nonempty_priorities": {
+    "stats": {
+      "startTime": "2026-11-03T04:11:43.748Z",
+      "duration": 61275.768000000004,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "samples": [
+      {
+        "width": 1920,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1440,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1024,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 768,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 360,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 320,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1920,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1440,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1024,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 768,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 360,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 320,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1920,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1440,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1024,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 768,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 360,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 320,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1920,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1440,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 1024,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 768,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 360,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      },
+      {
+        "width": 320,
+        "run": 3,
+        "query": "run_id=current&status=new&status=classified&status=routed&status=in_progress&status=fix_proposed&status=fix_deployed&status=awaiting_human&status=awaiting_client&status=verifying&status=escalated&sort=priority&limit=3",
+        "ids": [
+          153,
+          356,
+          162
+        ]
+      }
+    ]
+  },
+  "cleanup_disposed_request_probe": {
+    "passed": 1,
+    "duration_reported_ms": 408,
+    "exact_prior_ui_restored": true
+  },
+  "native_map_collector": {
+    "stats": {
+      "startTime": "2026-11-03T04:24:29.761Z",
+      "duration": 46500.861,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "preparation": {
+      "setup_duration_ms": 38312,
+      "previous_run_id": 3,
+      "run_id": 4,
+      "sim_time": "2026-11-09T06:00:00+00:00",
+      "owner": "ci206-own-ui",
+      "received": 301,
+      "agent_runs": 301,
+      "active": 0,
+      "missing": 0,
+      "duplicate": 0,
+      "foreign": 0,
+      "failed": 0
+    },
+    "identical_receipts": 4,
+    "concurrent_io": "A2 full backup/restore/hash on another own database",
+    "performance_claim": false
+  },
+  "historical_failures": {
+    "original_ci": "13failed139passed; map205of301 after60s; money202.88→410.34",
+    "attempt1": "147passed4ShellcanonicalF4MapNotRun",
+    "attempt2": "140passed11failed4MapNotRun; legitimate empty priorities then cleanup cascade"
+  },
+  "verification": {
+    "generator_twice_idempotent": true,
+    "git_diff_check": true,
+    "application_api_schema_unchanged": true,
+    "real_external_services": false,
+    "whole_database_readonly_claim": false
+  },
+  "remaining_gate": "root composed CI with T092; this evidence is source-qualified"
+}

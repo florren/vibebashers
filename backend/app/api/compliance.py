@@ -13,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
+from app.analytics.cabinet_scope import actor_role
 from app.api._compliance_support import analyze_in_background, run_context
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.compliance import taxonomy
@@ -96,6 +97,8 @@ async def _start_mic_session(request: Request, body: dict[str, Any]) -> Any:
     from app.stt import registry
 
     code = body.get("stt_provider") or registry.default_code()
+    if code is None:
+        raise HTTPException(status_code=422, detail="STT-провайдер не выбран")
     try:
         prov = registry.get(code)
     except LookupError:
@@ -168,6 +171,8 @@ async def _start_file_session(request: Request, body: dict[str, Any]) -> Any:
     if mode not in ("stereo", "manual", "auto"):
         raise HTTPException(status_code=422, detail="diarization_mode: stereo | manual | auto")
     code = body.get("stt_provider") or registry.default_code()
+    if code is None:
+        raise HTTPException(status_code=422, detail="STT-провайдер не выбран")
     if code == "browser":
         raise HTTPException(status_code=422, detail="stt_provider=browser не принимает файл — нужен серверный STT")
     try:
@@ -434,6 +439,7 @@ async def get_compliance_alerts(
 
 @router.post("/api/compliance/alerts/{id}/ack", summary="Решение руководителя по алерту")
 async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[str, Any]) -> Any:
+    preset_role = actor_role(request)
     decision = body.get("decision")
     if decision not in ("go", "false_positive", "open_incident"):
         raise HTTPException(status_code=422, detail="decision: go | false_positive | open_incident")
@@ -447,7 +453,7 @@ async def post_compliance_alerts_id_ack(request: Request, id: int, body: dict[st
             chain=request.app.state.llm_chain,
             profile=request.app.state.llm_chain.profile_for("fast", request.app.state.llm_profile),
         )
-        res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"))
+        res = await svc.ack_alert(id, decision=decision, by=by, comment=body.get("comment"), actor_role=preset_role)
         if not res:
             raise HTTPException(status_code=404, detail="алерт не найден")
         from app.demo.execution import compliance_customer_case, configuration

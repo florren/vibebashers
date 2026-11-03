@@ -22,8 +22,8 @@
     },
     "event_type": {
       "type": "string",
-      "pattern": "^(op|fault|client_error|signal|team|sla|client|agent|review|abs|compliance|demo|ingest|escalation|zone)\\.[a-z_]+$",
-      "description": "Семейство.подтип. Полный перечень — в sim/*.schema.json и behavior/client_event.schema.json (enum event_type у каждого payload); v1.3: review.* (sim/review), abs.* (sim/abs), compliance.* (compliance/session_event), demo.failover (demo/failover); v1.4: ingest.* (ingest/ingest_event), escalation.* (sim/escalation), zone.changed (sim/zone)"
+      "pattern": "^(op|fault|client_error|signal|team|sla|client|agent|review|abs|compliance|demo|ingest|escalation|zone|scenario)\\.[a-z_]+$",
+      "description": "Семейство.подтип. Полный перечень — в sim/*.schema.json и behavior/client_event.schema.json (enum event_type у каждого payload); v1.3: review.* (sim/review), abs.* (sim/abs), compliance.* (compliance/session_event), demo.failover (demo/failover); v1.4: ingest.* (ingest/ingest_event), escalation.* (sim/escalation), zone.changed (sim/zone); scenario.proactive_* — bounded native phase journal (sim/scenario_proactive)"
     },
     "sim_time": {
       "$ref": "common.schema.json#/$defs/sim_time"
@@ -137,7 +137,7 @@
       "if": {
         "properties": {
           "event_type": {
-            "pattern": "^team\\."
+            "pattern": "^team\\.(?!plan$|runtime_started$)"
           }
         }
       },
@@ -292,6 +292,55 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "team.plan"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/team_plan.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "team.runtime_started"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/team_runtime.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "pattern": "^scenario\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "sim/scenario_proactive.schema.json"
+          }
+        }
+      }
     }
-  ]
+  ],
+  "description": "v1.5.25: добавлено типизированное семейство scenario.proactive_* для bounded native phase journal; existing families/fields сохранены."
 }

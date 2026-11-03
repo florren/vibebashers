@@ -9,6 +9,7 @@ from psycopg.rows import tuple_row
 
 from app.demo.settings import configuration, save
 from app.sim.events import dumps
+from app.sim.team_plans import ensure_runtime
 
 OUTCOMES = ("on_time", "late", "no_work", "failed")
 
@@ -34,6 +35,8 @@ async def public_context(conn: Any) -> tuple[int, dt.datetime]:
         row = await cur.fetchone()
     assert row is not None
     rid = int(row[0])
+    # Journal создаётся вместе с новым run, до входов и без смены состояния банка.
+    await ensure_runtime(conn, rid, state[1])
     await save(
         conn,
         rid,

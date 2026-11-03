@@ -1,0 +1,2545 @@
+{
+  "revision": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+  "mode": "read_only_source_and_recorded_evidence; no new runtime/frontend/PG/external tests",
+  "inputs_sha256": {
+    "/tmp/vibebashers-full-revision-progress.json": "1b919225566b5eaa893e563faf6adb814ae03f3dfd1847d256a4d6635a09b8cc",
+    "/tmp/vibebashers-audit-agent.json": "763a6504c24aa91793b371c8f9baa51a560465507c81ad07928b252a65262aa6",
+    "/tmp/vibebashers-audit-foundation.json": "a3a191248767c1c15ae97690636d93b8fec9d67c3ff10b0f131fb65a62d20378",
+    "/tmp/vibebashers-audit-ui.json": "bf51c939d4969581bd9acb3301db4df58f36153e9514bc9b3ae3b47e32fd0ae9"
+  },
+  "scope": {
+    "all_cards": 205,
+    "original_done_carried_forward_not_reaudited": 111,
+    "initial_unclosed_exactly_once": 94,
+    "current_statuses_not_modified": true
+  },
+  "readiness_definition": "acceptance_candidate means concrete implemented packet and source-qualified evidence, not unconditional merge-ready and not whole-card DoD. Global integrated CI still pending. No readiness inferred from PR count. Existing partial external/live criteria stay explicit.",
+  "counts": {
+    "acceptance_candidate": 36,
+    "freeze_followup_le4h": 35,
+    "post_freeze_or_separate_authorization": 23
+  },
+  "estimated_person_hours_sum": {
+    "acceptance_candidate": 22.75,
+    "freeze_followup_le4h": 102,
+    "post_freeze_or_separate_authorization": 284
+  },
+  "estimate_warning": "Engineering/review estimates, not measurements or deadlines; shared tests/docs overlap and are not simply additive. ≤4h buckets are bounded freeze follow-ups, not promises that remaining live/replay acceptance can be completed without authorization.",
+  "integration_gate": {
+    "source_head": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+    "make_lint": "passed",
+    "frontend": {
+      "passed": 561,
+      "files": 80
+    },
+    "backend_targeted": {
+      "passed": 105
+    },
+    "tgbot": {
+      "passed": 50
+    },
+    "production_builds": [
+      "main: passed",
+      "personal: passed"
+    ],
+    "openapi_drift": "197/197 passed",
+    "required_exact_head_ci": "pending",
+    "individual_ci_limitations": {
+      "202": "cold report p95 411.76ms exceeds300ms; triage in progress",
+      "205": "base conflict prevents PR merge CI; included in joint integration",
+      "206": "13 e2e failures /139 passed; actor drain, fixture lifecycle and canonical URL triage in progress"
+    },
+    "local_logs": {
+      "lint": {
+        "path": "/tmp/revision-integration-lint.log",
+        "sha256": "7af54496f5bd6123de9bb7abdf0bbef2b651100c5f7c2a36ae9a69e178a9bf80"
+      },
+      "build": {
+        "path": "/tmp/revision-integration-build.log",
+        "sha256": "402af1f091ee773f58e4b09003eeea4cd0d1d28f42909e7ab93c98409915a695"
+      },
+      "targeted-backend": {
+        "path": "/tmp/revision-integration-targeted-backend.log",
+        "sha256": "4a101ee02b9588893e8ff3797b78ede3332f305346856d187ac7e93c6d8e4feb"
+      },
+      "tgbot": {
+        "path": "/tmp/revision-integration-tgbot.log",
+        "sha256": "004f692ab04db4d70339dd0fbaf4171e21dc57d90689cf066a2d2f92051a6400"
+      }
+    },
+    "contracts": "48 schemas /167 OpenAPI paths passed",
+    "tasks_generation": "two runs, tracked diff idempotent",
+    "owners": "--base main requires layer selection; --allow-cross passed for authorized L1-L5 release integration"
+  },
+  "cards": [
+    {
+      "id": "T-002",
+      "title": "Docker Compose и Dockerfile'ы (postgres, backend, frontend, mailpit, tgbot)",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Проверить cold-start≤3min и согласовать card profiles mailpit/tgbot с actual tools/telegram; imageCI есть. Не менять compose defaults безreview.",
+      "evidence": [
+        {
+          "ref": "docker-compose.yml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/Dockerfile",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-014",
+      "title": "Коды ошибок, типы сигналов, правила маршрутизации, матрица SLA",
+      "tracker_status_unchanged": "review",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "25 кодов/40 routes, SLA и стабильные ID проверены; schema prefix9 follow-up уже в main.",
+      "evidence": [
+        {
+          "ref": "data/error_codes.yaml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-014-error-code-contract.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-015",
+      "title": "Шаблоны уведомлений, справочник подарков, ставки dCLTV, параметры экономики",
+      "tracker_status_unchanged": "review",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Каталоги/templates ru/en, forbidden phrases и approved4050/config mapping реализованы; YAML вместо Jinja ранее согласован.",
+      "evidence": [
+        {
+          "ref": "data/forbidden_phrases.yaml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/T015-FINANCIAL-REVIEW.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-017",
+      "title": "Продукты клиентов и 14 дней операций",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "600000 COPY operations/demo, распределения и provenance проверены; старые финансовые fixtures согласованно исправлены.",
+      "evidence": [
+        {
+          "ref": "scripts/seed/operations.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "data/README.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-018",
+      "title": "Предыстория сбоев и логи систем",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "Историческиеfault/logs/causality готовы, но10–15% actualregression bindings зависятT020 nativeincident/releases; candidates не готоваяистория.",
+      "evidence": [
+        {
+          "ref": "scripts/seed/faults.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-018-demo5000.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-019",
+      "title": "Библиотека текстов сигналов",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Корпус, coverage×channel, реальные hard/noise/en доли и детерминизм проверены; это не native исторические AR.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-019-demo-seed-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "scripts/seed/clients.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-020",
+      "title": "Предыстория сигналов, инцидентов, статусов, артефактов и состояний клиентов",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 40,
+      "risk": "high",
+      "finding": "В3e9 editorial seed labels безnativeAR/artifacts/behaviorstates; отдельныйWIPне входит. Native14day/coverage/90s/restart authority — крупныйrelease-risk, небыстрыйfixturefix.",
+      "evidence": [
+        {
+          "ref": "scripts/seed/clients.py:437",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/REVISION-2026-11-03-integration.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-021",
+      "title": "Золотой набор бенчмарка golden_v1 и lite_v1",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "200 gold/lite40, immutable v4 и raw independent197/200=98.5%, безопасный plan/apply upgrade проверены.",
+      "evidence": [
+        {
+          "ref": "data/golden/golden_v1.jsonl",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-021-independent-review.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-022",
+      "title": "Тесты данных: no-PII, покрытие, идемпотентность, производительность сида",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "PII/coverage/idempotent seed тесты есть; собрать acceptance matrix+nightly slow coverage, старое отсутствиеPIItests уженеактуально.",
+      "evidence": [
+        {
+          "ref": "backend/tests/unit/test_no_pii.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": ".github/workflows/ci.yml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-032",
+      "title": "Шина событий симулятора",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "EventBus validate/run/correlation реализован; закрыть evidence noRun/invalid+native fault causation, не claim по общемуCI.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/events.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "contracts/events/envelope.schema.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-034",
+      "title": "Генератор сбоев и восстановлений",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "Modern durablefault schedule/recovery введён; отдельно подтвердить cadence/error sampling/resolved→нет новыхcausalfailed, безinvented duration.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/generators.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_fault_recovery.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-036",
+      "title": "Эмулятор команд и цифровой след инцидента",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "hardlow и100release regression10..15 уже есть в test_teams, не новаяфункция; прицепить native artifacts/Pii/workingdays acceptance.",
+      "evidence": [
+        {
+          "ref": "backend/tests/unit/test_teams.py:274",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/unit/test_teams.py:369",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-037",
+      "title": "SLA-движок",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Durable team journal/enrollment/restart-before-take и public enrollment исправлены, CI parent195 green; проверить интеграционный gate.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-037-final-review.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_team_plan_recovery.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-038",
+      "title": "Движок сценариев YAML и 7 демо-сценариев",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "EngineAPI/named scenarios есть, но весь original7 mock+Ultra+baseline determinism не доказан; single-run mockedfoundation неравенfullscenarioacceptance.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/scenarios.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/scenarios",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-039",
+      "title": "Проактивная ветка: сбой → уведомления затронутым клиентам до жалоб",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Native120/90Sent/30complaints, одна incident, care и approved B receipts19 реализованы; Sent не равняется prevented.",
+      "evidence": [
+        {
+          "ref": "backend/tests/integration/test_proactive_scenario_api.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/sim/behavior/prevention.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-041",
+      "title": "Прерывание и возобновление эмуляции: восстановление после рестарта",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "LangGraph same-conn durability, SIGKILL/graceful recovery, current/status/shutdown fences реально проверены.",
+      "evidence": [
+        {
+          "ref": "backend/tests/integration/test_resume_process.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_full_simulation_controls.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-042",
+      "title": "Итоговые метрики запуска (summary) и экспорт",
+      "tracker_status_unchanged": "review",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Summary/export/archive/delete и composite FK closure реализованы, строгие schema/rollback regressions сохранены.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/run_lifecycle.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/sim.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-048",
+      "title": "OpenAI-совместимый провайдер: OpenRouter и локальная модель",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "OpenAI SDK/offline guards есть, approvedboundedlive вернулbad_output/404, 3successfulmodels отсутствуют; новыеexternalcalls безapprovalнельзя.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-048-live-smoke-result.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/llm/openai_compat.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-050",
+      "title": "Rate limiter, бюджеты, fallback и маскирование секретов",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "P2durableaccounting готов, ноcard20squeue+main→fast→mock coherently недоделана: ratelimit.py default5s иlockвоsleep. Нельзясчитать весьlimiterdone.",
+      "evidence": [
+        {
+          "ref": "backend/app/llm/ratelimit.py:35",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-050-durable-accounting.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-051",
+      "title": "API и UI профилей LLM и ключей",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Per-AR roles, encrypted credential registry/migration и offline startup guard проверены; parent180 уже approved/merged.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-051-runtime-profiles.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-051-startup-offline.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-064",
+      "title": "Дедупликация и массовые инциденты",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Native30dedup→oneincident доказанT039; сверить исходное mass threshold3vs10 поactualTZ/config до любых чисел, добавить evidence differenterror.",
+      "evidence": [
+        {
+          "ref": "backend/tests/integration/test_proactive_fault.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/agent/nodes.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-066",
+      "title": "Версионирование промптов и gate на lite-бенчмарке",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "CURRENT_VERSION=v1/lrucache, setting-drivenhotreload иlitecomparisonCI gate отсутствуют. Нуженотдельныйproduction/prompt lifecycle пакет.",
+      "evidence": [
+        {
+          "ref": "backend/app/agent/prompts/__init__.py:12",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": ".github/workflows/ci.yml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-067",
+      "title": "Жюри-режим: ручной ввод сигнала и сравнение с правилами",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 6,
+      "risk": "high",
+      "finding": "Compare sandbox/manual5000/20RPM реализован; liveUltra≤60s иactualUI3/5 сравнение не проверены. Offline demo usable, полнаяприёмка требуетразрешённыйexternalrun.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-067-contract-change.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/signals.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-077",
+      "title": "Узел wait_human, очередь HITL и возврат решения в граф",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Durable wait_human/resume ужеесть; подтвердить exactly3options/modifygift/native restart acceptance, неавтоматическиaccept радиQA.",
+      "evidence": [
+        {
+          "ref": "backend/app/agent/graph.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_resume_process.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-078",
+      "title": "Подарки: расчёт, задачи, выдача после подтверждения услуги",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "Nativegiftterminal/reuse guards есть, но choose() hardcodedpoints/partnerpolicy vscatalog иfullVIP/mass acceptance требуютузкогоfinancialreview. Не менятьрадиdemo.",
+      "evidence": [
+        {
+          "ref": "backend/app/agent/gifts.py:15",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_terminal_gift.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-091",
+      "title": "Клиент 360",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Client360 UI/API+baseline/current scope+performance и closure link проверены; контракт162 merged.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/client/Client360Page.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/clients.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-092",
+      "title": "Вкладки «Отложенные», «Команды», «Уведомления»",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "reports_missing UI есть, NotificationsTab не принимаетclientfilter; focused client360→filter и countdown/channel/Mailpit acceptance остаются.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/workspace/NotificationsTab.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/workspace/TeamsTab.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-094",
+      "title": "Вкладка «Запуски»: история, сравнение, сброс к baseline, экспорт",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 16,
+      "risk": "high",
+      "finding": "Нужна полноценнаяRuns history/compare/export/archive/delete UI; толькоbackend/lifecycle не закрывает вкладку+двойнойbaseline/restartUX.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/sim/run_lifecycle.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-108",
+      "title": "Лента изменений БД, счётчики таблиц, просмотр строк",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "DBactivity real producer/API/allow-list/UI, pinned time fixture исправлен; PR164 merged.",
+      "evidence": [
+        {
+          "ref": "backend/app/api/engine.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_engine_db_api.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-109",
+      "title": "Панель «ИИ против правил»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Compare UI/read-only backendimplemented; полное ≥3/5 расхожденийlive не подтверждено. Offline evidence+документация границы доfreeze; внешняяприёмкаотдельно.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/engine",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/tasks/T-109-panel-ii-protiv-pravil.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-110",
+      "title": "Диалог «агент ↔ двойник» и состояние клиента",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 10,
+      "risk": "high",
+      "finding": "ОтдельногоTwin dialogue/stateplot UI нет; T162 silent→satisfied сценарийнеподдержан.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/engine",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/sim/twins.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-119",
+      "title": "Лендинг потенциального клиента, антибот-проверка, QR",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Landing/claim/offline antibot/normalizer/privacy и реальные UI proof проверены; внешний live smoke не распространять на этот пакет.",
+      "evidence": [
+        {
+          "ref": "frontend/e2e/landing.spec.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/public.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-120",
+      "title": "Страница трекинга обращения и дополнение",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Tracking route/poll/idempotent child append/privacy и browser proof реализованы.",
+      "evidence": [
+        {
+          "ref": "frontend/e2e/tracking.spec.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/public.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-121",
+      "title": "Telegram-бот @CXPulseControlBot (aiogram)",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 6,
+      "risk": "high",
+      "finding": "Transport/HMAC/durableoutbox/offlinefake tests готовы; реальныйTelegram finalchat/longpoll/restart неразрешён/непроверен, нельзязакрытьwholecardпоfake.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-121-final-verification.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "tgbot",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-122",
+      "title": "QR-код бота, жюри-режим и инструкции для финала",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Signed readiness/QR offline fake tests и50botGREEN; no-realTelegram разрешение сохраняется, live финальнаяпроверка заблокированаexternalauthorization.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-122-bot-readiness-contract.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-129",
+      "title": "Бенчмарк-раннер и метрики",
+      "tracker_status_unchanged": "review",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Bench runner/lite/ambiguous exclusion есть; подтвердить mock≤30s/repeat metrics; Lightning live ограничение не тестировать безразрешения.",
+      "evidence": [
+        {
+          "ref": "backend/app/bench",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "data/golden/lite_v1.jsonl",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-130",
+      "title": "UI бенчмарков",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Bench UI есть; проверить profile comparisons+unknown quota warning наfixture, live6providers не доказаны.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/engine/BenchTab.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-144",
+      "title": "Проверка производительности профиля demo",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "Нужен единый10min active-sim demo5000 p95/WS/CPU/RAM run; подмаршрутные тихиеp95 его не заменяют. Только выделенноеquietокно.",
+      "evidence": [
+        {
+          "ref": "scripts/ci_compose.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": ".github/workflows/ci.yml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-145",
+      "title": "CI-конвейер полного цикла",
+      "tracker_status_unchanged": "review",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Четыре isolated shards+union, explicit aggregate, image e2e/nightly реализованы; remote8m52 измерен на старомsource, новый общийcycle требуется.",
+      "evidence": [
+        {
+          "ref": "scripts/ci_test_shard.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": ".github/workflows/ci.yml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-152",
+      "title": "LICENSES.md и источники данных",
+      "tracker_status_unchanged": "review",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Strict SPDX production/dev inventories и CI gate; GPL pglast удалён, PostgreSQL проверяет SQL.",
+      "evidence": [
+        {
+          "ref": "scripts/licenses_check.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/LICENSES.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-154",
+      "title": "Материалы защиты: тезисы, слайды-опоры, ответы на вопросы жюри",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "PR176 PITCH существует внеintegration; source-only тексты не равны репетиции/принятию. Обновить факты/одобрение/таймер, не обещатьnative14day.",
+      "evidence": [
+        {
+          "ref": "/home/asb/Documents/ChatGPT/vibebashers/t154-defense-pitch/docs/PITCH.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-156",
+      "title": "Полные словари ru/en и проверка i18n",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "ru/en keyparity вlintGREEN; общийscreenwalk enum/rawkeys/Intl ещёотдельный acceptance; выполнить вместеT259.",
+      "evidence": [
+        {
+          "ref": "scripts/i18n_check.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/shared/i18n",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-157",
+      "title": "Язык коммуникаций с клиентом и en-шаблоны",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Шаблоныru/en существуют; воспроизвести enjury→nativeen outputs/notifications и privacylabels, не толькоpure.",
+      "evidence": [
+        {
+          "ref": "backend/app/agent/gifts.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/unit/test_templates.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-161",
+      "title": "Параметрическая модель состояний клиента",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Approved exact demo-policy/variantA, durable owner/evidence/timers/RNG, live/inactive guards; wholeWorld plan gap закрывается включённымT037.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-161-full-regression-findings.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/sim/behavior/runtime.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-162",
+      "title": "Детекция снижения активности («молчаливый уход») и сигнал агенту",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 16,
+      "risk": "high",
+      "finding": "silent_decline выбирается/пишется, но activitydrop detector/≤2simdays/autoinput/recovery нет; безновойpolicydefaults.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/behavior/owner.py:175",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/sim/behavior/model.py:120",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-163",
+      "title": "LLM-двойники «подсвеченных» клиентов",
+      "tracker_status_unchanged": "review",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "Twinprivacy/boundedbudget/live1sample есть;10reactionreview/actual≤15%demo budget иполныйautomationнедоказаны, native14dayзависимость.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/twins.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-164",
+      "title": "Уход клиента: churn_events, инцидент account_closure, закрытие продуктов",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 16,
+      "risk": "high",
+      "finding": "Ownerchurnintent неявляется closure. Fullchurn→accountclosure→productsclosed/is_activefalse/idempotency+Fact не реализованкакapproved durableflow.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/behavior/owner.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/agent/tools/write.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-165",
+      "title": "Калибровка коэффициентов удержания по фактам симуляции",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "Runtime уже читает v_retention_by_outcome при>=10 и calibration_mode=simulated (dcltv._retention_factor); это не только T265 score calibration. Нужны отдельный native DB mode flip→recompute→dashboard/card consistency→manual rollback proof. Без новых коэффициентов/формул; неизвестная полнота результатов пока не считается готовностью.",
+      "evidence": [
+        {
+          "ref": "backend/app/economics/dcltv.py:189",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/metrics.py:129",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-166",
+      "title": "Вкладка калькулятора «Факт по симуляции»: API, UI, экспорт",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "FactAPI/UIчастичны; dashboard GET compute/recompute mutable и export URLбезselectedscope. Consistency/unknowns/nativeoutcomes/exportacceptance отсутствуют.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/workspace/DashboardTab.tsx:153",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/metrics.py:60",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-167",
+      "title": "Статистические тесты модели поведения",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 20,
+      "risk": "high",
+      "finding": "Нет5000×14day behavioral statistics/A-Bproactive/gifts confidence suite; formulaunit незаменяет. ЗависитnativeT020/T162/T164 иpolicyvalidation.",
+      "evidence": [
+        {
+          "ref": "backend/tests/unit/test_behavior_model.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_behavior_runtime.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-180",
+      "title": "Расширение запусков: автосоздание run kind=live и независимость живых контуров от сим-часов",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "ensure_live_run и live hazard exclusion ужеimplemented; собрать paused/noSim POSTreview +same-run isolation proof.",
+      "evidence": [
+        {
+          "ref": "backend/app/sim/runs.py:162",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_behavior_runtime.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-189",
+      "title": "Алерт о мисселлинге в Telegram руководителю",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "Телеграмalert→callbackHITL≤3s не доказаннаrealTG иневходитразрешение; можнотолькоofflineконтракт, реальнаяприёмкапозже.",
+      "evidence": [
+        {
+          "ref": "tgbot",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/compliance",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-191",
+      "title": "Бенчмарк детектора мисселлинга и STT: раннер, метрики, UI",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "CLI/Vosk runnerесть, ноstt_v1+≥3provider detector report/UI selectionquality отсутствуют; внешниеbenchбезapprovalнельзя.",
+      "evidence": [
+        {
+          "ref": "backend/tests/unit/test_cli_workflow.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-192",
+      "title": "Сценарий 9 «Мисселлинг в отделении»: YAML, автотест с файла и транскрипта",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "Scenario09/transcript/cassette tests существуют; нужен actualofflineWAV latency/≤60s report, no rekey/newfakecassette. При отсутствии approvedrecord остатокпослеfreeze.",
+      "evidence": [
+        {
+          "ref": "backend/tests/scenarios/test_scenario_09_misselling.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/scenarios/test_scenarios_8_10_cassettes.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-197",
+      "title": "install.sh и compose: флаги --no-stt, --stt-model, --record-cassettes, расширенный --offline, предупреждение про HTTPS",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Флаги/CLI есть, actualoffline8/9/cachelarge/HTTPS matrix не полна; проверитьcacheбезdownload, unsupported шаги честноразделить.",
+      "evidence": [
+        {
+          "ref": "install.sh",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/unit/test_cli_workflow.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-203",
+      "title": "Локализация экранов v1.3 (feed, compliance, manager, демо-меню) и тексты алертов/публичных ответов",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "ru/en feed/compliance/manager/demo UI проверены, PR178 merged.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-203-localization.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-203-browser-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-204",
+      "title": "Демо-скрипт 7–8 и 3–5 минут, README разделов «Живые контуры», «Демо без интернета», «Микрофон и HTTPS»",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Демоdocs есть, но actual3–5/7–8min rehearsal незафиксирован и обещанияnativehistory устарели. Подготовить+прогнать таймер.",
+      "evidence": [
+        {
+          "ref": "docs/DEMO-SCRIPT.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/DEMO.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-205",
+      "title": "AGENTS.md v1.3: правила 14–15, подсистемы 6.7–6.9, карта эпиков E15–E17, ADR по STT и правилам",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "AGENTS правила14–20/ADR присутствуют; mechanical crosslinks+acceptance metadata вместо новойархитектуры.",
+      "evidence": [
+        {
+          "ref": "AGENTS.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/adr",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-209",
+      "title": "Адаптеры источников ingest_sources: REST, polling-воркер, file; встроенная mock-лента /api/public/mock-social-feed",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "REST/file/poll source кодесть, нужен сценарий11 через actualpolling и settings stats; broadrewrite ненужен.",
+      "evidence": [
+        {
+          "ref": "backend/app/ingest/sources.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/ingest.py:304",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-211",
+      "title": "Детектор скрытого негатива few-shot: промпт hidden_negativity.md, объект hidden_negativity, флаги, набор hidden_negativity_v1",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "Нетотдельногоhidden_negativityprompt/3class metrics precision.7 recall.75; нормализациясfewexamplesне доказывает.",
+      "evidence": [
+        {
+          "ref": "backend/app/agent/prompts/v1/normalize.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "data/bench/hidden_negativity_v1.jsonl",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-223",
+      "title": "Контракты следа и поиска: миграция 0004, OpenAPI 1.5.0, схемы trace/*, public_id объектов, индексы",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 2,
+      "risk": "medium",
+      "finding": "Контракт0004/APItrace ужеесть; старый downgrade0003 acceptance против forward-only0013+private stores, нужен конкретный compat-doc decision, недеструктивный olddump test.",
+      "evidence": [
+        {
+          "ref": "contracts/db/migrations",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/integration/test_schema.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-224",
+      "title": "Сборщик следа app/trace: каузальный обход, фазы до/объект/после, итог, ожидаемые шаги, свёртка веера; GET /api/trace",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Backend collector/relations уже поддерживают многие native subject types; DemoKind6 — отдельный frontend T233 gap, не доказательство отсутствия backend. Остаток: full subject/causality/pending/read-only acceptance matrix и source-qualified evidence. Сам backend переписывать не требуется без RED.",
+      "evidence": [
+        {
+          "ref": "backend/app/trace/relations.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/trace",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-225",
+      "title": "Модель «Путь обращения»: стадии, дорожка клиента, итог; GET /api/journey/{ref} и /api/journey/latest, заметки ведущего",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Journey presenter notes+latest/read-only реализованы; сверить8stages/three source origins и acceptance perID.",
+      "evidence": [
+        {
+          "ref": "backend/app/trace/journey.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/journey/RecordedJourney.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-226",
+      "title": "Экран «Путь обращения» /journey/:ref: степпер из 8 стадий, дорожки «внутри банка» и «глазами клиента»",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "8stages/linkedsteps+ru/en PNG есть; доказать allidentifier entry refs и source-qualified actual UI replay безновыхкассет.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/journey",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/e2e/journey-modes.spec.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-228",
+      "title": "«Путь обращения»: дорожка «Глазами клиента» — эмуляция канала, что клиент увидел и когда",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Native lane/readonly Journey исправлены, но cardreport пуст; proof sent-only/privacy/HITLempty→actualSent/bidirectionallink оформить.",
+      "evidence": [
+        {
+          "ref": "backend/app/trace/journey.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/journey/RecordedJourney.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-229",
+      "title": "Сценарий 12 «Путь обращения: три траектории»: YAML, кассеты, автотесты, блок E демо-скрипта",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "Mock3paths/readmodel/readonly proof есть; finished native replay/live всехтрёх отсутствует. Общуюcard done нельзя, оффлайн acceptance матрицу+scriptEзакончить.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-229-journey-acceptance.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-230",
+      "title": "Универсальный поиск app/search: распознавание идентификаторов, подсказки клиента, полнотекстовый поиск; GET /api/search",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Searchgrammar/allID иsourcescope есть; search10k p95 ещёнеподтверждён отдельнымproof (tracefanout10k неsearch).",
+      "evidence": [
+        {
+          "ref": "backend/app/search",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-231",
+      "title": "Глобальный поиск в интерфейсе: строка в шапке, Ctrl+K, чипы типов, результаты по группам, <IdLink> для всех идентификаторов",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "CtrlK/IdLink/группыimplemented; recentqueries/full keyboard/focus/alllinks coverage неполна. NumericMap links ужеисправлены, не путать сfullglobalacceptance.",
+      "evidence": [
+        {
+          "ref": "frontend/src/shared/components/GlobalSearch.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/shared/components/IdLink.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-232",
+      "title": "Экран «След» /trace/:kind/:ref: «ДО / ОБЪЕКТ / ПОСЛЕ», итог, ожидаемые шаги, фильтры, режимы «Колонки» и «Дорожки»",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 8,
+      "risk": "high",
+      "finding": "Columns/Graph+JSONMDexport ужеесть (старыйaudit partlystale); полноценныйlanes/actor-layerfilters/keyboard200eventbudget остаются.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/trace/index.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/trace/exportTrace.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-233",
+      "title": "«След»: адаптеры карточки объекта и рендеры событий по типам (12 видов), маски ПДн",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 10,
+      "risk": "high",
+      "finding": "SubjectCard/demo6typesрасширялся, ноfull12+subject exhaustiveadapter/snapshot/PIImatrix не подтверждён; неclaimdone.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/trace/components/SubjectCard.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/trace",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-234",
+      "title": "«След»: режим «Граф» — узлы по типам, подсветка пути до итога, правая панель-аккордеон",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "SVG graph/fanout/keyboards/rings и bounded SQL projection реализованы; remote p95 потребовал planner follow-up, он включён.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-234-stale-statistics.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/trace/components/GraphView.tsx",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-235",
+      "title": "Сценарий 13 «Поиск и след»: YAML, e2e по всем типам идентификаторов, автотесты «только чтение»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "RealGET/fullIDs/p95 иfalse501 исправлены; native recordedcorpus/activeSim performance остаётся. Собрать runtimeCLIcheck+док source квалификацию.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-235-search-trace-checkpoint.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-236",
+      "title": "Справочник product_lines (15 направлений): data/product_lines.yaml, маппинг на ставки dCLTV, команды, продукты",
+      "tracker_status_unchanged": "todo",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.25,
+      "risk": "medium",
+      "finding": "15 canonical product lines и validator уже существуют; значения rates не дублируются.",
+      "evidence": [
+        {
+          "ref": "data/product_lines.yaml",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/tests/unit/test_product_lines_ref.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-238",
+      "title": "Классификация по направлению и уровню сигнала: product_line, signal_level, промпт vN, набор product_lines_v1",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 16,
+      "risk": "high",
+      "finding": "Mockuniqueproduct→FKphysical projection исправлен, realprovider outputschema/prompt/all15dataset150/accuracy≥.8confusion отсутствуют.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-238-projection-prerequisite.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "data/bench",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-240",
+      "title": "Корпус product_lines_v1 и история: тексты по 15 направлениям, импорт отзывов с source_url, product_signal_history (12 мес.), справочник площадок",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "162 meaningful reviews, bounded JSON/CSV/XLSX, history0014/scoped/unknown quality и known platform UI+native proof реализованы.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-240-history-contract.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-240-platform-ui-proof.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-241",
+      "title": "API кабинета менеджера: /api/cabinet/overview|signals, пресеты ролей X-Cx-Role, режимы soft/strict, /api/roles",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Actual0018/API22 read-only cabinet/roles/audit и scoped native proof; composite FK producer follow-up включён.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-241-contract-review.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/cabinet.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-242",
+      "title": "Экран «Кабинет менеджера продукта» /cabinet: KPI, карта направления, лента, динамика и источники, красная полоса, SLA-метка",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "7 blocks cabinet, strict scope/unknowns и native production UI проверены.",
+      "evidence": [
+        {
+          "ref": "frontend/src/pages/cabinet",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-242-product-cabinet.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-243",
+      "title": "Калькулятор потерь: 30 ставок, формат млн/млрд ₽, предзаполнение ставки направления, интеграция с картой региона",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Server-only canonical31rates/Decimal/read-only preview и approved financial semantics; новых ставок нет.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-243-server-calculator.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/metrics.py:236",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-244",
+      "title": "Отчёт по направлению «для человека»: GET /api/cabinet/report (json|xlsx), выводы на русском без LLM, печатная форма A4 для PDF",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Native JSON/XLSX и A4PDF/exact money проверены; отдельный PR202 cold report latency блокирует перенос timing claim наintegration.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-244-report-contract-review.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/cabinet.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-247",
+      "title": "Корпус CSI csi_v1: ≈ 300 жалоб, csi_visits_agg (знаменатели), XLSX и JSON образцы, заданные корреляции",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Immutable csi_v1 300/2400/корреляции и настоящая scoped registration через0014/20 реализованы; исходный корпус не переписан.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-247-csi-corpus.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/ingest/csi_cohorts.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-248",
+      "title": "API аналитики CSI и ВСП: корреляции, scatter, должности, box plot стажа, топ-10 ВСП, тепловая карта, «ВСП vs Сигналы»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Actual0020/API28, statistics/independent SQL oracle, UTC local-month/unknown guards/native p95 proof проверены.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-248-contract-review.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "backend/app/api/csi.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-249",
+      "title": "Экран CSI /csi: таблица жалоб, scatter, bar по должностям, box plot, корреляции, тепловая карта, топ-10 ВСП",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Все7 CSI функций+R7/alt tables/readonly Journey/browser97hashes проверены.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-249-csi-screen.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/pages/csi",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-250",
+      "title": "Карта: слой ВСП (маркеры по типам, кластеризация, карточка), тихая метка закрытых, блок «ВСП vs Сигналы»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "Numeric Trace PKfix, scope/API30, Map4native/freshimage4portable,97hashes,513front; measured source d1fc, docs4516.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-250-final-review.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-250-image-final-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-252",
+      "title": "Циркадный движок: 6 фаз, источники sim/real/fixed, локальный расчёт солнца, 8-секундные переходы, без «вспышки»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "NOAA6phase/real-sim-fixed/no-flash/reducedmotion/8s и actual browser matrix проверены, PR179 merged.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-252-circadian-verification.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/shared/theming",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-253",
+      "title": "Режимы «Тихий» (кикубари) и «Ситуационный центр»: правила анимаций, полоса приоритетов, undo/confirm, тест ≤ 9 блоков",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Calm/controlroom priorities/undo/HITLconfirm и actual mobile/SLA proof; backendpolicy неизменна.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-253-attention-modes.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-254",
+      "title": "Каркас v2: боковая навигация, состояние системы, полоса приоритетов, горячие клавиши, флаг ui.layout, перенаправления маршрутов",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "V2 flag+legacy defaults/sidebar/shortcuts/querypreserving routes и native matrix проверены.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-254-shell-v2.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/src/shared/layout",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-255",
+      "title": "Экран «Обзор» /overview: KPI-полоса, индекс CX, микс каналов, поток, решение агента, лента, очередь решений, экономика, сводка смены",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "9 scoped blocks/readonly boundary/exact money и8native UI+fingerprints проверены.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-255-overview.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-255-identity-manifest.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-256",
+      "title": "Индекс CX и ряды потока: GET /api/metrics/cx-index, микс каналов, поток за 24 часа, веса в settings",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 1,
+      "risk": "medium",
+      "finding": "API29 weightedCX/flow/unknown+409temporal guards/native p95 проверены; formula/weights сохранены.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-256-cx-index-design.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-256-producer-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-257",
+      "title": "Модал «Новый сигнал»: выравнивание с прототипом 2.4 и кнопка «Показать путь»",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Native modal/city/provenance/Trace и explicit STT opt-in/API31; sourceproof есть, PR206 integrated e2eRED отдельный freeze gate.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-257-new-signal-modal.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-257-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-258",
+      "title": "Визуальная регрессия и a11y: пакеты тем × режимы × фазы на ключевых экранах, axe, проверка ≤ 9 блоков",
+      "tracker_status_unchanged": "todo",
+      "bucket": "post_freeze_or_separate_authorization",
+      "remaining_estimate_person_hours": 12,
+      "risk": "high",
+      "finding": "Mapcontainment/множествоPNG есть, ноfulltheme×mode×phase pixelbaseline+axe+5runs+CI artifacts acceptanceнет; недобавлятьdepsрадигалочки.",
+      "evidence": [
+        {
+          "ref": "frontend/e2e/map-layout.spec.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "frontend/e2e/themes.spec.ts",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-259",
+      "title": "Локализация v1.5: ru/en для экранов пути, следа, кабинета, CSI, обзора; подписи enum; проверка полноты",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 3,
+      "risk": "medium",
+      "finding": "Новыеcabinet/CSI/overviewru-en ужеесть; финальныйrawkey/enum/4screens proof объединитьT156, неновыйпереводвсегословаря.",
+      "evidence": [
+        {
+          "ref": "frontend/src/shared/i18n",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/reviews/T-249-csi-screen.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-260",
+      "title": "Документация v1.5: демо-скрипт (блоки E–F), руководство, ADR-0008…0011, лицензии, обновление README и CHANGELOG",
+      "tracker_status_unchanged": "todo",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "ОбновитьE/F actualstatus/ADR links/README/CHANGELOG/licenses послеfreezecomposition; никакихзаявленийпроlive/14day/nativecashacceptance.",
+      "evidence": [
+        {
+          "ref": "docs/DEMO-SCRIPT.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/USER-GUIDE.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "docs/CHANGELOG.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": false
+    },
+    {
+      "id": "T-262",
+      "title": "Сценарии 14 «Кабинет менеджера: красные слова и отчёт» и 15 «CSI и ВСП»: YAML, кассеты, автотесты, блок F демо-скрипта",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "freeze_followup_le4h",
+      "remaining_estimate_person_hours": 4,
+      "risk": "medium",
+      "finding": "NativeMock foundation есть, overallpassedFalse честен. Связатьactualcabinet/CSI/MapUI smoke иreport latency; true replayrecord не изобретать, replayостаток отдельнозаfreeze.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-262-scenario-foundation.md",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        },
+        {
+          "ref": "scripts/scenario_check.py",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": false,
+      "known_external_or_extended_acceptance_remaining": true
+    },
+    {
+      "id": "T-276",
+      "title": "Совместимость старого baseline формата pg_dump 18",
+      "tracker_status_unchanged": "in_progress",
+      "bucket": "acceptance_candidate",
+      "remaining_estimate_person_hours": 0.5,
+      "risk": "medium",
+      "finding": "Actual originalPG18copy conversion→PG16 доказан сSHA/rollback/retry; будущая0020chain требуетcompat revalidation, не новыйconvert рабочегоархива.",
+      "evidence": [
+        {
+          "ref": "docs/reviews/T-276-legacy-baseline-proof.json",
+          "exists": true,
+          "meaning": "Source inspection / stored evidence reference; existence alone is not acceptance proof."
+        }
+      ],
+      "whole_card_complete": false,
+      "acceptance_packet_ready": true,
+      "known_external_or_extended_acceptance_remaining": false
+    }
+  ],
+  "initial94_not_fully_covered_by_integration": [
+    "T-002",
+    "T-018",
+    "T-020",
+    "T-022",
+    "T-032",
+    "T-034",
+    "T-036",
+    "T-038",
+    "T-048",
+    "T-050",
+    "T-064",
+    "T-066",
+    "T-067",
+    "T-077",
+    "T-078",
+    "T-092",
+    "T-094",
+    "T-109",
+    "T-110",
+    "T-121",
+    "T-122",
+    "T-129",
+    "T-130",
+    "T-144",
+    "T-154",
+    "T-156",
+    "T-157",
+    "T-162",
+    "T-163",
+    "T-164",
+    "T-165",
+    "T-166",
+    "T-167",
+    "T-180",
+    "T-189",
+    "T-191",
+    "T-192",
+    "T-197",
+    "T-204",
+    "T-205",
+    "T-209",
+    "T-211",
+    "T-223",
+    "T-224",
+    "T-225",
+    "T-226",
+    "T-228",
+    "T-229",
+    "T-230",
+    "T-231",
+    "T-232",
+    "T-233",
+    "T-235",
+    "T-238",
+    "T-258",
+    "T-259",
+    "T-260",
+    "T-262"
+  ],
+  "initial94_major_function_or_external_acceptance_not_covered": [
+    "T-018",
+    "T-020",
+    "T-038",
+    "T-048",
+    "T-050",
+    "T-066",
+    "T-067",
+    "T-078",
+    "T-094",
+    "T-110",
+    "T-121",
+    "T-162",
+    "T-163",
+    "T-164",
+    "T-166",
+    "T-167",
+    "T-189",
+    "T-191",
+    "T-211",
+    "T-232",
+    "T-233",
+    "T-238",
+    "T-258"
+  ],
+  "known_short_release_blockers": [
+    {
+      "id": "integration-ci",
+      "hours": 2,
+      "finding": "Required exactheadCI3e9 pending;561front+105backendtarget+50bot+build is not fullregression."
+    },
+    {
+      "id": "PR202-cold-report",
+      "hours": 3,
+      "finding": "Recordedcoldreportp95411.76>300ms, do notraise threshold orclaimT244finalperformance."
+    },
+    {
+      "id": "PR206-e2e",
+      "hours": 3,
+      "finding": "SmokeRED actor drain/canonicalURL/fixture requires exacttrace andnativecase; cannotinferfromolderMapimage4."
+    },
+    {
+      "id": "PR205-parent-conflict",
+      "hours": 1,
+      "finding": "Runtime4516included inintegration; resolve publication/retarget/ordinarymerge graph withoutreimplement/rebase, then exactCI."
+    },
+    {
+      "id": "demo-truth-and-rehearsal",
+      "hours": 4,
+      "finding": "T154176notinancestry; docsT204/T260 mustsayeditorialhistory+nativecurrentrun, nofakecompleted14days."
+    }
+  ],
+  "minimal_demo": {
+    "status": "existing offline subpacket proofs runnable; integration3e9 release certification pending exact CI/smoke, not certified today by this read-only review",
+    "mode": "effective Mock all three roles, external bot/mail/STT cloud off; visible Mock provenance; no new T020native14day",
+    "preparation": [
+      "Own isolated image/DB/snapshot at actual migration0020, stable APP_SECRET/maintenance volume, explicit current ownership; existing setup/seed path only, no operator DBreset.",
+      "Seed existing lite200 or demo5000 editorial baseline, label it synthetic editorial history; do not claim historical incidents/agenttraces/churn/completed outcomes from these labels.",
+      "Create new named counters csi_and_branches through supportedAPI, paused native clock; XLSXparser/normalizer produces301rows with300registeredmembers/2400visits.",
+      "Wait exactsourceIDs==301primaryagentAR.signal_id, no duplicates/missing/foreign/failed/active; awaiting_human/deferred are legitimate; do notacceptHITLautomatically.",
+      "Read-only fingerprint boundary afterpreparation; Map/current→CSI→cabinet/report/Journey existingnativeobjects only."
+    ],
+    "demonstration_minutes": {
+      "target": 5,
+      "steps": [
+        "0:00–0:45 Mode Mock/current scope/system readiness; explicitly distinguish editorial baseline from native run.",
+        "0:45–1:45 Native scoped CSI/visits/correlation and branch filters, unknowns visible.",
+        "1:45–2:30 Map real coordinates/clusters/closed directN, ID-correct branchTrace.",
+        "2:30–3:30 Cabinet native product-line signal/report; only include report cold path once300ms CIissue resolved.",
+        "3:30–4:30 New ordinarydeposit input throughjury/normalizer→actualMockgraph; redword case stops atnativependingHITL, nohumanaccept silently.",
+        "4:30–5:00 Read-only Journey/Trace ofactualcompletedorwaitinggraph, explainlimits/replaynotfabricated."
+      ]
+    },
+    "include_as_optional_only_after_frozen_proof": [
+      "Scenario08 replay ONLY exact recorded-bank/current schema hash; never arbitraryseed/currentcontext orrekey.",
+      "Scenario06 120/90/30 productionphase worker currently separately proven; adds preparation/runtime complexity, optional for5min script."
+    ],
+    "exclude": [
+      "T020newnative14day historicalstate/artifacts/closures",
+      "FullFact/calibration/empiricalretention statistics",
+      "RealTelegram/email/cloudSTT/liveLLMcalls",
+      "ImplicitapprovalofHITL/refunds orfabricatedrecordings",
+      "Claimsof realtimeSLA fromquiet subroutebenchmarks"
+    ],
+    "release_checks_before_rehearsal": [
+      "ExactintegrationrequiredCIgreen",
+      "Freshisolatedimagehealth/API1.5.31 and pausedpreparationcohort proof",
+      "PR202coldreportand206e2e fixedwithstrictguards",
+      "One timedrehearsal + capture currentrun IDs/expectedstop points + UIru/en selectedtheme",
+      "No write GET in read-onlynavigation; preserve fingerprint boundary"
+    ]
+  },
+  "recommendation_48h": "Freeze new behavior surface; spend first window on CI/perf/e2e+truthfuldemo docs and boundedacceptancematrix. Keep L bucket explicitly deferred/unapproved, not done. Preserve atomic integration prerequisites and already-approved policy; no new paid/remote actions.",
+  "observed_docs_followup_head": "f6c5af804d05dc42e5bf95098e8f2e667d0e7b2b",
+  "source_vs_observed_head": "Only3 docs files changed between3e9 andf6c5; backend/frontend/contracts/card bytes unchanged.",
+  "unconditionally_merge_ready_cards_at_snapshot": [],
+  "first24h_small_function_selection": [
+    {
+      "priority": 1,
+      "ids": [
+        "T-262",
+        "T-244",
+        "T-257"
+      ],
+      "hours": [
+        2,
+        4
+      ],
+      "demo_need": "mandatory",
+      "work": "Resolve existing cold report p95 and image e2e RED assigned by root, preserve300ms/UI/timeouts/cohort/HITLguards. Exact trace before fix, rerun same source image.",
+      "new_contract_or_policy": false
+    },
+    {
+      "priority": 2,
+      "ids": [
+        "T-092"
+      ],
+      "hours": [
+        2,
+        3
+      ],
+      "demo_need": "useful customer-lane drilldown; not mandatory for minimal CSI/Map demo",
+      "work": "Frontend Client360→Notifications client_id URL+prop→existing API filter, strictpositive parsing/no malformed broadening; own/foreign-client regression. No channel filter API addition.",
+      "verified_trigger": "NotificationsTab accepts onlyrunId, queryrecipient_type+limit; metrics.py GET already supports client_id.",
+      "new_contract_or_policy": false
+    },
+    {
+      "priority": 3,
+      "ids": [
+        "T-231"
+      ],
+      "hours": [
+        2,
+        3
+      ],
+      "demo_need": "optional presenter UX; first item to drop if CI slips",
+      "work": "Bounded local recent queries+clear+keyboard selection for existing CtrlK; no API/prompt changes or new external calls.",
+      "verified_trigger": "GlobalSearch has ephemeral input/query state; no recent/localstorage/sessionstorage implementation.",
+      "new_contract_or_policy": false
+    },
+    {
+      "priority": 4,
+      "ids": [
+        "T-156",
+        "T-259"
+      ],
+      "hours": [
+        2,
+        3
+      ],
+      "demo_need": "mandatory actual chosen demo screens",
+      "work": "Final ru/en/rawenum walk only knownCSI/cabinet/Map/Overview/Journey; fix concrete observed strings with translations and small test. Do not claim full visuala11ymatrix.",
+      "new_contract_or_policy": false
+    },
+    {
+      "priority": 5,
+      "ids": [
+        "T-204",
+        "T-260",
+        "T-154"
+      ],
+      "hours": [
+        3,
+        4
+      ],
+      "demo_need": "mandatory",
+      "work": "Single truthful5min/8min script+stop points+mode badges+timed rehearsal, nativecurrent vseditorialhistory explicit. PITCHPR176 outsideintegration, review/updatefacts instead of blindmerge.",
+      "new_contract_or_policy": false
+    },
+    {
+      "priority": 6,
+      "ids": [
+        "T-157"
+      ],
+      "hours": [
+        1,
+        2
+      ],
+      "demo_need": "only if Englishinput shown",
+      "work": "Native eninput→normalgraph→actualensent output acceptance; fix only confirmed language propagation error.",
+      "new_contract_or_policy": false
+    }
+  ],
+  "small_but_not_first24h": [
+    "T-165 empiricalretention proof touchesmoney/recompute; avoid until coredemo stable and reviewer available",
+    "T-032/T-034/T-036/T-064/T-077 existingruntime acceptance evidence, batchtests only after exactCI blockers resolved",
+    "T-23010ksearch andT14410minactiveperf require quietwindow, cannot run concurrently with other nativebenchmarks",
+    "T-002 profile naming/coldstart, T197offlineinstall/recovery fit day2 release rehearsal; no unnecessarydownload"
+  ],
+  "do_not_start_before_freeze": [
+    "T-066 prompt hotapply/version pinning/benchmark CI lifecycle",
+    "T-020 43file dormantnativehistory/issuer guards",
+    "T-162/T-164/T-167 newbehavior detector/closure/stats",
+    "T-238 newrealprovider schema/prompt+labelled corpus gate",
+    "T-094/T-110 newlarge screens",
+    "T-048/T-121/T-189/T-191 newexternalnetwork/live benchmarking"
+  ],
+  "shared_gate": "Required full CI on exact integrated head + applicable concrete tech-lead review; no inference of whole-card readiness from PR count; no guard weakening."
+}

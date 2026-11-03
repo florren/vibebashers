@@ -13,7 +13,7 @@ type Filter = 'all' | 'open' | 'ready' | 'done' | 'rejected'
 
 const STATUS_TONE: Record<TaskItem['status'], Tone> = { open: 'info', approved: 'ok', changed: 'ok', rejected: 'danger', done: 'ok', cancelled: 'neutral' }
 
-export function TasksTab({ runId }: { runId: number | undefined }) {
+export function TasksTab({ runId }: { runId: string | number | undefined }) {
   const { t } = useTranslation()
   const [filter, setFilter] = useState<Filter>('open')
   const [changeId, setChangeId] = useState<number | null>(null)

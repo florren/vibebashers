@@ -58,6 +58,24 @@ async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
             await asyncio.sleep(0.5)
 
 
+async def _wait_scripted(dsn: str, run_id: int, timeout: float) -> None:
+    # Existing --wait bound, no HTTP/provider retries. Missing/failed phase
+    # evaluator ниже оставит FAIL, в том числе после timeout.
+    deadline = time.monotonic() + timeout
+    async with await psycopg.AsyncConnection.connect(dsn, autocommit=True) as conn:
+        while time.monotonic() < deadline:
+            row = await (
+                await conn.execute(
+                    "select 1 from sim_events where run_id=%s and event_type in "
+                    "('scenario.proactive_completed','scenario.proactive_failed') limit 1",
+                    (run_id,),
+                )
+            ).fetchone()
+            if row:
+                return
+            await asyncio.sleep(0.5)
+
+
 async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
     if scenario.get("kind") == "read_model" and scenario["id"] == "customer_journey":
         from scripts.journey_check import run_journeys
@@ -77,12 +95,31 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
             return False
         r.raise_for_status()
         run_id = int(r.json()["run"]["id"])
-    if sc.is_transcript(scenario):
+    if "script" in scenario:
+        await _wait_scripted(dsn, run_id, wait)
+    elif sc.is_transcript(scenario):
         await _wait_transcript(dsn, run_id, wait)
     else:
         await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
         res = await sc.evaluate(conn, scenario, run_id)
+        if scenario.get("kind") == "acceptance":
+            from scripts.acceptance_check import verify_reads
+
+            header = await (
+                await conn.execute("select settings_snapshot->'t262_inputs' from sim_runs where id=%s", (run_id,))
+            ).fetchone()
+            refs = await (
+                await conn.execute("select public_id from signals where run_id=%s order by id", (run_id,))
+            ).fetchall()
+            async with httpx.AsyncClient(base_url=base, timeout=60) as http:
+                res["checks"].extend(
+                    await verify_reads(
+                        http, scenario["id"], run_id, header[0] if header else None, [r[0] for r in refs]
+                    )
+                )
+            res["passed"] = res["passed"] and all(c["ok"] is True for c in res["checks"])
+            print("        T262: только Mock foundation; UI/replay not_verified")  # noqa: T201
         await sc.save_result(conn, scenario["id"], res)
         await conn.commit()
     mark = "OK " if res["passed"] else "FAIL"

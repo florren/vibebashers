@@ -1,0 +1,41 @@
+{
+  "old_cases": 155,
+  "new_cases": 155,
+  "same_case_identifiers": true,
+  "omitted": 0,
+  "duplicate": 0,
+  "only_project_move": "5Jury cases settings→inputs; read-only58→settings88→scenarios4→inputs5",
+  "full_e2e": {
+    "passed": 155,
+    "duration_reported": "5.7m",
+    "image_full_dockerfile_build": "passed",
+    "node": "22.23.4 (same CI version; official archive SHA256 verified)",
+    "runtime_changes": false
+  },
+  "config_sha256": "e92135b2b11d5687e47aac6575883af345c402e2becfe0be9006d9bd3283dce4",
+  "archived_generated_screenshots": [
+    "docs/screenshots/compare/compare-form-en-dark.png",
+    "docs/screenshots/compare/compare-form-en-light.png",
+    "docs/screenshots/compare/compare-form-ru-dark.png",
+    "docs/screenshots/compare/compare-form-ru-light.png",
+    "docs/screenshots/compare/compare-mobile-en-dark.png",
+    "docs/screenshots/compare/compare-mobile-en-light.png",
+    "docs/screenshots/compare/compare-mobile-ru-dark.png",
+    "docs/screenshots/compare/compare-mobile-ru-light.png",
+    "docs/screenshots/compare/compare-results-en-dark.png",
+    "docs/screenshots/compare/compare-results-en-light.png",
+    "docs/screenshots/compare/compare-results-ru-dark.png",
+    "docs/screenshots/compare/compare-results-ru-light.png",
+    "docs/screenshots/db-activity/db-inspect-en-dark.png",
+    "docs/screenshots/db-activity/db-inspect-en-light.png",
+    "docs/screenshots/db-activity/db-inspect-ru-dark.png",
+    "docs/screenshots/db-activity/db-inspect-ru-light.png",
+    "docs/screenshots/db-activity/db-top-en-dark.png",
+    "docs/screenshots/db-activity/db-top-en-light.png",
+    "docs/screenshots/db-activity/db-top-ru-dark.png",
+    "docs/screenshots/db-activity/db-top-ru-light.png"
+  ],
+  "full_e2e_log_sha256": "95e8055c137e387c296577356e6991353a3f0b85ec2f93cbec3c40038c1f79d7",
+  "image": "sha256:08719e3d4439ba611d4ab4f32f0fc6cc2db745752793f052df6eab4b339cafdf",
+  "execution_order_verified": true
+}

@@ -17,14 +17,16 @@ import { DecisionView } from './SignalDrawer'
 
 type Mode = 'accept' | 'modify' | 'reject' | 'delegate'
 
-export function HitlQueue({ runId, onOpenSignal }: { runId: number | undefined; onOpenSignal: (id: number) => void }) {
+export function HitlQueue({ runId, onOpenSignal, runScope, onRunScopeChange }: { runId: number | undefined; onOpenSignal: (id: number) => void; runScope?: string; onRunScopeChange?: (value: string) => void }) {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const incoming = (params.get('q') ?? '').slice(0, 200)
   const [search, setSearch] = useState(incoming)
-  const [scope, setScope] = useState<'all' | 'current'>('all')
+  const [localScope, setLocalScope] = useState('all')
+  const scope = runScope ?? localScope
+  const setScope = (value: string) => { if (runScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setLocalScope(value) }
   const [history, setHistory] = useState(false)
-  const q = useHitlPages({ run_id: scope === 'all' ? 'all' : runId ?? 'current', q: search || undefined, include_decided: history })
+  const q = useHitlPages({ run_id: scope === 'current' ? runId ?? 'current' : scope, q: search || undefined, include_decided: history })
   const [selected, setSelected] = useState<number | null>(null)
   useEffect(() => { if (incoming) { setSearch(incoming); setSelected(null) } }, [incoming])
   const items = q.data?.pages.flatMap(p => p.items ?? []) ?? []
@@ -38,7 +40,7 @@ export function HitlQueue({ runId, onOpenSignal }: { runId: number | undefined; 
       <aside className="max-h-[45vh] w-full shrink-0 overflow-y-auto border-b border-line lg:max-h-none lg:w-80 lg:border-r">
         <div className="sticky top-0 z-10 space-y-2 border-b border-line bg-panel p-3">
           <label className="block text-xs">{t('continuity.hitlSearch')}<input className="input mt-1 w-full" maxLength={200} value={search} onChange={e => { setSearch(e.target.value); setSelected(null); if (params.has('q')) setParams(p => { p.delete('q'); return p }, { replace: true }) }} placeholder="SIG, INC, HD, ESC, AR, CL, TSK…" /></label>
-          <label className="block text-xs">{t('continuity.scope')}<select className="input mt-1 w-full" value={scope} onChange={e => { setScope(e.target.value as typeof scope); setSelected(null) }}><option value="all">{t('continuity.allRuns')}</option><option value="current">{t('continuity.currentRun')}</option></select></label>
+          <label className="block text-xs">{t('continuity.scope')}<select className="input mt-1 w-full" value={scope} onChange={e => { setScope(e.target.value); setSelected(null) }}><option value="all">{t('continuity.allRuns')}</option><option value="current">{t('continuity.currentRun')}</option>{scope !== 'all' && scope !== 'current' && <option value={scope}>{t('overviewUi.selectedRun', { run: scope })}</option>}</select></label>
           <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={history} onChange={e => { setHistory(e.target.checked); setSelected(null) }} />{t('continuity.includeDecided')}</label>
           <p className="text-xs text-muted">{t('continuity.searchHint')}</p>
         </div>

@@ -30,20 +30,24 @@ def db_url() -> str:
     return URL
 
 
-@pytest.fixture(scope="session")
-def migrated_db(db_url: str) -> str:
-    """Чистая схема → alembic upgrade head. Возвращает URL."""
-    with psycopg.connect(_dsn(db_url), autocommit=True) as c:
+def rebuild_schema(url: str) -> None:
+    """Только тестовая DB: изолировать схему от состояния предыдущего модуля/shard."""
+    with psycopg.connect(_dsn(url), autocommit=True) as c:
         c.execute("DROP SCHEMA IF EXISTS langgraph CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    env = {**os.environ, "DATABASE_URL": db_url}
     r = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=ROOT / "backend",
-        env=env,
+        env={**os.environ, "DATABASE_URL": url},
         capture_output=True,
         text=True,
     )
     assert r.returncode == 0, r.stderr[-2000:]
+
+
+@pytest.fixture(scope="session")
+def migrated_db(db_url: str) -> str:
+    """Чистая схема → alembic upgrade head. Возвращает URL."""
+    rebuild_schema(db_url)
     return db_url
 
 
@@ -67,16 +71,7 @@ def _seed(url: str, *args: str) -> subprocess.CompletedProcess[str]:
 @pytest.fixture
 def seeded(migrated_db: str) -> str:
     """Изолированный baseline на 200 клиентов: изменения одного теста не переходят в другой."""
-    with psycopg.connect(_dsn(migrated_db), autocommit=True) as c:
-        c.execute("DROP SCHEMA IF EXISTS langgraph CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
-    r = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        cwd=ROOT / "backend",
-        env={**os.environ, "DATABASE_URL": migrated_db},
-        capture_output=True,
-        text=True,
-    )
-    assert r.returncode == 0, r.stderr[-2000:]
+    rebuild_schema(migrated_db)
     r = _seed(migrated_db)
     assert r.returncode == 0, r.stderr[-3000:]
     return migrated_db

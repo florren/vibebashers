@@ -1,3 +1,5 @@
+import { ScopedRunBoundary } from '@/shared/layout/ScopedRunBoundary'
+import { ScopedEngine } from './ScopedEngine'
 import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { EntityFilter } from '@/shared/components/EntityFilter'
 import { JourneyLink } from '@/shared/components/JourneyLink'
@@ -22,6 +24,12 @@ type Tab = 'steps' | 'graph' | 'chain' | 'live' | 'quality' | 'bench' | 'db' | '
 
 /** Экран 3 «Под капотом» (ТЗ 12.2): список прогонов, шаги с промптами, граф, цепочка решений, живые события WS. */
 export function EnginePage() {
+  const [params] = useSearchParams()
+  const scope = params.get('run_id')
+  return scope === null ? <LegacyEnginePage /> : <ScopedRunBoundary requested={scope}>{resolved => <ScopedEngine key={resolved} runScope={resolved} />}</ScopedRunBoundary>
+}
+
+function LegacyEnginePage() {
   const [entityQuery, setEntityQuery] = useState('')
   const { t } = useTranslation()
   const { runId: runStr } = useParams()

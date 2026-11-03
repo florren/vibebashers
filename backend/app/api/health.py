@@ -12,6 +12,7 @@ from app import __version__
 from app.config import get_settings
 from app.db.session import get_session
 from app.logging import get_logger
+from app.tgbot.liveness import running_username
 
 router = APIRouter(tags=["health"])
 log = get_logger(__name__)
@@ -38,12 +39,14 @@ async def get_health(request: Request, session: AsyncSession = Depends(get_sessi
     chain = getattr(request.app.state, "llm_chain", None)
     if chain is not None:  # провайдеры цепочки из .env (профили из БД дополняют картину)
         llm = {**{name: "ok" for name in chain.names}, **llm}
+    username = running_username(request.app, s)
     return {
         "status": "ok" if db_ok else "degraded",
         "db": db_ok,
         "setup_completed": setup_completed,
         "llm": llm,
-        "tgbot": "disabled" if not s.telegram_bot_token else "running",
+        "tgbot": "disabled" if not s.tgbot_enabled else "running" if username else "error",
+        "tgbot_username": username,
         "sim_running": sim_running,
         "version": __version__,
     }

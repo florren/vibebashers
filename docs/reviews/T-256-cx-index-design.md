@@ -1,0 +1,117 @@
+# T-256: источники CX Index и план API 1.5.29
+
+Статус: API29 producer реализован; актуальная ветка обычными merge включает API28/CSI20, Journey и T041 writer fence. Собственного DDL нет. Ветка `codex/T-256-cx-index`; T255/T257 — отдельные UI-пакеты. Исторический full green1968631 не переносится на новый source; актуальные bounded composition checks и ограничения перечислены ниже. Точный CI нового PR обязателен.
+
+## Утверждённая формула
+
+ТЗ 14.1: `CX = clamp(100 - (w_n*N + w_c*C + w_s*S + w_r*R), 0, 100)`, окно 24 сим-часа, изменение за час. Веса по умолчанию **0.4 / 0.25 / 0.2 / 0.15**, источник `settings.cx_index.weights`. Это демонстрационный индекс, не CSI и не денежная формула.
+
+Pure core принимает все четыре компонента и все веса явно. `Observation(value, known, total)` сохраняет полноту; если компонент неизвестен или coverage неполон, индекс unknown, даже при нулевом весе этого компонента. Веса не перенормируются, отсутствие данных не заменяется нулём. Структурно пустой знаменатель может иметь явно обоснованный 0 (например, нет открытых инцидентов), но пустой сигналовый cohort не означает нулевой средний негатив. Веса конечные, неотрицательные, хотя бы один положительный; используются буквально по формуле без принудительной нормировки. Насыщение промежуточных неотрицательных слагаемых эквивалентно итоговому clamp и защищает от overflow при больших явных весах.
+
+## Проверенные источники и gaps
+
+- N: `signals.classification.negativity`; `agent/nodes.py` явно копирует normalization.negativity в classification. Только валидный записанный процент 0…100, не sentiment-to-score conversion.
+- C: записанный `classification.criticality` из high/medium/low. Missing/legacy malformed даёт unknown, не low.
+- R: канонический `churn_intent` в записанном classification.flags. Producer выставляет его при hidden_negativity.churn_threat.present или intents churn_threat. Пустой default signals.flags у необработанного сигнала НЕ является доказательством false. Никакого вывода из churn_risk или sentiment.
+- `v_signal_normalized` / `v_cabinet_signal_facts` доступны; первая проекция не содержит N, допустимо связывать её IDs с signals 1:1 без DDL. Customer cohort исключает служебный proactive anchor, technical Trace не меняется.
+- S требует конкретного semantic review: ТЗ не задаёт численный threshold «риска SLA». Existing dashboard hardcode 2h не равен UI hint 4h и не является утверждённой policy индекса. Предложение: actual current-lifecycle native warning и текущая просрочка; stale/closed/reopened/released/same-clock warning не переносится как текущий риск. Различие «нет зарегистрированного warning» и «полный риск отсутствует» должно быть явно отражено coverage/подписью; количественный threshold не придумывается.
+- Для previous нельзя читать нынешнюю classification как прошлое состояние. Immutable `agent_steps.output` у classify содержит `churn_predicted_sim` и score_pipeline, однако ctx.sim_time мог быть захвачен ДО await LLM: сам этот timestamp НЕ доказывает наблюдение/публикацию к историческому cutoff. T-161 имеет actual delayed fixture complaintT0/noticeT3/classification observedT5. Независимый кандидат — behavior_agent_intents.observed_sim для classifier:complaint (writer читает current_effect_time); без доказанного matching-run receipt→точный immutable snapshot, либо при нескольких classify snapshots без step_seq, previous остаётся unknown. Нужен delayed-LLM regression, producer не меняется. Previous S требует native deadline/lifecycle evidence, иначе unknown. Никакого скрытого восстановления истории из текущих значений.
+- При initial audit `GET /api/metrics/cx-index` возвращал501 с object schema; этот API gap закрыт ниже в checkpoint29, `/overview` — PendingScreen. Dashboard и economics/live по умолчанию материализуют экономику: read-only Overview не должен обращаться к этим mutating paths. Есть внутренние refresh=False параметры, но текущие DTO также подставляют0 при unknown. Нужен конкретный typed readonly projection в API29, без изменения денежного producer/default legacy поведения.
+- Готового agent shift-summary producer нет. Допустим compendium реально записанных agent summaries с public run IDs, provenance и mode; шаблон нельзя назвать новым текстом агента, LLM для этой страницы не вызывается.
+- JuryModal уже создаёт сигнал прежним API и имеет JourneyLink/VoiceInput. Недостаёт города, явной privacy/hint, Trace-действия, полноценной ru/en локализации refs и требуемой доступной раскладки. Это отдельная T-257, не часть backend T-256.
+
+## Порядок реализации
+
+1. Pure core и unit boundaries; затем typed DTO/конкретные API29 semantics и review.
+2. Пакетный read-only REPEATABLE READ reader с current-only metrics scope, explicit all, отсутствующий current → empty, без fallback all; customer/run guards до агрегаций. N/C/R, coverage, channel mix, 24 hourly count buckets и наблюдаемые source references. S/previous — только подтверждённые источники.
+3. Settings weights: утверждённые defaults только при отсутствии настройки; invalid configuration явно диагностируется, не заменяется default молча. PATCH validation и минимальное изменение typed settings contract входят в конкретный API29 diff.
+4. Main/edge/run/legacy/proactive/privacy/readonly PG cases, ручной расчёт, воспроизводимость, cold p95 ≤300 мс и actual EXPLAIN; отдельный functional coverage без timing под tracer.
+5. T-255: все девять блоков на реальных typed API, projection «не география», readonly saved money/coverage, chain/Trace/Journey, HITL preview без изменения решений, compendium, темы/пакеты/языки/mobile/a11y.
+6. T-257 отдельной веткой: существующий нормализованный POST, city/unknown client/privacy/hint, VoiceInput secure-context guard, реальные переходы Journey/Trace, unit/browser regression.
+
+Новых весов, денежных/HITL правил, внешних вызовов или auth/RBAC не добавляется. Финальные API29 semantics требуют human contract review после конкретного tested PR; показатели CSI из незавершённого T-248 не импортируются. Rollback — отдельный reviewable app revert, БД не меняется.
+
+## Композиция источников
+
+Ordinary merge main `7e34ffb`, clean foundation19 `27a8956` и T-037 `95c77b2` выполнены: head `98d1a71`, API1.5.26/DDL19. CSI20 WIP не взят. Add/add conflict test_no_pii.py решён объединением T-240 reviews и T-247 CSI tests, без удаления assertions: 29 unit passed (включая27core), Ruff check/format passed. Для Overview предложен отдельный guarded read-only `/api/metrics/overview` в API29, без изменения legacy dashboard/economics defaults.
+
+## Независимый reader checkpoint
+
+N/C/R и channel mix/24 rolling hourly buckets реализованы одним materialized SQL batch. Окно `(now−24h, now]`; граничный timestamp относится ровно одному часу. Current-only scope, explicit all, отсутствие current → empty; unknown numeric run →404. Raw default signals.flags не используется как negative evidence, только явная structurally valid classification.flags с canonical signal_type/criticality и enum flags. Записанные malformed/partial classification остаются unknown. Structural count0 для пустого потока допустим; средний негатив пустого cohort — unknown.
+
+Own scratch `cx_cx_index_revision`, actual0019, штатный lite200 seed. Три native PG cases прошли за8.52с: ручные N/C/R, точные window/hour boundaries, foreign/current/all/missing pointer, proactive exclusion, malformed/default flags и readonly fingerprint с BombLLM/monetary writers. Это прямой reader proof, не ещё HTTP/API29 proof. Pure core/settings boundary —35unit passed; mypy2modules, Ruff check/format зелёные. Новая БД и maintenance directory изолированы; T244 checkout/БД не изменялись. Test-only producer19 pin fix c7c0554 применён focused cherry-pick→1b93b36, прежние migration18/audit/data assertions сохранены.
+
+## Checkpoint перед приоритетным CI T244
+
+Current registered-SLA proposal реализован, public CX endpoint ещё не подключён. S использует native current-stage warnings/текущую просрочку; missing/stale/reopened/released lifecycle →unknown, отсутствие registered warning не является forecast guarantee. Basis=registered_sla_risk, forecast_complete=false. Полный current index при partial/unknown не рассчитывается. Исторический receipt→snapshot reader ещё не реализован: root согласовал только строгий matching immutable observed receipt с единственным canonical step и delayedT0/T5/duplicate regression; churn_predicted_sim самостоятельно не используется.
+
+Проверки checkpoint:56unit passed,12nativePG passed за12.39с (3signal facts +9nativeSlaEngine variants), Ruff иmypy3modules зелёные. Settings validation добавлена локально под будущий API29: malformed weights отклоняются до DB, invalid stored config не заменяется default и не отражает raw payload. Ни API29 schema, ни новый readonly overview endpoint ещё не добавлены; карточки не закрыты. Работа временно переключена на приоритетные CI regressions T244 PR196, эти независимые ветки не смешиваются.
+
+## API29 producer checkpoint
+
+Текущая реализация подключает `/api/metrics/cx-index` и новый `/api/metrics/overview` через один `REPEATABLE READ READ ONLY` snapshot на запрос, statement timeout3s. Run scope по умолчанию **только current**, без baseline; `all` явно, отсутствующий current пустой, unknown numeric404, malformed/Unicode/overflow422 до DB. Данные CSI20 не импортированы. API1.5.29 source и generated TS синхронны; новая DDL отсутствует.
+
+Historical N/C/R теперь читаются из единственного canonical classify/instant_decide snapshot, связанного по run/client/signal/agent с independently observed `classifier:complaint` receipt. Delayed actual Mock regression доказывает: frozen stampT0≤T3 сам по себе даёт ложное историческое знание; receiptT5 закрывает эту утечку. НаT3 unknown, наT5 known; missing snapshot, foreign receipt, два canonical steps либо два latest receipts в одну дату дают unknown. Current weights применяются к обеим датам, а не выдаются за historical configuration. Historical open S без deadline snapshots остаётся unknown; структурный ноль допускается только при native доказанном отсутствии open stock. S явно `registered_sla_risk`, `sla_forecast_complete=false` — не прогноз отсутствия риска, не новая SLA policy.
+
+Readonly Overview не использует mutating dashboard/economics endpoints. Today = полночь Europe/Moscow..sim now; остальные signal/agent/economics cohorts rolling24h, SLA=текущий open stock. Autonomous = finished completed без needed_human / все finished agent runs; response = медиана записанного total_latency_ms при наличии finished step, не wall clock age. Каждый nullable KPI имеет исходные known/total. Деньги — сумма только сохранённых incident_economics по distinct incident ID; неполное покрытие NULL, действительно пустой cohort0; `saved_rub_exact` — Decimal string, без Number/float и новой формулы. Native stored boundary `10999999999999.67` проверен точно, затем удаление одной saved row переводит сумму в unknown.
+
+Shift = компиляция реально сохранённых summaries, не новая сводка LLM: максимум8, маскированный текст до300символов, total/truncated явно, исходный язык summary_ru сохранён, actual source/model mode либо honest legacy unknown. Полный источник доступен через agent/signal references. Новые ограничения8/300 — presentation bounds, не бизнес-пороги. PATCH settings сохраняет прежний namespace shallow merge и advisory lock; все4 веса обязательны при изменении weights, finite≥0 и хотя бы один>0. Импорт использует ту же валидацию. Legacy GET settings остаётся generic map, чтобы старый malformed config не ломал публичную форму; CX endpoint сообщает invalid/unknown, не подставляет defaults. Defaults только при отсутствии weights.
+
+Проверки: **91 functional unit/PG/actualHTTP passed за25.86s**; coverage новых analytics **208/210 statements (99%)**, core54/55, reader120/121, overview34/34. Native demo5000 отдельно:30GET каждого endpoint, первый включён, p95 **26.321ms CX /23.554ms Overview**, threshold300 неизменён, fingerprint unchanged, BombLLM/monetary writers. EXPLAIN ANALYZE отдельно после benchmark, только readonly SELECT: runtime0.011…1.544ms, максимальная estimatedcost1076.09, JIT отсутствует. Исходные samples/планы/coverage описаны в [machine proof](T-256-producer-proof.json). Full make lint:429frontend,505format,311mypy,bot12format/5mypy,drift194 — зелёный. Full make test/composed CI и T255/T257 ещё впереди; окончательная приёмка не заявляется. Python tracer warning не относится к native timing. Никаких внешних вызовов.
+
+Rollback: revert app/API/generated-types пакета; migration отсутствует, сохранённые user weights не удаляются/не переписываются автоматически. Старые dashboard/economics defaults, money/HITL policy и auth остаются прежними. Численная интерпретация S и новые API29 DTO сохраняются как конкретная review boundary для root/code review/CI; временная пользовательская авторизация недеструктивных change requests до07:00 03.11.2026 не даёт полномочий на внешние/production операции.
+
+## Полный frozen-source прогон
+
+`make test` на неизменном `1968631` завершился **exit0**: backend unit2024passed/18skip (66.49s), integration672passed/4skip (3476.63s), scenarios43passed/2skip (247.43s), compliance31passed (123.04s), frontend429passed/61files, tgbot43passed (8.00s). Всего backend2770passed/24skip; skips/live providers не объявляются проверенными. Лог `/tmp/t256-full-make-test.log`; `make lint` ранее green429front/505format/311mypy/bot12format5mypy/drift194. После freeze runtime/контракты не редактировались; этот checkpoint дополняет только отчёт. Генератор карточек дважды идемпотентен, TS generated source синхронен. Родитель выполняет публикацию/CI; child ничего не push/merge main.
+
+T255 развивается в отдельном worktree/ветке от1968631: nine real blocks, exact money, strict explicit-run drilldown и screenshots. T257 ещё впереди. Результаты UI другого source не переносятся на1968631; local full proof не заменяет exact composed-head CI.
+
+## Temporal defensive follow-up после frozen полного прогона
+
+Исторический полный `make test` относится к runtime `1968631` (документальный head `6f1363e`), а не к этому follow-up. Native два-controller probes выявили регрессию глобальных часов при stale `Simulator.control(start,counters)`. Это не доказательство дефекта single-controller HTTP reset. Положительная классификация не пишет complaint receipt: отсутствие такого receipt не доказывает публикацию к прошлому cutoff. Формула, weights, деньги, HITL и historical interpretation не изменены.
+
+До обеих live projections `metrics_scope` теперь отклоняет HTTP409 `Problem.title=temporal_context_conflict`, если в выбранном current/id (либо любом run для явного all) `sim_runs.started_sim`/`finished_sim` или native `behavior_agent_intents.observed_sim` позже общего global `sim_state.sim_time`. `current_missing` остаётся пустым. Coherent clock сохраняет прежние результаты. API29 содержит обе 409 responses; новая версия сверх reserved1.5.29 не вводится. Нельзя использовать этот guard как универсальную historical reconstruction: положительный delayed-LLM случай без receipt требует upstream T041 stale-controller start fence. Публикация API29 зависит от композиции T041 и повторения native positive/negative probes после неё.
+
+Адресная проверка этого bounded diff: 28/28 actual PG/HTTP integration (17.86s), 65/65 pure unit (0.24s), Ruff/format, mypy reader, contracts check47schemas/164paths и regeneratedTS. Проверены metadata start/finish, native receipt T5 при globalT3, current/id/all, Bomb обеих live projections, coherent/newcurrent, current_missing, GET fingerprints. Полный backend заново не запускался; old full proof сохранён с прежним source. Native p95 и final composition proof будут повторены после T041 checkpoint без tracer/warmup/изменения300ms guard.
+
+Rollback: revert данного scoped guard/API409 addition; это не устраняет upstream stale-controller defect, поэтому API29 до T041 не объявляется готовым к публикации. Historical RED safe evidence сохранён отдельно `/tmp/t256-reset-cutoff-proof.json`, `/tmp/t256-reset-stale-finish-proof.json`, `/tmp/t256-reset-positive-no-receipt-proof.json`; переносимый probe/setup передан root.
+
+### Композиция upstream T041 fence
+
+Обычный merge clean `c92c367` выполнен в `4f15336`; единственный конфликт — docstring corpus privacy test, assertions сохранены. Native start теперь проверяет actual clock/RNG того же pointer до stop/persist/create_run и повторно под row lock. Это источник устранения native stale-controller rewind, а API29 guards остаются ограниченными defensive проверками.
+
+Новые tracked `test_metrics_temporal_publication.py` positive/negative probes создают signal через normalizer, выполняют valid delayed Mock completion T5 с captured ctxT0; native complaint receipts соответственно0/1. Stale controller загружен наT3. Его start отклоняется без изменения public fingerprints; fresh controller стартует наT5, old.finished/new.started=T5. Обе API current/id/all работают с coherent as_ofT5; новый current не видит old signal, GET fingerprints неизменны. Два probes плюс4native T041 clock/RNG/interleave tests:6/6passed34.67s.
+
+Отдельный final functional coverage:95/95passed42.38s (65pure+28PGHTTP+2native publication), Python tracer без timing guard;224/226строк трёх новых analytics modules (99%; core54/55,reader136/137,overview34/34). Первый95functional run42.47s прошёл, но ошибочный coverage --source filenames не создал data и не использован как coverage evidence. Correct run/source artifact сохранены отдельно. Нового full backend green на composed head не заявляем. Native benchmark остаётся отдельным обязательным gate с первымGET и300ms, после root quiet window.
+
+### Final bounded composition на T041 c47
+
+Обычный merge `c47d2784a3953452a9bc154c9048eae0416cd3cb` → runtime head `ad33c825`: добавлены upstream status/shutdown fences, не новая clock policy/API/DDL. Повторены2publication +6control +1shutdown targeted tests:9/9passed44.11s. Предыдущий6/95proof остаётся source-qualified на c92 composition; reader/core не изменены после95functional/224of226coverage.
+
+Final native ASGI HTTP benchmark на `ad33c825`: demo5000,30GET каждого endpoint, первыйGET включён, без warmup/tracer/ANALYZE statistics/retry, прежний300ms guard. CX p95=27.9971929849ms (first27.9971929849), Overview p95=25.8147710119ms (first25.3036039649).1/1passed32.92s, GETpublicfingerprints unchanged, Bomb external/monetary writers. Все raw samples и sourcehash в producer-proof JSON; это отдельный неинструментированный run. AFTER benchmark readonly EXPLAIN ANALYZE только нового guard: allcost0.22/exec0.021ms,currentcost19.47/exec0.035ms, noJIT. Это не подмена общего endpoint latency SQL временем.
+
+Local implementation готов к parent review/точному CI и композиции parent API28→API29; новым fullbackend run старый196full не называется. Остаточные product semantics proposal (`S basis=registered_sla_risk`, unknown/partial, current weights на обе observed dates) остаются явно в API29 review. Никакой универсальной реконструкции positive publication по missing receipt не заявляется.
+
+### Root composition: актуальный parent PR199
+
+Обычный merge c463cdd→637fca6 сохранил API1.5.29 и полный набор API28/29 schemas;
+CSI/branches paths взяты изAPI28, metrics paths — изAPI29. Переводы объединены
+строгим трёхсторонним сравнением всех ключей, generatedTS пересоздан изконтракта.
+Corpus test меняет только одинаковый docstring. Затем обычный merge92f68f0→4d2d2e2
+перенёс проверенную generic scenario06 CI regression изPR197 через198/199.
+
+Focused test-only1c9c365→ed5b6ce использует native internal normalizer authority
+для reserved service origin, а не запрещённый public sourceapi. Customer/N/C/R/
+window assertions сохранены. На агентском composed1c9:102/102functional passed60.43s.
+Root git ls-tree подтвердил byte-identical **весь backend/app** и metrics/control/
+shutdown test files между1c9 и4d2d2e2; это source-qualified reuse именно этих102
+проверок, не заявление нового full backend suite. Все три новых analytics modules
+также byte-identical c8:224/226 coverage и отдельный native benchmark остаются
+квалифицированы прежними source hashes. API28 parent меняет engine scripted runtime,
+поэтому старый196full не называется итоговым. New exact-head CI ещё требуется.
+
+Final root lint на runtimeb3afc6c (обычная композиция PR200 evidence, source engine
+не менялся): **444frontend/65files**, Ruff550/mypy323,bot12/5,drift196/196.
+Contracts48schemas/166paths. Это actual root result после API28/29 union;
+full backend не подразумевается. Parent PR199/200 и точный CI остаются gates.

@@ -237,7 +237,15 @@ async def _compliance_customer_case(
             "origin": "proactive",
             "meta": {"transcript_id": transcript_id, "audio_session_id": session_id},
         }
-        result = await create_signal(conn, message, source_code="api", run_id=run_id, sim_time=at, emit_event=False)
+        result = await create_signal(
+            conn,
+            message,
+            source_code="api",
+            run_id=run_id,
+            sim_time=at,
+            emit_event=False,
+            _internal_producer="compliance",
+        )
         if result.get("status") not in ("accepted", "duplicate") or not result.get("signal_id"):
             raise ValueError("Не удалось зарегистрировать проактивное обращение комплаенса")
         sid = int(result["signal_id"])

@@ -1,6 +1,7 @@
 import { IdLink } from '@/shared/components/IdLink'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { useNotifications } from '@/shared/api/hooks'
 import type { NotificationItem } from '@/shared/api/client'
@@ -10,14 +11,21 @@ import { Badge, Empty, ErrorBox, SkeletonRows } from '@/shared/ui'
 
 const TYPES = ['all', 'client', 'team', 'public', 'cx'] as const
 
-export function NotificationsTab({ runId }: { runId: number | undefined }) {
+export function NotificationsTab({ runId }: { runId: string | number | undefined }) {
   const { t } = useTranslation()
+  const [params, setParams] = useSearchParams()
+  const rawClient = params.get('client_id')
+  const clientId = rawClient !== null && /^[1-9]\d*$/.test(rawClient) && Number.isSafeInteger(Number(rawClient)) ? Number(rawClient) : undefined
+  const invalidClient = rawClient !== null && clientId === undefined
+  const clearClient = () => setParams(previous => { const next = new URLSearchParams(previous); next.delete('client_id'); return next }, { replace: true })
   const [type, setType] = useState<(typeof TYPES)[number]>('all')
   const [open, setOpen] = useState<number | null>(null)
-  const q = useNotifications({ run_id: runId, limit: 100, ...(type === 'all' ? {} : { recipient_type: type }) })
+  const q = useNotifications({ run_id: runId, limit: 100, ...(clientId === undefined ? {} : { client_id: clientId }), ...(type === 'all' ? {} : { recipient_type: type }) }, !invalidClient)
+  if (invalidClient) return <div className="p-3"><p role="alert" className="text-danger">{t('notif.invalidClient')}</p><button type="button" className="btn btn-sm mt-2" onClick={clearClient}>{t('notif.clearClient')}</button></div>
   const items = q.data?.items ?? []
   return (
     <div className="p-3">
+      {clientId !== undefined && <div className="mb-2 flex flex-wrap items-center gap-2 text-sm"><span>{t('notif.clientFilter', { id: clientId })}</span><button type="button" className="btn btn-sm" onClick={clearClient}>{t('notif.clearClient')}</button></div>}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm text-muted">{t('notif.subtitle')}</div>
         <div className="flex flex-wrap overflow-hidden rounded border border-line text-xs">
@@ -52,7 +60,7 @@ function Row({ n, open, onToggle }: { n: NotificationItem; open: boolean; onTogg
         <span className="shrink-0 text-xs text-muted">{tEnum('channel', n.channel_code)}</span>
         <span className={clsx('min-w-0 flex-1 text-muted', !open && 'truncate')}>{n.subject ? `${n.subject} — ` : ''}{open ? '' : n.body}</span>
         {n.incident_public_id && <IdLink kind="incident" value={n.incident_public_id} />}
-        <Badge tone={n.status === 'sent' || n.status === 'delivered' ? 'ok' : n.status === 'failed' ? 'danger' : 'neutral'}>{tEnum('notifStatus', n.status)}</Badge>
+        <Badge tone={n.status === 'sent' || n.status === 'delivered' ? 'ok' : n.status === 'failed' ? 'danger' : n.status === 'unknown' ? 'warn' : 'neutral'}>{tEnum('notifStatus', n.status)}</Badge>
       </div>
       {open && <pre className="mt-2 whitespace-pre-wrap rounded bg-raised p-2 font-sans text-sm leading-relaxed">{n.body}</pre>}
     </li>

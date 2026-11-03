@@ -23,6 +23,7 @@ from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
 from app.bench.service import BenchService
 from app.config import Settings, get_settings
+from app.contracts.api_metadata import api_version
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
@@ -34,12 +35,15 @@ from app.logging import configure_logging, get_logger
 from app.observability.http import RequestLogMiddleware
 from app.realtime import ws as ws_module
 from app.realtime.notify import bridge
+from app.sim.behavior.runtime import configured_policy
 from app.sim.engine import Simulator
 from app.sim.maintenance import MaintenanceCoordinator, MaintenanceMiddleware, start_daemon
 from app.sim.maintenance_control import ControlError, MaintenanceControl
 from app.sim.maintenance_db import DatabaseBoundary
 from app.sim.twins import TwinService
 from app.stt import audio_ws
+from app.tgbot.configuration import configured as tgbot_configuration
+from app.tgbot.middleware import BotSignatureMiddleware
 
 log = get_logger(__name__)
 
@@ -91,7 +95,9 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
     """Создаёт только runtime-компоненты, которыми владеет lifespan."""
     with app.state.maintenance.bind():
         if "agent" in components:
-            app.state.agent = AgentService(app.state.llm_chain, app.state.llm_profile)
+            app.state.agent = AgentService(
+                app.state.llm_chain, app.state.llm_profile, sim=getattr(app.state, "sim", None)
+            )
             app.state.agent.enabled = getattr(app.state, "maintenance_agent_enabled", True)
             sim = getattr(app.state, "sim", None)
             if sim is not None:
@@ -103,7 +109,13 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
             else:
                 app.state.agent.start()
         if "twins" in components:
-            app.state.twins = TwinService(app.state.llm_chain, app.state.llm_profile)
+            from app.sim.behavior.runtime import configured_policy, twin_sink
+
+            app.state.twins = TwinService(
+                app.state.llm_chain,
+                app.state.llm_profile,
+                behavior_sink=twin_sink if configured_policy() is not None else None,
+            )
             app.state.twins.start()
         if "poll" in components:
             from app.ingest.sources import polling_worker
@@ -118,6 +130,10 @@ async def _start_runtime(app: FastAPI, components: set[str], *, startup_recovery
             from app.demo.execution import public_worker
 
             app.state.public_task = start_daemon(lambda: public_worker(app), name="public-execution")
+        if "tgbot" in components:
+            from app.tgbot.delivery import worker as telegram_worker
+
+            app.state.tgbot_task = start_daemon(telegram_worker, name="telegram-delivery")
     app.state.runtime_components = components
 
 
@@ -132,7 +148,7 @@ async def _park_runtime(app: FastAPI) -> None:
         if sim.clock.running or getattr(sim, "run_status", None) == "running":
             await sim.control("pause")
         await sim.shutdown()
-    for name in ("demo_task", "public_task"):
+    for name in ("demo_task", "public_task", "tgbot_task"):
         task = getattr(app.state, name, None)
         if task is not None:
             task.cancel()
@@ -239,15 +255,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.twins = None
     app.state.runtime_components = set()
     if recovering:
-        app.state.sim = Simulator(seed=s.sim_seed)
+        app.state.sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         app.state.sim.full_execution = True
         app.state.maintenance_saved_components = (
-            {"agent", "twins", "poll", "demo", "public"} if not s.is_test else set()
+            ({"agent", "twins", "poll", "demo", "public"} | ({"tgbot"} if s.tgbot_enabled else set()))
+            if not s.is_test
+            else set()
         )
         app.state.maintenance_startup_recovery = True
     if not s.is_test and not recovering:
         bridge.start()
-        sim = Simulator(seed=s.sim_seed)
+        sim = Simulator(seed=s.sim_seed, behavior_policy=configured_policy())
         sim.full_execution = True
         try:
             await sim.load_state()
@@ -256,7 +274,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:  # БД недоступна — API симулятора ответит 503, остальное работает
             log.warning("sim_init_failed", error=str(exc)[:200])
     if not s.is_test and not recovering:
-        await _start_runtime(app, {"agent", "twins", "poll", "demo", "public"}, startup_recovery=True)
+        components = {"agent", "twins", "poll", "demo", "public"}
+        if s.tgbot_enabled:
+            components.add("tgbot")
+        await _start_runtime(app, components, startup_recovery=True)
     yield
     try:
         await app.state.maintenance.join_restore()
@@ -291,7 +312,7 @@ def create_app() -> FastAPI:
     s = get_settings()
     app = FastAPI(
         title="CX Pulse Control API",
-        version="1.4.0",
+        version=api_version(),
         lifespan=lifespan,
         docs_url="/docs" if s.app_env != "prod" else None,
         openapi_url="/openapi.json",
@@ -303,7 +324,19 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True
     )
+    from app.analytics.cabinet_scope import CabinetPresetMiddleware
+
+    app.add_middleware(CabinetPresetMiddleware)
     app.add_middleware(RequestLogMiddleware)
+
+    def bot_secret() -> bytes | None:
+        try:
+            config = tgbot_configuration(get_settings())
+        except ValueError:
+            return None
+        return config.secret if config is not None else None
+
+    app.add_middleware(BotSignatureMiddleware, secret=bot_secret)
     install_error_handlers(app)
     include_api_routers(app)
     app.include_router(ws_module.router)

@@ -1,0 +1,25 @@
+id: cabinet_red_words_report
+number: 34
+tz_number: 14
+kind: acceptance
+start_paused: true
+title_ru: 'Кабинет менеджера: красные слова и отчёт (ТЗ 14)'
+title_en: 'Product cabinet: red words and report (TZ 14)'
+description_ru: 'Mock foundation: идентифицированное legal обращение остаётся pending HITL; отдельное обычное обращение проверяет product route. UI/replay требуют отдельной приёмки.'
+client:
+  segment: mass
+inject:
+- channel: chat
+  client:
+    segment: mass
+  text: 'Не могу открыть вклад в приложении, ошибка DEP-TIMEOUT-503. Подаю в суд, также обращусь в налоговую. Требую разобраться с открытием вклада.'
+- channel: chat
+  client:
+    segment: mass
+  text: 'Не могу войти в мобильное приложение, ошибка APP-LOGIN-500. Технический сбой, почините доступ к вкладу.'
+expected:
+  legal_pending_hitl: true
+  ordinary_product_route: deposits
+pending_acceptance:
+- UI красная полоса и role filter product_manager/deposits
+- Реальные совместимые replay кассеты и Playwright

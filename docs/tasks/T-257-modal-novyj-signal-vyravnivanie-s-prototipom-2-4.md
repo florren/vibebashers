@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | да |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Единая точка ручного ввода сигнала (канал, город, текст) с подсказкой, напоминанием о ПДн и переходом на экран пути (ТЗ 12.2 п. 7, 27.4).
@@ -30,8 +30,8 @@
 3. i18n ru/en, доступность, vitest и e2e.
 
 ## Критерии приёмки
-- [ ] Сигнал создаётся прежним API; после отправки доступен переход на путь и след.
-- [ ] ПДн-подсказка присутствует; микрофон скрыт без HTTPS/localhost (правило 6.5).
+- [x] Сигнал создаётся прежним API; после отправки доступен переход на путь и след.
+- [x] ПДн-подсказка присутствует; микрофон скрыт без HTTPS/localhost (правило 6.5).
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -41,4 +41,4 @@ cd frontend && npx playwright test e2e/new-signal-modal.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-257-new-signal-modal`, финальный runtime/API31 source48fb40f. Полный functional UI, сохранение формы при resize, native secure origin и fail-closed STT defaults реализованы. API31 добавляет только422Problem `/api/stt/test` поверх API30; explicit browser opt-in сохранён, implicit external fallback удалён. `make lint`555frontend/79files,325mypy,drift196/196; обе production builds;15backend unit/HTTP,1actualPG fake-STT; actual production browser5/5 ru/en×themes/mobile,13PNG. Ни реального mic/STT, ни external calls. Полный backend/exact-head CI/parent review остаются обязательны; overallDoD не отмечен. Подробности: [review](../reviews/T-257-new-signal-modal.md), [proof](../reviews/T-257-proof.json).

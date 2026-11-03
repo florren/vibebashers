@@ -6,16 +6,19 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import datetime as dt
-from typing import Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 import orjson
 import psycopg
 
+from app.agent import proactive
 from app.agent.graph import (
     expire_hitl,
     process_signal,
     recover_agent_run,
     resume_after_human,
+    resume_proactive_fault,
     wake_due_followups,
     wake_followups_for_client_reply,
     wake_followups_for_incident,
@@ -27,14 +30,24 @@ from app.llm.failover import ProviderChain
 from app.logging import get_logger
 from app.sim.maintenance import spawn_writer, start_daemon, writer
 
+if TYPE_CHECKING:
+    from app.sim.engine import Simulator
+
 log = get_logger(__name__)
 
 
 class AgentService:
     def __init__(
-        self, chain: ProviderChain, profile: LLMProfile, *, concurrency: int = 4, dsn: str | None = None
+        self,
+        chain: ProviderChain,
+        profile: LLMProfile,
+        *,
+        concurrency: int = 4,
+        dsn: str | None = None,
+        sim: Simulator | None = None,
     ) -> None:
         self.chain, self.profile, self.dsn = chain, profile, dsn
+        self.sim = sim
         self.sem = asyncio.Semaphore(concurrency)
         self.personal_sem = asyncio.Semaphore(2)
         self._recover_on_start = True
@@ -42,6 +55,8 @@ class AgentService:
         self._feedback_task: asyncio.Task[None] | None = None
         self._personal_task: asyncio.Task[None] | None = None
         self._reply_task: asyncio.Task[None] | None = None
+        self._proactive_task: asyncio.Task[None] | None = None
+        self._proactive_wake = asyncio.Event()
         self._inflight: set[asyncio.Task[Any]] = set()
         self._by_signal: dict[int, asyncio.Task[Any]] = {}
         self._by_reply: dict[int, asyncio.Task[Any]] = {}
@@ -65,6 +80,152 @@ class AgentService:
             self._personal_task = start_daemon(self._personal_loop, name="personal-chat-queue")
         if self._reply_task is None or self._reply_task.done():
             self._reply_task = start_daemon(self._reply_loop, name="tracking-replies")
+
+        if self._proactive_task is None or self._proactive_task.done():
+            self._proactive_task = start_daemon(self._proactive_loop, name="proactive-fault-queue")
+
+    async def _proactive_loop(self) -> None:
+        """NOTIFY ускоряет один wakeup; native recheck восстанавливает потерянные события."""
+        while True:
+            self._proactive_wake.clear()
+            try:
+                if self.enabled:
+                    await self._proactive_cycle()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("proactive_fault_queue_failed", error_type=type(exc).__name__)
+            try:
+                await asyncio.wait_for(self._proactive_wake.wait(), timeout=2)
+            except TimeoutError:
+                pass
+
+    @writer("agent-proactive")
+    async def _proactive_cycle(self) -> None:
+        async with await self._conn() as conn:
+            phase_signals: list[int] = []
+            if self.sim is not None:
+                from app.sim.proactive_phases import advance
+
+                clock_before = (self.sim.run_id, self.sim.clock.sim_time)
+                phase_signals = await advance(conn, self.sim)
+                await conn.commit()
+                if (self.sim.run_id, self.sim.clock.sim_time) != clock_before:
+                    # Только hint после committed clock progress. Следующая
+                    # итерация снова читает authoritative run/time из PostgreSQL.
+                    self._proactive_wake.set()
+            signal_ids = list(dict.fromkeys([*phase_signals, *await proactive.produce(conn)]))
+            # Граф не держит producer TX/run lock через LLM и другие await.
+            await conn.commit()
+            pending = await (
+                await conn.execute(
+                    "select s.id,a.id,a.outcome,s.origin from signals s left join lateral "
+                    "(select ar.id,ar.outcome from agent_runs ar where ar.signal_id=s.id "
+                    "and ar.sim_run_id=s.run_id and ar.kind='agent' "
+                    "order by ar.id desc limit 1) a on true "
+                    "where s.id=any(%s::bigint[]) order by s.id",
+                    (signal_ids,),
+                )
+            ).fetchall()
+        for signal_id, agent_run_id, outcome, origin in pending:
+            if agent_run_id is None:
+                self.submit(int(signal_id))
+            elif outcome == "deferred" and origin == "proactive":
+                self._submit_proactive_resume(int(signal_id))
+            elif outcome is None and agent_run_id is not None and self.sim is not None:
+                existing = self._by_signal.get(int(signal_id))
+                if existing is None or existing.done():
+                    self._track_signal(
+                        int(signal_id),
+                        self._recover_scripted(int(signal_id), int(agent_run_id)),
+                        name=f"scripted-recover-{agent_run_id}",
+                    )
+            # failed — диагностический результат для ручного разбора; poll не
+            # создаёт новый AR/платные вызовы каждые две секунды.
+
+    @writer("agent-scripted-recovery")
+    async def _recover_scripted(self, signal_id: int, agent_run_id: int) -> None:
+        from app.agent.checkpoints import TransactionalSaver
+        from app.sim.proactive_phases import fail, journal_inputs, locked
+
+        async with self.sem, await self._conn() as conn:
+            run_id: int | None = None
+            try:
+                row = await (
+                    await conn.execute(
+                        "select ar.sim_run_id,ar.thread_id from agent_runs ar join sim_runs r on r.id=ar.sim_run_id "
+                        "where ar.id=%s and ar.signal_id=%s and ar.kind='agent' and ar.outcome is null "
+                        "and ar.interrupted_at is not null and ar.started_at<%s and r.kind='scenario' and r.status='paused'",
+                        (agent_run_id, signal_id, self.started_at),
+                    )
+                ).fetchone()
+                if row is None:
+                    return
+                run_id, thread_id = int(row[0]), row[1]
+                scope = await locked(conn, run_id)
+                if scope is None:
+                    return
+                context, at = scope
+                if signal_id not in await journal_inputs(conn, context):
+                    return
+                saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": thread_id}})
+                if saved is None:
+                    raise ValueError("Scripted recovery требует durable checkpoint; нужен ручной разбор")
+                values = saved.checkpoint["channel_values"]
+                state = values.get("__start__", values)
+                human = await (
+                    await conn.execute(
+                        "select 1 from human_decisions where agent_run_id=%s and decision is null limit 1",
+                        (agent_run_id,),
+                    )
+                ).fetchone()
+                if (
+                    state.get("agent_run_id") != agent_run_id
+                    or state.get("run_id") != run_id
+                    or (state.get("signal") or {}).get("id") != signal_id
+                    or state.get("outcome") == "awaiting_human"
+                    or human
+                ):
+                    raise ValueError("Scripted recovery checkpoint требует ручного решения")
+                # Release phase/run/time locks до graph/model. Existing recovery
+                # сам проверяет checkpoint/thread и выбирает pinned AR profiles.
+                await conn.commit()
+                completed = await recover_agent_run(
+                    conn, agent_run_id=agent_run_id, chain=self.chain, profile=self.profile, sim_time=at
+                )
+                await self._wake_committed_graph(conn, completed)
+            except Exception as exc:
+                if run_id is not None:
+                    await fail(conn, run_id, "customer_graph_failed")
+                self.failed += 1
+                log.error("scripted_agent_recovery_failed", agent_run_id=agent_run_id, error_type=type(exc).__name__)
+
+    async def _wake_committed_graph(self, conn: psycopg.AsyncConnection[Any], state: Mapping[str, Any] | None) -> None:
+        if state is None or self.sim is None:
+            return  # No-op/standalone caller не создаёт phase self-waking loop.
+        owned = await proactive.current_clock(conn, int(state["run_id"]))
+        await conn.commit()
+        if owned is not None:
+            self._proactive_wake.set()
+
+    def _submit_proactive_resume(self, signal_id: int) -> asyncio.Task[Any]:
+        existing = self._by_signal.get(signal_id)
+        if existing is not None and not existing.done():
+            return existing
+        return self._track_signal(signal_id, self._resume_proactive(signal_id), name=f"proactive-resume-{signal_id}")
+
+    @writer("agent-proactive-resume")
+    async def _resume_proactive(self, signal_id: int) -> None:
+        async with self.sem:
+            try:
+                async with await self._conn() as conn:
+                    state = await resume_proactive_fault(
+                        conn, signal_id=signal_id, chain=self.chain, profile=self.profile
+                    )
+                    await self._wake_committed_graph(conn, state)
+            except Exception as exc:
+                self.failed += 1
+                log.warning("proactive_fault_resume_failed", signal_id=signal_id, error_type=type(exc).__name__)
 
     async def _reply_loop(self) -> None:
         """Восстанавливает доставленные ответы после рестарта или потери NOTIFY."""
@@ -119,6 +280,11 @@ class AgentService:
             self.submit(int(sid), interactive=True)
 
     async def stop(self) -> None:
+        if self._proactive_task:
+            self._proactive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._proactive_task
+            self._proactive_task = None
         if self._reply_task:
             self._reply_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -298,6 +464,17 @@ class AgentService:
             body = orjson.loads(n.payload)
         except orjson.JSONDecodeError:
             return
+        if n.channel == "sim_events" and body.get("event_type") in (
+            "fault.started",
+            "op.failed",
+            "sla.tick",
+            "scenario.proactive_prepared",
+            "scenario.proactive_notified",
+            "scenario.proactive_complaints",
+            "scenario.proactive_completed",
+            "scenario.proactive_failed",
+        ):
+            self._proactive_wake.set()
         if n.channel == "sim_events" and body.get("event_type") == "sla.tick":
             sim_raw = body.get("sim_time")
             if sim_raw:
@@ -348,11 +525,14 @@ class AgentService:
         existing = self._by_signal.get(signal_id)
         if existing is not None and not existing.done():
             return existing
-        t = spawn_writer(
+        return self._track_signal(
+            signal_id,
             self._process(signal_id, sim_time, interactive=True) if interactive else self._process(signal_id, sim_time),
             name=f"agent-{signal_id}",
-            kind="agent",
         )
+
+    def _track_signal(self, signal_id: int, coro: Any, *, name: str) -> asyncio.Task[Any]:
+        t = spawn_writer(coro, name=name, kind="agent")
         self._by_signal[signal_id] = t
         self._inflight.add(t)
 
@@ -436,6 +616,7 @@ class AgentService:
                     state = await process_signal(
                         conn, signal_id=signal_id, chain=self.chain, profile=self.profile, sim_time=sim_time
                     )
+                    await self._wake_committed_graph(conn, state)
                 if state is not None:
                     self.processed += 1
                     if state.get("outcome") == "failed":
@@ -452,4 +633,5 @@ class AgentService:
             state = await resume_after_human(
                 conn, human_decision_id=human_decision_id, chain=self.chain, profile=self.profile, sim_time=sim_time
             )
+            await self._wake_committed_graph(conn, state)
         return dict(state) if state else None

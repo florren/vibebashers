@@ -51,6 +51,8 @@ class TestBody(BaseModel):
 @router.post("/api/stt/test", summary="Проверка провайдера на коротком предзаписанном файле (мастер, шаг 4)")
 async def post_stt_test(body: TestBody) -> Any:
     code = body.provider or registry.default_code()
+    if code is None:
+        raise Problem(422, "STT-провайдер не выбран", "Выберите доступный STT-провайдер")
     if code == "browser":
         return {
             "ok": True,
@@ -89,6 +91,8 @@ async def post_stt_test(body: TestBody) -> Any:
 )
 async def post_stt_transcribe(request: Request, provider: str | None = None, sample_rate: int = 16000) -> Any:
     code = provider or registry.default_code()
+    if code is None:
+        raise Problem(422, "STT-провайдер не выбран", "Выберите доступный STT-провайдер")
     if code == "browser":
         raise Problem(422, "Провайдер browser распознаёт в браузере — на сервер присылайте текст")
     try:

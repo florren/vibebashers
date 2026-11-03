@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitverse.ru/florren/vibebashers/contracts/events/sim/team_runtime.schema.json",
+  "title": "team.runtime_started — enrollment durable планировщика",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_type",
+    "version"
+  ],
+  "properties": {
+    "event_type": {
+      "const": "team.runtime_started"
+    },
+    "version": {
+      "const": 1
+    }
+  },
+  "examples": [
+    {
+      "event_type": "team.runtime_started",
+      "version": 1
+    }
+  ]
+}

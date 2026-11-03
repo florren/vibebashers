@@ -13,13 +13,13 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langgraph.graph import END, StateGraph
 from langsmith import tracing_context
 
-from app.agent import nodes
+from app.agent import nodes, proactive
 from app.agent.checkpoints import TransactionalSaver
 from app.agent.nodes import Deps
 from app.agent.prompts import prompt_version
 from app.agent.state import GRAPH_VERSION, AgentState, new_state
 from app.agent.tools import write as wt
-from app.agent.tools.base import ToolContext
+from app.agent.tools.base import StateEvidenceSink, ToolContext
 from app.ingest.synthetic import LEGACY_MOCK_SQL
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
@@ -106,13 +106,30 @@ async def load_deps(
     sim_time: dt.datetime,
     dry_run: bool = False,
     trace_conn: psycopg.AsyncConnection[Any] | None = None,
+    state_evidence_sink: StateEvidenceSink | None = None,
 ) -> Deps:
+    from app.sim.behavior.runtime import refresh_effect_time
+
     if not dry_run:
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, run_id)
         chain, profile = await run_profiles(
             conn, run_id, chain, profile, agent_run_id=agent_run_id if agent_run_id > 0 else None
         )
+    if state_evidence_sink is None and not dry_run:
+        from app.sim.behavior.runtime import state_sink
+
+        state_evidence_sink = await state_sink(conn, run_id)
     ctx = ToolContext(
-        conn, run_id=run_id, agent_run_id=agent_run_id, sim_time=sim_time, dry_run=dry_run, trace_conn=trace_conn
+        conn,
+        run_id=run_id,
+        agent_run_id=agent_run_id,
+        sim_time=sim_time,
+        dry_run=dry_run,
+        trace_conn=trace_conn,
+        state_evidence_sink=state_evidence_sink,
+        effect_time_fence=None if dry_run else refresh_effect_time,
     )
     teams = [r[0] for r in await (await conn.execute("select code from teams order by code")).fetchall()]
     rules = [
@@ -340,6 +357,9 @@ async def process_signal(
     ).fetchone()
     if dup:
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(sig["run_id"]))
     chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
     sim_time = sim_time or (
         dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
@@ -451,6 +471,9 @@ async def recover_agent_run(
         ).fetchone()
         if row is None or row[2] is not None:
             return None
+        from app.sim.behavior.runtime import require_run
+
+        await require_run(conn, int(row[0]))
         saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": row[1]}})
         if saved is None:
             raise ValueError("legacy-проход без durable checkpoint: требуется отдельное ручное восстановление")
@@ -484,6 +507,89 @@ async def recover_agent_run(
         await conn.commit()
 
 
+async def resume_proactive_fault(
+    conn: psycopg.AsyncConnection[Any], *, signal_id: int, chain: ProviderChain, profile: LLMProfile
+) -> AgentState | None:
+    """Поздние actual recipients: тот же AR/checkpoint → act, без нового LLM pipeline.
+
+    Вызывается на выделенном соединении после commit producer. Awaiting-human и
+    legacy без durable checkpoint не получают разрешение переиграть effects.
+    """
+    candidates = await (
+        await conn.execute(
+            "select a.id,a.thread_id,a.sim_run_id,a.outcome from agent_runs a join signals s on s.id=a.signal_id "
+            "where s.id=%s and a.kind='agent' and a.sim_run_id=s.run_id and a.outcome is distinct from 'failed'",
+            (signal_id,),
+        )
+    ).fetchall()
+    if not candidates:
+        return None
+    if len(candidates) != 1:
+        raise ValueError("служебный сигнал имеет неоднозначный agent run")
+    agent_run_id, thread_id, run_id, outcome = candidates[0]
+    if outcome != "deferred":
+        return None
+    locked = await (
+        await conn.execute(
+            "select pg_try_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+    ).fetchone()
+    if not locked or not locked[0]:
+        return None
+    try:
+        current = await (await conn.execute("select outcome from agent_runs where id=%s", (agent_run_id,))).fetchone()
+        if current != ("deferred",):
+            return None
+        signal = await _load_signal(conn, signal_id)
+        scope = await proactive.service_scope(conn, signal or {}, int(run_id))
+        if scope is None or not await proactive.pending_delivery(conn, signal_id, int(run_id), scope):
+            return None
+        saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": thread_id}})
+        if saved is None:
+            raise ValueError("служебный legacy-проход без durable checkpoint требует ручного восстановления")
+        values = saved.checkpoint["channel_values"]
+        state = cast(AgentState, values.get("__start__", values))
+        if (
+            state.get("agent_run_id") != agent_run_id
+            or state.get("run_id") != run_id
+            or state.get("thread_id") != thread_id
+            or state.get("current_node") != "followup_monitor"
+            or state.get("outcome") != "deferred"
+            or state.get("client") is not None
+        ):
+            raise ValueError("checkpoint не соответствует служебному followup")
+        decision = state.get("decision") or {}
+        if (decision.get("client_action") or {}).get("kind") != "proactive_notice":
+            return None
+        if decision.get("needs_human") and (state.get("human") or {}).get("status") not in ("accept", "modify"):
+            return None
+        deps = await load_deps(
+            conn,
+            chain=chain,
+            profile=profile,
+            run_id=int(run_id),
+            agent_run_id=int(agent_run_id),
+            sim_time=scope["as_of"],
+        )
+        await _restore_recording_state(conn, deps)
+        assert signal is not None
+        state["signal"] = signal
+        state["context"]["proactive_resume_only"] = True
+        state["current_node"], state["outcome"] = "act", None
+        await conn.execute(
+            "update agent_runs set outcome=null,finished_at=null,error=null where id=%s", (agent_run_id,)
+        )
+        # Не commit между обновлением AR и durable graph entry: crash не должен
+        # оставлять outcome=NULL со старым terminal checkpoint.
+        return await run_graph(state, deps, conn)
+    finally:
+        await conn.rollback()
+        await conn.execute(
+            "select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+        await conn.commit()
+
+
 async def resume_after_followup(
     conn: psycopg.AsyncConnection[Any],
     *,
@@ -509,6 +615,9 @@ async def resume_after_followup(
     reason = str(reason)
     if reason == "escalation_check":
         return None
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 
@@ -775,6 +884,9 @@ async def resume_after_human(
     if not row or not row[4]:
         return None
     agent_run_id, decision, modified, run_id, checkpoint, _nsteps = row
+    from app.sim.behavior.runtime import require_run
+
+    await require_run(conn, int(run_id))
     state: AgentState = orjson.loads(dumps(checkpoint))
     from app.agent.operator_feedback import feedback_context
 

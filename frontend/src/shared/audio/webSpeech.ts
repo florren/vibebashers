@@ -20,7 +20,7 @@ function ctor(): (new () => SR) | null {
 
 export const webSpeechSupported = (): boolean => typeof window !== 'undefined' && ctor() !== null
 
-export function startWebSpeech(opts: { lang?: string; onResult: (text: string, isFinal: boolean) => void; onError?: (err: string) => void }): { stop: () => void } {
+export function startWebSpeech(opts: { lang?: string; onResult: (text: string, isFinal: boolean) => void; onError?: (err: string) => void }): { stop: () => void; abort: () => void } {
   const C = ctor()
   if (!C) throw new Error('Web Speech API недоступен')
   const rec = new C()
@@ -50,6 +50,13 @@ export function startWebSpeech(opts: { lang?: string; onResult: (text: string, i
     stop: () => {
       active = false
       rec.stop()
+    },
+    abort: () => {
+      active = false
+      rec.onresult = null
+      rec.onerror = null
+      rec.onend = null
+      rec.abort()
     },
   }
 }

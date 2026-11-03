@@ -3,9 +3,9 @@ import { clsx } from 'clsx'
 import { useTeamsLoad } from '@/shared/api/hooks'
 import { Empty, ErrorBox, SkeletonRows } from '@/shared/ui'
 
-export function TeamsTab() {
+export function TeamsTab({ runScope }: { runScope?: string }) {
   const { t } = useTranslation()
-  const q = useTeamsLoad('current')
+  const q = useTeamsLoad(runScope ?? 'current')
   const rows = q.data ?? []
   const max = Math.max(1, ...rows.map((r) => (r.open ?? 0) + (r.in_progress ?? 0)))
   return (

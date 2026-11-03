@@ -21,14 +21,15 @@ def providers() -> dict[str, Any]:
     return {"vosk": _vosk(s.stt_model_path), "browser": BrowserProvider()}
 
 
-def default_code() -> str:
+def default_code() -> str | None:
     s = get_settings()
     reg = providers()
+    if s.stt_provider == "none":
+        # Автовыбор ограничен локальным Vosk: отсутствие модели не разрешает внешний STT.
+        return "vosk" if reg["vosk"].available() else None
     if s.stt_provider in reg and reg[s.stt_provider].available():
         return s.stt_provider
-    if reg["vosk"].available():
-        return "vosk"
-    return "browser"
+    return None
 
 
 def list_info() -> list[ProviderInfo]:
@@ -68,6 +69,8 @@ def list_info() -> list[ProviderInfo]:
 def get(code: str | None) -> Any:
     reg = providers()
     c = code or default_code()
+    if c is None:
+        raise LookupError("STT-провайдер не выбран")
     p = reg.get(c)
     if p is None or not p.available():
         raise LookupError(c)

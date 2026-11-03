@@ -7,7 +7,7 @@ import datetime as dt
 import io
 from typing import Any, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
@@ -211,14 +211,31 @@ async def get_metrics_economics_live(run_id: str | None = Query(None)) -> Any:
 
 
 @router.get("/api/metrics/cx-index", summary="[ПРОТО] Демонстрационный индекс CX")
-async def get_metrics_cx_index(run_id: str | None = Query(None)) -> Any:
-    from app.errors import NotImplementedYet
+async def get_metrics_cx_index(run_id: str = Query("current", min_length=1, max_length=19)) -> Any:
+    from app.analytics.cabinet_scope import validate_run
+    from app.analytics.cx_index_reader import cx_index_snapshot, metrics_scope
+    from app.trace.store import read_db
 
-    raise NotImplementedYet("T-256")
+    validate_run(run_id)
+    async with read_db() as conn:
+        return await cx_index_snapshot(conn, await metrics_scope(conn, run_id))
+
+
+@router.get("/api/metrics/overview", summary="[ПРОТО] Read-only KPI и сохранённая сводка Обзора")
+async def get_metrics_overview(run_id: str = Query("current", min_length=1, max_length=19)) -> Any:
+    from app.analytics.cabinet_scope import validate_run
+    from app.analytics.cx_index_reader import metrics_scope
+    from app.analytics.overview import overview_snapshot
+    from app.trace.store import read_db
+
+    validate_run(run_id)
+    async with read_db() as conn:
+        return await overview_snapshot(conn, await metrics_scope(conn, run_id))
 
 
 @router.get("/api/metrics/economics/preview", summary="Калькулятор потерь без записи в БД")
 async def get_economics_preview(
+    rate_code: str | None = Query(None, min_length=1, max_length=120),
     affected: int = Query(12, ge=0, le=100000000),
     product: str | None = None,
     system: str | None = None,
@@ -226,15 +243,25 @@ async def get_economics_preview(
     detractor_share: float = Query(0.1, ge=0, le=1, allow_inf_nan=False),
     no_return_share: float = Query(0.5, ge=0, le=1, allow_inf_nan=False),
 ) -> Any:
+    if rate_code is not None and (product is not None or system is not None):
+        raise HTTPException(422, "rate_code нельзя сочетать с product/system")
     async with db() as conn:
         cfg = await dcltv.load_settings(conn)
-    rate = dcltv.pick_rate(
-        cfg["rates"],
-        product=product,
-        channel=None,
-        system=system,
-        segment=segment,
-        fallback_code=cfg["settings"].get("fallback_rate_code"),
+    selected = next((row for row in cfg["rates"] if row["code"] == rate_code), None)
+    if rate_code is not None and selected is None:
+        raise HTTPException(422, "Неизвестный rate_code")
+    # Явная ставка — сценарное допущение; формула и все коэффициенты остаются в dcltv.compute.
+    rate = (
+        dcltv.Rate(selected["code"], float(selected["rate_rub"]), f"явно выбранная ставка {selected['code']}")
+        if selected
+        else dcltv.pick_rate(
+            cfg["rates"],
+            product=product,
+            channel=None,
+            system=system,
+            segment=segment,
+            fallback_code=cfg["settings"].get("fallback_rate_code"),
+        )
     )
     premium = (
         next((float(r["rate_rub"]) for r in cfg["rates"] if r["code"] == "premium_service"), 91.53)

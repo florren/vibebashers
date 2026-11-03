@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 ЕТЗ 5.4, 8.2–8.4 и критерии 16.1 (ТЗ 25.5) на существующей карте d3-geo.
@@ -26,7 +26,7 @@
 
 ## Что сделать
 1. Слой ВСП в отдельной группе под слоем сигналов; включение одним щелчком; маркеры по типам и цветам из ТЗ 25.4; кластеризация при малом масштабе, чтобы не перекрывать сигналы.
-2. Карточка ВСП (адрес, режим, сигналы, CSI-метрики, ссылка на `/trace/branch/{code}`); закрытое ВСП с сигналами — тихая метка «закрыто · N сигналов».
+2. Карточка ВСП (адрес, режим, сигналы, CSI-метрики, ссылка на `/trace/branch/{id}` (выданный PK, отображаемый code сохраняется)); закрытое ВСП с сигналами — тихая метка «закрыто · N сигналов».
 3. Блок «ВСП vs Сигналы»: тепловая карта «сигналов на 1 ВСП», список регионов с дефицитом, график динамики сети (12 мес.), таблица сигналов в зонах закрытия с фильтром.
 4. Данные ВСП кэшируются на клиенте (TTL 24 ч); менеджер направления видит только свои ВСП; vitest и e2e.
 
@@ -43,4 +43,8 @@ cd frontend && npx playwright test e2e/map-branches.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-250-map-branches`, проверенный runtime d1fc9b191958e00fc9e3df0cb1297bd9d13beda5. Реальные координаты/кластеры/keyboard/card/4 блока аналитики; direct closed N отдельно от city90-day proxy. Map-only current/read-only граница до KPI mount; API30 additive scope/aliases/422 сохраняет179 DTO. Trace URI использует выданный PK, включая реальную коллизию code0042/id1 против PK42; backend lookup не менялся.
+
+`make lint` GREEN:513 frontend/74files, backend mypy326,bot12/5,drift196/196; обе production сборки и двойная генерация GREEN. Map targeted28 и numeric Trace PG+metadata9 GREEN. Demo5000 native4/4: initial290–353ms, всеbranch reads702–747ms. Новый image c56fe4 из d1fc: portable4/4 за49.24s с preparation, затем native4/4;301 actual primary AR, active0/failed0,97 public fingerprints неизменны,0external/nonGET/JS errors/STT calls. Бизнес API native, UIsettings только theme/layout fixture. Собственный image project полностью очищен. Ранние strict map-layout20/20 и scope6PG source-qualified, не full finalhead.
+
+Статус остаётся in_progress до exact-head full CI и concrete API30 review. [Итог/ограничения/rollback](../reviews/T-250-final-review.md), [image proof](../reviews/T-250-image-final-proof.json), [demo5000 proof](../reviews/T-250-trace-native-proof.json).

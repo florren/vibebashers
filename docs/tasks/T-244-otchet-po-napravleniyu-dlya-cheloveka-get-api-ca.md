@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L3` Агент и контуры (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 Кнопка «Сформировать отчёт» (ЕТЗ FR-6.8, ТЗ 24.5, 20.7 № 69): документ, который руководитель читает без пояснений — выводы словами, числа с единицами, графики с заголовками-выводами.
@@ -34,9 +34,9 @@
 5. Проверка понятности: e2e-смоук печатной формы (Playwright `page.pdf()` в headless Chromium как артефакт CI, визуальная проверка человеком по чек-листу 24.5 п. 1–7); тексты через i18n.
 
 ## Критерии приёмки
-- [ ] JSON и XLSX согласованы с `overview` и между собой; `summary_ru` не пустой при наличии данных и корректен при их отсутствии.
-- [ ] Печатная форма помещается на 2–3 страницы A4 без обрезки; первый блок — выводы словами; у каждого графика заголовок-вывод; внутренние коды только в скобках после расшифровки.
-- [ ] Лицензия `openpyxl` указана; LLM не вызывается (тест: провайдер mock не получает запросов).
+- [x] JSON и XLSX согласованы с `overview` и между собой; `summary_ru` не пустой при наличии данных и корректен при их отсутствии.
+- [x] Печатная форма помещается на 2–3 страницы A4 без обрезки; первый блок — выводы словами; у каждого графика заголовок-вывод; внутренние коды только в скобках после расшифровки.
+- [x] Лицензия `openpyxl` указана; LLM не вызывается (тест: провайдер mock не получает запросов).
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -47,4 +47,10 @@ cd frontend && npx playwright test e2e/cabinet-report.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-244-cabinet-report`, база T-242 `5b34a5f`. Реализованы общий read-only JSON/XLSX producer, API 1.5.26 и трёхстраничная A4 форма с exact money values/deltas. [Контракт, лимиты и rollback](../reviews/T-244-report-contract-review.md).
+
+Runtime `3898630`: 125 native unit/PG passed; production browser 5/5, 8 actual HTTP exports, large-money 2/2. Сохранены 24 PNG/PDF/XLSX artifacts, включая шесть PDF по 3 страницы. Fingerprint всех 107 таблиц unchanged во время чтения; LLM/external/non-GET attempts — 0. Cold stale-stats p95=272.497 мс; отдельный benchmark общего отчёта/направления — p95=242.665/32.591 мс, первые GET включены. Исторические failures явно сохранены в review.
+
+Report coverage 205/209 (файлы byte-identical final), shared SQL helper 31/31. Lint: 416 frontend tests, Ruff 452 files, mypy 294 files, drift 193 methods. Обе production builds, contracts и generator idempotence зелёные. Исторический полный `make lint test` на `3f42ae8` отделён от final scoped proof. Approval/merge status ведётся в PR196; exact-head CI ещё требуется; T-249/T-262 не закрываются.
+
+CI follow-up PR196: runtime `734c8a7` устраняет allocation overhead без изменения wire/API26/money semantics; strict403 fixture задана явно. Native affected125 passed, production browser5/5, full lint421frontend, helper coverage32/32; исходные CI380.888ms иsoft200 сохранены. [Source-qualified red→green proof](../reviews/T-244-ci-regressions.md). Карточка остаётсяin_progress до exact-head CI/merge.

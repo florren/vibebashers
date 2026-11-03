@@ -17,9 +17,10 @@ parser = argparse.ArgumentParser(
     description="T-152: собрать metadata без установки wheel; версия/hash wheel сверяются с uv.lock"
 )
 parser.add_argument("--wheel-dir", type=pathlib.Path, required=True)
+parser.add_argument("--project", choices=["backend", "tgbot"], default="backend")
 args = parser.parse_args()
 root = pathlib.Path(__file__).resolve().parents[1]
-lock = tomllib.loads((root / "backend/uv.lock").read_text())
+lock = tomllib.loads((root / args.project / "uv.lock").read_text())
 distributions = {re.sub(r"[-_.]+", "-", d.metadata["Name"]).lower(): d for d in m.distributions()}
 rows = []
 classes = {
@@ -67,7 +68,7 @@ reviewed_notice_hashes = {
 
 for p in lock["package"]:
     n, v = p["name"], p["version"]
-    if n == "cx-pulse-backend":
+    if n == ("cx-pulse-backend" if args.project == "backend" else "cx-pulse-tgbot"):
         continue
     d = distributions.get(n)
     license_hashes = {}
@@ -118,5 +119,6 @@ for p in lock["package"]:
         row["wheel_sha256"] = archive
         row["wheel_url"] = entry["url"]
     rows.append(row)
-(root / "docs/licenses/python-metadata.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
+evidence = "python-metadata.json" if args.project == "backend" else "tgbot-metadata.json"
+(root / "docs/licenses" / evidence).write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
 sys.stdout.write(f"license metadata: {len(rows)} distributions\n")

@@ -71,8 +71,8 @@ const runs = profiles.map((item) => ({
 }))
 
 const keys = [
-  { id: 1, provider: 'gigachat', label: 'gc', tokens_used: 12, tokens_limit: 100, requests_today: 1, rpd_limit: 50, balance_usd: null, is_active: true },
-  { id: 2, provider: 'openai_compatible', label: 'or', tokens_used: 0, tokens_limit: null, requests_today: 4, rpd_limit: 1000, balance_usd: 47, is_active: true },
+  { id: 1, provider: 'gigachat', label: 'gc', tokens_used: 12, tokens_limit: 100, requests_today: 1, rpd_limit: 50, usage_known: true, requests_known: true, balance_usd: null, is_active: true },
+  { id: 2, provider: 'openai_compatible', label: 'or', tokens_used: 0, tokens_limit: null, requests_today: 4, rpd_limit: 1000, usage_known: true, requests_known: true, balance_usd: 47, is_active: true },
 ]
 
 function jsonRes(body: unknown, status = 200) {
@@ -199,6 +199,20 @@ describe('BenchTab', () => {
     render(wrap(<BenchTab />))
     await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('bench.start') })).toBeEnabled())
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('не выдаёт неизвестный расход ключей за known zero', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+    render(wrap(<BenchTab />, qc))
+    await screen.findByRole('columnheader', { name: 'gigachat_ultra' })
+    act(() => { qc.setQueryData(['settings', 'llm-keys'], keys.map(key => ({ ...key, usage_known: false, requests_known: false }))) })
+    await waitFor(() => expect(screen.getAllByText(new RegExp(i18n.t('setup.keys.usageUnknown'))).length).toBeGreaterThan(0))
+    const giga = screen.getAllByText('gigachat_ultra').find(el => el.closest('li'))!.closest('li')!
+    expect(giga).toHaveTextContent(i18n.t('setup.keys.usageUnknown'))
+    expect(giga).not.toHaveTextContent('12/100')
+    const or = screen.getAllByText('or_nemotron_ultra').find(el => el.closest('li'))!.closest('li')!
+    expect(or).toHaveTextContent(i18n.t('setup.keys.usageUnknown'))
+    expect(or).not.toHaveTextContent('4/1000')
   })
 
   it('EnginePage открывает вкладку бенчмарков', async () => {

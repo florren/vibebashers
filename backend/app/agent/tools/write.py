@@ -8,7 +8,7 @@ import re
 from typing import Any
 
 from app.agent import gifts as agent_gifts
-from app.agent.tools.base import ToolContext, ToolError, mask_name, tool
+from app.agent.tools.base import ClientStateIntent, ToolContext, ToolError, mask_name, tool
 from app.sim.events import dumps
 
 STATUS_TRANSITIONS: dict[str, set[str]] = {
@@ -122,15 +122,38 @@ async def create_incident(
 async def link_signal_to_incident(
     ctx: ToolContext, signal_id: int, incident_id: int, link_type: str = "linked"
 ) -> dict[str, Any]:
+    # До FK INSERT сериализуем linkers: поздний gift/resume FOR UPDATE
+    # иначе повышает уже удерживаемый KEY SHARE навстречу другому linker.
+    # NO KEY UPDATE сохраняет совместимость с human audit FK после account lock.
+    scoped = await ctx.fetchone(
+        "select 1 from signals s join incidents i on i.run_id=s.run_id "
+        "where s.id=%s and i.id=%s and s.run_id=%s for no key update of i",
+        (signal_id, incident_id, ctx.run_id),
+    )
+    if scoped is None:
+        raise ToolError("signal и incident должны принадлежать запуску инструмента")
     await ctx.conn.execute(
         "insert into incident_signals (incident_id, signal_id, link_type, linked_sim) values (%s, %s, %s, %s) on conflict do nothing",
         (incident_id, signal_id, link_type, ctx.sim_time),
     )
     await ctx.conn.execute(
-        "update incidents set mass_impact = (select count(distinct coalesce(s.client_id, -s.id)) from incident_signals isg join signals s on s.id = isg.signal_id where isg.incident_id = incidents.id), "
-        "flags = case when (select count(distinct coalesce(s.client_id, -s.id)) from incident_signals isg join signals s on s.id = isg.signal_id where isg.incident_id = incidents.id) >= 3 and not ('mass_impact' = any(flags)) then array_append(flags, 'mass_impact') else flags end, updated_at = now() where id = %s",
-        (incident_id,),
+        "with impact as (select i.id,greatest(i.mass_impact,"
+        "(select count(distinct coalesce(s.client_id,-s.id)) from incident_signals x join signals s on s.id=x.signal_id "
+        "where x.incident_id=i.id and s.run_id=i.run_id and s.origin is distinct from 'proactive'),"
+        "(select count(distinct o.client_id) from operations o where o.run_id=i.run_id and o.fault_id=i.fault_id "
+        "and o.started_sim<=%s and behavior_valid_failed_operation(o.id,i.run_id))) n "
+        "from incidents i where i.id=%s and i.run_id=%s) "
+        "update incidents i set mass_impact=p.n, flags=case when p.n>=3 and not ('mass_impact'=any(i.flags)) "
+        "then array_append(i.flags,'mass_impact') else i.flags end,updated_at=now() from impact p where i.id=p.id",
+        (ctx.sim_time, incident_id, ctx.run_id),
     )
+    await ctx.conn.execute(
+        "update agent_runs set incident_id=%s where id=%s and sim_run_id=%s and signal_id=%s",
+        (incident_id, ctx.agent_run_id, ctx.run_id, signal_id),
+    )
+    from app.economics import dcltv
+
+    await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
     brief = await _incident_brief(ctx, incident_id)
     await ctx.notify("incidents", "updated", brief)
     return brief
@@ -275,9 +298,13 @@ async def notify_client(
 ) -> dict[str, Any]:
     """Уведомление клиенту: шаблон по сегменту/каналу (или готовый текст агента), проверка согласий, маскирование ПДн, статус sent, NOTIFY notifications."""
     key = f"{template_code}:{channel}:{recipient_type}"
+    await ctx.conn.execute(
+        "select pg_advisory_xact_lock(hashtextextended(%s,0))",
+        (f"notification:{ctx.run_id}:{signal_id}:{client_id}:{key}",),
+    )
     dup = await ctx.fetchone(
-        "select id, status from notifications where signal_id = %s and template_code = %s and channel_code = %s and recipient_type = %s and run_id = %s",
-        (signal_id, template_code, channel, recipient_type, ctx.run_id),
+        "select id, status from notifications where signal_id = %s and template_code = %s and channel_code = %s and recipient_type = %s and run_id = %s and client_id is not distinct from %s",
+        (signal_id, template_code, channel, recipient_type, ctx.run_id, client_id),
     )
     if dup:
         return {"notification_id": dup[0], "status": dup[1], "deduplicated": True, "key": key}
@@ -286,10 +313,24 @@ async def notify_client(
         body = text_override
     body = PII_RE.sub("****", body)
     status = "sent"
+    tg_config = None
+    real_telegram = False
+    if channel == "telegram_bot":
+        from app.config import get_settings
+        from app.tgbot.configuration import configured
+
+        settings = get_settings()
+        real_telegram = settings.tgbot_enabled
+        if real_telegram:
+            try:
+                tg_config = configured(settings)
+            except ValueError:
+                tg_config = None
+            status = "queued" if tg_config is not None else "failed"
     if consents is not None and channel in ("sms", "email", "push") and consents.get(channel) is False:
         status = "suppressed"
     row = await ctx.fetchone(
-        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()) returning id",
+        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else now() end) returning id",
         (
             ctx.run_id,
             recipient_type,
@@ -301,10 +342,16 @@ async def notify_client(
             subject,
             body,
             status,
-            ctx.sim_time,
+            None if real_telegram else ctx.sim_time,
+            status,
         ),
     )
     nid = int(row[0])  # type: ignore[index]
+    if tg_config is not None:
+        from app.tgbot.outbox import enqueue_notification
+
+        if not await enqueue_notification(ctx.conn, tg_config, nid):
+            status = "failed"
     data = {
         "notification_id": nid,
         "recipient_type": recipient_type,
@@ -315,7 +362,7 @@ async def notify_client(
         "status": status,
         "body": body[:400],
     }
-    await ctx.notify("notifications", "sent", data)
+    await ctx.notify("notifications", status if real_telegram else "sent", data)
     if recipient_type == "public":
         await ctx.notify("feed", "reply", data)
     return data
@@ -529,15 +576,40 @@ async def set_client_state(
     signal_id: int | None = None,
     incident_id: int | None = None,
 ) -> dict[str, Any]:
+    if ctx.dry_run:
+        raise ToolError("Client state недоступен в сравнении без побочных эффектов")
+    if ctx.state_evidence_sink is not None:
+        result = await ctx.state_evidence_sink(
+            ctx.conn,
+            ClientStateIntent(
+                ctx.run_id, ctx.agent_run_id, client_id, state, trigger, ctx.sim_time, signal_id, incident_id
+            ),
+        )
+        actual = await ctx.fetchone(
+            "select cs.state from client_states cs join sim_runs sr on sr.id=cs.run_id "
+            "where cs.client_id=%s and cs.is_current and (cs.run_id=%s or sr.kind='baseline') "
+            "order by (cs.run_id=%s) desc,cs.id desc limit 1",
+            (client_id, ctx.run_id, ctx.run_id),
+        )
+        return {
+            "client_id": client_id,
+            "state": actual[0] if actual else "calm",
+            "requested_state": state,
+            "status": "pending" if result.accepted else "suppressed",
+            "accepted": result.accepted,
+            "evidence_id": result.evidence_id,
+            "reason": result.reason,
+        }
     await ctx.conn.execute(
-        "update client_states set is_current = false where client_id = %s and is_current", (client_id,)
+        "update client_states set is_current=false where client_id=%s and run_id=%s and is_current",
+        (client_id, ctx.run_id),
     )
     await ctx.conn.execute(
         "insert into client_states (run_id, client_id, state, since_sim, trigger, incident_id, signal_id, is_current) values (%s, %s, %s, %s, %s, %s, %s, true)",
         (ctx.run_id, client_id, state, ctx.sim_time, trigger, incident_id, signal_id),
     )
     await ctx.notify("clients", "state", {"client_id": client_id, "state": state, "trigger": trigger})
-    return {"client_id": client_id, "state": state}
+    return {"client_id": client_id, "state": state, "requested_state": state, "status": "applied"}
 
 
 __all__ = [

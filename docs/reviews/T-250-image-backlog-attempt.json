@@ -1,0 +1,44 @@
+{
+  "project": "cx-ci-t250-21c0472ff4fb",
+  "base": "http://127.0.0.1:18162",
+  "source": "7f03ffa4dc9c75a958cf9afe5c330d5c458de773",
+  "image_source": "0a6efd10525a890ff3cdfe8c3383a9be48ca9405",
+  "image": "sha256:b98d406eeaed349bf623a7b53d107b99469140e8130fa2c38ce2fa0a540db03a",
+  "stages": [
+    "fresh_up"
+  ],
+  "seed_seconds": 5.51364055700833,
+  "fresh_state": {
+    "current_run_id": 1,
+    "sim_time": "2026-11-09T06:00:00+00:00",
+    "running": false,
+    "header_status": "completed",
+    "header_kind": "baseline"
+  },
+  "native_diagnostics_before_cleanup": {
+    "run": 2,
+    "signals": 301,
+    "received_events": 301,
+    "primary_agent_runs": 188,
+    "distinct_agent_signal_ids": 188,
+    "active": 4,
+    "failed": 0
+  },
+  "own_project_cleaned": true,
+  "error_type": "CalledProcessError",
+  "error": "Command '['npm', 'exec', '--', 'playwright', 'test', 'e2e/map-branches.spec.ts', '--project=settings', '--no-deps', '--workers=1', '--output=/tmp/t250-image-portable-results', '--reporter=json']' returned non-zero exit status 1.",
+  "portable_failure": {
+    "stats": {
+      "startTime": "2026-11-03T00:08:36.953Z",
+      "duration": 26324.437,
+      "expected": 0,
+      "skipped": 3,
+      "unexpected": 1,
+      "flaky": 0
+    },
+    "errors": [
+      "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 3\u001b[39m\n\u001b[31m+ Received  + 3\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"active\": 0,\u001b[39m\n\u001b[32m-   \"agent_runs\": 301,\u001b[39m\n\u001b[31m+   \"active\": 4,\u001b[39m\n\u001b[31m+   \"agent_runs\": 177,\u001b[39m\n\u001b[2m    \"duplicate\": 0,\u001b[22m\n\u001b[2m    \"failed\": 0,\u001b[22m\n\u001b[2m    \"foreign\": 0,\u001b[22m\n\u001b[32m-   \"missing\": 0,\u001b[39m\n\u001b[31m+   \"missing\": 124,\u001b[39m\n\u001b[2m    \"received\": 301,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 25000ms exceeded while waiting on the predicate\n\n  54 |   // проходят normal graph; awaiting_human/deferred не требуют human accept.\n  55 |   let observed = { received: 0, agent_runs: 0, active: 0, missing: 0, duplicate: 0, foreign: 0, failed: 0 }\n> 56 |   await expect.poll(async () => {\n     |   ^\n  57 |     const source = await nativeItems<NonNullable<Signals['items']>[number]>(request, '/api/signals', { run_id: String(run.id) })\n  58 |     const agents = await nativeItems<NonNullable<AgentList['items']>[number]>(request, '/api/agent/runs', { run_id: String(run.id), kind: 'agent' })\n  59 |     const sourceIds = new Set(source.map(row => row.id)), agentIds = new Set(agents.map(row => row.signal_id))\n    at /home/asb/Documents/ChatGPT/vibebashers/t250-map-branches/frontend/e2e/map-branches.spec.ts:56:3"
+    ],
+    "interpretation": "25s preparation budget ended before native queue completed; signals/received events301, primary AR188/distinct188, active4/failed0. UI phase not run; not green."
+  }
+}

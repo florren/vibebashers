@@ -9,7 +9,7 @@
 
 ### CSI import (T-246)
 
-- openpyxl 3.1.5 — MIT, [PyPI / upstream](https://pypi.org/project/openpyxl/); чтение XLSX read-only.
+- openpyxl 3.1.5 — MIT, [PyPI / upstream](https://pypi.org/project/openpyxl/); чтение XLSX read-only и запись XLSX-отчётов T-244.
 - et-xmlfile 2.0.0 — MIT, [upstream](https://pypi.org/project/et-xmlfile/); зависимость openpyxl.
 - defusedxml 0.7.1 — PSF License, [upstream](https://pypi.org/project/defusedxml/); защита XML при чтении пользовательских XLSX (рекомендация upstream openpyxl).
 
@@ -43,6 +43,20 @@ psycopg 3.3.6, psycopg-binary 3.3.6 и psycopg-pool 3.3.3 объявляют **L
 - Vosk Python package: Apache-2.0 по METADATA classifier; SHA license notice сохранён в Python evidence. Модели STT учитываются отдельно в `data/models/stt/README.md`; inventory wheel не является проверкой скачанного model archive.
 - Синтетические корпуса и справочники: происхождение в [data/README](../data/README.md); публичные TLS-сертификаты и PostgreSQL client tools описаны выше.
 
+### Telegram transport (T-121)
+
+`aiogram 3.31.0` — MIT. Его aiogram/aiohttp окружение изолировано в
+`tgbot/pyproject.toml` и `tgbot/uv.lock`: aiogram требует Pydantic <2.14,
+backend сохраняет собственный Pydantic 2.14.1. Не понижаем зависимости backend.
+Все36 runtime/dev/platform-only distributions проверены по version-bound METADATA
+и license notices: `docs/licenses/tgbot-metadata.json`,
+[`tgbot/THIRD_PARTY_LICENSES.md`](../tgbot/THIRD_PARTY_LICENSES.md).
+`make licenses-check` проверяет оба Python окружения и npm, без сетевых запросов.
+Повтор сбора: `tgbot/.venv/bin/python scripts/collect_license_metadata.py --project tgbot --wheel-dir /path/to/wheels`,
+затем `tgbot/.venv/bin/python scripts/licenses_check.py --project tgbot --write`.
+Wheel fallback проверяет SHA256 в соответствующем lock; версия из другого
+окружения не принимается за доказательство. CI устанавливает bot через
+`uv sync --frozen` и запускает его lint/types/fake tests отдельно.
 T-041: добавлены LangGraph1.2.19 и langgraph-checkpoint-postgres3.2.0 (MIT) по ADR0003. Вместе с транзитивными/platform dependencies inventory содержит548записей (111Python+437npm). Upstream PostgreSQL DDL3.2.0 перенесён в0012 с полным MIT notice; runtime setup/DDL не выполняется. jsonpointer3.7 notice проверен как BSD-3-Clause с version-bound hash; distro/requests-toolbelt Apache notices проверены. Platform-only wheels colorama/httpx2-jsfetch/tzdata проверены по uv.lock SHA256 без установки. Gate не ослаблен.
 
 T-051, объединение базы T-048/T-041: inventory пересобран в отдельном uv-окружении; 550 записей (113 Python + 437 npm). OpenAI SDK и LangGraph сохранены вместе, версии существующего T-041 lock не обновлялись. Platform-only httpx2-jsfetch 1.0 проверен по SHA256 wheel из lock; установка в canonical venv не выполнялась.
