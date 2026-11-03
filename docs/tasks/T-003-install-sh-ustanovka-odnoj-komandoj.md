@@ -45,3 +45,14 @@
 
 ## Отчёт субагента
 Коммит B01. `install.sh`: флаги `--profile lite|demo|stress`, `--offline` (LLM replay→mock, бот выкл.), `--reset` (down -v), `--seed N`, `--with-mailpit`, `--with-tgbot`, `--help`; проверки docker/compose v2/прав/портов 5432 и 8000; создание `.env` с генерацией APP_SECRET; ожидание `/api/health` до 120 с; сид через `scripts/seed/run.py` (появится в B21 — пока сообщение «сид ещё не реализован»); вывод URL и QR (если установлен qrcode). Отклонения: не проверялось на реальном Docker (в среде разработки Docker недоступен) — требуется прогон владельцем на Linux; `/setup` появится в T-010.
+
+Freeze03.11: actual offline install на own clean PG16/lite прошёл; initial seed
+3.9s+baseline1493715bytes,backend/personal healthy. Проверка портов исправлена
+по наблюдаемому RED собственного custom project: точные running service и
+published port вместо substring cx-pulse.18focused tests; повтор после
+существующего first-start ABS backfill сохранил все114table fingerprints.
+Первый restart после seed добавляет17891штатных проводок — это явно раскрыто,
+не утверждается неизменность до инициализации. Balance mismatches0.
+[Review/proof](../reviews/FREEZE-2026-11-03-offline-install.md). Не проверялись
+чистая Ubuntu22/24 VM и сеть с физически запрещённым egress; эти исходные
+критерии не отмечаются автоматически.

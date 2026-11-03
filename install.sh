@@ -29,9 +29,14 @@ command -v python3 >/dev/null || die "Нужен Python 3 для подгото�
 command -v docker >/dev/null || die "Docker не найден. Установите Docker Engine ≥ 24 и docker compose v2: https://docs.docker.com/engine/install/"
 docker compose version >/dev/null 2>&1 || die "docker compose v2 не найден (нужна команда «docker compose», не «docker-compose»)"
 docker info >/dev/null 2>&1 || die "Docker не запущен или нет прав (добавьте пользователя в группу docker: sudo usermod -aG docker \$USER)"
-for p in 5432 8000 9999; do
+for binding in postgres:5432 backend:8000 personal:9999; do
+  service=${binding%:*}; p=${binding#*:}
   if (command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$p ") ; then
-    docker compose ps --status running 2>/dev/null | grep -q cx-pulse || die "Порт $p занят другим процессом"
+    # Имя project может быть любым; разрешён только порт своего работающего service.
+    if ! docker compose ps --status running --services 2>/dev/null | grep -Fxq "$service" ||
+       ! docker compose port "$service" "$p" 2>/dev/null | grep -Eq ":${p}$"; then
+      die "Порт $p занят другим процессом"
+    fi
   fi
 done
 
