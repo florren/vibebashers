@@ -35,6 +35,7 @@ async def test_pending_delivery_does_not_borrow_foreign_clock(delivery_db, scope
                     reset_mode="counters",
                 )
                 assert run != original["current_run_id"]
+                await conn.execute("update sim_state set sim_time=%s where id=1", (changed,))
             elif scope == "none":
                 await conn.execute("update sim_state set current_run_id=null where id=1")
             await conn.execute("update sim_state set sim_time=%s where id=1", (changed,))

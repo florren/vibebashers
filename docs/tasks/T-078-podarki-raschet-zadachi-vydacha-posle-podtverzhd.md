@@ -46,3 +46,5 @@ _Заполняется исполнителем: ветка/PR, что сдел
 ### Own-context timestamp автоматической выдачи — 03.11.2026
 
 Ветка `codex/gift-own-clock`: `issue_automatic` использует ctx.sim_time вместо глобальных часов. Четыре native PG cases + terminal gift + manual task regression: 6 passed; RED 3 failed/1 passed. Размеры/условия/HITL/formula не меняются, ручной исторический API требует отдельного решения. Review: `docs/reviews/T-078-gift-own-clock.md`; merge только после human review и зелёного CI. История не переписывалась.
+
+Пользователь явно согласовал timestamp-границу PR #213 после зелёного CI. Production diff включён без изменений в общий PR #212 для совместного gate; #213 закрывается incorporated после успешного merge общего пакета.
