@@ -45,3 +45,17 @@ Merge нужно выполнить обычным merge commit, сохрани�
 совместимая версиясервера; миграции/receipts/ciphertext/историю не удалять.
 
 [Точныеheads и hash proof](REVISION-2026-11-03-integration-proof.json).
+
+## Финальный срез после отбора работ
+
+Дополнительно ordinary merged PR208/T0926f0668e, cold diagnostics75e2a0a,
+E2E lifecycle1fbeb341. Backend app/contracts/workflows побайтно прежние3e9;
+все8 frontend файлов T092 совпадают с проверенным source6f. На нём574frontend,
+24target, обе сборки, native4ru/en×themes/mobile и97fingerprints unchanged.
+
+Testinfra сохраняет все155 cases; отдельный полный actualimage3e9+4testfiles
+прошёл155/155 за5.4min, Map4 collector дал301signals/301AR и0active/failed/
+missing/foreign/duplicate за38.312s preparation. Последняя метрика получена
+параллельно backup, это не product performance claim. Sources и прочие границы
+подробно в CI-206-e2e-fixture-lifecycle.md/proof. Отдельные tests не заменяют
+требуемый полный CI окончательного общего head. T020/API32 не добавлялись.
