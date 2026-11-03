@@ -23,6 +23,7 @@ from app.abs.service import backfill_ledger
 from app.agent.runner import AgentService
 from app.bench.service import BenchService
 from app.config import Settings, get_settings
+from app.contracts.api_metadata import api_version
 from app.db.session import psycopg_dsn
 from app.errors import Problem, install_error_handlers
 from app.llm.failover import ProviderChain, build_chain, default_profile
@@ -311,7 +312,7 @@ def create_app() -> FastAPI:
     s = get_settings()
     app = FastAPI(
         title="CX Pulse Control API",
-        version="1.4.0",
+        version=api_version(),
         lifespan=lifespan,
         docs_url="/docs" if s.app_env != "prod" else None,
         openapi_url="/openapi.json",

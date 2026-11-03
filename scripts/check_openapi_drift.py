@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Дрейф contracts/api/openapi.yaml ↔ маршруты FastAPI (backend/app/main.py).
+"""Дрейф contracts/api/openapi.yaml ↔ версия и маршруты FastAPI (backend/app/main.py).
 
-Красный, если в коде нет пути+метода из OpenAPI или в коде есть путь, которого нет в OpenAPI (кроме /docs, /openapi.json).
+Красный при разных info.version, отсутствии пути+метода из OpenAPI или лишнем пути в коде (кроме /docs, /openapi.json).
 --tags a,b — проверять только эти теги. Запускается из корня репозитория или из backend/."""
 
 from __future__ import annotations
@@ -56,12 +56,15 @@ def main() -> int:
         code = {c for c in code if c in spec or any(c[1] == p for _, p in spec)}
     missing = sorted(spec - code)
     extra = sorted(code - spec) if tags is None else []
+    version_mismatch = app.version != oa["info"]["version"]
+    if version_mismatch:
+        print(f"openapi version drift: spec={oa['info']['version']} code={app.version}")
     for m, p in missing:
         print(f"нет в коде:     {m} {p}")  # noqa: T201
     for m, p in extra:
         print(f"нет в OpenAPI:  {m} {p}")  # noqa: T201
     print(f"openapi drift: spec={len(spec)} code={len(code)} missing={len(missing)} extra={len(extra)}")  # noqa: T201
-    return 1 if missing or extra else 0
+    return 1 if missing or extra or version_mismatch else 0
 
 
 if __name__ == "__main__":
