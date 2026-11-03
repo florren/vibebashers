@@ -98,3 +98,15 @@ diff включён в общий PR #212; подробности и RED/GREEN �
 Revert PR возвращает отображение/запись timestamps; DDL нет, сохранённая
 история не переписывается. Старые некорректные значения автоматически
 не корректируются. Рабочий стек этим пакетом не перезапускается.
+
+
+## Сверка полного nightly прежнего main
+
+Run41611773482 на 518d95d: backend shards и основной smoke зелёные,
+nightly дал 2 report browser failures на ru/light и ru/dark. Daily chart
+без денежных оценок правильно выводил `cabinet.noSavedEconomics`, а тест
+ошибочно требовал подстроку «Нет» с заглавной буквы. Assertion заменён
+на точное равенство соответствующему ru/en ключу для каждого chart type.
+Проверки отсутствия SVG, JSON/XLSX, scope, read-only и A4 сохранены;
+product copy/formulas не меняются, timeout/retries прежние. Полный
+изолированный demo/performance + browser повтор запускается на candidate.

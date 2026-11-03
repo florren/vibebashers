@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+
+const labels = Object.fromEntries(['ru', 'en'].map(lang => [lang,
+  JSON.parse(readFileSync(new URL(`../src/shared/i18n/${lang}.json`, import.meta.url), 'utf8')),
+]))
 
 const runId = process.env.E2E_REPORT_RUN_ID ?? 'current'
 
@@ -25,7 +30,7 @@ for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark'] a
       const hasData = code === 'daily' ? report.overview.daily.some((row: { potential_loss_rub: number | null; prevented_loss_rub: number | null }) => row.potential_loss_rub != null || row.prevented_loss_rub != null) : code === 'monthly' ? report.overview.monthly.length > 0 : report.overview.sources.length > 0
       const chart = root.locator(`[data-report-chart="${code}"]`)
       await expect(chart.locator('svg')).toHaveCount(hasData ? 1 : 0)
-      if (!hasData) await expect(chart).toContainText(lang === 'ru' ? 'Нет' : 'No')
+      if (!hasData) await expect(chart).toHaveText(labels[lang].cabinet[code === 'daily' ? 'noSavedEconomics' : 'noData'])
     }
     await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
     await expect(root.getByRole('heading', { name: lang === 'ru' ? 'Главное за период' : 'Period summary' })).toBeVisible()
