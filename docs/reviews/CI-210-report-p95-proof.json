@@ -1,0 +1,93 @@
+{
+  "base": "f55d4456fbb697e31345536cc828e77e5abe618e",
+  "ci_run": 41593697598,
+  "ci_report_failure": {
+    "job": 125776026670,
+    "p95_ms": 355.4071660000204,
+    "other_passed": 799,
+    "skipped": 1
+  },
+  "ci_cold_failure": {
+    "job": 125776026751,
+    "sample_count": 30,
+    "min_ms": 339.3348469999182,
+    "p50_ms": 342.9719734999708,
+    "p95_ms": 354.7658520000141,
+    "max_ms": 357.87548999996943,
+    "response_bytes": 1799610,
+    "signals": 2813,
+    "fingerprint_unchanged": true,
+    "signal_sql_execution_ms": 26.639,
+    "other_passed": 790,
+    "skipped": 20
+  },
+  "change": "skip numeric regex only if no Unicode decimal digit; skip email/handle regex only if no@; exact original regex/order/truncation retained",
+  "compatibility": "65targettests passed;1572seeded differential old/new values across6slice limits plus explicit knowncontacts",
+  "diagnostic_qualification": "instrumented local measurements on same read-only synthetic5000 DB; not latency acceptance or a proven explanation for original CI spike",
+  "diagnostic_before": {
+    "sample_count": 30,
+    "min_ms": 122.36024800040468,
+    "p50_ms": 125.859222499912,
+    "p95_ms": 132.17967600030534,
+    "signals_stage_p50_ms": 55.18197199990027,
+    "response_sha256s": [
+      "63aea01a69b8e29d6734879db3d643daa27ccf18aa36c2d26b61224e6cb7b8e1"
+    ]
+  },
+  "diagnostic_after": {
+    "sample_count": 30,
+    "min_ms": 81.24434499950439,
+    "p50_ms": 82.66595099985352,
+    "p95_ms": 86.37656300015806,
+    "signals_stage_p50_ms": 29.272520000176883,
+    "response_sha256s": [
+      "63aea01a69b8e29d6734879db3d643daa27ccf18aa36c2d26b61224e6cb7b8e1"
+    ]
+  },
+  "same_full_response_bytes": 1799610,
+  "same_full_response_sha256": "63aea01a69b8e29d6734879db3d643daa27ccf18aa36c2d26b61224e6cb7b8e1",
+  "pg_regression": "69passed3warnings207.14s; report/API/coldplan, actualJSON/XLSX/scope/read-only/moneyexact",
+  "cold_acceptance_after": {
+    "sample_count": 30,
+    "min_ms": 108.383034000326,
+    "p50_ms": 110.56131499981348,
+    "p95_ms": 116.92431099982059,
+    "max_ms": 118.3970269994461,
+    "response_bytes": 1799610,
+    "signals": 2813,
+    "fingerprint_unchanged": true,
+    "signal_sql_execution_ms": 16.169
+  },
+  "static": "Ruff passed;563filesformatted;mypy327filespassed",
+  "api_ddl_bank_policy_changed": false,
+  "limits": "300ms strict,30requests,firstget,5000clients,coldstats/workbudget/fingerprints unchanged; no warmup/retry/GCdisable",
+  "source_sha256": {
+    "backend/app/trace/privacy.py": "adab7d577fdc81490e932f06b0e3c1c3eeb1ce090bb9d3cfef8a057c0de54012",
+    "backend/tests/unit/test_privacy_mask_compatibility.py": "a0c9bc4d86fd39e3e2b2d7168bbdc39480b983932daf0d256fe44e79debca90f"
+  },
+  "raw_artifact_sha256": "7f6f26eeacb3c0d488405b88efcafcc45357d5e054af567853b57d962e146f00",
+  "full_unit": {
+    "passed": 2169,
+    "skipped": 19,
+    "seconds": 61.25,
+    "log_sha256": "48ecb4854724d2495b2c928a93ca55bd6f6991368a438d83664d6682e0b8b1eb"
+  },
+  "exact_head_ci": "required after publishing patch",
+  "privacy_statement_coverage": {
+    "method": "Python stdlib trace statement coverage of privacy.mask; not branch coverage",
+    "statements": 7,
+    "covered": 7,
+    "percent": 100.0,
+    "covered_lines": [
+      9,
+      12,
+      13,
+      18,
+      19,
+      20,
+      21
+    ],
+    "missing_lines": [],
+    "gate_outcomes_cases": "no digit/no@;digit/no@;no digit/@;digit/@"
+  }
+}
