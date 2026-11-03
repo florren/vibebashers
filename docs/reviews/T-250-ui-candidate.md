@@ -198,3 +198,12 @@ Unit с code0042/id1 сначала RED (ожидаемые2IDlinks отсутс
 GET /api/trace/branch/1→VSP-0042, /0042→другой branchPK42;1passed8.20s.
 API30/DTO/production backend не меняются. Новый build/native4/image4 обязателен;
 старые97hashes остаются историческими, не приписываются этому исправлению.
+
+### Итог после numeric Trace fix и новой сборки
+
+Актуальный итог — [T-250-final-review.md](T-250-final-review.md), source d1fc9b1.
+Новый image c56fe4 содержит numeric PK links, root202 fixture-only05ee и PR204 metadata.
+Portable4/4 и native4/4 прошли на fresh lite200;97 public hashes неизменны.
+Новый demo5000 native4/4 также прошёл; исторические pending/RED выше сохранены
+как история своих источников, а не текущий статус. Fullfrontend513 GREEN,
+генерация идемпотентна; exact-head backend CI/review остаются обязательными.
