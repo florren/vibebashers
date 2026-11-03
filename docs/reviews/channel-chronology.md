@@ -17,12 +17,14 @@
    ACK использует sim clock только собственного current run; иначе
    `sent_sim=NULL`, реальные receipt/sent_at сохраняются. Внешних отправок
    в проверках нет, используется FakeSender.
-4. PersonalChat сортировал RFC3339 как строки. Теперь сравнивается instant
+4. PersonalChat и клиентская дорожка LiveJourney сортировали RFC3339 как строки. Теперь сравнивается instant
    с сохранением PostgreSQL microseconds внутри одной миллисекунды.
+   Общий компаратор исключает расхождение двух экранов.
    Проверены разные offsets и порядок вопрос1/ответ1/вопрос2/ответ2.
 
 До исправления адресные PG тесты дали 6 failed/1 passed, frontend —
-3 failed/5 passed. После исправлений первый PG пакет — 7 passed;
+3 failed/5 passed. Дополнительный Journey test воспроизвёл ещё одну
+инверсию: 1 failed/15 passed до применения общего компаратора. После исправлений первый PG пакет — 7 passed;
 расширенная регрессия clocks/followups/Telegram/personal/fault causality —
 52 passed. Финальные новые tests используют штатный ingest normalizer.
 
@@ -32,13 +34,14 @@
   Первый запуск с внешним `TGBOT_ENABLED=false` дал 1 failure: эта переменная
   перекрыла временный `.env` проверяемого installer test. Повтор без override
   зелёный; assertions/production code ради этого не менялись.
-- Frontend: 579 passed, 81 files; typecheck и обе build (operator/personal).
-- Browser: 4 passed, ru/en × light/dark; по два screenshot на вариант.
-  Это настоящий Chromium с синтетическими API fixtures, не native backend
+- Frontend: 580 passed, 81 files; typecheck и обе build (operator/personal).
+- Browser: 4 passed, ru/en × light/dark; по три screenshot на вариант.
+  Это настоящий Chromium на Feed, PersonalChat и LiveJourney с синтетическими API fixtures, не native backend
   и не доказательство реальной внешней доставки. POST запрещён перехватом.
 - Ruff/formatter, mypy, frontend lint; contracts check: 48 схем, 167 путей.
 - Финальные новые PG cases: 13 passed, 69.09s; 6 emulated channels через
   штатный normalizer, 3 автора публичного ответа, 4 ACK/run варианта.
+- Дополнительно 5 существующих PG tests feed/gift/terminal gift passed.
 - Полный CI PR — отдельный merge gate; локальные проверки его не заменяют.
 
 ## Read-only аудит существующей истории

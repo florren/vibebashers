@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { recording } from '../src/pages/journey/__tests__/recordings'
 
 // Синтетические API fixtures: browser proof порядка, не доказательство внешней доставки.
 for (const lang of ['ru', 'en']) for (const theme of ['light', 'dark']) {
@@ -15,11 +16,20 @@ for (const lang of ['ru', 'en']) for (const theme of ['light', 'dark']) {
       replies: [{ id: 1, author: 'agent', text: 'Ответ банка', published_at: '2026-11-03T09:00:01Z' }],
     }
     const writes: string[] = []
+    const journey = recording(1)
+    journey.stages[0]!.events[0]!.ts_real = '2026-11-03T12:00:00.123100+03:00'
+    journey.stages[0]!.events[0]!.brief_ru = 'Вопрос один'
+    journey.client_lane = [
+      { channel_code: 'chat', kind: 'ack', text_ru: 'Ответ один', delivered_at: '2026-11-03T09:00:00.123200Z' },
+      { channel_code: 'client_reaction', kind: 'clarification', text_ru: 'Вопрос два', delivered_at: '2026-11-03T09:00:00.123300Z' },
+    ]
     await page.route('**/api/**', async route => {
       const path = new URL(route.request().url()).pathname
       if (!path.startsWith('/api/')) { await route.continue(); return }
       if (route.request().method() !== 'GET') { writes.push(path); await route.abort(); return }
-      const data = path === '/api/public/feed' ? { items: [post], total: 1, next_cursor: null }
+      const data = path.startsWith('/api/journey/') ? journey
+        : path === '/api/clients' ? []
+        : path === '/api/public/feed' ? { items: [post], total: 1, next_cursor: null }
         : path === '/api/public/feed/1' ? post
           : path === '/api/personal/session' ? { display_name: '', products: [], regions: [], cities: [] }
             : path === '/api/personal/messages' ? {
@@ -43,6 +53,9 @@ for (const lang of ['ru', 'en']) for (const theme of ['light', 'dark']) {
     await expect(page.locator('article p.whitespace-pre-wrap')).toHaveText(['Вопрос один', 'Ответ один', 'Вопрос два', 'Ответ два'])
     await expect(page.locator('html')).toHaveAttribute('data-mode', theme)
     await page.screenshot({ path: info.outputPath('personal-chronology.png'), fullPage: true })
+    await page.goto('/journey/SIG-000001?mode=live')
+    await expect(page.getByRole('log').locator('p.whitespace-pre-wrap')).toHaveText(['Вопрос один', 'Ответ один', 'Вопрос два'])
+    await page.screenshot({ path: info.outputPath('journey-chronology.png'), fullPage: true })
     expect(writes).toEqual([])
   })
 }

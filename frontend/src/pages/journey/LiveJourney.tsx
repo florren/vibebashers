@@ -1,3 +1,4 @@
+import { compareMessageTimes } from '@/shared/lib/messageTime'
 import { agentRunStatus } from '@/shared/lib/agentRunStatus'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -192,7 +193,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
   const money = (value: number | null | undefined) =>
     value == null ? '—' : new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value)
   const empty = result.error instanceof ApiError && result.error.status === 404
-  const incoming = traceEvents.filter((e) => e.kind === 'signal_created').sort((a, b) => a.ts_real.localeCompare(b.ts_real))
+  const incoming = traceEvents.filter((e) => e.kind === 'signal_created').sort((a, b) => compareMessageTimes(a.ts_real, b.ts_real))
   const messages = [
     ...incoming.map((e) => ({ id: e.id, text: e.brief_ru, at: e.ts_real, sim: e.ts_sim, actor: 'client' })),
     ...(data?.client_lane ?? [])
@@ -208,7 +209,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
         sim: m.delivered_sim,
         actor: m.channel_code === 'client_reaction' ? 'client' : 'bank',
       })),
-  ].sort((a, b) => a.at.localeCompare(b.at))
+  ].sort((a, b) => compareMessageTimes(a.at, b.at))
   useEffect(() => {
     followTail.current = true
   }, [subjectSignal])

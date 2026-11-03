@@ -145,6 +145,23 @@ it('updates the customer lane only from delivered messages', async () => {
   await act(() => qc.invalidateQueries({ queryKey: ['journey'] }))
   expect(await screen.findByText('Обращение принято банком')).toBeInTheDocument()
 })
+it('сортирует клиентскую дорожку по instant с offsets и microseconds', async () => {
+  const data = structuredClone(journey)
+  const intake = data.stages.find(stage => stage.stage === 'intake')!
+  intake.events[0]!.ts_real = '2026-11-03T12:00:00.123100+03:00'
+  intake.events[0]!.brief_ru = 'Первый вопрос клиента'
+  data.client_lane = [
+    { channel_code: 'chat', kind: 'ack', text_ru: 'Первый ответ банка', delivered_at: '2026-11-03T09:00:00.123200Z' },
+    { channel_code: 'client_reaction', kind: 'clarification', text_ru: 'Следующее сообщение клиента', delivered_at: '2026-11-03T09:00:00.123300Z' },
+  ]
+  vi.mocked(getJourney).mockResolvedValue(data)
+  mount()
+  const log = await screen.findByRole('log')
+  await within(log).findByText('Первый ответ банка')
+  const content = log.textContent!
+  expect(content.indexOf('Первый вопрос клиента')).toBeLessThan(content.indexOf('Первый ответ банка'))
+  expect(content.indexOf('Первый ответ банка')).toBeLessThan(content.indexOf('Следующее сообщение клиента'))
+})
 it('highlights WS node only from the selected run', async () => {
   vi.mocked(loadRun).mockResolvedValue({ id: 10, outcome: null, current_node: 'normalize', steps: [] })
   mount()
