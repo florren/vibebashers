@@ -58,3 +58,16 @@ _Заполняется исполнителем: ветка/PR, что сдел
 с точным legacy-planless fail-closed, restart-before-first-take и rollback.
 Отдельный human review и green CI exact head ещё обязательны; T161/PR193
 approval не считается approval T037. Receipts0019/API27 здесь не реализуются.
+
+### Freeze follow-up: часы tick и native financial observation
+
+Native Team.take выявил два воспроизводимых отказа: in-memory T1 при DB clockT0
+и stale cached mass после роста actual same-run cohort. Подготовлено транзакционное
+обновление часов до эффектов, отдельный economics observation time при сохранении
+плановых team/SLA timestamps, проверенное monotonic обновление native cohort cache.
+Завышенные counter/future/foreign/invalid lineage по-прежнему дают отказ.
+Unit2178passed/19skipped, ruff/mypy328passed, contracts48schemas/167paths passed.
+Native extended47passed и финальный повтор41passed; new statement execution48/53
+(90.57%, sys.settrace/AST). Отдельный human money review ещё требуется;
+статус всей карточки этим дополнением не меняется.
+Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.md).

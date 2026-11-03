@@ -8,8 +8,8 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from app.agent import policies as pol
+from app.agent.incident_observation import observe_incident_economics
 from app.agent.tools.base import ToolContext
-from app.economics import dcltv
 
 
 def choose(
@@ -172,5 +172,5 @@ async def issue_automatic(ctx: ToolContext, incident_id: int) -> int:
         if await _issue_gift_task_row(ctx.conn, row):
             issued += 1
     if issued:
-        await dcltv.compute_incident(ctx.conn, incident_id, sim_time=ctx.sim_time)
+        await observe_incident_economics(ctx, incident_id)
     return issued

@@ -343,11 +343,17 @@ class Simulator:
             self.clock.sim_time = t0 + dt.timedelta(minutes=minutes)
             if self.clock.sim_time.astimezone(MSK).date() != t0.astimezone(MSK).date():
                 self.clock.day_no += 1
+            # Эффекты tick используют его часы; наружу они видны лишь с общим commit.
+            await self.persist()
             if scripted:
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes, ambient_noise=False)
             else:
                 self.stats["signals"] += await world.flush_signals(self.clock.sim_time, minutes)
             execution = await configuration(conn, self.run_id) if self.run_id else {}
+            if self.run_id is not None:
+                from app.agent.proactive import refresh_service_impacts
+
+                await refresh_service_impacts(conn, self.run_id, self.clock.sim_time)
             if not execution.get("enabled"):
                 await world.team_emulator.tick(self.clock.sim_time, world)
             await world.sla_engine.tick(t0, self.clock.sim_time)
