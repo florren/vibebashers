@@ -27,7 +27,7 @@
 1. Отложенные: таблица с reason/wake_sim/обратным отсчётом; Команды: карточки с open/in_progress/warning/breached/reports_missing и sla_compliance; Уведомления: лента по каналам с предпросмотром текста и статусом доставки (ссылка на Mailpit при включении).
 
 ## Критерии приёмки
-- [ ] Пропущенный отчёт команды виден как reports_missing с подсветкой.
+- [x] Пропущенный отчёт команды виден как reports_missing с подсветкой.
 - [x] Фильтр по клиенту в уведомлениях работает из Клиента 360.
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
@@ -38,3 +38,9 @@ npx playwright test e2e/tabs_misc.spec.ts
 
 ## Отчёт субагента
 Ветка `codex/T-092-client-notifications`: Client360→Notifications с client_id и сохранением run scope, строгий invalid-ID отказ, отсутствие старой cached выдачи, сброс только client filter. Найденный actual404 gift_catalog исправлен через существующий useGifts/GET settings/gifts, без изменения подарков/денежных правил/API/DDL. RED12→GREEN24, полный574frontend/80files, eslint/typecheck/обе сборки; native4ru/en×themes+mobile,97fingerprints unchanged/0browserwrites/0external. [Review/proof](../reviews/T-092-client-notifications.md). Reports_missing acceptance и общий exact-head CI остаются gate; карточка не done.
+
+Дополнение freeze: native actual API/UI ru/en×light/dark на main1c022fe показал
+12команд,16пропущенных отчётов у5команд; точные reports_due/reports_missing и
+text-danger сверены с API, без browser writes/errors/external. Четыре screenshot
+и [proof](../reviews/FREEZE-2026-11-03-offline-install-proof.json). Full CI207
+зелёный; whole DoD/статус карточки автоматически не повышается этим evidence.

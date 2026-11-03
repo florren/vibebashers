@@ -1,0 +1,96 @@
+{
+  "source_main": "1c022fe1a95bef0d1b45cb3e404f8d760eef0a8c",
+  "application_changed": false,
+  "installer_change": "running service and published port ownership instead of cx-pulse substring",
+  "initial_install": "exit0; clean ownPG16,lite1000clients,seed3.9s,baseline1493715bytes,healthok,bothSPAs",
+  "repeat_before_fix": "exit1 port8000 rejected own custom project",
+  "regression_before_fix": "3failed6passed; legitimate own service blocked",
+  "regression_after_fix": "18passed including seed/record tests",
+  "first_successful_repeat": {
+    "installer_exit": 0,
+    "tables": 114,
+    "changes": [
+      "public.accounts",
+      "public.db_activity_log",
+      "public.ledger_entries"
+    ],
+    "unchanged": false
+  },
+  "first_restart_note": "existing main._abs_backfill after initial seed: ledger0→17891,accounts1722→1723,audit5366→23257; not attributed to seed, no unchanged claim",
+  "next_repeat": {
+    "installer_exit": 0,
+    "tables": 114,
+    "changes": [],
+    "unchanged": true
+  },
+  "balance_invariant": {
+    "mismatches": 0,
+    "refund_reversal_entries": 0,
+    "alembic_head": "0020"
+  },
+  "native_reports_missing": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "teams": 12,
+      "missing": 16,
+      "highlighted": 5,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "teams": 12,
+      "missing": 16,
+      "highlighted": 5,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "teams": 12,
+      "missing": 16,
+      "highlighted": 5,
+      "errors": [],
+      "writes": []
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "teams": 12,
+      "missing": 16,
+      "highlighted": 5,
+      "errors": [],
+      "writes": []
+    }
+  ],
+  "screenshots_sha256": {
+    "docs/reviews/screenshots/T-092-reports-missing/reports-ru-light.png": "65bf7d93d1ac5d6b2a929c12282ccd4bf63da9fc05a5402f9e097c42a3c81c70",
+    "docs/reviews/screenshots/T-092-reports-missing/reports-ru-dark.png": "bf958916bc276e7e1514407a12123a4f8e21edc43b1b4d07d3bf55347bd48627",
+    "docs/reviews/screenshots/T-092-reports-missing/reports-en-light.png": "7508bfc3bc8ecd8fef4f538e391f93a90c81599cfa9e67c68ff8b5f7b78ea90a",
+    "docs/reviews/screenshots/T-092-reports-missing/reports-en-dark.png": "6d5ca9f837ea84591ace68367fe7b513974aa0c6e091ba47b5ad30a1473996a5"
+  },
+  "limits": [
+    "not a fresh Ubuntu22/24 VM or airgapped/network-none proof",
+    "compose isolation overrides image/project/localhost ports; install.sh body is actual source",
+    "existing startup backfill policy unchanged; initial restart writes disclosed",
+    "no liveLLM/TG/STT/email, human accept, reset or production",
+    "own test containers stopped, volumes preserved"
+  ],
+  "logs_sha256": {
+    "install.log": "729096d3fb8d6aad2a604003573cbdc5cee214c05badd44d78e4cd546ba992b1",
+    "repeat-green.log": "35ac0aaffe4139c524123f7bb7e002dc4496918024319f83a2b467e9349d99e9",
+    "repeat-stable.log": "b848b9fc97813b400c17bf19d586a04d699740d6fefa2f90f108f09351add6a4",
+    "port-red.log": "290a9167098ec2c6c64c4211570aa5f9091bcab4b8c26f75979aed5a4447ccae"
+  },
+  "full_backend_unit": {
+    "passed": 2171,
+    "skipped": 19,
+    "seconds": 58.89,
+    "log_sha256": "53b67ed7cc29ce50aad50ac65e94cc452bf26e756bc688a07e71ef0cb106e96d",
+    "environment": "APP_ENV=test,LLM_PROVIDER=mock,LLM_CHAIN=mock,ENV_FILE=/dev/null,PYTHONPATH=current checkout backend",
+    "earlier_environment_failure": "5subprocess ImportErrors: reused editable venv points old t121. Correct current-checkout PYTHONPATH resolves; no application patch for this."
+  }
+}
