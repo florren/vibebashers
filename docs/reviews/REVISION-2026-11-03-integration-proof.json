@@ -1,0 +1,83 @@
+{
+  "application_head": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+  "main": "0742386f8452d50aa93188ebbada91a31db7b90f",
+  "included_pr_heads": {
+    "183": "debf463e866a949feda1e8a554c9c5f542a63134",
+    "184": "9587a21876adc385f8f4dcbacf7db8655229a312",
+    "185": "65b9c987c8ec84f629adddc81b9a86471626017f",
+    "186": "70fe23515298a08ed84f5e23d59a85103f4a4bf0",
+    "188": "6a7a8468843b6af913986571bce273fb5e36509f",
+    "189": "794ddebc1ebb65bd4ecd2da3f02635ec8418fb02",
+    "190": "5b34a5fbe6c3a06c8ada116f3806d88d4fdfe41f",
+    "193": "4b11816d4b100ae7c7a995f59c8221cf72ec4f82",
+    "195": "97798acda1885e226f06a1ceba190e2b4ad2d9a6",
+    "196": "8f4e82c5464e50531ab99fd9c4946615c2e62bbe",
+    "197": "62b5cf439f0b401f36671008664954a7a6cee4d6",
+    "198": "caf86c03bc72a1b4792c545db134317f03fe2045",
+    "199": "92f68f09954a5d334a388d27a7901ec23aa37c1d",
+    "200": "144eda8c38a4c0ccf047452596d1689fb4c41404",
+    "201": "1d248e2d075bbb132182f6910bf5584c81668c8f",
+    "202": "05ee8c0b967ad776cebde7dfebb385cafe9495ba",
+    "203": "54bc342c780da2aaff1153bfc6dceefa4e4a09ec",
+    "204": "d3cf4eb7945aa57ac199ed07594d9b824055ee3a",
+    "205": "4516b741fe03d5a8b2f24fe40797fd7da8e9a267",
+    "206": "d09c2f0ccfb7fbc1104f0d8e913a4dba8bc8474e"
+  },
+  "main_content_equivalence": {
+    "already_ancestor_head": "199290fa283f7e9f547ae1cc2327367390ee01d3",
+    "equal_tree": "e8766852ac06cd965473e50d1bdd0cb18f8d5eaa",
+    "ancestry_merge": "strategy ours because exact incoming content already ancestor; no source delta"
+  },
+  "scope_excluded": [
+    "T020 native seed staging/guards not wired",
+    "API32 feedback reason",
+    "temporal native history recovery/14day/90s acceptance",
+    "real external LLM/STT/TG/email/production deploy"
+  ],
+  "verification": {
+    "source_head": "3e9e592c76fab404ab02cbd727daa07a0b7f00db",
+    "make_lint": "passed",
+    "frontend": {
+      "passed": 561,
+      "files": 80
+    },
+    "backend_targeted": {
+      "passed": 105
+    },
+    "tgbot": {
+      "passed": 50
+    },
+    "production_builds": [
+      "main: passed",
+      "personal: passed"
+    ],
+    "openapi_drift": "197/197 passed",
+    "required_exact_head_ci": "pending",
+    "individual_ci_limitations": {
+      "202": "cold report p95 411.76ms exceeds300ms; triage in progress",
+      "205": "base conflict prevents PR merge CI; included in joint integration",
+      "206": "13 e2e failures /139 passed; actor drain, fixture lifecycle and canonical URL triage in progress"
+    },
+    "local_logs": {
+      "lint": {
+        "path": "/tmp/revision-integration-lint.log",
+        "sha256": "7af54496f5bd6123de9bb7abdf0bbef2b651100c5f7c2a36ae9a69e178a9bf80"
+      },
+      "build": {
+        "path": "/tmp/revision-integration-build.log",
+        "sha256": "402af1f091ee773f58e4b09003eeea4cd0d1d28f42909e7ab93c98409915a695"
+      },
+      "targeted-backend": {
+        "path": "/tmp/revision-integration-targeted-backend.log",
+        "sha256": "4a101ee02b9588893e8ff3797b78ede3332f305346856d187ac7e93c6d8e4feb"
+      },
+      "tgbot": {
+        "path": "/tmp/revision-integration-tgbot.log",
+        "sha256": "004f692ab04db4d70339dd0fbaf4171e21dc57d90689cf066a2d2f92051a6400"
+      }
+    },
+    "contracts": "48 schemas /167 OpenAPI paths passed",
+    "tasks_generation": "two runs, tracked diff idempotent",
+    "owners": "--base main requires layer selection; --allow-cross passed for authorized L1-L5 release integration"
+  }
+}
