@@ -330,7 +330,7 @@ async def notify_client(
     if consents is not None and channel in ("sms", "email", "push") and consents.get(channel) is False:
         status = "suppressed"
     row = await ctx.fetchone(
-        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else now() end) returning id",
+        "insert into notifications (run_id, recipient_type, client_id, signal_id, incident_id, channel_code, template_code, subject, body, status, sent_sim, sent_at) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, case when %s in ('queued','failed','unknown') then null else clock_timestamp() end) returning id",
         (
             ctx.run_id,
             recipient_type,

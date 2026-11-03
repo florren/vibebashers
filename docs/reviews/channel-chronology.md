@@ -12,7 +12,9 @@
    началась раньше вставки вопроса другой connection, ответ получал более
    раннее время. Публикация поста/ответа использует `clock_timestamp()`;
    latency вычисляется из того же DB instant. API сортирует ответы по
-   `published_at,id`. Дедупликация и санитайзер сохранены.
+   `published_at,id`. Та же ошибка воспроизведена у общего notify_client
+   в шести эмулируемых каналах (6 failed до исправления); sent_at теперь
+   также clock_timestamp(). Дедупликация, статусы и санитайзер сохранены.
 3. Отложенный Telegram ACK мог записать часы нового, чужого run.
    ACK использует sim clock только собственного current run; иначе
    `sent_sim=NULL`, реальные receipt/sent_at сохраняются. Внешних отправок
@@ -30,7 +32,7 @@
 
 ## Проверки
 
-- Полный backend unit: 2178 passed, 19 skipped, 64.62s.
+- Полный backend unit: 2178 passed, 19 skipped, 62.24s после изменения notify_client.
   Первый запуск с внешним `TGBOT_ENABLED=false` дал 1 failure: эта переменная
   перекрыла временный `.env` проверяемого installer test. Повтор без override
   зелёный; assertions/production code ради этого не менялись.
@@ -39,8 +41,10 @@
   Это настоящий Chromium на Feed, PersonalChat и LiveJourney с синтетическими API fixtures, не native backend
   и не доказательство реальной внешней доставки. POST запрещён перехватом.
 - Ruff/formatter, mypy, frontend lint; contracts check: 48 схем, 167 путей.
-- Финальные новые PG cases: 13 passed, 69.09s; 6 emulated channels через
+- Предыдущая итерация новых PG cases: 13 passed, 69.09s; 6 emulated channels через
   штатный normalizer, 3 автора публичного ответа, 4 ACK/run варианта.
+  Добавлены 6 старых-транзакций cases для notify_client; итоговый
+  green gate — полный CI с этими дополнительными assertions.
 - Дополнительно 5 существующих PG tests feed/gift/terminal gift passed.
 - Полный CI PR — отдельный merge gate; локальные проверки его не заменяют.
 

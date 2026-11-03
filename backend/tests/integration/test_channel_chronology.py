@@ -11,6 +11,42 @@ from tests.helpers import dsn, new_run, sim_now
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("channel", ["chat", "email", "sms", "push", "landing", "telegram_bot"])
+async def test_notification_wall_clock_follows_question_from_another_transaction(seeded, monkeypatch, channel):
+    from app.agent.tools.base import ToolContext
+    from app.agent.tools.write import notify_client
+    from app.ingest.normalizer import create_signal, from_api_signal
+
+    monkeypatch.setenv("TGBOT_ENABLED", "false")
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as setup:
+        run = await new_run(setup, "chronology notification")
+        at = await sim_now(setup)
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as older:
+        started = (await (await older.execute("select now()")).fetchone())[0]
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as incoming:
+            result = await create_signal(
+                incoming,
+                from_api_signal({"channel_code": "chat", "client_id": 1, "text": "Вопрос клиента о вкладе"}),
+                source_code="api",
+                run_id=run,
+                sim_time=at,
+            )
+            assert result["status"] == "accepted"
+            signal = result["signal_id"]
+            await incoming.commit()
+        ctx = ToolContext(older, run_id=run, agent_run_id=0, sim_time=at)
+        result = await notify_client(ctx, 1, signal, None, channel, "ack_received", {"text": "Ответ банка"})
+        question, answer = await (
+            await older.execute(
+                "select s.received_at,n.sent_at from notifications n join signals s on s.id=n.signal_id where n.id=%s",
+                (result["notification_id"],),
+            )
+        ).fetchone()
+        assert question > started
+        assert answer >= question
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("author", ["agent", "human", "client_twin"])
 async def test_reply_wall_time_follows_post_even_when_transaction_started_before_question(seeded, author):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as setup:
