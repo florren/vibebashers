@@ -84,3 +84,10 @@ def test_empty_env_value_does_not_turn_comment_into_a_model_path(tmp_path, monke
     write_env_file(path, {"STT_MODEL_PATH": None})
     assert Settings(_env_file=path).stt_model_path in (None, "")
     assert "# локальная модель" in path.read_text()
+
+
+@pytest.mark.parametrize("raw", ["#literal", '"#literal"', ' "#literal"'])
+def test_env_hash_value_is_not_an_unquoted_whitespace_comment(tmp_path, raw):
+    path = tmp_path / ".env"
+    path.write_text(f"APP_SECRET={raw}\n")
+    assert read_env_file(path)["APP_SECRET"] == "#literal"
