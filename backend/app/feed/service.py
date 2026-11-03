@@ -60,7 +60,7 @@ async def create_post(
     row = await (
         await conn.execute(
             "insert into external_posts (run_id, platform, author_nick, author_client_id, match_confidence, text, mentions, posted_at, posted_sim, reactions, status, signal_id, origin) "
-            "values (%s, %s, %s, %s, %s, %s, %s::jsonb, now(), %s, %s, 'new', %s, %s) returning id, public_id, posted_at",
+            "values (%s, %s, %s, %s, %s, %s, %s::jsonb, clock_timestamp(), %s, %s, 'new', %s, %s) returning id, public_id, posted_at",
             (
                 run_id,
                 platform,
@@ -151,15 +151,19 @@ async def publish_reply(
                 "duplicate": True,
             }
     posted_at: dt.datetime = _col(post, 5, "posted_at")
-    latency_ms = max(0, int((dt.datetime.now(dt.UTC) - posted_at).total_seconds() * 1000))
+    # now() — начало transaction: она могла начаться до поступления самого поста.
+    # Один реальный DB instant используется и для публикации, и для latency.
     row = await (
         await conn.execute(
+            "with publication as materialized (select clock_timestamp() as at) "
             "insert into external_replies (run_id, post_id, incident_id, agent_run_id, author, text, published_at, latency_ms, llm_source) "
-            "values (%s, %s, %s, %s, %s, %s, now(), %s, %s) returning id, published_at",
-            (run_id, post_id, incident_id, agent_run_id, author, clean, latency_ms, llm_source),
+            "select %s, %s, %s, %s, %s, %s, at, greatest(0,floor(extract(epoch from (at-%s::timestamptz))*1000))::integer, %s "
+            "from publication returning id, published_at, latency_ms",
+            (run_id, post_id, incident_id, agent_run_id, author, clean, posted_at, llm_source),
         )
     ).fetchone()
     reply_id = int(_col(row, 0, "id"))
+    latency_ms = int(_col(row, 2, "latency_ms"))
     new_status = "escalated_to_dm" if escalate_to_dm else "replied"
     await conn.execute("update external_posts set status = %s where id = %s", (new_status, post_id))
     await EventBus(conn, strict=False).emit(

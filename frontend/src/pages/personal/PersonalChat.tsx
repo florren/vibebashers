@@ -18,6 +18,17 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return data as T
 }
 
+function compareMessageTimes(a: string, b: string): number {
+  const left = Date.parse(a), right = Date.parse(b)
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return 0
+  if (left !== right) return left - right
+  // Date теряет PostgreSQL microseconds: сохраняем их при совпадении milliseconds.
+  const fraction = (value: string) => value.match(/\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/i)?.[1] ?? ''
+  const x = fraction(a), y = fraction(b), width = Math.max(x.length, y.length)
+  const paddedX = x.padEnd(width, '0'), paddedY = y.padEnd(width, '0')
+  return paddedX < paddedY ? -1 : paddedX > paddedY ? 1 : 0
+}
+
 export function PersonalChat() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
@@ -60,7 +71,7 @@ export function PersonalChat() {
   const entries = [
     ...(history.data?.messages ?? []).map(m => ({ key:m.public_id,role:'user',text:m.text,at:m.received_at,code:m.public_id,name:m.display_name })),
     ...(history.data?.answers ?? []).map(a => ({ key:`answer-${a.id}`,role:'agent',text:a.text,at:a.at,code:'',name:undefined })),
-  ].sort((a,b) => a.at.localeCompare(b.at))
+  ].sort((a,b) => compareMessageTimes(a.at,b.at))
   const lastKey = entries.map(e=>e.key).join(',')
   useEffect(() => { bottom.current?.scrollIntoView?.({ block:'nearest', behavior:'smooth' }) },[lastKey])
   const reset = useMutation({ mutationFn: () => request('/api/personal/reset',{}), onSuccess: () => { qc.removeQueries({queryKey:['personal']}); window.location.reload() } })

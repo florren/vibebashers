@@ -1209,7 +1209,7 @@ async def get_public_feed_post_id(post_id: int) -> Any:
             raise HTTPException(status_code=404, detail=f"пост {post_id} не найден")
         replies = await fetch_all(
             conn,
-            "select id, run_id, post_id, incident_id, agent_run_id, author, text, published_at, latency_ms, llm_source from external_replies where post_id = %s order by id",
+            "select id, run_id, post_id, incident_id, agent_run_id, author, text, published_at, latency_ms, llm_source from external_replies where post_id = %s order by published_at,id",
             (post_id,),
         )
         refunds = (

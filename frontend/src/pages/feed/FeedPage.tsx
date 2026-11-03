@@ -168,7 +168,7 @@ function PostCard({ p, active, onSelect }: { p: ExternalPost; active: boolean; o
           <Badge tone="warn">{t('feed.anonymous')}</Badge>
         )}
         <Badge tone={STATUS_TONE[status] ?? 'neutral'}>{tEnum('feed.status', status)}</Badge>
-        <span className="ml-auto text-muted">{fmtSim(p.posted_sim)}</span>
+        <span className="ml-auto text-muted">{t('feed.realTime')} · <time dateTime={p.posted_at} title={`${t('feed.realTime')} · ${t('feed.sourceSimTime')}: ${fmtSim(p.posted_sim)}`}>{fmtDateTime(p.posted_at)}</time></span>
       </div>
       <p className="mt-2 text-sm leading-snug">{p.text}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted">
@@ -208,7 +208,7 @@ function PostDetail({ id }: { id: number }) {
                     <Badge tone={r.author === 'agent' ? 'info' : 'neutral'}>{tEnum('feed.author', r.author ?? 'agent')}</Badge>
                     {r.latency_ms != null && <span>{t('feed.latency', { v: fmtMs(r.latency_ms) })}</span>}
                     {r.llm_source && <span>{r.llm_source}</span>}
-                    <span className="ml-auto">{fmtDateTime(r.published_at)}</span>
+                    <time className="ml-auto" dateTime={r.published_at} title={t('feed.realTime')}>{fmtDateTime(r.published_at)}</time>
                   </div>
                   {r.text}
                 </li>

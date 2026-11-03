@@ -758,6 +758,8 @@
     "empty": "No data"
   },
   "feed": {
+    "realTime": "Wall-clock time",
+    "sourceSimTime": "Source simulation time",
     "title": "Public feed (platform emulator)",
     "subtitle": "Client reviews and posts → signal → the agent replies under the post within seconds (BRD FR 1.1, TZ 21.2)",
     "platform": "Platform",
