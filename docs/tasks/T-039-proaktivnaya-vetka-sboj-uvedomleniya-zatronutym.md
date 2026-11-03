@@ -166,3 +166,10 @@ GREEN15PG (shared systems,9negative economics,3HITL); ruff/mypy328passed.
 Full2185unitpassed/19skipped; contracts48/167passed.
 Composition/CI и human review требуются.
 [Review/откат](../reviews/native-service-classification-facts.md).
+
+### Подтверждение freeze follow-up
+
+Пользователь явно подтвердил финансовую границу PR #214 при зелёном общем CI.
+Также подтверждён PR #215 (verified native catalog facts), без отключения guards.
+Объединённый full2196unit/19skip прошёл; финальные local composition/CI gates
+ещё обязательны. Полный acceptance карточки этим не объявляется закрытым.

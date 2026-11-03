@@ -71,3 +71,9 @@ Native extended47passed и финальный повтор41passed; new statemen
 (90.57%, sys.settrace/AST). Отдельный human money review ещё требуется;
 статус всей карточки этим дополнением не меняется.
 Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.md).
+
+### Подтверждение freeze follow-up
+
+Пользователь явно подтвердил финансовую границу PR #214 при зелёном общем CI.
+Объединённый full2196unit/19skip прошёл; финальные local composition/CI gates
+ещё обязательны. Полный acceptance карточки этим не объявляется закрытым.

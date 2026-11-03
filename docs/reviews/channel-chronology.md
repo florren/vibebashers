@@ -138,3 +138,32 @@ Native isolated Docker Compose demo5000: 34/34 targeted browser cases passed
 (report/cabinet/interrupted/Client360/overview/shell, ru/en и темы), 1.1min.
 Seed wall24.0716s; maximum APIp95 34.7262ms, violations[].
 Это не заменяет full168 и final composed backend/CI gate.
+
+## Итоговый состав: native facts, browser phases и проверяемые ограничения
+
+PR #214 (tick/economics clocks) и #215 (preserve verified catalog system) явно
+подтверждены пользователем после зелёного общего CI; PR #213 gift clocks также
+подтверждён. Их production patch IDs совпали с включёнными в #212 diff.
+Финальный результат полного состава фиксируется в PR #212 по его exact head;
+этот раздел — checkpoint до последнего browser/full-CI gate.
+
+- Объединённый full backend unit:2196passed/19штатных skipped,66.95s.
+- 45composedPG до последней classification condition:passed/296.21s.
+- Native classification source:2185unitpassed/19skip и15PGpassed (3canonical
+  shared systems,9negative money guards,3HITL), ruff/mypy328/contracts48/167passed.
+- Все150read-only/settings actual demo browser cases прошли; native scenarios
+  штатно отказались менять active clock. Harness теперь разделяет live acceptance,
+  pause только своего exact performance run + bounded paginated AgentRun drain,
+  затем native scenarios и jury inputs последовательно. Их guard от foreign pause
+  не изменён. Harness29unitpassed проверяют owner/ACK/timeout/cursor/order/failure.
+- Snapshot/body/cleanup E2E fixes используют настоящие первые API responses,
+  сохраняя их для layout/data assertions при live polling. Browser response body
+  после navigation не используется; source APIResponse независим от page lifecycle.
+  Это UI snapshot acceptance; её нельзя выдавать за доказательство всех live updates.
+- 331 reactions привязаны к конкретному bank notification и54 accepted twin
+  messages к его точному external_id:0before-bank sim/real,0foreign/unknown.
+  Расширенный scripts/reviews/channel_chronology.sql выполнен на primary read-only
+  одним snapshot. Старый gift anomaly сохраняет known_invariants_passed=false.
+- Последний full phased168/performance и повтор48PG выполняются; до зелёного
+  локального состава и exact-head CI merge запрещён. Таймауты/retries/пороги не
+  ослаблялись. Primary stack и история не изменялись.

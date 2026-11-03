@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIResponse } from '@playwright/test'
 import { formatExactRub } from '../src/shared/lib/exactMoney'
 
 const requested = process.env.E2E_OVERVIEW_RUN_ID ?? 'current'
 for (const pack of ['brand','ops'] as const) for (const lang of ['ru','en'] as const) for (const mode of ['light','dark'] as const) {
-  test(`overview actual nine blocks ${pack}/${lang}/${mode}`, async ({page,request},info)=>{
+  test(`overview actual nine blocks ${pack}/${lang}/${mode}`, async ({page,request,playwright,baseURL},info)=>{
+    const cleanup=await playwright.request.newContext({baseURL,timeout:10_000})
     const settings=await(await request.get('/api/settings')).json()
     const oldUi=settings.ui??null, attention=pack==='ops'?'control_room':'calm'
     const writes:string[]=[],external:string[]=[],errors:string[]=[],forbiddenQueries:string[]=[]
@@ -12,7 +13,16 @@ for (const pack of ['brand','ops'] as const) for (const lang of ['ru','en'] as c
       expect((await request.patch('/api/settings',{data:{ui:{layout:'v2',lang,mode,theme_pack:pack,attention}}})).status()).toBe(200)
       page.on('pageerror',error=>errors.push(error.message))
       page.on('request',req=>{const url=new URL(req.url());if(['/api/metrics/dashboard','/api/metrics/economics','/api/metrics/economics/live','/api/metrics/economics/fact','/api/metrics/economics/preview'].includes(url.pathname))forbiddenQueries.push(url.pathname)})
-      await page.route('**/*',route=>{const req=route.request(),url=new URL(req.url());if(url.origin!==new URL(info.project.use.baseURL as string).origin){external.push(url.origin);return route.abort()}if(!['GET','HEAD'].includes(req.method())){writes.push(req.method()+' '+url.pathname);return route.abort()}return route.continue()})
+      const snapshots=new Map<string,Promise<APIResponse>>()
+      // Один реальный API snapshot для визуальных assertions; live polling не меняет источник посреди проверки.
+      await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());if(url.origin!==new URL(info.project.use.baseURL as string).origin){external.push(url.origin);return route.abort()}if(!['GET','HEAD'].includes(req.method())){writes.push(req.method()+' '+url.pathname);return route.abort()}
+        if(['/api/metrics/overview','/api/metrics/cx-index','/api/signals'].includes(url.pathname)){
+          let response=snapshots.get(url.href)
+          if(!response){response=route.fetch();snapshots.set(url.href,response)}
+          return route.fulfill({response:await response})
+        }
+        return route.continue()
+      })
       await page.addInitScript(({lang,mode,pack,attention})=>{localStorage.setItem('cx.lang',lang);localStorage.setItem('cx.ui.mode',mode);localStorage.setItem('cx.ui.theme_pack',pack);localStorage.setItem('cx.ui.layout','v2');localStorage.setItem('cx.ui.attention',attention);localStorage.setItem('cx.ui.role','cx_lead')},{lang,mode,pack,attention})
       await page.emulateMedia({reducedMotion:mode==='dark'?'reduce':'no-preference'})
       const matchesRun=(url:URL)=>requested==='current'?/^[1-9][0-9]*$/.test(url.searchParams.get('run_id')??''):url.searchParams.get('run_id')===requested
@@ -68,7 +78,8 @@ for (const pack of ['brand','ops'] as const) for (const lang of ['ru','en'] as c
       await info.attach('source-summary.json',{body:JSON.stringify({run,index:cx.index,expectedProjectionPoints:expectedPoints,keyboardTraceActivated:expectedPoints>0,attention,pack,lang,mode,browserWrites:writes.length,externalRequests:external.length,palette}),contentType:'application/json'})
       expect(writes).toEqual([]);expect(external).toEqual([]);expect(errors).toEqual([]);expect(forbiddenQueries).toEqual([])
     } finally {
-      expect((await request.post('/api/settings/import',{data:{settings:{ui:oldUi}}})).status()).toBe(200)
+      try { expect((await cleanup.post('/api/settings/import',{data:{settings:{ui:oldUi}}})).status()).toBe(200) }
+      finally { await cleanup.dispose() }
     }
   })
 }

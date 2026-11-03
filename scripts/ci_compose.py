@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import urllib.parse
 import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
@@ -201,6 +202,85 @@ def own_env(path: Path):
                 path.unlink()
 
 
+def _json_request(base: str, path: str, body: dict[str, Any] | None = None) -> Any:
+    request = urllib.request.Request(
+        base + path,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Content-Type": "application/json"} if body is not None else {},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def prepare_scenarios(
+    base: str, owned_run_id: int | None, timeout: float = 120
+) -> None:
+    """Только performance run этого harness; чужой active clock не останавливается."""
+    state = _json_request(base, "/api/sim/state")
+    current = state.get("current_run_id")
+    if owned_run_id is not None:
+        if current != owned_run_id:
+            raise RuntimeError("CI performance owner изменился; pause запрещён")
+        state = _json_request(base, "/api/sim/control", {"action": "pause"})
+        if state.get("running") is not False or state.get("current_run_id") != owned_run_id:
+            raise RuntimeError("CI performance pause не подтверждён")
+    elif state.get("running"):
+        raise RuntimeError("Чужой active clock не останавливается")
+    if current is None:
+        return
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        cursor: str | None = None
+        seen: set[str] = set()
+        active = 0
+        while True:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("CI performance AgentRun drain не завершился")
+            query = {"run_id": str(current), "limit": "500"}
+            if cursor is not None:
+                query["cursor"] = cursor
+            page = _json_request(
+                base, "/api/agent/runs?" + urllib.parse.urlencode(query)
+            )
+            if not isinstance(page.get("items"), list) or "next_cursor" not in page:
+                raise ValueError("Некорректная native AgentRun page")
+            active += sum(row.get("outcome") is None for row in page["items"])
+            cursor = page["next_cursor"]
+            if cursor is None:
+                break
+            if not isinstance(cursor, str) or not cursor or cursor in seen:
+                raise ValueError("Некорректный/циклический native AgentRun cursor")
+            seen.add(cursor)
+        if active == 0:
+            return
+        time.sleep(1)
+    raise TimeoutError("CI performance AgentRun drain не завершился")
+
+
+def browser_phases(environment: dict[str, str], owned_run_id: int | None) -> None:
+    # Live UI остаётся с активным clock; native preparation требует paused owner.
+    command = ["npm", "exec", "--", "playwright", "test"]
+    subprocess.run(
+        [*command, "--project=read-only", "--project=settings"],
+        cwd=ROOT / "frontend",
+        env=environment,
+        check=True,
+    )
+    prepare_scenarios(environment["E2E_BASE_URL"], owned_run_id)
+    subprocess.run(
+        [*command, "--project=scenarios", "--no-deps"],
+        cwd=ROOT / "frontend",
+        env=environment,
+        check=True,
+    )
+    subprocess.run(
+        [*command, "--project=inputs", "--no-deps"],
+        cwd=ROOT / "frontend",
+        env=environment,
+        check=True,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default="cx-pulse-backend:ci", choices=["cx-pulse-backend:ci"])
@@ -292,6 +372,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("CI personal требует отдельный localhost port")
             environment["E2E_PERSONAL_BASE_URL"] = f"http://{personal_address}"
             wait_health(environment["E2E_PERSONAL_BASE_URL"], path="/api/personal/health")
+            owned_run_id: int | None = None
             if args.performance:
                 report = performance(environment["E2E_BASE_URL"], seed_seconds)
                 destination = ROOT / "frontend/performance-results"
@@ -299,12 +380,10 @@ def main(argv: list[str] | None = None) -> int:
                 (destination / "performance.json").write_text(json.dumps(report, indent=2))
                 if report["violations"]:
                     raise ValueError("; ".join(report["violations"]))
-            subprocess.run(
-                ["npm", "exec", "--", "playwright", "test"],
-                cwd=ROOT / "frontend",
-                env=environment,
-                check=True,
-            )
+                owned_run_id = report["simulator_state"]["current_run_id"]
+                if type(owned_run_id) is not int or owned_run_id <= 0:
+                    raise ValueError("CI performance run_id не подтверждён")
+            browser_phases(environment, owned_run_id)
         finally:
             subprocess.run([*command, "logs", "--no-color", "--tail", "100"], check=False)
             subprocess.run([*command, "down", "-v", "--remove-orphans"], check=True)

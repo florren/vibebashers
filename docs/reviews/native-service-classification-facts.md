@@ -41,7 +41,8 @@ HITL/consent и guards invalid/future/foreign facts не меняются. API/D
 
 ## Review / rollback
 
-Требуется согласование по AGENTS.md §5.1: «всё, что касается денег и HITL».
+03.11.2026 пользователь явно подтвердил PR #215 после зелёного общего CI.
+Основание отдельного review — AGENTS.md §5.1: «всё, что касается денег и HITL».
 PR #214 про часы/counter не покрывает это исправление classification.
 Откат одной проверки возвращает ошибочный heuristic rewrite и прежний fail-closed
 отказ guard. История, failed AgentRun и старые checkpoints автоматически не исправляются;
