@@ -19,6 +19,8 @@ function fetchFixture(profileValue: unknown = profile) {
     if (url.pathname.includes('/360')) { profileRequests.push(url.search); return json(profileValue) }
     if (url.pathname === '/api/sim/state') return json({ current_run_id: 42 })
     if (url.pathname === '/api/sim/runs') return json({ items: [{ id: 42, label: 'Проверка клиента' }] })
+    if (url.pathname === '/api/settings/gifts') return json(client360Refs.gift_catalog)
+    if (url.pathname === '/api/refs/gift_catalog') return json({ title: 'Не найдено' }, 404)
     if (url.pathname.startsWith('/api/refs/')) return json(client360Refs[url.pathname.split('/').at(-1)!] ?? [])
     return json({})
   })
@@ -40,6 +42,21 @@ beforeEach(async () => {
 })
 
 describe('Client360', () => {
+  it('читает каталог подарков из существующего settings API', async () => {
+    mount()
+    await screen.findByRole('heading', { name: 'Клиент 360 · Ирина Т.' })
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url), 'http://localhost').pathname)
+    expect(urls).toContain('/api/settings/gifts')
+    expect(urls).not.toContain('/api/refs/gift_catalog')
+    expect(await screen.findByText('Бонусные баллы')).toBeVisible()
+  })
+
+  it.each(['current', 'all', '42'])('ведёт к уведомлениям собственного клиента с выбранным scope=%s', async scope => {
+    mount('/clients/17?run_id=' + scope)
+    await screen.findByRole('heading', { name: 'Клиент 360 · Ирина Т.' })
+    expect(screen.getByRole('link', { name: 'Уведомления клиента' })).toHaveAttribute('href', '/workspace?tab=notifications&client_id=17&run_id=' + scope)
+  })
+
   it('shows real profile sections, failed operation/fault link and account closure', async () => {
     mount()
     expect(await screen.findByRole('heading', { name: 'Клиент 360 · Ирина Т.' })).toBeVisible()

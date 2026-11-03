@@ -358,12 +358,12 @@ export function useCalibrate() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['metrics'] }),
   })
 }
-export const useNotifications = (query: Query) =>
+export const useNotifications = (query: Query, enabled = true) =>
   useQuery({
     queryKey: ['notifications', 'list', query],
     queryFn: () => api<List<NotificationItem>>('/api/notifications', { query }),
     refetchInterval: 6_000,
-    placeholderData: (p) => p,
+    enabled,
   })
 
 // ---- B13: тикеты, эскалации, команды, действия оператора ----

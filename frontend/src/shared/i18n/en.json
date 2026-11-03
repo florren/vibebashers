@@ -960,7 +960,10 @@
     },
     "empty": "No notifications yet",
     "emptyHint": "They appear when the agent starts replying to clients and routing incidents.",
-    "unknownClient": "unidentified author"
+    "unknownClient": "unidentified author",
+    "clientFilter": "Client #{{id}}",
+    "clearClient": "Clear client filter",
+    "invalidClient": "Invalid client ID"
   },
   "notifStatus": {
     "sent": "sent",
@@ -1934,6 +1937,7 @@
   "client360": {
     "open": "Client 360",
     "title": "Client 360",
+    "notifications": "Client notifications",
     "description": "Profile, service history and communication guidance for staff.",
     "profile": "Profile and customer care",
     "scope": "History",
