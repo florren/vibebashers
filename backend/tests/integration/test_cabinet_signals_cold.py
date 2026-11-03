@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import statistics
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -105,16 +106,33 @@ def test_cold_report_preserves_links_without_repeated_scans(
             "SELECT last_analyze,last_autoanalyze FROM pg_stat_user_tables WHERE relname='signals'"
         ).fetchone() == (None, None)
 
-        (tmp_path / "cold-report-proof.json").write_text(
-            json.dumps(
-                {
-                    "samples_ms": samples,
-                    "signal_explain": plan,
-                    "signal_stats": "last_analyze=NULL,last_autoanalyze=NULL before and after",
-                    "fingerprint_unchanged": True,
-                    "signals": len(data["signals"]),
-                },
-                indent=2,
-            )
+        ordered = sorted(samples)
+        metrics = {
+            "sample_count": len(samples),
+            "min_ms": ordered[0],
+            "p50_ms": statistics.median(samples),
+            "p95_ms": ordered[math.ceil(len(samples) * 0.95) - 1],
+            "max_ms": ordered[-1],
+            "response_bytes": len(response.content),
+        }
+        proof = json.dumps(
+            {
+                "samples_ms": samples,
+                "signal_explain": plan,
+                "signal_stats": "last_analyze=NULL,last_autoanalyze=NULL before and after",
+                "fingerprint_unchanged": True,
+                "signals": len(data["signals"]),
+                **metrics,
+            },
+            indent=2,
         )
-        assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300
+        (tmp_path / "cold-report-proof.json").write_text(proof, encoding="utf-8")
+        # CI загружает test-results/, а pytest tmp_path после job теряется.
+        # Только метрики и план synthetic fixture, без response body/контактов.
+        artifact = Path(__file__).resolve().parents[3] / "test-results" / "cabinet-signals-cold.json"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text(proof, encoding="utf-8")
+        assert sorted(samples)[math.ceil(len(samples) * 0.95) - 1] < 300, (
+            f"cold report metrics={metrics}; SQL execution={plan['Execution Time']}ms; "
+            "proof=test-results/cabinet-signals-cold.json"
+        )
