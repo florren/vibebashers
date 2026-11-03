@@ -1,0 +1,181 @@
+{
+  "source_commit": "48fb40fa3029a2d621163ae06936269ece17e3a8",
+  "browser": {
+    "stats": {
+      "startTime": "2026-11-03T00:27:34.880Z",
+      "duration": 7374.566,
+      "expected": 5,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "results": [
+      {
+        "test": "actual jury creation and links ru/light",
+        "status": "passed",
+        "duration_ms": 1523,
+        "native_source": [
+          {
+            "lang": "ru",
+            "theme": "light",
+            "signalId": 1163,
+            "agentRunId": 2,
+            "selectedKnownClient": false,
+            "manual": false,
+            "cityId": 510,
+            "origin": "jury",
+            "models": [
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1"
+            ],
+            "traceStatus": 200,
+            "journeyStatus": 200,
+            "mediaCalls": 0,
+            "externalRequests": 0,
+            "unexpectedWrites": []
+          }
+        ]
+      },
+      {
+        "test": "actual jury creation and links ru/dark",
+        "status": "passed",
+        "duration_ms": 1568,
+        "native_source": [
+          {
+            "lang": "ru",
+            "theme": "dark",
+            "signalId": 1164,
+            "agentRunId": 4,
+            "selectedKnownClient": true,
+            "manual": false,
+            "cityId": 510,
+            "origin": "jury",
+            "models": [
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1"
+            ],
+            "traceStatus": 200,
+            "journeyStatus": 200,
+            "mediaCalls": 0,
+            "externalRequests": 0,
+            "unexpectedWrites": []
+          }
+        ]
+      },
+      {
+        "test": "actual jury creation and links en/light",
+        "status": "passed",
+        "duration_ms": 1522,
+        "native_source": [
+          {
+            "lang": "en",
+            "theme": "light",
+            "signalId": 1165,
+            "agentRunId": 7,
+            "selectedKnownClient": false,
+            "manual": false,
+            "cityId": 510,
+            "origin": "jury",
+            "models": [
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1"
+            ],
+            "traceStatus": 200,
+            "journeyStatus": 200,
+            "mediaCalls": 0,
+            "externalRequests": 0,
+            "unexpectedWrites": []
+          }
+        ]
+      },
+      {
+        "test": "actual jury creation and links en/dark",
+        "status": "passed",
+        "duration_ms": 1588,
+        "native_source": [
+          {
+            "lang": "en",
+            "theme": "dark",
+            "signalId": 1166,
+            "agentRunId": 12,
+            "selectedKnownClient": true,
+            "manual": true,
+            "cityId": 510,
+            "origin": "jury",
+            "models": [
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1",
+              "mock:mock-rules-v1"
+            ],
+            "traceStatus": 200,
+            "journeyStatus": 200,
+            "mediaCalls": 0,
+            "externalRequests": 0,
+            "unexpectedWrites": []
+          }
+        ]
+      },
+      {
+        "test": "insecure local origin hides microphone without disabling text input",
+        "status": "passed",
+        "duration_ms": 624,
+        "native_source": []
+      }
+    ]
+  },
+  "checks": {
+    "frontend_full": {
+      "passed": 555,
+      "files": 79,
+      "command": "make lint"
+    },
+    "backend_unit_asgi": {
+      "passed": 15
+    },
+    "fake_stt_actual_pg": {
+      "passed": 1,
+      "seconds": 10.3,
+      "database": "cx_jury_ui_revision"
+    },
+    "registry_coverage": {
+      "statements": 36,
+      "missed": 4,
+      "percent": 89
+    },
+    "production_builds": [
+      "main",
+      "personal"
+    ],
+    "mypy": 325,
+    "openapi_drift": {
+      "spec": 196,
+      "code": 196
+    }
+  },
+  "boundaries": {
+    "real_media_calls": 0,
+    "external_requests": 0,
+    "expected_signal_posts": 4,
+    "fixture_settings_writes": "before/after each test; not a read-only whole-database claim",
+    "database": "own scratch only",
+    "stt": "fake recognition/fake provider only; real transcription not exercised"
+  },
+  "screenshots": {
+    "new-signal-en-dark-desktop.png": "0f20704bd8fd9dd35f4cf1684a1c80c6bd81a7ec85e70b37312e9da65467ca88",
+    "new-signal-en-dark-mobile-result.png": "4f551ec095d6c352e397f8b4c837020cd845b2d353ac606a135b9a7f65e749d9",
+    "new-signal-en-dark-mobile-top.png": "bdfeb2da4dee60ba1afb4150a69ce819b33f56a9e00da24ad43de00164cb24fb",
+    "new-signal-en-light-desktop.png": "4e2d6dc8991c10f4a023e7f7339c4c310f4be96bd952506529950b58e9ce9a38",
+    "new-signal-en-light-mobile-result.png": "502f8be9c0e222be7e4c493f10055ef4569a7b6fbc23dafc361a58dc1fd39b86",
+    "new-signal-en-light-mobile-top.png": "aa21e395aec211963d410dff411c4b46d6f7c6b4d5a23faad49ee707c3ce9642",
+    "new-signal-insecure-origin.png": "86452135f471dca09ef4832452c34ccf69b88149d9e450a7b1266e23da0fb2c4",
+    "new-signal-ru-dark-desktop.png": "dcf1dc6fba5bcd4a88ae03d8a33f3897e74c46afd1c0786208587142b32a18a2",
+    "new-signal-ru-dark-mobile-result.png": "b0103b38a28205cc57f23080dada326e2aeae65768c688bb8c1354d11b3f0e8e",
+    "new-signal-ru-dark-mobile-top.png": "f2b9a15a2abd36cc9cf17eb3f53c814bf29de178ddf65d85dbe823538e145762",
+    "new-signal-ru-light-desktop.png": "7273bbb6baf299b2a53c7860377aa1316358d5e7f7445145590c90860f658f2a",
+    "new-signal-ru-light-mobile-result.png": "0d8104b57e9e311c56b9ac0d3cba23a442f2915cb8b08e3f1be3d2cf4ae1be19",
+    "new-signal-ru-light-mobile-top.png": "da1afae17db2b2f75453478d0dd4f2d9c37a98111464593fcb92626d5c0b0eb5"
+  }
+}

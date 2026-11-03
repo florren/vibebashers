@@ -30,8 +30,8 @@
 3. i18n ru/en, доступность, vitest и e2e.
 
 ## Критерии приёмки
-- [ ] Сигнал создаётся прежним API; после отправки доступен переход на путь и след.
-- [ ] ПДн-подсказка присутствует; микрофон скрыт без HTTPS/localhost (правило 6.5).
+- [x] Сигнал создаётся прежним API; после отправки доступен переход на путь и след.
+- [x] ПДн-подсказка присутствует; микрофон скрыт без HTTPS/localhost (правило 6.5).
 - [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
@@ -41,4 +41,4 @@ cd frontend && npx playwright test e2e/new-signal-modal.spec.ts
 ```
 
 ## Отчёт субагента
-Ветка `codex/T-257-new-signal-modal`, отдельный implementation checkpoint от T255192267b. Прежний POSTsignals/DTO сохранён; добавлены city/unknown client/manualID, agent/PII hints, actual result Journey+Trace, typed voice_meta. Native secure context обязателен для VoiceInput; label textarea отделён от кнопки микрофона. Unicode codepoint3..5000 без truncation, существующий Journey label сохранён отдельным ключом. Source-qualified локально498frontend/67files green14.20s,43adjacent green, typecheck/lint и обеproductionbuilds green. Actual browser/HTTP/screenshots и финальная parent composition ещё выполняются; DoD/приёмка не отмечены завершёнными. Денежные/HITL/серверные политики, public API/DDL не менялись.
+Ветка `codex/T-257-new-signal-modal`, финальный runtime/API31 source48fb40f. Полный functional UI, сохранение формы при resize, native secure origin и fail-closed STT defaults реализованы. API31 добавляет только422Problem `/api/stt/test` поверх API30; explicit browser opt-in сохранён, implicit external fallback удалён. `make lint`555frontend/79files,325mypy,drift196/196; обе production builds;15backend unit/HTTP,1actualPG fake-STT; actual production browser5/5 ru/en×themes/mobile,13PNG. Ни реального mic/STT, ни external calls. Полный backend/exact-head CI/parent review остаются обязательны; overallDoD не отмечен. Подробности: [review](../reviews/T-257-new-signal-modal.md), [proof](../reviews/T-257-proof.json).
