@@ -5550,6 +5550,7 @@ export interface paths {
                         };
                     };
                 };
+                422: components["responses"]["Problem"];
             };
         };
         delete?: never;

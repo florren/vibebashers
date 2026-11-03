@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.30
+  version: 1.5.31
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -1823,6 +1823,7 @@ paths:
                   partial_latency_ms: { type: [integer, "null"] }
                   final_latency_ms: { type: [integer, "null"] }
                   error: { type: [string, "null"] }
+        "422": { $ref: "#/components/responses/Problem" }
 
   # ===================== v1.3 — меню демонстратора и подстраховка (ТЗ 5.4, 12.7) =====================
   /api/demo/status:
