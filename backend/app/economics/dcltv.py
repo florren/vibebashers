@@ -202,7 +202,7 @@ async def _retention_factor(
     return manual, "manual"
 
 
-async def _native_service_affected(
+async def native_service_cohort(
     conn: psycopg.AsyncConnection[Any], inc: dict[str, Any], sim_time: dt.datetime | None
 ) -> tuple[int, dt.datetime] | None:
     """Canonical fault-monitor cohort — actual clients, не service rows/payload counters."""
@@ -246,9 +246,18 @@ async def _native_service_affected(
         )
         cohort = await cur.fetchone()
     affected = int(cohort["affected"]) if cohort else 0
-    if affected <= 0 or int(inc["mass_impact"] or 0) != affected:
+    if affected <= 0:
         raise ValueError("fault_monitor economics: cohort/mass не согласованы; повторите native scope validation")
     return affected, at
+
+
+async def _native_service_affected(
+    conn: psycopg.AsyncConnection[Any], inc: dict[str, Any], sim_time: dt.datetime | None
+) -> tuple[int, dt.datetime] | None:
+    native = await native_service_cohort(conn, inc, sim_time)
+    if native is not None and int(inc["mass_impact"] or 0) != native[0]:
+        raise ValueError("fault_monitor economics: cohort/mass не согласованы; повторите native scope validation")
+    return native
 
 
 async def compute_incident(

@@ -318,6 +318,7 @@ class TeamEmulator:
                 agent_run_id=int(agent_run_id or 0),
                 sim_time=step.at,
                 llm_source="mock",
+                economics_time=sim_time,
             )
             await self._execute_step(step_ctx, world, plan, step, incident_id, str(team_code), incident_ctx, status)
             status_row = await step_ctx.fetchone("select status from incidents where id = %s", (incident_id,))

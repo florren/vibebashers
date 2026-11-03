@@ -113,6 +113,7 @@ class ToolContext:
         trace_conn: psycopg.AsyncConnection[Any] | None = None,
         state_evidence_sink: StateEvidenceSink | None = None,
         effect_time_fence: EffectTimeFence | None = None,
+        economics_time: dt.datetime | None = None,
     ) -> None:
         self.conn = conn
         self.run_id = run_id
@@ -123,6 +124,7 @@ class ToolContext:
         self.trace_conn = trace_conn
         self.state_evidence_sink = state_evidence_sink
         self.effect_time_fence = effect_time_fence
+        self.economics_time = economics_time
         self.calls: list[dict[str, Any]] = []  # tool_calls текущего узла (сбрасывает узел)
         self.pending_wraps: list[str] = []  # внутренние имена, которые фасад свернёт в wraps
         self.act_frame: ActFrame | None = None
