@@ -1536,7 +1536,8 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
         )
     )
     system = c.get("system")
-    if product and system and system not in PRODUCT_SYSTEMS.get(product, [system]):
+    # Проверенный catalog допускает shared systems вне общего эвристического пути продукта.
+    if not native and product and system and system not in PRODUCT_SYSTEMS.get(product, [system]):
         if stype == "service_quality" and system in ("contact_center", "mobile_app", "web_bank"):
             pass
         else:
