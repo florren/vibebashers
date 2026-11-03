@@ -1,0 +1,37 @@
+{
+  "source": "0708fd9080b8251a5aaa447293ffbe2b2235aec8",
+  "base": "7acce1b22925fb13e6881f6f3a819f2f5e8c7e2c",
+  "tests": "26 unit/PG26.36s; no liveHTTP",
+  "files": {
+    "backend/app/tgbot/liveness.py": {
+      "blob": "08e4df505eac6c7eb7a40a7c4209ee9adf4cf870",
+      "new_executable": 48,
+      "covered": 48,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/tgbot/middleware.py": {
+      "blob": "90c95a561628694f7585346f3135f59d9f944594",
+      "new_executable": 2,
+      "covered": 2,
+      "missing": [],
+      "coverage_pct": 100.0
+    },
+    "backend/app/api/public.py": {
+      "blob": "6bd2d7d51ace82a14ccbc161c6a997b69c9e074b",
+      "new_executable": 33,
+      "covered": 32,
+      "missing": [
+        658
+      ],
+      "coverage_pct": 96.96969696969697
+    },
+    "backend/app/api/health.py": {
+      "blob": "340f9389362b577fe918b304e5303648e7989cd2",
+      "new_executable": 2,
+      "covered": 2,
+      "missing": [],
+      "coverage_pct": 100.0
+    }
+  }
+}

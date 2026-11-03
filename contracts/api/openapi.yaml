@@ -160,7 +160,8 @@ paths:
                   db: { type: boolean }
                   setup_completed: { type: boolean }
                   llm: { type: object, additionalProperties: { type: string, enum: [ok, error, disabled] } }
-                  tgbot: { type: string, enum: [running, disabled, error] }
+                  tgbot: { type: string, enum: [running, disabled, error], description: running требует свежего signed poll proof и активного delivery worker; token сам по себе не readiness }
+                  tgbot_username: { type: [string, "null"], description: Только проверенный getMe username свежего polling service }
                   sim_running: { type: boolean }
                   version: { type: string }
 
@@ -1307,6 +1308,38 @@ paths:
       responses:
         "200": { description: SVG, content: { image/svg+xml: { schema: { type: string } } } }
         "404": { $ref: "#/components/responses/Problem", description: Бот выключен }
+        "503": { $ref: "#/components/responses/Problem", description: Нет свежего poll proof или delivery worker }
+  /api/internal/tgbot/heartbeat:
+    post:
+      tags: [public]
+      summary: Подписанное подтверждение успешного Telegram polling
+      description: |
+        Только service-to-service HMAC, как inbound; подпись привязана к этому path.
+        Сервис передаёт username из getMe после успешного getUpdates. Не вызывает Bot API из backend.
+        Ephemeral proof истекает через90реальных секунд; restart/rotation требует нового proof.
+        Не создаёт signals/notifications/run и не является подтверждением доставки.
+      parameters:
+        - { name: X-CX-Tg-Timestamp, in: header, required: true, schema: { type: string, pattern: '^[0-9]{1,12}$' } }
+        - { name: X-CX-Tg-Signature, in: header, required: true, schema: { type: string, pattern: '^[0-9a-f]{64}$' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [bot_id, username, credential_ref]
+              properties:
+                bot_id: { type: integer, minimum: 1, maximum: 9223372036854775807 }
+                username: { type: string, minLength: 5, maxLength: 32, description: ASCII username из getMe; оканчивается bot без учёта регистра }
+                credential_ref: { type: string, pattern: '^[0-9a-f]{64}$', writeOnly: true, description: HMAC-SHA256 internal_secret от domain cx-tgbot-credential-v1 и token; raw token не передаётся }
+      responses:
+        "200": { description: Proof принят, content: { application/json: { schema: { type: object, required: [accepted], properties: { accepted: { type: boolean, const: true } } } } } }
+        "401": { $ref: "#/components/responses/Problem" }
+        "409": { $ref: "#/components/responses/Problem", description: Другой bot namespace }
+        "413": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
+        "503": { $ref: "#/components/responses/Problem" }
   /api/internal/tgbot/inbound:
     post:
       tags: [public]

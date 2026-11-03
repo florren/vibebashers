@@ -742,3 +742,25 @@ CSV экранирует формулы и использует временны
 summary и существующие derived economics, не проводки/правила/HITL. Для archived
 запуска пересчёт запрещён: исходные данные могут быть удалены. Команда выполняется
 в БД из `DATABASE_URL`; выбирайте нужный банк до запуска.
+
+### QR Telegram в режиме жюри
+
+После явного включения `--with-tgbot` дождитесь кнопки «Telegram-бот» в шапке;
+она требует подписанного подтверждения successful polling и активного delivery
+worker. Откройте QR-модальное окно и следуйте инструкции ru/en. Оно использует
+фактический username из getMe, без жёстко заданного адреса другого бота. Без
+свежего proof кнопка скрыта, QR API возвращает503 (404при disabled); health/QR
+не выполняют внешних HTTP. Внутренний signed `/api/internal/tgbot/heartbeat`
+добавлен вAPI1.5.23; backend restart требует нового proof. Подробнее:docs/DEMO.md.
+
+Бот из ТЗ: [@CXPulseControlBot](https://t.me/CXPulseControlBot). Этот статический QR
+предназначен для указанного username; перед показом сверьте его с username в
+модальном окне работающего стенда. Само изображение не подтверждает доступность бота.
+
+<img src="docs/assets/bot-qr-tz.svg" alt="QR бота из ТЗ" width="280" />
+
+Актуальный SVG подключённого бота можно сохранить с работающего стенда:
+`curl --fail http://localhost:8000/api/public/bot/qr --output bot-qr.svg`.
+Команда не вызывает Telegram из backend; при неготовом/выключенном сервисе она
+завершается с ошибкой вместо сохранения QR. Статический asset выше сгенерирован
+локально существующим `app.api.public._qr_svg('https://t.me/CXPulseControlBot')`.

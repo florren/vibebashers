@@ -155,8 +155,13 @@ export interface paths {
                             llm?: {
                                 [key: string]: "ok" | "error" | "disabled";
                             };
-                            /** @enum {string} */
+                            /**
+                             * @description running требует свежего signed poll proof и активного delivery worker; token сам по себе не readiness
+                             * @enum {string}
+                             */
                             tgbot?: "running" | "disabled" | "error";
+                            /** @description Только проверенный getMe username свежего polling service */
+                            tgbot_username?: string | null;
                             sim_running?: boolean;
                             version?: string;
                         };
@@ -4262,10 +4267,76 @@ export interface paths {
                 };
                 /** @description Бот выключен */
                 404: components["responses"]["Problem"];
+                /** @description Нет свежего poll proof или delivery worker */
+                503: components["responses"]["Problem"];
             };
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/internal/tgbot/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Подписанное подтверждение успешного Telegram polling
+         * @description Только service-to-service HMAC, как inbound; подпись привязана к этому path.
+         *     Сервис передаёт username из getMe после успешного getUpdates. Не вызывает Bot API из backend.
+         *     Ephemeral proof истекает через90реальных секунд; restart/rotation требует нового proof.
+         *     Не создаёт signals/notifications/run и не является подтверждением доставки.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "X-CX-Tg-Timestamp": string;
+                    "X-CX-Tg-Signature": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        bot_id: number;
+                        /** @description ASCII username из getMe; оканчивается bot без учёта регистра */
+                        username: string;
+                        /** @description HMAC-SHA256 internal_secret от domain cx-tgbot-credential-v1 и token; raw token не передаётся */
+                        credential_ref: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Proof принят */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            accepted: true;
+                        };
+                    };
+                };
+                401: components["responses"]["Problem"];
+                /** @description Другой bot namespace */
+                409: components["responses"]["Problem"];
+                413: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
+                503: components["responses"]["Problem"];
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

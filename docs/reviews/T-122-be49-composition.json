@@ -1,0 +1,26 @@
+{
+  "mode": "actual TestClient/PG, readonly GET, noLLM",
+  "members": 10001,
+  "page_size": 50,
+  "samples_ms": [
+    14.762641018023714,
+    13.94712200271897,
+    14.06792298075743,
+    15.54202099214308,
+    14.751660026377067,
+    15.077533986186609,
+    14.572056999895722,
+    14.007617020979524,
+    13.85176001349464,
+    13.678407995030284
+  ],
+  "p95_ms": 15.54202099214308,
+  "response_items": 50,
+  "python_request_peak_bytes": 267797,
+  "source": "7b54d5192cbb0859bc48de2f5fbde660dfaeb827",
+  "main": "be49a8dbf2c3204e3c496298064ce751d816d181",
+  "targeted_passed": 95,
+  "targeted_seconds": 86.08,
+  "frontend_passed": 366,
+  "external_telegram_requests": 0
+}

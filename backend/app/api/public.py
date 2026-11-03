@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import io
 import re
 import secrets
 import time
 import uuid
+from functools import lru_cache
 from typing import Any, Literal
 
 import qrcode
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from qrcode.image.svg import SvgPathImage
 
 from app.agent.tools.write import PII_RE
@@ -30,7 +32,6 @@ from app.tracking_mail import send_tracking_receipt
 
 router = APIRouter(tags=["public"])
 
-_BOT_URL = "https://t.me/CXPulseControlBot"
 _CLAIM_WINDOW_S = 60.0
 _CLAIM_LIMIT = 5
 _PHONE = re.compile(r"^\+7 900 00[0-9]-\d{2}-\d{2}$")
@@ -621,14 +622,49 @@ async def post_public_track_token(request: Request, token: str, body: TrackAppen
     return Response(status_code=202)
 
 
+@lru_cache(maxsize=32)
+def _bot_qr(username: str) -> str:
+    return _qr_svg(f"https://t.me/{username}")
+
+
 @router.get("/api/public/bot/qr", summary="QR-код на Telegram-бота для жюри-режима и README")
-async def get_public_bot_qr() -> Response:
+async def get_public_bot_qr(request: Request) -> Response:
+    from app.tgbot.liveness import running_username
+
     settings = get_settings()
     token = (settings.telegram_bot_token or "").strip()
     if not token or not settings.tgbot_enabled:
         raise Problem(404, "Бот выключен", "Telegram-бот не настроен")
-    svg = _qr_svg(_BOT_URL)
-    return Response(content=svg, media_type="image/svg+xml")
+    username = running_username(request.app, settings)
+    if username is None:
+        raise Problem(503, "Бот недоступен", "Нет свежего подтверждения polling и delivery worker")
+    return Response(content=_bot_qr(username), media_type="image/svg+xml", headers={"Cache-Control": "no-store"})
+
+
+class BotHeartbeatBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    bot_id: int = Field(strict=True, gt=0, le=2**63 - 1)
+    credential_ref: str = Field(strict=True, min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+    username: str = Field(strict=True, min_length=5, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_]{1,28}[Bb][Oo][Tt]$")
+
+
+@router.post("/api/internal/tgbot/heartbeat", summary="Подписанное подтверждение успешного Telegram polling")
+async def post_internal_tgbot_heartbeat(request: Request, body: BotHeartbeatBody) -> dict[str, bool]:
+    from app.tgbot.configuration import configured
+    from app.tgbot.liveness import BotLiveness, credential_ref
+
+    config = configured(get_settings())
+    if config is None:
+        raise Problem(503, "Бот выключен", "Telegram transport не настроен")
+    if body.bot_id != config.bot_id:
+        raise Problem(409, "Другой бот", "telegram_bot_namespace_mismatch")
+    if not hmac.compare_digest(body.credential_ref, credential_ref(config)):
+        raise Problem(409, "Конфигурация изменилась", "telegram_bot_configuration_mismatch")
+    proof = getattr(request.app.state, "tgbot_liveness", None)
+    if not isinstance(proof, BotLiveness):
+        proof = request.app.state.tgbot_liveness = BotLiveness()
+    proof.observe(config, body.username)
+    return {"accepted": True}
 
 
 @router.post(

@@ -9,6 +9,7 @@ import json
 import os
 import re
 import time
+from types import SimpleNamespace
 
 import httpx
 import psycopg
@@ -223,11 +224,31 @@ def _checks(dsn: str, monkeypatch: pytest.MonkeyPatch) -> None:
         secret = "123456:" + "A" * 35
         monkeypatch.setattr(settings, "telegram_bot_token", secret)
         monkeypatch.setattr(settings, "tgbot_enabled", True)
+        assert client.get("/api/public/bot/qr").status_code == 503
+        monkeypatch.setattr(settings, "tgbot_internal_secret", "public-test-transport-vector-000000000000")
+        monkeypatch.setattr(settings, "tgbot_public_base_url", "https://bank.invalid")
+        monkeypatch.setattr(settings, "app_secret", "public-test-storage-vector-000000000000")
+        ref = hmac.new(
+            settings.tgbot_internal_secret.encode(), b"cx-tgbot-credential-v1:" + secret.encode(), hashlib.sha256
+        ).hexdigest()
+        raw = json.dumps({"bot_id": 123456, "username": "ReviewBankBot", "credential_ref": ref}).encode()
+        stamp = str(int(time.time()))
+        path = "/api/internal/tgbot/heartbeat"
+        payload = "\n".join(("cx-tgbot-v1", stamp, "POST", path, hashlib.sha256(raw).hexdigest())).encode()
+        signed = {
+            "Content-Type": "application/json",
+            "X-CX-Tg-Timestamp": stamp,
+            "X-CX-Tg-Signature": hmac.new(settings.tgbot_internal_secret.encode(), payload, hashlib.sha256).hexdigest(),
+        }
+        assert client.post(path, content=raw, headers=signed).json() == {"accepted": True}
+        client.app.state.tgbot_task = SimpleNamespace(done=lambda: False)
         qr = client.get("/api/public/bot/qr")
         assert qr.status_code == 200
         assert qr.headers["content-type"].startswith("image/svg+xml")
         assert "<svg" in qr.text
         assert secret not in qr.text
+        client.app.state.tgbot_task = None
+        assert client.get("/api/public/bot/qr").status_code == 503
 
         monkeypatch.setattr(settings, "tgbot_enabled", True)
         monkeypatch.setattr(settings, "tgbot_internal_secret", "public-test-transport-vector-000000000000")

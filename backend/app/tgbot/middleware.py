@@ -10,6 +10,7 @@ from app.errors import Problem
 from app.tgbot.signature import MAX_BODY_BYTES, BotTransportDisabled, InvalidBotSignature, verify_signature
 
 INBOUND_PATH = "/api/internal/tgbot/inbound"
+HEARTBEAT_PATH = "/api/internal/tgbot/heartbeat"
 
 
 class BotSignatureMiddleware:
@@ -17,7 +18,7 @@ class BotSignatureMiddleware:
         self.app, self.secret = app, secret
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["path"] != INBOUND_PATH:
+        if scope["type"] != "http" or scope["path"] not in {INBOUND_PATH, HEARTBEAT_PATH}:
             await self.app(scope, receive, send)
             return
         secret = self.secret()
