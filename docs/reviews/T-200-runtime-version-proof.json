@@ -1,0 +1,44 @@
+{
+  "base": "1d248e2d075bbb132182f6910bf5584c81668c8f",
+  "mode": "timid coverage, no performance claim",
+  "red": "1 failed1.80s: actual runtime1.4.0 vs canonical1.5.29",
+  "targets": "10 passed16.91s instrumented; append checker1 passed10.88s",
+  "new_coverage": {
+    "covered": 17,
+    "statements": 17,
+    "percent": 100.0
+  },
+  "files": {
+    "backend/app/contracts/api_metadata.py": {
+      "sha256": "6e113d024ebcd70d1539176d773ab87ad4f434c8a577e7380f71a4597176e4a2",
+      "new_statements": 12,
+      "covered_new": 12,
+      "missing_new": []
+    },
+    "backend/app/main.py": {
+      "sha256": "08784866c08a539803cf7b7e0244ed181b5e702048fa592cfe90128608fcb74e",
+      "new_statements": 1,
+      "covered_new": 1,
+      "missing_new": []
+    },
+    "scripts/check_openapi_drift.py": {
+      "sha256": "c5d6fdce0b2a7c92191f9af3129694e26ebf8bb70ea4e182401aa0180f826988",
+      "new_statements": 4,
+      "covered_new": 4,
+      "missing_new": []
+    }
+  },
+  "image_probe": {
+    "image": "sha256:b98d406eeaed349bf623a7b53d107b99469140e8130fa2c38ce2fa0a540db03a",
+    "source": "A1 actual API30 image0a6; only new api_metadata.py read-only overlay",
+    "network": "none",
+    "root_filesystem": "read-only",
+    "database_or_actors": "none",
+    "result": "api_version()==1.5.30",
+    "not_claimed": "full new image build"
+  },
+  "independent_review": "A3 nofindings;8tests2.74s plus malformed/missing/recovery/cache probes",
+  "mypy": "324sources green",
+  "drift": "196/196 all;27/27 health/settings",
+  "extra_script_ruff": "baseline=current EXE001x1/RUF100x4, no new diagnostics; project lint scope unchanged"
+}
