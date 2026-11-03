@@ -96,10 +96,20 @@
     },
     "full_image_e2e": {
       "passed": 155,
-      "seconds": 324,
       "source": "3e9e592 +4fixture files (1fbeb341)",
       "composition_limit": "T092 not included in image155; final exact-head CI required",
-      "review": "CI-206-e2e-proof.json"
+      "review": "CI-206-e2e-proof.json",
+      "duration_reported": "5.4min"
+    },
+    "test_infra_identity": "All4files match checked1fbeb341 source manifest",
+    "full_db_recovery": {
+      "tables": 114,
+      "sequences": 60,
+      "schemas": 4,
+      "same_cluster_roundtrip": "passed; source unchanged",
+      "populated_langgraph": "restored",
+      "private_quota_and_tgbot_tables": "13 empty: only schema/empty-state recovery verified",
+      "review": "FREEZE-2026-11-03-full-db-recovery.md"
     }
   },
   "composed_application_head": "384de07e2513312bc1447468fb9c2a6e2f4e9b7c",

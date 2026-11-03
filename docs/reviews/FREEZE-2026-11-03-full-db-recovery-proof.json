@@ -1,0 +1,940 @@
+{
+  "source": "cx_t092_notifications_revision",
+  "target": "cx_freeze_recovery_revision_20261103",
+  "server_major": 16,
+  "dump_tool": "pg_dump (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)",
+  "restore_tool": "pg_restore (PostgreSQL) 16.15 (Debian 16.15-1.pgdg13+2)",
+  "source_revision_context": "c4345977d53c02e29f61a93325e3939a2178b18e",
+  "checks": {
+    "all_table_rows_hashes_unchanged": true,
+    "all_sequence_values_unchanged": true,
+    "all_inventory_unchanged": true,
+    "source_before_after_unchanged": true,
+    "schema_dump_equal": true,
+    "source_schema_before_after_unchanged": true
+  },
+  "snapshot_mode": "READ ONLY REPEATABLE READ/exported snapshot",
+  "all_schemas_included": true,
+  "schema_exclusions": [],
+  "restore_single_transaction": true,
+  "restore_clean_used": false,
+  "source_sql_writes": false,
+  "new_target_only": true,
+  "archive_path": "/tmp/freeze-recovery-20261103-8uc1_v9f/full-database.dump",
+  "archive_bytes": 1227701,
+  "archive_sha256": "37fb8705b83e823ed605bde5c2ceab4454405251845b15b9437b826719037081",
+  "archive_mode": "0o600",
+  "artifact_directory_mode": "0o700",
+  "schema_sha256": "d14b8b611c4a4690240164b65fddd13a799a6090dbe319b7a72a24641d86d288",
+  "inventory": {
+    "tables": {
+      "channel_runtime.telegram_chat_rate": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "channel_runtime.telegram_client_bindings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "channel_runtime.telegram_conversations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "channel_runtime.telegram_deliveries": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "channel_runtime.telegram_inbound": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "channel_runtime.telegram_signal_bindings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "langgraph.checkpoint_blobs": {
+        "rows": 363,
+        "sha256": "9d5f4d628e6d6e1f41fbb7364c6a8b96df2032e417daf141f78a81db8c5f0ded",
+        "relkind": "r"
+      },
+      "langgraph.checkpoint_migrations": {
+        "rows": 10,
+        "sha256": "12a86faa3f4a0c0e066b20ab310b95a8862cbfe9a68f575f85085d17b96ca6d3",
+        "relkind": "r"
+      },
+      "langgraph.checkpoint_writes": {
+        "rows": 701,
+        "sha256": "84374615fea1c2487059dadad5ea4ad1931a94315f9fa07fd6f7f51fd38d7721",
+        "relkind": "r"
+      },
+      "langgraph.checkpoints": {
+        "rows": 42,
+        "sha256": "943c8d09a2cc460100e3ea360a9918a522df629f875e3f6c7381ffb181b07831",
+        "relkind": "r"
+      },
+      "llm_runtime.credential_aliases": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.credentials": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.daily_usage": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.identity_settings": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.profile_scopes": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.reconciliations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "llm_runtime.wire_attempts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.accounts": {
+        "rows": 352,
+        "sha256": "6e20354c926a2f4817f6c42a8d6bc3f807769226d2c8bde9e45ad78b2d69f905",
+        "relkind": "r"
+      },
+      "public.agent_runs": {
+        "rows": 11,
+        "sha256": "2dbbf2d44cd2cecf32b46103e22a025f5c016e834c49331b02155b8d952d86ca",
+        "relkind": "r"
+      },
+      "public.agent_steps": {
+        "rows": 40,
+        "sha256": "47b5aa07a57815c92a98d2310cdb4cfeb405e82ba3b9e7f8f8590f22f421f3ed",
+        "relkind": "r"
+      },
+      "public.alembic_version": {
+        "rows": 1,
+        "sha256": "963859623761f79b52e4796cb0041fb66d6d3ef7cda2d29b8b0eb767cca382f2",
+        "relkind": "r"
+      },
+      "public.audio_sessions": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_agent_intents": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_causes": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_evidence": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_pending_signals": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_receipts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_runs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_runtime": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_tick_receipts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.behavior_work": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.bench_cases": {
+        "rows": 859,
+        "sha256": "831c921e78484b0bf92554281897f6649c7ab1d1035476e14861b942f16ab4a4",
+        "relkind": "r"
+      },
+      "public.bench_datasets": {
+        "rows": 6,
+        "sha256": "7210afcbd8a4def1e7e934d3ca631e8c6e71ae89a020fba7c77f1c65747d5a5d",
+        "relkind": "r"
+      },
+      "public.bench_results": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.bench_runs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.branch_network_history": {
+        "rows": 1068,
+        "sha256": "7ad33de8529d3fd01cfbbda190fcce57c98b8e1618258ab79cf29a3146207ca0",
+        "relkind": "r"
+      },
+      "public.branches": {
+        "rows": 240,
+        "sha256": "bc7c92964d2d1699d0ff67bbf4815d272514eac14cfd5957e253897ceb8bd95b",
+        "relkind": "r"
+      },
+      "public.business_rules": {
+        "rows": 5,
+        "sha256": "c6d23f7afdfbe4be83f06b451dffcd489c5d217e5c4cf38ac8f791ec2aff7e79",
+        "relkind": "r"
+      },
+      "public.channels": {
+        "rows": 12,
+        "sha256": "aa806487aee6e8812501d3c89c49d26ce0e3645aa97669fe9fbb0504e49343b7",
+        "relkind": "r"
+      },
+      "public.churn_events": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.cities": {
+        "rows": 1121,
+        "sha256": "eaea5e54ce5f79e85c404357d5d07953b0e439f21eb07fa8c63ce6479b42b265",
+        "relkind": "r"
+      },
+      "public.client_products": {
+        "rows": 406,
+        "sha256": "81275c79e8f032ea24ba94551b4dc948aef72ed720509beb66573261b02ae5d7",
+        "relkind": "r"
+      },
+      "public.client_reactions": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.client_states": {
+        "rows": 3,
+        "sha256": "d8002632c9b85d209b0c3f8969676a1552dac24f041582ffddecc2ae39397888",
+        "relkind": "r"
+      },
+      "public.clients": {
+        "rows": 200,
+        "sha256": "d3a87792c0ab32a1b523f047c6283dca549c7c5bc07b619f347c104c0be89f05",
+        "relkind": "r"
+      },
+      "public.compliance_alerts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.compliance_triggers": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.csi_cohort_members": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.csi_cohort_visits": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.csi_cohorts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.csi_responses": {
+        "rows": 76,
+        "sha256": "254aa85e6417b292597f25acfaf780dd7337223c09c9603eb3dab715be2a23fb",
+        "relkind": "r"
+      },
+      "public.csi_visits_agg": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.db_activity_log": {
+        "rows": 9106,
+        "sha256": "898e534efffc5fdb3de585998f4982ec494c6e3436c658bb36251263743f4b12",
+        "relkind": "r"
+      },
+      "public.dcltv_rates": {
+        "rows": 31,
+        "sha256": "22156f94536afc21b29483d8b7b5b4339545837a98394c8208d7b9a4e9d196fe",
+        "relkind": "r"
+      },
+      "public.demo_assets": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.economics_settings": {
+        "rows": 1,
+        "sha256": "e802a4351fb3e8edb1d611150724f728d3a30baa8fd6b76694ed086c59290d79",
+        "relkind": "r"
+      },
+      "public.employees": {
+        "rows": 1440,
+        "sha256": "3371ce2b7112ff93dfd589309d0615b372ccbf6cc239d51f27aa2acad47e0dfd",
+        "relkind": "r"
+      },
+      "public.error_codes": {
+        "rows": 25,
+        "sha256": "ae699685237b248bb27cb627eac5e6264a37aa657713cb768562e67da0f22ecd",
+        "relkind": "r"
+      },
+      "public.escalations": {
+        "rows": 2,
+        "sha256": "e21e969903a82e62377b31d0a5c17438354b6ecbbc7572281bba0881f18b3aae",
+        "relkind": "r"
+      },
+      "public.external_posts": {
+        "rows": 163,
+        "sha256": "e3157110be8a854b32bec185235e5f0a096f432ac2c7f0603bcf02c3f0f3f819",
+        "relkind": "r"
+      },
+      "public.external_replies": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.faults": {
+        "rows": 37,
+        "sha256": "758bc62901057beb4a6e5227b42ef785cbe1d4e962dff33044496c28d07a14a4",
+        "relkind": "r"
+      },
+      "public.federal_districts": {
+        "rows": 8,
+        "sha256": "d366c245fe8d2a7efee5ec5c4bfa2ed9314e0f5cd6ba771e07fadcf87c2c65aa",
+        "relkind": "r"
+      },
+      "public.financial_evidence": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.followups": {
+        "rows": 4,
+        "sha256": "61e2a7a83a22076e4d538977ee10d2fe9d81cd58bff6a1b56e2c21a2c7c35ad0",
+        "relkind": "r"
+      },
+      "public.gift_catalog": {
+        "rows": 5,
+        "sha256": "fe1d8995f11adce46e746ad836a4ed82827ca800ba0b486ae827df88c943bb34",
+        "relkind": "r"
+      },
+      "public.hitl_feedback": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.hitl_feedback_processing": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.human_decisions": {
+        "rows": 2,
+        "sha256": "59617b38d0bba22ff3998c4922eced6d93b9d33d1e69542645d54514f5434267",
+        "relkind": "r"
+      },
+      "public.incident_artifacts": {
+        "rows": 5,
+        "sha256": "2370845db8d2685d29989126537fb135424582e7803c4085277a272fd23e4224",
+        "relkind": "r"
+      },
+      "public.incident_economics": {
+        "rows": 2,
+        "sha256": "214d1d4a501551a30e4efb6712c77aed732360ba292028be49e3c31416578428",
+        "relkind": "r"
+      },
+      "public.incident_signals": {
+        "rows": 153,
+        "sha256": "f1d0fa7245c64dfe4dbaa67b837302f32dad44a2d453c9bb15ff873a53367676",
+        "relkind": "r"
+      },
+      "public.incident_status_history": {
+        "rows": 164,
+        "sha256": "5ab4d5a5b81f7be85798a66c40f75bf8ff759935103338909ba68da6d4eb9a77",
+        "relkind": "r"
+      },
+      "public.incidents": {
+        "rows": 152,
+        "sha256": "881d11fcfe5903cf2e731f7f05cd70413ac334fa76419adade03273ffb766b9b",
+        "relkind": "r"
+      },
+      "public.ingest_messages": {
+        "rows": 426,
+        "sha256": "48df43f0a0957502fd9ab22d9d564767c0ea9d30728f27989cf3aaf531df707c",
+        "relkind": "r"
+      },
+      "public.ingest_sources": {
+        "rows": 10,
+        "sha256": "e244e958ce4b7fbd9b87439426b2dfd789cfd894896f08994e398d9de78a87ee",
+        "relkind": "r"
+      },
+      "public.ledger_entries": {
+        "rows": 3595,
+        "sha256": "551d62977739eb74098502d63fb3840d410f09e7ac8282df1bd4953cd4c6c4a9",
+        "relkind": "r"
+      },
+      "public.llm_api_keys": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.llm_cassettes": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.llm_profiles": {
+        "rows": 8,
+        "sha256": "55fb08212b9a55a35bc66ef5a1ae10762088d6677fb92919534952df06ec2306",
+        "relkind": "r"
+      },
+      "public.misselling_patterns": {
+        "rows": 8,
+        "sha256": "b1195fd961e0ca6ae0eb88804c7c556131e9a4e3c4d701ee3ba32a15b5c884c4",
+        "relkind": "r"
+      },
+      "public.notification_templates": {
+        "rows": 389,
+        "sha256": "070fb2dc8e2202cbbf18554656eaacae6eabebe6604228a776bb52c6aadfdb38",
+        "relkind": "r"
+      },
+      "public.notifications": {
+        "rows": 9,
+        "sha256": "66c2ce35059cf154de2442cc666bede08953ab47efc5d4f464fd72e2f31fef45",
+        "relkind": "r"
+      },
+      "public.operations": {
+        "rows": 4800,
+        "sha256": "80b5a20dca13e0276de812a39ec5355e011e29a7e0d6a65e26a9b9d41f5d36c0",
+        "relkind": "r"
+      },
+      "public.personal_chat_messages": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.personal_chat_sessions": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.product_lines": {
+        "rows": 15,
+        "sha256": "02d779d84252d8051d8b29ac0181d2db74008d6f8d556cef5b911336687fc3ab",
+        "relkind": "r"
+      },
+      "public.product_signal_history": {
+        "rows": 180,
+        "sha256": "d5338db69c74aa181c210c6baa5b93dbb665458f7bbe339d0557718de3964d86",
+        "relkind": "r"
+      },
+      "public.products": {
+        "rows": 4,
+        "sha256": "ced405765823dd41ee2bdfa184e4176acc23de73cd56900b0ce7562b97e73391",
+        "relkind": "r"
+      },
+      "public.psychotypes": {
+        "rows": 8,
+        "sha256": "23faecd0d7c36515b1f6a315929e1b86eac76a0b385d1b764113be9a3c82c67a",
+        "relkind": "r"
+      },
+      "public.regions": {
+        "rows": 89,
+        "sha256": "8811839cc255e24855289ab19debec11564245ac1665000f2a4323ab616877cd",
+        "relkind": "r"
+      },
+      "public.routing_rules": {
+        "rows": 40,
+        "sha256": "23a452fd275498aad357fd34ba9507a5419ee14b62e2474261def3cc113ed8bd",
+        "relkind": "r"
+      },
+      "public.rule_evaluations": {
+        "rows": 15,
+        "sha256": "fa77a41547f318ee1b140e0846ebc14f376e5f090766c74beaaeb28d4c5c42d4",
+        "relkind": "r"
+      },
+      "public.scenarios": {
+        "rows": 35,
+        "sha256": "d7d184eca4c55bf3349c085106450820876cf735106878a4cdab88cc78ebda9a",
+        "relkind": "r"
+      },
+      "public.segment_psychotype_mix": {
+        "rows": 36,
+        "sha256": "e36b76176c7a2c1cc20fa8f92abe4601ff0a522541afd1d8514e76c615d67b58",
+        "relkind": "r"
+      },
+      "public.segments": {
+        "rows": 7,
+        "sha256": "83998571fcaca987b8bb9c4972c3285354d6aa994fc618d386d4d3cee21eb879",
+        "relkind": "r"
+      },
+      "public.service_scripts": {
+        "rows": 2,
+        "sha256": "ae3ee30c5642e7e2ac6800963c5d133226bd1aef9d5f2289f76b9c53ab9a6c78",
+        "relkind": "r"
+      },
+      "public.settings": {
+        "rows": 6,
+        "sha256": "6c1853380d473bd6bfa94f47f46d7cac9d7481d64000332aff836e603d811489",
+        "relkind": "r"
+      },
+      "public.signal_types": {
+        "rows": 10,
+        "sha256": "6084d648fd89d97d8b7be5614b0c019c33d88cf6fb251d12f49b6e8e6f41c2ee",
+        "relkind": "r"
+      },
+      "public.signals": {
+        "rows": 1165,
+        "sha256": "4b5fab96bf1482411bf67f9ccb46e8583537b713cf4023ccdac553817936adac",
+        "relkind": "r"
+      },
+      "public.sim_events": {
+        "rows": 247,
+        "sha256": "90f0e4e31a792a164052882612d5b7a636f3c63c1d94171d7b534827b751b24c",
+        "relkind": "r"
+      },
+      "public.sim_runs": {
+        "rows": 3,
+        "sha256": "2d6006b0c7d2ee7b0225cb91d9808f7e9e924b37406d5d25d9b16541c02930f0",
+        "relkind": "r"
+      },
+      "public.sim_state": {
+        "rows": 1,
+        "sha256": "fd41c3a5aeeb5f9f90487d01aa70f6b3876fdf236f6bafc893b6cc669f9b73a0",
+        "relkind": "r"
+      },
+      "public.sla_matrix": {
+        "rows": 9,
+        "sha256": "21385624481fc01d7da1c55c2999382c98c459642d3ca9d67b7ffe5a7f8eea4a",
+        "relkind": "r"
+      },
+      "public.stt_metrics": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.system_logs": {
+        "rows": 413,
+        "sha256": "a015cf24d353bc2dac874a4f00929350b66a29fdd541db06687219f461b60bac",
+        "relkind": "r"
+      },
+      "public.systems": {
+        "rows": 12,
+        "sha256": "15f346dbb936f46d5f50d4b576ed2b09de2b6bf0e64edb612b4f1e4f18398d3f",
+        "relkind": "r"
+      },
+      "public.tariffs": {
+        "rows": 12,
+        "sha256": "2f33d8e49a75243f6827948e05a351d0a29c98e8f09f0d1842a062eb908d2bb9",
+        "relkind": "r"
+      },
+      "public.tasks": {
+        "rows": 3,
+        "sha256": "56750b92ec9906de159faa57ac21c765e17895c824dfaccab8db6188a410ec9b",
+        "relkind": "r"
+      },
+      "public.team_actions": {
+        "rows": 7,
+        "sha256": "9e3c9801560dcd17f3df13cef0c57b4e3c9172998691fe7b930ce8c97a2be571",
+        "relkind": "r"
+      },
+      "public.team_systems": {
+        "rows": 12,
+        "sha256": "d6b52d13e163e469a3c80c8c2c81d049426f45ef3b1bb6bdb0a6b39abb08b685",
+        "relkind": "r"
+      },
+      "public.teams": {
+        "rows": 12,
+        "sha256": "399a8e5e6bed943fd650f8b4310c2a7adb5cd20e68cbcd8d96b179cca626734b",
+        "relkind": "r"
+      },
+      "public.transcripts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      },
+      "public.utterances": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "relkind": "r"
+      }
+    },
+    "sequences": {
+      "public.accounts_id_seq": {
+        "last_value": 352,
+        "is_called": true
+      },
+      "public.agent_runs_id_seq": {
+        "last_value": 11,
+        "is_called": true
+      },
+      "public.agent_steps_id_seq": {
+        "last_value": 40,
+        "is_called": true
+      },
+      "public.audio_sessions_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.behavior_agent_intents_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.behavior_evidence_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.behavior_pending_signals_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.behavior_work_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.bench_cases_id_seq": {
+        "last_value": 859,
+        "is_called": true
+      },
+      "public.bench_datasets_id_seq": {
+        "last_value": 6,
+        "is_called": true
+      },
+      "public.bench_results_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.bench_runs_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.branch_network_history_id_seq": {
+        "last_value": 1068,
+        "is_called": true
+      },
+      "public.branches_id_seq": {
+        "last_value": 240,
+        "is_called": true
+      },
+      "public.churn_events_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.client_products_id_seq": {
+        "last_value": 406,
+        "is_called": true
+      },
+      "public.client_reactions_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.client_states_id_seq": {
+        "last_value": 3,
+        "is_called": true
+      },
+      "public.clients_id_seq": {
+        "last_value": 200,
+        "is_called": true
+      },
+      "public.compliance_alerts_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.compliance_triggers_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.csi_cohort_visits_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.csi_cohorts_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.db_activity_log_id_seq": {
+        "last_value": 9106,
+        "is_called": true
+      },
+      "public.demo_assets_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.employees_id_seq": {
+        "last_value": 1440,
+        "is_called": true
+      },
+      "public.escalations_id_seq": {
+        "last_value": 2,
+        "is_called": true
+      },
+      "public.external_posts_id_seq": {
+        "last_value": 163,
+        "is_called": true
+      },
+      "public.external_replies_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.faults_id_seq": {
+        "last_value": 37,
+        "is_called": true
+      },
+      "public.financial_evidence_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.followups_id_seq": {
+        "last_value": 4,
+        "is_called": true
+      },
+      "public.hitl_feedback_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.human_decisions_id_seq": {
+        "last_value": 2,
+        "is_called": true
+      },
+      "public.incident_artifacts_id_seq": {
+        "last_value": 5,
+        "is_called": true
+      },
+      "public.incident_status_history_id_seq": {
+        "last_value": 164,
+        "is_called": true
+      },
+      "public.incidents_id_seq": {
+        "last_value": 152,
+        "is_called": true
+      },
+      "public.ingest_messages_id_seq": {
+        "last_value": 426,
+        "is_called": true
+      },
+      "public.ledger_entries_id_seq": {
+        "last_value": 3595,
+        "is_called": true
+      },
+      "public.llm_api_keys_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.llm_cassettes_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.llm_profiles_id_seq": {
+        "last_value": 8,
+        "is_called": true
+      },
+      "public.notification_templates_id_seq": {
+        "last_value": 389,
+        "is_called": true
+      },
+      "public.notifications_id_seq": {
+        "last_value": 9,
+        "is_called": true
+      },
+      "public.operations_id_seq": {
+        "last_value": 4800,
+        "is_called": true
+      },
+      "public.personal_chat_messages_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.personal_chat_sessions_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.product_signal_history_id_seq": {
+        "last_value": 180,
+        "is_called": true
+      },
+      "public.routing_rules_id_seq": {
+        "last_value": 40,
+        "is_called": true
+      },
+      "public.rule_evaluations_id_seq": {
+        "last_value": 15,
+        "is_called": true
+      },
+      "public.signals_id_seq": {
+        "last_value": 1165,
+        "is_called": true
+      },
+      "public.sim_events_id_seq": {
+        "last_value": 247,
+        "is_called": true
+      },
+      "public.sim_runs_id_seq": {
+        "last_value": 3,
+        "is_called": true
+      },
+      "public.stt_metrics_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.system_logs_id_seq": {
+        "last_value": 413,
+        "is_called": true
+      },
+      "public.tariffs_id_seq": {
+        "last_value": 12,
+        "is_called": true
+      },
+      "public.tasks_id_seq": {
+        "last_value": 3,
+        "is_called": true
+      },
+      "public.team_actions_id_seq": {
+        "last_value": 7,
+        "is_called": true
+      },
+      "public.transcripts_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      },
+      "public.utterances_id_seq": {
+        "last_value": 1,
+        "is_called": false
+      }
+    },
+    "namespaces": [
+      [
+        "channel_runtime",
+        "cx",
+        null
+      ],
+      [
+        "langgraph",
+        "cx",
+        null
+      ],
+      [
+        "llm_runtime",
+        "cx",
+        null
+      ],
+      [
+        "public",
+        "pg_database_owner",
+        "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner}"
+      ]
+    ],
+    "migration_head": [
+      [
+        "0020"
+      ]
+    ],
+    "native_agent_runs": [
+      [
+        1,
+        2,
+        1163,
+        "deferred",
+        9,
+        true
+      ],
+      [
+        2,
+        2,
+        1164,
+        "deferred",
+        9,
+        true
+      ],
+      [
+        3,
+        3,
+        1165,
+        "completed",
+        14,
+        true
+      ]
+    ],
+    "run_event_scope": [
+      [
+        1,
+        "baseline",
+        "completed",
+        1162,
+        0,
+        237
+      ],
+      [
+        2,
+        "live",
+        "stopped",
+        2,
+        2,
+        1
+      ],
+      [
+        3,
+        "live",
+        "paused",
+        1,
+        9,
+        9
+      ]
+    ],
+    "orphan_event_runs": 0,
+    "database_locale": [
+      "UTF8",
+      "en_US.utf8",
+      "en_US.utf8",
+      "c",
+      null
+    ]
+  },
+  "seconds": 2.0473847220418975,
+  "application_started": false,
+  "external_http_llm_tg_email_calls": 0,
+  "limitations": [
+    "same-cluster database recovery only; global roles/deployment configuration/secrets files were not backed up",
+    "empty operational ledgers prove only schema/empty-state recovery, not outstanding quota or Telegram send recovery",
+    "no actors were resumed and no operational send/admission/reconciliation was executed"
+  ]
+}
