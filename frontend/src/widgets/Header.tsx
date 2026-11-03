@@ -67,7 +67,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
     if (!longTriggered.current) navigate(v2 ? '/overview' : '/')
   }
 
-  if (mobile) return <>
+  return <>{mobile ? <>
     <header className="mobile-header shrink-0 border-b border-line bg-surface">
       <div className="flex min-h-14 items-center gap-2 px-3 py-2">
         <button type="button" className="btn btn-primary mobile-icon" aria-label={t('app.title')} onPointerDown={onLogoDown} onPointerUp={onLogoUp} onPointerLeave={clearPress} onPointerCancel={clearPress}><Activity size={20} /></button>
@@ -103,10 +103,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         </section>
       </div>
     </Drawer>
-    <JuryModal open={jury} onClose={() => setJury(false)} />
-  </>
-
-  return (
+  </> : (
     <header className="desktop-header flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 py-2 border-b border-line bg-surface px-3">
       <div className="flex items-center gap-2">
         <button
@@ -207,9 +204,8 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
       {v2 && <RoleSelector />}
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <DeviceSelector />
-      <JuryModal open={jury} onClose={() => setJury(false)} />
     </header>
-  )
+  )}<JuryModal open={jury} onClose={() => setJury(false)} /></>
 }
 
 function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {

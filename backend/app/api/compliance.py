@@ -97,6 +97,8 @@ async def _start_mic_session(request: Request, body: dict[str, Any]) -> Any:
     from app.stt import registry
 
     code = body.get("stt_provider") or registry.default_code()
+    if code is None:
+        raise HTTPException(status_code=422, detail="STT-провайдер не выбран")
     try:
         prov = registry.get(code)
     except LookupError:
@@ -169,6 +171,8 @@ async def _start_file_session(request: Request, body: dict[str, Any]) -> Any:
     if mode not in ("stereo", "manual", "auto"):
         raise HTTPException(status_code=422, detail="diarization_mode: stereo | manual | auto")
     code = body.get("stt_provider") or registry.default_code()
+    if code is None:
+        raise HTTPException(status_code=422, detail="STT-провайдер не выбран")
     if code == "browser":
         raise HTTPException(status_code=422, detail="stt_provider=browser не принимает файл — нужен серверный STT")
     try:

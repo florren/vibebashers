@@ -5,7 +5,7 @@ import { microphoneOriginAllowed } from '../mic'
 import { VoiceInput } from '../VoiceInput'
 import { webSpeechSupported } from '../webSpeech'
 
-vi.mock('@/shared/api/hooks',()=>({useSttProviders:()=>({data:[{code:'vosk',available:true}]})}))
+vi.mock('@/shared/api/hooks',()=>({useSttProviders:()=>({data:[{code:'browser',available:true,is_default:true,external_service:true}]})}))
 beforeEach(async()=>{await i18n.changeLanguage('en')})
 afterEach(()=>{cleanup();vi.unstubAllGlobals()})
 it.each([

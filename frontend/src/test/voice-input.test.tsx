@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { VoiceInput } from '@/shared/audio/VoiceInput'
 import i18n from '@/shared/i18n'
 
-vi.mock('@/shared/api/hooks', () => ({ useSttProviders: () => ({ data: [{ code: 'vosk', available: true }] }) }))
+vi.mock('@/shared/api/hooks', () => ({ useSttProviders: () => ({ data: [{ code: 'vosk', available: true, is_default: true }] }) }))
 vi.mock('@/shared/audio/mic', async original => ({
   ...await original<typeof import('@/shared/audio/mic')>(),
   micSupported: () => true,

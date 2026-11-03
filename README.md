@@ -186,7 +186,7 @@ docker compose logs -f backend      # логи; структурированны
 | `MAILPIT_ENABLED` | `true` · `false` | `false` | отправлять письма клиентам в Mailpit | нужен запущенный Mailpit (`install.sh --with-mailpit`), иначе ошибки отправки в журнале |
 | `MAILPIT_HOST` | hostname | `mailpit` | локальный SMTP для квитанции публичного обращения | при запуске backend вне Docker: `127.0.0.1`; внешний SMTP не требуется |
 | `MAILPIT_PORT` | 1–65535 | `1025` | SMTP-порт Mailpit | просмотр писем: `http://localhost:8025` |
-| `STT_PROVIDER` | `none` · `browser` · `vosk` | `none` | распознавание речи для живой транскрибации | `browser`/`vosk` — контур B10, пока не реализован: оставляйте `none` |
+| `STT_PROVIDER` | `none` · `browser` · `vosk` | `none` | распознавание речи для живой транскрибации | `none` автоматически выбирает только доступный offline Vosk, иначе провайдер не выбран. `browser` — явный opt-in во внешний STT; без автоподмены |
 | `COMPLIANCE_ALERT_THRESHOLD` | целое ≥ 1 | `3` | подтверждённых срабатываний мисселлинга за встречу до алерта руководителю | `1` — алерт на первое срабатывание (шумно), `3` — по ДТЗ; на паттерны `immediate` (грубость, неверные факты) не влияет |
 | `LOG_DIR` | путь | `var/log` | куда писать JSONL-журнал | относительно `backend/`; в `.gitignore` |
 | `LOG_JSONL` | `true` · `false` | `true` | включить JSONL-журнал | при `false` отчёт о качестве теряет раздел журнала, остальное работает |

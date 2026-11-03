@@ -5,9 +5,10 @@ import { clsx } from 'clsx'
 import { Mic, Square, User, UserRound } from 'lucide-react'
 import { useComplianceBranches, useRefs, useStartMicSession, useSttProviders } from '@/shared/api/hooks'
 import type { MicSession, SttMessage } from '@/shared/api/client'
-import { micSupported, startMic, type MicHandle } from '@/shared/audio/mic'
+import { micSupported, microphoneOriginAllowed, startMic, type MicHandle } from '@/shared/audio/mic'
 import { startWebSpeech, webSpeechSupported } from '@/shared/audio/webSpeech'
 import { tEnum } from '@/shared/i18n'
+import { selectedDefaultProvider } from '@/shared/audio/providerSelection'
 import { Badge, ErrorBox, Section } from '@/shared/ui'
 
 type Mode = 'manual' | 'auto' | 'stereo'
@@ -43,10 +44,13 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
   const speechRef = useRef<{ stop: () => void } | null>(null)
   const listRef = useRef<HTMLOListElement>(null)
 
-  const avail = useMemo(() => (providers.data ?? []).filter((p) => p.available), [providers.data])
+  const avail = useMemo(() => providers.isError ? [] : (providers.data ?? []).filter((p) => p.available), [providers.data, providers.isError])
+  const initializedProvider = useRef(false)
   useEffect(() => {
-    if (!provider && avail.length) setProvider((avail.find((p) => p.is_default) ?? avail[0])!.code!)
-  }, [avail, provider])
+    if (initializedProvider.current || providers.isError || !providers.data) return
+    initializedProvider.current = true
+    setProvider(selectedDefaultProvider(providers.data)?.code ?? '')
+  }, [providers.data, providers.isError])
   useEffect(() => {
     const b = branches.data?.[0]
     if (branchId == null && b?.id) {
@@ -87,7 +91,7 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
   }, [status, mode, speaker])
 
   const begin = async () => {
-    if (!employeeId || !provider) return
+    if (!employeeId || !provider || !prov || providers.isError || !microphoneOriginAllowed(window.location, window.isSecureContext === true)) return
     setErr(null)
     setUtts([])
     setPartial({})
@@ -158,7 +162,7 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
   }, [stopAll])
 
   const live = status === 'live' || status === 'connecting' || status === 'closing'
-  const supported = isBrowser ? webSpeechSupported() : micSupported()
+  const supported = microphoneOriginAllowed(window.location, window.isSecureContext === true) && (isBrowser ? webSpeechSupported() : micSupported())
 
   return (
     <div className="mx-auto max-w-4xl space-y-3">
@@ -218,7 +222,9 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
           </label>
           <label className="block text-xs">
             <div className="mb-1 text-muted">{t('live.provider')}</div>
-            <select className="input w-full" disabled={live} value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <select className="input w-full" disabled={live || providers.isError} value={provider} onChange={(e) => { initializedProvider.current = true; setProvider(e.target.value) }}>
+              <option value="">{t('live.selectProvider')}</option>
+              {provider && !prov && <option value={provider}>{t('live.unavailableProvider', { code: provider })}</option>}
               {avail.map((p) => (
                 <option key={p.code} value={p.code}>
                   {p.label_ru}
@@ -235,9 +241,11 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
             </select>
           </label>
         </div>
+        {prov?.external_service && <p className="px-3 text-sm text-muted">{t('voice.externalHint')}</p>}
+        {providers.isError && <ErrorBox error={providers.error} compact />}
         <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2">
           {!live ? (
-            <button className="btn btn-primary" disabled={!employeeId || !provider || !supported || start.isPending} onClick={() => void begin()}>
+            <button className="btn btn-primary" disabled={!employeeId || !provider || !prov || providers.isError || !supported || start.isPending} onClick={() => void begin()}>
               <Mic size={14} /> {t('live.start')}
             </button>
           ) : (

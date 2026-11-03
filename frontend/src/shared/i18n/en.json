@@ -1434,7 +1434,9 @@
     "reportHint": "The report is stored on the audio session and is available to the branch manager (Manager tab); alerts go to Telegram if the branch has a linked chat.",
     "wsError": "The /ws/audio connection dropped",
     "speechError": "Browser recognition error: {{e}}",
-    "timeRange": "{{start}}–{{end}} s"
+    "timeRange": "{{start}}–{{end}} s",
+    "selectProvider": "Choose an STT provider",
+    "unavailableProvider": "Provider {{code}} is unavailable"
   },
   "voice": {
     "start": "Dictate",
@@ -1443,7 +1445,9 @@
     "nothing": "Speech was not recognized — try again",
     "hintServer": "The microphone recording is recognized offline on the server (Vosk) and added to the text",
     "hintBrowser": "The browser recognizes speech (Web Speech API) — text is added as you speak",
-    "secureRequired": "Microphone input requires a secure HTTPS or localhost context."
+    "secureRequired": "Microphone input requires a secure HTTPS or localhost context.",
+    "externalHint": "External STT: audio is sent to the browser's service.",
+    "providersUnavailable": "STT providers are unavailable. Use text input."
   },
   "demoMenu": {
     "title": "Demonstrator menu",
