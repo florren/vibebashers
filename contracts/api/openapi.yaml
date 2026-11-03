@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.29
+  version: 1.5.30
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -973,17 +973,22 @@ paths:
       tags: [map]
       summary: Агрегаты по субъектам РФ для тепловой карты
       parameters:
-        - { name: layer, in: query, schema: { type: string, enum: [signals, critical, incidents_open, churn_risk], default: signals } }
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: layer, in: query, schema: { type: string, enum: [signals, critical, incidents_open, churn_risk, incidents, churn], default: signals } }
         - { name: window_hours, in: query, schema: { type: integer, default: 24 } }
       responses:
+        "422": { $ref: "#/components/responses/Problem" }
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RegionHeat" } } } } }
   /api/map/regions/{code}/cities:
     parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
     get:
       tags: [map]
       summary: Drill-down субъект → города
-      parameters: [{ name: window_hours, in: query, schema: { type: integer, default: 24 } }]
+      parameters:
+        - { $ref: "#/components/parameters/RunId" }
+        - { name: window_hours, in: query, schema: { type: integer, default: 24 } }
       responses:
+        "422": { $ref: "#/components/responses/Problem" }
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CityHeat" } } } } }
 
   # ---------------------------------------------------------------- metrics

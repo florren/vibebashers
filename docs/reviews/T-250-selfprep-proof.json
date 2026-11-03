@@ -1,0 +1,94 @@
+{
+  "portable_cases": 4,
+  "passed": 4,
+  "seconds": 8.5,
+  "runs": [
+    {
+      "id": 2,
+      "parent_run_id": 1,
+      "kind": "scenario",
+      "scenario_id": "csi_and_branches",
+      "status": "stopped",
+      "started_sim": "2026-11-09T06:00:00Z",
+      "reset_mode": "counters",
+      "signals": 301,
+      "effective_roles": {
+        "fast": "mock",
+        "main": "mock",
+        "twin": "mock"
+      }
+    },
+    {
+      "id": 3,
+      "parent_run_id": 2,
+      "kind": "scenario",
+      "scenario_id": "csi_and_branches",
+      "status": "stopped",
+      "started_sim": "2026-11-09T06:00:00Z",
+      "reset_mode": "counters",
+      "signals": 301,
+      "effective_roles": {
+        "fast": "mock",
+        "main": "mock",
+        "twin": "mock"
+      }
+    },
+    {
+      "id": 4,
+      "parent_run_id": 3,
+      "kind": "scenario",
+      "scenario_id": "csi_and_branches",
+      "status": "paused",
+      "started_sim": "2026-11-09T06:00:00Z",
+      "reset_mode": "counters",
+      "signals": 301,
+      "effective_roles": {
+        "fast": "mock",
+        "main": "mock",
+        "twin": "mock"
+      }
+    }
+  ],
+  "sim_time": "2026-11-09T06:00:00+00:00",
+  "running": false,
+  "current_run_id": 4,
+  "isolated_ownership": "cx_map_ui_revision only; counters intentionally switches current, previous histories retained; no baseline restore/delete/HD/external calls",
+  "missing_marker": {
+    "expected_rejection": true,
+    "tables": 97,
+    "unchanged": true,
+    "current_run_id": 4,
+    "current_unchanged": true
+  },
+  "ci_helper_unit": {
+    "passed": 17,
+    "seconds": 0.06
+  },
+  "e2e_typecheck": "tsc --noEmit -p frontend/e2e/tsconfig.json --lib ES2023,DOM,DOM.Iterable",
+  "initial_invocation": "metadata выше наблюдались после run4; final exact source invocation ниже создал run5 штатным counters",
+  "final_invocation": {
+    "stats": {
+      "startTime": "2026-11-02T23:28:49.900Z",
+      "duration": 8401.424,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "preparation": {
+      "previous_run_id": 4,
+      "run_id": 5,
+      "sim_time": "2026-11-09T06:00:00+00:00",
+      "owner": "cx-map-ui-revision"
+    },
+    "source_sha256": "a4f864c753d4dadc954c690fe915eedb52bb0c804290a35f898e49262e5ffbce",
+    "report_sha256": "9bf47c456ad59e207e53420282fb11983ded161d0a08903496fe532f79856a8d"
+  },
+  "whitespace_marker": {
+    "expected_rejection": true,
+    "tables": 97,
+    "unchanged": true,
+    "current_run_id": 5,
+    "current_unchanged": true
+  }
+}

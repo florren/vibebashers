@@ -17,7 +17,8 @@ from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
 from tests.integration.test_proactive_prepare import mass_seeded as mass_seeded
 from tests.proactive_runtime import offline_main_runtime, run_prepared_mass_case
 
-RUNNABLE = [s for s in sc.load_all() if sc.is_runnable(s)]
+# T262 имеет отдельную native acceptance fixture (XLSX/scoped registration).
+RUNNABLE = [s for s in sc.load_all() if sc.is_runnable(s) and s.get("kind") != "acceptance"]
 
 
 @pytest.mark.parametrize("scenario", RUNNABLE, ids=[f"{s['number']:02d}-{s['id']}" for s in RUNNABLE])
@@ -71,9 +72,13 @@ async def test_scenario(seeded: str, scenario: dict, request, monkeypatch, tmp_p
 
 
 def test_all_scenarios_listed() -> None:
-    """Все 33 сценария, включая 20 тематических входов ТЗ, присутствуют; у незапускаемых указан пакет, который их включит."""
+    """Все 35 сценариев, включая неизменённые 33 прежних входа, присутствуют; у незапускаемых указан пакет, который их включит."""
     items = sc.load_all()
-    assert [s["number"] for s in items] == list(range(1, 34))
+    assert [s["number"] for s in items] == list(range(1, 36))
+    assert [(s["id"], s["tz_number"]) for s in items[33:]] == [
+        ("cabinet_red_words_report", 14),
+        ("csi_and_branches", 15),
+    ]
     for s in items:
         if not sc.is_runnable(s):
             assert s.get("requires"), s["id"]

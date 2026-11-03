@@ -8,7 +8,7 @@
 | Волна | 9 |
 | Слой | `L4` Фронт (владелец — см. docs/TEAM-SPLIT.md и CODEOWNERS) |
 | В демо-минимуме | нет — можно отложить |
-| Статус | `todo` |
+| Статус | `in_progress` |
 
 ## Цель
 ЕТЗ 5.4, 8.2–8.4 и критерии 16.1 (ТЗ 25.5) на существующей карте d3-geo.
@@ -43,4 +43,6 @@ cd frontend && npx playwright test e2e/map-branches.spec.ts
 ```
 
 ## Отчёт субагента
-_Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+Ветка `codex/T-250-map-branches`; обычная композиция clean API29c8/T255192/Journeyc463. Lazy directory/real-coordinate clusters/list/keyboard/card/4аналитические метрики; direct closed counts отдельно от city90-day proxy. Map-only current/read-only граница выставляется до legacy KPI mount, other tabs defaults сохранены. API30 additive RunId/оба aliases/422; все155API29 и167API28 DTO без изменений.
+
+Fresh demo5000/600000operations +actual XLSX301→300members/2400visits: native4/4 ru/en×themes, final initial298–321ms, все branch/analytics/count reads729–754ms,97tablehashesunchanged,0external/nonGET/errors. Новый self-prepared e2e4/4 (8.5s), missing-marker refusal сохраняет97hashes/current; CI marker только test environment. strict map-layout20/20 sourcef98, glyph-specific4unit/native4green. `make lint` exit0:512front/74files,backend557/325,bot12/5,drift196/196; production main/personal build и contracts green. Ранние6PG scope/alias cases source731/0387; не выдаются за full finalhead. Visual follow-up проверен: count ниже anchor18CSSpx, neutral ring transparent, нет пересечения/clip при прежних координатах/aria/listN. Нужны exact-head full CI и human contract review, статус остаётся in_progress. [UI/proof](../reviews/T-250-ui-candidate.md), [API30review](../reviews/T-250-api30-review.md), [machine evidence](../reviews/T-250-native-proof.json).

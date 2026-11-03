@@ -103,6 +103,23 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
         await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
         res = await sc.evaluate(conn, scenario, run_id)
+        if scenario.get("kind") == "acceptance":
+            from scripts.acceptance_check import verify_reads
+
+            header = await (
+                await conn.execute("select settings_snapshot->'t262_inputs' from sim_runs where id=%s", (run_id,))
+            ).fetchone()
+            refs = await (
+                await conn.execute("select public_id from signals where run_id=%s order by id", (run_id,))
+            ).fetchall()
+            async with httpx.AsyncClient(base_url=base, timeout=60) as http:
+                res["checks"].extend(
+                    await verify_reads(
+                        http, scenario["id"], run_id, header[0] if header else None, [r[0] for r in refs]
+                    )
+                )
+            res["passed"] = res["passed"] and all(c["ok"] is True for c in res["checks"])
+            print("        T262: только Mock foundation; UI/replay not_verified")  # noqa: T201
         await sc.save_result(conn, scenario["id"], res)
         await conn.commit()
     mark = "OK " if res["passed"] else "FAIL"

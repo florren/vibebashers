@@ -11,13 +11,29 @@ import hashlib
 import random
 import re
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
+from functools import lru_cache
+from types import MappingProxyType
 from typing import Any
 
 from app.amounts import ruble_amount_hint
 from app.contracts.registry import validate_schema
 from app.i18n import communication_lang
 from app.llm.base import LLMProfile, Message, Usage
+from app.sim.textgen import load_yaml
+
+
+@lru_cache(maxsize=1)
+def _unique_product_lines() -> Mapping[str, str | None]:
+    """Только однозначный canonical product→line; coarse credit не уточняется."""
+    matches: dict[str, set[str]] = {}
+    for line in load_yaml("product_lines.yaml")["product_lines"]:
+        for product in line["product_codes"]:
+            matches.setdefault(product, set()).add(line["code"])
+    return MappingProxyType(
+        {product: next(iter(lines)) if len(lines) == 1 else None for product, lines in matches.items()}
+    )
+
 
 NEG = (
     "ужас",
@@ -369,6 +385,7 @@ def analyze(text: str) -> dict[str, Any]:
         "criticality": criticality,
         "tone": tone,
         "product": product,
+        "product_line": _unique_product_lines().get(product) if product is not None else None,
         "system": system,
         "amount_rub": amount,
         "churn": "churn_threat" in intents,
@@ -502,6 +519,8 @@ class MockProvider:
         """Детерминированное заполнение (разыменованной) схемы с учётом эвристик по имени поля."""
         if "const" in schema:
             return schema["const"]
+        if name == "product_line" and not validate_schema(a.get("product_line"), schema):
+            return a.get("product_line")
         if "anyOf" in schema or "oneOf" in schema:
             variants: list[dict[str, Any]] = schema.get("anyOf") or schema.get("oneOf") or []
             non_null = [v for v in variants if v.get("type") != "null"]
@@ -607,7 +626,12 @@ class MockProvider:
             req = set(schema.get("required", []))
             out: dict[str, Any] = {}
             for key, sub in props.items():
+                # Optional non-nullable enum: unknown остаётся отсутствующим,
+                # а не превращается в первое направление списка.
+                if key == "product_line" and key not in req and a.get(key) is None:
+                    continue
                 if key in req or key in (
+                    "product_line",
                     "flags",
                     "intents",
                     "entities",

@@ -5,16 +5,38 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from app.analytics.cabinet_scope import validate_run
 from app.analytics.map_thresholds import map_thresholds
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 
 router = APIRouter(tags=["map"])
 
-LAYERS = ("signals", "critical", "incidents", "churn")
+LAYERS = {
+    "signals": "signals",
+    "critical": "critical",
+    "incidents": "incidents",
+    "incidents_open": "incidents",
+    "churn": "churn",
+    "churn_risk": "churn",
+}
+
+
+async def _map_run_id(conn: Any, requested: str | None) -> int | None:
+    # Omitted остаётся documented current; явное пустое/невалидное не расширяется.
+    if requested is not None:
+        validate_run(requested)
+    return await resolve_run_id(conn, requested)
+
+
+def _run_filter(requested: str | None, rid: int | None, column: str) -> str:
+    # column — только внутренний SQL identifier, не вход запроса.
+    if requested == "all":
+        return ""
+    return f"and {column} = %s" if rid is not None else "and false"
 
 
 async def _sim_now(conn: Any) -> dt.datetime:
@@ -24,18 +46,19 @@ async def _sim_now(conn: Any) -> dt.datetime:
 
 @router.get("/api/map/heat", summary="Агрегаты по субъектам РФ для тепловой карты")
 async def get_map_heat(
-    layer: str = Query("signals", description="signals | critical | incidents | churn"),
+    layer: str = Query("signals", description="signals | critical | incidents (incidents_open) | churn (churn_risk)"),
     window_hours: int = Query(24, ge=1, le=24 * 30),
     run_id: str | None = Query(None, description="current (по умолчанию) | all | <id>"),
 ) -> Any:
     """Регион сигнала — гео сигнала (`signals.geo.region_code`), иначе регион клиента. Интенсивность нормирована к максимуму слоя (0..1)."""
     if layer not in LAYERS:
-        layer = "signals"
+        raise HTTPException(422, "layer: signals | critical | incidents | incidents_open | churn | churn_risk")
+    layer = LAYERS[layer]
     async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
+        rid = await _map_run_id(conn, run_id)
         now = await _sim_now(conn)
         since = now - dt.timedelta(hours=window_hours)
-        run_sql = "and s.run_id = %s" if rid is not None else ""
+        run_sql = _run_filter(run_id, rid, "s.run_id")
         run_args: tuple[Any, ...] = (rid,) if rid is not None else ()
         rows = await fetch_all(
             conn,
@@ -51,7 +74,7 @@ async def get_map_heat(
             ), inc as (
               select i.region_code, count(*) as incidents_open
               from incidents i
-              where i.status not in ('closed','rejected','duplicate','resolved') {"and i.run_id = %s" if rid is not None else ""}
+              where i.status not in ('closed','rejected','duplicate','resolved') {_run_filter(run_id, rid, "i.run_id")}
               group by 1
             )
             select r.code as region_code, r.name_ru, r.district_code, r.centroid_lat::float as lat, r.centroid_lon::float as lon,
@@ -78,10 +101,10 @@ async def get_map_regions_code_cities(
     code: str, window_hours: int = Query(24, ge=1, le=24 * 30), run_id: str | None = Query(None)
 ) -> Any:
     async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
+        rid = await _map_run_id(conn, run_id)
         now = await _sim_now(conn)
         since = now - dt.timedelta(hours=window_hours)
-        run_sql = "and s.run_id = %s" if rid is not None else ""
+        run_sql = _run_filter(run_id, rid, "s.run_id")
         run_args: tuple[Any, ...] = (rid,) if rid is not None else ()
         rows = await fetch_all(
             conn,
@@ -113,13 +136,13 @@ async def get_map_zones(run_id: str | None = Query(None)) -> Any:
     сработок комплаенс-копилота по отделениям региона. Красная — при индексе ≥ red или при ≥ critical_red критичных инцидентов/алертов
     за окно. Пороги — `economics_settings.map_zone_thresholds` (yellow, red, copilot_weight, window_sim_hours, critical_red)."""
     async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
+        rid = await _map_run_id(conn, run_id)
         th = await fetch_one(conn, "select map_zone_thresholds as t from economics_settings where id = 1")
         raw = (th or {}).get("t") or {}
         t = map_thresholds(raw)
         now = await _sim_now(conn)
         since = now - dt.timedelta(hours=int(t["window_sim_hours"]))
-        run_sql = "and s.run_id = %s" if rid is not None else ""
+        run_sql = _run_filter(run_id, rid, "s.run_id")
         run_args: tuple[Any, ...] = (rid,) if rid is not None else ()
         rows = await fetch_all(
             conn,
@@ -135,18 +158,19 @@ async def get_map_zones(run_id: str | None = Query(None)) -> Any:
                      count(distinct al.id) filter (where al.kind in ('threshold','immediate')) as alerts
               from audio_sessions a join employees e on e.id = a.employee_id join branches b on b.id = e.branch_id
               left join compliance_triggers tr on tr.session_id = a.id left join compliance_alerts al on al.session_id = a.id
+              where true {_run_filter(run_id, rid, "a.run_id")}
               group by 1
             ), inc as (
               select region_code, count(*) as critical_incidents from incidents
               where criticality = 'high' and status not in ('closed','rejected','resolved','duplicate') and region_code is not null and created_sim >= %s
-              {"and run_id = %s" if rid is not None else ""} group by 1
+              {_run_filter(run_id, rid, "run_id")} group by 1
             )
             select r.code as region_code, coalesce(sig.total, 0)::int as signals_total, coalesce(sig.negative, 0)::int as negative,
                    case when coalesce(cop.sessions, 0) > 0 then least(1, (cop.triggers::float / 3 + cop.alerts) / cop.sessions) else 0 end as copilot_index,
                    (coalesce(inc.critical_incidents, 0) + coalesce(cop.alerts, 0))::int as critical_count
             from regions r left join sig on sig.region_code = r.code left join cop on cop.region_code = r.code left join inc on inc.region_code = r.code
             """,
-            (since, *run_args, since, *run_args),
+            (since, *run_args, *run_args, since, *run_args),
         )
         no_geo = await fetch_one(
             conn,

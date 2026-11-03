@@ -1,11 +1,20 @@
 import { useSearchParams } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { RUSSIA, MAP_WIDTH as W, MAP_HEIGHT as H, russiaProjection } from '@/shared/geo/russia'
 import { clsx } from 'clsx'
 import { useMapCities, useMapHeat, useMapZones, type MapLayer } from '@/shared/api/hooks'
 import type { MapZone, RegionHeat } from '@/shared/api/client'
 import { Badge, Empty, ErrorBox, KV, Section, Skeleton } from '@/shared/ui'
+import { useViewPreset } from '@/shared/layout/preset'
+import { useWs } from '@/shared/ws/client'
+import { useBranchDirectory, useDirectionCatalog } from '@/pages/csi/api'
+import { branchAnalyticsOptions, branchDetailOptions, closedDetailsOptions, directSignalCount, type BranchScope } from './map/api'
+import { clusterBranches, coordinate, projectBranches, BRANCH_STYLE, type BranchCluster } from './map/branches'
+import { BranchLayer } from './map/BranchLayer'
+import { BranchCard } from './map/BranchCard'
+import { BranchAnalytics } from './map/BranchAnalytics'
 
 type Mode = 'heat' | 'zones'
 const LAYERS: MapLayer[] = ['signals', 'critical', 'incidents', 'churn']
@@ -19,25 +28,83 @@ function heatColor(intensity: number): string {
 const ZONE_FILL: Record<string, string> = { green: '#8fcf9a', yellow: '#f2c94c', red: '#e2574c' }
 
 export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope?: string; onRunScopeChange?: (value: string) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [params, setParams] = useSearchParams()
   const mode: Mode = params.get('map_mode') === 'zones' ? 'zones' : 'heat'
   const setMode = (mode: Mode) => setParams(p => { if (mode === 'zones') p.set('map_mode', mode); else p.delete('map_mode'); return p }, { replace: true })
   const [layer, setLayer] = useState<MapLayer>('signals')
   const [win, setWin] = useState(24 * 7)
-  const [localScope, setLocalScope] = useState('all')
-  const runScope = externalScope ?? localScope
-  const setRunScope = (value: string) => { if (externalScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setLocalScope(value) }
+  const runScope = externalScope ?? params.get('run_id') ?? 'current'
+  const setRunScope = (value: string) => { if (externalScope !== undefined && onRunScopeChange) onRunScopeChange(value); else setParams(previous => { previous.set('run_id', value); return previous }, { replace: true }) }
+  const [branchesOn, setBranchesOn] = useState(false)
+  const [binding, setBinding] = useState(() => localStorage.getItem('cx.ui.productLine') ?? '')
+  const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
+  const [selectionScope, setSelectionScope] = useState('')
+  const [selectedCluster, setSelectedCluster] = useState<BranchCluster | null>(null)
+  const [offset, setOffset] = useState(0)
+  const [zoom, setZoom] = useState({ scale: 1, centerX: W / 2, centerY: H / 2 })
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  const mapRef = useRef<SVGSVGElement>(null)
+  const clip = 'workspace-map-' + useId().replace(/:/g, '')
+  const role = useViewPreset(state => state.role)
+  const cache = useQueryClient()
   const [selected, setSelected] = useState<string | null>(null)
   const geo = RUSSIA
+  const scope: BranchScope = { run_id: runScope, period: win === 24 ? 'day' : win === 168 ? 'week' : 'month', ...(selected ? { region_code: selected } : {}), ...(params.has('product_line') ? { product_line: params.get('product_line')! } : {}) }
+  const headers = useMemo(() => ({ 'X-Cx-Role': role, ...(binding && role === 'product_manager' ? { 'X-Cx-Product-Line': binding } : {}) }), [role, binding])
+  const scopeKey = JSON.stringify([scope, headers])
+  const currentBranch = selectionScope === scopeKey ? selectedBranch : null
+  const currentCluster = selectionScope === scopeKey ? selectedCluster : null
+  const directory = useBranchDirectory({ product_line: scope.product_line, region_code: scope.region_code }, headers, branchesOn)
+  const catalog = useDirectionCatalog(headers, branchesOn)
+  const branches = useMemo(() => branchesOn && !directory.isError ? directory.data?.pages.flatMap(page => page.items) ?? [] : [], [branchesOn, directory.data, directory.isError])
+  const closedCodes = useMemo(() => branches.filter(branch => branch.branch_status === 'closed').map(branch => branch.code).sort(), [branches])
+  const closed = useQuery({ ...closedDetailsOptions(closedCodes, scope, headers), enabled: branchesOn && directory.data != null && !directory.hasNextPage && closedCodes.length > 0 })
+  const detail = useQuery({ ...branchDetailOptions(currentBranch, scope, headers), enabled: branchesOn && currentBranch != null })
+  const analytics = useQuery({ ...branchAnalyticsOptions(scope, headers, offset), enabled: branchesOn })
+  useEffect(() => { setSelectedBranch(null); setSelectedCluster(null); setOffset(0) }, [scopeKey])
+  const { hasNextPage, isFetchingNextPage, isError: isDirectoryError, fetchNextPage } = directory
+  useEffect(() => { if (branchesOn && hasNextPage && !isFetchingNextPage && !isDirectoryError) void fetchNextPage() }, [branchesOn, hasNextPage, isFetchingNextPage, isDirectoryError, fetchNextPage])
+  useEffect(() => {
+    const element = mapRef.current
+    if (!element) return
+    const update = () => { const bounds = element.getBoundingClientRect(); setSize({ width: bounds.width, height: bounds.height }) }
+    update()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
+    observer?.observe(element); window.addEventListener('resize', update)
+    return () => { observer?.disconnect(); window.removeEventListener('resize', update) }
+  }, [])
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const unsubscribe = useWs.subscribe((state, previous) => {
+      if (state.events === previous.events) return
+      const topic = state.events[0]?.topic
+      if (topic === 'runs' || topic === 'settings') {
+        void cache.resetQueries({ queryKey: ['map'] }); void cache.resetQueries({ queryKey: ['csi', 'directory'] }); return
+      }
+      if (['signals', 'incidents', 'metrics', 'compliance'].includes(topic ?? '') && !timer) timer = setTimeout(() => { timer = undefined; void cache.invalidateQueries({ queryKey: ['map', 'branches'] }) }, 500)
+    })
+    return () => { unsubscribe(); clearTimeout(timer) }
+  }, [cache])
 
   const heat = useMapHeat(layer, win, runScope)
   const zones = useMapZones(runScope)
   const cities = useMapCities(selected, win, runScope)
 
   const { projection, path } = useMemo(() => russiaProjection(
-    (heat.data ?? []).flatMap((r): [number, number][] => r.lon != null && r.lat != null ? [[r.lon, r.lat]] : []),
-  ), [heat.data])
+    [...(heat.data ?? []).flatMap((r): [number, number][] => r.lon != null && r.lat != null ? [[r.lon, r.lat]] : []), ...branches.flatMap(branch => { const lat = coordinate(branch.lat, 90), lon = coordinate(branch.lon, 180); return lat != null && lon != null ? [[lon, lat] as [number, number]] : [] })],
+  ), [heat.data, branches])
+  const projected = useMemo(() => projectBranches(branches, projection), [branches, projection])
+  const viewport = { scale: zoom.scale, x: W / 2 - zoom.centerX * zoom.scale, y: H / 2 - zoom.centerY * zoom.scale, ...size }
+  const clusters = size.width > 0 && size.height > 0 ? clusterBranches(projected.points, viewport, 44) : []
+  const selectCluster = (cluster: BranchCluster) => {
+    setSelectionScope(scopeKey)
+    if (cluster.items.length === 1) { setSelectedBranch(cluster.anchor.branch.code); setSelectedCluster(null) }
+    else {
+      setSelectedCluster(cluster); setSelectedBranch(null)
+      if (zoom.scale < 8) setZoom({ scale: Math.min(8, zoom.scale * 2), centerX: (Math.min(...cluster.items.map(p => p.x)) + Math.max(...cluster.items.map(p => p.x))) / 2, centerY: (Math.min(...cluster.items.map(p => p.y)) + Math.max(...cluster.items.map(p => p.y))) / 2 })
+    }
+  }
 
   const byCode = useMemo(() => new Map((heat.data ?? []).map((r) => [r.region_code ?? '', r])), [heat.data])
   const zoneBy = useMemo(() => new Map((zones.data?.items ?? []).map((z) => [z.region_code ?? '', z])), [zones.data])
@@ -63,20 +130,35 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
             <Seg value={mode} onChange={setMode} items={[{ id: 'heat', label: t('map.mode.heat') }, { id: 'zones', label: t('map.mode.zones') }]} />
             {mode === 'heat' && <Seg value={layer} onChange={setLayer} items={LAYERS.map((l) => ({ id: l, label: t(`map.layer.${l}`) }))} />}
             {mode === 'heat' && <Seg value={String(win)} onChange={(v) => setWin(Number(v))} items={WINDOWS.map((w) => ({ id: String(w), label: t(`map.window.${w}`) }))} />}
-            <Seg value={runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }, ...(runScope !== 'all' && runScope !== 'current' ? [{ id: runScope, label: t('overviewUi.selectedRun', { run: runScope }) }] : [])]} />
+            <button className="btn btn-sm" aria-pressed={branchesOn} onClick={() => setBranchesOn(value => !value)}>{t('branchMap.toggle')}</button>
+            {(branchesOn || zoom.scale > 1) && <><button className="btn btn-sm" aria-label={t('branchMap.zoomIn')} disabled={zoom.scale >= 8} onClick={() => setZoom(value => ({ ...value, scale: Math.min(8, value.scale * 2) }))}>+</button><button className="btn btn-sm" aria-label={t('branchMap.zoomOut')} disabled={zoom.scale === 1} onClick={() => setZoom(value => ({ ...value, scale: Math.max(1, value.scale / 2) }))}>−</button><button className="btn btn-sm" onClick={() => setZoom({ scale: 1, centerX: W / 2, centerY: H / 2 })}>{t('branchMap.resetZoom')}</button></>}
+            {!['current', 'all'].includes(params.get('run_id') ?? runScope) && <span>{t('branchMap.explicitRun', { id: runScope || t('branchMap.unknown') })}</span>}
+            <Seg value={params.get('run_id') ?? runScope} onChange={setRunScope} items={[{ id: 'current', label: t('map.scope.current') }, { id: 'all', label: t('map.scope.all') }]} />
           </div>
         }
       >
         {heat.error && <ErrorBox error={heat.error} compact />}
+        {zones.error && <ErrorBox error={zones.error} compact />}
+        {branchesOn && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line p-2 text-xs">
+          <label>{t('branchMap.direction')} <select className="input" value={scope.product_line ?? ''} onChange={event => setParams(previous => { if (event.target.value) previous.set('product_line', event.target.value); else previous.delete('product_line'); return previous })}><option value="">{t('csi.all')}</option>{catalog.data?.map(line => <option key={line.code} value={line.code}>{i18n.language.startsWith('en') ? line.name_en : line.name_ru}</option>)}</select></label>
+          {role === 'product_manager' && <label>{t('csi.binding')} <input className="input" value={binding} onChange={event => { localStorage.setItem('cx.ui.productLine', event.target.value); setBinding(event.target.value) }} /></label>}
+          <span>{directory.isError ? t('branchMap.directoryUnavailable') : directory.isPending ? t('common.loading') : t('branchMap.loaded', { count: branches.length })}{!directory.isError && directory.hasNextPage ? ' · ' + t('common.loading') : ''}</span>
+          {directory.data?.pages[0] && <Badge>{t('branchMap.directoryMode.' + (directory.data.pages[0].directory.mode ?? 'unknown'))}</Badge>}
+          {projected.unlocated.length > 0 && <span>{t('branchMap.unlocated', { count: projected.unlocated.length })}</span>}
+          {Object.values(closed.data ?? {}).some(value => value.error != null) && <span role="status">{t('branchMap.countsUnknown')}</span>}
+        </div>}
+        {branchesOn && (directory.error || catalog.error) && <ErrorBox error={directory.error ?? catalog.error} compact />}
         {(
           <div className="flex min-h-0 flex-1 flex-col">
-            <svg viewBox={`0 0 ${W} ${H}`} className="map-canvas block min-h-0 w-full flex-1" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map.title')}>
+            <svg ref={mapRef} viewBox={`0 0 ${W} ${H}`} className="map-canvas block min-h-0 w-full flex-1" preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map.title')}>
               <rect width={W} height={H} fill="transparent" onClick={() => setSelected(null)} />
+              <defs><clipPath id={clip}><rect width={W} height={H} /></clipPath></defs>
+              <g clipPath={`url(#${clip})`}><g className="transition-transform duration-[400ms] motion-reduce:transition-none" transform={`translate(${viewport.x} ${viewport.y}) scale(${zoom.scale})`}>
               {geo.features.map((f) => {
                 const code = f.properties.code
                 const r = byCode.get(code)
                 const z = zoneBy.get(code)
-                const fill = mode === 'heat' ? heatColor(r?.intensity ?? 0) : ZONE_FILL[z?.zone ?? 'green']
+                const fill = mode === 'heat' ? heatColor(r?.intensity ?? 0) : z?.zone ? ZONE_FILL[z.zone] : 'var(--map-empty, #e9edf2)'
                 const d = path(f)
                 if (!d) return null
                 return (
@@ -93,6 +175,8 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
                   </path>
                 )
               })}
+              {branchesOn && size.width > 0 && size.height > 0 && <BranchLayer clusters={clusters} pixelRatio={Math.min(size.width / W, size.height / H)} zoom={zoom.scale} offsetX={viewport.x} closed={closed.data} selected={currentBranch} onSelect={selectCluster} />}
+              <g data-testid="signal-layer">
               {(heat.data ?? [])
                 .filter((r) => !polygons.has(r.region_code ?? '') && r.lat != null && r.lon != null)
                 .map((r) => {
@@ -117,8 +201,10 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
                     </text>
                   )
                 })}
+              </g></g></g>
             </svg>
             <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-xs text-muted">
+              {branchesOn && <span className="flex flex-wrap gap-2" aria-label={t('branchMap.legend')}>{Object.entries(BRANCH_STYLE).map(([type, style]) => <span className="inline-flex items-center gap-1" key={type}><span className="inline-block h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: style.color, borderStyle: style.dash ? 'dashed' : 'solid', backgroundColor: type === 'mobile' ? 'transparent' : style.color }} />{t('branchMap.type.' + type)}</span>)}</span>}
               {mode === 'heat' ? (
                 <>
                   <span>{t('map.legend.low')}</span>
@@ -142,6 +228,8 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
       </Section>
 
       <div className="flex flex-col gap-3">
+        {branchesOn && currentBranch && <BranchCard data={detail.error ? undefined : detail.data} error={detail.error} loading={detail.isPending} runId={runScope} close={() => setSelectedBranch(null)} />}
+        {branchesOn && currentCluster && <Section title={t('branchMap.cluster', { count: currentCluster.items.length })}><ul className="max-h-60 overflow-auto p-3">{currentCluster.items.map(point => <li key={point.branch.code}><button className="text-sm text-brand hover:underline" onClick={() => { setSelectionScope(scopeKey); setSelectedBranch(point.branch.code) }}>{point.branch.code} · {t('branchMap.status.' + (point.branch.branch_status ?? 'unknown'))}{point.branch.branch_status === 'closed' ? ' · ' + (directSignalCount(closed.data?.[point.branch.code]) == null ? t('branchMap.closedUnknown') : t('branchMap.closedSignals', { count: directSignalCount(closed.data?.[point.branch.code])! })) : ''}</button></li>)}</ul></Section>}
         {sel ? (
           <Section title={sel.name_ru ?? selected ?? ''} right={<button className="btn btn-sm" onClick={() => setSelected(null)}>{t('common.close')}</button>}>
             <div className="divide-y divide-line">
@@ -201,6 +289,8 @@ export function MapTab({ runScope: externalScope, onRunScopeChange }: { runScope
           <p className="px-3 py-2 text-xs leading-relaxed text-muted">{mode === 'heat' ? t('map.howHeat') : t('map.howZones', { yellow: Math.round((zones.data?.thresholds?.yellow ?? 0.25) * 100), red: Math.round((zones.data?.thresholds?.red ?? 0.5) * 100), crit: (zones.data?.thresholds as { critical_red?: number } | undefined)?.critical_red ?? 3 })}</p>
         </Section>
       </div>
+      {branchesOn && analytics.error && <div className="col-span-full"><ErrorBox error={analytics.error} /></div>}
+      {branchesOn && analytics.data && !analytics.error && <BranchAnalytics data={analytics.data} runId={runScope} region={selected} onRegion={setSelected} offset={offset} onOffset={setOffset} />}
     </div>
   )
 }
@@ -211,6 +301,7 @@ function fmtVal(layer: MapLayer, v: number | undefined): string {
 }
 
 function labelFor(mode: Mode, layer: MapLayer, r: RegionHeat | undefined, z: MapZone | undefined, t: (k: string) => string): string {
+  if (mode === 'zones' && !z) return t('branchMap.unknown')
   if (mode === 'zones') return `${t(`map.zone.${z?.zone ?? 'green'}`)} · ${t('map.layer.signals').toLowerCase()} ${z?.signals_total ?? 0}`
   return `${t(`map.layer.${layer}`).toLowerCase()} ${fmtVal(layer, r?.value)}`
 }

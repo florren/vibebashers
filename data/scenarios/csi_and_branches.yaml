@@ -1,0 +1,13 @@
+id: csi_and_branches
+number: 35
+tz_number: 15
+kind: acceptance
+start_paused: true
+title_ru: 'CSI и ВСП (ТЗ 15)'
+title_en: 'CSI and branches (TZ 15)'
+description_ru: 'Mock foundation: реальный XLSX parser/normalizer, 300 scoped sample rows и 1 явное synthetic обращение в closed ВСП без выдуманного знаменателя. UI/replay требуют отдельной приёмки.'
+expected:
+  csi_registered_sample: true
+pending_acceptance:
+- UI CSI корреляции/top-10 и map слой ВСП (T249/T250)
+- Реальные совместимые replay кассеты и Playwright
