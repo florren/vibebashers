@@ -59,3 +59,16 @@ CI follow-up PR196: runtime `734c8a7` устраняет allocation overhead б�
 ### Регрессия empty report в nightly — 03.11.2026
 
 В общем freeze QA PR #212 исправлен неправильный assertion «Нет»/«No» для daily без сохранённой экономики: теперь точное равенство правильному ru/en i18n key, включая отдельный noSavedEconomics. Предыдущий nightly41611773482 воспроизвёл2ru failures; продуктовый copy/денежные формулы не меняются. Проверки SVG/экспорта/scope/A4/read-only сохранены. Полный повтор demo/performance проверяется отдельно; evidence в docs/reviews/channel-chronology.md.
+
+### Main CI cold rules query — 04.11.2026
+
+CI41793839760: p95=371.295ms при300ms gate. Отдельный actual PG plan выявил
+1125200intermediate rows в rules-version subquery (400incidents×2813signals);
+показанные тестом26.314ms относились только к ленте сигналов. Материализованные
+selected_edges сохраняют incident/signal/run triple до join planning. SQL rules
+plan258.874→4.307ms; max node work1125200→2813; native30GET p95=117.612ms.
+Исходный300ms gate/данные/первые GET/absence of stats сохранены. Новая work-bound
+регрессия RED на исходном SQL → GREEN на исправлении; добавлена positive saved901
+versus foreign-run902 проверка current/all. Native72PG и56unit passed; mypy329
+прошёл. Контракты/деньги/DDL/LLM/UI не меняются. Полный CI обязателен до merge;
+подробности/откат: [cold rule edges review](../reviews/T-244-cold-rule-edges.md).
