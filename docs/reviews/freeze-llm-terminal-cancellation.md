@@ -76,3 +76,10 @@ Primary использовалась только для read-only диагно�
 Revert возвращает cancellation окно; сохранённые reservations/counters остаются
 нетронутыми. DDL downgrade не нужен. Возврат к работе после unknown/orphan — только
 штатный operator workflow с проверенной статистикой провайдера, без ручного zero.
+
+[Source-qualified coverage JSON](freeze-llm-terminal-cancellation-coverage.json).
+Независимое read-only review после peer P2 не выявило новых P1/P2.
+Это исправление исполнения ранее согласованной unknown policy PR188/218:
+финансовые правила, лимиты и условия восстановления не расширяются. Работа
+продолжена автономно по указанию пользователя «дальше сам»; конкретный source
+обязательно проходит полный gate и exact-head CI перед merge.

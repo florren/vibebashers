@@ -1,0 +1,17 @@
+{
+  "base": "14a620f4843ab1ae7e245c1ed345082abc70f492",
+  "pytest_exit": 0,
+  "method": "stdlib sys.settrace/threading.settrace; bytecode-executable innermost AST statement spans containing added diff lines; not branches or full project coverage",
+  "files": [
+    {
+      "file": "backend/app/llm/accounting.py",
+      "sha256": "5b560a9f4447168abcc03acb73c076993cb4b9ddbe45a8b29ba74093a2b3fc0c",
+      "changed_statements": 24,
+      "executed": 24,
+      "missed_lines": []
+    }
+  ],
+  "changed_statements": 24,
+  "executed": 24,
+  "percent": 100.0
+}

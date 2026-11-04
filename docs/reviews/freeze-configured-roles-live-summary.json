@@ -1,0 +1,115 @@
+{
+  "status": "BOUNDED_LIVE_FINDINGS_NOT_ALL_PATHS_PASS",
+  "gigachat_configured_roles": {
+    "source_revision": "52fd498ffe20c0a248e987b37fa3d1b6be796caf",
+    "graph_steps": [
+      {
+        "node": "normalize",
+        "model": "gigachat:GigaChat-3-Lightning:32.4.16.3",
+        "status": "ok"
+      },
+      {
+        "node": "classify",
+        "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+        "status": "ok"
+      },
+      {
+        "node": "decide",
+        "model": "gigachat:GigaChat-3-Ultra:32.9.16.9",
+        "status": "ok"
+      }
+    ],
+    "outcome": "deferred",
+    "notifications": [
+      {
+        "status": "sent",
+        "template_code": "ack_received",
+        "sent_at_known": true
+      },
+      {
+        "status": "sent",
+        "template_code": "team_notice",
+        "sent_at_known": true
+      }
+    ],
+    "chronology_inversions": 0,
+    "refunds": 0,
+    "new_known_attempts": 3,
+    "new_tokens": 10158,
+    "http_counts": {
+      "oauth": 1,
+      "models": 1,
+      "inference": 3
+    },
+    "harness_failure": "Expected model without provider version suffix; original FAIL retained; read-only diagnosis verified graph success",
+    "twin_status": "NOT_VERIFIED; harness aborted before TwinService"
+  },
+  "openrouter_schema_rejection_before_fix": {
+    "status": "FAIL",
+    "http_status": 200,
+    "provider_error_code": 400,
+    "message": "Grammar error: Unimplemented keys: [uniqueItems]",
+    "usage_missing": true,
+    "next_inference_blocked": true
+  },
+  "openrouter_fast_graph_after_compatibility_fix": {
+    "source_revision": "14a620f4843ab1ae7e245c1ed345082abc70f492",
+    "status": "NOT_PASSED_NATIVE_NORMALIZATION_TIMEOUT",
+    "timeout_s": 10,
+    "http_counts": {
+      "metadata": 1,
+      "inference": 1
+    },
+    "response_observed_by_app": false,
+    "provider_terminal_metadata": {
+      "finish_reason": "stop",
+      "cancelled": false,
+      "latency": 1133,
+      "generation_time": 11348,
+      "native_tokens_prompt": 2496,
+      "native_tokens_completion": 411,
+      "total_cost": 0
+    }
+  },
+  "openrouter_native_benchmark": {
+    "source_revision": "14a620f4843ab1ae7e245c1ed345082abc70f492",
+    "status": "NOT_PASSED_NATIVE_DEFAULT_TIMEOUT",
+    "timeout_s": 30,
+    "role": "bench_only",
+    "http_counts": {
+      "metadata": 1,
+      "inference": 1
+    },
+    "response_observed_by_app": false,
+    "accuracy_claimed": false,
+    "provider_terminal_metadata": {
+      "finish_reason": "stop",
+      "cancelled": false,
+      "latency": 668,
+      "generation_time": 29843,
+      "native_tokens_prompt": 2818,
+      "native_tokens_completion": 850,
+      "total_cost": 0
+    },
+    "additional_defect": "Repeated cancellation interrupted terminal unknown bookkeeping; native reserved orphan independently reproduced and fixed separately"
+  },
+  "operator_reconciliation": {
+    "status": "PASS",
+    "tokens_before": 3795,
+    "tokens_after": 7463,
+    "daily_key_before": 11,
+    "daily_key_after": 11,
+    "daily_profile_unchanged": 7,
+    "reserved_before": 1,
+    "reserved_after": 0,
+    "public_tables_unchanged": 96,
+    "gigachat_and_shared_setup_unchanged": true,
+    "alias_caps_configuration_unchanged": true,
+    "per_attempt_usage_not_inferred": true,
+    "external_http": 0,
+    "new_inference": 0
+  },
+  "new_external_inference_after_bounded_smokes": 0,
+  "current_roles_and_numeric_caps_unchanged": true,
+  "studio_or_browser_runtime_dependency": false
+}
