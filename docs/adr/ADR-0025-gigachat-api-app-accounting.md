@@ -1,6 +1,6 @@
 # ADR-0025: GigaChat package balance and application usage
 
-Status: proposed for final review; implementation requested by project owner.
+Status: accepted by project owner,2026-11-04 (PR #218 DDL/policy/rollout approval).
 
 ## Context
 
@@ -21,9 +21,11 @@ to reset allowance, even after a provider restart, bank restore or UTC rollover.
 
 Origin-backed GigaChat structured and streaming calls validate the selected
 model's package before durable admission. Unknown/zero balance fails closed;
-the structured key pool can rotate without spending inference allowance on the
+the structured/stream key pool can rotate without spending inference allowance on the
 rejected key. Every actual HTTP inference retains the existing durable attempt,
-shared profile cap and usage validation. Missing usage, cancellation or uncertain
+shared profile cap and usage validation. Within one pool call, an admitted request
+is not replayed on another key; the existing outer model/provider fallback policy
+remains unchanged and retains separate ledger attempts. Missing usage, cancellation or uncertain
 delivery continues to require reviewed reconciliation, not a new origin.
 
 `usage_known` retains its documented app-scoped meaning. Sources

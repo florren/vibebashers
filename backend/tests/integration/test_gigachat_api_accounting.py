@@ -63,6 +63,8 @@ async def reserve(migrated_db, monkeypatch):
                 json={"balance": [{"usage": name, "value": value} for name, value in balances.items()]},
             )
         assert request.url.path == "/v1/chat/completions"
+        if state.get("chat_timeout"):
+            raise httpx.ReadTimeout("synthetic", request=request)
         payload = json.loads(request.content)
         usage = None if state["missing_usage"] else {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
         body = {
@@ -291,3 +293,33 @@ async def test_cli_connect_reads_metadata_without_inference_or_raw_secret_output
     assert metadata == ["balance"] and calls == []
     assert result["admission_allowed"] and not result["historical_usage_known"]
     assert keys[1].secret not in json.dumps(result, default=str)
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_unknown_inference_is_not_replayed_on_reserve_within_the_same_pool_call(reserve, streaming):
+    profile, service, facts, keys, calls, state, make, _ = reserve
+    for fact in facts:
+        await service.connect_gigachat(profile, fact, BALANCES, confirmed=True)
+    state["chat_timeout"] = True
+    provider = make()
+    try:
+        with pytest.raises(ProviderError) as caught:
+            if streaming:
+                _ = [
+                    part
+                    async for part in provider.stream(
+                        [{"role": "user", "content": "Synthetic ping"}], profile, timeout_s=5
+                    )
+                ]
+            else:
+                await provider.complete_structured(
+                    [{"role": "user", "content": "Synthetic ping"}], SCHEMA, profile, timeout_s=5
+                )
+        assert caught.value.kind == "timeout"
+        assert len([x for x in calls if x[1] == "/v1/chat/completions"]) == 1
+    finally:
+        await provider.aclose()
+    first = await service.snapshot(profile, facts[0], timeout_s=5)
+    second = await service.snapshot(profile, facts[1], timeout_s=5)
+    assert not first.usage_known and first.requests_today == 1
+    assert second.usage_known and second.requests_today == 0

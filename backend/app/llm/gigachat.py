@@ -35,6 +35,10 @@ log = get_logger(__name__)
 _PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
 
 
+class _InferenceStarted(ProviderError):
+    """An origin-backed wire attempt cannot be replayed on another pool key."""
+
+
 @asynccontextmanager
 async def generation_slot(scope: str) -> AsyncIterator[None]:
     """Freemium/PERS: один поток на процесс, включая разные профили и ключи."""
@@ -358,21 +362,33 @@ class GigaChatProvider:
             token = await self._token(key, timeout_s)
             async with generation_slot(self.scope):
                 await self._check_provider_balance(scope, key, profile)
-                async with scope.inference() as ticket:
-                    response = await self._post_chat(key, token, payload, profile, timeout_s)
-                    try:
-                        body = response.json()
-                    except ValueError:
-                        raise ProviderError("bad_output", "chat: некорректный JSON") from None
-                    if not isinstance(body, dict) or not isinstance(body.get("usage"), dict):
-                        raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
-                    prompt, completion, total = response_token_counts(
-                        body["usage"], [key.secret, key.access_token], coerce=True
-                    )
-                    await ticket.observe(prompt, completion, total_tokens=total, final=True)
-                    self.pool.add_usage(key, total)
-                    response.extensions["llm_usage_recorded"] = True
-                    return response
+                try:
+                    async with scope.inference() as ticket:
+                        response = await self._post_chat(key, token, payload, profile, timeout_s)
+                        try:
+                            body = response.json()
+                        except ValueError:
+                            raise ProviderError("bad_output", "chat: некорректный JSON") from None
+                        if not isinstance(body, dict) or not isinstance(body.get("usage"), dict):
+                            raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
+                        prompt, completion, total = response_token_counts(
+                            body["usage"], [key.secret, key.access_token], coerce=True
+                        )
+                        await ticket.observe(prompt, completion, total_tokens=total, final=True)
+                        self.pool.add_usage(key, total)
+                        response.extensions["llm_usage_recorded"] = True
+                        return response
+                except ProviderError as exc:
+                    if self.accounting.durable and await scope.uses_provider_balance():
+                        raise _InferenceStarted(
+                            exc.kind,
+                            exc.detail,
+                            retry_after_s=exc.retry_after_s,
+                            status=exc.status,
+                            usage=exc.usage,
+                            request_count=exc.request_count,
+                        ) from None
+                    raise
 
     async def _post_chat(
         self, key: ApiKey, token: str, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
@@ -435,6 +451,8 @@ class GigaChatProvider:
             except ProviderError as e:
                 if not isinstance(e, accounting.AdmissionRefused):
                     self.pool.mark_error(key, e)
+                if isinstance(e, _InferenceStarted):
+                    raise
                 last = e
                 tried.add(key.label)
                 if e.kind not in ("rate_limit", "quota", "auth", "timeout", "network"):

@@ -12,6 +12,8 @@
   or clear unknown attempts. Key/profile request floors are preserved.
 - Origin-backed GigaChat calls check the selected model package before admission;
   zero/absent/malformed/inaccessible package does not spend inference RPD.
+- Within one pool call, an admitted structured/stream request is never replayed
+  on another key. Existing outer model/provider fallback policy is preserved.
 - Session `usage` stays in the existing durable ledger. Streaming and structured
   paths share accounting. Unknown response usage still blocks further calls.
 - Numerical limits, prices, bank money, formulas and HITL do not change. The
@@ -22,6 +24,8 @@ No credentials, account exports or operational dumps are committed. The provider
 source is authenticated API, not an open browser session. Existing broad user
 authorization covers development, testing, PR and merge; AGENTS §5.1/§7 requires
 final human review of this concrete DDL/budget basis before rollout.
+Project owner approved DDL,policy and rollout of PR #218 on2026-11-04,
+conditioned on green CI; no further approval is required for this reviewed scope.
 
 ## Validation
 
@@ -29,9 +33,9 @@ Targeted PG composition checks connect, shared profile counters, usage after
 restart, streaming, unknown results, package refusal and native key rotation.
 Unit checks validate package data and supported model mapping. Full PR CI and
 bounded ordinary live inference on the exact reserve credential are final gates.
-Local checks:2229unit/19skipped,193PG/provider composition,583frontend (Node22),
+Local checks:2229unit/19skipped,195composition (63actualPG+132targetunit),583frontend (Node22),
 Ruff/strict mypy329,contracts48schemas/167paths,i18n2326,frontend lint/types/build.
-New statement execution147/152=96.71%. Actual component fixture checked in
+New statement execution154/159=96.86%. Actual component fixture checked in
 ru/en×light/dark; synthetic metadata only. Evidence stays private under
 `.runtime/gigachat-app-{ru,en}-{light,dark}.png`, not production/live proof.
 Completed commands and full CI results are recorded in the PR/task report.

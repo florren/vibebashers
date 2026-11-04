@@ -92,10 +92,13 @@ T050 остаётся `in_progress`: очередь20s/limiter lock и main→fa
 провайдера остаётся unknown в audit; прежние counters/attempts/лимиты сохраняются.
 Origin-backed structured/stream дополнительно проверяют пакет выбранной модели.
 Review и rollout: `docs/reviews/T-050-api-balance-app-accounting.md`, ADR-0025.
-Локально193composition PG/provider tests и полный backend2229unit/19skipped
+Локально195composition tests (63actualPG+132targetunit) и полный backend2229unit/19skipped
 прошли. Frontend583tests на Node22, lint/typecheck/build, contracts48/167,
-Ruff и strict mypy329sourcefiles прошли; new statement execution147/152=96,71%.
+Ruff и strict mypy329sourcefiles прошли; new statement execution154/159=96,86%.
 Четыре browser cases ru/en×light/dark проверили реальный компонент с явно
 синтетическими данными, без provider calls. Полный exact-head CI — gate merge. Node26 не соответствует CI Node22 и дал localStorage errors;
 повтор на закреплённом Node22 прошёл без изменения тестов. Секреты/операционные
-дампы не включены. Конкретный final DDL/budget review запрашивается отдельно.
+дампы не включены. DDL/budget policy/rollout PR #218 подтверждены владельцем2026-11-04; merge только
+после зелёного CI. Прежний CI выявил непрогенерированную ORM; штатный generator
+добавил24строки, actualPG upgrade→downgrade0003→upgrade→check прошёл.
+Добавлены2PGcases: unknown HTTP не повторяется на другом ключе в том же pool call.

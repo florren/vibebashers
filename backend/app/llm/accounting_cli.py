@@ -1,4 +1,4 @@
-"""T-050: explicit operator reconciliation; no HTTP, no raw credentials in argv/output."""
+"""T-050: operator reconciliation / metadata-only GigaChat connect; no raw credentials in argv/output."""
 
 from __future__ import annotations
 
