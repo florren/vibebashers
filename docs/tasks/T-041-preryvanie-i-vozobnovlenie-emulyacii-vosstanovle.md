@@ -106,3 +106,14 @@ Final review также подтвердило Stop-before-first-target-chunk (R
 implicit owner сохраняется в preflight, Stop не создаёт новый run. GREEN24
 с независимой проверкой run/time/RNG/status после409;6/6 новых statements выполнены.
 Source и итоговые ограничения отражены в общем предфризовом QA report.
+
+### Предфризовая регрессия COMMIT 04.11.2026
+
+Полный QA выявил cancellation после durable tick COMMIT, вызывавшую ложный
+memory rollback и StaleSimulatorError при shutdown. Исправлен именно tick COMMIT:
+caller cancellation ждёт определённого результата и пробрасывается вне rollback
+после успешной фиксации. До COMMIT прежний rollback сохранён. Review и пределы:
+`docs/reviews/freeze-sim-stop-commit-boundary.md`; 42 subsystem PG, 9 boundary PG,
+15 unit и отдельное измерение 11/12 новых statements (91,67%) прошли. Human review
+получен условно зелёному итоговому CI; старый QA с пересечением временных baseline
+не засчитывается как общий PASS, полный gate выполняется в свежем checkout.
