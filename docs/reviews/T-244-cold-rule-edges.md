@@ -1,50 +1,50 @@
-# T-244: cold rule-version query performance
+# T-244: cold-план сохранённых версий правил
 
-## Observed failure
+## Подтверждённое падение
 
-Main CI41793839760, backend shard3 job126453171465: one failure,
-`test_cold_report_preserves_links_without_repeated_scans`. Report p95=371.295ms
-against unchanged300ms limit, min356.245ms, response1799610bytes. Other835tests
-in that shard passed. The reported26.314ms SQL duration covered only the signal
-list query; the test did not inspect the report rule-version query.
+Main CI41793839760, backend shard3 job126453171465: один failure,
+`test_cold_report_preserves_links_without_repeated_scans`. p95=371.295ms
+при неизменённом300ms limit, min356.245ms, response1799610bytes. Остальные835tests
+этого shard прошли. Показанные26.314ms SQL относились только к ленте сигналов;
+план чтения версий правил исходный тест не проверял.
 
-## Root cause and focused fix
+## Причина и исправление
 
-Isolated PG16/demo5000, signals stats absent (autovacuum disabled only in the
-existing scratch fixture): actual rule-version plan joined400incidents with
-all2813signals in their run, producing1125200intermediate rows before checking
-`incident_signals`. Full pytest collection reproduced that work amplification.
-The facts query measured258.874ms in EXPLAIN; JSON serialization median10.4ms.
-This is not resolved by retries, SQL warmup, ANALYZE, GC settings or a raised gate.
+Отдельная PG16/demo5000, статистика signals отсутствует (autovacuum выключен
+только в существующей scratch fixture): rules сначала соединял400incidents
+со всеми2813signals того же run, создавая1125200промежуточных строк до проверки
+incident_signals. Полная коллекция pytest воспроизвела этот объём работы.
+EXPLAIN facts query:258.874ms; median сериализации JSON:10.4ms. Retry, прогрев,
+ANALYZE, изменение GC/planner settings или увеличение gate не применяются.
 
-`selected_edges AS MATERIALIZED` retains the actual incident/signal/run triple
-before the rules lookup. Rule-version input predicates remain equivalent:
-selected incidents, same run, signal time window/product line, existing signal
-view/proactive exclusion, and recorded evaluation run. No current rule version
-is substituted for a stored version. Wire fields, money/exact strings, privacy,
-scope, limits, DDL, LLM routing and financial formulas do not change.
+`selected_edges AS MATERIALIZED` сохраняет настоящий incident/signal/run triple
+до чтения rules. Предикаты выбранных evaluations сохранены: выбранные инциденты,
+тот же run, период/product line сигнала, прежний view/proactive filter и run
+сохранённой evaluation. Текущая версия правила не подменяет сохранённую.
+Wire fields, money_exact, privacy, scope, limits, DDL, LLM routing и денежные
+формулы не меняются.
 
-## Regression and measurements
+## Регрессии и измерения
 
-- New native work-bound regression is RED on the old source and GREEN on the
-  candidate. It checks every EXPLAIN node's actual rows×loops, without prescribing
-  a join type; no ANALYZE/statistics manipulation and all public fingerprints
-  remain unchanged during GET.
-- Existing30-sample cold HTTP test, first GET included, remains unchanged:
-  candidate p95=117.612ms,1799610bytes. Facts EXPLAIN4.307ms; maximum node
-  work2813 versus old1125200, work budget10000.
-- Added actual saved-version901 / foreign-run902 projection regression for both
-  current and all. Full native report/API/lifecycle/cold suite:72PGpassed/237.19s, including
-  JSON/XLSX/exact-money/scope/privacy/read-only regressions.
-- Unit report text/scope56passed; strict mypy329sourcefiles passed.
+- Новый native work-bound test RED на старом source и GREEN на исправлении.
+  Проверяет actual rows×loops каждого EXPLAIN node, без требования конкретного
+  join type; ANALYZE/statistics не подменяются, fingerprint всех public tables
+  во время GET сохраняется.
+- Прежний cold HTTP test не изменён:30samples, первый GET включён. Новый
+  p95=117.612ms,1799610bytes; facts EXPLAIN4.307ms; max node work2813
+  вместо1125200, work budget10000.
+- Native сохранённая version901 / foreign-run902 проверены для current/all.
+- Полный целевой набор отчёта/API/lifecycle/cold:72PGpassed/237.19s; включает
+  JSON/XLSX/exact-money/scope/privacy/read-only. Unit text/scope56passed.
+  Strict mypy329sourcefiles и backend Ruff прошли.
 
-Diagnostics are separate from native timing checks. Full CI is required before
-merge; the previous green PR218 CI does not invalidate the later main failure.
-Private logs and detailed synthetic plans remain under `.runtime/` and CI
-`test-results/cabinet-report-rules-cold.json`. No production data or credentials
-are included in the diff.
+Диагностические timers/GC callbacks отделены от native timing. Полный CI
+обязателен до merge; прежний зелёный CI PR218 не отменяет позднее падение main.
+Локальные логи и планы synthetic fixtures — в `.runtime/`; CI сохраняет
+`test-results/cabinet-report-rules-cold.json`. Секреты/рабочие данные в diff
+не включены.
 
-## Rollback
+## Откат
 
-Revert this app-only SQL optimization through a separate PR if necessary.
-There are no migrations, configuration changes, writes or external calls.
+При необходимости — отдельный app revert PR. Миграций, изменений configuration,
+записи данных и внешних вызовов нет.

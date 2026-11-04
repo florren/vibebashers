@@ -171,8 +171,8 @@ def test_cold_report_rules_do_not_join_every_signal_to_every_incident(cold_db, m
             for child in node.get("Plans", []):
                 yield from nodes(child)
 
-        # Work bound, not a forced join type or a machine-dependent timing retry.
-        # Previously the rules subquery built400×2813 rows even with no evaluations.
+        # Ограничиваем фактическую работу, не фиксируя join type и не повторяя timing.
+        # Раньше rules строил400×2813 строк даже при отсутствии evaluations.
         signals, incidents, clients = sql.execute(
             "SELECT (SELECT count(*) FROM signals),(SELECT count(*) FROM incidents),(SELECT count(*) FROM clients)"
         ).fetchone()
