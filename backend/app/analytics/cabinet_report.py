@@ -127,11 +127,16 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
         offset=0,
     )
     incident_where, incident_args = scope.predicate("f", time_column="created_sim")
+    # При cold stats join только по run_id раздувает rules до incidents×signals.
+    # Материализованные рёбра связывают signal_id и run_id до выбора join order.
     facts = await fetch_one(
         conn,
         f"""
         WITH selected AS MATERIALIZED (
           SELECT DISTINCT f.id FROM v_cabinet_incident_facts f WHERE {incident_where}
+        ), selected_edges AS MATERIALIZED (
+          SELECT ix.incident_id,ix.signal_id,i.run_id FROM selected x
+          JOIN incidents i ON i.id=x.id JOIN incident_signals ix ON ix.incident_id=x.id
         ), actions AS (
           SELECT a.incident_id,(array_agg(a.action ORDER BY a.action_sim DESC,a.id DESC))[1] AS last_action,
             max(a.action_sim) FILTER(WHERE a.action='release') AS release_sim
@@ -170,8 +175,8 @@ async def build_report(conn: Conn, scope: CabinetScope, lang: str, requested_run
           (SELECT jsonb_agg(DISTINCT ie.breakdown->>'formula_ru') FILTER(WHERE ie.breakdown->>'formula_ru' IS NOT NULL)
              FROM selected x JOIN incident_economics ie ON ie.incident_id=x.id) AS formula_ru,
           (SELECT jsonb_agg(DISTINCT jsonb_build_object('code',re.rule_code,'version',re.rule_version))
-             FROM selected x JOIN incident_signals ix ON ix.incident_id=x.id
-             JOIN v_cabinet_signal_facts s ON s.id=ix.signal_id AND s.received_sim BETWEEN %s AND %s AND (%s::text[] IS NULL OR s.product_line_code=ANY(%s)) JOIN incidents i ON i.id=x.id AND i.run_id=s.run_id
+             FROM selected_edges ix
+             JOIN v_cabinet_signal_facts s ON s.id=ix.signal_id AND s.run_id=ix.run_id AND s.received_sim BETWEEN %s AND %s AND (%s::text[] IS NULL OR s.product_line_code=ANY(%s))
              JOIN rule_evaluations re ON re.signal_id=s.id AND re.run_id=s.run_id) AS rules
     """,
         [

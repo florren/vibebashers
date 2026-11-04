@@ -136,3 +136,51 @@ def test_cold_report_preserves_links_without_repeated_scans(
             f"cold report metrics={metrics}; SQL execution={plan['Execution Time']}ms; "
             "proof=test-results/cabinet-signals-cold.json"
         )
+
+
+def test_cold_report_rules_do_not_join_every_signal_to_every_incident(cold_db, monkeypatch):
+    from app.analytics import cabinet_report
+    from app.main import create_app
+
+    captured = []
+    original = cabinet_report.fetch_one
+
+    async def observed(conn, statement, args=()):
+        if not captured and "AS rules" in statement:
+            captured.append((statement, args))
+        return await original(conn, statement, args)
+
+    monkeypatch.setattr(cabinet_report, "fetch_one", observed)
+    with psycopg.connect(cold_db.replace("postgresql+psycopg:", "postgresql:"), autocommit=True) as sql:
+        before = fingerprint(sql)
+        with TestClient(create_app()) as client:
+            response = client.get("/api/cabinet/report?product_line=all&period=quarter")
+            assert response.status_code == 200
+            assert isinstance(response.json()["method"]["rules_version"], list)
+        assert captured and fingerprint(sql) == before
+        sql.execute("BEGIN READ ONLY")
+        try:
+            plan = sql.execute("EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) " + captured[0][0], captured[0][1]).fetchone()[0][
+                0
+            ]
+        finally:
+            sql.execute("ROLLBACK")
+
+        def nodes(node):
+            yield node
+            for child in node.get("Plans", []):
+                yield from nodes(child)
+
+        # Work bound, not a forced join type or a machine-dependent timing retry.
+        # Previously the rules subquery built400×2813 rows even with no evaluations.
+        signals, incidents, clients = sql.execute(
+            "SELECT (SELECT count(*) FROM signals),(SELECT count(*) FROM incidents),(SELECT count(*) FROM clients)"
+        ).fetchone()
+        budget = max(signals, incidents, clients, 1) * 2
+        artifact = Path(__file__).resolve().parents[3] / "test-results" / "cabinet-report-rules-cold.json"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text(json.dumps({"work_budget": budget, "plan": plan}, indent=2), encoding="utf-8")
+        assert all(n.get("Actual Rows", 0) * n.get("Actual Loops", 0) <= budget for n in nodes(plan["Plan"]))
+        assert sql.execute(
+            "SELECT last_analyze,last_autoanalyze FROM pg_stat_user_tables WHERE relname='signals'"
+        ).fetchone() == (None, None)

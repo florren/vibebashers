@@ -15,6 +15,42 @@ fingerprint = helpers.fingerprint
 preset = helpers.preset
 
 
+def test_report_rule_versions_follow_incident_signal_run_and_saved_version(client, sql):
+    signal_id, own_run = sql.execute(
+        "select s.id,s.run_id from signals s join incident_signals ix on ix.signal_id=s.id "
+        "join incidents i on i.id=ix.incident_id and i.run_id=s.run_id "
+        "where s.origin is distinct from 'proactive' order by s.id limit 1"
+    ).fetchone()
+    rule_code = sql.execute("select code from business_rules order by code limit 1").fetchone()[0]
+    foreign = sql.execute(
+        "insert into sim_runs(kind,label,seed,started_sim) "
+        "select 'live','rules projection fixture',42,sim_time from sim_state where id=1 returning id"
+    ).fetchone()[0]
+    inserted = []
+    try:
+        for run_id, version in [(own_run, 901), (foreign, 902)]:
+            inserted.append(
+                sql.execute(
+                    "insert into rule_evaluations(run_id,signal_id,rule_code,rule_version,result) "
+                    "values(%s,%s,%s,%s,'not_matched') returning id",
+                    (run_id, signal_id, rule_code, version),
+                ).fetchone()[0]
+            )
+        before = fingerprint(sql)
+        for run in ["current", "all"]:
+            response = client.get(
+                "/api/cabinet/report", params={"product_line": "all", "period": "quarter", "run_id": run}
+            )
+            assert response.status_code == 200
+            versions = response.json()["method"]["rules_version"]
+            assert {"code": rule_code, "version": 901} in versions
+            assert {"code": rule_code, "version": 902} not in versions
+        assert fingerprint(sql) == before
+    finally:
+        sql.execute("delete from rule_evaluations where id=any(%s)", (inserted,))
+        sql.execute("delete from sim_runs where id=%s", (foreign,))
+
+
 @pytest.mark.parametrize("lang", ["ru", "en"])
 def test_report_real_json_xlsx_overview_readonly(client, sql, monkeypatch, lang):
     async def bomb(*args, **kwargs):
