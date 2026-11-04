@@ -1359,10 +1359,12 @@ async def test_nemotron_json_mode_unknown_still_blocks_second_http(accounting_ca
         async with await psycopg.AsyncConnection.connect(
             get_settings().database_url.replace("postgresql+psycopg://", "postgresql://", 1), row_factory=dict_row
         ) as conn:
-            row = await (await conn.execute(
-                "select state,count(*) as n from llm_runtime.wire_attempts where profile_code=%s group by state",
-                (profile.code,),
-            )).fetchone()
+            row = await (
+                await conn.execute(
+                    "select state,count(*) as n from llm_runtime.wire_attempts where profile_code=%s group by state",
+                    (profile.code,),
+                )
+            ).fetchone()
             assert row == {"state": "unknown", "n": 1}
     finally:
         await provider.aclose()

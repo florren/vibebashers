@@ -320,7 +320,9 @@ async def test_openrouter_nemotron_json_mode_keeps_unique_items_validation(valid
         return response(json.dumps(obj))
 
     profile = LLMProfile(
-        code="or_nemotron_ultra", provider="openai_compatible", model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        code="or_nemotron_ultra",
+        provider="openai_compatible",
+        model="nvidia/nemotron-3-ultra-550b-a55b:free",
         extra={"json_schema": True},
     )
     provider = OpenAICompatProvider("synthetic", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(handler))
