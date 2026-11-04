@@ -295,3 +295,74 @@ async def test_automatic_offline_startup_never_warms_or_syncs_catalog(monkeypatc
     finally:
         await provider.aclose()
         await giga.aclose()
+
+
+@pytest.mark.parametrize("valid_second", [True, False])
+async def test_openrouter_nemotron_json_mode_keeps_unique_items_validation(valid_second):
+    from copy import deepcopy
+
+    from app.contracts.registry import deref, load
+
+    schema = deref("agent/normalization")
+    valid = deepcopy(load("agent/normalization")["examples"][0])
+    seen = []
+
+    def handler(request):
+        payload = json.loads(request.content)
+        seen.append(payload)
+        # Match the actual upstream rejection, without provider usage.
+        if payload["response_format"]["type"] == "json_schema":
+            return httpx.Response(200, json={"error": {"code": 400, "message": 'Unimplemented keys: ["uniqueItems"]'}})
+        good = valid_second and len(seen) == 2
+        obj = deepcopy(valid)
+        if not good:
+            obj["intents"].append(obj["intents"][0])
+        return response(json.dumps(obj))
+
+    profile = LLMProfile(
+        code="or_nemotron_ultra", provider="openai_compatible", model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        extra={"json_schema": True},
+    )
+    provider = OpenAICompatProvider("synthetic", "https://openrouter.ai/api/v1", transport=httpx.MockTransport(handler))
+    try:
+        if valid_second:
+            obj, usage, _ = await provider.complete_structured(MESSAGES, schema, profile, timeout_s=1)
+            assert obj == valid
+            assert usage.request_count == 2 and usage.structured_retries == 1
+            assert usage.prompt_tokens == 10 and usage.completion_tokens == 6
+        else:
+            with pytest.raises(ProviderError, match="после 2 попыток") as error:
+                await provider.complete_structured(MESSAGES, schema, profile, timeout_s=1)
+            assert error.value.usage.request_count == 2
+        assert len(seen) == 2
+        assert all(payload["response_format"] == {"type": "json_object"} for payload in seen)
+        assert '"uniqueItems": true' in seen[0]["messages"][0]["content"]
+        assert "не прошёл валидацию" in seen[1]["messages"][-1]["content"]
+        assert schema["properties"]["intents"]["uniqueItems"] is True
+    finally:
+        await provider.aclose()
+
+
+@pytest.mark.parametrize(
+    "base,model,expected",
+    [
+        ("https://openrouter.ai/api/v1", "nvidia/nemotron-3-ultra-550b-a55b:free", "json_object"),
+        ("https://local.test/v1", "nvidia/nemotron-3-ultra-550b-a55b:free", "json_schema"),
+        ("https://openrouter.ai.attacker.test/v1", "nvidia/nemotron-3-ultra-550b-a55b:free", "json_schema"),
+        ("https://openrouter.ai/api/v1", "openai/gpt-oss-120b:free", "json_schema"),
+    ],
+)
+async def test_nemotron_json_mode_is_scoped_to_exact_endpoint_model(base, model, expected):
+    seen = []
+
+    def handler(request):
+        seen.append(json.loads(request.content))
+        return response('{"ok":true}')
+
+    profile = LLMProfile(code="renamed", provider="openai_compatible", model=model)
+    provider = OpenAICompatProvider("synthetic", base, transport=httpx.MockTransport(handler))
+    try:
+        await provider.complete_structured(MESSAGES, SCHEMA, profile, timeout_s=1)
+        assert len(seen) == 1 and seen[0]["response_format"]["type"] == expected
+    finally:
+        await provider.aclose()

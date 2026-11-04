@@ -347,7 +347,13 @@ class OpenAICompatProvider:
         if profile.provider != "openai_compatible":
             raise ProviderError("miss", "профиль не openai_compatible")
         self._key(base_url)  # Не пересылаем credential другого endpoint на URL профиля.
-        use_json_schema = bool(profile.extra.get("json_schema", True))
+        # Этот backend Nemotron отвергает schema keyword uniqueItems даже при
+        # strict=False. Выбираем JSON mode до inference: unknown usage нельзя
+        # исправлять автоматическим повтором. Полная схема остаётся в prompt
+        # и локальной validate_schema; профиль не может включить несовместимый mode.
+        use_json_schema = bool(profile.extra.get("json_schema", True)) and not (
+            is_openrouter(base_url) and profile.model == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        )
         msgs: list[dict[str, str]] = [
             {
                 "role": "system",

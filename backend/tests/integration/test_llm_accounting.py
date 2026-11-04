@@ -1325,3 +1325,44 @@ async def test_env_provider_tier_is_not_reported_as_configured_key_cap(accountin
         assert exhausted.value.kind == "rate_limit" and calls == ["/v1/chat/completions"] * 2
     finally:
         await provider.aclose()
+
+
+async def test_nemotron_json_mode_unknown_still_blocks_second_http(accounting_case):
+    from dataclasses import replace
+
+    import httpx
+
+    from app.contracts.registry import deref
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider="openai_compatible", model="nvidia/nemotron-3-ultra-550b-a55b:free")
+    facts = replace(original_facts, provider="openai_compatible", endpoint="https://openrouter.ai/api/v1")
+    await confirm((service, profile, facts))
+    seen = []
+
+    def handler(request):
+        import json
+
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json={"error": {"code": 400, "message": "synthetic upstream failure"}})
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(handler))
+    try:
+        for expected in ("bad_output", "quota"):
+            with pytest.raises(ProviderError) as rejected:
+                await provider.complete_structured([], deref("agent/normalization"), profile, timeout_s=5)
+            assert rejected.value.kind == expected
+        assert len(seen) == 1 and seen[0]["response_format"] == {"type": "json_object"}
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert not observed.usage_known and observed.requests_today == 1 and observed.tokens_used == 0
+        async with await psycopg.AsyncConnection.connect(
+            get_settings().database_url.replace("postgresql+psycopg://", "postgresql://", 1), row_factory=dict_row
+        ) as conn:
+            row = await (await conn.execute(
+                "select state,count(*) as n from llm_runtime.wire_attempts where profile_code=%s group by state",
+                (profile.code,),
+            )).fetchone()
+            assert row == {"state": "unknown", "n": 1}
+    finally:
+        await provider.aclose()
