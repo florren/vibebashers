@@ -118,3 +118,11 @@ PROFILE mismatch helper исправлен (обаorigin lite/demo unitcases), �
 повтор на final source. Текущий объединённый unit2269passed/19skipped.
 Это не закрывает исходный≤15minremotecriterion без итогового замера CI.
 Актуальные gates/ограничения: docs/reviews/FREEZE-2026-11-04-final-qa.md.
+
+### Финальный browser cache gate,04.11.2026
+
+Cabinet timeout воспроизведён как test-only ожидание новогоHTTP при законном
+fresh Query cache. Distinct manual input сохраняет server-money assertions и
+проверяет affected_count. Native controlled proof+21focused+fresh168browser
+passed; fullfrontend591 и make lint passed. Seed5000wall24.31s,p95≤49.52ms.
+Review:`docs/reviews/cabinet-preview-cache-e2e.md`; полный backend/CI ещё gate.

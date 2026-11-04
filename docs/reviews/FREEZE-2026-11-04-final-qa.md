@@ -239,3 +239,31 @@ Literal make test на9af4bc7 остановился в unit:2267passed/2failed/
 перекрывали fixture Settings(_env_file=...). Product/assertions не меняются; новый
 запуск убирает optional secret/enable overrides, сохраняя mock/ownDB/ENV_FILEdevnull.
 Старый результат сохранён; новый full make test/CI остаётся обязательным gate.
+
+## Финальный v4 runtime и test-only cache correction
+
+- Final v4 engine/personal source проверен в image29da5664 и aa3ab873.
+  Полный35native catalog:5 strict declared checks,6 partial-with-unknown,20smoke,
+ 4not_verified(12/13/34/35); повторы17/26×2passed,409/drain/scope/clock errors0.
+  21personal→PGNOTIFY→WS:p95=17.473ms,max23.526ms. Own SQL:381notes/2public/1gift
+  без известных инверсий; у1chat неизвестен исходный вопрос, child/twin0.
+  Отдельные26PG/twin tests выше закрывают соответствующие ветки, не этот каталог.
+- Actual personal browser на imagev4 прошёл oldTX schedule:created_at до
+  browser question; GET answer.at==sent_at; DOMquestion→bank,errors/external0.
+  Настоящие builtUI/POST/GET/notify_client, без APImocks; bank reply в synthetic
+  worker, LLMgraph этой display-проверкой не заявлен.
+- Первая полная v4 browser попытка:143passed/7failed. Cabinet test ожидал новый
+  HTTP для уже свежего regional cache (staleTime5000); корректный UI показывал
+  серверную сумму. Timeout мешал cleanup и загрязнял settings для следующих5.
+  RealQueryClient regression и actual UI/API подтвердили cache hit без HTTP;
+  test-only distinct manual input сохраняет money/response assertions и добавляет
+  affected_count equality. Production code, timeout и финансовые формулы сохранены.
+  21focusedpassed; новый fullfrontend591passed и make lint passed.
+- Полный fresh corrected v4 nightly:150read/settings+13scenarios+5inputs=168passed.
+  Seed5000 wall24.31s, пять API p95≤49.52ms,violations=[]. Старый143/7 сохранён.
+- Literal make test на aa3ab873:unit2269passed/19skipped; integration ещё идёт.
+  Во время команды checkout/HEAD не меняются. Новые cache tests/docs находятся
+  отдельно от этого immutable checkout; новый fullfrontend591 уже проверяет их.
+
+Приватные runtime config/env recovery copies сохранены0700dir/0600files внеGit.
+Primary read-only health8000/personal9999=200; merge/rollout ещё не выполнены.

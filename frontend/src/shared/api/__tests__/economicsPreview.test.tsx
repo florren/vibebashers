@@ -42,3 +42,26 @@ it('surfaces server errors without keeping a prior amount', async () => {
   await waitFor(() => expect(hook.result.current.isError).toBe(true))
   expect(hook.result.current.data).toBeUndefined()
 })
+
+it('reuses a fresh regional server preview for identical calculator input and fetches distinct input', async () => {
+  const now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 5000 } } })
+  const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  const input = { affected: 2, rate_code: 'deposit', detractor_share: .1, no_return_share: .5 }
+  vi.mocked(api).mockResolvedValueOnce({ potential_loss_rub: 96.1 }).mockResolvedValueOnce({ potential_loss_rub: 144.15 })
+  try {
+    const regional = renderHook(() => useEconomicsPreview(input, 'current/deposits/month'), { wrapper })
+    await waitFor(() => expect(regional.result.current.data?.potential_loss_rub).toBe(96.1))
+    const calculator = renderHook(({ value }: { value: EconomicsPreviewInput | null }) => useEconomicsPreview(value, 'current/deposits/month'), { wrapper, initialProps: { value: null as EconomicsPreviewInput | null } })
+    calculator.rerender({ value: input })
+    await waitFor(() => expect(calculator.result.current.data?.potential_loss_rub).toBe(96.1))
+    expect(api).toHaveBeenCalledTimes(1)
+    calculator.rerender({ value: { ...input, affected: 3 } })
+    await waitFor(() => expect(calculator.result.current.data?.potential_loss_rub).toBe(144.15))
+    expect(api).toHaveBeenCalledTimes(2)
+    expect(api).toHaveBeenLastCalledWith('/api/metrics/economics/preview', expect.objectContaining({ query: { ...input, affected: 3 }, signal: expect.any(AbortSignal) }))
+  } finally {
+    now.mockRestore()
+    client.clear()
+  }
+})

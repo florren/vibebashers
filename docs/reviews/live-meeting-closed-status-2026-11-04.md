@@ -30,3 +30,11 @@ Evidence и hashes production assets: `live-meeting-closed-status-coverage.json`
 Физический микрофон, сетевой STT и внешняя доставка этой проверкой не покрываются.
 
 Откат: вернуть UI handler и удалить новый regression test; DB изменений нет.
+
+Скриншоты настоящего offline Vosk UI после server closed (synthetic bank/WAV):
+[ru/light](../screenshots/live-meeting/closed-ru-light.png),
+[ru/dark](../screenshots/live-meeting/closed-ru-dark.png),
+[en/light](../screenshots/live-meeting/closed-en-light.png),
+[en/dark](../screenshots/live-meeting/closed-en-dark.png),
+[Close при320px](../screenshots/live-meeting/closed-en-dark-320.png).
+Физический микрофон этими WAV-проверками не подтверждается.
