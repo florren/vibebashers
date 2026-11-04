@@ -141,6 +141,107 @@ class BudgetSnapshot:
 class PostgresAccounting:
     durable = True
 
+    async def connect_gigachat(
+        self, profile: LLMProfile, facts: KeyFacts, balances: dict[str, int], *, confirmed: bool = False
+    ) -> dict[str, Any]:
+        """Start app-only accounting once; never clear uncertainty of an attempt.
+
+        Existing reconciled credentials retain their original budget basis. This
+        path is only for a reserve credential with no previous application use.
+        Provider history remains explicitly unknown in the immutable origin.
+        """
+        from app.llm.gigachat_balance import parse_balance, require_balance
+
+        if not confirmed or facts.provider != "gigachat" or profile.provider != "gigachat":
+            raise AdmissionRefused("bad_output", "подключение требует GigaChat и явного confirmation")
+        balances = parse_balance({"balance": [{"usage": k, "value": v} for k, v in balances.items()]})
+        reject_reflection(balances, [facts.secret])
+        require_balance(balances, profile.model)
+        async with self.key_scope(profile, facts, timeout_s=20, check_budget=False) as scope:
+            async with scope._state() as state:
+                account = state["account"]
+                existing = await scope.uses_provider_balance()
+                if existing:
+                    # Idempotence cannot reset counters or resolve a later unknown.
+                    connection_state = "existing_app_origin"
+                else:
+                    attempts = await (
+                        await scope.conn.execute(
+                            "select exists(select 1 from llm_runtime.wire_attempts where credential_uid=%s) as value",
+                            (scope.uid,),
+                        )
+                    ).fetchone()
+                    assert attempts is not None
+                    if (
+                        account["usage_known"]
+                        or account["confirmed_tokens"]
+                        or account["legacy_tokens_hint"]
+                        or attempts["value"]
+                    ):
+                        raise AdmissionRefused(
+                            "quota", "существующий расход требует reconciliation, а не нового origin"
+                        )
+                    if not state["profile_day"]["requests_known"]:
+                        previous = await (
+                            await scope.conn.execute(
+                                "select exists(select 1 from llm_runtime.wire_attempts where profile_scope=%s) as value",
+                                (state["profile_scope"],),
+                            )
+                        ).fetchone()
+                        assert previous is not None
+                        if previous["value"]:
+                            raise AdmissionRefused("quota", "общий расход профиля требует reconciliation")
+                    # Legacy request hints are floors, even for an unused reserve.
+                    hints = await (
+                        await scope.conn.execute(
+                            "select coalesce(max(k.requests_today),0) as value from llm_api_keys k "
+                            "join llm_runtime.credential_aliases a on a.config_uid=k.credential_uid "
+                            "where a.credential_uid=%s and (k.requests_day is null or k.requests_day=%s)",
+                            (scope.uid, state["day"]),
+                        )
+                    ).fetchone()
+                    assert hints is not None
+                    if hints["value"]:
+                        raise AdmissionRefused("quota", "legacy requests требуют reconciliation, а не нового origin")
+                    observation = {
+                        "balances": balances,
+                        "prior_usage_source": account["usage_source"],
+                        "prior_usage_known": account["usage_known"],
+                        "legacy_tokens_hint": account["legacy_tokens_hint"],
+                        "key_requests_floor": max(state["key_day"]["requests_today"], hints["value"]),
+                        "profile_requests_floor": state["profile_day"]["requests_today"],
+                        "scope": "application_since_origin",
+                    }
+                    await scope.conn.execute(
+                        "insert into llm_runtime.gigachat_app_origins(credential_uid,observation) values(%s,%s)",
+                        (scope.uid, Jsonb(observation)),
+                    )
+                    await scope.conn.execute(
+                        "update llm_runtime.credentials set usage_known=true,usage_source='gigachat_api_balance_app_origin',"
+                        "usage_as_of=clock_timestamp(),updated_at=clock_timestamp() where uid=%s",
+                        (scope.uid,),
+                    )
+                    for kind, identity, floor in (
+                        ("key", str(scope.uid), observation["key_requests_floor"]),
+                        ("profile", state["profile_scope"], observation["profile_requests_floor"]),
+                    ):
+                        await scope.conn.execute(
+                            "update llm_runtime.daily_usage set requests_today=greatest(requests_today,%s),"
+                            "requests_known=true,usage_source=case when requests_known then usage_source "
+                            "else 'gigachat_api_balance_app_origin' end,usage_as_of=clock_timestamp() "
+                            "where scope_type=%s and scope_id=%s and utc_day=%s",
+                            (floor, kind, identity, state["day"]),
+                        )
+                    await sync_mirrors(scope.conn, scope.uid)
+                    connection_state = "connected_app_origin"
+            snapshot = await scope.snapshot()
+            return {
+                "state": connection_state,
+                "historical_usage_known": False,
+                **snapshot.public(),
+                "admission_allowed": snapshot.refusal is None,
+            }
+
     async def _identity(self, conn: psycopg.AsyncConnection[Any], facts: KeyFacts) -> dict[str, Any]:
         tag = _mac(b"cx.llm.identity-key.v1", "stable")
         await conn.execute(
@@ -447,6 +548,16 @@ class KeyScope:
     uid: uuid.UUID = field(repr=False)
     deadline: float
 
+    async def uses_provider_balance(self) -> bool:
+        row = await (
+            await self.conn.execute(
+                "select exists(select 1 from llm_runtime.gigachat_app_origins where credential_uid=%s) as value",
+                (self.uid,),
+            )
+        ).fetchone()
+        assert row is not None
+        return bool(row["value"])
+
     async def wait[T](self, operation: Awaitable[T]) -> T:
         try:
             return await asyncio.wait_for(operation, max(0.0, self.deadline - time.monotonic()))
@@ -689,6 +800,8 @@ class Ticket:
                 floor = max(account["confirmed_tokens"], _counter(int(observed["value"])))
             known = account["usage_known"] and not late
             source = "operator_reconciled_and_app_observed" if known else "app_observed_incomplete"
+            if known and await self.scope.uses_provider_balance():
+                source = "gigachat_api_balance_app_observed"
             await conn.execute(
                 "update llm_runtime.credentials set confirmed_tokens=%s,usage_known=%s,usage_source=%s,"
                 "usage_as_of=clock_timestamp(),updated_at=clock_timestamp() where uid=%s",
@@ -716,10 +829,15 @@ class Ticket:
                 "where id=%s and reconciliation_id is null and state='reserved'",
                 (kind, self.id),
             )
+            source = (
+                "gigachat_api_balance_app_incomplete"
+                if await self.scope.uses_provider_balance()
+                else "app_observed_incomplete"
+            )
             await self.scope.conn.execute(
-                "update llm_runtime.credentials set usage_known=false,usage_source='app_observed_incomplete',"
+                "update llm_runtime.credentials set usage_known=false,usage_source=%s,"
                 "updated_at=clock_timestamp() where uid=%s",
-                (self.scope.uid,),
+                (source, self.scope.uid),
             )
         self.terminal = True
 
@@ -833,6 +951,7 @@ async def sync_mirrors(conn: psycopg.AsyncConnection[Any], credential_uid: uuid.
         "left join llm_runtime.daily_usage d on d.scope_type='key' and d.scope_id=c.uid::text "
         "and d.utc_day=clock.day "
         "where k.credential_uid=a.config_uid and (%s::uuid is null or c.uid=%s) "
-        "and exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid)",
+        "and (exists(select 1 from llm_runtime.reconciliations r where r.credential_uid=c.uid) "
+        "or exists(select 1 from llm_runtime.gigachat_app_origins o where o.credential_uid=c.uid))",
         (credential_uid, credential_uid),
     )

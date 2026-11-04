@@ -1,4 +1,4 @@
-"""T-050: explicit operator reconciliation; no HTTP, no raw credentials in argv/output."""
+"""T-050: operator reconciliation / metadata-only GigaChat connect; no raw credentials in argv/output."""
 
 from __future__ import annotations
 
@@ -29,8 +29,8 @@ class SafeParser(argparse.ArgumentParser):
 
 
 def parser() -> argparse.ArgumentParser:
-    cli = SafeParser(description="Операционный учёт LLM: status/reconcile, без HTTP или автоматического known0.")
-    cli.add_argument("action", choices=("status", "reconcile"))
+    cli = SafeParser(description="Учёт LLM: status/reconcile; connect-gigachat читает OAuth/balance, без inference.")
+    cli.add_argument("action", choices=("status", "reconcile", "connect-gigachat"))
     cli.add_argument("--profile-id", type=int, required=True)
     source = cli.add_mutually_exclusive_group(required=True)
     source.add_argument("--key-id", type=int)
@@ -120,6 +120,27 @@ async def execute(args: argparse.Namespace) -> dict[str, Any]:
             )
     profile, facts = await selection(args)
     service = accounting.service()
+    if args.action == "connect-gigachat":
+        if not args.confirm or facts.provider != "gigachat" or not facts.secret:
+            raise ProviderError("bad_output", "connect-gigachat требует GigaChat credential и --confirm")
+        from app.llm.gigachat import GigaChatProvider
+        from app.llm.keys import ApiKey, KeyPool
+
+        settings = get_settings()
+        key = ApiKey(label="connect", secret=facts.secret)
+        provider = GigaChatProvider(
+            KeyPool([key]),
+            oauth_url=settings.gigachat_oauth_url,
+            base_url=facts.endpoint or settings.gigachat_base_url,
+            scope=settings.gigachat_scope,
+            ca_bundle_file=settings.gigachat_ca_bundle_file,
+        )
+        try:
+            async with asyncio.timeout(20):
+                balances = await provider.fetch_balance(key, profile, timeout_s=15)
+                return await service.connect_gigachat(profile, facts, balances, confirmed=True)
+        finally:
+            await provider.aclose()
     if args.action == "status":
         snapshot = await service.snapshot(profile, facts, timeout_s=20)
         return {

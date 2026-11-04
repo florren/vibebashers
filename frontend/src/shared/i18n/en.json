@@ -1344,6 +1344,7 @@
       "urlLabel": "URL for {{code}}",
       "remaining": "Remaining: {{value}}",
       "usageUnknown": "Unknown",
+      "appUsageScope": "Application usage since connection; previous history is unknown. Package availability is checked through the API.",
       "observedFloor": "Confirmed at least: {{value}}",
       "legacyHint": "Legacy value (unverified): {{value}}",
       "usageAsOf": "Usage observation: {{value}}",

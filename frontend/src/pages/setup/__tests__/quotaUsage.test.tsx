@@ -55,3 +55,11 @@ it('не показывает непроверенный remaining даже пр
   expect(row).not.toHaveTextContent('synthetic-private-echo')
   qc.clear()
 })
+it.each(['ru', 'en'])('отделяет app usage от неизвестной истории провайдера (%s)', async lang => {
+  await i18n.changeLanguage(lang)
+  const { qc } = mount({ provider: 'gigachat', tokens_used: 5, tokens_remaining: 95, usage_known: true, usage_source: 'gigachat_api_balance_app_observed' })
+  const row = (await screen.findByText('synthetic-key')).closest('tr')!
+  expect(within(row).getByText(i18n.t('setup.keys.appUsageScope'))).toBeVisible()
+  expect(row).not.toHaveTextContent('gigachat_api_balance_app_observed')
+  qc.clear()
+})

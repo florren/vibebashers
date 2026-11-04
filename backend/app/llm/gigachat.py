@@ -27,11 +27,16 @@ from app.llm.credential_boundary import (
     response_token_counts,
     retry_after,
 )
+from app.llm.gigachat_balance import parse_balance, require_balance
 from app.llm.keys import ApiKey, KeyPool
 from app.logging import get_logger
 
 log = get_logger(__name__)
 _PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+
+
+class _InferenceStarted(ProviderError):
+    """An origin-backed wire attempt cannot be replayed on another pool key."""
 
 
 @asynccontextmanager
@@ -305,6 +310,48 @@ class GigaChatProvider:
         return out
 
     # --- chat -------------------------------------------------------------------------------------------------------
+    async def fetch_balance(self, key: ApiKey, profile: LLMProfile, *, timeout_s: float) -> dict[str, int]:
+        """Read provider package availability; never infer historic consumption."""
+        token = await self._token(key, timeout_s)
+        try:
+            response = await self._request(
+                "GET",
+                key,
+                f"{self._chat_base(profile)}/balance",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=request_timeout(timeout_s),
+            )
+        except httpx.TimeoutException:
+            raise ProviderError("timeout", "balance: deadline исчерпан") from None
+        except httpx.HTTPError:
+            raise ProviderError("network", "balance: транспорт недоступен") from None
+        if response.status_code == 429:
+            raise ProviderError(
+                "rate_limit", "balance: HTTP 429", retry_after_s=retry_after(response.headers.get("Retry-After"))
+            )
+        if response.status_code in (401, 403):
+            # 403 also means pay-as-you-go without package balance, not an invalid key.
+            raise ProviderError(
+                "auth" if response.status_code == 401 else "quota",
+                "balance: доступ к пакетам не подтверждён",
+                status=response.status_code,
+            )
+        if response.status_code != 200:
+            raise ProviderError("unavailable", f"balance: HTTP {response.status_code}")
+        try:
+            body = response.json()
+        except ValueError:
+            raise ProviderError("bad_output", "balance: некорректный JSON") from None
+        reject_reflection(body, [key.secret, token])
+        return parse_balance(body)
+
+    async def _check_provider_balance(self, scope: accounting.KeyScope, key: ApiKey, profile: LLMProfile) -> None:
+        if self.accounting.durable and await scope.uses_provider_balance():
+            balances = await scope.wait(
+                self.fetch_balance(key, profile, timeout_s=max(0.01, scope.deadline - time.monotonic()))
+            )
+            require_balance(balances, profile.model)
+
     async def _chat(
         self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
     ) -> httpx.Response:
@@ -313,21 +360,35 @@ class GigaChatProvider:
             # OAuth and slot waiting do not consume inference RPD. Unknown quota
             # is rejected before either, while reservation is immediately before POST.
             token = await self._token(key, timeout_s)
-            async with generation_slot(self.scope), scope.inference() as ticket:
-                response = await self._post_chat(key, token, payload, profile, timeout_s)
+            async with generation_slot(self.scope):
+                await self._check_provider_balance(scope, key, profile)
                 try:
-                    body = response.json()
-                except ValueError:
-                    raise ProviderError("bad_output", "chat: некорректный JSON") from None
-                if not isinstance(body, dict) or not isinstance(body.get("usage"), dict):
-                    raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
-                prompt, completion, total = response_token_counts(
-                    body["usage"], [key.secret, key.access_token], coerce=True
-                )
-                await ticket.observe(prompt, completion, total_tokens=total, final=True)
-                self.pool.add_usage(key, total)
-                response.extensions["llm_usage_recorded"] = True
-                return response
+                    async with scope.inference() as ticket:
+                        response = await self._post_chat(key, token, payload, profile, timeout_s)
+                        try:
+                            body = response.json()
+                        except ValueError:
+                            raise ProviderError("bad_output", "chat: некорректный JSON") from None
+                        if not isinstance(body, dict) or not isinstance(body.get("usage"), dict):
+                            raise ProviderError("bad_output", "расход ответа неизвестен: usage отсутствует")
+                        prompt, completion, total = response_token_counts(
+                            body["usage"], [key.secret, key.access_token], coerce=True
+                        )
+                        await ticket.observe(prompt, completion, total_tokens=total, final=True)
+                        self.pool.add_usage(key, total)
+                        response.extensions["llm_usage_recorded"] = True
+                        return response
+                except ProviderError as exc:
+                    if self.accounting.durable and await scope.uses_provider_balance():
+                        raise _InferenceStarted(
+                            exc.kind,
+                            exc.detail,
+                            retry_after_s=exc.retry_after_s,
+                            status=exc.status,
+                            usage=exc.usage,
+                            request_count=exc.request_count,
+                        ) from None
+                    raise
 
     async def _post_chat(
         self, key: ApiKey, token: str, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
@@ -390,6 +451,8 @@ class GigaChatProvider:
             except ProviderError as e:
                 if not isinstance(e, accounting.AdmissionRefused):
                     self.pool.mark_error(key, e)
+                if isinstance(e, _InferenceStarted):
+                    raise
                 last = e
                 tried.add(key.label)
                 if e.kind not in ("rate_limit", "quota", "auth", "timeout", "network"):
@@ -481,13 +544,53 @@ class GigaChatProvider:
         total_usage.cost_rub = profile.cost(total_usage.prompt_tokens, total_usage.completion_tokens)
         raise ProviderError("bad_output", "ответ не соответствует схеме после попыток исправления", usage=total_usage)
 
+    @asynccontextmanager
+    async def _stream_key_scope(
+        self, profile: LLMProfile, timeout_s: float
+    ) -> AsyncIterator[tuple[accounting.KeyScope, ApiKey, str]]:
+        """Rotate only during preflight; a started inference is never replayed."""
+        deadline = time.monotonic() + timeout_s
+        tried: set[str] = set()
+        last: ProviderError | None = None
+        while True:
+            try:
+                key = self.pool.pick(exclude=tried)
+            except ProviderError as exc:
+                raise last or exc from None
+            handed_over = False
+            try:
+                facts = accounting.KeyFacts(
+                    self.name, key.secret, self._chat_base(profile), key.tokens_limit, db_id=key.db_id
+                )
+                async with AsyncExitStack() as stack:
+                    scope = await stack.enter_async_context(
+                        self.accounting.key_scope(
+                            profile, facts, timeout_s=max(0.0, deadline - time.monotonic()), streaming=True
+                        )
+                    )
+                    token = await scope.wait(self._token(key, max(0.0, deadline - time.monotonic())))
+                    await scope.wait(stack.enter_async_context(generation_slot(self.scope)))
+                    await self._check_provider_balance(scope, key, profile)
+                    handed_over = True
+                    yield scope, key, token
+                    return
+            except ProviderError as exc:
+                if handed_over:
+                    raise
+                if not isinstance(exc, accounting.AdmissionRefused):
+                    self.pool.mark_error(key, exc)
+                tried.add(key.label)
+                last = exc
+                if (
+                    exc.kind not in ("rate_limit", "quota", "auth", "timeout", "network")
+                    or time.monotonic() >= deadline
+                ):
+                    raise
+
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         if profile.provider == "openai_compatible":
             raise ProviderError("miss", "профиль openai_compatible")
-        key = self.pool.pick()
-        facts = accounting.KeyFacts(self.name, key.secret, self._chat_base(profile), key.tokens_limit, db_id=key.db_id)
-        async with self.accounting.key_scope(profile, facts, timeout_s=timeout_s, streaming=True) as scope:
-            token = await scope.wait(self._token(key, timeout_s))
+        async with self._stream_key_scope(profile, timeout_s) as (scope, key, token):
             guard = CredentialStreamGuard([key.secret, token])
             observed: Usage | None = None
             observed_total = 0
@@ -500,7 +603,6 @@ class GigaChatProvider:
             }
             try:
                 async with AsyncExitStack() as stream_stack:
-                    await scope.wait(stream_stack.enter_async_context(generation_slot(self.scope)))
                     ticket = await stream_stack.enter_async_context(scope.inference())
                     r = await scope.wait(
                         stream_stack.enter_async_context(

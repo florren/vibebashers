@@ -38,6 +38,7 @@ export function LlmKeysPanel() {
           {key.usage_known !== true && key.observed_tokens_floor != null && <span className="block text-muted">{t('setup.keys.observedFloor', { value: key.observed_tokens_floor })}</span>}
           {key.usage_known !== true && key.usage_source === 'legacy_unverified' && key.tokens_used != null && <span className="block text-muted">{t('setup.keys.legacyHint', { value: key.tokens_used })}</span>}
           {key.usage_as_of && <span className="block text-muted">{t('setup.keys.usageAsOf', { value: fmtDateTime(key.usage_as_of) })}</span>}
+          {key.usage_source?.startsWith('gigachat_api_balance_app_') && <span className="block max-w-xs whitespace-normal text-muted">{t('setup.keys.appUsageScope')}</span>}
         </td><td className="whitespace-nowrap px-2 py-2">
           {key.requests_known === true ? (key.requests_today ?? '—') : <span className="text-warn">{t('setup.keys.usageUnknown')}</span>} / {key.rpd_limit ?? '—'}
           <span className="block text-muted">{t('setup.keys.remaining', { value: key.rpd_limit == null ? '—' : key.requests_known === true && key.requests_remaining != null ? key.requests_remaining : t('setup.keys.usageUnknown') })}</span>

@@ -84,3 +84,21 @@ Production wire hooks обоих live providers используют private dur
 Frozen bc40536:1669 unit/18 skip;435 integration/4 skip/1 Alembic drift failure;43 scenario/2 skip;31 compliance;354 frontend;43 bot. После нормализации pre-release default исходный schema check и ledger52 passed, targeted110 unit passed; полный unit на6c8ae26 —1669 passed/18 skipped; новый lint включает362 frontend, Ruff/mypy/OpenAPI и licenses550+36 green. Это source-qualified evidence, не заявление полного make test green. Final scoped coverage:413 targeted passed,1100/1193=92.20% changed executable statements. Exact-head CI и human API/DDL/external-budget policy review обязательны до merge. Подробные semantics, recovery и итоговые проверки: `docs/reviews/T-050-durable-accounting.md`; UI proof: `docs/reviews/T-050-quota-ui.md`.
 
 T050 остаётся `in_progress`: очередь20s/limiter lock и main→fast→mock policy требуют отдельных coherent packets. Критерий всей карточки и live DoD не объявлены выполненными.
+
+### API balance / app origin — 2026-11-04
+
+По запросу владельца разработан `connect-gigachat`: OAuth + GET /balance без Studio,
+однократный app-scoped origin для неиспользованного резерва, DDL0021. История
+провайдера остаётся unknown в audit; прежние counters/attempts/лимиты сохраняются.
+Origin-backed structured/stream дополнительно проверяют пакет выбранной модели.
+Review и rollout: `docs/reviews/T-050-api-balance-app-accounting.md`, ADR-0025.
+Локально195composition tests (63actualPG+132targetunit) и полный backend2229unit/19skipped
+прошли. Frontend583tests на Node22, lint/typecheck/build, contracts48/167,
+Ruff и strict mypy329sourcefiles прошли; new statement execution154/159=96,86%.
+Четыре browser cases ru/en×light/dark проверили реальный компонент с явно
+синтетическими данными, без provider calls. Полный exact-head CI — gate merge. Node26 не соответствует CI Node22 и дал localStorage errors;
+повтор на закреплённом Node22 прошёл без изменения тестов. Секреты/операционные
+дампы не включены. DDL/budget policy/rollout PR #218 подтверждены владельцем2026-11-04; merge только
+после зелёного CI. Прежний CI выявил непрогенерированную ORM; штатный generator
+добавил24строки, actualPG upgrade→downgrade0003→upgrade→check прошёл.
+Добавлены2PGcases: unknown HTTP не повторяется на другом ключе в том же pool call.

@@ -615,6 +615,7 @@ class Credentials(Base):
     usage_as_of: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 
     credential_aliases: Mapped[list['CredentialAliases']] = relationship('CredentialAliases', back_populates='credentials')
+    gigachat_app_origins: Mapped['GigachatAppOrigins'] = relationship('GigachatAppOrigins', uselist=False, back_populates='credentials')
     reconciliations: Mapped[list['Reconciliations']] = relationship('Reconciliations', back_populates='credentials')
     wire_attempts: Mapped[list['WireAttempts']] = relationship('WireAttempts', back_populates='credentials')
 
@@ -1285,6 +1286,29 @@ class CredentialAliases(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
 
     credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='credential_aliases')
+
+
+class GigachatAppOrigins(Base):
+    __tablename__ = 'gigachat_app_origins'
+    __table_args__ = (
+        CheckConstraint('NOT historical_usage_known', name='gigachat_app_origins_historical_usage_known_check'),
+        CheckConstraint("jsonb_typeof(observation) = 'object'::text", name='gigachat_app_origins_observation_check'),
+        CheckConstraint("source = 'gigachat_api_balance_app_origin'::text", name='gigachat_app_origins_source_check'),
+        ForeignKeyConstraint(['credential_uid'], ['llm_runtime.credentials.uid'], name='gigachat_app_origins_credential_uid_fkey'),
+        PrimaryKeyConstraint('credential_uid', name='gigachat_app_origins_pkey'),
+        {'comment': 'One-time application usage origin; provider balance is a '
+                'remaining package, never historic usage. Preserve on '
+                'rollback/restore.',
+     'schema': 'llm_runtime'}
+    )
+
+    credential_uid: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('clock_timestamp()'))
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'gigachat_api_balance_app_origin'::text"))
+    historical_usage_known: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('false'))
+    observation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    credentials: Mapped['Credentials'] = relationship('Credentials', back_populates='gigachat_app_origins')
 
 
 class Reconciliations(Base):
