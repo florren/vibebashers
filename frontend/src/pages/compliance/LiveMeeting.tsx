@@ -130,7 +130,8 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
           setUtts((u) => [...u, { ...m.utterance!, trigger: m.trigger ?? null }])
           if (m.session) setSess(m.session)
         } else if (m.type === 'error') setErr(m.error ?? 'error')
-        else if (m.type === 'closed') {
+        else if (m.type === 'closed' && m.session_id === s.id && wsRef.current === ws) {
+          setSess((previous) => previous ? { ...previous, status: 'closed' } : previous)
           setReport(m.report ?? null)
           setStatus('closed')
         }
@@ -169,7 +170,7 @@ export function LiveMeeting({ onClose }: { onClose: () => void }) {
       <Section
         title={t('live.title')}
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
             {prov?.external_service && <Badge tone="warn">{t('live.external')}</Badge>}
             {model && <Badge tone="neutral">{model}</Badge>}
             {session && <IdLink kind="audio_session" value={session.public_id} />}

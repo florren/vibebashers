@@ -1,0 +1,125 @@
+{
+  "base": "f29748040e265ca0bc6ce5014e6bd74ca0ad2a54",
+  "checks": [
+    {
+      "check": "full-tests",
+      "exit_code": 0
+    },
+    {
+      "check": "lint",
+      "exit_code": 0
+    },
+    {
+      "check": "types",
+      "exit_code": 0
+    },
+    {
+      "check": "build",
+      "exit_code": 0
+    }
+  ],
+  "files": {
+    "frontend/src/pages/compliance/LiveMeeting.tsx": "57b9281e280b2c3970c74bda26a1274df424441a896491975cae5025deefcea5",
+    "frontend/src/pages/compliance/__tests__/LiveMeetingStatus.test.tsx": "3292564e145c3ee2f30ea612864bbaf077504e3186e7c0fe6ac1f756cd89fda1",
+    "frontend/dist/index.html": "4a2a7a37c8bba30e97f88d172f0d07bd9c6a3f84c335ae512a42f65604859aca"
+  },
+  "assets": {
+    "/assets/index-D8Z1tVqM.js": "c74b0f8459e4fec30a9e5b67b49087582e3ae2a8cedf9b4191e7331d409ab411",
+    "/assets/index-D6MeHmjg.css": "62c550d690ac24a1e8d8768f7d3de48076a41ff15d20e75db83648e1a6045b42"
+  },
+  "browser_cases": [
+    {
+      "lang": "ru",
+      "theme": "light",
+      "result": "PASS",
+      "session_id": 2,
+      "saved_session_status": "closed",
+      "received_message_counts": {
+        "ready": 1,
+        "partial": 14,
+        "final": 2,
+        "closed": 1,
+        "error": 0
+      },
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-ru-light.png"
+    },
+    {
+      "lang": "ru",
+      "theme": "dark",
+      "result": "PASS",
+      "session_id": 3,
+      "saved_session_status": "closed",
+      "received_message_counts": {
+        "ready": 1,
+        "partial": 13,
+        "final": 2,
+        "closed": 1,
+        "error": 0
+      },
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-ru-dark.png"
+    },
+    {
+      "lang": "en",
+      "theme": "light",
+      "result": "PASS",
+      "session_id": 4,
+      "saved_session_status": "closed",
+      "received_message_counts": {
+        "ready": 1,
+        "partial": 13,
+        "final": 2,
+        "closed": 1,
+        "error": 0
+      },
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-en-light.png"
+    },
+    {
+      "lang": "en",
+      "theme": "dark",
+      "result": "PASS",
+      "session_id": 5,
+      "saved_session_status": "closed",
+      "received_message_counts": {
+        "ready": 1,
+        "partial": 13,
+        "final": 2,
+        "closed": 1,
+        "error": 0
+      },
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-en-dark.png"
+    }
+  ],
+  "mobile": [
+    {
+      "lang": "ru",
+      "theme": "light",
+      "result": "PASS",
+      "session_id": 6,
+      "saved_session_status": "closed",
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-mobile-ru-light.png"
+    }
+  ],
+  "mobile_assertions": [
+    "document/body scrollWidth <= viewport320",
+    "start meeting button receives focus",
+    "confirmed closed badge shown, live badge absent"
+  ],
+  "db": {
+    "wire_attempts": 0,
+    "audio_sessions": 6,
+    "audio_storage_enabled": 0
+  },
+  "limits": [
+    "Chrome fake microphone with tracked synthetic WAV, physical microphone untested",
+    "Offline native Vosk only; no browser SpeechRecognition, live LLM or Telegram",
+    "Existing mobile session header controls partly clipped; status row fits; unrelated layout not changed"
+  ]
+}

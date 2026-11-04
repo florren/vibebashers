@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -44,6 +45,7 @@ def _attach_mock_sim(client: TestClient) -> MagicMock:
     client.app.state.maintenance.boundary = None
     client.app.state.maintenance.control = None
     sim = MagicMock()
+    sim._lock = asyncio.Lock()
     sim.clock.running = False
     sim.run_status = "completed"
     sim.conn = None

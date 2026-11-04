@@ -1,0 +1,36 @@
+{
+  "base_sha": "f29748040e265ca0bc6ce5014e6bd74ca0ad2a54",
+  "producer": "backend/app/api/sim.py",
+  "producer_sha256": "d495258ff7518b414be2d2e23f2370ada30e5c39c017b30b1112119191726d29",
+  "new_statements": [
+    392,
+    394,
+    395,
+    396,
+    397,
+    398,
+    399,
+    401
+  ],
+  "covered_new_statements": [
+    392,
+    394,
+    395,
+    396,
+    397,
+    398,
+    399,
+    401
+  ],
+  "missing_new_statements": [],
+  "new_statement_coverage_pct": 100.0,
+  "target_tests": {
+    "passed": 24,
+    "seconds": 56.81
+  },
+  "native_red": {
+    "failed": 4,
+    "seconds": 8.13
+  },
+  "scope": "Single modified backend producer, all changed executable lines; existing unrelated paths remain in coverage data."
+}

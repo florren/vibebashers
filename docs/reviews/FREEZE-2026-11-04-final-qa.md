@@ -6,9 +6,9 @@
 
 ## Повторные проверки текущей версии
 
-- Backend unit: 2229 passed, 19 skipped; причины всех 19 — `нет examples`
+- Backend unit итогового v3: 2269 passed, 19 skipped; причины всех 19 — `нет examples`
   у схем. Отсутствие примера не доказывает проверку соответствующего поведения.
-- Frontend: 583 passed, 81 test files, Node 22.23.4.
+- Frontend итогового v3: 590 passed, 82 test files, Node 22.23.4.
 - Telegram transport: 50 passed, fake HTTP, без внешних сообщений.
 - Ruff check/format: passed; mypy: 329 source files, no issues.
 - Frontend lint/typecheck: passed.
@@ -38,7 +38,7 @@ origin. Это mock-приёмка; реальная LLM не подразуме
 headless shell 1217 прошёл. Первоначальный сбой окружения не считается product fix.
 Первый harness использовал PROFILE=lite при seed demo: измерения 5000 клиентов
 действительны, но baseline был недоступен. CI helper исправлен, обе конфигурации
-покрыты unit-тестами; повтор nightly ещё обязателен.
+покрыты unit-тестами; повтор на f297480 прошёл:168 browser cases, PROFILE=demo, baseline_available=true, seed24.85s; все пять API p95≤48.39ms, violations=[]. Новый итоговый v3 требует собственного повтора.
 
 ## Хронология
 
@@ -143,8 +143,7 @@ benchmark detail/export, compliance session/utterances/report, ingest transcript
 public track и settings export — 200 с проверкой содержимого. Export body
 не печатался и не сохранялся. Primary данные/настройки не менялись.
 
-Native personal→PG NOTIFY→operator WebSocket: 3.076ms, один sample;
-это не длительный p95/нагрузочный WS benchmark.
+На f297480 повтор native каталога:31 из35 declared results true,0 control/tick409; четыре read-model/UI/replay acceptance остаются not_verified. После каждого write:active AgentRuns0, failed0. Native personal→PG NOTIFY→operator WebSocket:21 samples, p95=8.502ms, max=14.261ms; это bounded sample, не длительный нагрузочный benchmark.
 
 ## Оставшиеся проверки и границы
 
@@ -155,13 +154,65 @@ Native personal→PG NOTIFY→operator WebSocket: 3.076ms, один sample;
 - Vosk проверяется существующей локальной моделью и WAV; физический микрофон
   и внешние speech-сервисы этим не подтверждаются.
 - Replay-кассеты сценария11 нет; mock не заменяет этот acceptance.
-- До serialization fix из35 native cases: 29 passed (5 полных declared checks /
-  6 с unknown / 18 smoke), два control/tick409; ещё четыре не закрыли recorded
-  read-model/UI/replay acceptance. Повтор не должен превращать smoke/unknown
-  в доказательство полного поведения.
+- В native каталоге четыре случая не закрыли recorded read-model/UI/replay acceptance; smoke/unknown не считаются доказательством полного поведения.
 - `/api/public/mock-social-feed` и `/api/signals/{id}/normalized` остаются явными
   501; не входят в реализованный функционал и не объявляются passed.
 
 Приватные dumps, исходные сообщения, ключи, ledger и сырые логи в Git не включаются.
 Финальное решение по фризу принимается после завершения проверок и зелёного CI
 с новым regression, с явным перечнем оставшихся ограничений.
+
+## Итоговый v3: дополнительные исправления и текущий gate
+
+- Финальный target/resume diff описан в `freeze-sim-target-control.md`:23 адресных
+  и72 composition PG passed;69/79 новых executable statements (87.34%). Исправлены
+  overshoot reset_day/jump_to, stale Pause/Start/demo status и guard-row deadlock.
+  Допустимое первое создание implicit run и Stop между chunks покрыты отдельно.
+- Baseline dump удерживает тот же simulator lock с повторной проверкой status:
+  RED4→GREEN24;8/8 новых producer statements выполнены. Подробности и откат —
+  `baseline-shared-connection-2026-11-04.md`. Human review общей tick TX обязателен.
+- Compliance LiveMeeting обновляет badge только по текущему server closed; stale
+  socket игнорируется. Close помещается при320px. Production Chrome:4 status и8
+  responsive cases ru/en×themes; component tests и итоговые590 frontend passed.
+- Настоящий WAV→Chrome AudioWorklet→PCM16→Vosk прошёл personal и compliance:
+  draft без autosend,14 partials/2 finals и closed report; внешний STT/LLM0.
+  Использован fake microphone из WAV; физический микрофон и partial latency SLA
+  этим не подтверждены.
+- Полный literal `make test` на f297480:unit2269 passed/19skipped, integration
+  881passed/3failed; следующие make targets не запускались после ошибки. Причина
+  трёх ошибок — тест выбирал чужой historical wire по reused numeric profile_id.
+  Test-only fix bcfcf15 проверяет physical credential и текущий quota scope,
+  намеренно сохраняя foreign wire:RED3→GREEN4, accounting→recovery→OR51passed.
+  Это не production fix и не основание считать прежний make test зелёным.
+- Полный итоговый v3 make test и exact-head CI ещё обязательны. До них статус
+  проверки остаётся открытым; merge и rollout не объявлены выполненными.
+
+Отдельная bounded real-poll проверка завершилась PASS: GetMe/GetUpdates/GetChat
+(3 actual metadata HTTP), настоящий private self `/start` отфильтрован до
+aiogram Dispatcher, native HMAC→backend→outbox→sendMessage→ACK. Ровно одно
+штатное приветствие и durable sent receipt; повторная deliver_once без отправки.
+Offset не продвигался, другие updates не импортированы, signals unchanged, LLM0.
+Redirects/retries запрещены на фактическом HTTP boundary, TLS включён. Это
+инструментированная single-iteration проверка, не включение primary worker.
+
+На итоговом v3 `make lint` passed (включая frontend590 tests, strict mypy329
+backend/5 bot source files); contracts48/167, drift197=197, i18n2326 и licenses
+550backend/36bot passed. Обычный owners check сообщает L1/L2/L3/L4; cross-layer
+пакет ранее разрешён пользователем и проверяется явным --allow-cross.
+
+Повтор full DR после live также PASS:новый экспортированный read-only snapshot
+115таблиц/60sequences/DDL/ACL/owners/comments exact;22known/2reconciled/1unknown
+сохранены, ledger MAC с исходным APP_SECRET valid. Production PostgresAccounting
+на network=none clone запрещает key_scope admission до ticket:quota/operator
+reconciliation. После проверки все llm_runtime hashes и60sequences unchanged.
+Provider/HTTP/inference/reconciliation не создавались. Backup178796010bytes,0600;
+env/config/assets отдельно, registry ciphertext rows0. Primary только читалась.
+
+Независимое review обнаружило ещё Stop-before-first-target-chunk: после уже
+подтверждённого Stop target мог создать новый free run. Native HTTP RED2/2
+воспроизведён; допуск initial implicit owner теперь фиксируется под preflight
+lock. GREEN24cases155.72s,6/6 новых executable statements выполнены. После stale409
+независимое DB соединение проверяет сохранение exact run/time/RNG/stopped.
+Исходно inactive/None owner по-прежнему допустим. Новый engine SHA256:
+2216549050deef94a579103a2a9cb6a66926c1653b720cb70cf1a21b48451679.
+Ruff/format/mypy этого addon прошли; итоговый make test ещё обязателен.

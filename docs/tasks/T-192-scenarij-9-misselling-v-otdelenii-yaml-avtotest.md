@@ -42,3 +42,13 @@ pytest backend/tests/scenarios/test_scenario_09_misselling.py
 
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
+
+### Предфризовая проверка LiveMeeting,04.11.2026
+
+Настоящий Chrome PCM16/Vosk→partial/final→closed report прошёл offline;
+server-confirmed closed теперь обновляет badge только текущего session/socket.
+Close сохраняет доступность при320px. Production browser4status+8responsive
+cases ru/en×themes,10component cases, fullfrontend590passed. Тестовый микрофон
+из WAV; физический микрофон и partial latency SLA этим не подтверждены.
+Review: `docs/reviews/live-meeting-closed-status-2026-11-04.md` и
+`docs/reviews/live-meeting-header-responsive-2026-11-04.md`.

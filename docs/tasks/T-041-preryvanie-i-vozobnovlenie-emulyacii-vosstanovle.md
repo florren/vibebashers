@@ -94,3 +94,15 @@ Preflight, reset_day policy-read и завершающий commit теперь �
 не менялись. Final human review общей tick TX и exact-head CI обязательны.
 Review: docs/reviews/freeze-sim-control-serialization.md; полный QA status —
 docs/reviews/FREEZE-2026-11-04-final-qa.md. История автоматически не исправляется.
+
+Дополнение v3: reset_day/jump_to учитывают concurrent native chunks; Pause→Start
+сохраняет resume hooks, cached demo Stop не открывает завершённый run, handoff
+освобождает SQL guard перед повторным Python lock.95 plain PG cases passed;
+69/79 новых executable statements (87.34%). Предусмотрены implicit initial owner,
+Stop между chunks, cancellation/RNG rollback. Review и точный source hash:
+`docs/reviews/freeze-sim-target-control.md`. Final combined gate ещё выполняется.
+
+Final review также подтвердило Stop-before-first-target-chunk (RED2): разрешение
+implicit owner сохраняется в preflight, Stop не создаёт новый run. GREEN24
+с независимой проверкой run/time/RNG/status после409;6/6 новых statements выполнены.
+Source и итоговые ограничения отражены в общем предфризовом QA report.

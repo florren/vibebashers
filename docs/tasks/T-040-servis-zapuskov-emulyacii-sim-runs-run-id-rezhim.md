@@ -50,6 +50,7 @@ curl -s localhost:8000/api/sim/runs/current | jq .counters
 ```
 
 ## Отчёт субагента
+- Предфризовая ревизия 04.11.2026: baseline API удерживает `Simulator._lock` через повторный active-run guard, snapshot export и commit. Реальный PG/API event barrier доказал прежний premature commit чужого native control; исходный f297480 дал 4 failed, исправление — 24 passed с existing baseline/restore/control regressions. Все 8 изменённых executable строк producer покрыты. Guard/формат/финансовые правила не меняются; итоговый review и CI требуются отдельно. [Доказательство и откат](../reviews/baseline-shared-connection-2026-11-04.md).
 Ветка main, коммит B03 (минимум). `app/sim/runs.py`: current_run_id, create_run (kind free, reset_mode counters: незавершённый текущий → stopped, parent_run_id, NOTIFY runs started), set_run_status (paused/running/interrupted/stopped c summary из v_run_counters), get_run (+ counters), list_runs. Все вставки симулятора идут с run_id текущего запуска (тест «нет строк без run_id»). Не сделано (остаётся по карточке): сценарные запуски, archive/export/delete, scripts/run.sh, общая зависимость run_id для лент. Время: ~25 мин.
 
 Дополнение feat/T-040-baseline-restore: `app/sim/baseline.py` (pg_dump -Fc, meta, sha256, pg_restore с возвратом sim_runs), GET/POST `/api/sim/baseline`, POST `/restore`, POST `/api/sim/runs` с `reset_mode=baseline`. Сравнение запусков не менялось. В CI без postgresql-client интеграционный restore пропускается; unit мокает subprocess. Образ backend по-прежнему без pg_dump — честный 409, если бинаря нет.
