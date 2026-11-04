@@ -160,6 +160,81 @@ describe('demo-menu', () => {
     expect(methods.every(method => method === 'GET')).toBe(true)
   })
 
+  it.each([
+    ['ru', 'prepareCabinet', 'cabinet_red_words_report', '/cabinet/deposits?run_id=734&period=week'],
+    ['en', 'prepareCabinet', 'cabinet_red_words_report', '/cabinet/deposits?run_id=734&period=week'],
+    ['ru', 'prepareCsi', 'csi_and_branches', '/csi?run_id=734&period=month'],
+    ['en', 'prepareCsi', 'csi_and_branches', '/csi?run_id=734&period=month'],
+  ])('native Mock preparation %s/%s сохраняет returned run scope', async (language, key, scenario, path) => {
+    await i18n.changeLanguage(language)
+    const writes: { url: string; body: unknown }[] = []
+    installFetch((url, init) => {
+      if (init?.method === 'POST') {
+        writes.push({ url, body: JSON.parse(String(init.body)) })
+        if (url === `/api/scenarios/${scenario}/run`) return jsonRes({ run: { id: 734, kind: 'scenario', scenario_id: scenario } }, 202)
+      }
+      return undefined
+    })
+    function Location() { const location = useLocation(); return <output data-testid="location">{location.pathname + location.search}</output> }
+    render(qcWrap(<><DemoMenu /><Location /></>))
+    useDemoMenu.setState({ open: true })
+    expect(await screen.findByText(i18n.t('demoMenu.prepareHint'))).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t(`demoMenu.${key}`) }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(path))
+    expect(writes).toEqual([{ url: `/api/scenarios/${scenario}/run`, body: { reset_mode: 'counters', seed: 42, label: i18n.t(`demoMenu.${key}`) } }])
+    expect(useDemoMenu.getState().open).toBe(false)
+    await i18n.changeLanguage('ru')
+  })
+
+  it('pending preparation защищена от double click и смены провайдера', async () => {
+    let finish!: (response: Response) => void
+    const calls: string[] = []
+    installFetch((url, init) => {
+      if (init?.method === 'POST') calls.push(url)
+      if (url === '/api/scenarios/csi_and_branches/run') return new Promise<Response>(resolve => { finish = resolve })
+      return undefined
+    })
+    render(qcWrap(<DemoMenu />)); useDemoMenu.setState({ open: true })
+    const button = await screen.findByRole('button', { name: i18n.t('demoMenu.prepareCsi') })
+    fireEvent.click(button); fireEvent.click(button)
+    expect(await screen.findByRole('status')).toHaveTextContent(i18n.t('demoMenu.preparing'))
+    expect(button).toBeDisabled()
+    expect(screen.getByRole('button', { name: i18n.t('demoMenu.llmLive') })).toBeDisabled()
+    expect(screen.getByRole('button', { name: i18n.t('demoMenu.close') })).toBeDisabled()
+    expect(calls).toEqual(['/api/scenarios/csi_and_branches/run'])
+    finish(jsonRes({ run: { id: 735, kind: 'scenario', scenario_id: 'csi_and_branches' } }, 202))
+    await waitFor(() => expect(useDemoMenu.getState().open).toBe(false))
+  })
+
+  it.each([409, 500])('prepare %s сохраняет меню и показывает серверную ошибку без переключения или retry', async status => {
+    const writes: string[] = []
+    installFetch((url, init) => {
+      if (init?.method === 'POST') writes.push(url)
+      if (url === '/api/scenarios/cabinet_red_words_report/run') return jsonRes({ detail: 'T262 requires effective Mock' }, status)
+      return undefined
+    })
+    render(qcWrap(<DemoMenu />)); useDemoMenu.setState({ open: true })
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('demoMenu.prepareCabinet') }))
+    await screen.findByText('T262 requires effective Mock')
+    fireEvent.click(screen.getByText(i18n.t('care.details')))
+    expect(screen.getByText('T262 requires effective Mock')).toBeVisible()
+    expect(useDemoMenu.getState().open).toBe(true)
+    expect(screen.getByRole('button', { name: i18n.t('demoMenu.prepareCabinet') })).not.toBeDisabled()
+    expect(writes).toEqual(['/api/scenarios/cabinet_red_words_report/run'])
+  })
+
+  it.each([{}, { run: { id: 0, kind: 'scenario', scenario_id: 'csi_and_branches' } }, { run: { id: 3, kind: 'scenario', scenario_id: 'another' } }])('invalid run response не открывает чужой scope', async response => {
+    installFetch(url => url === '/api/scenarios/csi_and_branches/run' ? jsonRes(response, 202) : undefined)
+    function Location() { return <output data-testid="location">{useLocation().pathname}</output> }
+    render(qcWrap(<><DemoMenu /><Location /></>)); useDemoMenu.setState({ open: true })
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('demoMenu.prepareCsi') }))
+    await screen.findByText(i18n.t('demoMenu.invalidRun'))
+    fireEvent.click(screen.getByText(i18n.t('care.details')))
+    expect(screen.getByText(i18n.t('demoMenu.invalidRun'))).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent('/')
+    expect(useDemoMenu.getState().open).toBe(true)
+  })
+
   it('501 показывает Problem', async () => {
     installFetch((url) => {
       if (url.includes('/api/demo/status')) return jsonRes({ llm_mode: 'live' })

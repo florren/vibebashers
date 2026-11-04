@@ -1,4 +1,5 @@
 import type { Schemas } from './client'
+import type { paths } from './types'
 import { requireRunScope } from './runScope'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -539,6 +540,22 @@ export function useDemoPlay() {
   return useMutation({
     mutationFn: ({ scenario_id, ...body }: DemoPlayBody & { scenario_id: string }) =>
       post<DemoPlayResult>(`/api/demo/play/${scenario_id}`, body),
+  })
+}
+
+// T262: запуск только через native preflight; режимы провайдеров не переключаем.
+export function useDemoPrepareScenario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, label }: { id: 'cabinet_red_words_report' | 'csi_and_branches'; label: string }) => {
+      const body: NonNullable<paths['/api/scenarios/{id}/run']['post']['requestBody']>['content']['application/json'] = { reset_mode: 'counters', seed: 42, label }
+      return post<paths['/api/scenarios/{id}/run']['post']['responses'][202]['content']['application/json']>(`/api/scenarios/${id}/run`, body)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sim-state'] })
+      void qc.invalidateQueries({ queryKey: ['sim-runs'] })
+      void qc.invalidateQueries({ queryKey: ['demo-status'] })
+    },
   })
 }
 

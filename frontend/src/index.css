@@ -234,6 +234,8 @@ body {
 }
 html[data-density='compact'] .input,
 html[data-density='compact'] .btn { min-height: 2rem; height: 2rem; }
+/* Длинные подписи подготовки должны помещаться и в компактном меню на320px. */
+html .btn.demo-menu-prepare { height: auto; min-height: 2.75rem; padding-block: .5rem; white-space: normal; }
 html[data-pack='ops'] :where(label, th, .num) { font-family: 'JetBrains Mono', monospace; }
 
 /* T-253: конечные переходы; красные полосы и индикаторы не пульсируют. */
