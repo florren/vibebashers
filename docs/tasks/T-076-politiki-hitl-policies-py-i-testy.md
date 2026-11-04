@@ -40,3 +40,8 @@ pytest backend/tests/unit/test_policies.py
 
 ## Отчёт субагента
 Ветка `feat/b04-agent`, `backend/app/agent/policies.py`: DEFAULT_POLICIES (порог 0.75, fraud 50 000 ₽, repeat 3, эскалация negativity ≥80, окно дедупа 4 ч) с переопределением из settings['policies']; needs_human → HumanReason (legal_regulatory, fraud_amount, ultra_vip, partner_privilege, repeat_3plus, classifier_conflict, policy_other при severity critical, low_confidence), needs_escalation (churn_threat&negativity≥80, repeat+negative, severity critical, ≥3 сигналов/7д), needs_clarification (confidence <0.6 или нет сущностей, один вопрос), human_options/human_recommendation, forbidden_phrases, refund_allowed. HITL-цикл: wait_human → human_decisions (+NOTIFY hitl) → POST /api/hitl/{id} (accept/modify/reject/delegate) → resume → act. Тесты: `tests/unit/test_agent_core.py::test_needs_human_branches/test_escalation_and_clarification`, `tests/integration/test_agent.py::test_hitl_pause_and_resume`. Время: ~35 мин.
+
+
+### Исправления длинного soak 2026-11-04
+
+Перед HITL causal fault recheck соответствует классифицированной проблеме, как в decide/_act_spec. Unrelated историческая failed operation не заменяет generic incident; genuine stale matching scope по-прежнему блокирует HITL. Финальный human review этой границы ещё требуется. Подробности и rollback: [freeze-defects](../reviews/freeze-defects-2026-11-04.md). Общий 14-day/CI gate ещё выполняется; acceptance карточки не закрывается.

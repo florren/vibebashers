@@ -280,7 +280,7 @@ def analyze(text: str) -> dict[str, Any]:
         and not sarcasm
     ):
         stype = "info_request"
-    elif grateful and neg <= 1 and not sarcasm and not _has(t, CHURN + REGULATOR):
+    elif grateful and neg <= 1 and not sarcasm and not _has(t, CHURN + REGULATOR + QUESTION):
         stype = "gratitude"
     elif _has(t, REGULATOR) and neg > 0:
         stype = "legal_regulatory"

@@ -49,7 +49,7 @@ ENV_SPEC: dict[str, tuple[str, bool, bool]] = {
     "LOG_JSONL": ("Писать JSONL-журнал (true | false)", False, False),
     "LOG_JSONL_LEVEL": ("debug | info | warning", False, False),
 }
-_LINE = re.compile(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*(.*?)\s*$")
+_LINE = re.compile(r"^\s*(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=(.*?)\s*$")
 
 
 def env_path(settings: Settings | None = None) -> Path:
@@ -66,6 +66,8 @@ def _strip_value(raw: str) -> str:
     v = raw.strip()
     if v[:1] in ("'", '"') and v.endswith(v[0]) and len(v) >= 2:
         return v[1:-1]
+    if v.startswith("#") and raw[:1].isspace():
+        return ""
     # отрезаем inline-комментарий «  # ...»
     return re.split(r"\s+#", v, maxsplit=1)[0].strip()
 
@@ -86,6 +88,8 @@ def _hint(v: str) -> str:
 
 
 def _quote(v: str) -> str:
+    if not v:
+        return '""'
     return v if re.fullmatch(r"[A-Za-z0-9_./:,+\-@=]*", v) else '"' + v.replace('"', '\\"') + '"'
 
 

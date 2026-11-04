@@ -60,3 +60,8 @@ cases+6waiting-human frames,84table hashes stable,150GET p95≤40.135ms.
 Карточка in_progress: нужны реальные replay/live recordings, итоговая demo
 композиция, human review эскалации и green CI/merge. Cross-layer согласован;
 нового разрешения на external LLM/Telegram не было и вызовов не выполнялось.
+
+
+### Исправления приёмки стенда 2026-11-04
+
+Journey personal собирает parent/child conversation только по membership сессии и actual run; чужие anonymous parent hints не открывают доставок. Добавлены реальные PG проверки parent и child. Общие unit: 2201 passed/19 skipped. Полный PG/soak и CI ещё выполняются; acceptance всей карточки не закрывается. Review и откат: [freeze-defects](../reviews/freeze-defects-2026-11-04.md).
