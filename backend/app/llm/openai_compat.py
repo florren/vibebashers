@@ -105,6 +105,28 @@ def is_paid_model(profile: LLMProfile, base_url: str) -> bool:
     return is_openrouter(base_url) and not _skips_budget_check(profile.model)
 
 
+def _openrouter_missing_usage_reference(result: Any, headers: httpx.Headers, secret: str | None) -> str:
+    # Это metadata провайдера, а не текст модели. Конфликтующие body/header IDs
+    # не дают достоверного указателя; raw upstream body/message наружу не идут.
+    references = {
+        value
+        for value in (getattr(result, "id", None), headers.get("X-Generation-Id"))
+        if isinstance(value, str)
+        and 5 <= len(value) <= 128
+        and value.startswith("gen-")
+        and value.isascii()
+        and all(char.isalnum() or char == "-" for char in value[4:])
+        and (not secret or secret not in value)
+    }
+    details = [f"generation_id={next(iter(references))}"] if len(references) == 1 else []
+    metadata = getattr(result, "model_extra", None)
+    error = metadata.get("error") if isinstance(metadata, dict) else None
+    code = error.get("code") if isinstance(error, dict) else None
+    if type(code) is int and 100 <= code <= 599 and (not secret or secret not in str(code)):
+        details.append(f"provider_error_code={code}")
+    return "".join(f"; {item}" for item in details)
+
+
 async def _empty_key() -> str:
     return ""
 
@@ -292,7 +314,10 @@ class OpenAICompatProvider:
             async with scope.inference() as ticket:
                 usage.request_count += 1
                 try:
-                    result = await self._chat_client(base_url, timeout_s).chat.completions.create(**payload)
+                    response = await self._chat_client(base_url, timeout_s).chat.completions.with_raw_response.create(
+                        **payload
+                    )
+                    result = response.parse()
                 except APIError as exc:
                     raise self._provider_error(exc) from None
                 if result.usage is None:
@@ -301,6 +326,8 @@ class OpenAICompatProvider:
                         if self._paid(profile, base_url)
                         else "расход ответа неизвестен: usage отсутствует"
                     )
+                    if is_openrouter(base_url):
+                        detail += _openrouter_missing_usage_reference(result, response.headers, self._key(base_url))
                     raise ProviderError("bad_output", detail)
                 raw_usage = {
                     "prompt_tokens": result.usage.prompt_tokens,

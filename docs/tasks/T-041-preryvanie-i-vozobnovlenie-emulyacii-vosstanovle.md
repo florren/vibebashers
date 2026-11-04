@@ -84,3 +84,13 @@ contracts47/162. Coverage нового engine27/33=81.82% (7regression+3existing
 controls под tracer), source-qualified JSON вreview. Генератор идемпотентен.
 Exact-head CI/зависимостьPR195 остаются обязательны; нового fullintegration/live
 smoke не заявляем, общий DoD карточки не закрыт.
+
+### Предфризовая сериализация control/tick, 04.11.2026
+
+Подтверждён same-process rollback/409 при shared psycopg connection вне lock.
+Preflight, reset_day policy-read и завершающий commit теперь ждут tick lock;
+настоящие stale run/time/RNG/status guards сохранены. RED5 → GREEN5; ещё72 PG,
+новые executable statements90% (rawAST85.71%). Формулы/ставки/лимиты/HITL
+не менялись. Final human review общей tick TX и exact-head CI обязательны.
+Review: docs/reviews/freeze-sim-control-serialization.md; полный QA status —
+docs/reviews/FREEZE-2026-11-04-final-qa.md. История автоматически не исправляется.

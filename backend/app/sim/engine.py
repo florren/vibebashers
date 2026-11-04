@@ -459,27 +459,30 @@ class Simulator:
                     raise
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
-        conn = await self.connect()
-        await self._require_current(conn, lock=False, check_state=True)
-        creates_new = action == "start" and (
-            self.run_id is None
-            or self.run_status in ("stopped", "completed", "archived", None)
-            or bool(kw.get("label"))
-        )
-        if not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
-            await self._reject_scripted_control()
-        if (
-            self.behavior_policy is not None
-            and self.run_id is not None
-            and action in ("start", "step", "jump_to", "reset_day")
-            and not creates_new
-        ):
-            try:
-                await require_run(conn, self.run_id, policy=self.behavior_policy)
-            except BaseException:
-                await conn.rollback()
-                raise
-        execution = await configuration(conn, self.run_id) if self.run_id else {}
+        # Tick и control разделяют одно соединение: даже preflight SELECT/rollback
+        # должен дождаться общей транзакции tick, а не видеть его промежуточные часы/RNG.
+        async with self._lock:
+            conn = await self.connect()
+            await self._require_current(conn, lock=False, check_state=True)
+            creates_new = action == "start" and (
+                self.run_id is None
+                or self.run_status in ("stopped", "completed", "archived", None)
+                or bool(kw.get("label"))
+            )
+            if not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
+                await self._reject_scripted_control()
+            if (
+                self.behavior_policy is not None
+                and self.run_id is not None
+                and action in ("start", "step", "jump_to", "reset_day")
+                and not creates_new
+            ):
+                try:
+                    await require_run(conn, self.run_id, policy=self.behavior_policy)
+                except BaseException:
+                    await conn.rollback()
+                    raise
+            execution = await configuration(conn, self.run_id) if self.run_id else {}
         if (
             self.run_id is not None
             and execution.get("mode") == "demo"
@@ -582,9 +585,11 @@ class Simulator:
             await self.step(float(kw.get("step_minutes") or 15))
         elif action == "reset_day":
             await self._stop_loop()
-            lt = self.clock.sim_time.astimezone(MSK)
-            target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-            if await effective_policy(conn, self.run_id, self.behavior_policy) is not None:
+            async with self._lock:
+                lt = self.clock.sim_time.astimezone(MSK)
+                target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+                reset_policy = await effective_policy(conn, self.run_id, self.behavior_policy)
+            if reset_policy is not None:
                 await self.step((target - self.clock.sim_time).total_seconds() / 60)
             else:
                 async with self._lock:
@@ -606,8 +611,8 @@ class Simulator:
             await self.step((target - self.clock.sim_time).total_seconds() / 60)
         else:
             raise ValueError(f"неизвестное действие: {action}")
-        if self.run_id:
-            async with self._lock:
+        async with self._lock:
+            if self.run_id:
                 await self._require_current(conn, check_state=True)
                 execution = await configuration(conn, self.run_id)
                 if not execution and self.full_execution and action in ("start", "resume"):
@@ -616,8 +621,8 @@ class Simulator:
                     if action in ("start", "resume"):
                         execution.update(enabled=True, status="running")
                     await save(conn, self.run_id, execution)
-        await self.persist()
-        await conn.commit()
+            await self.persist()
+            await conn.commit()
         await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
         return self.state_dict()
 

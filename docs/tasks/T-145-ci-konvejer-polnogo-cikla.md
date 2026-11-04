@@ -108,3 +108,13 @@ created_at/run_started_at20:07:01Z, updated_at20:15:53Z01.11.2026: полный 
 Порог≤15min подтверждён этим запуском. После обновления базы T152/T014 выполняется
 новый цикл; закрытие карточки по остальному DoD не заявлено. Прежняя открытая
 граница remote latency выше относится к состоянию до публикации этого run.
+
+### Повторный freeze QA, 04.11.2026
+
+PG16 full collection на четырёх отдельных checkout/DB:3175 passed,21 skipped,
+union manifests3196tests/305modules PASS. Причины21skips сохранены в QA review;
+Vosk WAV проверен локальной моделью. Browser nightly168passed; runtime/seed
+PROFILE mismatch helper исправлен (обаorigin lite/demo unitcases), требуется
+повтор на final source. Текущий объединённый unit2269passed/19skipped.
+Это не закрывает исходный≤15minremotecriterion без итогового замера CI.
+Актуальные gates/ограничения: docs/reviews/FREEZE-2026-11-04-final-qa.md.
