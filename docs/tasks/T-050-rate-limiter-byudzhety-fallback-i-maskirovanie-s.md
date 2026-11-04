@@ -39,6 +39,22 @@ pytest backend/tests/unit/test_ratelimit.py
 ```
 
 ## Отчёт субагента
+
+Дополнение 04.11.2026, `codex/llm-recovery-record`: операторская процедура
+`docs/LLM-RECOVERY.md` фиксирует существующий recovery через достоверные
+provider observations, приватную backup и штатный reconciliation. Добавлены
+четыре PG/provider composition cases без внешней сети: unknown preflight,
+SQL numeric через production loader, committed admission, известный usage,
+сохранение RPD после пересоздания provider и fail-closed при missing usage.
+Новый пакет вместе с существующим accounting suite: 47 passed/30.89s;
+Ruff/format578, mypy328, contracts48/167 и owners green. Полный PR CI обязателен.
+Политика, caps, API/DDL, денежные формулы и runtime implementation не меняются.
+Реальные ключи, dump, индивидуальная статистика и operational DB state в Git
+не включаются. Восстановление основного GigaChat/OpenRouter проверено отдельно
+live в рабочем контуре; второй GigaChat credential требует собственного
+подтверждённого observation, unknown не превращается в известный ноль.
+Вся карточка этим дополнением не объявляется завершённой.
+
 Доработка 29.10.2026: если все активные неизрасходованные ключи временно на cooldown после 429, KeyPool сообщает rate_limit с retry_after_s, а не исчерпанную quota. Существующее поведение смешанных quota/cooldown и авторизации сохранено. Ошибки ресурса не инициируют повтор той же операцией через другую модель.
 
 

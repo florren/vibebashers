@@ -1,5 +1,9 @@
 # T-050 P2: operational quota и неизвестный расход
 
+Операторская процедура восстановления и проверки штатного consumer:
+[LLM-RECOVERY.md](../LLM-RECOVERY.md). Сверка operational state не заменяется
+коммитом `.env`, dump или индивидуальных счётчиков в репозиторий.
+
 Рестарт сервера и банковский restore больше не возвращают allowance. RPD считается по фактическим inference attempts, а не по успешным результатам benchmark. Ошибки/JSON repair/native-format retry/SSE не исчезают из учёта; отсутствие usage не превращается в 0. Пример: при cap 2 два POST исчерпывают allowance, третий не доходит до provider даже через другой alias, после рестарта или банковского restore.
 
 ## Что меняется
