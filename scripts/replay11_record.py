@@ -13,6 +13,7 @@ import datetime as dt
 import json
 import os
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -57,6 +58,19 @@ def parser() -> argparse.ArgumentParser:
     cli.add_argument("--approved-plan-sha256")
     cli.add_argument("--profile-id", type=int)
     return cli
+
+
+async def warm_recording_provider(provider: GigaChatProvider, profile: LLMProfile) -> None:
+    """Штатный startup греет OAuth и API host; фон не получает дополнительных HTTP."""
+    if len(provider.pool.keys) != 1:
+        raise ValueError("reviewed_single_key_required")
+    try:
+        ready = await provider.prepare([profile], timeout_s=12)
+    finally:
+        await provider.stop_auth_refresh()
+    key = provider.pool.keys[0]
+    if not ready or not key.access_token or key.token_expires_at <= time.time() + 180:
+        raise ValueError("bounded_provider_startup_failed")
 
 
 async def execute(args: argparse.Namespace) -> dict[str, Any]:
@@ -117,6 +131,8 @@ async def execute(args: argparse.Namespace) -> dict[str, Any]:
                         "expires_at": int((dt.datetime.now(dt.UTC).timestamp() + 3600) * 1000),
                     },
                 )
+            if str(request.url) == BASE + "/models":
+                return httpx.Response(200, json={"data": [{"id": MODEL}]})
             if request.method == "GET":
                 return httpx.Response(200, json={"balance": [{"usage": "GigaChat-Pro", "value": 100000}]})
             body = json.loads(request.content)
@@ -175,6 +191,7 @@ async def execute(args: argparse.Namespace) -> dict[str, Any]:
                         stream,
                     )
             async with asyncio.timeout(120):
+                await warm_recording_provider(provider, profile)
                 proof = await record(
                     bank,
                     provider,

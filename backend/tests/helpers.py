@@ -6,10 +6,11 @@
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import psycopg
-
 from app.agent.graph import process_signal
 from app.ingest.normalizer import create_signal, from_api_signal
 from app.llm.base import LLMProfile
@@ -104,3 +105,29 @@ def assert_event(events: list[dict[str, Any]], event_type: str, **fields: Any) -
             return e
     seen = sorted({e.get("type") for e in events})
     raise AssertionError(f"нет события {event_type} {fields or ''}; были типы: {seen}")
+
+
+@asynccontextmanager
+async def fresh_replay11_database(url: str) -> AsyncIterator[tuple[str, str]]:
+    """Только новая собственная БД: неизменный банк replay не зависит от общего seed."""
+    import uuid
+
+    from psycopg import sql
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    from sqlalchemy.engine import make_url
+
+    from tests.integration.conftest import rebuild_schema
+
+    admin = url.replace("postgresql+psycopg://", "postgresql://", 1)
+    params = conninfo_to_dict(admin)
+    name = "cx_replay11_" + uuid.uuid4().hex
+    async with await psycopg.AsyncConnection.connect(admin, autocommit=True) as conn:
+        await conn.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+    bank_dsn = make_conninfo(**{**params, "dbname": name})
+    bank_url = make_url(url).set(database=name).render_as_string(hide_password=False)
+    try:
+        rebuild_schema(bank_url)
+        yield bank_dsn, bank_url
+    finally:
+        async with await psycopg.AsyncConnection.connect(admin, autocommit=True) as conn:
+            await conn.execute(sql.SQL("drop database {} with (force)").format(sql.Identifier(name)))

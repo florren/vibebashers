@@ -39,7 +39,8 @@ LIMITS = {
     "inference_requests": 6,
     "oauth_requests": 1,
     "balance_requests": 6,
-    "http_requests": 13,
+    "http_requests": 14,
+    "model_catalog_requests": 1,
     "payload_bytes_per_request": 65536,
     "input_utf8_bytes_per_request": 48000,
     "input_chars_per_request": 16000,
@@ -90,8 +91,9 @@ def manifest() -> dict[str, Any]:
         "schema_sha256": {name: digest(deref(name)) for name in SCHEMAS},
         "source_files_sha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},
         "limits": LIMITS,
-        "endpoints": [OAUTH, BASE + "/balance", BASE + "/chat/completions"],
+        "endpoints": [OAUTH, BASE + "/models", BASE + "/balance", BASE + "/chat/completions"],
         "structured_attempts": 2,
+        "oauth_lifecycle": "public prepare12s warms OAuth+models before graph; cached token; auth background stopped immediately",
         "provider_fallback": False,
         "tls_verification": True,
         "cost_known": False,
@@ -110,10 +112,12 @@ def recording_profile(base: LLMProfile) -> LLMProfile:
         raise ValueError("reviewed_gigachat_profile_required")
     return replace(
         base,
+        temperature=0.0,
         extra={
             **base.extra,
             "agent_prompt_templates": "v2",
             "structured_attempts": 2,
+            "oauth_lifecycle": "public prepare12s warms OAuth+models before graph; cached token; auth background stopped immediately",
             "request": {"max_tokens": LIMITS["output_tokens_per_request"]},
         },
     )
@@ -125,7 +129,7 @@ class BoundedTransport(httpx.AsyncBaseTransport):
     def __init__(self, inner: httpx.AsyncBaseTransport, *, secret: str) -> None:
         self.inner = inner
         self.secrets = [secret]
-        self.counts = {"oauth": 0, "balance": 0, "inference": 0}
+        self.counts = {"oauth": 0, "models": 0, "balance": 0, "inference": 0}
         self.expected: list[dict[str, str]] | None = None
         self.node_attempts = 0
         self.payloads: list[dict[str, Any]] = []
@@ -148,6 +152,10 @@ class BoundedTransport(httpx.AsyncBaseTransport):
             if self.counts["oauth"] or request.content != b"scope=GIGACHAT_API_PERS":
                 raise ProviderError("auth", "bounded_oauth_limit")
             self.counts["oauth"] += 1
+        elif request.method == "GET" and url == BASE + "/models":
+            if self.counts["models"] or self.counts["inference"]:
+                raise ProviderError("quota", "bounded_models_limit_or_after_inference")
+            self.counts["models"] += 1
         elif request.method == "GET" and url == BASE + "/balance":
             if self.counts["balance"] >= LIMITS["balance_requests"]:
                 raise ProviderError("quota", "bounded_balance_limit")
@@ -209,6 +217,13 @@ class BoundedTransport(httpx.AsyncBaseTransport):
                 self.secrets.append(token)
         else:
             reject_reflection(response.json(), self.secrets)
+            if url == BASE + "/models":
+                catalog = response.json()
+                rows = catalog.get("data") if isinstance(catalog, dict) else None
+                if not isinstance(rows, list) or not any(
+                    isinstance(item, dict) and item.get("id") == MODEL for item in rows
+                ):
+                    raise ProviderError("bad_output", "bounded_model_not_listed")
         return response
 
     async def aclose(self) -> None:

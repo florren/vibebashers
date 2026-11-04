@@ -75,7 +75,7 @@ async def test_unreviewed_payload_never_reaches_http(boundary, change):
 
 async def test_endpoint_oauth_scope_and_repeat_guard(boundary):
     transport, calls = boundary
-    for url in [BASE + "/models", "https://other.invalid/chat/completions"]:
+    for url in [BASE + "/models?unreviewed=1", "https://other.invalid/chat/completions"]:
         with pytest.raises(ProviderError):
             await transport.handle_async_request(httpx.Request("GET", url))
     with pytest.raises(ProviderError):
@@ -116,12 +116,20 @@ def test_manifest_exact_synthetic_and_no_dynamic_hash_claim():
 
 def test_generation_profile_keeps_budget_and_binding():
     original = LLMProfile(
-        code="existing", provider="gigachat", model=MODEL, rpd_limit=20, rpm_limit=3, id=7, extra={"json_schema": True}
+        code="existing",
+        provider="gigachat",
+        model=MODEL,
+        rpd_limit=20,
+        rpm_limit=3,
+        id=7,
+        temperature=0.7,
+        extra={"json_schema": True},
     )
     result = recording_profile(original)
     assert result.id == 7 and result.rpd_limit == 20 and result.rpm_limit == 3
     assert result.extra["structured_attempts"] == 2 and result.extra["agent_prompt_templates"] == "v2"
     assert original.extra == {"json_schema": True}
+    assert result.temperature == 0.0
     with pytest.raises(ValueError):
         recording_profile(replace(original, model="unreviewed"))
 
@@ -234,3 +242,74 @@ async def test_live_cli_requires_separate_review_before_any_connection(tmp_path)
     with pytest.raises(ValueError, match="reviewed_plan_changed"):
         await execute(args)
     assert not args.output.exists()
+
+
+async def test_cold_oauth_uses_proactive_budget_once_and_graph_reuses_cache():
+    """RED: cold connect needs >2s; GREEN: public startup warms both hosts with12s budget."""
+    import time
+
+    from app.llm.gigachat import GigaChatProvider
+    from app.llm.keys import ApiKey, KeyPool
+    from app.replay.scenario11_record import BoundedTransport
+
+    from scripts.replay11_record import warm_recording_provider
+
+    async def handler(request):
+        if request.extensions["timeout"]["connect"] <= 2:
+            raise httpx.ConnectTimeout("synthetic cold TLS needs >2s", request=request)
+        if str(request.url) == BASE + "/models":
+            return httpx.Response(200, json={"data": [{"id": MODEL}]})
+        return httpx.Response(
+            200, json={"access_token": "synthetic-warmed-token", "expires_at": int((time.time() + 3600) * 1000)}
+        )
+
+    old_transport = BoundedTransport(httpx.MockTransport(handler), secret="synthetic-auth")
+    old = GigaChatProvider(
+        KeyPool([ApiKey("fake", "synthetic-auth")]), oauth_url=OAUTH, base_url=BASE, transport=old_transport
+    )
+    try:
+        with pytest.raises(ProviderError, match="oauth: ConnectTimeout"):
+            await old._token(old.pool.keys[0], timeout_s=10)
+        assert old_transport.counts == {"oauth": 1, "models": 0, "balance": 0, "inference": 0}
+    finally:
+        await old.aclose()
+    fresh_transport = BoundedTransport(httpx.MockTransport(handler), secret="synthetic-auth")
+    fresh = GigaChatProvider(
+        KeyPool([ApiKey("fake", "synthetic-auth")]), oauth_url=OAUTH, base_url=BASE, transport=fresh_transport
+    )
+    try:
+        await warm_recording_provider(fresh, LLMProfile(code="t", provider="gigachat", model=MODEL))
+        assert await fresh._token(fresh.pool.keys[0], timeout_s=10) == "synthetic-warmed-token"
+        assert fresh_transport.counts == {"oauth": 1, "models": 1, "balance": 0, "inference": 0}
+        assert fresh._auth_task is None
+    finally:
+        await fresh.aclose()
+
+
+async def test_model_catalog_once_only_before_inference():
+    calls = []
+
+    def handler(request):
+        calls.append(str(request.url))
+        return httpx.Response(200, json={"data": [{"id": MODEL}]})
+
+    transport = BoundedTransport(httpx.MockTransport(handler), secret="synthetic-model-key")
+    await transport.handle_async_request(httpx.Request("GET", BASE + "/models"))
+    with pytest.raises(ProviderError, match="bounded_models_limit_or_after_inference"):
+        await transport.handle_async_request(httpx.Request("GET", BASE + "/models"))
+    assert calls == [BASE + "/models"]
+    fresh = BoundedTransport(httpx.MockTransport(handler), secret="synthetic-model-key")
+    fresh.counts["inference"] = 1
+    with pytest.raises(ProviderError, match="bounded_models_limit_or_after_inference"):
+        await fresh.handle_async_request(httpx.Request("GET", BASE + "/models"))
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("catalog", [{"data": []}, {"data": [{"id": "other-model"}]}, {"data": None}, []])
+async def test_missing_reviewed_model_is_not_startup_success(catalog):
+    transport = BoundedTransport(
+        httpx.MockTransport(lambda r: httpx.Response(200, json=catalog)), secret="synthetic-model-key"
+    )
+    with pytest.raises(ProviderError, match="bounded_model_not_listed"):
+        await transport.handle_async_request(httpx.Request("GET", BASE + "/models"))
+    assert transport.counts["models"] == 1 and transport.counts["inference"] == 0

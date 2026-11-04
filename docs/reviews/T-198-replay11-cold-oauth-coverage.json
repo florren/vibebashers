@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "pytest_exit": 0,
+  "skipped": [],
+  "source_sha256": "271ce7f8bd0367a85dc1cc057b4230584855a88f9179fbadb2f95ee2d350e562",
+  "method": "AST statement starts intersect actual sys.settrace line events; excludes docstrings; includes definitions/imports; not branch coverage",
+  "total": 193,
+  "covered": 177,
+  "percent": 91.70984455958549,
+  "missed": [
+    63,
+    140,
+    188,
+    190,
+    194,
+    244,
+    245,
+    252,
+    254,
+    295,
+    299,
+    317,
+    325,
+    328,
+    336,
+    341
+  ],
+  "nodes_source_sha256": "b65b2bda36195e69219941136bdf6966c3ce7ee827150f7436878ebbac7c7010",
+  "new_selector_lines": [
+    372,
+    373,
+    374,
+    375,
+    376
+  ],
+  "new_selector_all_executed": true
+}

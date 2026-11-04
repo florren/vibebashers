@@ -78,3 +78,21 @@ fast-path2passed11.74s. Покрытие нового recorder168/184 AST
 statement starts=91.30%, все5 selector lines исполнены. [План/границы/откат](../reviews/T-198-replay11-readiness.md),
 [полные synthetic inputs](../reviews/T-198-replay11-bounded-plan.json).
 На момент этого отчёта live не выполнялся; genuine кассета не опубликована.
+
+
+### Первый bounded replay11 attempt и cold startup, 04.11.2026
+
+После отдельного разрешения b84 выполнен1OAuth attempt/0inference. OAuth
+ConnectTimeout2062ms подтверждён из checkpoint; следующие auth/quota были локальными
+ограничителями. Primary bank и wire states22known/2reconciled/1unknown неизменны,
+backup/provenance сохранены. Автоматического повтора не было.
+
+Подготовлен новый отдельно согласуемый план4db: public prepare12s греет OAuth и
+API/models; максимум6inference+1OAuth+1models+6balance=14HTTP, фон сразу остановлен,
+generation timeouts/caps прежние. Frozen temperature0.0 относится только к tooling
+copy. Decimal zero/nonzero по фактическому graph snapshot доходят до provider как
+float с прежним значением; дополнительного money fix нет.40offline tests passed,
+producer177/193=91.71%, Ruff/mypy passed. Старый loose replay11 test заменён строгим
+fresh immutable bank/no mock/actual delivery/escalation/changed-context miss gate.
+Genuine cassette пока отсутствует, статус остаётсяin_progress.
+[Актуальный review/план/откат](../reviews/T-198-replay11-cold-oauth-review.md).

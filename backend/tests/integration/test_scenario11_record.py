@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import uuid
 from dataclasses import replace
+from decimal import Decimal
 
 import httpx
 import psycopg
@@ -28,8 +29,6 @@ from app.replay.scenario11_record import (
     run_graph,
 )
 from app.replay.store import CassetteStore
-from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from scripts.replay11_bank import configure_profile, seed_bank
 from tests.integration.conftest import rebuild_schema
@@ -39,24 +38,24 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 async def bank_dsn(migrated_db):
-    params = conninfo_to_dict(migrated_db.replace("postgresql+psycopg://", "postgresql://", 1))
-    name = "cx_replay11_" + uuid.uuid4().hex
-    async with await psycopg.AsyncConnection.connect(make_conninfo(**params), autocommit=True) as admin:
-        await admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
-    bank_url = make_conninfo(**{**params, "dbname": name})
-    # Alembic expects a URL; preserve original escaped credential fields via SQLAlchemy.
-    from sqlalchemy.engine import make_url
+    from tests.helpers import fresh_replay11_database
 
-    url = make_url(migrated_db).set(database=name).render_as_string(hide_password=False)
-    rebuild_schema(url)
-    try:
-        yield bank_url, url
-    finally:
-        async with await psycopg.AsyncConnection.connect(make_conninfo(**params), autocommit=True) as admin:
-            await admin.execute(sql.SQL("drop database {} with (force)").format(sql.Identifier(name)))
+    async with fresh_replay11_database(migrated_db) as value:
+        yield value
 
 
-@pytest.mark.parametrize("mode", ["valid", "native_rpd", "unknown_usage"])
+@pytest.mark.parametrize(
+    "mode",
+    [
+        "valid",
+        "native_rpd",
+        "unknown_usage",
+        "oauth_connect_timeout",
+        "delayed_oauth",
+        "decimal_zero",
+        "decimal_nonzero",
+    ],
+)
 async def test_fake_live_v2_to_strict_replay_and_changed_context(migrated_db, bank_dsn, monkeypatch, tmp_path, mode):
     monkeypatch.setenv("DATABASE_URL", migrated_db)
     monkeypatch.setenv("LLM_PROVIDER", "gigachat")
@@ -66,26 +65,56 @@ async def test_fake_live_v2_to_strict_replay_and_changed_context(migrated_db, ba
     dsn, bank_url = bank_dsn
     secret = "synthetic-replay11-only-fake-credential-" + uuid.uuid4().hex
     profile = LLMProfile(
-        code="replay11-fake-proof",
+        code="gigachat_pro"
+        if mode in ("oauth_connect_timeout", "delayed_oauth", "decimal_zero", "decimal_nonzero")
+        else "replay11-fake-proof",
         provider="gigachat",
         model=MODEL,
         base_url=BASE,
         role="main",
-        temperature=0,
+        temperature=0.7 if mode in ("oauth_connect_timeout", "delayed_oauth", "decimal_zero", "decimal_nonzero") else 0,
         rpd_limit=2 if mode == "native_rpd" else 6,
     )
+    if mode in ("decimal_zero", "decimal_nonzero"):
+        profile = replace(
+            profile,
+            price_in_per_1m=Decimal("4.50") if mode == "decimal_nonzero" else Decimal("0"),
+            price_out_per_1m=Decimal("6.25") if mode == "decimal_nonzero" else Decimal("0"),
+        )
     async with await psycopg.AsyncConnection.connect(accounting_dsn) as accounting_conn:
         row = await (
             await accounting_conn.execute(
-                "insert into llm_profiles(code,provider,model,role,rpd_limit) values(%s,'gigachat',%s,'main',%s) returning id",
-                (profile.code, MODEL, profile.rpd_limit),
+                "insert into llm_profiles(id,code,provider,model,role,rpd_limit,temperature,price_in_per_1m,price_out_per_1m) overriding system value values(%s,%s,'gigachat',%s,'main',%s,%s,%s,%s) returning id,temperature,price_in_per_1m,price_out_per_1m",
+                (
+                    2 if mode in ("oauth_connect_timeout", "delayed_oauth", "decimal_zero", "decimal_nonzero") else 1,
+                    profile.code,
+                    MODEL,
+                    profile.rpd_limit,
+                    profile.temperature,
+                    profile.price_in_per_1m,
+                    profile.price_out_per_1m,
+                ),
             )
         ).fetchone()
         assert row
         profile = replace(profile, id=row[0])
+        if mode in ("decimal_zero", "decimal_nonzero"):
+            assert isinstance(row[1], Decimal) and isinstance(row[2], Decimal) and isinstance(row[3], Decimal)
+            profile = replace(profile, temperature=row[1], price_in_per_1m=row[2], price_out_per_1m=row[3])
+
     schema_calls = []
+    warm_hosts = set()
 
     async def handler(request):
+        if (
+            mode in ("oauth_connect_timeout", "delayed_oauth", "decimal_zero", "decimal_nonzero")
+            and request.url.host not in warm_hosts
+        ):
+            if request.extensions["timeout"]["connect"] <= 2:
+                raise httpx.ConnectTimeout("controlled cold TLS requires startup", request=request)
+            warm_hosts.add(request.url.host)
+        if str(request.url) == BASE + "/models":
+            return httpx.Response(200, json={"data": [{"id": MODEL}]})
         if str(request.url) == OAUTH:
             return httpx.Response(
                 200,
@@ -117,6 +146,20 @@ async def test_fake_live_v2_to_strict_replay_and_changed_context(migrated_db, ba
     provider = GigaChatProvider(
         KeyPool([ApiKey("fake", secret, tokens_limit=100000)]), oauth_url=OAUTH, base_url=BASE, transport=transport
     )
+    observed_prices = []
+    original_complete = provider.complete_structured
+
+    async def observed_complete(messages, schema, actual_profile, *, timeout_s):
+        if mode in ("decimal_zero", "decimal_nonzero"):
+            assert type(actual_profile.price_in_per_1m) is float and type(actual_profile.price_out_per_1m) is float
+            assert Decimal(str(actual_profile.price_in_per_1m)) == profile.price_in_per_1m
+            assert Decimal(str(actual_profile.price_out_per_1m)) == profile.price_out_per_1m
+            assert actual_profile.id == 2 and actual_profile.rpd_limit == profile.rpd_limit
+            assert actual_profile.cost(10, 20) == pytest.approx(0.00017 if mode == "decimal_nonzero" else 0)
+            observed_prices.append(True)
+        return await original_complete(messages, schema, actual_profile, timeout_s=timeout_s)
+
+    monkeypatch.setattr(provider, "complete_structured", observed_complete)
     try:
         async with await psycopg.AsyncConnection.connect(dsn) as bank:
             await seed_bank(bank, dsn)
@@ -124,7 +167,11 @@ async def test_fake_live_v2_to_strict_replay_and_changed_context(migrated_db, ba
             await PostgresAccounting().connect_gigachat(
                 profile, KeyFacts("gigachat", secret, BASE, 100000), {"GigaChat-Pro": 100000}, confirmed=True
             )
-            if mode != "valid":
+            if mode != "oauth_connect_timeout":
+                from scripts.replay11_record import warm_recording_provider
+
+                await warm_recording_provider(provider, profile)
+            if mode in ("native_rpd", "unknown_usage", "oauth_connect_timeout"):
                 with pytest.raises(ValueError, match="strict_replay11_llm_steps_failed"):
                     await record(bank, provider, transport, profile, tmp_path / "fake-staging", fake_transport=True)
                 async with await psycopg.AsyncConnection.connect(accounting_dsn) as ledger:
@@ -134,14 +181,36 @@ async def test_fake_live_v2_to_strict_replay_and_changed_context(migrated_db, ba
                             (profile.id,),
                         )
                     ).fetchall()
-                    assert dict(rows) == ({"known": 2} if mode == "native_rpd" else {"unknown": 1})
-                assert transport.counts["inference"] == (2 if mode == "native_rpd" else 1)
+                    assert dict(rows) == (
+                        {"known": 2}
+                        if mode == "native_rpd"
+                        else {}
+                        if mode == "oauth_connect_timeout"
+                        else {"unknown": 1}
+                    )
+                assert transport.counts["inference"] == (
+                    2 if mode == "native_rpd" else 0 if mode == "oauth_connect_timeout" else 1
+                )
                 assert (await (await bank.execute("select count(*) from llm_runtime.wire_attempts")).fetchone())[0] == 0
                 return
             report = await record(bank, provider, transport, profile, tmp_path / "fake-staging", fake_transport=True)
         assert report["fake_transport"] is True
-        assert report["http_counts"] == {"oauth": 1, "balance": 3, "inference": 3}
+        assert report["http_counts"] == {"oauth": 1, "models": 1, "balance": 3, "inference": 3}
         assert len(report["requests"]) == 3
+        if mode in ("decimal_zero", "decimal_nonzero"):
+            assert observed_prices == [True, True, True]
+
+        if mode == "delayed_oauth":
+            assert warm_hosts == {"ngw.devices.sberbank.ru", "api.giga.chat"}
+            assert provider._auth_task is None
+            async with await psycopg.AsyncConnection.connect(accounting_dsn) as ledger:
+                unchanged_temperature = (
+                    await (
+                        await ledger.execute("select temperature from llm_profiles where id=%s", (profile.id,))
+                    ).fetchone()
+                )[0]
+                assert float(unchanged_temperature) == 0.7 and profile.temperature == 0
+
     finally:
         await provider.aclose()
     async with await psycopg.AsyncConnection.connect(accounting_dsn) as bank:
