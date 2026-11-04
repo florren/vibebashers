@@ -717,6 +717,7 @@ async def test_pending_legacy_blocks_snapshot_restore_before_marker_actors_rng_o
     rng_before = rng.dump_state()
     ac = await connect(seeded)
     sim = SimpleNamespace(
+        _lock=asyncio.Lock(),
         clock=SimpleNamespace(running=False),
         run_status="completed",
         rng=rng,
