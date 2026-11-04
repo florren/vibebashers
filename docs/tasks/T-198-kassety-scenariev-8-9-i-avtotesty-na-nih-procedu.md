@@ -96,3 +96,14 @@ producer177/193=91.71%, Ruff/mypy passed. Старый loose replay11 test за�
 fresh immutable bank/no mock/actual delivery/escalation/changed-context miss gate.
 Genuine cassette пока отсутствует, статус остаётсяin_progress.
 [Актуальный review/план/откат](../reviews/T-198-replay11-cold-oauth-review.md).
+
+### Genuine replay11 scope закрыт, 04.11.2026
+
+После отдельного разрешения4db:1OAuth+1models+3inference,3live/ok nodes,
+9883known tokens. Native ledgerknown22→25, предыдущие2reconciled/1unknown
+не менялись; primary bank unchanged, backup проверен. Новый отдельный genuine
+`gigachat-T198-sarcasm-v2.jsonl` прошёл schema/request/provenance/private-key scan;
+старые JSONL неизменны. Настоящий strict replay immutable fresh bank и стандартный
+secrets test:2passed4.04s, no HTTP/no accounting writes, actual sent clarification,
+wake1/escalationcx_lead и changed-context miss. [Результат](../reviews/T-198-replay11-live-record-result.json).
+Полный composed make test/CI — отдельный финальный gate.

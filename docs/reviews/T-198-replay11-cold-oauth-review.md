@@ -95,3 +95,28 @@ primary data/CA/maintenance volumes readonly и private0600envfile, без се�
 публикуется автоматически; genuine import разрешён только после strict replay,
 schema/provenance/secret review. Кодовый откат возвращает прежнюю cold-start
 ошибку recorder; primary runtime/config, ledger и исторические кассеты не меняются.
+
+## Согласованная запись и genuine offline gate, 04.11.2026
+
+Пользователь отдельно разрешил план4db. Запуск прошёл:1OAuth+1models+0balance+
+3inference, все три normalize/classify/decide — `gigachat:GigaChat-3-Pro:32.4.30.3`,
+statusok. Usage9883tokens подтверждён штатным ledger; known22→25,
+reconciled2/unknown1 сохранены. Primary bank unchanged; полный private PG backup
+проверен черезTOC. Денежная стоимость по тарифу остаётсяunknown, не0.
+
+Три настоящие записи опубликованы отдельным файлом
+`data/cassettes/gigachat-T198-sarcasm-v2.jsonl`, SHA256
+`c4a1c8cc5bbde17f680bd97410d60264687061e206d021024d9a15fdb341acbe`.
+Исторические оба JSONL byte-for-byte неизменны. Проверены hashes actual requests,
+схемы каждого response, известные private credentials и стандартный secret scan.
+Actual payload sizes11402/15422/18333bytes; dependent hashes сохранены в
+[filtered provenance](T-198-replay11-live-record-result.json), без headers/ключей.
+Каталог CassetteStore видит новый сценарий и не помечает его stale.
+
+После импорта выполнен **настоящий offline strict replay на новой immutable bank**:
+три replay/ok nodes, append_mock=False,0error/fallback steps, actual sent
+clarification, wake1 и реальная escalationcx_lead. Изменённый текст даёт настоящий
+miss. Вместе со стандартным cassette secret test — **2passed4.04s**, HTTP0,
+accounting writes0. Это воспроизводимость конкретного записанного банка, не
+обещание совпадения кассеты для произвольного seed/current bank. Полный final gate
+после композиции выполняется отдельно; повторных HTTP для этой проверки не было.
