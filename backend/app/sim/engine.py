@@ -356,6 +356,7 @@ class Simulator:
         pending_before = copy.deepcopy(world.pending)
         faults_before = copy.deepcopy(world.active_faults)
         minutes = min(minutes, MAX_BATCH_MIN)
+        commit_cancelled = False
         try:
             from app.sim.proactive_scenario import prepared_source
 
@@ -393,7 +394,18 @@ class Simulator:
                 self.rng.load_state(next_rng)
                 self.stats["signals"] += owner.generated_signals
                 await self.persist()
-            await conn.commit()
+            # COMMIT мог уже завершиться на сервере до возврата coroutine.
+            # Отмена caller не должна превратить durable tick в memory rollback.
+            commit_task = asyncio.create_task(conn.commit())
+            while True:
+                try:
+                    await asyncio.shield(commit_task)
+                    break
+                except asyncio.CancelledError:
+                    if commit_task.cancelled():
+                        raise
+                    commit_cancelled = True  # Повторная отмена тоже не отменяет COMMIT.
+
         except BaseException as error:
             # Любая незафиксированная попытка отменяется вместе с logical
             # time/RNG/stats. Частично изменённый World нельзя reuse при retry.
@@ -425,6 +437,9 @@ class Simulator:
             if not isinstance(error, asyncio.CancelledError):
                 log.exception("sim_step_failed")
             raise
+        if commit_cancelled:
+            # Только после успешного COMMIT, вне rollback ветки.
+            raise asyncio.CancelledError
 
     async def _publish_tick(self) -> None:
         minute = self.clock.sim_time.replace(second=0, microsecond=0)
