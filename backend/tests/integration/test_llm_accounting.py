@@ -1368,3 +1368,249 @@ async def test_nemotron_json_mode_unknown_still_blocks_second_http(accounting_ca
             assert row == {"state": "unknown", "n": 1}
     finally:
         await provider.aclose()
+
+
+@pytest.mark.parametrize("repeat", [False, True])
+@pytest.mark.parametrize("known", [False, True])
+async def test_repeated_cancel_finishes_unknown_bookkeeping_without_orphan(accounting_case, monkeypatch, repeat, known):
+    import asyncio
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    admitted, bookkeeping, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    original = Ticket.unknown
+    attempt_id = None
+
+    async def delayed_unknown(ticket, kind="unavailable"):
+        bookkeeping.set()
+        await release.wait()
+        await original(ticket, kind)
+
+    monkeypatch.setattr(Ticket, "unknown", delayed_unknown)
+
+    async def inference():
+        nonlocal attempt_id
+        async with service.key_scope(profile, facts, timeout_s=10) as scope:
+            async with scope.inference() as ticket:
+                attempt_id = ticket.id
+                if known:
+                    await ticket.observe(2, 3, final=True)
+                admitted.set()
+                await asyncio.Event().wait()
+
+    task = asyncio.create_task(inference())
+    try:
+        await asyncio.wait_for(admitted.wait(), 5)
+        task.cancel()
+        await asyncio.wait_for(bookkeeping.wait(), 5)
+        if repeat:
+            task.cancel()  # Nested provider/accounting deadlines may cancel during cleanup.
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 5)
+        from app.db.session import psycopg_dsn
+
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+            row = await (
+                await conn.execute("select state,error_kind from llm_runtime.wire_attempts where id=%s", (attempt_id,))
+            ).fetchone()
+            assert row == {"state": "known" if known else "unknown", "error_kind": None if known else "cancelled"}
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert observed.usage_known is known and observed.requests_today == 1
+        assert observed.tokens_used == (5 if known else 0)
+        if not known:
+            with pytest.raises(ProviderError, match="reconciliation"):
+                async with service.key_scope(profile, facts, timeout_s=3):
+                    pytest.fail("unknown cannot permit another inference")
+    finally:
+        release.set()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.parametrize("body_failure", [False, True])
+async def test_unknown_db_failure_keeps_orphan_failclosed_and_original_error(
+    accounting_case, monkeypatch, body_failure
+):
+    from app.llm.accounting import KeyScope
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    attempt_id = None
+
+    async def failed_read(self):
+        raise psycopg.OperationalError("synthetic bookkeeping DB failure")
+
+    monkeypatch.setattr(KeyScope, "uses_provider_balance", failed_read)
+    original = ProviderError("network", "synthetic original failure")
+    with pytest.raises(ProviderError) as failure:
+        async with service.key_scope(profile, facts, timeout_s=5) as scope:
+            async with scope.inference() as ticket:
+                attempt_id = ticket.id
+                if body_failure:
+                    raise original
+    if body_failure:
+        assert failure.value is original
+    else:
+        assert failure.value.kind == "quota"  # Existing key_scope DB error translation.
+    from app.db.session import psycopg_dsn
+
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+        row = await (
+            await conn.execute("select state,error_kind from llm_runtime.wire_attempts where id=%s", (attempt_id,))
+        ).fetchone()
+        assert row == {"state": "reserved", "error_kind": None}
+    with pytest.raises(ProviderError, match="reconciliation"):
+        async with service.key_scope(profile, facts, timeout_s=3):
+            pytest.fail("orphan cannot permit another inference")
+
+
+@pytest.mark.parametrize("context,seconds", [("normalization", 10), ("default", 30)])
+async def test_native_nested_provider_deadlines_finish_unknown_before_return(
+    accounting_case, monkeypatch, context, seconds
+):
+    import asyncio
+    from dataclasses import replace
+
+    import httpx
+
+    from app.llm.failover import ProviderChain
+    from app.llm.openai_compat import OpenAICompatProvider
+
+    service, original, original_facts = accounting_case
+    profile = replace(original, provider="openai_compatible")
+    facts = replace(original_facts, provider="openai_compatible")
+    await confirm((service, profile, facts))
+    bookkeeping, release = asyncio.Event(), asyncio.Event()
+    unknown = Ticket.unknown
+    wire_task = None
+    calls = []
+
+    async def delayed_unknown(ticket, kind="unavailable"):
+        bookkeeping.set()
+        await release.wait()
+        await unknown(ticket, kind)
+
+    monkeypatch.setattr(Ticket, "unknown", delayed_unknown)
+
+    async def blocked_http(request):
+        nonlocal wire_task
+        calls.append(1)
+        wire_task = asyncio.current_task()
+        await asyncio.Event().wait()
+
+    provider = OpenAICompatProvider(facts.secret, facts.endpoint, transport=httpx.MockTransport(blocked_http))
+    chain = ProviderChain([provider], append_mock=False)
+    assert chain.timeouts[context] == seconds  # No timeout override: actual native10/30s.
+    task = asyncio.create_task(chain.complete_structured([], {"type": "object"}, profile, context=context))
+    try:
+        await asyncio.wait_for(bookkeeping.wait(), seconds + 5)
+        assert wire_task is not None
+        async with asyncio.timeout(2):
+            while wire_task.cancelling() < 2 and not task.done():
+                await asyncio.sleep(0.001)
+        assert wire_task.cancelling() >= 2 and not task.done()
+        release.set()
+        with pytest.raises(ProviderError) as error:
+            await asyncio.wait_for(task, 5)
+        assert error.value.kind == "timeout"
+        observed = await service.snapshot(profile, facts, timeout_s=3)
+        assert not observed.usage_known and observed.requests_today == 1
+        with pytest.raises(ProviderError):
+            await chain.complete_structured([], {"type": "object"}, profile, context=context)
+        assert len(calls) == 1
+    finally:
+        release.set()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await provider.aclose()
+
+
+@pytest.mark.parametrize("body_failure", [False, True])
+async def test_cancel_during_terminal_cleanup_propagates_after_db_commit(accounting_case, monkeypatch, body_failure):
+    import asyncio
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = Ticket.unknown
+    attempt_id = None
+
+    async def delayed(ticket, kind="unavailable"):
+        entered.set()
+        await release.wait()
+        await original(ticket, kind)
+
+    monkeypatch.setattr(Ticket, "unknown", delayed)
+
+    async def work():
+        nonlocal attempt_id
+        async with service.key_scope(profile, facts, timeout_s=10) as scope:
+            async with scope.inference() as ticket:
+                attempt_id = ticket.id
+                if body_failure:
+                    raise ProviderError("network", "synthetic original failure")
+
+    task = asyncio.create_task(work())
+    try:
+        await asyncio.wait_for(entered.wait(), 3)
+        task.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 5)
+        from app.db.session import psycopg_dsn
+
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+            row = await (
+                await conn.execute("select state,error_kind from llm_runtime.wire_attempts where id=%s", (attempt_id,))
+            ).fetchone()
+            assert row == {"state": "unknown", "error_kind": "network" if body_failure else "unavailable"}
+    finally:
+        release.set()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.parametrize("mode", ["hang", "self_cancel"])
+async def test_failed_terminal_cleanup_is_bounded_and_never_leaks_task(accounting_case, monkeypatch, mode):
+    import asyncio
+
+    from app.llm.accounting import TERMINAL_CLEANUP_TIMEOUT_S
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    cleanup_task = None
+    attempt_id = None
+
+    async def unavailable(ticket, kind="unavailable"):
+        nonlocal cleanup_task
+        cleanup_task = asyncio.current_task()
+        if mode == "self_cancel":
+            raise asyncio.CancelledError
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(Ticket, "unknown", unavailable)
+
+    async def work():
+        nonlocal attempt_id
+        async with service.key_scope(profile, facts, timeout_s=10) as scope:
+            async with scope.inference() as ticket:
+                attempt_id = ticket.id
+                raise ProviderError("network", "synthetic original failure")
+
+    with pytest.raises(asyncio.CancelledError if mode == "self_cancel" else ProviderError):
+        await asyncio.wait_for(work(), TERMINAL_CLEANUP_TIMEOUT_S + 2)
+    assert cleanup_task is not None and cleanup_task.done()
+    from app.db.session import psycopg_dsn
+
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+        row = await (
+            await conn.execute("select state from llm_runtime.wire_attempts where id=%s", (attempt_id,))
+        ).fetchone()
+        assert row == {"state": "reserved"}
+    with pytest.raises(ProviderError, match="reconciliation"):
+        async with service.key_scope(profile, facts, timeout_s=3):
+            pytest.fail("failed cleanup must not grant another HTTP")
