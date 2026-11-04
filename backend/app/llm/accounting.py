@@ -713,10 +713,12 @@ class KeyScope:
             raise
         else:
             cancelled, bookkeeping = await self._finish_unknown(ticket, "unavailable")
+            if cancelled:
+                if bookkeeping is not None:
+                    log.warning("llm_usage_unconfirmed", error_type=type(bookkeeping).__name__)
+                raise asyncio.CancelledError
             if bookkeeping is not None:
                 raise bookkeeping
-            if cancelled:
-                raise asyncio.CancelledError
 
     async def _finish_unknown(self, ticket: Ticket, kind: str) -> tuple[bool, Exception | None]:
         # ProviderChain и key_scope имеют собственные deadline: второй cancel

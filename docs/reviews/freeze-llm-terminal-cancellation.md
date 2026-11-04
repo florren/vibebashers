@@ -23,9 +23,12 @@ Leased connection/credential scope остаются открыты до заве
 caller cancellation пришла во время cleanup после ProviderError, она тоже
 пробрасывается после DB outcome, а unknown сохраняет первоначальный error_kind.
 Self-cancelled child распознаётся отдельно и не вызывает бесконечного цикла.
+При normal body exit caller cancellation также имеет приоритет над последующей
+DB error/timeout cleanup: ошибка логируется, после завершения cleanup пробрасывается
+CancelledError. Без caller cancellation прежняя DB error сохраняется.
 
-Для terminal DB cleanup введена фиксированная неплатная grace3s. Она ограничивает
-ожидание bookkeeping, а не продлевает inference deadline10s/30s, не создаёт
+Для terminal DB cleanup введена фиксированная неплатная soft grace3s. Она запрашивает отмену
+DB bookkeeping при истечении, а не продлевает inference deadline10s/30s, не создаёт
 повторных HTTP и не повышает денежный/token/RPD budget. Запрос usage уже завершён
 или отменён до этой grace. Если cleanup завис/не удался, сохраняется existing
 fail-closed reservation/pending и штатная ошибка/log, а не выдуманный known/zero.
@@ -42,8 +45,9 @@ Crash/SIGKILL, durable admission до получения Ticket, потерян�
 БД всё ещё могут оставить orphan. Они продолжают блокировать новые budgeted calls
 и требуют явного operator review/reconciliation; diff их автоматически не очищает.
 Существующий настоящий reserved attempt не переписывался и не исправлялся тестами.
-DB bookkeeping может добавить до3s ожидания после inference cancellation плюс
-штатное завершение cancellation/rollback драйвером; новых paid requests в это время нет.
+Soft grace не гарантирует elapsed≤3s и суммарное завершение≤33s: psycopg cancellation
+и rollback могут требовать дополнительного времени. Cleanup полностью завершается
+до освобождения leased connection; новых paid requests в это время нет.
 
 ## Проверки
 
@@ -53,11 +57,14 @@ DB bookkeeping может добавить до3s ожидания после in
 - Single/double cancellation; observedknown остаётся known; DB transaction failure;
   caller cancellation после ProviderError и normalbody; hang3s и selfcancel;
   orphan остаётся fail-closed, cleanup task завершена до выхода scope.
-- Changed-statement execution22/22=100%,10 native cases passed; stdlib trace/AST,
+- Changed-statement execution24/24=100%,12 native cases passed; stdlib trace/AST,
   не branch coverage и не полное покрытие проекта.
-- 87 unit SDK/Giga balance/chain/timeouts passed; strict mypy accounting passed;
+- На исходном fix87 unit SDK/Giga balance/chain/timeouts passed; после peer P2 unit
+  не повторялись. Финальный strict mypy accounting passed;
   Ruff check/format и diff-check проверяются перед commit.
-- Финальный native accounting/Giga/OpenRouter matrix:76 passed за97.64s.
+- Исходный native accounting/Giga/OpenRouter matrix:76 passed за97.64s.
+- После peer P2 normalbody/cancel+DB error/timeout: RED2failed → GREEN;
+  финальный полный native accounting module58 passed за77.05s.
 
 Все записи тестов выполнялись в отдельном `freeze-accounting-cancel-diagnostic`
 и собственном PostgreSQL; coverage имел отдельный immutable source archive и БД.

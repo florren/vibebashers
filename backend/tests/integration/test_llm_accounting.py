@@ -1614,3 +1614,57 @@ async def test_failed_terminal_cleanup_is_bounded_and_never_leaks_task(accountin
     with pytest.raises(ProviderError, match="reconciliation"):
         async with service.key_scope(profile, facts, timeout_s=3):
             pytest.fail("failed cleanup must not grant another HTTP")
+
+
+@pytest.mark.parametrize("mode", ["db_error", "timeout"])
+async def test_cancel_after_successful_body_wins_over_cleanup_failure(accounting_case, monkeypatch, mode):
+    import asyncio
+
+    from app.llm.accounting import TERMINAL_CLEANUP_TIMEOUT_S
+
+    service, profile, facts = accounting_case
+    await confirm(accounting_case)
+    entered, release = asyncio.Event(), asyncio.Event()
+    attempt_id = None
+    cleanup_task = None
+
+    async def failed_cleanup(ticket, kind="unavailable"):
+        nonlocal cleanup_task
+        cleanup_task = asyncio.current_task()
+        entered.set()
+        await release.wait()
+        raise psycopg.OperationalError("synthetic terminal bookkeeping failure")
+
+    monkeypatch.setattr(Ticket, "unknown", failed_cleanup)
+
+    async def work():
+        nonlocal attempt_id
+        async with service.key_scope(profile, facts, timeout_s=10) as scope:
+            async with scope.inference() as ticket:
+                attempt_id = ticket.id
+                # Normal body exit without final usage requires terminal unknown.
+
+    task = asyncio.create_task(work())
+    try:
+        await asyncio.wait_for(entered.wait(), 3)
+        task.cancel()
+        if mode == "db_error":
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, TERMINAL_CLEANUP_TIMEOUT_S + 2)
+        assert cleanup_task is not None and cleanup_task.done()
+        from app.db.session import psycopg_dsn
+
+        async with await psycopg.AsyncConnection.connect(psycopg_dsn(), row_factory=dict_row) as conn:
+            row = await (
+                await conn.execute("select state from llm_runtime.wire_attempts where id=%s", (attempt_id,))
+            ).fetchone()
+            assert row == {"state": "reserved"}
+        with pytest.raises(ProviderError, match="reconciliation"):
+            async with service.key_scope(profile, facts, timeout_s=3):
+                pytest.fail("failed terminal bookkeeping cannot permit another admission")
+    finally:
+        release.set()
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
