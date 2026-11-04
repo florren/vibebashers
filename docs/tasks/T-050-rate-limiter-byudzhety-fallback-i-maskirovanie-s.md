@@ -39,7 +39,6 @@ pytest backend/tests/unit/test_ratelimit.py
 ```
 
 ## Отчёт субагента
-
 Дополнение 04.11.2026, `codex/llm-recovery-record`: операторская процедура
 `docs/LLM-RECOVERY.md` фиксирует существующий recovery через достоверные
 provider observations, приватную backup и штатный reconciliation. Добавлены
