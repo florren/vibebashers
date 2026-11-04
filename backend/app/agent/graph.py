@@ -598,6 +598,33 @@ async def resume_after_followup(
     profile: LLMProfile,
     sim_time: dt.datetime | None = None,
 ) -> AgentState | None:
+    """Продолжение владеет тем же AR session lock, что и recovery, включая checkpoint commits."""
+    row = await (await conn.execute("select agent_run_id from followups where id=%s", (followup_id,))).fetchone()
+    if not row or row[0] is None:
+        return None
+    agent_run_id = int(row[0])
+    await conn.execute("select pg_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,))
+    try:
+        return await _resume_after_followup_owned(
+            conn, followup_id=followup_id, chain=chain, profile=profile, sim_time=sim_time
+        )
+    finally:
+        # Session lock переживает commit saver; aborted TX нужно очистить до unlock.
+        await conn.rollback()
+        await conn.execute(
+            "select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+        await conn.commit()
+
+
+async def _resume_after_followup_owned(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    followup_id: int,
+    chain: ProviderChain,
+    profile: LLMProfile,
+    sim_time: dt.datetime | None = None,
+) -> AgentState | None:
     """Возобновление после срабатывания followup: чекпоинт — input шага followup_monitor."""
     row = await (
         await conn.execute(
@@ -708,7 +735,6 @@ async def resume_after_followup(
         )
         state["outcome"] = "deferred"
         state["current_node"] = "followup_monitor"
-        await conn.commit()
         return await run_graph(state, deps, conn)
     elif reason in ("awaiting_team", "verify_fix"):
         inc_st = None
@@ -739,7 +765,7 @@ async def resume_after_followup(
         state["outcome"] = None
         state["current_node"] = "verify"
 
-    await conn.commit()
+    # Первый durable graph entry фиксирует claim и AR вместе с новым checkpoint.
     return await run_graph(state, deps, conn)
 
 
@@ -756,24 +782,54 @@ async def wake_due_followups(
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
         await conn.execute(
-            "with due as (select f.id from followups f join signals s on s.id=f.signal_id "
-            "where f.status = 'scheduled' and f.wake_sim <= %s and f.agent_run_id is not null "
+            "select f.id,f.agent_run_id from followups f join signals s on s.id=f.signal_id "
+            "join agent_runs ar on ar.id=f.agent_run_id "
+            "where f.status = 'scheduled' and f.wake_sim <= %s "
+            "and (f.reason='escalation_check' or ((ar.outcome='deferred' or (f.reason='report_due' and ar.outcome='completed')) "
+            "and exists(select 1 from agent_steps checkpoint where checkpoint.run_id=f.agent_run_id "
+            "and checkpoint.node='followup_monitor'))) "
             "and (%s::bigint is null or (f.incident_id=%s and f.reason is distinct from 'awaiting_client')) "
             "and (%s::bigint is null or (f.signal_id=%s and f.reason='awaiting_client')) "
-            "and (%s::bigint is null or exists(select 1 from agent_steps checkpoint where checkpoint.run_id=f.agent_run_id "
-            "and checkpoint.node='followup_monitor')) "
             "and (%s::bigint is null or s.run_id=%s) "
-            f"and not {LEGACY_MOCK_SQL} for update of f skip locked) "
-            "update followups f set status = 'fired' from due where f.id = due.id returning f.id",
-            (sim_time, incident_id, incident_id, signal_id, signal_id, signal_id, run_id, run_id),
+            f"and not {LEGACY_MOCK_SQL} order by f.id",
+            (sim_time, incident_id, incident_id, signal_id, signal_id, run_id, run_id),
         )
     ).fetchall()
     resumed = 0
-    for (fid,) in rows:
-        await conn.commit()
-        st = await resume_after_followup(conn, followup_id=int(fid), chain=chain, profile=profile, sim_time=sim_time)
-        if st is not None:
-            resumed += 1
+    for fid, agent_run_id in rows:
+        locked = await (
+            await conn.execute(
+                "select pg_try_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+            )
+        ).fetchone()
+        if not locked or not locked[0]:
+            continue
+        try:
+            # Занятого владельца пропускаем до consume; checkpoint commits сохраняют session lock.
+            claimed = await (
+                await conn.execute(
+                    "update followups f set status='fired' where f.id=%s and f.status='scheduled' "
+                    "and (f.reason='escalation_check' or exists(select 1 from agent_runs ar "
+                    "where ar.id=f.agent_run_id and (ar.outcome='deferred' or (f.reason='report_due' and ar.outcome='completed')))) "
+                    "returning f.id",
+                    (fid,),
+                )
+            ).fetchone()
+            if not claimed:
+                continue
+            # Claim и вход в continuation фиксируются вместе: crash до входа оставляет timer scheduled.
+            st = await _resume_after_followup_owned(
+                conn, followup_id=int(fid), chain=chain, profile=profile, sim_time=sim_time
+            )
+            await conn.commit()
+            if st is not None:
+                resumed += 1
+        finally:
+            await conn.rollback()
+            await conn.execute(
+                "select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+            )
+            await conn.commit()
     return resumed
 
 
@@ -874,6 +930,34 @@ async def resume_after_human(
     profile: LLMProfile,
     sim_time: dt.datetime | None = None,
 ) -> AgentState | None:
+    """Сериализует человеческое продолжение с recovery и timers одного AR."""
+    row = await (
+        await conn.execute("select agent_run_id from human_decisions where id=%s", (human_decision_id,))
+    ).fetchone()
+    if not row or row[0] is None:
+        return None
+    agent_run_id = int(row[0])
+    await conn.execute("select pg_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,))
+    try:
+        return await _resume_after_human_owned(
+            conn, human_decision_id=human_decision_id, chain=chain, profile=profile, sim_time=sim_time
+        )
+    finally:
+        await conn.rollback()
+        await conn.execute(
+            "select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (agent_run_id,)
+        )
+        await conn.commit()
+
+
+async def _resume_after_human_owned(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    human_decision_id: int,
+    chain: ProviderChain,
+    profile: LLMProfile,
+    sim_time: dt.datetime | None = None,
+) -> AgentState | None:
     """Возобновление после решения оператора: чекпоинт — input шага wait_human; шаги продолжают нумерацию."""
     row = await (
         await conn.execute(
@@ -912,5 +996,6 @@ async def resume_after_human(
         {"decision": decision, "modified": modified},
         reasoning=f"Решение человека: {decision}. Продолжаем выполнение.",
     )
-    await conn.commit()
+    # Решение уже сохранено API; AR становится восстанавливаемым вместе с fresh accepted checkpoint.
+    await conn.execute("update agent_runs set outcome=null,finished_at=null,error=null where id=%s", (agent_run_id,))
     return await run_graph(state, deps, conn)

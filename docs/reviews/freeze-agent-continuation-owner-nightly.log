@@ -1,0 +1,10 @@
+postgres-1  | 2026-11-04 19:41:11.424 UTC [13418] ERROR:  duplicate key value violates unique constraint "agent_steps_run_id_seq_key"
+postgres-1  | 2026-11-04 19:41:11.424 UTC [13418] DETAIL:  Key (run_id, seq)=(54, 258) already exists.
+postgres-1  | 2026-11-04 19:41:11.424 UTC [13418] STATEMENT:  insert into agent_steps (run_id, seq, node, status, input, output, prompt, response_raw, reasoning, tool_calls, model, prompt_tokens, completion_tokens, latency_ms, started_at, finished_at) values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10::jsonb, $11, $12, $13, $14, now() - make_interval(secs => $15 / 1000.0), now())
+postgres-1  | 2026-11-04 19:41:11.444 UTC [13418] ERROR:  duplicate key value violates unique constraint "agent_steps_run_id_seq_key"
+postgres-1  | 2026-11-04 19:41:11.444 UTC [13418] DETAIL:  Key (run_id, seq)=(54, 258) already exists.
+postgres-1  | 2026-11-04 19:41:11.444 UTC [13418] STATEMENT:  insert into agent_steps (run_id, seq, node, status, input, output, prompt, response_raw, reasoning, tool_calls, model, prompt_tokens, completion_tokens, latency_ms, started_at, finished_at) values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10::jsonb, $11, $12, $13, $14, now() - make_interval(secs => $15 / 1000.0), now())
+postgres-1  | 2026-11-04 19:41:11.482 UTC [13418] ERROR:  current transaction is aborted, commands ignored until end of transaction block
+postgres-1  | 2026-11-04 19:41:11.482 UTC [13418] STATEMENT:  select current_setting('search_path') as value
+postgres-1  | 2026-11-04 19:41:35.916 UTC [406] ERROR:  canceling statement due to user request
+postgres-1  | 2026-11-04 19:41:35.916 UTC [406] STATEMENT:  select count(distinct o.client_id) as affected from operations o join faults f on f.id=o.fault_id and f.run_id=o.run_id join error_codes e on e.code=f.error_code and e.system_code=f.system_code where o.run_id=$1 and f.id=$2 and f.system_code=$3 and f.error_code=$4 and o.started_sim<=$5 and behavior_valid_failed_operation(o.id,o.run_id) and exists(select 1 from sim_events v where v.run_id=f.run_id and v.event_type='fault.started' and v.payload->>'fault_id'=f.id::text and v.sim_time<=$6)
