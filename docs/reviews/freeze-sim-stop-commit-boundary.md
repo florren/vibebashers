@@ -74,3 +74,8 @@ PostgreSQL. Реальных LLM/Telegram вызовов, primary/fullgate DB wr
 Revert возвращает прежнюю cancellation гонку. Схемы и сохранённые данные не
 требуют downgrade. При проявлении stale guard следует штатно загрузить актуальный
 контроллер, а не переписывать clock/RNG вручную.
+
+Пользователь подтвердил эту tick cancellation границу ответом
+«Подтверждаю после зелёного CI». Условие итогового CI сохраняется.
+[Измерение новых statements](freeze-sim-stop-commit-coverage.json): 11/12
+(91,67%); это не branch/full-project coverage.

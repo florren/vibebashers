@@ -1,0 +1,19 @@
+{
+  "base": "89bc5bb71e8e35f09638e6f2ddc99ee2530e0efd",
+  "pytest_exit": 0,
+  "method": "stdlib sys.settrace/threading.settrace; bytecode-executable innermost AST statement spans containing added diff lines; not branches or full project coverage",
+  "files": [
+    {
+      "file": "backend/app/sim/engine.py",
+      "sha256": "6169c7466ea2cb4a9efd42c11f315a0e7523727c23971df84363ce55068fe21c",
+      "changed_statements": 12,
+      "executed": 11,
+      "missed_lines": [
+        406
+      ]
+    }
+  ],
+  "changed_statements": 12,
+  "executed": 11,
+  "percent": 91.67
+}

@@ -102,3 +102,12 @@ Ruff и strict mypy329sourcefiles прошли; new statement execution154/159=9
 после зелёного CI. Прежний CI выявил непрогенерированную ORM; штатный generator
 добавил24строки, actualPG upgrade→downgrade0003→upgrade→check прошёл.
 Добавлены2PGcases: unknown HTTP не повторяется на другом ключе в том же pool call.
+
+### Предфризовая совместимость OpenRouter 04.11.2026
+
+Действительный upstream Nemotron отказался от `uniqueItems` в schema grammar
+(HTTP200/error400, usage unknown). Для exact OpenRouter/model выбран JSON object
+до inference; исходная schema и локальная валидация сохранены. Unknown не
+получает retry или фиктивный нулевой расход. Review и адресные проверки:
+`docs/reviews/freeze-openrouter-nemotron-json-mode.md`. Финальный live и общий
+CI фиксируются в предфризовом QA отчёте; численные caps не меняются.
