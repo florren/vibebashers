@@ -88,3 +88,11 @@ notify_team не менялся. Один промежуточный reverse-rec
 ожидал выполнение старого terminal checkpoint; тест явно ограничен порядком
 ownership, настоящее interrupted-node recovery проверено отдельно.
 Прогоны без разрешённого socket-доступа с PG skipped в этот итог не включены.
+
+Дополнительно измерено покрытие точного `graph.py` SHA `f4923454…`: 17 PG
+проверок passed, 0 skipped/failed; 35/38 новых executable statement starts
+(92,11%) относительно `89bc5bb`. Не покрыты missing-followup, stale claim
+и missing-human-decision early returns. Это не branch/full-project coverage.
+[Source-qualified JSON](freeze-agent-continuation-owner-coverage.json).
+Пользователь согласовал совокупную HITL/recovery границу commit `ee8f087`
+ответом «Подтверждаю после зелёного CI»; окончательный CI остаётся обязательным.

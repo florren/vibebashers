@@ -42,3 +42,12 @@ pytest backend/tests/integration/test_hitl.py
 ## Отчёт субагента
 _Заполняется исполнителем: ветка/PR, что сделано, отклонения от карточки, затронутые контракты, скриншоты/логи, время._
 UI-часть в PR «L4: фронт» (`pages/workspace/HitlQueue.tsx`): очередь слева, карточка справа — контекст, предложение агента (DecisionView), рекомендация, варианты; панель решения accept/modify/reject/delegate (modify: команда, приоритет, текст ответа клиенту → `modified_proposal` частичным объектом, который `apply_human_decision` сливает по ключам route/client_action/sla/gift), комментарий, `use_as_fewshot`. Проверено вживую: modify для Ultra VIP → act отправил клиенту изменённый текст, прогон завершён. Бэкенд-часть — см. отчёт T-060/B04.
+
+### Предфризовая регрессия 04.11.2026
+
+Устранены доказанные гонки followup/recovery/human resume и разрыв между
+claim/accepted state и новым durable checkpoint. Решения и payload сохранены.
+Review: `docs/reviews/freeze-agent-continuation-owner.md`; 63 адресные PG проверки,
+дополнительно 17 PG под instrumentation и 35/38 новых statements (92,11%).
+Human review получен условно зелёному итоговому CI. Старые потерянные wakes и
+ранний разрыв HD persist → до accepted entry автоматически не исправляются.
