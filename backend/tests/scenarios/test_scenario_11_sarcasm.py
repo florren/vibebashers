@@ -6,6 +6,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
+
 from app.agent.graph import process_signal
 from app.llm.base import LLMProfile
 from app.llm.failover import ProviderChain
@@ -41,14 +42,14 @@ async def test_scenario_11_social_sarcasm(seeded: str) -> None:
 
 async def test_scenario_11_strict_replay_on_immutable_bank(migrated_db: str, monkeypatch, request) -> None:
     """Только настоящие ответы и точный банк записи, а не произвольный текущий seed."""
+    from scripts.replay11_bank import configure_profile, seed_bank
+
     from app.config import get_settings
     from app.contracts.registry import deref
     from app.llm.base import ProviderError
     from app.replay.scenario11_record import fixture, recording_profile, run_graph
     from app.replay.store import request_hash
     from tests.helpers import fresh_replay11_database
-
-    from scripts.replay11_bank import configure_profile, seed_bank
 
     store = CassetteStore(CASSETTES)
     store.load()

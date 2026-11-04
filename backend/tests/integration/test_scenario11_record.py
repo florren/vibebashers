@@ -9,6 +9,8 @@ from decimal import Decimal
 import httpx
 import psycopg
 import pytest
+from scripts.replay11_bank import configure_profile, seed_bank
+
 from app.config import get_settings
 from app.contracts.registry import deref
 from app.llm.accounting import KeyFacts, PostgresAccounting
@@ -29,8 +31,6 @@ from app.replay.scenario11_record import (
     run_graph,
 )
 from app.replay.store import CassetteStore
-
-from scripts.replay11_bank import configure_profile, seed_bank
 from tests.integration.conftest import rebuild_schema
 
 pytestmark = pytest.mark.integration

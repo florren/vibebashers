@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import psycopg
+
 from app.agent.graph import process_signal
 from app.ingest.normalizer import create_signal, from_api_signal
 from app.llm.base import LLMProfile

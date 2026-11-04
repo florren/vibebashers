@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import httpx
 import pytest
+
 from app.llm.base import LLMProfile, ProviderError
 from app.replay.scenario11_record import BASE, LIMITS, MODEL, OAUTH, BoundedTransport, manifest, recording_profile
 
@@ -248,11 +249,11 @@ async def test_cold_oauth_uses_proactive_budget_once_and_graph_reuses_cache():
     """RED: cold connect needs >2s; GREEN: public startup warms both hosts with12s budget."""
     import time
 
+    from scripts.replay11_record import warm_recording_provider
+
     from app.llm.gigachat import GigaChatProvider
     from app.llm.keys import ApiKey, KeyPool
     from app.replay.scenario11_record import BoundedTransport
-
-    from scripts.replay11_record import warm_recording_provider
 
     async def handler(request):
         if request.extensions["timeout"]["connect"] <= 2:
