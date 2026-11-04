@@ -76,9 +76,32 @@ def error_response(secret, where):
     return httpx.Response(200, json=body, headers={"X-Generation-Id": GENERATION} if where != "body" else {})
 
 
+async def unrelated_wire_with_same_profile_id(url, profile, service):
+    # Operational история переживает public seed: numeric profile_id сам по себе
+    # не определяет владельца wire. Сохраняем чужой known раньше своей попытки.
+    foreign = KeyFacts("openai_compatible", "synthetic-foreign-" + uuid.uuid4().hex, BASE)
+    async with await psycopg.AsyncConnection.connect(dsn(url)) as conn:
+        at = (await (await conn.execute("select clock_timestamp()")).fetchone())[0]
+    await service.reconcile(
+        profile,
+        foreign,
+        reconciliation_id=uuid.uuid4(),
+        as_of=at,
+        tokens_used=0,
+        requests_today=0,
+        profile_requests={f"id:{profile.id}": 0},
+        confirmed=True,
+        acknowledge_unknown_origin=True,
+    )
+    async with service.key_scope(profile, foreign, timeout_s=3) as scope:
+        async with scope.inference() as ticket:
+            await ticket.observe(1, 2, final=True)
+
+
 @pytest.mark.parametrize("where", ["body", "header", "both"])
 async def test_reference_does_not_clear_unknown_or_allow_recreated_provider(openrouter_case, where):
     url, profile, facts, service = openrouter_case
+    await unrelated_wire_with_same_profile_id(url, profile, service)
     requests = []
 
     def http(request):
@@ -99,14 +122,17 @@ async def test_reference_does_not_clear_unknown_or_allow_recreated_provider(open
     assert snapshot.usage_known is False and snapshot.tokens_used == 0 and snapshot.requests_today == 1
     assert snapshot.refusal is not None and snapshot.refusal.kind == "quota"
     async with await psycopg.AsyncConnection.connect(dsn(url)) as conn:
-        wire = await (
+        wires = await (
             await conn.execute(
-                "select state,error_kind,prompt_tokens,completion_tokens,observed_tokens "
-                "from llm_runtime.wire_attempts where profile_id=%s",
-                (profile.id,),
+                "select w.state,w.error_kind,w.prompt_tokens,w.completion_tokens,w.observed_tokens "
+                "from llm_runtime.wire_attempts w "
+                "join llm_runtime.credentials c on c.uid=w.credential_uid "
+                "join llm_profiles p on p.id=w.profile_id "
+                "where p.id=%s and c.verifier=%s and w.profile_scope='quota:'||p.quota_uid::text",
+                (profile.id, facts.verifier()),
             )
-        ).fetchone()
-        assert wire == ("unknown", "bad_output", None, None, 0)
+        ).fetchall()
+        assert wires == [("unknown", "bad_output", None, None, 0)]
     restarted = OpenAICompatProvider(facts.secret, BASE, transport=httpx.MockTransport(http))
     try:
         with pytest.raises(ProviderError, match="reconciliation"):
