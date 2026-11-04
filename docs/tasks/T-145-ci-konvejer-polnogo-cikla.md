@@ -126,3 +126,9 @@ fresh Query cache. Distinct manual input сохраняет server-money asserti
 проверяет affected_count. Native controlled proof+21focused+fresh168browser
 passed; fullfrontend591 и make lint passed. Seed5000wall24.31s,p95≤49.52ms.
 Review:`docs/reviews/cabinet-preview-cache-e2e.md`; полный backend/CI ещё gate.
+
+Финальный literal make test на ac6fcc53 завершён PASS:3897passed/21skipped
+(2269unit/913integration/43scenario/31compliance/591frontend/50bot). Все трекнутые
+файлы/HEAD unchanged. Единственный предыдущий integrationFAIL: устаревший sim
+double безLock;one-line fixture fix,32runtime_profilespassed, затем весь набор.
+Финальный make lint passed; CI/human review — обязательные условия merge.
