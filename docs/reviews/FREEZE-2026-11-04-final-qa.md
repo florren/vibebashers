@@ -216,3 +216,26 @@ lock. GREEN24cases155.72s,6/6 новых executable statements выполнен�
 Исходно inactive/None owner по-прежнему допустим. Новый engine SHA256:
 2216549050deef94a579103a2a9cb6a66926c1653b720cb70cf1a21b48451679.
 Ruff/format/mypy этого addon прошли; итоговый make test ещё обязателен.
+
+## Final personal projection и повторные gates
+
+Read-only review выявило реальный personal9999 дефект:answer.at использовал
+notification.created_at (начало старой транзакции), хотя фактический sent_at был
+после question.received_at. Native POST/GET+notify_client RED1failed10.54s.
+Теперь projection берёт coalesce(sent_at,created_at); DTO/DDL/история сохранены,
+legacy без sent_at остаётся fallback, недоставленные statuses не показываются.
+GREEN26PG185.17s:6новых channels/filter/legacy+3personal+15channelchronology+2twin.
+Instrumented6cases:2/2 изменённых executable lines; это не branch/full coverage.
+Review:`freeze-personal-delivery-clock.md`, personal.py SHA256:
+aec37946f973223561fc95122252eb0f09456f463e259c936323a1a58ddbbf27.
+
+Последний v3 engine221654 composition70passed541.02s. Pinned v3 image
+92aae266 завершил150read/settings+13scenarios+5inputs=168browserpassed; demo5000
+seed23.53s,p95API≤44.74ms,violations=[]. Personal projection требует нового v4
+image повторного browser gate; v3 evidence не объявляется доказательством этого fix.
+
+Literal make test на9af4bc7 остановился в unit:2267passed/2failed/19skipped.
+Причина окружения private QA driver:blank LOCAL_LLM_API_KEY и TGBOT_ENABLED=false
+перекрывали fixture Settings(_env_file=...). Product/assertions не меняются; новый
+запуск убирает optional secret/enable overrides, сохраняя mock/ownDB/ENV_FILEdevnull.
+Старый результат сохранён; новый full make test/CI остаётся обязательным gate.

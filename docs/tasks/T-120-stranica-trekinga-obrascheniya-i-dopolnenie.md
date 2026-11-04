@@ -64,3 +64,11 @@ Tracking receipt использует clock_timestamp вместо TX-start now(
 SMTP cases проверяют MIME/privacy/no-resend и550→failed; композиция с public
 tracking/channel chronology прошла. Это stdlib sink, не внешняя почта/Mailpit.
 Review: docs/reviews/freeze-tracking-smtp-clock.md.
+
+### Предфризовая personal хронология,04.11.2026
+
+Подтверждён personal GET answer.at из начала TX до вопроса при фактической
+отправке после него. Projection теперь предпочитает sent_at; прежний legacy
+fallback и фильтр доставленных статусов сохранены. RED1→GREEN26PG,2/2изменённых
+executable lines. DTO/DDL/история не меняются. Review:
+`docs/reviews/freeze-personal-delivery-clock.md`. Combined gates выполняются.

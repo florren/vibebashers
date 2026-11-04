@@ -234,15 +234,18 @@ async def get_personal_messages(request: Request) -> Any:
             (s["id"],),
         )
         # Не выдаём внутренние рекомендации, задания, чужих клиентов, токены и операторские комментарии.
+        # sent_at — факт доставки; created_at старой транзакции может предшествовать вопросу.
+        # У legacy sent без времени доставки сохраняем прежний fallback.
         answers = await fetch_all(
             conn,
-            """select n.id,n.body,n.created_at from notifications n join personal_chat_messages m on m.signal_id=n.signal_id
+            """select n.id,n.body,coalesce(n.sent_at,n.created_at) as delivered_at
+            from notifications n join personal_chat_messages m on m.signal_id=n.signal_id
             where m.session_id=%s and n.recipient_type='client' and n.status in ('sent','delivered') order by n.id limit 200""",
             (s["id"],),
         )
     return {
         "messages": messages,
-        "answers": [{"id": r["id"], "text": r["body"], "at": r["created_at"]} for r in answers],
+        "answers": [{"id": r["id"], "text": r["body"], "at": r["delivered_at"]} for r in answers],
     }
 
 
