@@ -68,7 +68,7 @@ async def send_tracking_receipt(
         status = "failed"
         log.warning("tracking_mail_failed", signal_id=signal_id, error_type=type(exc).__name__)
     await conn.execute(
-        "update notifications set status=%s,sent_sim=%s,sent_at=case when %s='sent' then now() else null end where id=%s",
+        "update notifications set status=%s,sent_sim=%s,sent_at=case when %s='sent' then clock_timestamp() else null end where id=%s",
         (status, sim_time if status == "sent" else None, status, notification_id),
     )
     await conn.execute(

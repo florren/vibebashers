@@ -79,7 +79,7 @@ i18n-check:                 ## ключи словарей frontend/src/shared/i
 	cd frontend && npm run -s gen:types && git diff --exit-code -- src/shared/api/types.ts
 
 scenario:                   ## прогон демо-сценариев на работающем стенде: make scenario ID=2 (или all); CX_BASE_URL, DATABASE_URL
-	$(PY) scripts/scenario_check.py $(or $(ID),all) --base $(or $(CX_BASE_URL),http://localhost:8000)
+	$(PY) scripts/scenario_check.py $(or $(ID),all) --base $(or $(CX_BASE_URL),http://localhost:8000) $(if $(filter 1,$(ALLOW_BASELINE_RESET)),--allow-baseline-reset)
 
 report:                     ## отчёт о качестве → data/reports/quality-<ts>.md/.json (RUN=id — один запуск; CX_BASE_URL — через API стенда)
 	$(PY) scripts/quality_report.py $(if $(RUN),--run $(RUN)) $(if $(CX_BASE_URL),--base $(CX_BASE_URL))

@@ -84,3 +84,25 @@ contracts47/162. Coverage нового engine27/33=81.82% (7regression+3existing
 controls под tracer), source-qualified JSON вreview. Генератор идемпотентен.
 Exact-head CI/зависимостьPR195 остаются обязательны; нового fullintegration/live
 smoke не заявляем, общий DoD карточки не закрыт.
+
+### Предфризовая сериализация control/tick, 04.11.2026
+
+Подтверждён same-process rollback/409 при shared psycopg connection вне lock.
+Preflight, reset_day policy-read и завершающий commit теперь ждут tick lock;
+настоящие stale run/time/RNG/status guards сохранены. RED5 → GREEN5; ещё72 PG,
+новые executable statements90% (rawAST85.71%). Формулы/ставки/лимиты/HITL
+не менялись. Final human review общей tick TX и exact-head CI обязательны.
+Review: docs/reviews/freeze-sim-control-serialization.md; полный QA status —
+docs/reviews/FREEZE-2026-11-04-final-qa.md. История автоматически не исправляется.
+
+Дополнение v3: reset_day/jump_to учитывают concurrent native chunks; Pause→Start
+сохраняет resume hooks, cached demo Stop не открывает завершённый run, handoff
+освобождает SQL guard перед повторным Python lock.95 plain PG cases passed;
+69/79 новых executable statements (87.34%). Предусмотрены implicit initial owner,
+Stop между chunks, cancellation/RNG rollback. Review и точный source hash:
+`docs/reviews/freeze-sim-target-control.md`. Final combined gate ещё выполняется.
+
+Final review также подтвердило Stop-before-first-target-chunk (RED2): разрешение
+implicit owner сохраняется в preflight, Stop не создаёт новый run. GREEN24
+с независимой проверкой run/time/RNG/status после409;6/6 новых statements выполнены.
+Source и итоговые ограничения отражены в общем предфризовом QA report.

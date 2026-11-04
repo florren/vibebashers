@@ -214,6 +214,30 @@ class Simulator:
             await self._step_chunk(chunk)
             minutes -= chunk
 
+    @writer("sim-step")
+    async def _step_to(self, target: dt.datetime, *, run_id: int | None, allow_implicit_owner: bool = False) -> None:
+        """Target и chunk атомарны относительно других ручных шагов этого run."""
+        first_chunk = True
+        while True:
+            async with self._lock:
+                if self.run_id != run_id:
+                    raise StaleSimulatorError("Simulator устарел: run изменён во время перехода к target")
+                remaining = (target - self.clock.sim_time).total_seconds() / 60
+                if remaining <= 1e-9:
+                    return
+                inactive = self.run_status in ("completed", "stopped", "archived")
+                if inactive and not (first_chunk and allow_implicit_owner):
+                    raise StaleSimulatorError("Simulator устарел: run завершён во время перехода к target")
+                implicit_owner = first_chunk and allow_implicit_owner and (self.run_id is None or inactive)
+                await self._reject_scripted_control()
+                await self._step_chunk_locked(min(remaining, MAX_BATCH_MIN))
+                # Только первый owned chunk вправе штатно создать free run через
+                # _ensure_world. Последующая смена owner не переопределяет pin.
+                if implicit_owner:
+                    run_id = self.run_id
+                first_chunk = False
+            await self._publish_tick()
+
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
             await self._reject_scripted_control()
@@ -459,27 +483,39 @@ class Simulator:
                     raise
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
-        conn = await self.connect()
-        await self._require_current(conn, lock=False, check_state=True)
-        creates_new = action == "start" and (
-            self.run_id is None
-            or self.run_status in ("stopped", "completed", "archived", None)
-            or bool(kw.get("label"))
-        )
-        if not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
-            await self._reject_scripted_control()
-        if (
-            self.behavior_policy is not None
-            and self.run_id is not None
-            and action in ("start", "step", "jump_to", "reset_day")
-            and not creates_new
-        ):
-            try:
-                await require_run(conn, self.run_id, policy=self.behavior_policy)
-            except BaseException:
-                await conn.rollback()
-                raise
-        execution = await configuration(conn, self.run_id) if self.run_id else {}
+        # Tick и control разделяют одно соединение: даже preflight SELECT/rollback
+        # должен дождаться общей транзакции tick, а не видеть его промежуточные часы/RNG.
+        async with self._lock:
+            conn = await self.connect()
+            await self._require_current(conn, lock=False, check_state=True)
+            resume_requested = (
+                action == "start" and not kw.get("label") and self.run_status in ("paused", "interrupted")
+            )
+            creates_new = action == "start" and (
+                self.run_id is None
+                or self.run_status in ("stopped", "completed", "archived", None)
+                or bool(kw.get("label"))
+            )
+            if not resume_requested and not creates_new and action in {"start", "step", "jump_to", "reset_day"}:
+                await self._reject_scripted_control()
+            if (
+                self.behavior_policy is not None
+                and self.run_id is not None
+                and action in ("start", "step", "jump_to", "reset_day")
+                and not creates_new
+                and not resume_requested
+            ):
+                try:
+                    await require_run(conn, self.run_id, policy=self.behavior_policy)
+                except BaseException:
+                    await conn.rollback()
+                    raise
+            execution = await configuration(conn, self.run_id) if self.run_id else {}
+            control_run_id = self.run_id
+            # Stop после preflight не разрешает target создать новый owner.
+            allow_implicit_owner = self.run_id is None or self.run_status in ("completed", "stopped", "archived")
+        if resume_requested:
+            return await self.resume_run()
         if (
             self.run_id is not None
             and execution.get("mode") == "demo"
@@ -489,76 +525,107 @@ class Simulator:
         ):
             async with self._lock:
                 await self._require_current(conn, check_state=True)
-                execution.update(status="running", enabled=True)
-                await save(conn, self.run_id, execution)
-                self.clock.running = True
-                self.run_status = "running"
-                await run_svc.set_run_status(conn, self.run_id, "running")
-                await self.persist()
-                await conn.commit()
-            await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
-            return self.state_dict()
+                # Stop мог отключить demo после preflight: cached профиль не
+                # вправе возвращать завершённый run в running и стирать его итог.
+                execution = await configuration(conn, self.run_id)
+                demo_handled = bool(
+                    execution.get("mode") == "demo"
+                    and execution.get("enabled")
+                    and self.run_status in ("running", "paused", "interrupted")
+                )
+                if demo_handled:
+                    resume_requested = self.run_status in ("paused", "interrupted")
+                    if resume_requested:
+                        await conn.rollback()  # Read-only guard row не переживает release Python lock.
+                    else:
+                        execution.update(status="running", enabled=True)
+                        await save(conn, self.run_id, execution)
+                        self.clock.running = True
+                        self.run_status = "running"
+                        await run_svc.set_run_status(conn, self.run_id, "running")
+                        await self.persist()
+                        await conn.commit()
+                else:
+                    await conn.rollback()  # Перед обычным Start не держим row lock за Python lock.
+            if demo_handled:
+                if resume_requested:
+                    return await self.resume_run()
+                await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
+                return self.state_dict()
         if execution.get("mode") == "demo" and execution.get("enabled") and action in ("step", "jump_to", "reset_day"):
             raise ValueError("Изолированный сценарий использует событийное время; доступны запуск, пауза и остановка")
         if action == "start":
             async with self._lock:
                 await self._require_current(conn, check_state=True)
-                previous = (
-                    self.run_id,
-                    self.run_status,
-                    self.seed,
-                    self.rng,
-                    self.clock.running,
-                    dict(self.stats),
-                    self.world,
-                )
-                try:
-                    if (
-                        self.run_status in ("stopped", "completed", "archived", None)
-                        or self.run_id is None
-                        or kw.get("label")
-                    ):
-                        selected_seed = kw.get("seed")
-                        if selected_seed is None:
-                            base = await (
-                                await conn.execute(
-                                    "select seed from sim_runs where kind='baseline' order by id limit 1"
-                                )
-                            ).fetchone()
-                            selected_seed = base[0] if base else self.seed
-                        new_seed = int(selected_seed)
-                        self.run_id = await run_svc.create_run(
-                            conn,
-                            kind=kw.get("kind") or "free",
-                            label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
-                            seed=new_seed,
-                            sim_time=self.clock.sim_time,
-                            llm_profile_id=kw.get("llm_profile_id"),
-                            scenario_id=kw.get("scenario_id"),
-                            reset_mode=kw.get("reset_mode") or "counters",
-                        )
-                        self.seed = new_seed
-                        self.rng = SimRng(self.seed)
-                        self.stats = {key: 0 for key in self.stats}
-                        self.run_status = "running"
-                        self.world = None
-                    self.clock.running = not bool(kw.get("start_paused"))
-                    if not self.clock.running:
-                        if self.run_id:
-                            await run_svc.set_run_status(conn, self.run_id, "paused")
-                        self.run_status = "paused"
-                    if self.full_execution and self.run_id:
-                        await ensure(conn, self.run_id, running=self.clock.running)
-                    await self.persist()
-                    await conn.commit()
-                except BaseException:
-                    await conn.rollback()
-                    self.run_id, self.run_status, self.seed, self.rng, self.clock.running, self.stats, self.world = (
-                        previous
+                # Pause могла завершиться между preflight и mutation lock.
+                resume_requested = not kw.get("label") and self.run_status in ("paused", "interrupted")
+                if resume_requested:
+                    await conn.rollback()  # resume_run заново возьмёт guard под собственным Python lock.
+                else:
+                    previous = (
+                        self.run_id,
+                        self.run_status,
+                        self.seed,
+                        self.rng,
+                        self.clock.running,
+                        dict(self.stats),
+                        self.world,
                     )
-                    raise
-                if self.clock.running:
-                    self._start_loop()
+                    try:
+                        if (
+                            self.run_status in ("stopped", "completed", "archived", None)
+                            or self.run_id is None
+                            or kw.get("label")
+                        ):
+                            selected_seed = kw.get("seed")
+                            if selected_seed is None:
+                                base = await (
+                                    await conn.execute(
+                                        "select seed from sim_runs where kind='baseline' order by id limit 1"
+                                    )
+                                ).fetchone()
+                                selected_seed = base[0] if base else self.seed
+                            new_seed = int(selected_seed)
+                            self.run_id = await run_svc.create_run(
+                                conn,
+                                kind=kw.get("kind") or "free",
+                                label=kw.get("label") or f"Запуск {dt.datetime.now(MSK):%d.%m %H:%M}",
+                                seed=new_seed,
+                                sim_time=self.clock.sim_time,
+                                llm_profile_id=kw.get("llm_profile_id"),
+                                scenario_id=kw.get("scenario_id"),
+                                reset_mode=kw.get("reset_mode") or "counters",
+                            )
+                            self.seed = new_seed
+                            self.rng = SimRng(self.seed)
+                            self.stats = {key: 0 for key in self.stats}
+                            self.run_status = "running"
+                            self.world = None
+                        self.clock.running = not bool(kw.get("start_paused"))
+                        if not self.clock.running:
+                            if self.run_id:
+                                await run_svc.set_run_status(conn, self.run_id, "paused")
+                            self.run_status = "paused"
+                        if self.full_execution and self.run_id:
+                            await ensure(conn, self.run_id, running=self.clock.running)
+                        await self.persist()
+                        await conn.commit()
+                    except BaseException:
+                        await conn.rollback()
+                        (
+                            self.run_id,
+                            self.run_status,
+                            self.seed,
+                            self.rng,
+                            self.clock.running,
+                            self.stats,
+                            self.world,
+                        ) = previous
+                        raise
+                    if self.clock.running:
+                        self._start_loop()
+            if resume_requested:
+                return await self.resume_run()
             await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
             return self.state_dict()
         elif action in ("set_speed", "set_preset"):
@@ -582,10 +649,14 @@ class Simulator:
             await self.step(float(kw.get("step_minutes") or 15))
         elif action == "reset_day":
             await self._stop_loop()
-            lt = self.clock.sim_time.astimezone(MSK)
-            target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-            if await effective_policy(conn, self.run_id, self.behavior_policy) is not None:
-                await self.step((target - self.clock.sim_time).total_seconds() / 60)
+            async with self._lock:
+                if self.run_id != control_run_id:
+                    raise StaleSimulatorError("Simulator устарел: run изменён перед reset_day")
+                lt = self.clock.sim_time.astimezone(MSK)
+                target = (lt + dt.timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
+                reset_policy = await effective_policy(conn, self.run_id, self.behavior_policy)
+            if reset_policy is not None:
+                await self._step_to(target, run_id=control_run_id, allow_implicit_owner=allow_implicit_owner)
             else:
                 async with self._lock:
                     await self._require_current(conn, check_state=True)
@@ -603,11 +674,11 @@ class Simulator:
                 target = dt.datetime.fromisoformat(target)
             if target <= self.clock.sim_time:
                 raise ValueError("jump_to: только вперёд")
-            await self.step((target - self.clock.sim_time).total_seconds() / 60)
+            await self._step_to(target, run_id=control_run_id, allow_implicit_owner=allow_implicit_owner)
         else:
             raise ValueError(f"неизвестное действие: {action}")
-        if self.run_id:
-            async with self._lock:
+        async with self._lock:
+            if self.run_id:
                 await self._require_current(conn, check_state=True)
                 execution = await configuration(conn, self.run_id)
                 if not execution and self.full_execution and action in ("start", "resume"):
@@ -616,8 +687,8 @@ class Simulator:
                     if action in ("start", "resume"):
                         execution.update(enabled=True, status="running")
                     await save(conn, self.run_id, execution)
-        await self.persist()
-        await conn.commit()
+            await self.persist()
+            await conn.commit()
         await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
         return self.state_dict()
 

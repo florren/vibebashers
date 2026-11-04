@@ -27,9 +27,12 @@ def isolate(
     directory: Path,
     *,
     expose_personal: bool = False,
+    profile: str = "lite",
 ) -> dict[str, Any]:
     if not project.startswith("cx-ci-") or image != "cx-pulse-backend:ci" or not 1024 <= port <= 65535:
         raise ValueError("CI требует свой project, image :ci и непривилегированный port")
+    if profile not in {"lite", "demo"}:
+        raise ValueError("CI требует тот же lite/demo profile для runtime и seed")
     config["name"] = project
     for section in ("volumes", "networks"):
         for row in config.get(section, {}).values():
@@ -85,6 +88,7 @@ def isolate(
             {
                 # APP_ENV=test выключает симулятор/workers; здесь проверяется настоящее изолированное приложение.
                 "APP_ENV": "dev",
+                "PROFILE": profile,
                 "DATABASE_URL": "postgresql+psycopg://cx:cx@postgres:5432/cx_pulse",
                 "APP_SECRET": shared_secret,
                 "LLM_PROVIDER": "mock",
@@ -287,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=18080)
     parser.add_argument("--performance", action="store_true")
     args = parser.parse_args(argv)
+    profile = "demo" if args.performance else "lite"
     project = f"cx-ci-{secrets.token_hex(6)}"
     environment = {
         **os.environ,
@@ -322,6 +327,7 @@ def main(argv: list[str] | None = None) -> int:
             args.port,
             Path(directory),
             expose_personal=True,
+            profile=profile,
         )
         config_path = Path(directory) / "compose.json"
         config_path.write_text(json.dumps(config))
@@ -352,7 +358,7 @@ def main(argv: list[str] | None = None) -> int:
                     "/scripts/seed/run.py",
                     "--if-needed",
                     "--profile",
-                    "demo" if args.performance else "lite",
+                    profile,
                     "--clients",
                     "5000" if args.performance else "200",
                 ],

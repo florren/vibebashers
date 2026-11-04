@@ -63,3 +63,24 @@ Gap-ревизия: четыре существующих части уже бы
 ## Одобренный live smoke, 2026-11-02
 
 После явного согласования пользователя PR159 выполнен один bounded запуск:5 из 6 HTTP-запросов, 3 фиксированные модели, max_output_tokens=128. Результат:1 `bad_output` и 2 `unavailable` HTTP 404; успешный structured ответ не подтверждён. Actual tokens/USD неизвестны, не считаются нулевыми. Повторных запусков/замен нет. Подробности и safe JSON: `docs/reviews/T-048-live-smoke.md`, `docs/reviews/T-048-live-smoke-result.json`. Ранние записи «не вызывались» выше описывают этап до этого согласования. Карточка остаётся in_progress до актуализации каталога T-047 и положительной live-проверки; schema/guard не ослаблены.
+
+
+## Freeze follow-up: recovery reference, 2026-11-04
+
+`codex/freeze-openrouter-trace`: при отсутствующем usage OpenRouter сохраняется
+только проверенный generation ID (body/header, ASCII≤128, конфликт/credential
+reflection исключены) и целый HTTP-sized error code в существующем error detail.
+SDK raw-response доступ даёт header-only reference. Unknown, caps, budget,
+retry/fallback, API/DDL и банковские деньги/HITL не меняются. Старая потерянная
+reference не восстанавливается; расход не объявляется нулевым.
+
+RED3fakeHTTP→GREEN19newunit;136SDK/security cases под coverage;13/13newproducerlines
+выполнены. Fullunit2246passed/19skipped на том же producer, затем два дополнительных
+edge cases проверены в финальном targeted suite. ActualPG composition51passed:
+unknown сохраняется после пересоздания provider, второй HTTP запрещён, reference
+читается из actual graph step/checkpoint новым соединением. Ruff/mypy/contracts и
+ownersL1 зелёные. Первый composition fixture error из-за параллельной генерации
+схем устранён последовательным повтором без ослабления проверок. Реальных внешних
+вызовов, primaryDB writes и reconciliation этот пакет не выполняет.
+Полный CI/merge ещё не подтверждён. Подробности и rollback:
+`docs/reviews/T-048-openrouter-recovery-reference.md`. Вся карточка остаётся открытой.

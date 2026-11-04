@@ -389,13 +389,16 @@ async def get_sim_baseline(request: Request) -> Any:
 async def post_sim_baseline(request: Request) -> Any:
     await _ensure_dump_allowed(request)
     sim = _sim(request)
-    conn = await sim.connect()
-    try:
-        result = await baseline_svc.dump(conn)
-    except baseline_svc.BaselineToolingError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    finally:
-        await conn.commit()
+    async with sim._lock:
+        # За время ожидания владельца общего conn мог стартовать новый run.
+        await _ensure_dump_allowed(request)
+        conn = await sim.connect()
+        try:
+            result = await baseline_svc.dump(conn)
+        except baseline_svc.BaselineToolingError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        finally:
+            await conn.commit()
     return result
 
 

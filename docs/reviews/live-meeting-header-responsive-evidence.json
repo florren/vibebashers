@@ -1,0 +1,205 @@
+{
+  "red": [
+    {
+      "result": "FAIL",
+      "close_rect": {
+        "x": 296.09375,
+        "y": 123.5,
+        "width": 80.859375,
+        "height": 44
+      },
+      "viewport": 320,
+      "error": "{\"x\":296.09375,\"y\":123.5,\"width\":80.859375,\"height\":44}"
+    }
+  ],
+  "green": [
+    {
+      "result": "PASS",
+      "lang": "ru",
+      "theme": "light",
+      "width": 320,
+      "close_rect": {
+        "x": 122.015625,
+        "y": 251.5,
+        "width": 80.859375,
+        "height": 44
+      },
+      "viewport": 320,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 8,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-ru-light-320.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "ru",
+      "theme": "light",
+      "width": 1440,
+      "close_rect": {
+        "x": 1322.046875,
+        "y": 307.921875,
+        "width": 88.75,
+        "height": 35.1875
+      },
+      "viewport": 1440,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 9,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-ru-light-1440.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 320,
+      "close_rect": {
+        "x": 122.015625,
+        "y": 251.5,
+        "width": 80.859375,
+        "height": 44
+      },
+      "viewport": 320,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 10,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-ru-dark-320.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "ru",
+      "theme": "dark",
+      "width": 1440,
+      "close_rect": {
+        "x": 1322.046875,
+        "y": 307.921875,
+        "width": 88.75,
+        "height": 35.1875
+      },
+      "viewport": 1440,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 11,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-ru-dark-1440.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "en",
+      "theme": "light",
+      "width": 320,
+      "close_rect": {
+        "x": 122.015625,
+        "y": 251.3125,
+        "width": 58.734375,
+        "height": 44
+      },
+      "viewport": 320,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 12,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-en-light-320.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "en",
+      "theme": "light",
+      "width": 1440,
+      "close_rect": {
+        "x": 1346.390625,
+        "y": 268.328125,
+        "width": 64.40625,
+        "height": 35.1875
+      },
+      "viewport": 1440,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 13,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-en-light-1440.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "en",
+      "theme": "dark",
+      "width": 320,
+      "close_rect": {
+        "x": 122.015625,
+        "y": 251.3125,
+        "width": 58.734375,
+        "height": 44
+      },
+      "viewport": 320,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 14,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-en-dark-320.png"
+    },
+    {
+      "result": "PASS",
+      "lang": "en",
+      "theme": "dark",
+      "width": 1440,
+      "close_rect": {
+        "x": 1346.390625,
+        "y": 268.328125,
+        "width": 64.40625,
+        "height": 35.1875
+      },
+      "viewport": 1440,
+      "close_clicked": true,
+      "no_document_overflow": true,
+      "focus_verified": true,
+      "session_id": 15,
+      "saved_session_status": "closed",
+      "external_requests": [],
+      "page_errors": [],
+      "screenshot": "/home/asb/Documents/ChatGPT/vibebashers/.runtime/freeze-live-meeting-responsive-green-en-dark-1440.png"
+    }
+  ],
+  "producer_sha256": "91d5df4dc479b4b812a22f29e134ed716e4019975a33bf559767083d0681d062",
+  "production_assets": {
+    "/assets/index-WEN96LlT.js": "f6ff9ba942e4dc5e2988b7f19ad852375e502634c043448167e4d404bc981f5e",
+    "/assets/index-D6MeHmjg.css": "62c550d690ac24a1e8d8768f7d3de48076a41ff15d20e75db83648e1a6045b42"
+  },
+  "checks": {
+    "component_tests": "10 passed",
+    "lint": "passed, existing DemoMenu react-refresh warning",
+    "production_build": "passed, includes tsc -b",
+    "full_suite_repeated": false
+  },
+  "db": {
+    "wire_attempts": 0,
+    "audio_sessions": 15,
+    "audio_storage_enabled": 0
+  },
+  "limits": [
+    "fake microphone fixed synthetic WAV, physical microphone untested",
+    "offline local Vosk, external requests and LLM wire attempts zero"
+  ]
+}

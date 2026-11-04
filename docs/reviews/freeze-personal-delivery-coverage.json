@@ -1,0 +1,14 @@
+{
+  "method": "stdlib line trace including endpoint worker threads; changed executable SQL/projection producer lines, not branch/full-project coverage",
+  "pytest_exit": 0,
+  "source_sha256": "aec37946f973223561fc95122252eb0f09456f463e259c936323a1a58ddbbf27",
+  "changed_executable_lines": [
+    241,
+    248
+  ],
+  "executed": [
+    241,
+    248
+  ],
+  "percent": 100.0
+}

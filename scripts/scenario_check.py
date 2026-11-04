@@ -3,6 +3,7 @@
 Использование:
   python scripts/scenario_check.py 2                 # сценарий № 2 на http://localhost:8000
   python scripts/scenario_check.py all --base http://localhost:8011 --wait 20
+Для обязательного baseline restore нужен --allow-baseline-reset (только свой тестовый стенд, история заменяется).
 Нужен DATABASE_URL (для проверки ожиданий читаем БД напрямую). Коды возврата: 0 — все проверяемые ожидания выполнены, 1 — есть провалы.
 """
 
@@ -28,10 +29,12 @@ def _dsn(url: str) -> str:
     return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
-async def _wait_runs(dsn: str, run_id: int, expected: int, timeout: float) -> None:
-    t0 = time.time()
+async def _wait_runs(dsn: str, run_id: int, expected: int, timeout: float) -> bool:
+    if expected == 0:
+        return True
+    t0 = time.monotonic()
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
-        while time.time() - t0 < timeout:
+        while time.monotonic() - t0 < timeout:
             row = await (
                 await conn.execute(
                     "select count(*) from agent_runs where sim_run_id = %s and outcome in ('completed','awaiting_human','deferred','error','failed')",
@@ -39,14 +42,15 @@ async def _wait_runs(dsn: str, run_id: int, expected: int, timeout: float) -> No
                 )
             ).fetchone()
             if row and int(row[0]) >= expected:
-                return
+                return True
             await asyncio.sleep(0.5)
+    return False
 
 
-async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
-    t0 = time.time()
+async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> bool:
+    t0 = time.monotonic()
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
-        while time.time() - t0 < timeout:
+        while time.monotonic() - t0 < timeout:
             row = await (
                 await conn.execute(
                     "select count(*) from transcripts where run_id = %s and source = 'scenario' and status in ('done','failed')",
@@ -54,8 +58,9 @@ async def _wait_transcript(dsn: str, run_id: int, timeout: float) -> None:
                 )
             ).fetchone()
             if row and int(row[0]) >= 1:
-                return
+                return True
             await asyncio.sleep(0.5)
+    return False
 
 
 async def _wait_scripted(dsn: str, run_id: int, timeout: float) -> None:
@@ -76,7 +81,7 @@ async def _wait_scripted(dsn: str, run_id: int, timeout: float) -> None:
             await asyncio.sleep(0.5)
 
 
-async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
+async def run_one(base: str, dsn: str, scenario: dict, wait: float, *, allow_baseline_reset: bool = False) -> bool:
     if scenario.get("kind") == "read_model" and scenario["id"] == "customer_journey":
         from scripts.journey_check import run_journeys
 
@@ -85,8 +90,17 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
         from scripts.read_model_check import run_search_trace
 
         return await run_search_trace(base, dsn, scenario)
+    requires_baseline = scenario.get("reset_mode_required") == "baseline"
+    if requires_baseline and not allow_baseline_reset:
+        print(  # noqa: T201
+            f"  [{scenario['number']:>2}] FAIL {scenario['title_ru']}: нужен baseline reset; "
+            "только для своего тестового стенда укажите --allow-baseline-reset "
+            "(в Makefile: ALLOW_BASELINE_RESET=1). Запрос не отправлен."
+        )
+        return False
+    body = {"reset_mode": "baseline"} if requires_baseline else {}
     async with httpx.AsyncClient(base_url=base, timeout=60) as http:
-        r = await http.post(f"/api/scenarios/{scenario['id']}/run", json={})
+        r = await http.post(f"/api/scenarios/{scenario['id']}/run", json=body)
         if r.status_code == 501:
             why = r.json().get("detail") or r.text[:80]
             print(  # noqa: T201
@@ -95,14 +109,20 @@ async def run_one(base: str, dsn: str, scenario: dict, wait: float) -> bool:
             return False
         r.raise_for_status()
         run_id = int(r.json()["run"]["id"])
+    processing_complete = True
     if "script" in scenario:
         await _wait_scripted(dsn, run_id, wait)
     elif sc.is_transcript(scenario):
-        await _wait_transcript(dsn, run_id, wait)
+        processing_complete = await _wait_transcript(dsn, run_id, wait)
     else:
-        await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
+        processing_complete = await _wait_runs(dsn, run_id, len(scenario.get("inject") or []), wait)
     async with await psycopg.AsyncConnection.connect(dsn) as conn:
         res = await sc.evaluate(conn, scenario, run_id)
+        if not processing_complete:
+            res["checks"].append(
+                {"code": "processing_completed", "ok": False, "detail": "Обработка не завершилась до --wait"}
+            )
+            res["passed"] = False
         if scenario.get("kind") == "acceptance":
             from scripts.acceptance_check import verify_reads
 
@@ -137,6 +157,11 @@ async def main() -> int:
     ap.add_argument("which", help="номер сценария, id или all")
     ap.add_argument("--base", default=os.environ.get("CX_BASE_URL", "http://localhost:8000"))
     ap.add_argument(
+        "--allow-baseline-reset",
+        action="store_true",
+        help="разрешить required baseline restore с заменой банковской истории; только собственный тестовый стенд",
+    )
+    ap.add_argument(
         "--recording-source",
         choices=("replay", "live"),
         default="replay",
@@ -159,8 +184,9 @@ async def main() -> int:
             print(f"сценарий {a.which} не найден")  # noqa: T201
             return 2
     ok = True
+    options = {"allow_baseline_reset": True} if a.allow_baseline_reset else {}
     for s in items:
-        ok = await run_one(a.base, dsn, {**s, "_recording_source": a.recording_source}, a.wait) and ok
+        ok = await run_one(a.base, dsn, {**s, "_recording_source": a.recording_source}, a.wait, **options) and ok
     return 0 if ok else 1
 
 

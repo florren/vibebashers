@@ -529,8 +529,11 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
         else:
             checks.append(_check(key, None, "нет проверки для этого ключа"))
 
-    passed = all(c["ok"] is not False for c in checks) and (
-        bool(d["signals"]) or bool(tr and tr.get("status") == "done")
+    errors = sum(1 for r in d["agent_runs"] if r["outcome"] in ("error", "failed"))
+    passed = (
+        errors == 0
+        and all(c["ok"] is not False for c in checks)
+        and (bool(d["signals"]) or bool(tr and tr.get("status") == "done"))
     )
     return {
         "passed": passed,
@@ -540,7 +543,7 @@ async def evaluate(conn: psycopg.AsyncConnection[Any], scenario: dict[str, Any],
             "incidents": len(d["incidents"]),
             "agent_runs": len(d["agent_runs"]),
             "completed": sum(1 for r in d["agent_runs"] if r["outcome"] == "completed"),
-            "errors": sum(1 for r in d["agent_runs"] if r["outcome"] == "error"),
+            "errors": errors,
         },
     }
 

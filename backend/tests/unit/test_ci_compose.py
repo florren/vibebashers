@@ -89,10 +89,23 @@ def test_isolation_copies_bind_data_and_scopes_resources(tmp_path, monkeypatch):
     assert backend["ports"][0]["host_ip"] == "127.0.0.1"
     assert backend["environment"]["LLM_CHAIN"] == "mock"
     assert backend["environment"]["APP_ENV"] == "dev"
+    assert backend["environment"]["PROFILE"] == "lite"
+    assert isolated["services"]["personal"]["environment"]["PROFILE"] == "lite"
     assert "@postgres:5432/" in backend["environment"]["DATABASE_URL"]
     copied = Path(backend["volumes"][0]["source"]) / "sentinel"
     copied.write_text("candidate mutation")
     assert (tmp_path / "data" / "sentinel").read_text() == "source"
+
+
+@pytest.mark.parametrize("profile", ["lite", "demo"])
+def test_candidate_runtime_profile_matches_selected_seed(tmp_path, monkeypatch, profile):
+    monkeypatch.setattr(compose, "ROOT", tmp_path)
+    config = candidate_config(tmp_path)
+    isolated = compose.isolate(
+        config, "cx-ci-test", "cx-pulse-backend:ci", 18080, tmp_path / "candidate", profile=profile
+    )
+    for name in ("backend", "personal"):
+        assert isolated["services"][name]["environment"]["PROFILE"] == profile
 
 
 @pytest.mark.parametrize(

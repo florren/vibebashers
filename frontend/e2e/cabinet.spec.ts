@@ -114,10 +114,13 @@ for (const language of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(calc.locator('aside')).toHaveCSS('opacity', '1')
       await expect(calc.locator('[aria-live]')).toHaveText('—')
       expect(await calc.getByLabel(text.rate).locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value).filter(Boolean).sort())).toEqual(economics.rates.map((row: { code: string }) => row.code).sort())
-      const initialResult = page.waitForResponse(response => new URL(response.url()).pathname === '/api/metrics/economics/preview' && new URL(response.url()).searchParams.get('affected') === '2' && new URL(response.url()).searchParams.get('rate_code') === direction.rate_code)
-      await calc.getByLabel(text.affected).fill('2')
+      // Региональный preview с теми же входами законно остаётся в свежем Query cache.
+      const manualAffected = region.affected_clients === 2 ? 3 : 2
+      const initialResult = page.waitForResponse(response => new URL(response.url()).pathname === '/api/metrics/economics/preview' && new URL(response.url()).searchParams.get('affected') === String(manualAffected) && new URL(response.url()).searchParams.get('rate_code') === direction.rate_code)
+      await calc.getByLabel(text.affected).fill(String(manualAffected))
       const response = await initialResult; expect(response.status()).toBe(200)
       const server = await response.json()
+      expect(server.affected_count).toBe(manualAffected)
       await expect(calc.locator('[aria-live]')).toHaveText(signedMoney(server.potential_loss_rub))
       await page.screenshot({ path: info.outputPath(`cabinet-${language}-${mode}-calculator.png`) })
       const unmapped = economics.rates.find((row: { code: string; maps_to?: Record<string, unknown> }) => row.code !== direction.rate_code && !Object.keys(row.maps_to ?? {}).length)

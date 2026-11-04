@@ -1,0 +1,11 @@
+{
+  "method": "stdlib sys.settrace; bytecode-executable AST statement starts intersect added diff lines, not branches or full project coverage",
+  "pytest_exit": 0,
+  "new_statements": 6,
+  "executed": 6,
+  "percent": 100.0,
+  "missed_lines": [],
+  "excluded_non_executable_ast_headers": [],
+  "file": "backend/app/sim/engine.py",
+  "engine_sha256": "2216549050deef94a579103a2a9cb6a66926c1653b720cb70cf1a21b48451679"
+}

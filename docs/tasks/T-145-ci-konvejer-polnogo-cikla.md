@@ -108,3 +108,27 @@ created_at/run_started_at20:07:01Z, updated_at20:15:53Z01.11.2026: полный 
 Порог≤15min подтверждён этим запуском. После обновления базы T152/T014 выполняется
 новый цикл; закрытие карточки по остальному DoD не заявлено. Прежняя открытая
 граница remote latency выше относится к состоянию до публикации этого run.
+
+### Повторный freeze QA, 04.11.2026
+
+PG16 full collection на четырёх отдельных checkout/DB:3175 passed,21 skipped,
+union manifests3196tests/305modules PASS. Причины21skips сохранены в QA review;
+Vosk WAV проверен локальной моделью. Browser nightly168passed; runtime/seed
+PROFILE mismatch helper исправлен (обаorigin lite/demo unitcases), требуется
+повтор на final source. Текущий объединённый unit2269passed/19skipped.
+Это не закрывает исходный≤15minremotecriterion без итогового замера CI.
+Актуальные gates/ограничения: docs/reviews/FREEZE-2026-11-04-final-qa.md.
+
+### Финальный browser cache gate,04.11.2026
+
+Cabinet timeout воспроизведён как test-only ожидание новогоHTTP при законном
+fresh Query cache. Distinct manual input сохраняет server-money assertions и
+проверяет affected_count. Native controlled proof+21focused+fresh168browser
+passed; fullfrontend591 и make lint passed. Seed5000wall24.31s,p95≤49.52ms.
+Review:`docs/reviews/cabinet-preview-cache-e2e.md`; полный backend/CI ещё gate.
+
+Финальный literal make test на ac6fcc53 завершён PASS:3897passed/21skipped
+(2269unit/913integration/43scenario/31compliance/591frontend/50bot). Все трекнутые
+файлы/HEAD unchanged. Единственный предыдущий integrationFAIL: устаревший sim
+double безLock;one-line fixture fix,32runtime_profilespassed, затем весь набор.
+Финальный make lint passed; CI/human review — обязательные условия merge.

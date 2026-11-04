@@ -1,0 +1,66 @@
+{
+  "image": "sha256:29da5664fb1f61b26713045b6efdece473796e3e883f0e5c0864ea31cec61da8",
+  "initial_full_nightly": {
+    "passed": 143,
+    "failed": 7,
+    "scenarios_inputs": "not_run_after_first_phase_failure",
+    "log_sha256": "0381d3d0efb18cf255586c00c067181b780d60e77979a52272ae5a909f65d4d9"
+  },
+  "controlled_native": {
+    "result": "PASS",
+    "kind": "actual production native API/UI controlled fresh Query cache",
+    "owned_run_id": 3,
+    "line": "deposits",
+    "region": "16",
+    "regional_affected": 1,
+    "server_amount": 48.05,
+    "displayed_amount": "−48,05 ₽",
+    "same_input_preview_new_http": 0,
+    "distinct_input": 2,
+    "distinct_preview_new_http": 1,
+    "requests": [
+      "?affected=1&rate_code=deposit&detractor_share=0.1&no_return_share=0.5",
+      "?affected=2&rate_code=deposit&detractor_share=0.1&no_return_share=0.5"
+    ],
+    "external": [],
+    "page_errors": [],
+    "browser_clock": "Date fixed only to keep production 5000ms cache fresh; timers unchanged"
+  },
+  "focused_browser": {
+    "passed": 21,
+    "duration_s": 41.4,
+    "log_sha256": "31b6ca8d8f72b6b29646860a7d5bc2971f77ee712be1d06e4ea1e8fed834437e"
+  },
+  "source_checks": {
+    "hook_tests": "4 passed",
+    "typecheck": "passed",
+    "lint": "passed; existing DemoMenu react-refresh warning"
+  },
+  "corrected_full_nightly": {
+    "result": "PASS",
+    "exit": 0,
+    "browser_phases": {
+      "read_only_settings": 150,
+      "scenarios": 13,
+      "inputs": 5,
+      "total": 168
+    },
+    "image": "sha256:29da5664fb1f61b26713045b6efdece473796e3e883f0e5c0864ea31cec61da8",
+    "log_sha256": "b065ab58270432c4d73cd4481cae0ba93d6562e036db9ecbe3b12ad7e37bfcc1",
+    "performance_violations": [],
+    "seed_seconds": 24.307732062996365,
+    "p95_ms": {
+      "/api/health": 34.3059959996026,
+      "/api/sim/state": 13.152194005670026,
+      "/api/signals?limit=50": 34.931575995869935,
+      "/api/map/heat": 29.733796007349156,
+      "/api/metrics/dashboard": 49.5170400099596
+    },
+    "cleanup": "own Compose down -v succeeded; primary untouched"
+  },
+  "production_changes": false,
+  "source_hashes": {
+    "frontend/e2e/cabinet.spec.ts": "5cd44e90828c88c6fbbbd4a93ec6bbfc6869b30b686b1cdc40e24de3275ecdf5",
+    "frontend/src/shared/api/__tests__/economicsPreview.test.tsx": "20713903cf2fb28e58daf76667693c6d3a78ef42d7240dca80a704ed0ce4df63"
+  }
+}
