@@ -62,3 +62,19 @@ make cassettes-record SCENARIO=qr_fee_public_review
 Пользователь подтвердил contract prefix9 и bounded GigaChat record. Один запуск:2HTTP (1OAuth+1inference),3213+506tokens, costunknown. Новый отдельный реальный JSONL и provenance добавлены после schema/credential/promise проверки, исторический JSONL byte-for-byte неизменён. После честного miss на текущемseed stricttests используют immutable записанныйbank, без rekey/изменения ответов/ослабления assertions; changedseed отдельно обязан датьmiss.3targeted replay/miss passed15.33s;68fake transport/auth guards passed2.01s. Подробности docs/reviews/T-198-bounded-record.md. Fullmake/CI выполняются, остальной live/cassette scope этим не объявляется закрытым.
 
 Полная офлайн-проверка source97ecc329: make test1619backend/24skip и188frontend, make lint exit0. После main466 четыре replay/COPY теста зелёные; CI обнаружил отдельный старый unit assert исторического hash, исправлен на вычисление актуальной schema при неизменных messages и обязательном changed-context miss. После merge8b225d5:69targetunit passed2.09s. Финальный CI обязателен; дополнительного live не было.
+
+## Предфризовая подготовка bounded replay11, 04.11.2026
+
+Настоящей кассеты `social_sarcasm_escalation` пока нет; статус не закрывается
+фиктивным ответом. Подготовлены immutable synthetic bank, отдельный bounded
+recorder и строгий opt-in templates v2. Native PostgreSQL ledger и graph bank
+проверяются в двух разных БД; caps/unknown сохраняются при новом банке. Проверены
+actual sent clarification, wake1 и escalation cx_lead, все3 LLM nodes только
+live/replay без append_mock, changed context/legacy v1 дают настоящий miss.
+
+Подготовка:30targeted passed (27unit+3PG); full backend unit2296passed/19skipped,
+strict mypy2modules/Ruff/format passed; genuine v1 QR→Trace/Journey и mock QR
+fast-path2passed11.74s. Покрытие нового recorder168/184 AST
+statement starts=91.30%, все5 selector lines исполнены. [План/границы/откат](../reviews/T-198-replay11-readiness.md),
+[полные synthetic inputs](../reviews/T-198-replay11-bounded-plan.json).
+На момент этого отчёта live не выполнялся; genuine кассета не опубликована.

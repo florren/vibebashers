@@ -1,0 +1,1453 @@
+{
+  "manifest": {
+    "scenario_id": "social_sarcasm_escalation",
+    "fixture": {
+      "version": "replay_bank_sarcasm_v1",
+      "scenario_id": "social_sarcasm_escalation",
+      "model": "GigaChat-3-Pro",
+      "credential_slot": "gigachat1",
+      "agent_prompt_templates": "v2",
+      "sim_time": "2026-11-04T09:00:00+00:00",
+      "client": {
+        "segment": "mass",
+        "psychotype": "public_emotional",
+        "city": "Москва",
+        "region_code": "77",
+        "churn_risk": 0
+      },
+      "product": {
+        "product": "debit_card",
+        "status": "active",
+        "card_last4": "0000"
+      },
+      "text": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+    },
+    "fixture_sha256": "02c32ff31ba50477296cce11eac171c895bf2082cc3fd7215a2018831a8e2c40",
+    "model": "GigaChat-3-Pro",
+    "credential_slot": "gigachat1",
+    "agent_prompt_templates": "v2",
+    "schema_sha256": {
+      "agent/normalization": "5e6846ad5869c54b83506f276c4ac238754b6550dab2eda77a1e86967806769e",
+      "agent/classification": "2e0e15b6235159f76d5d6195b91abaa330800544271557053d6a486953a77f71",
+      "agent/decision": "88766baf25b502ad95c25b6061a42e52737b601d87afe8947a7c729ffa1d1bf0"
+    },
+    "source_files_sha256": {
+      "data/branches.yaml": "796198e4af28316d94bb43f3f5d88df3bc5765d68251610c9351ca9c4d5c4bfa",
+      "data/channels.yaml": "205dd9f8c74be25c34443f7798fd8c35ab72e8c7b6b68151a93dfab451cc74b3",
+      "data/csi_params.yaml": "f7cfe245bd9f43a9700f9037a220d700c7631d0f5e7de584d59be72492585b7a",
+      "data/error_codes.yaml": "e9915fbfbf685b979469d579c522cd28d95fd44f45778f2cc1b20281e5346c3f",
+      "data/forbidden_phrases.yaml": "e15596c069045f342b67dfbc3556ce3cec0bd278df2898df9243c2d49bb5f496",
+      "data/gifts.yaml": "112f1452e453ffbb7b65e7cd08a09d3d8dee9a450cfeb0ada497475c7217a081",
+      "data/ingest_sources.yaml": "f0191896a40427480143753b5600525bc4a0b235c5ee3cd58a84a7829fd75032",
+      "data/llm_profiles.yaml": "6d8754ebe3dca75dcd69d113de10647b5529a34f56c9c2c9cb95ef36f9c18c56",
+      "data/misselling_patterns.yaml": "d581c97243f6157711b6b22e390b38504faa092ec484813c2bfc54435836a304",
+      "data/op_paths.yaml": "df61cdd73d1096b14352556d148f983deef93b6101b04d2d9671ccc0f7aef377",
+      "data/platforms.yaml": "8682b3bee2669bf5dda22530b358084c570070e61bcf64c5ea4208242c423b6e",
+      "data/product_lines.yaml": "883688b850405a65e39c0aebf24d2a52b5ce0ea14addd2b61a9de06879dfbe7d",
+      "data/products.yaml": "77b56d6af0fdec1b6085b10f932d21b46aa7d2c6e3bab896f51aab4801823fe5",
+      "data/psychotypes.yaml": "63004af0d26c884d44235358cdc517f739ea4c760a92c1b1ec9a39757a8bbb2b",
+      "data/red_words.yaml": "2cdd737798669536ffb123b2d9105e1b4819e483f2b84dbd5fef284153fb888b",
+      "data/rules.yaml": "947f1fe786adff499ade84ff4fdaa5ecdd1c8752e4a827fe0a4d5c903dc5321e",
+      "data/segments.yaml": "d2962440c00cb6912e45059e6669896c9f84a4461f6524e296c37a6bf64e0a18",
+      "data/service_scripts.yaml": "95c0019646ce584e899eb677d8811ec67f1f59620f9ba63c500667a928b8a2b4",
+      "data/sla.yaml": "90bb4ec69c176311dbb84cfee9f0e367604522047a5fa55abe9820368b5f92ba",
+      "data/systems.yaml": "5e82b677fe0b865bb12e3d16810d8e9c2c0cca06f1566c144d3a918345cd91c7",
+      "data/tariffs.yaml": "fd6b8880b8c49c01402c410831c76a7796518db7f15888dc794e6cf300c00be5",
+      "data/teams.yaml": "0d16a06c5219aa4a37c697e2ae137f100185ba6f0ab3ceb053b4f878bc08336c",
+      "data/cities.csv": "14fe7970e96576fa786dd44032322857b09b4e673622e0e6882c8ee1ad2422ad",
+      "data/dcltv_rates.csv": "9f16b4e4a81bda2c55a099a6de1c727c73ab3838316b62226d42e69074370e86",
+      "data/federal_districts.csv": "2eff7f9af96058025c51c8ccf771ff1073f88293e3ac5e13e1886e29ca661468",
+      "data/regions.csv": "fdba2aeb3f62b3325d200a8f6b532d05ac02ebd2051751a614e11f2fb3cec2cc",
+      "backend/app/agent/prompts/v1/classify.md": "52dd3c1836529b8c2ee2068fa60cd6c6c512c18b70170767f6231bd1cf5b0937",
+      "backend/app/agent/prompts/v1/decide.md": "08cf2de689954ba4bd7d23d6231d7c5567b87f7d32adc40c7f9f8eaf8b50a792",
+      "backend/app/agent/prompts/v1/demo_role.md": "6ca08d45de52398892b7584e3f8c911200ab43993b4882a96b474983c4e7340c",
+      "backend/app/agent/prompts/v1/instant_decision.md": "2c717c910b06ca13183ebf1c8584c0ac6d887b4dd7ad1393953e999fb317ff52",
+      "backend/app/agent/prompts/v1/misselling_detect.md": "36c8def74b4d2224de2c75f9ab918a6126702f824125036cbfa04c9e81c6bfcc",
+      "backend/app/agent/prompts/v1/normalize.md": "8084756812f5392c099be70907f2c5fcc0463e1d3fb92c9f0a6ec2f094b0d960",
+      "backend/app/agent/prompts/v1/operator_feedback.md": "27c420e9169e6a620aee0b77053d235e291b05123931916fd09b92047ddfb8ae",
+      "backend/app/agent/prompts/v1/system.md": "8261a38b6418b944222b57225c4fdb2d049a596bb2a1ae90c2bf8024547c8dcb",
+      "backend/app/agent/prompts/v1/transcript_report.md": "3a8885f8e0d6e5cde31d9d91dde36debef891564793c6c4e87638cec578a9f4c",
+      "backend/app/agent/prompts/v1/twin.md": "93308f5b5005a058e5f0399b90b72a167971b79c5a19a1e9862cf649d506203b",
+      "backend/app/agent/prompts/v2/classify.md": "f5e59f43e591c520b8bcef83bab7016f2b2de79e039710d14e40f00ce233192e",
+      "backend/app/agent/prompts/v2/demo_role.md": "affb81f0b9839659ea9177ecf431e5b0717be3d0010c5890a29ba81149da2f52",
+      "backend/app/agent/prompts/v2/normalize.md": "b97ef78904db3ac4324266f52b2b1e8f7fcec1e8515d20af911b88ca6a9c3041",
+      "backend/app/agent/prompts/v3/demo_role.md": "61172fabc5c030b8cef37a0039dfa1b549eac89afe92604afc3a65217824175c",
+      "backend/app/agent/nodes.py": "b65b2bda36195e69219941136bdf6966c3ce7ee827150f7436878ebbac7c7010",
+      "backend/app/replay/scenario11_record.py": "e87641ac0e897da2a23184e04bbba4fe89becc1ef55bf8daa1ffc77d9c6a2abb",
+      "backend/app/llm/gigachat.py": "266dfe7ea1a4961bb482d71520b3b9aa44056c7a5db407d7df1b927e8ca8e527",
+      "backend/app/llm/accounting.py": "015adace4a5cc98010d213b94cb8b8235ad2c8d1a7694bb5f6cb06ea4ad1c9af",
+      "scripts/replay11_record.py": "100752de9b3262e61c9a9e689a773b973b8a72268abfbe89b59bbd41b69d7967",
+      "scripts/replay11_bank.py": "4f6cc3182bd5566318174edc64ce7de4ce51fe211ad8a6ac8aeb3c99d566bd7a",
+      "backend/tests/fixtures/replay_bank_sarcasm_v1.json": "d8d1cee712b5e655b38769f4f902e67e1e9bc77871a9f82363877eabf556389f"
+    },
+    "limits": {
+      "inference_requests": 6,
+      "oauth_requests": 1,
+      "balance_requests": 6,
+      "http_requests": 13,
+      "payload_bytes_per_request": 65536,
+      "input_utf8_bytes_per_request": 48000,
+      "input_chars_per_request": 16000,
+      "output_tokens_per_request": 1024,
+      "total_output_tokens": 6144,
+      "overall_timeout_s": 120
+    },
+    "endpoints": [
+      "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
+      "https://api.giga.chat/v1/balance",
+      "https://api.giga.chat/v1/chat/completions"
+    ],
+    "structured_attempts": 2,
+    "provider_fallback": false,
+    "tls_verification": true,
+    "cost_known": false,
+    "actual_cost_rub": null,
+    "primary_bank_read_write": false,
+    "accounting": "existing durable PostgreSQL ledger, unchanged caps; no origin/reconciliation on live",
+    "request_dependency": "normalize fixed; classify/decide depend on validated earlier live output; preview hashes are NOT live hashes"
+  },
+  "preview_transport": "FAKE; dependent requests are previews, NOT live fingerprints",
+  "preview_requests": [
+    {
+      "node": "normalize",
+      "request_hash": "9377f86cd29e16c563cbfad8d6b1e69ae1e9e2ab481e84ef244299bd0745a9e8",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Ты — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: нормализовать текст обращения клиента банка и извлечь признаки.\n\nВерни JSON по схеме normalization:\n- language: \"ru\" или \"en\".\n- summary_ru: суть обращения одним предложением (≤ 200 символов), без ПДн.\n- negativity 0–100: 0 — благодарность, ~50 — нейтральная претензия, ≥ 80 — агрессия или угроза ухода.\n- sentiment: positive / neutral / negative. Согласуй с negativity: ≤ 33 → positive, 34–66 → neutral, ≥ 67 → negative. Сарказм («спасибо, что списали комиссию, очень удобно») — всегда negative.\n- hidden_negativity всегда содержит ВСЕ три объекта: sarcasm, passive_aggression («ну да, конечно, разберётесь, как всегда»), churn_threat («подскажите, как закрыть все счета») — для каждого present (boolean), confidence (число 0–1, никогда null) и evidence_ru (дословная цитата либо null). При отсутствии признака: {\"present\": false, \"confidence\": 1.0, \"evidence_ru\": null}.\n- intents: churn_threat, refund_request, complaint, question, public_shaming, regulator_threat (только явно присутствующие).\n- entities: amount_rub (число, если названа сумма), product (ровно одно deposit/debit_card/credit/credit_card либо null, не массив), operation_hint (ТОЛЬКО qr_payment/card_payment/transfer/withdrawal/deposit/loan_payment/notification/login либо null; не русское название операции и не autopayment), date_hint, error_text (цитата ошибки), promo_code, merchant_hint.\n- contacts_hint — объект (при отсутствии контактов {}, никогда null): nickname, masked_phone, masked_card_last4 (4 цифры после ****), city, name — только если явно есть в тексте.\n- confidence 0–1.\n\nПограничные случаи: вопрос без претензии → neutral, intents [question]; благодарность с упоминанием прошлой проблемы → positive, если проблема решена; «закрою счёт, если не вернёте» → negative, churn_threat.present = true.\n\nСкрытый негатив — в том же JSON, отдельный вызов модели не делай. evidence_ru — дословная подстрока текста, иначе null.\nПримеры (класс → present):\n1. «Спасибо, что списали комиссию, очень удобно» — sarcasm, evidence «очень удобно», sentiment negative, negativity ≥ 60.\n2. «Ну да, конечно, разберётесь, как всегда» — passive_aggression, evidence «как всегда».\n3. «Подскажите, как закрыть все счета, пора менять банк» — churn_threat, evidence «закрыть все счета».\n4. «Прекрасно, просто прекрасно. Закрываю вклад» — sarcasm и churn_threat.\n5. «Очень приятно видеть комиссию второй раз» — sarcasm, evidence «Очень приятно».\n6. «Ну конечно, перевод “мгновенный”, третий день жду» — sarcasm и passive_aggression.\n7. «Спасибо большое, кэшбэк пришёл, всё честно» — искренняя благодарность, все present=false, sentiment positive.\n8. «Как закрыть вклад при переезде, без претензий» — нейтральный вопрос, churn_threat.present=false.\n9. «Добрый день, какая ставка по вкладу на 6 месяцев?» — вопрос, hidden present=false.\n10. «Верните 450 рублей за QR, пожалуйста» — refund без сарказма, sarcasm.present=false.\n11. «Идиоты, заблокировали карту» — агрессия без скрытого негатива: sarcasm.present=false, negativity ≥ 80.\n12. «Ничего, подожду, не в первый раз» — passive_aggression, evidence «не в первый раз».\n\nПодсказки из регулярных выражений (могут быть неполными): {}\n\nКанал: social. Текст обращения:\n«Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+        },
+        {
+          "role": "user",
+          "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+        }
+      ],
+      "schema": {
+        "title": "Выход узла normalize (structured output быстрой модели; ТЗ 7, BRD FR 1.2) — хранится в agent_steps.output",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "negativity",
+          "intents",
+          "entities",
+          "contacts_hint",
+          "language",
+          "summary_ru",
+          "confidence",
+          "sentiment",
+          "hidden_negativity"
+        ],
+        "properties": {
+          "negativity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "0 — благодарность, 50 — нейтральная претензия, ≥ 80 — агрессия/угроза ухода"
+          },
+          "intents": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "churn_threat",
+                "refund_request",
+                "complaint",
+                "question",
+                "public_shaming",
+                "regulator_threat",
+                "gratitude"
+              ],
+              "description": "Намерения автора текста (ТЗ 7, BRD FR 1.2)"
+            }
+          },
+          "entities": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "amount_rub": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "product": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "deposit",
+                      "debit_card",
+                      "credit",
+                      "credit_card"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "operation_hint": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "qr_payment",
+                  "card_payment",
+                  "transfer",
+                  "withdrawal",
+                  "deposit",
+                  "loan_payment",
+                  "notification",
+                  "login",
+                  null
+                ]
+              },
+              "date_hint": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Как написал клиент: «вчера», «3 октября»"
+              },
+              "error_text": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 300
+              },
+              "promo_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "merchant_hint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "contacts_hint": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "nickname": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^@?[A-Za-z0-9_\\.]{3,32}$"
+              },
+              "masked_phone": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Как в тексте: «+7 9** *** 12-34»"
+              },
+              "masked_card_last4": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}$"
+              },
+              "city": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "language": {
+            "type": "string",
+            "default": "ru"
+          },
+          "summary_ru": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "neutral",
+              "negative"
+            ],
+            "description": "[ДТЗ FR-2.1] прямой вывод модели; сервис сверяет с порогами negativity"
+          },
+          "hidden_negativity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sarcasm",
+              "passive_aggression",
+              "churn_threat"
+            ],
+            "description": "[ДТЗ FR-2.2] скрытый негатив по few-shot промпту hidden_negativity.md",
+            "properties": {
+              "sarcasm": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "present",
+                  "confidence"
+                ],
+                "properties": {
+                  "present": {
+                    "type": "boolean"
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "evidence_ru": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 300,
+                    "description": "Дословная подстрока текста"
+                  }
+                }
+              },
+              "passive_aggression": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "present",
+                  "confidence"
+                ],
+                "properties": {
+                  "present": {
+                    "type": "boolean"
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "evidence_ru": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 300,
+                    "description": "Дословная подстрока текста"
+                  }
+                }
+              },
+              "churn_threat": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "present",
+                  "confidence"
+                ],
+                "properties": {
+                  "present": {
+                    "type": "boolean"
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "evidence_ru": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 300,
+                    "description": "Дословная подстрока текста"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "examples": [
+          {
+            "negativity": 87,
+            "intents": [
+              "refund_request",
+              "churn_threat"
+            ],
+            "entities": {
+              "amount_rub": 450,
+              "product": "debit_card",
+              "operation_hint": "qr_payment",
+              "date_hint": "сегодня",
+              "error_text": null,
+              "promo_code": null,
+              "merchant_hint": "кафе"
+            },
+            "contacts_hint": {
+              "nickname": "@ivan_v",
+              "masked_phone": null,
+              "masked_card_last4": "4512",
+              "city": "Воронеж",
+              "name": null
+            },
+            "language": "ru",
+            "summary_ru": "Списана комиссия 450 ₽ за оплату по QR, угрожает закрыть счёт",
+            "confidence": 0.91,
+            "sentiment": "negative",
+            "hidden_negativity": {
+              "sarcasm": {
+                "present": false,
+                "confidence": 0.9,
+                "evidence_ru": null
+              },
+              "passive_aggression": {
+                "present": false,
+                "confidence": 0.85,
+                "evidence_ru": null
+              },
+              "churn_threat": {
+                "present": true,
+                "confidence": 0.93,
+                "evidence_ru": "Ещё раз — и закрою счёт"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node": "classify",
+      "request_hash": "3165627238a30a65d71d49d26f2a2279970b59b1ea5e21f534f54592a405ebe3",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Ты — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: классифицировать обращение клиента банка и объяснить решение.\n\nТаксономия signal_type (ТЗ §7):\n- tech_fault — технический сбой: ошибка при открытии вклада, зависший платёж, двойное списание. Если в контексте есть активный сбой системы на пути операции клиента — это tech_fault с этим error_code.\n- client_error — ошибка/непонимание клиента: ожидал промо-ставку после окончания акции, неверные реквизиты, не прочитал условия.\n- tariff_terms — претензия к тарифам/условиям: «необоснованная» комиссия, не та ставка. Комиссия за оплату по QR/СБП для физлиц — нарушение правила банка (ошибочное списание), error_code PROC-QR-FEE-CHARGED, продукт debit_card, система processing.\n- service_quality — качество обслуживания: грубость, очередь, долгий ответ.\n- fraud_suspicion — подозрение на мошенничество: звонок «из службы безопасности», неизвестное списание.\n- legal_regulatory — иск, арест счёта, жалоба в ЦБ/прокуратуру (всегда критично, нужен человек).\n- info_request — только вопрос без претензии. Сообщение о фактически неоказанной услуге или неначисленном обещанном кэшбеке — претензия (tariff_terms либо tech_fault по фактам), даже если клиент вежливо просит проверить условия; такую жалобу нельзя закрывать одной квитанцией о приёме.\n- gratitude — благодарность; suggestion — предложение.\n\nФлаги: churn_intent (намерение уйти), repeat (повторное обращение по той же причине — см. контекст), sarcasm, aggression, mass_impact (в контексте ≥ 3 связанных клиентов/инцидент по тому же коду), passive_aggression, hidden_negativity, regulator_threat, public_shaming.\n\nПоля:\n- product и system должны быть согласованы (deposit → sub_deposits/promo_engine; debit_card → processing/sub_debit; credit/credit_card → sub_lending).\n- error_code — только подтверждённый код из контекста операций/сбоев. При отсутствии кода верни null; не придумывай внутренние коды по описанию проблемы.\n- cause_hypothesis — гипотеза причины из того же перечня типов или unknown.\n- criticality — базовая по типу (§7), tone — одно из neutral/positive/irritated/angry/sarcastic/formal.\n- churn_risk 0–100 — про клиента с учётом контекста (сегмент, повторы, угрозы), negativity — про текст.\n- sentiment — positive/neutral/negative, согласованно с нормализацией.\n- confidence 0–1 — честная уверенность; при противоречивом тексте ≤ 0,6.\n- summary_ru — суть одним предложением; rationale_ru — 2–4 предложения: почему такой тип, какие факты из контекста подтверждают, что неясно. Не повторяй текст сигнала дословно.\n- problem_summary: problem (≤ 2 предложений, ≤ 300 символов, без ПДн), severity (low/medium/high; critical — только если high и при этом угроза регулятору, мошенничество > 50 000 ₽, массовость или угроза ухода vip/ultra_vip), suggested_team — код команды из списка: team_antifraud, team_branch_network, team_compliance, team_contact_center, team_cx, team_debit, team_deposits, team_front, team_lending, team_notifications, team_processing, team_promo.\n\nПримеры решений людей (few-shot): нет\n\nКонтекст (клиент, продукты, операции за 72 сим-часа, активные сбои, прошлые сигналы и открытые инциденты):\n{\"client\":{\"segment\":\"mass\",\"psychotype\":\"public_emotional\",\"city\":\"Москва\",\"region_code\":\"77\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"0000\"}],\"operations\":[],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[]}\n\nНормализация (быстрая модель): {\"language\":\"ru\",\"summary_ru\":\"Спор о тарифах/комиссии; тональность negative, негатив 100/100 (скрытый негатив/сарказм).\",\"negativity\":100,\"sentiment\":\"negative\",\"hidden_negativity\":{\"sarcasm\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"},\"passive_aggression\":{\"present\":false,\"confidence\":0.1,\"evidence_ru\":null},\"churn_threat\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"}},\"intents\":[\"churn_threat\",\"complaint\"],\"entities\":{\"product\":\"debit_card\"},\"contacts_hint\":{},\"confidence\":0.78}\n\nКанал: social. Текст обращения:\n«Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+        },
+        {
+          "role": "user",
+          "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+        }
+      ],
+      "schema": {
+        "title": "Выход узла classify (structured output основной модели; хранится в signals.classification); T-239: детерминированные red_words",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signal_type",
+          "product",
+          "system",
+          "cause_hypothesis",
+          "criticality",
+          "tone",
+          "flags",
+          "churn_risk",
+          "confidence",
+          "rationale_ru",
+          "summary_ru",
+          "sentiment",
+          "problem_summary"
+        ],
+        "properties": {
+          "signal_type": {
+            "type": "string",
+            "enum": [
+              "tech_fault",
+              "client_error",
+              "tariff_terms",
+              "service_quality",
+              "fraud_suspicion",
+              "legal_regulatory",
+              "info_request",
+              "gratitude",
+              "suggestion",
+              "churn"
+            ]
+          },
+          "secondary_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tech_fault",
+                "client_error",
+                "tariff_terms",
+                "service_quality",
+                "fraud_suspicion",
+                "legal_regulatory",
+                "info_request",
+                "gratitude",
+                "suggestion",
+                "churn"
+              ]
+            },
+            "maxItems": 2,
+            "description": "Например tech_fault + tariff_terms в ключевом сценарии"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "deposit",
+                  "debit_card",
+                  "credit",
+                  "credit_card"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "system": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "mobile_app",
+                  "web_bank",
+                  "contact_center",
+                  "social_listening",
+                  "processing",
+                  "notification_gw",
+                  "promo_engine",
+                  "antifraud",
+                  "sub_deposits",
+                  "sub_lending",
+                  "sub_debit",
+                  "core_abs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Система-источник по гипотезе"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$",
+                "description": "Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.",
+                "examples": [
+                  "DEP-TIMEOUT-503",
+                  "PROMO-RATE-MISMATCH",
+                  "PROC-DOUBLE-DEBIT",
+                  "NOTIF-DELAY",
+                  "APP-LOGIN-FAIL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Если найден в логах через инструменты"
+          },
+          "cause_hypothesis": {
+            "type": "string",
+            "enum": [
+              "tech_fault",
+              "client_error",
+              "tariff_terms",
+              "service_quality",
+              "fraud_suspicion",
+              "info_request",
+              "gratitude",
+              "suggestion",
+              "legal_regulatory",
+              "unknown"
+            ]
+          },
+          "criticality": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "positive",
+              "irritated",
+              "angry",
+              "sarcastic",
+              "formal"
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "churn_intent",
+                "repeat",
+                "sarcasm",
+                "aggression",
+                "mass_impact",
+                "public",
+                "rule_confirmed",
+                "regulator_threat",
+                "passive_aggression",
+                "repeat_contact_7d",
+                "red_word"
+              ]
+            }
+          },
+          "entities": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "amount_rub": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "operation_date_sim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "promo_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mentions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "churn",
+                    "court",
+                    "regulator",
+                    "fraud",
+                    "media",
+                    "competitor"
+                  ]
+                }
+              },
+              "masked_card": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\*{4} \\d{4}$"
+              }
+            }
+          },
+          "churn_risk": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "related_incident_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Кандидаты на связывание (из find_related_incidents)"
+          },
+          "summary_ru": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "rationale_ru": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1200,
+            "description": "2–4 предложения, показываются CX и жюри"
+          },
+          "language": {
+            "type": "string",
+            "default": "ru"
+          },
+          "negativity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Уровень негатива текста 0–100 (BRD FR 1.2); копируется из normalization"
+          },
+          "intents": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "churn_threat",
+                "refund_request",
+                "complaint",
+                "question",
+                "public_shaming",
+                "regulator_threat",
+                "gratitude"
+              ],
+              "description": "Намерения автора текста (ТЗ 7, BRD FR 1.2)"
+            }
+          },
+          "sentiment": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "neutral",
+              "negative"
+            ],
+            "description": "Трёхклассная тональность (ДТЗ FR-2.1); сверяется с порогами negativity ≤33 / 34–66 / ≥67"
+          },
+          "product_line": {
+            "type": "string",
+            "enum": [
+              "deposits",
+              "mortgage",
+              "loans",
+              "credit_cards",
+              "debit_cards",
+              "transfers_payments",
+              "mobile_app",
+              "investments",
+              "insurance",
+              "bonuses_subscription",
+              "branches_service",
+              "support",
+              "business_banking",
+              "atm_self_service",
+              "fraud_security",
+              "other"
+            ],
+            "description": "[ЕТЗ FR-2.4] продуктовое направление"
+          },
+          "product_line_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "secondary_lines": {
+            "type": "array",
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "deposits",
+                "mortgage",
+                "loans",
+                "credit_cards",
+                "debit_cards",
+                "transfers_payments",
+                "mobile_app",
+                "investments",
+                "insurance",
+                "bonuses_subscription",
+                "branches_service",
+                "support",
+                "business_banking",
+                "atm_self_service",
+                "fraud_security",
+                "other"
+              ]
+            }
+          },
+          "signal_level": {
+            "type": "string",
+            "description": "[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета"
+          },
+          "problem_summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "problem",
+              "severity",
+              "suggested_team"
+            ],
+            "description": "[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)",
+            "properties": {
+              "problem": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 300
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ],
+                "description": "problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL"
+              },
+              "suggested_team": {
+                "type": "string",
+                "enum": [
+                  "team_cx",
+                  "team_deposits",
+                  "team_lending",
+                  "team_debit",
+                  "team_front",
+                  "team_processing",
+                  "team_notifications",
+                  "team_contact_center",
+                  "team_promo",
+                  "team_antifraud",
+                  "team_compliance",
+                  "team_branch_network"
+                ]
+              }
+            }
+          },
+          "red_words": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    {
+      "node": "decide",
+      "request_hash": "225b499dc3b0a66e327d717995a6bfd445197ea9547ba02f2ccf30c9b88f0f3a",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Ты — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: предложить план действий по классифицированному обращению. Модель предлагает — код проверяет и корректирует детерминированные поля (SLA, приоритет, маршрут по правилам, политики HITL), поэтому сосредоточься на содержании.\n\nФасады роутера (код вызывает их по router_action и сверяет имя с фактическими вызовами):\n- route_to_product_team(product_line, signal_id) — маршрут в owner_team_code известного направления, wraps=[route_to_department].\n- route_to_department — маршрут: создать или связать тикет с командой.\n- escalate_to_manager — эскалация поверх уже созданного тикета (сначала маршрут, затем руководитель).\n- request_clarification — один уточняющий вопрос клиенту; второй подряд запрещён.\n- notify_customer — текст клиенту вне публичного ответа. router_action none — ни маршрута, ни эскалации, ни уточнения.\n\nКод сверяет router_action с фактическими вызовами этих фасадов. Расхождение повторяет фасад один раз, затем передаёт решение человеку.\n\nНужно решить:\n1. incident_action: create (новая проблема) / link_existing (в контексте есть открытый инцидент с тем же error_code/системой за последние 4 сим-часа или инцидент этого клиента по той же причине — укажи link_incident_id) / none (gratitude, suggestion, info_request без проблемы).\n2. incident_type (как signal_type; для подтверждённой ошибочной комиссии — fee_refund), title_ru (≤ 120 символов, без ПДн).\n3. complexity (easy/medium/hard; instant — только для fee_refund) и criticality (low/medium/high) — предложение, код сверит с правилами §8.1.\n4. route.team — команда-владелец системы/проблемы (подсказка — правила маршрутизации: team_debit (+team_promo)); co_teams — при необходимости (например team_cx при репутационных рисках).\n5. client_action: kind (reply / acknowledge / request_data / public_reply_and_dm для канала social или review_portal / proactive_notice / none), channel, text_ru — текст клиенту в тоне сегмента mass: извинение (если уместно), что уже делаем, когда ответим (только в рамках SLA первого ответа 60 мин и срока устранения), приглашение в личный канал для публичных ответов. Без обвинений, без обещаний вне SLA, без ПДн. Для request_data — question_ru (один вопрос).\n6. team_notice_ru — короткое сообщение команде: что сломано, какой error_code, сколько клиентов, что проверить.\n7. gift — только после resolved и только при реальной проблеме (не для info_request/gratitude): bonus_points 300/600/1000 по критичности; привилегия партнёра — только vip/ultra_vip (политика §8.5).\n8. followup — если ждём данных клиента/команды или проверки фикса: wake_in_sim_hours и reason.\n9. needs_human + human_reason/human_options/human_recommendation — по политикам §9.3 (ultra_vip; legal_regulatory; fraud > 50 000 ₽; привилегия партнёра; повтор 3+; конфликт классификаций; уверенность < 0,75).\n10. router_action — route (создаём/линкуем тикет), escalate (плюс эскалация руководителю при churn_threat с negativity ≥ 80, повторе с негативом, severity critical, 3+ обращений за 7 дней — заполни escalation{reason, severity, to_role}), request_clarification (один вопрос — clarification_question_ru), none.\n11. rationale_ru — 2–3 предложения почему так; policy_checks — список проверенных политик {rule, passed, note}.\n\nПримеры решений людей (few-shot): нет\n\nКлассификация: {\"signal_type\":\"tariff_terms\",\"secondary_types\":[],\"product\":\"debit_card\",\"system\":\"processing\",\"cause_hypothesis\":\"tariff_terms\",\"criticality\":\"high\",\"tone\":\"sarcastic\",\"flags\":[\"churn_intent\",\"sarcasm\",\"repeat\"],\"entities\":{},\"churn_risk\":100,\"confidence\":0.78,\"summary_ru\":\"Спор о тарифах/комиссии\",\"rationale_ru\":\"Текст классифицирован как «tariff_terms» по ключевым словам. Обнаружены маркеры сарказма — реальная тональность негативная при внешне нейтральной форме. Намерения: churn_threat, complaint. Критичность high, рекомендуемая команда team_debit.\",\"language\":\"ru\",\"negativity\":100,\"intents\":[\"churn_threat\",\"complaint\"],\"sentiment\":\"negative\",\"problem_summary\":{\"problem\":\"Спор о тарифах/комиссии. Требуется проверка и ответ клиенту.\",\"severity\":\"high\",\"suggested_team\":\"team_debit\"},\"red_words\":[]}\nНормализация: {\"language\":\"ru\",\"summary_ru\":\"Спор о тарифах/комиссии; тональность negative, негатив 100/100 (скрытый негатив/сарказм).\",\"negativity\":100,\"sentiment\":\"negative\",\"hidden_negativity\":{\"sarcasm\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"},\"passive_aggression\":{\"present\":false,\"confidence\":0.1,\"evidence_ru\":null},\"churn_threat\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"}},\"intents\":[\"churn_threat\",\"complaint\"],\"entities\":{\"product\":\"debit_card\"},\"contacts_hint\":{},\"confidence\":0.78}\nКонтекст: {\"client\":{\"segment\":\"mass\",\"psychotype\":\"public_emotional\",\"city\":\"Москва\",\"region_code\":\"77\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"0000\"}],\"operations\":[],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[]}\nКанал: social. Текст обращения: «Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+        },
+        {
+          "role": "user",
+          "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+        }
+      ],
+      "schema": {
+        "title": "Выход узла decide — план действий агента (signals.decision, human_decisions.agent_proposal)",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "client_action",
+          "complexity",
+          "criticality",
+          "incident_action",
+          "needs_human",
+          "priority",
+          "rationale_ru",
+          "route",
+          "router_action"
+        ],
+        "properties": {
+          "incident_action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "link_existing",
+              "none"
+            ]
+          },
+          "link_incident_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "incident_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tech_fault",
+                  "client_error",
+                  "tariff_terms",
+                  "service_quality",
+                  "fraud_suspicion",
+                  "legal_regulatory",
+                  "info_request",
+                  "suggestion",
+                  "account_closure",
+                  "proactive",
+                  "fee_refund",
+                  "misselling"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title_ru": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "complexity": {
+            "type": "string",
+            "enum": [
+              "instant",
+              "easy",
+              "medium",
+              "hard"
+            ]
+          },
+          "criticality": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "sla": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "fix_days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "report_days": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "take_hours": {
+                "type": "integer"
+              },
+              "due_sim": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Симуляционное время (ISO 8601)"
+              }
+            }
+          },
+          "route": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "team"
+            ],
+            "properties": {
+              "team": {
+                "type": "string",
+                "enum": [
+                  "team_cx",
+                  "team_deposits",
+                  "team_lending",
+                  "team_debit",
+                  "team_front",
+                  "team_processing",
+                  "team_notifications",
+                  "team_contact_center",
+                  "team_promo",
+                  "team_antifraud",
+                  "team_compliance",
+                  "team_branch_network"
+                ]
+              },
+              "co_teams": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "team_cx",
+                    "team_deposits",
+                    "team_lending",
+                    "team_debit",
+                    "team_front",
+                    "team_processing",
+                    "team_notifications",
+                    "team_contact_center",
+                    "team_promo",
+                    "team_antifraud",
+                    "team_compliance",
+                    "team_branch_network"
+                  ]
+                }
+              },
+              "rule_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "routing_rules.id, если сработало правило; null = решение модели"
+              }
+            }
+          },
+          "client_action": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "reply",
+                  "acknowledge",
+                  "proactive_notice",
+                  "request_data",
+                  "public_reply_and_dm",
+                  "none"
+                ]
+              },
+              "channel": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "social",
+                      "call",
+                      "chat",
+                      "email",
+                      "branch",
+                      "landing",
+                      "telegram_bot",
+                      "proactive",
+                      "review_portal",
+                      "voice_input",
+                      "branch_audio",
+                      "csi_survey"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "template_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "text_ru": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 2000,
+                "description": "Итоговый текст клиенту (после шаблона и тона сегмента)"
+              },
+              "question_ru": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Для request_data"
+              },
+              "promise_check": {
+                "type": "boolean",
+                "description": "true = текст проверен на запрещённые формулировки (обещания сроков вне SLA, обвинения)"
+              }
+            }
+          },
+          "team_notice_ru": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1500
+          },
+          "gift": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "gift_code": {
+                "type": "string",
+                "enum": [
+                  "bonus_points",
+                  "lounge_pass",
+                  "restaurant_special",
+                  "business_class_discount",
+                  "personal_call"
+                ]
+              },
+              "points": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 300,
+                "maximum": 1000
+              },
+              "privilege_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "when": {
+                "type": "string",
+                "enum": [
+                  "after_resolved",
+                  "now"
+                ]
+              },
+              "requires_hitl": {
+                "type": "boolean"
+              }
+            }
+          },
+          "followup": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "wake_in_sim_hours": {
+                "type": "number",
+                "minimum": 0.25
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "awaiting_client",
+                  "awaiting_team",
+                  "promo_end",
+                  "verify_fix",
+                  "report_due",
+                  "escalation_check"
+                ]
+              }
+            }
+          },
+          "needs_human": {
+            "type": "boolean"
+          },
+          "human_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low_confidence",
+                  "ultra_vip",
+                  "legal_regulatory",
+                  "fraud_amount",
+                  "partner_privilege",
+                  "repeat_3plus",
+                  "classifier_conflict",
+                  "policy_other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "human_options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "label_ru"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "label_ru": {
+                  "type": "string"
+                },
+                "label_en": {
+                  "type": "string"
+                },
+                "description_ru": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "human_recommendation": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "economics_preview": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "affected_count": {
+                "type": "integer"
+              },
+              "rate_code": {
+                "type": "string"
+              },
+              "potential_loss_rub": {
+                "type": "number"
+              }
+            }
+          },
+          "rationale_ru": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1500
+          },
+          "policy_checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "rule",
+                "passed"
+              ],
+              "properties": {
+                "rule": {
+                  "type": "string"
+                },
+                "passed": {
+                  "type": "boolean"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "description": "Какие политики 9.3 проверены — показывается в трассировке"
+          },
+          "fast_path": {
+            "type": "boolean",
+            "default": false,
+            "description": "true = решение принято на быстром пути по подтверждённому правилу (ТЗ 21.4); детали — instant_decision.schema.json"
+          },
+          "rule_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Коды business_rules, на которые опирается решение (обязательны при любом движении денег)"
+          },
+          "router_action": {
+            "type": "string",
+            "enum": [
+              "route",
+              "escalate",
+              "request_clarification",
+              "none"
+            ],
+            "description": "[ДТЗ FR-3.1] обязательный ответ в терминах ДТЗ; должен быть согласован с вызванными инструментами (policy_checks)"
+          },
+          "escalation": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "reason",
+              "severity",
+              "to_role"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ],
+                "description": "problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL"
+              },
+              "to_role": {
+                "type": "string",
+                "enum": [
+                  "cx_lead",
+                  "branch_manager"
+                ]
+              }
+            },
+            "description": "Аргументы escalate_to_manager, если router_action = escalate"
+          },
+          "clarification_question_ru": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 400,
+            "description": "Вопрос клиенту при router_action = request_clarification"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "incident_action": {
+                  "const": "link_existing"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "link_incident_id"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "incident_action": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "incident_type",
+                "title_ru",
+                "sla"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "needs_human": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "human_reason",
+                "human_options",
+                "human_recommendation"
+              ],
+              "properties": {
+                "human_reason": {
+                  "type": "string"
+                },
+                "human_options": {
+                  "minItems": 2
+                },
+                "human_recommendation": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "preview_payloads": [
+    {
+      "sha256": "c8cd6bfa1ba2101a4d91fb3d5473746b7bc681c9c4bf05b11400e23974a1a55c",
+      "payload_bytes": 11402,
+      "input_bytes": 10743,
+      "body": {
+        "max_tokens": 1024,
+        "model": "GigaChat-3-Pro",
+        "messages": [
+          {
+            "role": "system",
+            "content": "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже (все обязательные поля, значения enum — из списка, тексты на русском). Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"negativity\", \"intents\", \"entities\", \"contacts_hint\", \"language\", \"summary_ru\", \"confidence\", \"sentiment\", \"hidden_negativity\"], \"properties\": {\"negativity\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 100, \"description\": \"0 — благодарность, 50 — нейтральная претензия, ≥ 80 — агрессия/угроза ухода\"}, \"intents\": {\"type\": \"array\", \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"churn_threat\", \"refund_request\", \"complaint\", \"question\", \"public_shaming\", \"regulator_threat\", \"gratitude\"], \"description\": \"Намерения автора текста (ТЗ 7, BRD FR 1.2)\"}}, \"entities\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"amount_rub\": {\"type\": [\"number\", \"null\"], \"minimum\": 0}, \"product\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"deposit\", \"debit_card\", \"credit\", \"credit_card\"]}, {\"type\": \"null\"}]}, \"operation_hint\": {\"type\": [\"string\", \"null\"], \"enum\": [\"qr_payment\", \"card_payment\", \"transfer\", \"withdrawal\", \"deposit\", \"loan_payment\", \"notification\", \"login\", null]}, \"date_hint\": {\"type\": [\"string\", \"null\"], \"description\": \"Как написал клиент: «вчера», «3 октября»\"}, \"error_text\": {\"type\": [\"string\", \"null\"], \"maxLength\": 300}, \"promo_code\": {\"type\": [\"string\", \"null\"]}, \"merchant_hint\": {\"type\": [\"string\", \"null\"]}}}, \"contacts_hint\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"nickname\": {\"type\": [\"string\", \"null\"], \"pattern\": \"^@?[A-Za-z0-9_\\\\.]{3,32}$\"}, \"masked_phone\": {\"type\": [\"string\", \"null\"], \"description\": \"Как в тексте: «+7 9** *** 12-34»\"}, \"masked_card_last4\": {\"type\": [\"string\", \"null\"], \"pattern\": \"^\\\\d{4}$\"}, \"city\": {\"type\": [\"string\", \"null\"]}, \"name\": {\"type\": [\"string\", \"null\"]}}}, \"language\": {\"type\": \"string\", \"default\": \"ru\"}, \"summary_ru\": {\"type\": \"string\", \"maxLength\": 200}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"neutral\", \"negative\"], \"description\": \"[ДТЗ FR-2.1] прямой вывод модели; сервис сверяет с порогами negativity\"}, \"hidden_negativity\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"sarcasm\", \"passive_aggression\", \"churn_threat\"], \"description\": \"[ДТЗ FR-2.2] скрытый негатив по few-shot промпту hidden_negativity.md\", \"properties\": {\"sarcasm\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"present\", \"confidence\"], \"properties\": {\"present\": {\"type\": \"boolean\"}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"evidence_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 300, \"description\": \"Дословная подстрока текста\"}}}, \"passive_aggression\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"present\", \"confidence\"], \"properties\": {\"present\": {\"type\": \"boolean\"}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"evidence_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 300, \"description\": \"Дословная подстрока текста\"}}}, \"churn_threat\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"present\", \"confidence\"], \"properties\": {\"present\": {\"type\": \"boolean\"}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"evidence_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 300, \"description\": \"Дословная подстрока текста\"}}}}}}}\n\nТы — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: нормализовать текст обращения клиента банка и извлечь признаки.\n\nВерни JSON по схеме normalization:\n- language: \"ru\" или \"en\".\n- summary_ru: суть обращения одним предложением (≤ 200 символов), без ПДн.\n- negativity 0–100: 0 — благодарность, ~50 — нейтральная претензия, ≥ 80 — агрессия или угроза ухода.\n- sentiment: positive / neutral / negative. Согласуй с negativity: ≤ 33 → positive, 34–66 → neutral, ≥ 67 → negative. Сарказм («спасибо, что списали комиссию, очень удобно») — всегда negative.\n- hidden_negativity всегда содержит ВСЕ три объекта: sarcasm, passive_aggression («ну да, конечно, разберётесь, как всегда»), churn_threat («подскажите, как закрыть все счета») — для каждого present (boolean), confidence (число 0–1, никогда null) и evidence_ru (дословная цитата либо null). При отсутствии признака: {\"present\": false, \"confidence\": 1.0, \"evidence_ru\": null}.\n- intents: churn_threat, refund_request, complaint, question, public_shaming, regulator_threat (только явно присутствующие).\n- entities: amount_rub (число, если названа сумма), product (ровно одно deposit/debit_card/credit/credit_card либо null, не массив), operation_hint (ТОЛЬКО qr_payment/card_payment/transfer/withdrawal/deposit/loan_payment/notification/login либо null; не русское название операции и не autopayment), date_hint, error_text (цитата ошибки), promo_code, merchant_hint.\n- contacts_hint — объект (при отсутствии контактов {}, никогда null): nickname, masked_phone, masked_card_last4 (4 цифры после ****), city, name — только если явно есть в тексте.\n- confidence 0–1.\n\nПограничные случаи: вопрос без претензии → neutral, intents [question]; благодарность с упоминанием прошлой проблемы → positive, если проблема решена; «закрою счёт, если не вернёте» → negative, churn_threat.present = true.\n\nСкрытый негатив — в том же JSON, отдельный вызов модели не делай. evidence_ru — дословная подстрока текста, иначе null.\nПримеры (класс → present):\n1. «Спасибо, что списали комиссию, очень удобно» — sarcasm, evidence «очень удобно», sentiment negative, negativity ≥ 60.\n2. «Ну да, конечно, разберётесь, как всегда» — passive_aggression, evidence «как всегда».\n3. «Подскажите, как закрыть все счета, пора менять банк» — churn_threat, evidence «закрыть все счета».\n4. «Прекрасно, просто прекрасно. Закрываю вклад» — sarcasm и churn_threat.\n5. «Очень приятно видеть комиссию второй раз» — sarcasm, evidence «Очень приятно».\n6. «Ну конечно, перевод “мгновенный”, третий день жду» — sarcasm и passive_aggression.\n7. «Спасибо большое, кэшбэк пришёл, всё честно» — искренняя благодарность, все present=false, sentiment positive.\n8. «Как закрыть вклад при переезде, без претензий» — нейтральный вопрос, churn_threat.present=false.\n9. «Добрый день, какая ставка по вкладу на 6 месяцев?» — вопрос, hidden present=false.\n10. «Верните 450 рублей за QR, пожалуйста» — refund без сарказма, sarcasm.present=false.\n11. «Идиоты, заблокировали карту» — агрессия без скрытого негатива: sarcasm.present=false, negativity ≥ 80.\n12. «Ничего, подожду, не в первый раз» — passive_aggression, evidence «не в первый раз».\n\nПодсказки из регулярных выражений (могут быть неполными): {}\n\nКанал: social. Текст обращения:\n«Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+          },
+          {
+            "role": "user",
+            "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+          }
+        ],
+        "temperature": 0.0,
+        "stream": false
+      }
+    },
+    {
+      "sha256": "f946b724154f639bc98adb27fa0b4e79e383d4f4f0504e75617b090cb9d70a9a",
+      "payload_bytes": 15979,
+      "input_bytes": 14932,
+      "body": {
+        "max_tokens": 1024,
+        "model": "GigaChat-3-Pro",
+        "messages": [
+          {
+            "role": "system",
+            "content": "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже (все обязательные поля, значения enum — из списка, тексты на русском). Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"signal_type\", \"product\", \"system\", \"cause_hypothesis\", \"criticality\", \"tone\", \"flags\", \"churn_risk\", \"confidence\", \"rationale_ru\", \"summary_ru\", \"sentiment\", \"problem_summary\"], \"properties\": {\"signal_type\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"legal_regulatory\", \"info_request\", \"gratitude\", \"suggestion\", \"churn\"]}, \"secondary_types\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"legal_regulatory\", \"info_request\", \"gratitude\", \"suggestion\", \"churn\"]}, \"maxItems\": 2, \"description\": \"Например tech_fault + tariff_terms в ключевом сценарии\"}, \"product\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"deposit\", \"debit_card\", \"credit\", \"credit_card\"]}, {\"type\": \"null\"}]}, \"system\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"mobile_app\", \"web_bank\", \"contact_center\", \"social_listening\", \"processing\", \"notification_gw\", \"promo_engine\", \"antifraud\", \"sub_deposits\", \"sub_lending\", \"sub_debit\", \"core_abs\"]}, {\"type\": \"null\"}], \"description\": \"Система-источник по гипотезе\"}, \"error_code\": {\"anyOf\": [{\"type\": \"string\", \"pattern\": \"^[A-Z]{2,9}(-[A-Z0-9]{2,12}){1,3}$\", \"description\": \"Префикс 2–9 букв, включая существующий каталогный ANTIFRAUD; остальные части и регистр сохранены.\", \"examples\": [\"DEP-TIMEOUT-503\", \"PROMO-RATE-MISMATCH\", \"PROC-DOUBLE-DEBIT\", \"NOTIF-DELAY\", \"APP-LOGIN-FAIL\"]}, {\"type\": \"null\"}], \"description\": \"Если найден в логах через инструменты\"}, \"cause_hypothesis\": {\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"info_request\", \"gratitude\", \"suggestion\", \"legal_regulatory\", \"unknown\"]}, \"criticality\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\"]}, \"tone\": {\"type\": \"string\", \"enum\": [\"neutral\", \"positive\", \"irritated\", \"angry\", \"sarcastic\", \"formal\"]}, \"flags\": {\"type\": \"array\", \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"churn_intent\", \"repeat\", \"sarcasm\", \"aggression\", \"mass_impact\", \"public\", \"rule_confirmed\", \"regulator_threat\", \"passive_aggression\", \"repeat_contact_7d\", \"red_word\"]}}, \"entities\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"amount_rub\": {\"type\": [\"number\", \"null\"]}, \"operation_date_sim\": {\"type\": [\"string\", \"null\"]}, \"promo_code\": {\"type\": [\"string\", \"null\"]}, \"mentions\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"enum\": [\"churn\", \"court\", \"regulator\", \"fraud\", \"media\", \"competitor\"]}}, \"masked_card\": {\"type\": [\"string\", \"null\"], \"pattern\": \"^\\\\*{4} \\\\d{4}$\"}}}, \"churn_risk\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 100}, \"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"related_incident_ids\": {\"type\": \"array\", \"items\": {\"type\": \"integer\"}, \"description\": \"Кандидаты на связывание (из find_related_incidents)\"}, \"summary_ru\": {\"type\": \"string\", \"maxLength\": 300}, \"rationale_ru\": {\"type\": \"string\", \"minLength\": 20, \"maxLength\": 1200, \"description\": \"2–4 предложения, показываются CX и жюри\"}, \"language\": {\"type\": \"string\", \"default\": \"ru\"}, \"negativity\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 100, \"description\": \"Уровень негатива текста 0–100 (BRD FR 1.2); копируется из normalization\"}, \"intents\": {\"type\": \"array\", \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"churn_threat\", \"refund_request\", \"complaint\", \"question\", \"public_shaming\", \"regulator_threat\", \"gratitude\"], \"description\": \"Намерения автора текста (ТЗ 7, BRD FR 1.2)\"}}, \"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"neutral\", \"negative\"], \"description\": \"Трёхклассная тональность (ДТЗ FR-2.1); сверяется с порогами negativity ≤33 / 34–66 / ≥67\"}, \"product_line\": {\"type\": \"string\", \"enum\": [\"deposits\", \"mortgage\", \"loans\", \"credit_cards\", \"debit_cards\", \"transfers_payments\", \"mobile_app\", \"investments\", \"insurance\", \"bonuses_subscription\", \"branches_service\", \"support\", \"business_banking\", \"atm_self_service\", \"fraud_security\", \"other\"], \"description\": \"[ЕТЗ FR-2.4] продуктовое направление\"}, \"product_line_confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}, \"secondary_lines\": {\"type\": \"array\", \"maxItems\": 2, \"uniqueItems\": true, \"items\": {\"type\": \"string\", \"enum\": [\"deposits\", \"mortgage\", \"loans\", \"credit_cards\", \"debit_cards\", \"transfers_payments\", \"mobile_app\", \"investments\", \"insurance\", \"bonuses_subscription\", \"branches_service\", \"support\", \"business_banking\", \"atm_self_service\", \"fraud_security\", \"other\"]}}, \"signal_level\": {\"type\": \"string\", \"description\": \"[ЕТЗ FR-2.5] подпись уровня сигнала для кабинета\"}, \"problem_summary\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"problem\", \"severity\", \"suggested_team\"], \"description\": \"[ДТЗ FR-2.3] саммари проблемы ≤ 2 предложений (валидация числа предложений — в коде)\", \"properties\": {\"problem\": {\"type\": \"string\", \"minLength\": 10, \"maxLength\": 300}, \"severity\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\", \"critical\"], \"description\": \"problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL\"}, \"suggested_team\": {\"type\": \"string\", \"enum\": [\"team_cx\", \"team_deposits\", \"team_lending\", \"team_debit\", \"team_front\", \"team_processing\", \"team_notifications\", \"team_contact_center\", \"team_promo\", \"team_antifraud\", \"team_compliance\", \"team_branch_network\"]}}}, \"red_words\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"uniqueItems\": true}}}\n\nТы — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: классифицировать обращение клиента банка и объяснить решение.\n\nТаксономия signal_type (ТЗ §7):\n- tech_fault — технический сбой: ошибка при открытии вклада, зависший платёж, двойное списание. Если в контексте есть активный сбой системы на пути операции клиента — это tech_fault с этим error_code.\n- client_error — ошибка/непонимание клиента: ожидал промо-ставку после окончания акции, неверные реквизиты, не прочитал условия.\n- tariff_terms — претензия к тарифам/условиям: «необоснованная» комиссия, не та ставка. Комиссия за оплату по QR/СБП для физлиц — нарушение правила банка (ошибочное списание), error_code PROC-QR-FEE-CHARGED, продукт debit_card, система processing.\n- service_quality — качество обслуживания: грубость, очередь, долгий ответ.\n- fraud_suspicion — подозрение на мошенничество: звонок «из службы безопасности», неизвестное списание.\n- legal_regulatory — иск, арест счёта, жалоба в ЦБ/прокуратуру (всегда критично, нужен человек).\n- info_request — только вопрос без претензии. Сообщение о фактически неоказанной услуге или неначисленном обещанном кэшбеке — претензия (tariff_terms либо tech_fault по фактам), даже если клиент вежливо просит проверить условия; такую жалобу нельзя закрывать одной квитанцией о приёме.\n- gratitude — благодарность; suggestion — предложение.\n\nФлаги: churn_intent (намерение уйти), repeat (повторное обращение по той же причине — см. контекст), sarcasm, aggression, mass_impact (в контексте ≥ 3 связанных клиентов/инцидент по тому же коду), passive_aggression, hidden_negativity, regulator_threat, public_shaming.\n\nПоля:\n- product и system должны быть согласованы (deposit → sub_deposits/promo_engine; debit_card → processing/sub_debit; credit/credit_card → sub_lending).\n- error_code — только подтверждённый код из контекста операций/сбоев. При отсутствии кода верни null; не придумывай внутренние коды по описанию проблемы.\n- cause_hypothesis — гипотеза причины из того же перечня типов или unknown.\n- criticality — базовая по типу (§7), tone — одно из neutral/positive/irritated/angry/sarcastic/formal.\n- churn_risk 0–100 — про клиента с учётом контекста (сегмент, повторы, угрозы), negativity — про текст.\n- sentiment — positive/neutral/negative, согласованно с нормализацией.\n- confidence 0–1 — честная уверенность; при противоречивом тексте ≤ 0,6.\n- summary_ru — суть одним предложением; rationale_ru — 2–4 предложения: почему такой тип, какие факты из контекста подтверждают, что неясно. Не повторяй текст сигнала дословно.\n- problem_summary: problem (≤ 2 предложений, ≤ 300 символов, без ПДн), severity (low/medium/high; critical — только если high и при этом угроза регулятору, мошенничество > 50 000 ₽, массовость или угроза ухода vip/ultra_vip), suggested_team — код команды из списка: team_antifraud, team_branch_network, team_compliance, team_contact_center, team_cx, team_debit, team_deposits, team_front, team_lending, team_notifications, team_processing, team_promo.\n\nПримеры решений людей (few-shot): нет\n\nКонтекст (клиент, продукты, операции за 72 сим-часа, активные сбои, прошлые сигналы и открытые инциденты):\n{\"client\":{\"segment\":\"mass\",\"psychotype\":\"public_emotional\",\"city\":\"Москва\",\"region_code\":\"77\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"0000\"}],\"operations\":[],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[]}\n\nНормализация (быстрая модель): {\"language\":\"ru\",\"summary_ru\":\"Спор о тарифах/комиссии; тональность negative, негатив 100/100 (скрытый негатив/сарказм).\",\"negativity\":100,\"sentiment\":\"negative\",\"hidden_negativity\":{\"sarcasm\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"},\"passive_aggression\":{\"present\":false,\"confidence\":0.1,\"evidence_ru\":null},\"churn_threat\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"}},\"intents\":[\"churn_threat\",\"complaint\"],\"entities\":{\"product\":\"debit_card\"},\"contacts_hint\":{},\"confidence\":0.78}\n\nКанал: social. Текст обращения:\n«Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+          },
+          {
+            "role": "user",
+            "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+          }
+        ],
+        "temperature": 0.0,
+        "stream": false
+      }
+    },
+    {
+      "sha256": "46172288cc855c7a43ff5ca27dacd2dddf4899d8efb80d09ce0ed77df3c561d0",
+      "payload_bytes": 18489,
+      "input_bytes": 17198,
+      "body": {
+        "max_tokens": 1024,
+        "model": "GigaChat-3-Pro",
+        "messages": [
+          {
+            "role": "system",
+            "content": "Отвечай ТОЛЬКО одним JSON-объектом без пояснений и markdown, строго по JSON Schema ниже (все обязательные поля, значения enum — из списка, тексты на русском). Не копируй служебные поля схемы (title, $id, examples) — их нет в ответе:\n{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"client_action\", \"complexity\", \"criticality\", \"incident_action\", \"needs_human\", \"priority\", \"rationale_ru\", \"route\", \"router_action\"], \"properties\": {\"incident_action\": {\"type\": \"string\", \"enum\": [\"create\", \"link_existing\", \"none\"]}, \"link_incident_id\": {\"type\": [\"integer\", \"null\"]}, \"incident_type\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"tech_fault\", \"client_error\", \"tariff_terms\", \"service_quality\", \"fraud_suspicion\", \"legal_regulatory\", \"info_request\", \"suggestion\", \"account_closure\", \"proactive\", \"fee_refund\", \"misselling\"]}, {\"type\": \"null\"}]}, \"title_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 160}, \"complexity\": {\"type\": \"string\", \"enum\": [\"instant\", \"easy\", \"medium\", \"hard\"]}, \"criticality\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\"]}, \"priority\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 4}, \"sla\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"fix_days\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 10}, \"report_days\": {\"type\": \"array\", \"items\": {\"type\": \"integer\"}}, \"take_hours\": {\"type\": \"integer\"}, \"due_sim\": {\"type\": \"string\", \"format\": \"date-time\", \"description\": \"Симуляционное время (ISO 8601)\"}}}, \"route\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"team\"], \"properties\": {\"team\": {\"type\": \"string\", \"enum\": [\"team_cx\", \"team_deposits\", \"team_lending\", \"team_debit\", \"team_front\", \"team_processing\", \"team_notifications\", \"team_contact_center\", \"team_promo\", \"team_antifraud\", \"team_compliance\", \"team_branch_network\"]}, \"co_teams\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"enum\": [\"team_cx\", \"team_deposits\", \"team_lending\", \"team_debit\", \"team_front\", \"team_processing\", \"team_notifications\", \"team_contact_center\", \"team_promo\", \"team_antifraud\", \"team_compliance\", \"team_branch_network\"]}}, \"rule_id\": {\"type\": [\"integer\", \"null\"], \"description\": \"routing_rules.id, если сработало правило; null = решение модели\"}}}, \"client_action\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"kind\"], \"properties\": {\"kind\": {\"type\": \"string\", \"enum\": [\"reply\", \"acknowledge\", \"proactive_notice\", \"request_data\", \"public_reply_and_dm\", \"none\"]}, \"channel\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"social\", \"call\", \"chat\", \"email\", \"branch\", \"landing\", \"telegram_bot\", \"proactive\", \"review_portal\", \"voice_input\", \"branch_audio\", \"csi_survey\"]}, {\"type\": \"null\"}]}, \"template_code\": {\"type\": [\"string\", \"null\"]}, \"text_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 2000, \"description\": \"Итоговый текст клиенту (после шаблона и тона сегмента)\"}, \"question_ru\": {\"type\": [\"string\", \"null\"], \"description\": \"Для request_data\"}, \"promise_check\": {\"type\": \"boolean\", \"description\": \"true = текст проверен на запрещённые формулировки (обещания сроков вне SLA, обвинения)\"}}}, \"team_notice_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 1500}, \"gift\": {\"type\": [\"object\", \"null\"], \"additionalProperties\": false, \"properties\": {\"gift_code\": {\"type\": \"string\", \"enum\": [\"bonus_points\", \"lounge_pass\", \"restaurant_special\", \"business_class_discount\", \"personal_call\"]}, \"points\": {\"type\": [\"integer\", \"null\"], \"minimum\": 300, \"maximum\": 1000}, \"privilege_code\": {\"type\": [\"string\", \"null\"]}, \"when\": {\"type\": \"string\", \"enum\": [\"after_resolved\", \"now\"]}, \"requires_hitl\": {\"type\": \"boolean\"}}}, \"followup\": {\"type\": [\"object\", \"null\"], \"additionalProperties\": false, \"properties\": {\"wake_in_sim_hours\": {\"type\": \"number\", \"minimum\": 0.25}, \"reason\": {\"type\": \"string\", \"enum\": [\"awaiting_client\", \"awaiting_team\", \"promo_end\", \"verify_fix\", \"report_due\", \"escalation_check\"]}}}, \"needs_human\": {\"type\": \"boolean\"}, \"human_reason\": {\"anyOf\": [{\"type\": \"string\", \"enum\": [\"low_confidence\", \"ultra_vip\", \"legal_regulatory\", \"fraud_amount\", \"partner_privilege\", \"repeat_3plus\", \"classifier_conflict\", \"policy_other\"]}, {\"type\": \"null\"}]}, \"human_options\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"required\": [\"code\", \"label_ru\"], \"properties\": {\"code\": {\"type\": \"string\"}, \"label_ru\": {\"type\": \"string\"}, \"label_en\": {\"type\": \"string\"}, \"description_ru\": {\"type\": \"string\"}}, \"additionalProperties\": false}}, \"human_recommendation\": {\"type\": [\"string\", \"null\"]}, \"economics_preview\": {\"type\": [\"object\", \"null\"], \"additionalProperties\": false, \"properties\": {\"affected_count\": {\"type\": \"integer\"}, \"rate_code\": {\"type\": \"string\"}, \"potential_loss_rub\": {\"type\": \"number\"}}}, \"rationale_ru\": {\"type\": \"string\", \"minLength\": 20, \"maxLength\": 1500}, \"policy_checks\": {\"type\": \"array\", \"items\": {\"type\": \"object\", \"required\": [\"rule\", \"passed\"], \"properties\": {\"rule\": {\"type\": \"string\"}, \"passed\": {\"type\": \"boolean\"}, \"note\": {\"type\": \"string\"}}, \"additionalProperties\": false}, \"description\": \"Какие политики 9.3 проверены — показывается в трассировке\"}, \"fast_path\": {\"type\": \"boolean\", \"default\": false, \"description\": \"true = решение принято на быстром пути по подтверждённому правилу (ТЗ 21.4); детали — instant_decision.schema.json\"}, \"rule_codes\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"description\": \"Коды business_rules, на которые опирается решение (обязательны при любом движении денег)\"}, \"router_action\": {\"type\": \"string\", \"enum\": [\"route\", \"escalate\", \"request_clarification\", \"none\"], \"description\": \"[ДТЗ FR-3.1] обязательный ответ в терминах ДТЗ; должен быть согласован с вызванными инструментами (policy_checks)\"}, \"escalation\": {\"type\": [\"object\", \"null\"], \"additionalProperties\": false, \"required\": [\"reason\", \"severity\", \"to_role\"], \"properties\": {\"reason\": {\"type\": \"string\", \"maxLength\": 300}, \"severity\": {\"type\": \"string\", \"enum\": [\"low\", \"medium\", \"high\", \"critical\"], \"description\": \"problem_summary.severity (ДТЗ FR-2.3); low/medium/high = criticality, critical = high + признак обязательного HITL\"}, \"to_role\": {\"type\": \"string\", \"enum\": [\"cx_lead\", \"branch_manager\"]}}, \"description\": \"Аргументы escalate_to_manager, если router_action = escalate\"}, \"clarification_question_ru\": {\"type\": [\"string\", \"null\"], \"maxLength\": 400, \"description\": \"Вопрос клиенту при router_action = request_clarification\"}}, \"allOf\": [{\"if\": {\"properties\": {\"incident_action\": {\"const\": \"link_existing\"}}}, \"then\": {\"required\": [\"link_incident_id\"]}}, {\"if\": {\"properties\": {\"incident_action\": {\"const\": \"create\"}}}, \"then\": {\"required\": [\"incident_type\", \"title_ru\", \"sla\"]}}, {\"if\": {\"properties\": {\"needs_human\": {\"const\": true}}}, \"then\": {\"required\": [\"human_reason\", \"human_options\", \"human_recommendation\"], \"properties\": {\"human_reason\": {\"type\": \"string\"}, \"human_options\": {\"minItems\": 2}, \"human_recommendation\": {\"type\": \"string\"}}}}]}\n\nТы — ИИ-агент клиентского опыта (CX) розничного банка «CX Pulse Control». Ты работаешь на синтетических данных демо-стенда: все клиенты, суммы и партнёры вымышлены.\n\nПравила:\n1. Отвечай строго валидным JSON по переданной схеме, без пояснений вне JSON. Все текстовые поля — на русском языке.\n2. Не придумывай факты о клиенте и операциях: используй только переданный контекст. Если данных нет — укажи это в обосновании и снизь уверенность.\n3. Никогда не обвиняй клиента, не обещай сроков вне SLA, не называй персональные данные (ФИО полностью, номера карт/счетов, телефоны) в текстах для клиента или публичных ответах.\n4. Тон ответа клиенту — по сегменту: mass/salary/youth — дружелюбно и коротко; social — заботливо и просто; premium/vip/ultra_vip — формально-уважительно, с персональным обращением.\n5. Критичные сигналы (суд/регулятор, мошенничество, угроза ухода VIP) требуют решения человека — помечай это явно.\n\nЗадача: предложить план действий по классифицированному обращению. Модель предлагает — код проверяет и корректирует детерминированные поля (SLA, приоритет, маршрут по правилам, политики HITL), поэтому сосредоточься на содержании.\n\nФасады роутера (код вызывает их по router_action и сверяет имя с фактическими вызовами):\n- route_to_product_team(product_line, signal_id) — маршрут в owner_team_code известного направления, wraps=[route_to_department].\n- route_to_department — маршрут: создать или связать тикет с командой.\n- escalate_to_manager — эскалация поверх уже созданного тикета (сначала маршрут, затем руководитель).\n- request_clarification — один уточняющий вопрос клиенту; второй подряд запрещён.\n- notify_customer — текст клиенту вне публичного ответа. router_action none — ни маршрута, ни эскалации, ни уточнения.\n\nКод сверяет router_action с фактическими вызовами этих фасадов. Расхождение повторяет фасад один раз, затем передаёт решение человеку.\n\nНужно решить:\n1. incident_action: create (новая проблема) / link_existing (в контексте есть открытый инцидент с тем же error_code/системой за последние 4 сим-часа или инцидент этого клиента по той же причине — укажи link_incident_id) / none (gratitude, suggestion, info_request без проблемы).\n2. incident_type (как signal_type; для подтверждённой ошибочной комиссии — fee_refund), title_ru (≤ 120 символов, без ПДн).\n3. complexity (easy/medium/hard; instant — только для fee_refund) и criticality (low/medium/high) — предложение, код сверит с правилами §8.1.\n4. route.team — команда-владелец системы/проблемы (подсказка — правила маршрутизации: team_debit (+team_promo)); co_teams — при необходимости (например team_cx при репутационных рисках).\n5. client_action: kind (reply / acknowledge / request_data / public_reply_and_dm для канала social или review_portal / proactive_notice / none), channel, text_ru — текст клиенту в тоне сегмента mass: извинение (если уместно), что уже делаем, когда ответим (только в рамках SLA первого ответа 60 мин и срока устранения), приглашение в личный канал для публичных ответов. Без обвинений, без обещаний вне SLA, без ПДн. Для request_data — question_ru (один вопрос).\n6. team_notice_ru — короткое сообщение команде: что сломано, какой error_code, сколько клиентов, что проверить.\n7. gift — только после resolved и только при реальной проблеме (не для info_request/gratitude): bonus_points 300/600/1000 по критичности; привилегия партнёра — только vip/ultra_vip (политика §8.5).\n8. followup — если ждём данных клиента/команды или проверки фикса: wake_in_sim_hours и reason.\n9. needs_human + human_reason/human_options/human_recommendation — по политикам §9.3 (ultra_vip; legal_regulatory; fraud > 50 000 ₽; привилегия партнёра; повтор 3+; конфликт классификаций; уверенность < 0,75).\n10. router_action — route (создаём/линкуем тикет), escalate (плюс эскалация руководителю при churn_threat с negativity ≥ 80, повторе с негативом, severity critical, 3+ обращений за 7 дней — заполни escalation{reason, severity, to_role}), request_clarification (один вопрос — clarification_question_ru), none.\n11. rationale_ru — 2–3 предложения почему так; policy_checks — список проверенных политик {rule, passed, note}.\n\nПримеры решений людей (few-shot): нет\n\nКлассификация: {\"signal_type\":\"tariff_terms\",\"secondary_types\":[],\"product\":\"debit_card\",\"system\":\"processing\",\"cause_hypothesis\":\"tariff_terms\",\"criticality\":\"high\",\"tone\":\"sarcastic\",\"flags\":[\"churn_intent\",\"sarcasm\",\"repeat\"],\"entities\":{},\"churn_risk\":100,\"confidence\":0.78,\"summary_ru\":\"Спор о тарифах/комиссии\",\"rationale_ru\":\"Текст классифицирован как «tariff_terms» по ключевым словам. Обнаружены маркеры сарказма — реальная тональность негативная при внешне нейтральной форме. Намерения: churn_threat, complaint. Критичность high, рекомендуемая команда team_debit.\",\"language\":\"ru\",\"negativity\":100,\"intents\":[\"churn_threat\",\"complaint\"],\"sentiment\":\"negative\",\"problem_summary\":{\"problem\":\"Спор о тарифах/комиссии. Требуется проверка и ответ клиенту.\",\"severity\":\"high\",\"suggested_team\":\"team_debit\"},\"red_words\":[]}\nНормализация: {\"language\":\"ru\",\"summary_ru\":\"Спор о тарифах/комиссии; тональность negative, негатив 100/100 (скрытый негатив/сарказм).\",\"negativity\":100,\"sentiment\":\"negative\",\"hidden_negativity\":{\"sarcasm\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"},\"passive_aggression\":{\"present\":false,\"confidence\":0.1,\"evidence_ru\":null},\"churn_threat\":{\"present\":true,\"confidence\":0.85,\"evidence_ru\":\"Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.\"}},\"intents\":[\"churn_threat\",\"complaint\"],\"entities\":{\"product\":\"debit_card\"},\"contacts_hint\":{},\"confidence\":0.78}\nКонтекст: {\"client\":{\"segment\":\"mass\",\"psychotype\":\"public_emotional\",\"city\":\"Москва\",\"region_code\":\"77\",\"state\":\"calm\",\"churn_risk\":0},\"identification\":{\"method\":\"authenticated_channel\",\"confidence\":1.0},\"products\":[{\"product\":\"debit_card\",\"status\":\"active\",\"card_last4\":\"0000\"}],\"operations\":[],\"active_faults\":[],\"related_incidents\":[],\"client_history\":{\"signals_14d\":0,\"signals_7d\":0,\"same_type_14d\":0,\"last_types\":[]},\"similar_signals\":[],\"rules_matched\":[]}\nКанал: social. Текст обращения: «Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк.»"
+          },
+          {
+            "role": "user",
+            "content": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+          }
+        ],
+        "temperature": 0.0,
+        "stream": false
+      }
+    }
+  ],
+  "http_counts": {
+    "oauth": 1,
+    "balance": 3,
+    "inference": 3
+  }
+}
