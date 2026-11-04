@@ -947,6 +947,9 @@
       "detractor_share": "Detractor share",
       "no_return_share": "No-return share",
       "noData": "no data",
+      "scope": "Fact and export run: {{run}}. Values are saved estimates; reading does not recalculate money. Detractor share is not modelled yet.",
+      "applyCurrentOnly": "Apply is available only for the current run. All-run history is not applied to calculator settings.",
+      "noCurrent": "The current run is not selected or is still loading. All-run history is not substituted automatically.",
       "apply": "Apply fact",
       "backToManual": "Restore manual"
     }

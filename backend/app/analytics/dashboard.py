@@ -199,7 +199,10 @@ async def fact(
     matrix = await fetch_all(
         conn,
         f"select f.product_code, f.system_code, f.sim_day::date as sim_day, f.sim_hour, f.faults::int, f.operations_affected::int, f.clients_affected::int, "
-        f"(select count(*) from signals s where s.source_fault_id in (select id from faults x where x.system_code = f.system_code and date_trunc('day', x.started_sim) = f.sim_day))::int as signals "
+        f"(select count(*) from signals s join faults x on x.id=s.source_fault_id and x.run_id=s.run_id "
+        f"join error_codes ec on ec.code=x.error_code where x.run_id=f.run_id and x.system_code=f.system_code "
+        f"and ec.product_code is not distinct from f.product_code and date_trunc('day',x.started_sim)=f.sim_day "
+        f"and extract(hour from x.started_sim)::int=f.sim_hour)::int as signals "
         f"from v_faults_by_product_hour f where {' and '.join(w)} order by sim_day desc, sim_hour desc limit 500",
         tuple(args),
     )
@@ -216,9 +219,15 @@ async def fact(
         oargs.append(region)
     outcomes = await fetch_all(
         conn,
-        f"select coalesce(i.outcome_class, 'open') as outcome_class, count(*)::int as incidents, coalesce(sum(e.potential_loss_rub), 0)::float as potential_loss_rub, "
-        f"coalesce(sum(e.prevented_loss_rub), 0)::float as prevented_loss_rub, coalesce(sum(e.realized_loss_rub), 0)::float as realized_loss_rub "
-        f"from incidents i left join incident_economics e on e.incident_id = i.id where {' and '.join(ow)} group by 1 order by 1",
+        f"select coalesce(i.outcome_class, 'open') as outcome_class, count(*)::int as incidents, count(e.incident_id)::int as economics_known, "
+        f"case when count(e.incident_id)=count(*) then sum(e.potential_loss_rub)::float end as potential_loss_rub, "
+        f"case when count(e.incident_id)=count(*) then sum(e.prevented_loss_rub)::float end as prevented_loss_rub, "
+        f"case when count(e.incident_id)=count(*) then sum(e.realized_loss_rub)::float end as realized_loss_rub "
+        f"from incidents i join sim_runs r on r.id=i.run_id left join sim_state st on st.id=1 "
+        f"left join incident_economics e on e.incident_id=i.id and e.run_id=i.run_id "
+        f"and e.computed_at>=i.updated_at and e.computed_sim>=i.created_sim "
+        f"and e.computed_sim<=case when st.current_run_id=r.id then st.sim_time else r.finished_sim end "
+        f"where {' and '.join(ow)} group by 1 order by 1",
         tuple(oargs),
     )
     churned = await fetch_all(
@@ -234,7 +243,11 @@ async def fact(
     s = cfg["settings"]
     facts = await fetch_all(
         conn,
-        f"select outcome_class, retention_rate, resolved_clients from v_retention_by_outcome {'where run_id = %s' if rid is not None else ''}",
+        f"select i.outcome_class, count(distinct (cs.run_id,cs.client_id)) filter(where cs.state in ('retained','churned')) as resolved_clients, "
+        f"round(count(distinct (cs.run_id,cs.client_id)) filter(where cs.state='retained')::numeric / "
+        f"nullif(count(distinct (cs.run_id,cs.client_id)) filter(where cs.state in ('retained','churned')),0),4) as retention_rate "
+        f"from incidents i join client_states cs on cs.incident_id=i.id and cs.run_id=i.run_id "
+        f"{'where i.run_id = %s' if rid is not None else ''} group by i.outcome_class",
         (rid,) if rid is not None else (),
     )
     by_out = {f["outcome_class"]: f for f in facts}
@@ -242,12 +255,12 @@ async def fact(
         conn,
         f"""
         select count(*) filter (where cs.state in ('retained','churned')) as resolved, count(*) filter (where cs.state = 'churned') as churned,
-               count(*) filter (where cs.state = 'detractor') as detractors, count(*) as total
-        from client_states cs {"where cs.run_id = %s" if rid is not None else ""}
+               count(*) as total
+        from client_states cs {"where cs.run_id = %s" if rid is not None else "where true"}
+          and (cs.incident_id is null or exists(select 1 from incidents i where i.id=cs.incident_id and i.run_id=cs.run_id))
         """,
         (rid,) if rid is not None else (),
     )
-    total = float((det or {}).get("total") or 0)
     resolved = float((det or {}).get("resolved") or 0)
     return {
         "faults_matrix": matrix,
@@ -255,11 +268,12 @@ async def fact(
         "churned": churned,
         "assumptions_vs_fact": {
             "detractor_share": {
-                "assumed": float(s.get("detractor_share") or 0.1),
-                "fact": round(float(det.get("detractors") or 0) / total, 4) if det and total else None,
+                "assumed": float(0.1 if s.get("detractor_share") is None else s["detractor_share"]),
+                # client_states не содержит detractor; такой mapping не согласован.
+                "fact": None,
             },
             "no_return_share": {
-                "assumed": float(s.get("no_return_share") or 0.5),
+                "assumed": float(0.5 if s.get("no_return_share") is None else s["no_return_share"]),
                 "fact": round(float(det.get("churned") or 0) / resolved, 4) if det and resolved else None,
             },
             "retention_factors": {

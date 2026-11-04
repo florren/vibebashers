@@ -1,0 +1,31 @@
+{
+  "base": "52fd498ffe20c0a248e987b37fa3d1b6be796caf",
+  "pytest_exit": 0,
+  "method": "stdlib sys.settrace/threading.settrace; bytecode-executable innermost AST statement spans containing added diff lines; not branches or full project coverage",
+  "files": [
+    {
+      "file": "backend/app/api/metrics.py",
+      "sha256": "fb863d7483d669688b0d06c68401282f2dd53a74a5b31d47d0ccce8b71c5e6bc",
+      "changed_statements": 55,
+      "executed": 55,
+      "missed_lines": []
+    },
+    {
+      "file": "backend/app/analytics/dashboard.py",
+      "sha256": "fcf8e6064efa19681660484dacf63a78d87eae68f5f63816b20a0c9b72290891",
+      "changed_statements": 5,
+      "executed": 5,
+      "missed_lines": []
+    },
+    {
+      "file": "backend/app/economics/dcltv.py",
+      "sha256": "d491b211d5e3a052caad20b85c71919146bf3452566d1b1f114ba9eb70175c21",
+      "changed_statements": 2,
+      "executed": 2,
+      "missed_lines": []
+    }
+  ],
+  "changed_statements": 62,
+  "executed": 62,
+  "percent": 100.0
+}

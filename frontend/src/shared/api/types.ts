@@ -3093,13 +3093,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** KPI рабочего места (ТЗ 14.1) — по умолчанию в рамках текущего запуска */
+        /**
+         * KPI рабочего места (ТЗ 14.1) — по умолчанию в рамках текущего запуска
+         * @description Явный run_id имеет приоритет над window, включая window=all. Без run_id
+         *     window=all сохраняет общий срез, остальные окна используют current.
+         *     Отсутствующий current возвращает пустой объект без обращения к producer.
+         *     Валидный legacy dashboard может по-прежнему пересчитывать экономику.
+         */
         get: {
             parameters: {
                 query?: {
                     /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
                     run_id?: components["parameters"]["RunId"];
-                    window?: "today" | "7d" | "14d" | "run";
+                    window?: "today" | "24h" | "7d" | "14d" | "run" | "all";
                 };
                 header?: never;
                 path?: never;
@@ -3116,6 +3122,8 @@ export interface paths {
                         "application/json": components["schemas"]["DashboardMetrics"];
                     };
                 };
+                404: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -3179,7 +3187,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Экономика dCLTV — потенциальные, предотвращённые, под риском, реализованные (ТЗ 14.4) */
+        /**
+         * Экономика dCLTV — потенциальные, предотвращённые, под риском, реализованные (ТЗ 14.4)
+         * @description Пустой current не подменяется all и не запускает recompute. Существующий запуск сохраняет прежний legacy refresh.
+         */
         get: {
             parameters: {
                 query?: {
@@ -3203,6 +3214,8 @@ export interface paths {
                         "application/json": components["schemas"]["EconomicsSummary"];
                     };
                 };
+                404: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -3220,10 +3233,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Калькулятор «Факт по симуляции» (ТЗ 14.5) — по умолчанию текущий запуск */
+        /**
+         * Калькулятор «Факт по симуляции» (ТЗ 14.5) — по умолчанию текущий запуск
+         * @description Только чтение сохранённых оценок, без пересчёта экономики. Пустой current не подменяется all.
+         *     Доля детракторов остаётся null до согласованного mapping состояний клиента.
+         *     Суммы outcome остаются null, если хотя бы у одного инцидента нет актуальной сохранённой оценки
+         *     того же запуска (computed_at не старее incident.updated_at, computed_sim в пределах
+         *     created_sim и собственного run clock; неизвестный clock не доказывает актуальность); economics_known показывает покрытие, incidents — знаменатель.
+         *     Подтверждённый нулевой расчёт сохраняется как 0; unknown в CSV/XLSX — пустая ячейка.
+         *     Фильтры product/system/region_code пока не поддерживаются целостно и дают 422;
+         *     прежняя частичная фильтрация больше не выдаётся за согласованный срез.
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                     product?: string;
                     system?: string;
                     region_code?: string;
@@ -3243,6 +3268,8 @@ export interface paths {
                         "application/json": components["schemas"]["EconomicsFact"];
                     };
                 };
+                404: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -3260,11 +3287,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Экспорт факта (CSV/XLSX) */
+        /**
+         * Экспорт факта (CSV/XLSX)
+         * @description Только чтение того же run scope, что JSON Fact. XLSX — настоящий Excel workbook; CSV сохраняет UTF-8 BOM.
+         */
         get: {
             parameters: {
                 query?: {
                     format?: "csv" | "xlsx";
+                    /** @description Запуск эмуляции (ТЗ 4.6): id, `current` (по умолчанию), `all`. Для лент/карточек по умолчанию baseline + current. */
+                    run_id?: components["parameters"]["RunId"];
                 };
                 header?: never;
                 path?: never;
@@ -3282,6 +3314,8 @@ export interface paths {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                     };
                 };
+                404: components["responses"]["Problem"];
+                422: components["responses"]["Problem"];
             };
         };
         put?: never;
@@ -9616,9 +9650,11 @@ export interface components {
             outcomes?: {
                 outcome_class?: components["schemas"]["OutcomeClass"];
                 incidents?: number;
-                potential_loss_rub?: number;
-                prevented_loss_rub?: number;
-                realized_loss_rub?: number;
+                /** @description Число инцидентов с актуальной сохранённой оценкой того же запуска */
+                economics_known?: number;
+                potential_loss_rub?: number | null;
+                prevented_loss_rub?: number | null;
+                realized_loss_rub?: number | null;
             }[];
             churned?: {
                 client?: components["schemas"]["ClientBrief"];

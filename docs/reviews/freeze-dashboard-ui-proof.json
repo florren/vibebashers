@@ -1,0 +1,179 @@
+{
+  "scope": "actual canonical DashboardTab/React/CSS, isolated Vite fixture + mocked API; no primary, real economics, LLM or calibration POST; outcome nullable JSON fields are not rendered in this component",
+  "sourceSha256": {
+    "frontend/src/pages/workspace/DashboardTab.tsx": "84e0ad44bd74f0e33af80630a1bd69a1284af1a9d9a3e453bbd72c19e86e19e3",
+    "frontend/src/shared/api/hooks.ts": "eb90d5bafa331e4b0d65b9184507d44b675a9122bcf8d4c3a60fc168030ae9e8",
+    "frontend/src/index.css": "a85c751118fb47887e9a2adaea14bcc557f7222fae03182692da934dfbc176f6",
+    "frontend/src/shared/i18n/ru.json": "716b9258874aaccc9ef20b8202cb3acd67e5986bb44c7b7ffe8311a3a7cf5915",
+    "frontend/src/shared/i18n/en.json": "7537fcdbddb1f509d5f7ffbcc044a186088fd5c95a88760d46b92d9fdaaf2465"
+  },
+  "results": [
+    {
+      "lang": "ru",
+      "mode": "light",
+      "case": "current",
+      "runScope": "17",
+      "csvScope": "17",
+      "applyEnabled": true,
+      "unknownText": "нет данных",
+      "knownZero": "0%",
+      "writes": 0
+    },
+    {
+      "lang": "ru",
+      "mode": "light",
+      "case": "all",
+      "csvScope": "all",
+      "applyDisabled": true,
+      "noStaleCurrentWhilePending": true
+    },
+    {
+      "lang": "ru",
+      "mode": "light",
+      "case": "noCurrent",
+      "metricsCalls": 0,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "ru",
+      "mode": "light",
+      "case": "error",
+      "status": 503,
+      "visibleGenericAndExpandedDetails": true,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "case": "current",
+      "runScope": "17",
+      "csvScope": "17",
+      "applyEnabled": true,
+      "unknownText": "нет данных",
+      "knownZero": "0%",
+      "writes": 0
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "case": "all",
+      "csvScope": "all",
+      "applyDisabled": true,
+      "noStaleCurrentWhilePending": true
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "case": "noCurrent",
+      "metricsCalls": 0,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "ru",
+      "mode": "dark",
+      "case": "error",
+      "status": 503,
+      "visibleGenericAndExpandedDetails": true,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "case": "current",
+      "runScope": "17",
+      "csvScope": "17",
+      "applyEnabled": true,
+      "unknownText": "no data",
+      "knownZero": "0%",
+      "writes": 0
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "case": "all",
+      "csvScope": "all",
+      "applyDisabled": true,
+      "noStaleCurrentWhilePending": true
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "case": "noCurrent",
+      "metricsCalls": 0,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "en",
+      "mode": "light",
+      "case": "error",
+      "status": 503,
+      "visibleGenericAndExpandedDetails": true,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "case": "current",
+      "runScope": "17",
+      "csvScope": "17",
+      "applyEnabled": true,
+      "unknownText": "no data",
+      "knownZero": "0%",
+      "writes": 0
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "case": "all",
+      "csvScope": "all",
+      "applyDisabled": true,
+      "noStaleCurrentWhilePending": true
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "case": "noCurrent",
+      "metricsCalls": 0,
+      "applyAbsent": true,
+      "csvAbsent": true
+    },
+    {
+      "lang": "en",
+      "mode": "dark",
+      "case": "error",
+      "status": 503,
+      "visibleGenericAndExpandedDetails": true,
+      "applyAbsent": true,
+      "csvAbsent": true
+    }
+  ],
+  "committed_screenshots": [
+    {
+      "path": "docs/screenshots/dashboard-fact/ru-light-all.png",
+      "sha256": "c86eb8bae2a82f413931771b73cdc5d46c045db7af248b5a2231d6eb9966a8de",
+      "synthetic": true
+    },
+    {
+      "path": "docs/screenshots/dashboard-fact/ru-dark-all.png",
+      "sha256": "ae3d6fee7ab5eac753b17768daeff4678172773fa28d07941125732a68a5737c",
+      "synthetic": true
+    },
+    {
+      "path": "docs/screenshots/dashboard-fact/en-light-all.png",
+      "sha256": "1320fb3e2d802baecd1d1c8da2508d54b21c15ef171bf5514c18221069350add",
+      "synthetic": true
+    },
+    {
+      "path": "docs/screenshots/dashboard-fact/en-dark-all.png",
+      "sha256": "f62217db1dda0d86fce2ab3a431eaa9f3375663b5c697a10dc7d8e0b7dc17c21",
+      "synthetic": true
+    }
+  ],
+  "raw_screenshots_retained_outside_git": 16
+}

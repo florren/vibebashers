@@ -10,24 +10,43 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
+from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 from pydantic import BaseModel
 
+from app.analytics.cabinet_scope import validate_run
 from app.analytics.dashboard import dashboard
 from app.analytics.dashboard import fact as _fact
 from app.api.common import db, fetch_all, fetch_one, resolve_run_id
 from app.economics import dcltv
+from app.trace.store import read_db
 
 router = APIRouter(tags=["metrics"])
 
 OPEN = list(dcltv.OPEN_STATUSES)
 
 
+async def _metrics_run(conn: Any, requested: str) -> int | None:
+    """Пустой current не означает all; numeric scope обязан существовать."""
+    validate_run(requested)
+    rid = await resolve_run_id(conn, requested)
+    if requested == "current":
+        return rid if rid is not None else -1
+    if requested != "all" and await fetch_one(conn, "select id from sim_runs where id=%s", (rid,)) is None:
+        raise HTTPException(404, "Запуск не найден")
+    return rid
+
+
 @router.get("/api/metrics/dashboard", summary="KPI рабочего места (ТЗ 14.1) — по умолчанию в рамках текущего запуска")
 async def get_metrics_dashboard(
     window: str = Query("run", description="run | 24h | 7d | all"), run_id: str | None = Query(None)
 ) -> Any:
+    requested = run_id if run_id is not None else "all" if window == "all" else "current"
+    validate_run(requested)
     async with db() as conn:
-        rid = await resolve_run_id(conn, "all" if window == "all" else run_id)
+        rid = await _metrics_run(conn, requested)
+        if rid == -1:
+            return JSONResponse({})
         out = await dashboard(conn, rid=rid, window=window)
     return JSONResponse(jsonable_encoder(out))
 
@@ -41,9 +60,11 @@ async def get_metrics_economics(
     group_by: str = Query("product", description="product | region | segment | team | type"),
     run_id: str | None = Query(None),
 ) -> Any:
+    requested = run_id if run_id is not None else "current"
+    validate_run(requested)
     async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
-        res = await dcltv.summary(conn, run_id=rid, group_by=group_by, window=window)
+        rid = await _metrics_run(conn, requested)
+        res = await dcltv.summary(conn, run_id=rid, group_by=group_by, window=window, refresh=rid != -1)
     return JSONResponse(jsonable_encoder(res))
 
 
@@ -54,27 +75,44 @@ async def get_metrics_economics_fact(
     product: str | None = Query(None),
     system: str | None = Query(None),
     region_code: str | None = Query(None),
-    run_id: str | None = Query(None),
+    run_id: str = Query("current"),
 ) -> Any:
-    async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
-        await dcltv.recompute(conn, run_id=rid)
-        res = await _fact(conn, rid, product, system, region_code)
+    validate_run(run_id)
+    if any(value is not None for value in (product, system, region_code)):
+        raise HTTPException(422, "Фильтры product/system/region_code для Fact пока не поддерживаются")
+    async with read_db() as conn:
+        rid = await _metrics_run(conn, run_id)
+        res = await _fact(conn, rid, None, None, None)
     return JSONResponse(jsonable_encoder(res))
 
 
 @router.get("/api/metrics/economics/fact/export", summary="Экспорт факта (CSV/XLSX)")
 async def get_metrics_economics_fact_export(
-    format: Literal["csv", "xlsx"] = Query("csv"), run_id: str | None = Query(None)
+    format: Literal["csv", "xlsx"] = Query("csv"), run_id: str = Query("current")
 ) -> Any:  # noqa: A002
-    async with db() as conn:
-        rid = await resolve_run_id(conn, run_id)
+    validate_run(run_id)
+    async with read_db() as conn:
+        rid = await _metrics_run(conn, run_id)
         res = await _fact(conn, rid, None, None, None)
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
-    w.writerow(["section", "key", "incidents", "potential_loss_rub", "prevented_loss_rub", "realized_loss_rub"])
+    workbook = Workbook(write_only=True) if format == "xlsx" else None
+    sheet = workbook.create_sheet("Fact") if workbook else None
+
+    def row(values: list[Any]) -> None:
+        w.writerow(values)
+        if sheet is not None:
+            cells = []
+            for value in values:
+                cell = WriteOnlyCell(sheet, value=value)
+                if isinstance(value, str):
+                    cell.data_type = "s"
+                cells.append(cell)
+            sheet.append(cells)
+
+    row(["section", "key", "incidents", "potential_loss_rub", "prevented_loss_rub", "realized_loss_rub"])
     for o in res["outcomes"]:
-        w.writerow(
+        row(
             [
                 "outcome",
                 o["outcome_class"],
@@ -84,8 +122,8 @@ async def get_metrics_economics_fact_export(
                 o["realized_loss_rub"],
             ]
         )
-    w.writerow([])
-    w.writerow(
+    row([])
+    row(
         [
             "product_code",
             "system_code",
@@ -98,7 +136,7 @@ async def get_metrics_economics_fact_export(
         ]
     )
     for m in res["faults_matrix"]:
-        w.writerow(
+        row(
             [
                 m["product_code"],
                 m["system_code"],
@@ -110,13 +148,19 @@ async def get_metrics_economics_fact_export(
                 m["signals"],
             ]
         )
-    data = ("\ufeff" + buf.getvalue()).encode("utf-8")
-    media = "text/csv" if format == "csv" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    # xlsx без внешних зависимостей не собираем — отдаём CSV с корректным именем файла (Excel открывает напрямую)
-    name = f"economics_fact_run{rid or 'all'}.csv"
+    if workbook is not None:
+        output = io.BytesIO()
+        workbook.save(output)
+        workbook.close()
+        data = output.getvalue()
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else:
+        data = ("\ufeff" + buf.getvalue()).encode("utf-8")
+        media = "text/csv"
+    name = f"economics_fact_run{rid if rid is not None else 'all'}.{format}"
     return Response(
         content=data,
-        media_type=media if format == "csv" else "text/csv",
+        media_type=media,
         headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
 

@@ -341,17 +341,17 @@ export const useMapCities = (code: string | null, windowHours: number, runId: st
     queryFn: ({ signal }) => api<CityHeat[]>(`/api/map/regions/${code}/cities`, { query: { window_hours: windowHours, run_id: requireRunScope(runId) }, signal }), retry: false,
     enabled: code !== null,
   })
-export const useDashboard = (window: 'run' | '24h' | '7d' | 'all' = 'run') =>
-  useQuery({ queryKey: ['metrics', 'dashboard', window], queryFn: () => api<DashboardMetrics>('/api/metrics/dashboard', { query: { window } }), refetchInterval: 8_000, placeholderData: (p) => p })
-export const useEconomics = (groupBy: string, runId: string = 'current') =>
+export const useDashboard = (window: 'run' | '24h' | '7d' | 'all' = 'run', runId = 'current', enabled = true) =>
+  useQuery({ queryKey: ['metrics', 'dashboard', window, runId], queryFn: () => api<DashboardMetrics>('/api/metrics/dashboard', { query: { window, run_id: runId } }), enabled, refetchInterval: 8_000 })
+export const useEconomics = (groupBy: string, runId: string = 'current', enabled = true) =>
   useQuery({
     queryKey: ['metrics', 'economics', groupBy, runId],
     queryFn: () => api<EconomicsSummary>('/api/metrics/economics', { query: { group_by: groupBy, run_id: runId } }),
+    enabled,
     refetchInterval: 10_000,
-    placeholderData: (p) => p,
   })
-export const useEconomicsFact = (enabled: boolean) =>
-  useQuery({ queryKey: ['metrics', 'fact'], queryFn: () => api<EconomicsFact>('/api/metrics/economics/fact'), enabled, refetchInterval: 15_000 })
+export const useEconomicsFact = (enabled: boolean, runId = 'current') =>
+  useQuery({ queryKey: ['metrics', 'fact', runId], queryFn: () => api<EconomicsFact>('/api/metrics/economics/fact', { query: { run_id: runId } }), enabled, refetchInterval: 15_000, retry: false })
 export function useCalibrate() {
   const qc = useQueryClient()
   return useMutation({

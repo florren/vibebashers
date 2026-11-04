@@ -312,7 +312,8 @@ async def compute_incident(
             unknown_product_average=inc.get("product_code") in (None, "unknown", "other"),
             fallback_code=s.get("fallback_rate_code"),
         )
-        detr, nor = float(s.get("detractor_share") or 0.1), float(s.get("no_return_share") or 0.5)
+        detr = float(0.1 if s.get("detractor_share") is None else s["detractor_share"])
+        nor = float(0.5 if s.get("no_return_share") is None else s["no_return_share"])
     premium = (
         next((float(r["rate_rub"]) for r in rates if r["code"] == "premium_service"), 91.53)
         if inc.get("segment") in PREMIUM_SEGMENTS
