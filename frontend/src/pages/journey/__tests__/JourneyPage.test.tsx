@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { vi, expect, it, beforeEach } from 'vitest'
-import '@/shared/i18n'
+import i18n from '@/shared/i18n'
 import { JourneyPage } from '..'
 import type { Journey, TraceEvent } from '@/shared/api/trace'
 import { getJourney } from '@/shared/api/trace'
@@ -436,4 +436,32 @@ it('inherits the reloaded parent profile by sending only parent lineage for a fo
   expect(sent.meta).toEqual({ parent_signal_id: 1 })
   expect(sent.meta).not.toHaveProperty('journey_execution')
   expect(sent.origin).toBe('jury')
+})
+
+it.each(['ru', 'en'])('shows the simulation date across days without changing conversation order in %s', async language => {
+  const previousLanguage = i18n.language
+  await i18n.changeLanguage(language)
+  try {
+    const data = structuredClone(journey)
+    const question = data.stages.find(stage => stage.stage === 'intake')!.events[0]!
+    question.brief_ru = 'Вопрос до многодневной обработки'
+    question.ts_real = '2026-11-05T10:00:00.123100Z'
+    question.ts_sim = '2026-11-09T09:48:00+03:00'
+    const reply: Journey['client_lane'][number] = { channel_code: 'chat', kind: 'final', text_ru: 'Ответ после многодневной обработки', delivered_at: '2026-11-05T10:00:00.123200Z', delivered_sim: '2026-11-13T09:33:00+03:00' }
+    data.client_lane = [reply]
+    vi.mocked(getJourney).mockResolvedValue(data)
+    mount()
+    const log = await screen.findByRole('log')
+    const replyText = await within(log).findByText(reply.text_ru)
+    const questionArticle = within(log).getByText(question.brief_ru).closest('article')!
+    const replyArticle = replyText.closest('article')!
+    expect(questionArticle).toHaveTextContent(new Date(question.ts_sim).toLocaleString(language))
+    expect(replyArticle).toHaveTextContent(new Date(reply.delivered_sim!).toLocaleString(language))
+    expect(questionArticle).toHaveTextContent(new Date(question.ts_real).toLocaleTimeString(language))
+    expect(replyArticle).toHaveTextContent(new Date(reply.delivered_at).toLocaleTimeString(language))
+    expect(log.querySelectorAll('article')[0]).toBe(questionArticle)
+    expect(log.querySelectorAll('article')[1]).toBe(replyArticle)
+  } finally {
+    await i18n.changeLanguage(previousLanguage)
+  }
 })

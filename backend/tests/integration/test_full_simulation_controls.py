@@ -258,7 +258,8 @@ async def test_manual_inputs_wait_for_resume_then_finish(seeded, monkeypatch, en
                 nodes.communication_lang(final["signal"]["text"]),
             )
             assert notice[0] == expected and "ваш вопрос решён" in notice[0]
-            assert incident[1] not in notice[0] and "стенд" not in notice[0].lower()
+            assert incident[1] is None or incident[1] not in notice[0]
+            assert "стенд" not in notice[0].lower()
             if identified:
                 decisions = await (
                     await conn.execute(

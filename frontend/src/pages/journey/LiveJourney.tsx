@@ -322,7 +322,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId, execution }: { onSub
                 <p className="whitespace-pre-wrap text-sm">{m.text}</p>
                 <p className="mt-2 text-[11px] text-muted">
                   {t('traceUi.realTime')}: {new Date(m.at).toLocaleTimeString(i18n.language)}
-                  {m.sim && ` · ${t('journeyLive.sim')}: ${new Date(m.sim).toLocaleTimeString(i18n.language)}`}
+                  {m.sim && ` · ${t('journeyLive.sim')}: ${new Date(m.sim).toLocaleString(i18n.language)}`}
                 </p>
               </article>
             ))}

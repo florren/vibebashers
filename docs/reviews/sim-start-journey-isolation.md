@@ -35,6 +35,12 @@
 - Ручные HITL decision/feedback Journey используют время собственного кейса,
   даже если общий мир продвинулся. Явный внутренний demo override и остальные
   режимы сохраняют прежний выбор часов.
+- Чтение экономики и ручные действия с инцидентом Journey также используют
+  собственные часы; расчёт не получает время чужого World. Формулы и прежнее
+  поведение остальных запусков сохраняются.
+- В сообщениях Journey симулированное время показано вместе с датой: ответ
+  следующего дня не выглядит более ранним из-за одного только `HH:mm`.
+  Порядок сообщений и отображение реального времени сохранены.
 
 API/DDL, формулы, ставки, финансовые лимиты и полномочия HITL не меняются.
 Существующая история не переписывается. Legacy explicit scenario API и
@@ -57,12 +63,18 @@ Mock LLM и нативными Simulator/AgentService: Start до открыти
 
 ## Отчёт локального gate
 
-- `make lint` — PASS (включая 632 frontend tests, Ruff, mypy, typecheck,
+- `make lint` — PASS (включая 634 frontend tests, Ruff, mypy, typecheck,
   motion checks и отсутствие OpenAPI drift).
 - Backend unit — 2355 passed, 19 skipped; Mock, без рабочих ключей/БД.
 - `scripts/contracts_check.py` — PASS: 48 JSON-схем, 167 API paths.
 - `scripts/check_owners.py --base main --allow-cross` — PASS, L2/L3/L4.
 - `git diff --check` — PASS; generated contracts не изменены.
+- PostgreSQL composition — 67 passed: нативный Start/COMMIT, управление,
+  Journey scope/restart, HITL и followups.
+- Journey incident API clock — старый код: 2 failed; исправление: 2 passed.
+  World проверен раньше и позже собственного кейса, повторный GET после
+  ещё 7 дней World сохраняет точные суммы/собственное время; ручной ответ
+  использует тот же case clock. Глобальное состояние и settings неизменны.
 
 PostgreSQL composition и полный `make test` выполняются на отдельных банках.
 Их итог, SHA кандидата и результат CI публикуются в PR перед merge.
