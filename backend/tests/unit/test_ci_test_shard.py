@@ -95,7 +95,7 @@ def test_aggregate_verifies_complete_manifests(tmp_path, mutation):
 
 @pytest.mark.parametrize("exit_code", [0, 1])
 def test_runner_reports_progress_and_preserves_result(tmp_path, monkeypatch, capsys, exit_code):
-    """A failed execution remains failed, with its manifest and visible test progress."""
+    """Ошибка выполнения сохраняется в manifest и exit code; прогресс тестов виден."""
     from subprocess import CompletedProcess
 
     calls = []

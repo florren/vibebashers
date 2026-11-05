@@ -12,7 +12,7 @@ from fastapi import HTTPException, Request
 from psycopg.rows import tuple_row
 
 from app.agent.customer_messages import customer_outcome
-from app.agent.graph import resume_after_followup
+from app.agent.graph import wake_due_followups
 from app.agent.nodes import Deps
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import link_signal_to_incident, notify_client
@@ -454,13 +454,34 @@ async def complete_manual_followups(app: Any, conn: Any, rid: int) -> None:
     ).fetchall()
     if not rows:
         return
-    await conn.execute("update followups set status='fired' where id=any(%s)", ([r[0] for r in rows],))
+    # Освобождаем row locks до shared AR owner; consume делает только native timer.
     await conn.commit()
+    async with conn.cursor(row_factory=tuple_row) as cur:
+        await cur.execute(
+            "select started_sim from sim_runs where id=%s and settings_snapshot->>'created_by'='journey_demo'", (rid,)
+        )
+        journey = await cur.fetchone()
     for fid, at in rows:
-        await resume_after_followup(
+        if journey:
+            from app.demo.journey import clock
+
+            # Плановое закрытие может предшествовать уже сохранённому ответу клиента.
+            at = await clock(conn, rid, max(journey[0], at) if at is not None else journey[0])
+        elif at is None:
+            at = app.state.sim.clock.sim_time
+        # Готовый инцидент уже разрешает продолжение; исходный due больше не нужен.
+        # Crash/busy до durable entry оставляет scheduled, включая остальные followups.
+        await conn.execute(
+            "update followups set wake_sim=%s where id=%s and sim_run_id=%s "
+            "and status='scheduled' and reason in ('awaiting_team','verify_fix')",
+            (at, fid, rid),
+        )
+        await conn.commit()
+        await wake_due_followups(
             conn,
-            followup_id=fid,
-            sim_time=at or app.state.sim.clock.sim_time,
+            followup_id=int(fid),
+            run_id=rid,
+            sim_time=at,
             chain=app.state.agent.chain,
             profile=app.state.agent.profile,
         )

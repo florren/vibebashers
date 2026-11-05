@@ -42,6 +42,13 @@
   следующего дня не выглядит более ранним из-за одного только `HH:mm`.
   Порядок сообщений и отображение реального времени сохранены.
 
+Ручные followups закрытого инцидента переходят в continuation через тот же
+нативный AgentRun owner, что и обычные timers. Они не помечаются массово
+`fired` до первого durable entry: сбой до него и занятый владелец сохраняют
+`scheduled`, а commit первого обращения не списывает остальные ожидания.
+Для Journey продолжение использует собственные факты времени; planned
+`closed_sim` команды не отбрасывает часы назад относительно сообщения клиента.
+
 API/DDL, формулы, ставки, финансовые лимиты и полномочия HITL не меняются.
 Существующая история не переписывается. Legacy explicit scenario API и
 публичный персональный чат сохраняются.
@@ -86,6 +93,16 @@ Mock LLM и нативными Simulator/AgentService: Start до открыти
   RNG в памяти/БД и все прежние assertions старого owner/hazard/risk.
   Старый тест: 2 failed; исправленный: 2 passed; прежнее отключение Team:
   2 failed, поскольку настоящий tick команды больше не вызывается.
+
+- Crash boundary: старый helper оставляет `fired` до durable entry (RED);
+  исправление сохраняет `scheduled` и после retry завершает исходный граф.
+- Native verify checkpoint: прерывание после первого durable entry,
+  восстановление штатным `recover_agent_run`; другой followup не списан.
+- Chronology RED: final reply 07:00 при own client fact 09:00; GREEN:
+  ответ 09:00. Состояние и settings глобального банка не изменены.
+- Финальный scope: 19 native PostgreSQL tests PASS; отдельно 1 legacy
+  NULL-closed-time case PASS с прежним global-clock fallback. Production
+  hashes между этими прогонами одинаковы; 53 соседних PG cases также PASS.
 
 PostgreSQL composition и полный `make test` выполняются на отдельных банках.
 Их итог, SHA кандидата и результат CI публикуются в PR перед merge.

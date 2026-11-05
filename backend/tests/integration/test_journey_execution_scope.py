@@ -582,3 +582,303 @@ async def test_ordinary_untracked_parent_is_not_enrolled_in_journey_reply_queue(
             await svc.stop()
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+async def closed_journey_case(request, seeded, key):
+    """Штатный ожидающий граф; сохранённое закрытие команды задаёт границу проверки."""
+    import datetime as dt
+
+    sid, state = await native_case(request, seeded, key, "mass")
+    assert state["outcome"] == "deferred"
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        fid, arid, rid, iid, at = await (
+            await conn.execute(
+                "select f.id,f.agent_run_id,f.sim_run_id,f.incident_id,s.received_sim from followups f "
+                "join signals s on s.id=f.signal_id where f.signal_id=%s and f.reason='awaiting_team' "
+                "and f.status='scheduled' order by f.id limit 1",
+                (sid,),
+            )
+        ).fetchone()
+        closed = at + dt.timedelta(hours=1)
+        await conn.execute("update incidents set status='closed',closed_sim=%s where id=%s", (closed, iid))
+    return sid, fid, arid, rid, iid, closed
+
+
+async def test_journey_manual_followup_crash_before_entry_retries_only_its_case(seeded, monkeypatch):
+    from app.agent import graph
+
+    class ProcessCrash(BaseException):
+        pass
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        sid, fid, arid, rid, _iid, at = await closed_journey_case(request, seeded, "manual-claim-crash")
+        _other_sid, foreign_fid, _other_arid, foreign_rid, _other_iid, _ = await closed_journey_case(
+            request, seeded, "manual-claim-foreign"
+        )
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            client_fid = (
+                await (
+                    await conn.execute(
+                        "insert into followups(sim_run_id,agent_run_id,signal_id,incident_id,wake_sim,reason,payload) "
+                        "select sim_run_id,agent_run_id,signal_id,incident_id,wake_sim,'awaiting_client',payload "
+                        "from followups where id=%s returning id",
+                        (fid,),
+                    )
+                ).fetchone()
+            )[0]
+            await conn.commit()
+            before = await bank_snapshot(conn)
+            foreign_before = await (
+                await conn.execute(
+                    "select to_jsonb(f) from followups f where id=any(%s) order by id", ([client_fid, foreign_fid],)
+                )
+            ).fetchall()
+            await conn.commit()
+            original = graph._resume_after_followup_owned
+
+            async def crash(*args, **kwargs):
+                raise ProcessCrash()
+
+            monkeypatch.setattr(graph, "_resume_after_followup_owned", crash)
+            with pytest.raises(ProcessCrash):
+                await execution.complete_manual_followups(app, conn, rid)
+            await conn.rollback()
+            assert (await (await conn.execute("select status from followups where id=%s", (fid,))).fetchone())[
+                0
+            ] == "scheduled"
+            assert (await (await conn.execute("select outcome from agent_runs where id=%s", (arid,))).fetchone())[
+                0
+            ] == "deferred"
+            monkeypatch.setattr(graph, "_resume_after_followup_owned", original)
+            await conn.commit()
+            await execution.complete_manual_followups(app, conn, rid)
+            assert (await (await conn.execute("select outcome from agent_runs where id=%s", (arid,))).fetchone())[
+                0
+            ] == "completed"
+            assert (await (await conn.execute("select status from followups where id=%s", (fid,))).fetchone())[
+                0
+            ] == "fired"
+            notice = await (
+                await conn.execute(
+                    "select status,sent_sim from notifications where signal_id=%s and template_code='resolved'", (sid,)
+                )
+            ).fetchone()
+            assert notice == ("sent", at)
+            assert await bank_snapshot(conn) == before
+            assert (
+                await (
+                    await conn.execute(
+                        "select to_jsonb(f) from followups f where id=any(%s) order by id", ([client_fid, foreign_fid],)
+                    )
+                ).fetchall()
+                == foreign_before
+            )
+            assert rid != foreign_rid != sim.run_id
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
+async def test_journey_manual_followup_busy_owner_keeps_scheduled(seeded, monkeypatch):
+    import asyncio
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        _sid, fid, arid, rid, _iid, _at = await closed_journey_case(request, seeded, "manual-claim-busy")
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        async with (
+            await psycopg.AsyncConnection.connect(dsn(seeded)) as owner,
+            await psycopg.AsyncConnection.connect(dsn(seeded)) as conn,
+        ):
+            await owner.execute("select pg_advisory_lock(hashtextextended('agent-resume:' || %s::text,0))", (arid,))
+            await asyncio.wait_for(execution.complete_manual_followups(app, conn, rid), 10)
+            assert (await (await conn.execute("select status from followups where id=%s", (fid,))).fetchone())[
+                0
+            ] == "scheduled"
+            await owner.execute("select pg_advisory_unlock(hashtextextended('agent-resume:' || %s::text,0))", (arid,))
+            await conn.commit()
+            await execution.complete_manual_followups(app, conn, rid)
+            assert (await (await conn.execute("select outcome from agent_runs where id=%s", (arid,))).fetchone())[
+                0
+            ] == "completed"
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
+async def test_journey_manual_first_checkpoint_does_not_consume_other_followup(seeded, monkeypatch):
+    from app.agent import graph
+
+    class ProcessCrash(BaseException):
+        pass
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        _sid, fid, arid, rid, _iid, at = await closed_journey_case(request, seeded, "manual-claim-batch")
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            second = (
+                await (
+                    await conn.execute(
+                        "insert into followups(sim_run_id,agent_run_id,signal_id,incident_id,wake_sim,reason,payload) select sim_run_id,agent_run_id,signal_id,incident_id,wake_sim,'verify_fix',payload from followups where id=%s returning id",
+                        (fid,),
+                    )
+                ).fetchone()
+            )[0]
+            await conn.commit()
+            original = graph._execute_node
+
+            async def after_checkpoint(node, state, deps, owner):
+                if node == "verify" and deps.ctx.agent_run_id == arid:
+                    raise ProcessCrash()
+                return await original(node, state, deps, owner)
+
+            monkeypatch.setattr(graph, "_execute_node", after_checkpoint)
+            with pytest.raises(ProcessCrash):
+                await execution.complete_manual_followups(app, conn, rid)
+            await conn.rollback()
+            rows = await (
+                await conn.execute("select id,status from followups where id=any(%s) order by id", ([fid, second],))
+            ).fetchall()
+            assert rows == [(fid, "fired"), (second, "scheduled")]
+            assert (await (await conn.execute("select outcome from agent_runs where id=%s", (arid,))).fetchone())[
+                0
+            ] is None
+            from app.agent.checkpoints import TransactionalSaver
+
+            thread = (await (await conn.execute("select thread_id from agent_runs where id=%s", (arid,))).fetchone())[0]
+            checkpoint = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": thread}})
+            assert checkpoint is not None and checkpoint.checkpoint["channel_values"]["current_node"] == "verify"
+            monkeypatch.setattr(graph, "_execute_node", original)
+            await conn.commit()
+            recovered = await graph.recover_agent_run(
+                conn, agent_run_id=arid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=at
+            )
+            assert recovered is not None and recovered["outcome"] == "completed"
+            assert (await (await conn.execute("select status from followups where id=%s", (second,))).fetchone())[
+                0
+            ] == "scheduled"
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
+async def test_journey_manual_null_closed_time_uses_own_clock(seeded, monkeypatch):
+    import datetime as dt
+
+    from app.demo.journey import clock
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        sid, _fid, _arid, rid, iid, _at = await closed_journey_case(request, seeded, "manual-claim-null-time")
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        sim.clock.sim_time += dt.timedelta(days=3)
+        await sim.persist()
+        await sim.conn.commit()
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            await conn.execute("update incidents set closed_sim=null where id=%s", (iid,))
+            floor = (await (await conn.execute("select started_sim from sim_runs where id=%s", (rid,))).fetchone())[0]
+            expected = await clock(conn, rid, floor)
+            await conn.commit()
+            before = await bank_snapshot(conn)
+            await conn.commit()
+            await execution.complete_manual_followups(app, conn, rid)
+            assert (
+                await (
+                    await conn.execute(
+                        "select sent_sim from notifications where signal_id=%s and template_code='resolved'", (sid,)
+                    )
+                ).fetchone()
+            )[0] == expected
+            assert expected < sim.clock.sim_time
+            assert await bank_snapshot(conn) == before
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
+async def test_journey_manual_close_continuation_never_predates_later_own_client_fact(seeded, monkeypatch):
+    import datetime as dt
+
+    from app.ingest.normalizer import create_signal
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        sid, _fid, _arid, rid, _iid, closed = await closed_journey_case(request, seeded, "manual-late-client-fact")
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        later = closed + dt.timedelta(hours=2)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            child = message("manual-late-client-child", parent=sid)
+            await create_signal(conn, child, source_code="journey", run_id=rid, sim_time=later, emit_event=False)
+            await conn.commit()
+            before = await bank_snapshot(conn)
+            await conn.commit()
+            await execution.complete_manual_followups(app, conn, rid)
+            notice = await (
+                await conn.execute(
+                    "select status,sent_sim from notifications where signal_id=%s and template_code='resolved'", (sid,)
+                )
+            ).fetchone()
+            assert notice == ("sent", later)
+            assert await bank_snapshot(conn) == before
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
+
+
+async def test_legacy_manual_null_closed_time_keeps_global_clock(seeded, monkeypatch):
+    import datetime as dt
+
+    from tests.helpers import run_agent_on
+
+    app, sim, _request = await setup(monkeypatch, seeded)
+    try:
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            cid = (
+                await (
+                    await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+                ).fetchone()
+            )[0]
+            sid, state = await run_agent_on(
+                conn, "Не открывается вклад в приложении, ошибка 503.", client_id=cid, run_id=sim.run_id
+            )
+            assert state["outcome"] == "deferred"
+            iid = (
+                await (
+                    await conn.execute(
+                        "select incident_id from followups where signal_id=%s and reason='awaiting_team' and status='scheduled' order by id limit 1",
+                        (sid,),
+                    )
+                ).fetchone()
+            )[0]
+            await conn.execute("update incidents set status='closed',closed_sim=null where id=%s", (iid,))
+            marker = (
+                await (
+                    await conn.execute(
+                        "select settings_snapshot->>'created_by' from sim_runs where id=%s", (sim.run_id,)
+                    )
+                ).fetchone()
+            )[0]
+            assert marker != "journey_demo"
+        sim.clock.sim_time += dt.timedelta(days=3)
+        await sim.persist()
+        await sim.conn.commit()
+        app.state.agent = SimpleNamespace(chain=mock_chain(), profile=MOCK_PROFILE)
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            before = await bank_snapshot(conn)
+            await conn.commit()
+            await execution.complete_manual_followups(app, conn, sim.run_id)
+            assert (
+                await (
+                    await conn.execute(
+                        "select status,sent_sim from notifications where signal_id=%s and template_code='resolved'",
+                        (sid,),
+                    )
+                ).fetchone()
+            ) == ("sent", sim.clock.sim_time)
+            assert await bank_snapshot(conn) == before
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()
