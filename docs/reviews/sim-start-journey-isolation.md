@@ -67,7 +67,7 @@ Mock LLM и нативными Simulator/AgentService: Start до открыти
   motion checks и отсутствие OpenAPI drift).
 - Backend unit — 2355 passed, 19 skipped; Mock, без рабочих ключей/БД.
 - `scripts/contracts_check.py` — PASS: 48 JSON-схем, 167 API paths.
-- `scripts/check_owners.py --base main --allow-cross` — PASS, L2/L3/L4.
+- `scripts/check_owners.py --base main --allow-cross` — PASS, L1/L2/L3/L4.
 - `git diff --check` — PASS; generated contracts не изменены.
 - PostgreSQL composition — 67 passed: нативный Start/COMMIT, управление,
   Journey scope/restart, HITL и followups.
@@ -79,6 +79,13 @@ Mock LLM и нативными Simulator/AgentService: Start до открыти
   старый producer: 1 failed / 2 passed; исправление: 3 passed. Выбор собственных
   часов централизован в `compute_incident` при отсутствии явного `sim_time`,
   поэтому общий legacy refresh не возвращает время чужого World.
+- Behavior owner regression: исправлены две устаревшие проверки, требовавшие
+  неизменного глобального RNG после tick с включённой нативной командой.
+  Admission и Pause/Resume по-прежнему не расходуют RNG; spy-forward вызывает
+  настоящий TeamEmulator правильного run, проверяет точное post-Team состояние
+  RNG в памяти/БД и все прежние assertions старого owner/hazard/risk.
+  Старый тест: 2 failed; исправленный: 2 passed; прежнее отключение Team:
+  2 failed, поскольку настоящий tick команды больше не вызывается.
 
 PostgreSQL composition и полный `make test` выполняются на отдельных банках.
 Их итог, SHA кандидата и результат CI публикуются в PR перед merge.
