@@ -249,31 +249,28 @@ async def backfill_ledger(conn: psycopg.AsyncConnection[Any], run_id: int | None
         args,
     )
     fees = cur.rowcount
-    # стартовый остаток одной credit-проводкой: сохраняет баланс из сида (balance_seed = credit − debit − fee) и делает инвариант истинным
+    # Входящий остаток = сохранённый баланс − уже отражённое знаковое движение.
+    # Это сохраняет задолженность и учитывает существующие refund/reversal без новых возвратов.
     cur = await conn.execute(
         """
         insert into ledger_entries (run_id, account_id, operation_id, kind, amount, counterpart, posted_at, posted_sim, correlation_id, created_by)
-        select (select coalesce(max(id), 1) from sim_runs), a.id, null, 'credit',
-               greatest(a.balance, 0) + coalesce(s.spent, 0), 'начальный остаток', now(),
-               coalesce(s.first_sim, (select sim_time from sim_state where id = 1), now()) - interval '1 day', gen_random_uuid(), 'sim'
+        select (select coalesce(max(id), 1) from sim_runs), a.id, null,
+               case when opening.amount >= 0 then 'credit' else 'debit' end, abs(opening.amount),
+               case when opening.amount >= 0 then 'начальный остаток' else 'задолженность (начальный остаток)' end,
+               now(), coalesce(s.first_sim, (select sim_time from sim_state where id = 1), now()) - interval '1 day',
+               gen_random_uuid(), 'sim'
         from accounts a
-        left join lateral (select sum(amount) filter (where kind in ('debit','fee')) as spent, min(posted_sim) as first_sim
-                           from ledger_entries l where l.account_id = a.id) s on true
+        left join lateral (
+            select sum(case when kind in ('credit','refund') then amount else -amount end) as net_amount,
+                   min(posted_sim) as first_sim, count(*) as entries
+            from ledger_entries l where l.account_id = a.id
+        ) s on true
+        cross join lateral (select a.balance - coalesce(s.net_amount, 0) as amount) opening
         where not exists (select 1 from ledger_entries l where l.account_id = a.id and l.operation_id is null)
-          and (a.balance > 0 or coalesce(s.spent, 0) > 0)
+          and (a.balance <> 0 or s.entries > 0)
         """
     )
     credits = cur.rowcount
-    # отрицательный остаток из сида (кредитная карта/овердрафт) — одной debit-проводкой «задолженность»
-    cur = await conn.execute(
-        """
-        insert into ledger_entries (run_id, account_id, operation_id, kind, amount, counterpart, posted_at, posted_sim, correlation_id, created_by)
-        select (select coalesce(max(id), 1) from sim_runs), a.id, null, 'debit', -a.balance, 'задолженность (начальный остаток)', now(),
-               coalesce((select sim_time from sim_state where id = 1), now()) - interval '1 day', gen_random_uuid(), 'sim'
-        from accounts a where a.balance < 0 and not exists (select 1 from ledger_entries l where l.account_id = a.id and l.operation_id is null)
-        """
-    )
-    credits += cur.rowcount
     if debits or fees or credits:
         await recompute_balances(conn)
     return {"debits": debits, "fees": fees, "credits": credits}

@@ -38,6 +38,69 @@ def app_for(monkeypatch, seeded):
     return app, Request({"type": "http", "app": app, "headers": []})
 
 
+async def _drain_native_inflight(svc, *, timeout=60):
+    async with asyncio.timeout(timeout):
+        while svc._inflight:
+            await asyncio.gather(*list(svc._inflight))
+            # gather(done tasks) может завершиться синхронно: discard callbacks
+            # должны получить ход перед следующей проверкой набора.
+            await asyncio.sleep(0)
+
+
+def test_listener_barrier_drains_completed_tasks_without_starving_callbacks():
+    import subprocess
+    import sys
+
+    script = """
+import asyncio
+from types import SimpleNamespace
+from tests.integration.test_full_simulation_controls import _drain_native_inflight
+
+async def main():
+    async def finished():
+        return 1
+    task = asyncio.create_task(finished())
+    await task
+    svc = SimpleNamespace(_inflight={task})
+    task.add_done_callback(svc._inflight.discard)
+    await _drain_native_inflight(svc, timeout=1)
+    assert not svc._inflight
+
+asyncio.run(main())
+"""
+    # Внешний deadline обнаруживает starvation, который не даст сработать asyncio.timeout.
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+
+
+async def test_listener_barrier_preserves_native_task_failure():
+    from types import SimpleNamespace
+
+    async def failed():
+        raise ValueError("native task failed")
+
+    task = asyncio.create_task(failed())
+    svc = SimpleNamespace(_inflight={task})
+    task.add_done_callback(svc._inflight.discard)
+    with pytest.raises(ValueError, match="native task failed"):
+        await _drain_native_inflight(svc)
+    await asyncio.sleep(0)
+    assert not svc._inflight
+
+
+async def test_listener_barrier_bounds_unfinished_native_task():
+    from types import SimpleNamespace
+
+    task = asyncio.create_task(asyncio.Event().wait())
+    svc = SimpleNamespace(_inflight={task})
+    task.add_done_callback(svc._inflight.discard)
+    with pytest.raises(TimeoutError):
+        await _drain_native_inflight(svc, timeout=0.01)
+    await asyncio.sleep(0)
+    assert task.cancelled()
+    assert not svc._inflight
+
+
 async def native_listener_barrier(app, seeded):
     """Настоящий LISTEN: probe после commit подтверждает доставку предшествующих событий."""
     import json
@@ -73,8 +136,7 @@ async def native_listener_barrier(app, seeded):
                     await asyncio.wait_for(box["ready"].wait(), 0.05)
                 except TimeoutError:
                     continue
-    while svc._inflight:
-        await asyncio.gather(*list(svc._inflight))
+    await _drain_native_inflight(svc)
 
 
 async def finish_shared(app, request, seeded):
