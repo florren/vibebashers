@@ -1,4 +1,4 @@
-import { api, post, type Schemas, type SignalDetail, type AgentRunDetail } from '@/shared/api/client'
+import { api, type Schemas, type SignalDetail, type AgentRunDetail } from '@/shared/api/client'
 import i18n from '@/shared/i18n'
 import type { paths } from '@/shared/api/types'
 
@@ -6,7 +6,7 @@ type IngestResponse = paths['/api/ingest/messages']['post']['responses'][202]['c
 type UnifiedMessage = Schemas['unified_message.schema']
 
 export async function sendJourneyMessage(body: UnifiedMessage) {
-  const response = await post<IngestResponse>('/api/ingest/messages', body)
+  const response = await api<IngestResponse>('/api/ingest/messages', { method: 'POST', headers: { 'X-Source-Code': 'journey' }, body: JSON.stringify(body) })
   const item = response.items?.[0]
   if (!item?.signal_id || item.status === 'rejected') throw new Error(item?.error ?? i18n.t('journeyLive.sendError'))
   return item.signal_id

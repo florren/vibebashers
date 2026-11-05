@@ -778,6 +778,7 @@ async def wake_due_followups(
     incident_id: int | None = None,
     signal_id: int | None = None,
     run_id: int | None = None,
+    followup_id: int | None = None,
 ) -> int:
     """Атомарно помечает просроченные followups как fired и возобновляет соответствующие прогоны."""
     rows = await (
@@ -791,8 +792,9 @@ async def wake_due_followups(
             "and (%s::bigint is null or (f.incident_id=%s and f.reason is distinct from 'awaiting_client')) "
             "and (%s::bigint is null or (f.signal_id=%s and f.reason='awaiting_client')) "
             "and (%s::bigint is null or s.run_id=%s) "
+            "and (%s::bigint is null or f.id=%s) "
             f"and not {LEGACY_MOCK_SQL} order by f.id",
-            (sim_time, incident_id, incident_id, signal_id, signal_id, run_id, run_id),
+            (sim_time, incident_id, incident_id, signal_id, signal_id, run_id, run_id, followup_id, followup_id),
         )
     ).fetchall()
     resumed = 0

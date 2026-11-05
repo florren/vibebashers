@@ -286,6 +286,17 @@ async def compute_incident(
         inc = await cur.fetchone()
     if not inc:
         return None
+    if sim_time is None:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute(
+                "select started_sim from sim_runs where id=%s and settings_snapshot->>'created_by'='journey_demo'",
+                (inc["run_id"],),
+            )
+            journey_run = await cur.fetchone()
+        if journey_run:
+            from app.demo.journey import clock
+
+            sim_time = await clock(conn, int(inc["run_id"]), journey_run["started_sim"])
     native = await _native_service_affected(conn, inc, sim_time)
     cfg = await load_settings(conn)
     s, rates = cfg["settings"], cfg["rates"]

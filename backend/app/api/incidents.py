@@ -197,6 +197,21 @@ async def get_incidents_id_communications(request: Request, id: int) -> Any:  # 
     return {"notifications": notifications, "client_reactions": reactions}
 
 
+async def _journey_incident_time(conn: Any, incident_id: int) -> dt.datetime | None:
+    """Ручной Journey case не заимствует SimClock фонового банка."""
+    own = await fetch_one(
+        conn,
+        "select r.id,r.started_sim from incidents i join sim_runs r on r.id=i.run_id "
+        "where i.id=%s and r.settings_snapshot->>'created_by'='journey_demo'",
+        (incident_id,),
+    )
+    if own is None:
+        return None
+    from app.demo.journey import clock
+
+    return await clock(conn, int(own["id"]), own["started_sim"])
+
+
 @router.get("/api/incidents/{id}/economics", summary="Развёрнутый расчёт dCLTV по инциденту (все множители)")
 async def get_incidents_id_economics(request: Request, id: int) -> Any:  # noqa: A002
     async with db() as conn:
@@ -268,8 +283,10 @@ async def post_incidents_id_actions(request: Request, id: int, body: ActionBody)
         )
         if not inc:
             raise Problem(404, "Инцидент не найден")
-        now = await fetch_one(conn, "select sim_time from sim_state where id = 1")
-        sim_time = (now or {}).get("sim_time") or dt.datetime.now(dt.UTC)
+        sim_time = await _journey_incident_time(conn, id)
+        if sim_time is None:
+            now = await fetch_one(conn, "select sim_time from sim_state where id = 1")
+            sim_time = (now or {}).get("sim_time") or dt.datetime.now(dt.UTC)
         reason = body.reason or body.text
         a = body.action
         if a == "take":

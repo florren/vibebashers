@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -69,6 +70,161 @@ def verify_manifests(paths: list[Path], count: int) -> None:
         raise ValueError("разбиение потеряло или продублировало тесты")
 
 
+def pytest_addoption(parser: Any) -> None:
+    parser.addini("ci_phase_dump_seconds", "Период диагностики текущей CI-фазы", default="60")
+
+
+def pytest_configure(config: Any) -> None:
+    """Загружается только явным -p в дочернем pytest; aggregate остаётся stdlib-only."""
+    import asyncio
+    import faulthandler
+    import math
+    import threading
+    import traceback
+    import weakref
+    from time import monotonic
+
+    import pytest
+
+    interval = float(config.getini("ci_phase_dump_seconds"))
+    if not math.isfinite(interval) or interval <= 0:
+        raise pytest.UsageError("ci_phase_dump_seconds должен быть конечным положительным числом")
+    path = os.environ.get("CX_CI_PHASE_LOG")
+    if not path:
+        return
+    phase_stream = Path(path).open("a")
+    stack_stream = Path(path).with_suffix(".stacks.log").open("a")
+    encode = json.dumps
+    timeout = float(config.getini("faulthandler_timeout"))
+    from _pytest.faulthandler import fault_handler_stderr_fd_key
+
+    class Diagnostics:
+        def __init__(self) -> None:
+            self.lock = threading.Lock()
+            self.stop = threading.Event()
+            self.current: tuple[str, str, float, list[Any]] | None = None
+            self.thread: threading.Thread | None = None
+            self.protocol_started = 0.0
+
+        def emit(self, **row: Any) -> None:
+            text = encode(row, ensure_ascii=False)
+            with self.lock:
+                phase_stream.write(text + "\n")
+                phase_stream.flush()
+
+        def begin(self, item: Any, phase: str) -> None:
+            if phase == "setup":
+                self.protocol_started = monotonic()
+            elif phase == "teardown" and timeout > 0:
+                # pytest отменяет watchdog после failed call; сохраняем общий deadline.
+                faulthandler.dump_traceback_later(
+                    max(0.001, timeout - (monotonic() - self.protocol_started)),
+                    file=config.stash[fault_handler_stderr_fd_key],
+                    exit=bool(config.getini("faulthandler_exit_on_timeout")),
+                )
+            loops = []
+            for value in item.funcargs.values():
+                if isinstance(value, asyncio.Runner):
+                    try:
+                        loops.append(weakref.ref(value.get_loop()))
+                    except RuntimeError:
+                        pass
+            with self.lock:
+                self.current = (item.nodeid, phase, monotonic(), loops)
+            self.emit(nodeid=item.nodeid, phase=phase, state="started")
+
+        def end(self, item: Any, phase: str) -> None:
+            with self.lock:
+                current, self.current = self.current, None
+            self.emit(
+                nodeid=item.nodeid,
+                phase=phase,
+                state="finished",
+                seconds=monotonic() - current[2] if current else None,
+            )
+
+        def tasks(self, reference: Any, nodeid: str, phase: str) -> None:
+            loop = reference()
+            if loop is None:
+                return
+            with self.lock:
+                stack_stream.write(f"\n[ci-tasks] {nodeid} phase={phase}\n")
+                for task in asyncio.all_tasks(loop):
+                    stack_stream.write(f"task={task.get_name()} done={task.done()} cancelling={task.cancelling()}\n")
+                    for frame in task.get_stack(limit=12):
+                        traceback.print_stack(frame, limit=12, file=stack_stream)
+                stack_stream.flush()
+
+        def watch(self) -> None:
+            previous = None
+            next_dump = 0.0
+            while not self.stop.wait(min(1.0, interval)):
+                with self.lock:
+                    current = self.current
+                if current is None:
+                    continue
+                nodeid, phase, started, loops = current
+                if (nodeid, phase, started) != previous:
+                    previous, next_dump = (nodeid, phase, started), started + interval
+                if monotonic() < next_dump:
+                    continue
+                next_dump += interval
+                self.emit(
+                    nodeid=nodeid,
+                    phase=phase,
+                    state="waiting",
+                    seconds=monotonic() - started,
+                )
+                with self.lock:
+                    faulthandler.dump_traceback(file=stack_stream, all_threads=True)
+                    stack_stream.flush()
+                for reference in loops:
+                    loop = reference()
+                    if loop is not None and loop.is_running():
+                        try:
+                            loop.call_soon_threadsafe(self.tasks, reference, nodeid, phase)
+                        except RuntimeError:
+                            pass
+                    del loop
+
+        def pytest_sessionstart(self, session: Any) -> None:
+            self.thread = threading.Thread(target=self.watch, daemon=True, name="ci-phase-observer")
+            self.thread.start()
+
+        def pytest_sessionfinish(self, session: Any, exitstatus: int) -> None:
+            self.stop.set()
+            if self.thread:
+                self.thread.join(timeout=1)
+            phase_stream.close()
+            stack_stream.close()
+
+        @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+        def pytest_runtest_setup(self, item: Any) -> Any:
+            self.begin(item, "setup")
+            try:
+                yield
+            finally:
+                self.end(item, "setup")
+
+        @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+        def pytest_runtest_call(self, item: Any) -> Any:
+            self.begin(item, "call")
+            try:
+                yield
+            finally:
+                self.end(item, "call")
+
+        @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+        def pytest_runtest_teardown(self, item: Any, nextitem: Any) -> Any:
+            self.begin(item, "teardown")
+            try:
+                yield
+            finally:
+                self.end(item, "teardown")
+
+    config.pluginmanager.register(Diagnostics(), "ci-phase-diagnostics")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=int)
@@ -82,6 +238,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.index is None:
             parser.error("нужен --index либо --verify")
+        sys.stdout.write(f"[shard {args.index}/{args.count}] Collecting complete pytest suite\n")
+        sys.stdout.flush()
         collected = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q"],
             cwd=ROOT / "backend",
@@ -108,15 +266,44 @@ def main(argv: list[str] | None = None) -> int:
         manifest_path = args.manifest_dir / f"manifest-{args.index}.json"
         manifest_path.write_text(json.dumps(manifest, indent=2))
         junit = (args.manifest_dir / f"shard-{args.index}.xml").resolve()
+        expected_count = sum(node.split("::", 1)[0] in selected for node in manifest["nodeids"])
+        sys.stdout.write(
+            f"[shard {args.index}/{args.count}] Collected {len(manifest['nodeids'])} tests in {len(modules)} modules; "
+            f"running {expected_count} tests in {len(selected)} modules\n"
+        )
+        sys.stdout.flush()
+        child_env = dict(os.environ)
+        child_env["PYTHONPATH"] = str(ROOT) + os.pathsep + child_env.get("PYTHONPATH", "")
+        child_env["CX_CI_PHASE_LOG"] = str((args.manifest_dir / f"phases-{args.index}.jsonl").resolve())
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", f"--junitxml={junit}", *selected],
+            [
+                sys.executable,
+                "-u",
+                "-m",
+                "pytest",
+                "-vv",
+                "-p",
+                "scripts.ci_test_shard",
+                "-o",
+                "faulthandler_timeout=300",
+                "-o",
+                "faulthandler_exit_on_timeout=true",
+                f"--junitxml={junit}",
+                *selected,
+            ],
             cwd=ROOT / "backend",
             check=False,
+            env=child_env,
         )
         manifest["exit_code"] = result.returncode
         if junit.exists():
             manifest["executed_count"] = len(ET.parse(junit).findall(".//testcase"))
         manifest_path.write_text(json.dumps(manifest, indent=2))
+        sys.stdout.write(
+            f"[shard {args.index}/{args.count}] Finished: exit_code={result.returncode}, "
+            f"executed={manifest['executed_count']}/{expected_count}\n"
+        )
+        sys.stdout.flush()
         return result.returncode
     except (ValueError, KeyError, TypeError, OSError) as exc:
         parser.error(str(exc))

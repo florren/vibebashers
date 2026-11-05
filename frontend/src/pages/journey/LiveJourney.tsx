@@ -17,9 +17,11 @@ import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourney
 import { eventStep, relatedEvents, selectedAttempt, type StepSelection } from './stepSelection'
 import { elapsedSeconds, NODE_STAGE } from './timing'
 
+import type { JourneyOptions } from './DemoExecution'
+
 type Origin = 'jury' | 'feed' | 'sim' | 'any'
 
-export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref: string) => void; runId?: string }) {
+export function LiveJourney({ onSubject, runId: scopeRunId, execution }: { onSubject: (ref: string) => void; runId?: string; execution?: JourneyOptions }) {
   const { ref } = useParams()
   const { t, i18n } = useTranslation()
   const nav = useNavigate()
@@ -28,11 +30,14 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
   const messageLog = useRef<HTMLDivElement | null>(null)
   const followTail = useRef(true)
   const [origin, setOrigin] = useState<Origin>('jury')
+  const [manualRef, setManualRef] = useState<string>()
   const [text, setText] = useState('')
   const [clientId, setClientId] = useState('')
   const [clientSearch, setClientSearch] = useState('')
   const [channel, setChannel] = useState<'chat' | 'email' | 'social'>('chat')
   const [followup, setFollowup] = useState(false)
+  const executionKey = JSON.stringify(execution ?? {})
+  useEffect(() => { setFollowup(false) }, [executionKey])
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null)
   const [selection, setSelection] = useState<StepSelection | null>(null)
   const [eventNotice, setEventNotice] = useState(false)
@@ -45,9 +50,11 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
   const productName = useRefName('products')
   const teamName = useRefName('teams')
   const clients = useClients({ q: clientSearch || undefined }, scopeRunId === undefined)
+  // Локальный Journey run не является current: unpin сохраняет собственное обращение.
+  const followedRef = ref ?? (scopeRunId === undefined && origin === 'jury' ? manualRef : undefined)
   const result = useQuery({
-    queryKey: ['journey', ref, origin, scopeRunId],
-    queryFn: () => scopeRunId === undefined ? getJourney(ref, origin) : getJourney(ref, origin, false, scopeRunId),
+    queryKey: ['journey', followedRef, origin, scopeRunId],
+    queryFn: () => scopeRunId === undefined ? getJourney(followedRef, origin) : getJourney(followedRef, origin, false, scopeRunId),
     refetchInterval: 2000,
     retry: (count, e) => !(e instanceof ApiError && e.status === 404) && count < 1,
   })
@@ -165,7 +172,9 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
       setFollowup(true)
       setSelectedStage(null)
       setSelectedRunId(null)
-      nav(scopedJourneyHref(ROUTES.journeyObject(`SIG-${String(id).padStart(6, '0')}`), scopeRunId))
+      const reference = `SIG-${String(id).padStart(6, '0')}`
+      setManualRef(reference)
+      nav(scopedJourneyHref(ROUTES.journeyObject(reference), scopeRunId))
       void qc.invalidateQueries({ queryKey: ['journey'] })
       void qc.invalidateQueries({ queryKey: ['signals'] })
     },
@@ -177,7 +186,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!text.trim() || send.isPending) return
-    const signature = JSON.stringify([channel, text.trim(), clientId, followup ? signalId : null])
+    const signature = JSON.stringify([channel, text.trim(), clientId, followup ? signalId : null, execution])
     if (requestKey.current?.signature !== signature) requestKey.current = { signature, id: `journey-${crypto.randomUUID()}` }
     send.mutate({
       channel,
@@ -187,7 +196,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
       timestamp: new Date().toISOString(),
       geo: { source: 'none' },
       origin: 'jury',
-      meta: followup && signalId ? { parent_signal_id: signalId } : {},
+      meta: followup && signalId ? { parent_signal_id: signalId } : { journey_execution: execution ?? {} },
     })
   }
   const money = (value: number | null | undefined) =>
@@ -313,7 +322,7 @@ export function LiveJourney({ onSubject, runId: scopeRunId }: { onSubject: (ref:
                 <p className="whitespace-pre-wrap text-sm">{m.text}</p>
                 <p className="mt-2 text-[11px] text-muted">
                   {t('traceUi.realTime')}: {new Date(m.at).toLocaleTimeString(i18n.language)}
-                  {m.sim && ` · ${t('journeyLive.sim')}: ${new Date(m.sim).toLocaleTimeString(i18n.language)}`}
+                  {m.sim && ` · ${t('journeyLive.sim')}: ${new Date(m.sim).toLocaleString(i18n.language)}`}
                 </p>
               </article>
             ))}

@@ -469,6 +469,7 @@ async def test_owned_reset_day_processes_timers_and_preserves_working_deadline(s
 @pytest.mark.asyncio
 @pytest.mark.parametrize("identified", [True, False])
 async def test_live_graph_and_clock_keep_owned_state_hazard_and_rng_unchanged(seeded, monkeypatch, identified):
+    from app.sim.teams import TeamEmulator
     from tests.helpers import run_agent_on
 
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
@@ -502,17 +503,34 @@ async def test_live_graph_and_clock_keep_owned_state_hazard_and_rng_unchanged(se
         assert result["outcome"] in ("completed", "deferred", "awaiting_human", "fallback_mock"), result.get("errors")
         assert active.rng.dump_state() == rng
         await active._ensure_world()
-        # load читает native планы без RNG. В simulation execution планировщик
-        # команд работает отдельно; admission/clock не добавляют hazard draws.
+        # Admission/load/control не расходуют RNG и не выполняют policy старого owner.
         assert active.rng.dump_state() == rng
         clock_rng = active.rng.dump_state()
         await active.control("pause")
         await active.control("resume")
         await active.control("pause")
-        await active.control("step", step_minutes=15)
-        assert active.world.behavior_policy is None
         assert active.rng.dump_state() == clock_rng
         assert (await (await conn.execute("select rng_state from sim_state where id=1")).fetchone()) == (clock_rng,)
+        native_team_rng = []
+        original_tick = TeamEmulator.tick
+
+        async def observe_native_tick(emulator, at, world):
+            assert emulator is active.world.team_emulator
+            assert emulator.run_id == live
+            assert emulator.rng is active.rng
+            assert active.rng.dump_state() == clock_rng
+            await original_tick(emulator, at, world)
+            native_team_rng.append(active.rng.dump_state())
+
+        monkeypatch.setattr(TeamEmulator, "tick", observe_native_tick)
+        await active.control("step", step_minutes=15)
+        assert active.world.behavior_policy is None
+        # Разрешены только draws настоящего TeamEmulator текущего live run.
+        assert len(native_team_rng) == 1
+        assert active.rng.dump_state() == native_team_rng[0]
+        assert (await (await conn.execute("select rng_state from sim_state where id=1")).fetchone()) == (
+            native_team_rng[0],
+        )
         assert (
             await (
                 await conn.execute(

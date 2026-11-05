@@ -244,10 +244,12 @@ class AgentService:
         async with await self._conn() as conn:
             rows = await (
                 await conn.execute(
-                    "select p.id,reply.id,st.sim_time from followups f join signals p on p.id=f.signal_id "
-                    "join sim_state st on st.id=1 join lateral (select c.id from signals c where c.parent_signal_id=p.id "
+                    "select p.id,reply.id,reply.received_sim from followups f join signals p on p.id=f.signal_id "
+                    "join lateral (select c.id,c.received_sim from signals c where c.parent_signal_id=p.id "
                     "and c.run_id=p.run_id and c.status<>'error' order by c.id desc limit 1) reply on true "
-                    "where p.tracking_token is not null and f.reason='awaiting_client' and f.status='scheduled' "
+                    "where (p.tracking_token is not null or exists(select 1 from sim_runs r where r.id=p.run_id "
+                    "and r.settings_snapshot->>'created_by'='journey_demo')) "
+                    "and f.reason='awaiting_client' and f.status='scheduled' "
                     "and exists(select 1 from agent_steps a where a.run_id=f.agent_run_id and a.node='followup_monitor') "
                     "order by f.id limit 20"
                 )
@@ -479,8 +481,8 @@ class AgentService:
             sim_raw = body.get("sim_time")
             if sim_raw:
                 st = dt.datetime.fromisoformat(sim_raw)
-                self._background(self._expire_hitl(st), name="agent-expire-hitl")
-                self._background(self._wake_followups(st), name="agent-wake-followups")
+                self._background(self._expire_hitl(st, run_id=body.get("run_id")), name="agent-expire-hitl")
+                self._background(self._wake_followups(st, run_id=body.get("run_id")), name="agent-wake-followups")
         elif n.channel == "sim_events" and body.get("event_type") == "team.release":
             sim_raw = body.get("sim_time")
             payload = body.get("payload") or {}
@@ -579,20 +581,32 @@ class AgentService:
         return task
 
     @writer("agent")
-    async def _expire_hitl(self, sim_time: dt.datetime) -> None:
+    async def _expire_hitl(self, sim_time: dt.datetime, *, run_id: int | None = None) -> None:
         async with self.sem:
             try:
                 async with await self._conn() as conn:
-                    await expire_hitl(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
+                    if run_id is None:
+                        row = await (await conn.execute("select current_run_id from sim_state where id=1")).fetchone()
+                        if not row or row[0] is None:
+                            return
+                        run_id = int(row[0])
+                    await expire_hitl(conn, sim_time=sim_time, chain=self.chain, profile=self.profile, run_id=run_id)
             except Exception as exc:  # noqa: BLE001
                 log.warning("expire_hitl_failed", error=str(exc)[:200])
 
     @writer("agent")
-    async def _wake_followups(self, sim_time: dt.datetime) -> None:
+    async def _wake_followups(self, sim_time: dt.datetime, *, run_id: int | None = None) -> None:
         async with self.sem:
             try:
                 async with await self._conn() as conn:
-                    await wake_due_followups(conn, sim_time=sim_time, chain=self.chain, profile=self.profile)
+                    if run_id is None:
+                        row = await (await conn.execute("select current_run_id from sim_state where id=1")).fetchone()
+                        if not row or row[0] is None:
+                            return
+                        run_id = int(row[0])
+                    await wake_due_followups(
+                        conn, sim_time=sim_time, chain=self.chain, profile=self.profile, run_id=run_id
+                    )
             except Exception as exc:  # noqa: BLE001
                 log.warning("wake_followups_failed", error=str(exc)[:200])
 

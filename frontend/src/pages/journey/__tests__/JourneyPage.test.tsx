@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { vi, expect, it, beforeEach } from 'vitest'
-import '@/shared/i18n'
+import i18n from '@/shared/i18n'
 import { JourneyPage } from '..'
 import type { Journey, TraceEvent } from '@/shared/api/trace'
 import { getJourney } from '@/shared/api/trace'
@@ -131,6 +131,7 @@ it('sends through ingest and pins that exact signal before waiting for the agent
       origin: 'jury',
       channel: 'chat',
       external_id: expect.stringMatching(/^journey-/),
+      meta: { journey_execution: { scenario_id: 'deposit_promo_rate', team_outcome: 'on_time', emulate_humans: true, auto_advance: true } },
     }),
   )
   expect(vi.mocked(getJourney).mock.calls.some(([ref]) => ref === 'SIG-000002')).toBe(true)
@@ -347,4 +348,120 @@ it('does not load an unrelated signal agent run outside an explicit scoped trace
   await screen.findByRole('group', { name: 'Граф' })
   expect(loadRun).toHaveBeenCalledWith(10)
   expect(loadRun).not.toHaveBeenCalledWith(99)
+})
+
+it('submits the local selected profile with the typed message without creating a scenario first', async () => {
+  mount('/journey')
+  fireEvent.click(screen.getByText('Профиль ручного обращения Journey'))
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
+  fireEvent.click(screen.getByLabelText('Агент отвечает за сотрудников'))
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Проверьте синтетический вклад' } })
+  expect(sendJourneyMessage).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await screen.findByText('Дополнение к этому обращению')
+  expect(sendJourneyMessage).toHaveBeenCalledTimes(1)
+  expect(vi.mocked(sendJourneyMessage).mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+    text: 'Проверьте синтетический вклад', origin: 'jury', channel: 'chat',
+    meta: { journey_execution: { scenario_id: 'deposit_promo_rate', team_outcome: 'failed', emulate_humans: false, auto_advance: true } },
+  }))
+})
+it('uses a fresh idempotency key when the local execution profile changes after a failed request', async () => {
+  vi.mocked(sendJourneyMessage).mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(2)
+  mount('/journey')
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Проверьте синтетический вклад' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await screen.findByText(/network/)
+  fireEvent.click(screen.getByText('Профиль ручного обращения Journey'))
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'late' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await screen.findByText('Дополнение к этому обращению')
+  const calls = vi.mocked(sendJourneyMessage).mock.calls
+  expect(calls[0]?.[0].external_id).not.toBe(calls[1]?.[0].external_id)
+  expect(calls[0]?.[0].meta?.journey_execution).toEqual(expect.objectContaining({ team_outcome: 'on_time' }))
+  expect(calls[1]?.[0].meta?.journey_execution).toEqual(expect.objectContaining({ team_outcome: 'late' }))
+})
+
+it('keeps the locally sent subject when unpinned and preserves latest-current behavior for sim origin', async () => {
+  const own = structuredClone(journey)
+  own.subject.ref = 'SIG-000002'
+  own.stages[0]!.events[0]!.object_ref = { kind: 'signal', ref: 'SIG-000002' }
+  vi.mocked(getJourney).mockImplementation(async ref => structuredClone(ref === 'SIG-000002' ? own : journey))
+  const qc = mount('/journey')
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Локальное обращение' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await screen.findByText('Дополнение к этому обращению')
+  const autoFollow = screen.getByLabelText('Автопереход к новым обращениям')
+  expect(autoFollow).not.toBeChecked()
+  const beforeUnpin = vi.mocked(getJourney).mock.calls.length
+  fireEvent.click(autoFollow)
+  expect(autoFollow).toBeChecked()
+  await act(async () => { await qc.invalidateQueries({ queryKey: ['journey'] }) })
+  expect(vi.mocked(getJourney).mock.calls.length).toBeGreaterThan(beforeUnpin)
+  await waitFor(() => expect(screen.getAllByText('SIG-000002').length).toBeGreaterThan(0))
+  expect(vi.mocked(getJourney).mock.calls.slice(beforeUnpin).every(([ref]) => ref === 'SIG-000002')).toBe(true)
+  expect(sendJourneyMessage).toHaveBeenCalledTimes(1)
+  fireEvent.change(screen.getByLabelText('Следить за'), { target: { value: 'sim' } })
+  await waitFor(() => expect(getJourney).toHaveBeenCalledWith(undefined, 'sim'))
+  expect(sendJourneyMessage).toHaveBeenCalledTimes(1)
+})
+it('turns a profile change into a new root request while preserving the unsent text', async () => {
+  mount('/journey')
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Исходный вклад' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  const followup = await screen.findByRole('button', { name: 'Дополнение к этому обращению' })
+  expect(followup).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Несохранённый текст для другого профиля' } })
+  fireEvent.click(screen.getByText('Профиль ручного обращения Journey'))
+  fireEvent.change(screen.getByLabelText('Работа команды'), { target: { value: 'failed' } })
+  expect(screen.getByLabelText('Сообщение клиента')).toHaveValue('Несохранённый текст для другого профиля')
+  expect(screen.getByRole('button', { name: 'Новое обращение' })).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await waitFor(() => expect(sendJourneyMessage).toHaveBeenCalledTimes(2))
+  const sent = vi.mocked(sendJourneyMessage).mock.calls[1]![0]
+  expect(sent.text).toBe('Несохранённый текст для другого профиля')
+  expect(sent.meta).not.toHaveProperty('parent_signal_id')
+  expect(sent.meta?.journey_execution).toEqual(expect.objectContaining({ team_outcome: 'failed' }))
+})
+
+it('inherits the reloaded parent profile by sending only parent lineage for a followup', async () => {
+  // Сохранённое обращение могло иметь nondefault profile: UI default его не переопределяет.
+  mount('/journey/SIG-000001')
+  await screen.findByText(/Запрошено решение/)
+  expect(screen.getByLabelText('Работа команды')).toHaveValue('on_time')
+  fireEvent.click(screen.getByRole('button', { name: 'Дополнить выбранное обращение' }))
+  fireEvent.change(screen.getByLabelText('Сообщение клиента'), { target: { value: 'Дополнение к сохранённому обращению' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить на обработку' }))
+  await waitFor(() => expect(sendJourneyMessage).toHaveBeenCalledTimes(1))
+  const sent = vi.mocked(sendJourneyMessage).mock.calls[0]![0]
+  expect(sent.meta).toEqual({ parent_signal_id: 1 })
+  expect(sent.meta).not.toHaveProperty('journey_execution')
+  expect(sent.origin).toBe('jury')
+})
+
+it.each(['ru', 'en'])('shows the simulation date across days without changing conversation order in %s', async language => {
+  const previousLanguage = i18n.language
+  await i18n.changeLanguage(language)
+  try {
+    const data = structuredClone(journey)
+    const question = data.stages.find(stage => stage.stage === 'intake')!.events[0]!
+    question.brief_ru = 'Вопрос до многодневной обработки'
+    question.ts_real = '2026-11-05T10:00:00.123100Z'
+    question.ts_sim = '2026-11-09T09:48:00+03:00'
+    const reply: Journey['client_lane'][number] = { channel_code: 'chat', kind: 'final', text_ru: 'Ответ после многодневной обработки', delivered_at: '2026-11-05T10:00:00.123200Z', delivered_sim: '2026-11-13T09:33:00+03:00' }
+    data.client_lane = [reply]
+    vi.mocked(getJourney).mockResolvedValue(data)
+    mount()
+    const log = await screen.findByRole('log')
+    const replyText = await within(log).findByText(reply.text_ru)
+    const questionArticle = within(log).getByText(question.brief_ru).closest('article')!
+    const replyArticle = replyText.closest('article')!
+    expect(questionArticle).toHaveTextContent(new Date(question.ts_sim).toLocaleString(language))
+    expect(replyArticle).toHaveTextContent(new Date(reply.delivered_sim!).toLocaleString(language))
+    expect(questionArticle).toHaveTextContent(new Date(question.ts_real).toLocaleTimeString(language))
+    expect(replyArticle).toHaveTextContent(new Date(reply.delivered_at).toLocaleTimeString(language))
+    expect(log.querySelectorAll('article')[0]).toBe(questionArticle)
+    expect(log.querySelectorAll('article')[1]).toBe(replyArticle)
+  } finally {
+    await i18n.changeLanguage(previousLanguage)
+  }
 })

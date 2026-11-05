@@ -2848,5 +2848,10 @@
       "unknown": "Unknown product line"
     },
     "selectedId": "Selected ID: {{id}}"
+  },
+  "journeyProfile": {
+    "title": "Manual Journey case profile",
+    "hint": "Applies only to the message entered here. No scenario messages are injected; the bank clock and other cases stay independent. Start a new case without a follow-up to use another profile.",
+    "noScenario": "No scenario profile"
   }
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/shared/routes'
-import { DemoExecution } from './DemoExecution'
+import { DemoExecution, DEFAULT_JOURNEY_OPTIONS } from './DemoExecution'
 import { SignalPicker } from './SignalPicker'
 import { LiveJourney } from './LiveJourney'
 import { RecordedJourney } from './RecordedJourney'
@@ -23,6 +23,7 @@ export function JourneyPage() {
   const requestedMode = params.get('mode')
   const mode: JourneyMode = requestedMode === 'replay' || requestedMode === 'presenter' ? requestedMode : 'follow'
   const [subject, setSubject] = useState<string>()
+  const [execution, setExecution] = useState(DEFAULT_JOURNEY_OPTIONS)
   const reference = ref ?? subject
   return (
     <div className="journey-page flex h-full min-h-0 flex-col">
@@ -53,10 +54,10 @@ export function JourneyPage() {
           </label>
         )}
       </nav>
-      {runId === undefined && <DemoExecution onStarted={reference => nav(ROUTES.journeyObject(reference))} />}
+      {runId === undefined && <DemoExecution value={execution} onChange={setExecution} />}
       <SignalPicker runId={runId} onSelect={reference => nav(href(reference, mode))} />
       {mode === 'follow' ? (
-        <LiveJourney key={runId ?? 'legacy'} onSubject={setSubject} runId={runId} />
+        <LiveJourney key={runId ?? 'legacy'} onSubject={setSubject} runId={runId} execution={execution} />
       ) : reference ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <RecordedJourney key={`${mode}:${reference}:${runId ?? 'legacy'}`} reference={reference} mode={mode} runId={runId} />
