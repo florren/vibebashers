@@ -75,6 +75,10 @@ Mock LLM и нативными Simulator/AgentService: Start до открыти
   World проверен раньше и позже собственного кейса, повторный GET после
   ещё 7 дней World сохраняет точные суммы/собственное время; ручной ответ
   использует тот же case clock. Глобальное состояние и settings неизменны.
+- Default producer clock и принудительный `recompute(run_id=case)` Journey —
+  старый producer: 1 failed / 2 passed; исправление: 3 passed. Выбор собственных
+  часов централизован в `compute_incident` при отсутствии явного `sim_time`,
+  поэтому общий legacy refresh не возвращает время чужого World.
 
 PostgreSQL composition и полный `make test` выполняются на отдельных банках.
 Их итог, SHA кандидата и результат CI публикуются в PR перед merge.

@@ -85,3 +85,53 @@ async def test_journey_economics_poll_and_manual_reply_preserve_own_case_clock(s
     finally:
         await sim.shutdown()
         get_settings.cache_clear()
+
+
+async def test_journey_default_producer_and_recompute_preserve_own_economics_clock(seeded, monkeypatch):
+    from app.economics import dcltv
+
+    app, sim, request = await setup(monkeypatch, seeded)
+    try:
+        sid, state = await native_case(request, seeded, "journey-recompute-clock", "mass")
+        assert state["outcome"] == "deferred"
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            iid, rid, created = await (
+                await conn.execute(
+                    "select i.id,i.run_id,i.created_sim from incidents i join incident_signals x on x.incident_id=i.id where x.signal_id=%s",
+                    (sid,),
+                )
+            ).fetchone()
+            own_at = created + dt.timedelta(hours=3)
+            await conn.execute(
+                "insert into notifications(run_id,recipient_type,channel_code,body,status,sent_sim) values(%s,'cx','internal','actual own recompute clock fixture','sent',%s)",
+                (rid, own_at),
+            )
+            await conn.execute("update sim_state set sim_time=sim_time+interval '3 days' where id=1")
+            await conn.commit()
+            before = await bank_snapshot(conn)
+            first = await dcltv.compute_incident(conn, iid)
+            assert first is not None and first["computed_sim"] == own_at
+            saved = (
+                await (
+                    await conn.execute(
+                        "select to_jsonb(e)-'computed_at' from incident_economics e where incident_id=%s", (iid,)
+                    )
+                ).fetchone()
+            )[0]
+            assert await bank_snapshot(conn) == before
+            await conn.execute("update sim_state set sim_time=sim_time+interval '7 days' where id=1")
+            await conn.commit()
+            later = await bank_snapshot(conn)
+            assert await dcltv.recompute(conn, run_id=rid, only_stale=False) == 1
+            assert (
+                await (
+                    await conn.execute(
+                        "select to_jsonb(e)-'computed_at' from incident_economics e where incident_id=%s", (iid,)
+                    )
+                ).fetchone()
+            )[0] == saved
+            assert (await dcltv.compute_incident(conn, iid)) == first
+            assert await bank_snapshot(conn) == later
+    finally:
+        await sim.shutdown()
+        get_settings.cache_clear()

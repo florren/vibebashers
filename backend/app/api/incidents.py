@@ -215,12 +215,7 @@ async def _journey_incident_time(conn: Any, incident_id: int) -> dt.datetime | N
 @router.get("/api/incidents/{id}/economics", summary="Развёрнутый расчёт dCLTV по инциденту (все множители)")
 async def get_incidents_id_economics(request: Request, id: int) -> Any:  # noqa: A002
     async with db() as conn:
-        own_time = await _journey_incident_time(conn, id)
-        res = (
-            await dcltv.compute_incident(conn, id, sim_time=own_time)
-            if own_time is not None
-            else await dcltv.compute_incident(conn, id)
-        )
+        res = await dcltv.compute_incident(conn, id)
     if res is None:
         raise Problem(404, "Инцидент не найден")
     return res
