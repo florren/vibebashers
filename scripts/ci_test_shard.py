@@ -82,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.index is None:
             parser.error("нужен --index либо --verify")
+        sys.stdout.write(f"[shard {args.index}/{args.count}] Collecting complete pytest suite\n")
+        sys.stdout.flush()
         collected = subprocess.run(
             [sys.executable, "-m", "pytest", "--collect-only", "-q"],
             cwd=ROOT / "backend",
@@ -108,8 +110,14 @@ def main(argv: list[str] | None = None) -> int:
         manifest_path = args.manifest_dir / f"manifest-{args.index}.json"
         manifest_path.write_text(json.dumps(manifest, indent=2))
         junit = (args.manifest_dir / f"shard-{args.index}.xml").resolve()
+        expected_count = sum(node.split("::", 1)[0] in selected for node in manifest["nodeids"])
+        sys.stdout.write(
+            f"[shard {args.index}/{args.count}] Collected {len(manifest['nodeids'])} tests in {len(modules)} modules; "
+            f"running {expected_count} tests in {len(selected)} modules\n"
+        )
+        sys.stdout.flush()
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", f"--junitxml={junit}", *selected],
+            [sys.executable, "-u", "-m", "pytest", "-vv", f"--junitxml={junit}", *selected],
             cwd=ROOT / "backend",
             check=False,
         )
@@ -117,6 +125,11 @@ def main(argv: list[str] | None = None) -> int:
         if junit.exists():
             manifest["executed_count"] = len(ET.parse(junit).findall(".//testcase"))
         manifest_path.write_text(json.dumps(manifest, indent=2))
+        sys.stdout.write(
+            f"[shard {args.index}/{args.count}] Finished: exit_code={result.returncode}, "
+            f"executed={manifest['executed_count']}/{expected_count}\n"
+        )
+        sys.stdout.flush()
         return result.returncode
     except (ValueError, KeyError, TypeError, OSError) as exc:
         parser.error(str(exc))

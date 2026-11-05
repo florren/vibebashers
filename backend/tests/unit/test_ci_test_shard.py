@@ -91,3 +91,32 @@ def test_aggregate_verifies_complete_manifests(tmp_path, mutation):
             shards.verify_manifests(paths, 4)
     else:
         shards.verify_manifests(paths, 4)
+
+
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_runner_reports_progress_and_preserves_result(tmp_path, monkeypatch, capsys, exit_code):
+    """A failed execution remains failed, with its manifest and visible test progress."""
+    from subprocess import CompletedProcess
+
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        if "--collect-only" in command:
+            return CompletedProcess(command, 0, stdout="tests/unit/test_a.py::test_x\n", stderr="")
+        junit = Path(next(arg.split("=", 1)[1] for arg in command if arg.startswith("--junitxml=")))
+        junit.write_text('<testsuites><testsuite><testcase name="test_x"/></testsuite></testsuites>')
+        return CompletedProcess(command, exit_code)
+
+    monkeypatch.setattr(shards.subprocess, "run", run)
+    monkeypatch.setattr(shards.subprocess, "check_output", lambda *args, **kwargs: "abc\n")
+    assert shards.main(["--index", "0", "--count", "1", "--manifest-dir", str(tmp_path)]) == exit_code
+    row = json.loads((tmp_path / "manifest-0.json").read_text())
+    assert row["exit_code"] == exit_code
+    assert row["executed_count"] == 1
+    assert row["selected"] == ["tests/unit/test_a.py"]
+    assert "-u" in calls[1] and "-vv" in calls[1]
+    output = capsys.readouterr().out
+    assert "Collecting complete pytest suite" in output
+    assert "running 1 tests in 1 modules" in output
+    assert f"exit_code={exit_code}, executed=1/1" in output
