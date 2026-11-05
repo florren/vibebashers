@@ -1,0 +1,140 @@
+{
+  "status": "PASS",
+  "fake_transport": false,
+  "approved_plan_sha256": "4dbb058cd0d4689084f59dfe142af353212a16f58ecb7bd69ae36c6ed09403b4",
+  "recording_source_commit": "be78aab24aab6c3b896df008ea1719a696177c38",
+  "http_counts": {
+    "oauth": 1,
+    "models": 1,
+    "balance": 0,
+    "inference": 3
+  },
+  "private_provenance_sha256": "d29d4c5cbe0b2a855c0f5c3a91058c9d8d1f49e1f8e7f6f0e8c554d2ea3babb8",
+  "cassette_file": "data/cassettes/gigachat-T198-sarcasm-v2.jsonl",
+  "cassette_sha256": "c4a1c8cc5bbde17f680bd97410d60264687061e206d021024d9a15fdb341acbe",
+  "historical_cassettes_sha256": {
+    "data/cassettes/gigachat-T198-schema9.jsonl": "371f2fc0ed0b37e84a5cfc333730b2002f7c106b984d85c569ee21cdebb78362",
+    "data/cassettes/gigachat.jsonl": "f04151b285398ede4d3c1d4a480350dbc6989a40351a6025ba026b2c3ad189df"
+  },
+  "historical_cassettes_unchanged": true,
+  "known_credential_scan_passed": true,
+  "schema_validation_passed": true,
+  "steps": [
+    [
+      "normalize",
+      "ok",
+      "gigachat:GigaChat-3-Pro:32.4.30.3"
+    ],
+    [
+      "classify",
+      "ok",
+      "gigachat:GigaChat-3-Pro:32.4.30.3"
+    ],
+    [
+      "decide",
+      "ok",
+      "gigachat:GigaChat-3-Pro:32.4.30.3"
+    ]
+  ],
+  "evaluation_counts": {
+    "signals": 1,
+    "incidents": 1,
+    "agent_runs": 1,
+    "completed": 1,
+    "errors": 0
+  },
+  "cost_known": false,
+  "actual_cost_rub": null,
+  "requests": [
+    {
+      "node": "normalize",
+      "request_hash": "9377f86cd29e16c563cbfad8d6b1e69ae1e9e2ab481e84ef244299bd0745a9e8",
+      "payload_sha256": "c8cd6bfa1ba2101a4d91fb3d5473746b7bc681c9c4bf05b11400e23974a1a55c",
+      "payload_bytes": 11402,
+      "input_bytes": 10743,
+      "usage": {
+        "prompt_tokens": 2248,
+        "completion_tokens": 193,
+        "total_tokens": 2441,
+        "latency_ms": 2177,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Pro:32.4.30.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      }
+    },
+    {
+      "node": "classify",
+      "request_hash": "44dd07e2fdc15c68a586c798a24c30ab454463e1d7ab0cd2f99b603acd78507d",
+      "payload_sha256": "c18a48368c99a70b24dede8d6575301a591aa2afa6dc582529e84b1edf9434d3",
+      "payload_bytes": 15422,
+      "input_bytes": 14379,
+      "usage": {
+        "prompt_tokens": 3193,
+        "completion_tokens": 246,
+        "total_tokens": 3439,
+        "latency_ms": 2615,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Pro:32.4.30.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      }
+    },
+    {
+      "node": "decide",
+      "request_hash": "7f5b54a70bee9515df1daccfc688b076845a81fdb3f47ff3077a178598709368",
+      "payload_sha256": "ef9446eda769087f163a4821c739a9d3e44e555ae13fbdc005e2f6db5eeea92f",
+      "payload_bytes": 18333,
+      "input_bytes": 17050,
+      "usage": {
+        "prompt_tokens": 3628,
+        "completion_tokens": 375,
+        "total_tokens": 4003,
+        "latency_ms": 3740,
+        "cost_rub": 0.0,
+        "provider": "gigachat",
+        "model": "GigaChat-3-Pro:32.4.30.3",
+        "source": "live",
+        "key_label": "gigachat_env_1"
+      }
+    }
+  ],
+  "offline_strict_replay": {
+    "tests": "strict immutable-bank replay11 + standard cassette secret scan",
+    "passed": 2,
+    "seconds": 4.04,
+    "changed_context_real_miss": true,
+    "append_mock": false,
+    "llm_steps": "3 replay/ok",
+    "actual_sent_clarification": true,
+    "actual_followup_woken": 1,
+    "actual_escalation_to_role": "cx_lead",
+    "error_or_fallback_steps": 0,
+    "inference_or_accounting_writes": 0
+  },
+  "primary_bank_unchanged": true,
+  "wire_states_before": {
+    "known": 22,
+    "reconciled": 2,
+    "unknown": 1
+  },
+  "wire_states_after": {
+    "known": 25,
+    "reconciled": 2,
+    "unknown": 1
+  },
+  "backup": {
+    "kind": "full_database",
+    "sha256": "ab9c8f3af04387d6df78316dd4398a09adfbc101f6b50e64416ea8bdcf84131c",
+    "bytes": 178796009,
+    "toc_validated": true
+  },
+  "tls_verification": true,
+  "provider_fallback": false,
+  "source_catalog": {
+    "scenario_present": true,
+    "stale": false
+  }
+}

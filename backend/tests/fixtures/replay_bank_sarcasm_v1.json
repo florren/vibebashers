@@ -1,0 +1,11 @@
+{
+  "version": "replay_bank_sarcasm_v1",
+  "scenario_id": "social_sarcasm_escalation",
+  "model": "GigaChat-3-Pro",
+  "credential_slot": "gigachat1",
+  "agent_prompt_templates": "v2",
+  "sim_time": "2026-11-04T09:00:00+00:00",
+  "client": {"segment": "mass", "psychotype": "public_emotional", "city": "Москва", "region_code": "77", "churn_risk": 0},
+  "product": {"product": "debit_card", "status": "active", "card_last4": "0000"},
+  "text": "Спасибо, что опять списали комиссию за «бесплатное» обслуживание карты. Браво. Третий раз пишу — ответа нет, как всегда )) Наверное, пора менять банк."
+}

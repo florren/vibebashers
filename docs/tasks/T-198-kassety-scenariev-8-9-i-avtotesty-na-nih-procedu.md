@@ -62,3 +62,48 @@ make cassettes-record SCENARIO=qr_fee_public_review
 Пользователь подтвердил contract prefix9 и bounded GigaChat record. Один запуск:2HTTP (1OAuth+1inference),3213+506tokens, costunknown. Новый отдельный реальный JSONL и provenance добавлены после schema/credential/promise проверки, исторический JSONL byte-for-byte неизменён. После честного miss на текущемseed stricttests используют immutable записанныйbank, без rekey/изменения ответов/ослабления assertions; changedseed отдельно обязан датьmiss.3targeted replay/miss passed15.33s;68fake transport/auth guards passed2.01s. Подробности docs/reviews/T-198-bounded-record.md. Fullmake/CI выполняются, остальной live/cassette scope этим не объявляется закрытым.
 
 Полная офлайн-проверка source97ecc329: make test1619backend/24skip и188frontend, make lint exit0. После main466 четыре replay/COPY теста зелёные; CI обнаружил отдельный старый unit assert исторического hash, исправлен на вычисление актуальной schema при неизменных messages и обязательном changed-context miss. После merge8b225d5:69targetunit passed2.09s. Финальный CI обязателен; дополнительного live не было.
+
+## Предфризовая подготовка bounded replay11, 04.11.2026
+
+Настоящей кассеты `social_sarcasm_escalation` пока нет; статус не закрывается
+фиктивным ответом. Подготовлены immutable synthetic bank, отдельный bounded
+recorder и строгий opt-in templates v2. Native PostgreSQL ledger и graph bank
+проверяются в двух разных БД; caps/unknown сохраняются при новом банке. Проверены
+actual sent clarification, wake1 и escalation cx_lead, все3 LLM nodes только
+live/replay без append_mock, changed context/legacy v1 дают настоящий miss.
+
+Подготовка:30targeted passed (27unit+3PG); full backend unit2296passed/19skipped,
+strict mypy2modules/Ruff/format passed; genuine v1 QR→Trace/Journey и mock QR
+fast-path2passed11.74s. Покрытие нового recorder168/184 AST
+statement starts=91.30%, все5 selector lines исполнены. [План/границы/откат](../reviews/T-198-replay11-readiness.md),
+[полные synthetic inputs](../reviews/T-198-replay11-bounded-plan.json).
+На момент этого отчёта live не выполнялся; genuine кассета не опубликована.
+
+
+### Первый bounded replay11 attempt и cold startup, 04.11.2026
+
+После отдельного разрешения b84 выполнен1OAuth attempt/0inference. OAuth
+ConnectTimeout2062ms подтверждён из checkpoint; следующие auth/quota были локальными
+ограничителями. Primary bank и wire states22known/2reconciled/1unknown неизменны,
+backup/provenance сохранены. Автоматического повтора не было.
+
+Подготовлен новый отдельно согласуемый план4db: public prepare12s греет OAuth и
+API/models; максимум6inference+1OAuth+1models+6balance=14HTTP, фон сразу остановлен,
+generation timeouts/caps прежние. Frozen temperature0.0 относится только к tooling
+copy. Decimal zero/nonzero по фактическому graph snapshot доходят до provider как
+float с прежним значением; дополнительного money fix нет.40offline tests passed,
+producer177/193=91.71%, Ruff/mypy passed. Старый loose replay11 test заменён строгим
+fresh immutable bank/no mock/actual delivery/escalation/changed-context miss gate.
+Genuine cassette пока отсутствует, статус остаётсяin_progress.
+[Актуальный review/план/откат](../reviews/T-198-replay11-cold-oauth-review.md).
+
+### Genuine replay11 scope закрыт, 04.11.2026
+
+После отдельного разрешения4db:1OAuth+1models+3inference,3live/ok nodes,
+9883known tokens. Native ledgerknown22→25, предыдущие2reconciled/1unknown
+не менялись; primary bank unchanged, backup проверен. Новый отдельный genuine
+`gigachat-T198-sarcasm-v2.jsonl` прошёл schema/request/provenance/private-key scan;
+старые JSONL неизменны. Настоящий strict replay immutable fresh bank и стандартный
+secrets test:2passed4.04s, no HTTP/no accounting writes, actual sent clarification,
+wake1/escalationcx_lead и changed-context miss. [Результат](../reviews/T-198-replay11-live-record-result.json).
+Полный composed make test/CI — отдельный финальный gate.

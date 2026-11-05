@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CX Pulse Control API
-  version: 1.5.31
+  version: 1.5.32
   summary: REST + WebSocket контракт backend (FastAPI) для рабочего места CX, экрана «Под капотом», лендинга, Telegram-бота и живых контуров демо-стенда (эмулятор площадки, Mock-АБС, аудиомониторинг)
   description: |
     Контракт соответствует ТЗ v1.4 (разделы 3.7, 6, 7, 8–12, 14, 21–22). Правила:
@@ -997,11 +997,18 @@ paths:
     get:
       tags: [metrics]
       summary: "KPI рабочего места (ТЗ 14.1) — по умолчанию в рамках текущего запуска"
+      description: |
+        Явный run_id имеет приоритет над window, включая window=all. Без run_id
+        window=all сохраняет общий срез, остальные окна используют current.
+        Отсутствующий current возвращает пустой объект без обращения к producer.
+        Валидный legacy dashboard может по-прежнему пересчитывать экономику.
       parameters:
         - { $ref: "#/components/parameters/RunId" }
-        - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d, run], default: run } }
+        - { name: window, in: query, schema: { type: string, enum: [today, 24h, 7d, 14d, run, all], default: run } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DashboardMetrics" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/metrics/economics/preview:
     get:
       tags: [metrics]
@@ -1025,29 +1032,49 @@ paths:
     get:
       tags: [metrics]
       summary: Экономика dCLTV — потенциальные, предотвращённые, под риском, реализованные (ТЗ 14.4)
+      description: Пустой current не подменяется all и не запускает recompute. Существующий запуск сохраняет прежний legacy refresh.
       parameters:
         - { $ref: "#/components/parameters/RunId" }
         - { name: window, in: query, schema: { type: string, enum: [today, 7d, 14d], default: 14d } }
         - { name: group_by, in: query, schema: { type: string, enum: [product, region, segment, team, outcome], default: product } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsSummary" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/metrics/economics/fact:
     get:
       tags: [metrics]
       summary: "Калькулятор «Факт по симуляции» (ТЗ 14.5) — по умолчанию текущий запуск"
+      description: |
+        Только чтение сохранённых оценок, без пересчёта экономики. Пустой current не подменяется all.
+        Доля детракторов остаётся null до согласованного mapping состояний клиента.
+        Суммы outcome остаются null, если хотя бы у одного инцидента нет актуальной сохранённой оценки
+        того же запуска (computed_at не старее incident.updated_at, computed_sim в пределах
+        created_sim и собственного run clock; неизвестный clock не доказывает актуальность); economics_known показывает покрытие, incidents — знаменатель.
+        Подтверждённый нулевой расчёт сохраняется как 0; unknown в CSV/XLSX — пустая ячейка.
+        Фильтры product/system/region_code пока не поддерживаются целостно и дают 422;
+        прежняя частичная фильтрация больше не выдаётся за согласованный срез.
       parameters:
+        - { $ref: "#/components/parameters/RunId" }
         - { name: product, in: query, schema: { type: string } }
         - { name: system, in: query, schema: { type: string } }
         - { name: region_code, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EconomicsFact" } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/metrics/economics/fact/export:
     get:
       tags: [metrics]
       summary: Экспорт факта (CSV/XLSX)
-      parameters: [{ name: format, in: query, schema: { type: string, enum: [csv, xlsx], default: csv } }]
+      description: Только чтение того же run scope, что JSON Fact. XLSX — настоящий Excel workbook; CSV сохраняет UTF-8 BOM.
+      parameters:
+        - { name: format, in: query, schema: { type: string, enum: [csv, xlsx], default: csv } }
+        - { $ref: "#/components/parameters/RunId" }
       responses:
         "200": { description: Файл, content: { text/csv: { schema: { type: string } }, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Problem" }
+        "422": { $ref: "#/components/responses/Problem" }
   /api/metrics/economics/calibrate:
     post:
       tags: [metrics]
@@ -5282,7 +5309,7 @@ components:
       type: object
       properties:
         faults_matrix: { type: array, items: { type: object, properties: { product_code: { type: string }, system_code: { type: string }, sim_day: { type: string, format: date }, sim_hour: { type: integer }, faults: { type: integer }, operations_affected: { type: integer }, clients_affected: { type: integer }, signals: { type: integer } } } }
-        outcomes: { type: array, items: { type: object, properties: { outcome_class: { $ref: "#/components/schemas/OutcomeClass" }, incidents: { type: integer }, potential_loss_rub: { type: number }, prevented_loss_rub: { type: number }, realized_loss_rub: { type: number } } } }
+        outcomes: { type: array, items: { type: object, properties: { outcome_class: { $ref: "#/components/schemas/OutcomeClass" }, incidents: { type: integer }, economics_known: { type: integer, minimum: 0, description: "Число инцидентов с актуальной сохранённой оценкой того же запуска" }, potential_loss_rub: { type: [number, "null"] }, prevented_loss_rub: { type: [number, "null"] }, realized_loss_rub: { type: [number, "null"] } } } }
         churned: { type: array, items: { type: object, properties: { client: { $ref: "#/components/schemas/ClientBrief" }, psychotype_code: { type: string }, churn_sim: { type: string, format: date-time }, days_after_incident: { type: number }, reason: { type: string }, offered: { type: object }, realized_loss_rub: { type: number }, closure_incident_id: { type: integer } } } }
         assumptions_vs_fact:
           type: object

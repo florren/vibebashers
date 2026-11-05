@@ -1,0 +1,36 @@
+{
+  "source_revision": "173c4c156d1b3653f66825475edfe97190d34d0f",
+  "scope": "verified individual stages, not a successful complete make; final-v3 PASS and final-head CI remain mandatory merge gates",
+  "ci_run_id": 41926519788,
+  "ci_backend_passed": 3397,
+  "ci_backend_skipped": 24,
+  "ci_backend_executed_exact_union": 3421,
+  "local_stage_counts": {
+    "unit": {
+      "passed": 2349,
+      "skipped": 19
+    },
+    "integration": {
+      "passed": 977,
+      "skipped": 0
+    },
+    "scenarios": {
+      "passed": 44,
+      "skipped": 1
+    },
+    "compliance": {
+      "passed": 31
+    },
+    "frontend": {
+      "passed": 607
+    },
+    "bot_corrected_import_target": {
+      "passed": 50
+    }
+  },
+  "old_full_v2_status": "FAIL_OLD_EDITABLE_BOT_IMPORT",
+  "production_code_changed_for_harness": false,
+  "rollout_not_yet_executed": true,
+  "recorded_at_utc": "2026-11-05T00:04:00Z",
+  "latest_outcome_url": "https://github.com/florren/vibebashers/pull/221"
+}

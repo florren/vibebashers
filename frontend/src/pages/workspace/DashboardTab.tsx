@@ -10,14 +10,16 @@ import { Badge, ErrorBox, KV, Section, Skeleton } from '@/shared/ui'
 type Win = 'run' | '24h' | '7d' | 'all'
 const GROUPS = ['product', 'region', 'segment', 'team', 'type'] as const
 
-export function DashboardTab() {
+export function DashboardTab({ runId }: { runId?: number }) {
   const { t } = useTranslation()
   const [win, setWin] = useState<Win>('run')
   const [groupBy, setGroupBy] = useState<(typeof GROUPS)[number]>('product')
   const [showFact, setShowFact] = useState(false)
-  const dash = useDashboard(win)
-  const econ = useEconomics(groupBy, win === 'all' ? 'all' : 'current')
-  const fact = useEconomicsFact(showFact)
+  const factScope = win === 'all' ? 'all' : runId == null ? 'current' : String(runId)
+  const scopeAvailable = win === 'all' || runId != null
+  const dash = useDashboard(win, factScope, scopeAvailable)
+  const econ = useEconomics(groupBy, factScope, scopeAvailable)
+  const fact = useEconomicsFact(showFact && scopeAvailable, factScope)
   const calibrate = useCalibrate()
   const segName = useRefName('segments')
   const d = dash.data
@@ -35,7 +37,9 @@ export function DashboardTab() {
           ))}
         </div>
       </div>
+      {!scopeAvailable && <p role="status" className="p-3 text-sm text-muted">{t('dash.fact.noCurrent')}</p>}
       {dash.error && <ErrorBox error={dash.error} compact />}
+      {econ.error && <ErrorBox error={econ.error} compact />}
       {!d && dash.isLoading && <Skeleton className="h-24" />}
 
       {d && (
@@ -137,6 +141,8 @@ export function DashboardTab() {
                 }
               >
                 <p className="px-3 py-2 text-xs leading-relaxed text-muted">{t('dash.fact.hint')}</p>
+                <p className="px-3 py-2 text-xs text-muted">{t('dash.fact.scope', { run: factScope })}</p>
+                {showFact && fact.error && <ErrorBox error={fact.error} compact />}
                 {showFact && fact.data && (
                   <div className="divide-y divide-line border-t border-line">
                     {(['detractor_share', 'no_return_share'] as const).map((k) => {
@@ -147,13 +153,14 @@ export function DashboardTab() {
                       <KV key={k} k={tEnum('outcome', k)} v={`${pct(v.manual)} → ${v.simulated == null ? t('dash.fact.noData') : pct(v.simulated)} (n=${v.sample ?? 0})`} />
                     ))}
                     <div className="flex items-center justify-between gap-2 px-3 py-2">
-                      <button className="btn btn-sm btn-primary" disabled={calibrate.isPending} onClick={() => calibrate.mutate(e?.calibration_mode === 'simulated' ? 'manual' : 'simulated')}>
+                      <button className="btn btn-sm btn-primary" disabled={calibrate.isPending || win === 'all' || runId == null} title={win === 'all' || runId == null ? t('dash.fact.applyCurrentOnly') : undefined} onClick={() => calibrate.mutate(e?.calibration_mode === 'simulated' ? 'manual' : 'simulated')}>
                         {e?.calibration_mode === 'simulated' ? t('dash.fact.backToManual') : t('dash.fact.apply')}
                       </button>
-                      <a className="btn btn-sm" href="/api/metrics/economics/fact/export?format=csv" target="_blank" rel="noreferrer">
+                      <a className="btn btn-sm" href={`/api/metrics/economics/fact/export?format=csv&run_id=${encodeURIComponent(factScope)}`} target="_blank" rel="noreferrer">
                         CSV
                       </a>
                     </div>
+                    {(win === 'all' || runId == null) && <p className="px-3 py-2 text-xs text-muted">{t('dash.fact.applyCurrentOnly')}</p>}
                     {calibrate.error && <ErrorBox error={calibrate.error} compact />}
                   </div>
                 )}

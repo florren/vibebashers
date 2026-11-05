@@ -15,7 +15,7 @@ from app.agent.runner import AgentService
 from app.config import get_settings
 from app.ingest.normalizer import create_signal, from_api_signal
 from app.ingest.sources import poll_source, polling_worker
-from tests.helpers import MOCK_PROFILE, dsn, mock_chain
+from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, run_agent_on
 from tests.integration.test_hitl_continuity import NOW, make_case
 
 pytestmark = pytest.mark.integration
@@ -154,32 +154,79 @@ def test_restart_recovers_true_input_but_leaves_legacy_and_history_untouched(
 
 
 def test_legacy_callbacks_do_not_fire_but_real_followups_still_work(seeded, conn, monkeypatch):
-    cid = conn.execute("select id from clients order by id limit 1").fetchone()[0]
+    cid = conn.execute("select id from clients where segment_code='mass' and is_active order by id limit 1").fetchone()[
+        0
+    ]
     real = make_case(conn, seeded, "callback-real", cid)
     old = make_case(conn, seeded, "callback-old", cid)
     conn.execute(
         "update signals set origin='polling',text='Сообщение mock-ленты #33',external_contact='{\"nick\":\"mock_feed\"}' where id=%s",
         (old["sid"],),
     )
-    fids = []
-    for case in (real, old):
-        ar = conn.execute("select agent_run_id from human_decisions where id=%s", (case["hid"],)).fetchone()[0]
-        fid = conn.execute(
-            "insert into followups(sim_run_id,agent_run_id,signal_id,incident_id,wake_sim,reason,payload) values(%s,%s,%s,%s,%s,'awaiting_team','{}') returning id",
-            (case["rid"], ar, case["sid"], case["iid"], NOW - dt.timedelta(hours=1)),
-        ).fetchone()[0]
-        fids.append(fid)
-    resume = AsyncMock(return_value={})
-    monkeypatch.setattr(graph, "resume_after_followup", resume)
+
+    async def parked_callbacks():
+        cases = []
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as ac:
+            for label in ("callback-real-native", "callback-old-native"):
+                rid = await new_run(ac, label)
+                sid, state = await run_agent_on(
+                    ac,
+                    "Не открывается вклад в мобильном приложении, ошибка 503",
+                    client_id=cid,
+                    run_id=rid,
+                )
+                assert state["outcome"] == "deferred"
+                row = await (
+                    await ac.execute(
+                        "select f.id,f.wake_sim,f.agent_run_id,(select max(seq) from agent_steps st "
+                        "where st.run_id=f.agent_run_id) from followups f where f.signal_id=%s "
+                        "and f.reason='awaiting_team' and f.status='scheduled'",
+                        (sid,),
+                    )
+                ).fetchone()
+                assert row is not None
+                assert (
+                    await (
+                        await ac.execute(
+                            "select count(*) from agent_steps where run_id=%s and node='followup_monitor'",
+                            (row[2],),
+                        )
+                    ).fetchone()
+                )[0] == 1
+                cases.append((sid, *row))
+            await ac.commit()
+        return cases
+
+    # Scheduler проверяется на штатных deferred graph checkpoints, а не на
+    # ручной HITL-фикстуре без followup_monitor и подменённом resume callback.
+    real_callback, old_callback = asyncio.run(parked_callbacks())
+    conn.execute(
+        "update signals set origin='polling',text='Сообщение mock-ленты #34',"
+        'external_contact=\'{"nick":"mock_feed"}\' where id=%s',
+        (old_callback[0],),
+    )
 
     async def run():
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as ac:
-            assert await graph.wake_due_followups(ac, sim_time=NOW, chain=mock_chain(), profile=MOCK_PROFILE) == 1
+            assert (
+                await graph.wake_due_followups(
+                    ac, sim_time=max(real_callback[2], old_callback[2]), chain=mock_chain(), profile=MOCK_PROFILE
+                )
+                == 1
+            )
             await ac.commit()
 
     asyncio.run(run())
-    assert resume.call_args.kwargs["followup_id"] == fids[0]
-    assert conn.execute("select status from followups where id=%s", (fids[1],)).fetchone()[0] == "scheduled"
+    assert conn.execute("select status from followups where id=%s", (real_callback[1],)).fetchone()[0] == "fired"
+    assert conn.execute("select status from followups where id=%s", (old_callback[1],)).fetchone()[0] == "scheduled"
+    assert conn.execute(
+        "select seq,node,status from agent_steps where run_id=%s and seq>%s order by seq",
+        (real_callback[3], real_callback[4]),
+    ).fetchall() == [(real_callback[4] + 1, "followup_monitor", "ok")]
+    assert (
+        conn.execute("select max(seq) from agent_steps where run_id=%s", (old_callback[3],)).fetchone()[0]
+        == old_callback[4]
+    )
     conn.execute(
         "update human_decisions set requested_sim=%s where id=any(%s)",
         (NOW - dt.timedelta(hours=3), [real["hid"], old["hid"]]),

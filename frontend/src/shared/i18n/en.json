@@ -947,6 +947,9 @@
       "detractor_share": "Detractor share",
       "no_return_share": "No-return share",
       "noData": "no data",
+      "scope": "Fact and export run: {{run}}. Values are saved estimates; reading does not recalculate money. Detractor share is not modelled yet.",
+      "applyCurrentOnly": "Apply is available only for the current run. All-run history is not applied to calculator settings.",
+      "noCurrent": "The current run is not selected or is still loading. All-run history is not substituted automatically.",
       "apply": "Apply fact",
       "backToManual": "Restore manual"
     }
@@ -1466,6 +1469,11 @@
     "scenario10": "Scenario 10 — red phrases",
     "scenario12": "Scenario 12 — three customer journeys",
     "scenario13": "Scenario 13 — search and trace",
+    "prepareCabinet": "Prepare scenario 34 — cabinet (Mock)",
+    "prepareCsi": "Prepare scenario 35 — CSI and branches (Mock)",
+    "prepareHint": "Creates a separate run and scenario inputs. All roles must use Mock. HITL decisions remain with a human; this does not verify replay.",
+    "preparing": "Preparing a separate run…",
+    "invalidRun": "The server did not return the expected scenario run. Check the run list before preparing again.",
     "baselineRestore": "Reset to baseline",
     "actionError": "Could not complete the action"
   },

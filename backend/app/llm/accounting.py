@@ -32,6 +32,8 @@ from app.sim.maintenance_db import public_operation
 
 log = get_logger(__name__)
 MAX_COUNTER = 2**63 - 1
+# Только terminal DB bookkeeping после inference, не дополнительный HTTP budget.
+TERMINAL_CLEANUP_TIMEOUT_S = 3.0
 SOURCE = "operator_declared_app_usage"
 
 
@@ -702,14 +704,41 @@ class KeyScope:
                 if isinstance(exc, asyncio.CancelledError)
                 else "unavailable"
             )
-            try:
-                await ticket.unknown(kind)
-            except Exception as bookkeeping:
+            cancelled, bookkeeping = await self._finish_unknown(ticket, kind)
+            if bookkeeping is not None:
                 # Reservation is already durable: failure never refunds it.
                 log.warning("llm_usage_unconfirmed", error_type=type(bookkeeping).__name__)
+            if cancelled:
+                raise asyncio.CancelledError from None
             raise
         else:
-            await ticket.unknown()
+            cancelled, bookkeeping = await self._finish_unknown(ticket, "unavailable")
+            if cancelled:
+                if bookkeeping is not None:
+                    log.warning("llm_usage_unconfirmed", error_type=type(bookkeeping).__name__)
+                raise asyncio.CancelledError
+            if bookkeeping is not None:
+                raise bookkeeping
+
+    async def _finish_unknown(self, ticket: Ticket, kind: str) -> tuple[bool, Exception | None]:
+        # ProviderChain и key_scope имеют собственные deadline: второй cancel
+        # не должен оборвать terminal bookkeeping первого и оставить reserved.
+        async def bounded() -> None:
+            async with asyncio.timeout(TERMINAL_CLEANUP_TIMEOUT_S):
+                await ticket.unknown(kind)
+
+        cleanup = asyncio.create_task(bounded())
+        cancelled = False
+        while True:
+            try:
+                await asyncio.shield(cleanup)
+                return cancelled, None
+            except asyncio.CancelledError:
+                if cleanup.cancelled():
+                    raise
+                cancelled = True
+            except Exception as bookkeeping:
+                return cancelled, bookkeeping
 
     async def admit(self, attempt_id: uuid.UUID | None = None) -> Ticket:
         if self.deadline <= time.monotonic():

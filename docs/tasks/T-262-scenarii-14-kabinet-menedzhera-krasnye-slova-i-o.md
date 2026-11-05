@@ -61,3 +61,14 @@ recordedMockJourney16frames/3Mock с pendingHITL безaccept; strictTSC green.
 [Source-qualified review/proof](../reviews/T-262-native-ui-acceptance.md).
 Новый E2E целиком остаётся gate общегоCI. Provider replay/menu не выдумывались,
 overallT262 not_verified/карточка не done; устный хронометраж не измерен.
+
+
+### Дополнение меню перед фризом 04.11.2026
+
+Добавлены отдельные явно Mock actions34/35: существующий native scenario POST,
+`reset_mode=counters`, без baseline reset или смены profiles. Открывается
+кабинет/CSI с returned run_id;409 сохраняет меню/ошибку, HITL не принимается.
+20focused frontend cases, typecheck/build/lint и16actual component-browser cases
+ru/en×themes×320/1440×density прошли; business API в этом UI proof mocked409.
+Полная native/replay acceptance карточки остаётся открытой.
+Review и screenshots: [freeze-demo-menu-34-35](../reviews/freeze-demo-menu-34-35.md).

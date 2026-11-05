@@ -369,6 +369,11 @@ async def _llm(
     live_prompt = requested_profile.provider not in ("mock", "replay") and any(
         name in ("gigachat", "openai_compatible") for name in deps.chain.names
     )
+    template_version = requested_profile.extra.get("agent_prompt_templates")
+    if template_version not in (None, "v1", "v2"):
+        raise ValueError("agent_prompt_templates: ожидается v1 или v2")
+    if template_version is not None:
+        live_prompt = template_version == "v2"
     prompt = (
         load_prompt("system").body
         + "\n\n"

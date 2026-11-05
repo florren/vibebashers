@@ -72,7 +72,7 @@ function WorkspaceContent({ resolvedScope }: { resolvedScope?: string }) {
         {tab === 'hitl' && <HitlQueue runId={runId} onOpenSignal={setSignalId} runScope={incomingScope} onRunScopeChange={setRunScope} />}
         {tab === 'deferred' && <DeferredList runId={dataRunId} onOpenSignal={setSignalId} />}
         {tab === 'map' && <MapTab runScope={incomingScope} onRunScopeChange={setRunScope} />}
-        {tab === 'dashboard' && (incomingScope === undefined ? <DashboardTab /> : <ScopedMetrics run={incomingScope} />)}
+        {tab === 'dashboard' && (incomingScope === undefined ? <DashboardTab runId={runId} /> : <ScopedMetrics run={incomingScope} />)}
         {tab === 'notifications' && <NotificationsTab runId={dataRunId} />}
         {tab === 'tickets' && <TicketsTab runId={dataRunId} />}
         {tab === 'teams' && <TeamsTab runScope={incomingScope} />}

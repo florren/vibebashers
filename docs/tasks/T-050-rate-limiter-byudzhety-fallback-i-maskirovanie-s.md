@@ -102,3 +102,22 @@ Ruff и strict mypy329sourcefiles прошли; new statement execution154/159=9
 после зелёного CI. Прежний CI выявил непрогенерированную ORM; штатный generator
 добавил24строки, actualPG upgrade→downgrade0003→upgrade→check прошёл.
 Добавлены2PGcases: unknown HTTP не повторяется на другом ключе в том же pool call.
+
+### Предфризовая совместимость OpenRouter 04.11.2026
+
+Действительный upstream Nemotron отказался от `uniqueItems` в schema grammar
+(HTTP200/error400, usage unknown). Для exact OpenRouter/model выбран JSON object
+до inference; исходная schema и локальная валидация сохранены. Unknown не
+получает retry или фиктивный нулевой расход. Review и адресные проверки:
+`docs/reviews/freeze-openrouter-nemotron-json-mode.md`. Финальный live и общий
+CI фиксируются в предфризовом QA отчёте; численные caps не меняются.
+
+### Terminal bookkeeping при cancellation 05.11.2026
+
+Live timeout воспроизвёл orphan reserved при одновременных deadline ProviderChain
+и accounting scope. После выданного Ticket terminal unknown cleanup защищён от
+повторной cancellation и получает отдельную soft DB grace3s; новые HTTP и
+денежные лимиты не добавляются. DB failure/crash/admit-before-ticket сохраняют
+fail-closed orphan и требуют operator review, автоматического обнуления нет.
+Review: `docs/reviews/freeze-llm-terminal-cancellation.md`; 58 native accounting
+после peer fix, 12 instrumentation cases и 24/24 новых statements прошли.
