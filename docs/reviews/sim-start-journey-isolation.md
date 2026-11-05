@@ -126,3 +126,28 @@ Shard driver выводит границы collection/execution и каждый 
 через unbuffered Python и pytest verbose. Разбиение, полная коллекция,
 проверка manifests и поведение при ошибках сохранены. Локальный повтор
 прежнего shard 2: 924 passed, 1 skipped; удалённое зависание не воспроизведено.
+
+
+### Остановка CI после PASSED
+
+В fc77d01 shard2 последняя строка `True-journey PASSED [7%]` записана
+11:51:53 UTC; до отмены12:40:13 UTC следующего testcase не появилось.
+48мин20с без прогресса не объясняются количеством тестов или healthcheck.
+Точную причину этого зависания пока не установили. Локальный critical sequence
+из30тестов прошёл и на Python3.12.15, и на matching patch3.12.3 с теми же
+пакетами; этого недостаточно, чтобы считать обновление Python исправлением.
+
+CI-only диагностика пишет фазы setup/call/teardown в test-results. После60с
+фазы сохраняются thread/task stacks без locals; оригинальный monotonic и
+открытые при configure streams защищены от monkeypatch тестов. Обычный
+capsys/capfd вывод не загрязняется. Штатный pytest faulthandler ограничивает
+полный protocol300секундами и завершает child ненулевым кодом. После failed
+call watchdog возобновляется на оставшееся время перед teardown, поскольку
+pytest_exception_interact отменяет исходный timer. Реальные blackbox children
+проверяют оба варианта зависания и отклонение неполного manifest.
+
+Самый долгий завершённый testcase в изученных CI JUnit —58.141с (включая
+setup/call/teardown). Лимит300с даёт запас более5раз. Collection, разбиение,
+assertions, exit codes и проверка точного union manifests сохранены.
+Эта диагностика не является исправлением ещё не воспроизведённого root cause.
+Runtime fc77d01 заморожен; дальнейший CI-only commit не меняет app/build inputs.
