@@ -38,12 +38,56 @@ def app_for(monkeypatch, seeded):
     return app, Request({"type": "http", "app": app, "headers": []})
 
 
+async def native_listener_barrier(app, seeded):
+    """Настоящий LISTEN: probe после commit подтверждает доставку предшествующих событий."""
+    import json
+    import uuid
+
+    svc = app.state.agent
+    box = getattr(svc, "_fixture_listener_barrier", None)
+    if box is None:
+        box = {"nonce": None, "ready": asyncio.Event()}
+        original = svc._notification
+
+        async def observed(notification):
+            body = json.loads(notification.payload)
+            if body.get("event_type") == "test.listener.barrier":
+                if body.get("nonce") == box["nonce"]:
+                    box["ready"].set()
+                return
+            await original(notification)
+
+        svc._notification = observed
+        svc._fixture_listener_barrier = box
+        svc.start(recover=False)
+    box["nonce"] = str(uuid.uuid4())
+    box["ready"].clear()
+    async with await psycopg.AsyncConnection.connect(dsn(seeded), autocommit=True) as conn:
+        async with asyncio.timeout(10):
+            while not box["ready"].is_set():
+                await conn.execute(
+                    "select pg_notify('sim_events',%s)",
+                    (json.dumps({"event_type": "test.listener.barrier", "nonce": box["nonce"]}),),
+                )
+                try:
+                    await asyncio.wait_for(box["ready"].wait(), 0.05)
+                except TimeoutError:
+                    continue
+    while svc._inflight:
+        await asyncio.gather(*list(svc._inflight))
+
+
 async def finish_shared(app, request, seeded):
     sim, svc = app.state.sim, app.state.agent
+    await native_listener_barrier(app, seeded)
     for _ in range(45):
         if svc._inflight:
             await asyncio.gather(*list(svc._inflight))
         await cycle(app)
+        # Фоновый loop заглушён фикстурой: команды running World продвигает
+        # настоящий tick, а не отдельный demo-cycle executor.
+        await post_sim_control(request, SimControlRequest(action="step", step_minutes=15))
+        await native_listener_barrier(app, seeded)
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             runner = TeamEmulator(SimRng(42), conn, EventBus(conn), sim.run_id)
             await runner.load()
@@ -55,10 +99,25 @@ async def finish_shared(app, request, seeded):
                 and not s.skipped
                 and (p.incident_id, s.action, s.report_day) not in runner.done
             ]
+            if not future:
+                future = [
+                    r[0]
+                    for r in await (
+                        await conn.execute(
+                            "select f.wake_sim from followups f join agent_runs a on a.id=f.agent_run_id "
+                            "where f.sim_run_id=%s and f.status='scheduled' and a.outcome='deferred' "
+                            "and f.wake_sim>%s",
+                            (sim.run_id, sim.clock.sim_time),
+                        )
+                    ).fetchall()
+                ]
             open_count = (
                 await (
                     await conn.execute(
-                        "select count(*) from incidents where run_id=%s and status<>'closed'", (sim.run_id,)
+                        "select (select count(*) from incidents where run_id=%s and status<>'closed') + "
+                        "(select count(*) from agent_runs where sim_run_id=%s and kind='agent' "
+                        "and (outcome is null or outcome in ('deferred','awaiting_human')))",
+                        (sim.run_id, sim.run_id),
                     )
                 ).fetchone()
             )[0]
@@ -172,7 +231,33 @@ async def test_manual_inputs_wait_for_resume_then_finish(seeded, monkeypatch, en
                     "select body,status from notifications where signal_id=%s and template_code='resolved'", (sid,)
                 )
             ).fetchone()
-            assert notice[1] == "sent" and "Проблема по вашему обращению устранена" in notice[0]
+            assert notice[1] == "sent"
+            from app.agent import nodes
+            from app.agent.checkpoints import TransactionalSaver
+            from app.agent.tools.base import ToolContext
+            from app.agent.tools.write import render_template
+
+            arid, thread = await (
+                await conn.execute("select id,thread_id from agent_runs where signal_id=%s and kind='agent'", (sid,))
+            ).fetchone()
+            saved = await TransactionalSaver(conn).aget_tuple({"configurable": {"thread_id": thread}})
+            final = saved.checkpoint["channel_values"]
+            client = final.get("client") or {}
+            channel = ((final.get("decision") or {}).get("client_action") or {}).get("channel") or final["signal"][
+                "channel"
+            ]
+            _, expected = await render_template(
+                ToolContext(conn, run_id=sim.run_id, agent_run_id=arid, sim_time=sim.clock.sim_time),
+                "resolved",
+                channel,
+                client.get("segment"),
+                {
+                    "name": nodes.mask_name(client.get("name")),
+                    "resolution": incident[1] or (final.get("decision") or {}).get("title_ru") or "",
+                },
+                nodes.communication_lang(final["signal"]["text"]),
+            )
+            assert notice[0] == expected and "ваш вопрос решён" in notice[0]
             assert incident[1] not in notice[0] and "стенд" not in notice[0].lower()
             if identified:
                 decisions = await (
@@ -436,9 +521,35 @@ async def test_shared_teams_progress_with_continuous_employee_work(seeded, monke
             return True
 
         monkeypatch.setattr("app.demo.execution.employees", another_employee_decided)
+        await native_listener_barrier(app, seeded)
+        await post_sim_control(request, SimControlRequest(action="step", step_minutes=15))
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            plans = TeamEmulator(SimRng(42), conn, EventBus(conn), sim.run_id)
+            await plans.load()
+            future = [
+                step.at
+                for plan in plans.plans.values()
+                for step in plan.steps
+                if not step.skipped and step.at > sim.clock.sim_time
+            ]
+        if future:
+            await post_sim_control(request, SimControlRequest(action="jump_to", sim_time=min(future)))
+        await native_listener_barrier(app, seeded)
         if status == "escalated":
+            # Законный native take уже зафиксирован: эскалация не создаёт фиктивный demo-take.
             async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
                 await conn.execute("update incidents set status='escalated' where run_id=%s", (sim.run_id,))
+                plans = TeamEmulator(SimRng(42), conn, EventBus(conn), sim.run_id)
+                await plans.load()
+                future = [
+                    step.at
+                    for plan in plans.plans.values()
+                    for step in plan.steps
+                    if not step.skipped and step.at > sim.clock.sim_time
+                ]
+            if future:
+                await post_sim_control(request, SimControlRequest(action="jump_to", sim_time=min(future)))
+            await native_listener_barrier(app, seeded)
         await cycle(app)
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             actions = await (

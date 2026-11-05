@@ -42,22 +42,46 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
             status_code=422,
             detail="origin=proactive и fault_monitor зарезервированы для native producer; используйте origin=api",
         )
+    journey = source == "journey"
+    if not journey and any(isinstance(msg.get("meta"), dict) and "journey_execution" in msg["meta"] for msg in items):
+        raise HTTPException(422, "Профиль Journey допустим только для ручного входа Journey")
     results = []
     async with db() as conn:
-        run_id, sim_time = await run_context(request, conn) if items else (None, None)
-        from app.demo.inputs import prepare
+        if journey:
+            from app.demo.journey import context
 
-        if run_id is not None:
-            run_id = await prepare(request, conn, run_id)
-        for msg in items:
-            try:
-                results.append(
-                    await create_signal(conn, dict(msg), source_code=source, run_id=run_id, sim_time=sim_time)
-                )
-            except IngestError as exc:
-                results.append(
-                    {"external_id": msg.get("external_id"), "status": "rejected", "signal_id": None, "error": str(exc)}
-                )
+            # Профиль и сигнал фиксируются вместе, без смены current_run_id банка.
+            for msg in items:
+                async with conn.transaction():
+                    journey_run_id, journey_time = await context(conn, msg)
+                    try:
+                        results.append(
+                            await create_signal(
+                                conn, dict(msg), source_code=source, run_id=journey_run_id, sim_time=journey_time
+                            )
+                        )
+                    except IngestError as exc:
+                        raise HTTPException(422, str(exc)) from exc
+        else:
+            run_id, sim_time = await run_context(request, conn) if items else (None, None)
+            from app.demo.inputs import prepare
+
+            if run_id is not None:
+                run_id = await prepare(request, conn, run_id)
+            for msg in items:
+                try:
+                    results.append(
+                        await create_signal(conn, dict(msg), source_code=source, run_id=run_id, sim_time=sim_time)
+                    )
+                except IngestError as exc:
+                    results.append(
+                        {
+                            "external_id": msg.get("external_id"),
+                            "status": "rejected",
+                            "signal_id": None,
+                            "error": str(exc),
+                        }
+                    )
     # HTTP-вход не ждёт завершения startup recovery слушателя LISTEN.
     # Сначала commit, затем тот же сервис; событие в БД остаётся для остальных потребителей.
     agent = getattr(request.app.state, "agent", None)

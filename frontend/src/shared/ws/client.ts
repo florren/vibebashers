@@ -109,7 +109,12 @@ export function connectWs(qc: QueryClient): () => void {
       if (m.topic === 'sim') {
         // Только новые readonly metrics: legacy dashboard/economics на tick не запускаются.
         if (m.type === 'sim.tick') invalidate('sim')
-        if (m.type === 'sim.tick' || m.type === 'sim.control') useWs.getState().setSim(m.data as SimState)
+        if (m.type === 'sim.tick' || m.type === 'sim.control') {
+          // HTTP refresh, control и ticks обновляют один актуальный snapshot.
+          void qc.cancelQueries({ queryKey: ['sim-state'] })
+          qc.setQueryData(['sim-state'], m.data as SimState)
+          useWs.getState().setSim(m.data as SimState)
+        }
         if (m.type === 'sim.control') {
           void qc.invalidateQueries({ queryKey: ['sim-runs'] })
           void qc.invalidateQueries({ queryKey: ['sim-state'] })

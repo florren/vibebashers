@@ -53,6 +53,8 @@ async def execution_active(app: Any, conn: Any, run_id: int, *, manual_only: boo
     config = await configuration(conn, run_id)
     if config.get("public_demo") and manual_only:
         return True
+    if config.get("journey_demo") and manual_only:
+        return bool(config.get("enabled") and config.get("status") == "paused")
     return bool(
         app.state.sim.run_id == run_id
         and (
@@ -79,7 +81,8 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
     chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile, new=True)
     request = Request({"type": "http", "app": app, "headers": []})
     request.state.demo_sim_time = at
-    public_demo = bool((await configuration(conn, run_id)).get("public_demo"))
+    execution_config = await configuration(conn, run_id)
+    public_demo = bool(execution_config.get("public_demo") or execution_config.get("journey_demo"))
     cur = await conn.execute(
         "select h.id,h.reason,h.agent_proposal,h.decision from human_decisions h left join agent_runs a on a.id=h.agent_run_id "
         "where h.sim_run_id=%s and (%s=false or exists(select 1 from signals ms "
@@ -359,7 +362,15 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
     """Событийное время ручных цепочек хранится в профиле; часы фонового банка не двигаются."""
     sim, svc = app.state.sim, app.state.agent
     chain, main_profile = await run_profiles(conn, rid, svc.chain, svc.profile, new=True)
-    base_time = dt.datetime.fromisoformat(config["base_time"]) if config.get("public_demo") else sim.clock.sim_time
+    base_time = (
+        dt.datetime.fromisoformat(config["base_time"])
+        if (config.get("public_demo") or config.get("journey_demo"))
+        else sim.clock.sim_time
+    )
+    if config.get("journey_demo"):
+        from app.demo.journey import clock
+
+        base_time = await clock(conn, rid, base_time)
     if config.get("emulate_humans") and await employees(app, conn, rid, base_time, manual_only=True):
         return
     # Ожидание одного клиента/оператора не блокирует другие независимые инциденты.
@@ -380,7 +391,7 @@ async def manual_cycle(app: Any, conn: Any, rid: int, config: dict[str, Any]) ->
     if not ids:
         return
     await conn.commit()
-    async with execution_lock(app, public_demo=bool(config.get("public_demo"))):
+    async with execution_lock(app, public_demo=bool(config.get("public_demo") or config.get("journey_demo"))):
         if not await execution_active(app, conn, rid, manual_only=True):
             return
         emulator = TeamEmulator(
@@ -483,6 +494,10 @@ async def cycle(app: Any) -> None:
         if not config and getattr(sim, "full_execution", False):
             config = await ensure(conn, rid, running=sim.clock.running)
         await conn.commit()
+        if config.get("mode") == "simulation" and sim.clock.running:
+            if config.get("emulate_humans"):
+                await employees(app, conn, rid, sim.clock.sim_time)
+            return
         if manual_active(config):
             await manual_cycle(app, conn, rid, config)
             await conn.commit()
@@ -589,16 +604,26 @@ async def public_cycle(app: Any) -> None:
     async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
         rows = await (
             await conn.execute(
-                "select id from sim_runs where settings_snapshot->>'created_by'='public_demo' and status='paused' order by id"
+                "select id from sim_runs where settings_snapshot->>'created_by' in ('public_demo','journey_demo') and status='paused' order by id"
             )
         ).fetchall()
         for (rid,) in rows:
             try:
-                await manual_cycle(app, conn, int(rid), await configuration(conn, int(rid)))
+                case_config = await configuration(conn, int(rid))
+                if case_config.get("journey_demo") and not await execution_active(
+                    app, conn, int(rid), manual_only=True
+                ):
+                    continue
+                if case_config.get("journey_demo"):
+                    from app.demo.journey import recover
+
+                    await recover(app, conn, int(rid), case_config)
+                await manual_cycle(app, conn, int(rid), case_config)
                 await conn.commit()
                 from app.demo.public import recover_public_cases
 
-                await recover_public_cases(app, conn, int(rid))
+                if (await configuration(conn, int(rid))).get("public_demo"):
+                    await recover_public_cases(app, conn, int(rid))
                 await conn.commit()
                 await complete_manual_followups(app, conn, int(rid))
                 await conn.commit()

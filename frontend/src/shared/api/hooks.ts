@@ -1,3 +1,4 @@
+import { useWs } from '@/shared/ws/client'
 import type { Schemas } from './client'
 import type { paths } from './types'
 import { requireRunScope } from './runScope'
@@ -116,7 +117,15 @@ export const useClients = (params: { segment?: string; q?: string }, enabled = t
     staleTime: 60_000,
   })
 
-export const useSimState = () => useQuery({ queryKey: ['sim-state'], queryFn: () => api<SimState>('/api/sim/state'), refetchInterval: 15000 })
+export const useSimState = () => useQuery({
+  queryKey: ['sim-state'],
+  queryFn: async ({ signal }) => {
+    const state = await api<SimState>('/api/sim/state', { signal })
+    if (!signal.aborted) useWs.getState().setSim(state)
+    return state
+  },
+  refetchInterval: 15000,
+})
 export const useSimRuns = () => useQuery({ queryKey: ['sim-runs'], queryFn: () => api<List<SimRun>>('/api/sim/runs', { query: { limit: 20 } }) })
 
 export function useSimControl() {
@@ -124,9 +133,13 @@ export function useSimControl() {
   return useMutation({
     mutationFn: (body: SimControl) => post<SimState>('/api/sim/control', body),
     onSuccess: (s) => {
+      // Незавершённый GET не должен перезаписать подтверждённое состояние control.
+      void qc.cancelQueries({ queryKey: ['sim-state'] })
+      useWs.getState().setSim(s)
       qc.setQueryData(['sim-state'], s)
       void qc.invalidateQueries({ queryKey: ['sim-runs'] })
     },
+    onError: () => { void qc.invalidateQueries({ queryKey: ['sim-state'] }) },
   })
 }
 

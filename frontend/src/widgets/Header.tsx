@@ -15,7 +15,7 @@ import { ThemeSelector } from '@/shared/theme'
 import { useWs } from '@/shared/ws/client'
 import { DeviceSelector } from '@/shared/layout/device'
 import { useMobileLayout } from '@/shared/layout/device-store'
-import { Badge, Drawer } from '@/shared/ui'
+import { Badge, Drawer, ErrorBox } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
 import { BotQrButton } from './BotQrButton'
 
@@ -28,9 +28,8 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longTriggered = useRef(false)
   const q = useSimState()
-  const live = useWs((s) => s.sim)
   const wsStatus = useWs((s) => s.status)
-  const sim = live ?? q.data ?? null
+  const sim = q.data ?? null
   const ctl = useSimControl()
   const [jury, setJury] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -98,10 +97,11 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
           {v2 && sim?.current_run_id != null && <p className="break-words font-mono text-xs"><RunLabel id={sim.current_run_id} /></p>}
           <div className="flex flex-wrap gap-2">
-            <button className="btn" disabled={ctl.isPending} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
-            <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
+            <button className="btn" disabled={ctl.isPending || !sim} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
+            <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !sim || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
           </div>
-          <label className="flex items-center gap-2 text-sm">{t('sim.speed')}<select className="input" value={sim?.speed ?? 1} disabled={ctl.isPending} onChange={e => ctl.mutate({ action: 'set_speed', speed: Number(e.target.value) })}>{[...new Set([...SPEEDS, sim?.speed ?? 1])].sort((a,b) => a-b).map(speed => <option key={speed} value={speed}>{t('sim.speedX', { n: speed })}</option>)}</select></label>
+          {(ctl.error || q.error) && <ErrorBox error={ctl.error ?? q.error} compact />}
+          <label className="flex items-center gap-2 text-sm">{t('sim.speed')}<select className="input" value={sim?.speed ?? 1} disabled={ctl.isPending || !sim} onChange={e => ctl.mutate({ action: 'set_speed', speed: Number(e.target.value) })}>{[...new Set([...SPEEDS, sim?.speed ?? 1])].sort((a,b) => a-b).map(speed => <option key={speed} value={speed}>{t('sim.speedX', { n: speed })}</option>)}</select></label>
         </section>
       </div>
     </Drawer>
@@ -154,18 +154,18 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         </div>
         <div className="flex items-center gap-1">
           {running ? (
-            <button className="btn btn-sm" onClick={() => ctl.mutate({ action: 'pause' })} disabled={ctl.isPending} title={t('sim.pause')}>
+            <button className="btn btn-sm" onClick={() => ctl.mutate({ action: 'pause' })} disabled={ctl.isPending || !sim} title={t('sim.pause')}>
               <Pause size={13} /> {t('sim.pause')}
             </button>
           ) : (
-            <button className="btn btn-sm btn-primary" onClick={() => ctl.mutate({ action: canResume ? 'resume' : 'start' })} disabled={ctl.isPending}>
+            <button className="btn btn-sm btn-primary" onClick={() => ctl.mutate({ action: canResume ? 'resume' : 'start' })} disabled={ctl.isPending || !sim}>
               <Play size={13} /> {canResume ? t('sim.resume') : t('sim.start')}
             </button>
           )}
           <button
             className="btn btn-sm"
             onClick={() => ctl.mutate({ action: 'stop' })}
-            disabled={ctl.isPending || !runStatus || runStatus === 'stopped' || runStatus === 'completed'}
+            disabled={ctl.isPending || !sim || !runStatus || runStatus === 'stopped' || runStatus === 'completed'}
             title={t('sim.stop')}
           >
             <Square size={12} />
@@ -176,6 +176,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
               <button
                 key={s}
                 onClick={() => ctl.mutate({ action: 'set_speed', speed: s })}
+                disabled={ctl.isPending || !sim}
                 className={clsx(
                   'num h-6 rounded-md px-1.5 text-xs',
                   (sim?.speed ?? 1) === s ? 'bg-brand-soft font-medium text-ink' : 'text-muted hover:bg-raised',
@@ -208,7 +209,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <DeviceSelector />
     </header>
-  )}<JuryModal open={jury} onClose={() => setJury(false)} /></>
+  )}{!mobile && (ctl.error || q.error) && <ErrorBox error={ctl.error ?? q.error} compact />}<JuryModal open={jury} onClose={() => setJury(false)} /></>
 }
 
 function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {

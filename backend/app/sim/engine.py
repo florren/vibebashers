@@ -379,7 +379,9 @@ class Simulator:
                 from app.agent.proactive import refresh_service_impacts
 
                 await refresh_service_impacts(conn, self.run_id, self.clock.sim_time)
-            if not execution.get("enabled"):
+            # Только legacy isolated demo владеет командами вне World.
+            # Профиль обычной simulation не отключает native Team/RNG/fault lifecycle.
+            if not (execution.get("mode") == "demo" and execution.get("enabled")):
                 await world.team_emulator.tick(self.clock.sim_time, world)
             await world.sla_engine.tick(t0, self.clock.sim_time)
             self.stats["ticks"] += 1

@@ -117,6 +117,30 @@ class HitlDecisionBody(BaseModel):
     decided_by: str = Field(default="operator", min_length=1, max_length=120)
 
 
+async def _hitl_sim_time(
+    conn: Any,
+    run_id: int,
+    *,
+    override: dt.datetime | None = None,
+    event_floor: dt.datetime | None = None,
+) -> dt.datetime:
+    """Journey использует только собственные факты; остальные режимы сохраняют прежние часы."""
+    if override is not None:
+        return override
+    run = await fetch_one(
+        conn,
+        "select started_sim,settings_snapshot->>'created_by' as created_by from sim_runs where id=%s",
+        (run_id,),
+    )
+    if run and run["created_by"] == "journey_demo":
+        from app.demo.journey import clock
+
+        floor = max(run["started_sim"], event_floor) if event_floor is not None else run["started_sim"]
+        return await clock(conn, run_id, floor)
+    state = await fetch_one(conn, "select sim_time from sim_state where id=1")
+    return state["sim_time"] if state else dt.datetime.now(dt.UTC)
+
+
 @router.post("/api/hitl/{id}", summary="Решение человека — возвращается в граф агента")
 async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any:  # noqa: A002
     role = actor_role(request)
@@ -141,9 +165,11 @@ async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any
             svc = agent_service(request) if resume else None
             if not resume and body.decision not in ("accept", "reject"):
                 raise HTTPException(409, "Процесс уже продолжается; используйте журнал информации оператора")
-            st = await fetch_one(conn, "select sim_time from sim_state where id=1")
-            sim_time = getattr(request.state, "demo_sim_time", None) or (
-                st["sim_time"] if st else dt.datetime.now(dt.UTC)
+            sim_time = await _hitl_sim_time(
+                conn,
+                int(row["sim_run_id"]),
+                override=getattr(request.state, "demo_sim_time", None),
+                event_floor=row["requested_sim"],
             )
             modified = (
                 body.modified_proposal
@@ -199,7 +225,9 @@ async def get_hitl_feedback(
 @router.post("/api/hitl/{id}/feedback", status_code=201, summary="Добавить информацию без повторного выполнения графа")
 async def post_hitl_feedback(id: int, body: FeedbackBody) -> Any:
     async with db() as conn, conn.transaction():
-        hd = await fetch_one(conn, "select id from human_decisions where id=%s for update", (id,))
+        hd = await fetch_one(
+            conn, "select id,sim_run_id,requested_sim,decided_sim from human_decisions where id=%s for update", (id,)
+        )
         if not hd:
             raise HTTPException(404, "запрос HITL не найден")
         existing = await fetch_one(
@@ -211,7 +239,8 @@ async def post_hitl_feedback(id: int, body: FeedbackBody) -> Any:
             if existing["comment"] != body.comment or existing["recorded_by"] != body.recorded_by:
                 raise HTTPException(409, "Ключ повтора уже использован для другого ответа")
             return existing
-        st = await fetch_one(conn, "select sim_time from sim_state where id=1")
+        own_floor = max(value for value in (hd["requested_sim"], hd["decided_sim"]) if value is not None)
+        sim_time = await _hitl_sim_time(conn, int(hd["sim_run_id"]), event_floor=own_floor)
         row = await fetch_one(
             conn,
             "insert into hitl_feedback(human_decision_id,idempotency_key,comment,recorded_by,recorded_sim) values (%s,%s,%s,%s,%s) returning *",
@@ -220,7 +249,7 @@ async def post_hitl_feedback(id: int, body: FeedbackBody) -> Any:
                 body.idempotency_key,
                 body.comment,
                 body.recorded_by,
-                st["sim_time"] if st else dt.datetime.now(dt.UTC),
+                sim_time,
             ),
         )
         await conn.execute(
