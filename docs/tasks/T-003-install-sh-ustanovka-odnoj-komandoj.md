@@ -35,7 +35,7 @@
 - [ ] Чистая Ubuntu 22.04/24.04 с Docker: `./install.sh --profile lite` завершается успешно ≤ 5 мин, мастер открывается.
 - [ ] Повторный запуск без --reset не ломает данные.
 - [ ] `./install.sh --offline` работает без интернета (проверка в сети без egress).
-- [x] `make lint && make test` зелёные; результаты и границы проверки приведены в отчёте.
+- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
 
 ## Как проверить
 ```bash
