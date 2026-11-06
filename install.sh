@@ -25,6 +25,23 @@ done
 say() { printf '\033[1;32m▸\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
+# У health после reload один общий бюджет, включая ожидание ответа curl.
+wait_backend_after_seed() {
+  local deadline=$((SECONDS + $1))
+  local url=$2 remaining delay
+  for attempt in $(seq 1 60); do
+    remaining=$((deadline - SECONDS))
+    [ "$remaining" -gt 0 ] || return 1
+    if curl --connect-timeout "$remaining" --max-time "$remaining" -fs "$url" >/dev/null 2>&1; then return 0; fi
+    remaining=$((deadline - SECONDS))
+    [ "$remaining" -gt 0 ] || return 1
+    delay=2
+    [ "$remaining" -ge 2 ] || delay=$remaining
+    sleep "$delay"
+  done
+  return 1
+}
+
 command -v python3 >/dev/null || die "Нужен Python 3 для подготовки модели и запуска туннеля"
 command -v docker >/dev/null || die "Docker не найден. Установите Docker Engine ≥ 24 и docker compose v2: https://docs.docker.com/engine/install/"
 docker compose version >/dev/null 2>&1 || die "docker compose v2 не найден (нужна команда «docker compose», не «docker-compose»)"
@@ -101,6 +118,19 @@ if docker compose exec -T backend python /scripts/seed/run.py --if-needed --prof
 else
   seed_status=$?
   die "seed-этап завершился с кодом $seed_status (2 — coverage, 3 — baseline/pg_dump, 4 — незавершённый seed). Установка остановлена; автоматического сброса данных нет."
+fi
+
+
+say "проверка состояния backend после seed"
+if docker compose exec -T backend python /scripts/install_seed_state.py; then
+  : # Совпадающий запуск, включая работающий World, не перезапускаем.
+else
+  state_status=$?
+  [ "$state_status" = 3 ] || die "Состояние после seed не подтверждено; backend не перезапускается автоматически"
+  say "перечитывание первичного baseline после seed"
+  docker compose restart --no-deps --timeout 120 backend || die "Не удалось перезапустить backend после seed"
+  wait_backend_after_seed 120 http://localhost:8000/api/health || die "backend не готов за 120 с после seed: docker compose logs backend"
+  docker compose exec -T backend python /scripts/install_seed_state.py || die "После перезапуска память backend всё ещё не согласована с БД"
 fi
 
 HEALTH=$(curl -fs http://localhost:8000/api/health)
