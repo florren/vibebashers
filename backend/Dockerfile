@@ -25,8 +25,7 @@ COPY data/ /data/
 COPY scripts/ /scripts/
 COPY --from=frontend /fe/dist /frontend/dist
 COPY --from=frontend /fe/dist-personal /frontend/dist-personal
-# Зависимости уже установлены по lock выше; uvicorn импортирует исходники из /app.
-# Повторная установка проекта здесь зря требует скачивания build backend (hatchling).
+RUN uv sync --frozen --no-dev
 # Единственный rw mount принадлежит backend; sticky dir поддерживает UID isolated CI runner.
 RUN install -d -m1777 /run/cx-maintenance
 EXPOSE 8000
