@@ -56,3 +56,14 @@ published port вместо substring cx-pulse.18focused tests; повтор п�
 [Review/proof](../reviews/FREEZE-2026-11-03-offline-install.md). Не проверялись
 чистая Ubuntu22/24 VM и сеть с физически запрещённым egress; эти исходные
 критерии не отмечаются автоматически.
+
+06.11 — безопасность явного reset: подготовка Vosk, проверка resolved Compose
+config и держателей всех управляемых томов, сборка и получение только
+отсутствующих образов перенесены перед `down -v`. Stopped foreign/one-off
+контейнеры явно блокируют reset и автоматически не удаляются. После preflight
+запуск использует `--no-build --pull never`; cached images не обновляются.
+Новые 10 shell-регрессий: RED10 на прежнем installer → GREEN28 вместе
+с соседними installer tests; Ruff и `bash -n` PASS. Полные проверки этого
+пакета на момент подготовки отчёта ещё не запускались. Настоящий reset
+и primary для проверки не использовались.
+[Разбор и ограничения](../reviews/install-reset-preflight.md).
