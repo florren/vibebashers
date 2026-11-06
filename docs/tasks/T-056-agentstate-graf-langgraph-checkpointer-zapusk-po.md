@@ -48,3 +48,7 @@ pytest backend/tests/unit/test_graph_skeleton.py
 ### Исправления приёмки стенда 2026-11-04
 
 Mock благодарность не поглощает информационный вопрос; existing personal followup о статусе получает подсказку об обновлениях без нового инцидента. Общие unit: 2201 passed/19 skipped. Полный PG/soak и CI ещё выполняются; acceptance всей карточки не закрывается. Review и откат: [freeze-defects](../reviews/freeze-defects-2026-11-04.md).
+
+### Восстановление после сетевого сбоя 2026-11-06
+
+LISTEN регистрируется до recovery; ограниченный catch-up повторно читает новые сигналы текущего работающего запуска. Атомарный захват сигнала исключает два AgentRun при конкурирующих входах и освобождается до графа/HTTP. Catch-up пропускает любой существующий AR, включая failed, HITL и unknown usage; прежний явный retry сохранён. Ручные Pause/Stop запрещают новые catch-up entries. API, DDL, финансовые формулы и лимиты не менялись. RED 2 failed → 32 адресных passed; расширенный прогон 39 passed, покрытие изменённых строк 85,71%, Ruff/format/mypy PASS. Проверки использовали собственный PostgreSQL и mock, без внешнего HTTP или изменений стенда. Общий composition gate и CI проверяются отдельно перед merge. [Граница и откат](../reviews/network-agent-recovery.md).
