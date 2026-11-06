@@ -321,7 +321,7 @@ class AgentService:
         return task
 
     async def _conn(self) -> psycopg.AsyncConnection[Any]:
-        return await psycopg.AsyncConnection.connect(psycopg_dsn(self.dsn), autocommit=False)
+        return await psycopg.AsyncConnection.connect(psycopg_dsn(self.dsn), autocommit=False, connect_timeout=3)
 
     @writer("agent")
     async def _recover(self) -> None:
@@ -435,25 +435,96 @@ class AgentService:
                 log.error("agent_recovery_failed", agent_run_id=agent_run_id, error_type=type(exc).__name__)
                 raise
 
-    async def _loop(self) -> None:
-        if self._recover_on_start:
+    def _catchup_allowed(self, run_id: int) -> bool:
+        return bool(self.enabled and self.sim is not None and self.sim.run_id == run_id and self.sim.clock.running)
+
+    @writer("agent-catchup")
+    async def _catch_up_new(self) -> None:
+        """NOTIFY — hint; ограниченный поиск БД берёт только ещё не начатые сигналы."""
+        sim = self.sim
+        if sim is None or sim.run_id is None or not self._catchup_allowed(sim.run_id):
+            return
+        run_id = sim.run_id
+        available = max(0, 20 - len(self._by_signal))
+        if not available:
+            return
+        async with asyncio.timeout(3), await self._conn() as conn:
+            rows = await (
+                await conn.execute(
+                    "select s.id from signals s join sim_state st on st.current_run_id=s.run_id "
+                    "join sim_runs r on r.id=s.run_id where st.id=1 and st.running and r.status='running' "
+                    "and s.run_id=%s and s.status='new' and not (s.id=any(%s::bigint[])) "
+                    "and not exists(select 1 from agent_runs a where a.signal_id=s.id and a.kind='agent') "
+                    f"and not {AUTOMATIC_EXCLUDED_SQL} order by s.id limit %s",
+                    (run_id, list(self._by_signal), available),
+                )
+            ).fetchall()
+        for (sid,) in rows:
+            if not self._catchup_allowed(run_id):
+                break
+            existing = self._by_signal.get(int(sid))
+            if existing is None or existing.done():
+                self._track_signal(int(sid), self._process_new(int(sid), run_id), name=f"agent-catchup-{sid}")
+        await asyncio.sleep(0)
+
+    @writer("agent-catchup")
+    async def _process_new(self, signal_id: int, run_id: int) -> None:
+        async with self.sem:
+            if not self._catchup_allowed(run_id):
+                return
             try:
-                await self._recover()
+                async with await self._conn() as conn:
+                    state = await process_signal(
+                        conn,
+                        signal_id=signal_id,
+                        chain=self.chain,
+                        profile=self.profile,
+                        new_only=True,
+                        current_run_id=run_id,
+                        entry_allowed=lambda: self._catchup_allowed(run_id),
+                    )
+                    await self._wake_committed_graph(conn, state)
+                if state is not None:
+                    self.processed += 1
+                    if state.get("outcome") == "failed":
+                        self.failed += 1
             except Exception as exc:
-                log.error("agent_startup_recovery_failed", error_type=type(exc).__name__)
+                self.failed += 1
+                log.warning("agent_catchup_failed", signal_id=signal_id, error_type=type(exc).__name__)
+
+    async def _loop(self) -> None:
+        recovery_pending = self._recover_on_start
+        backoff = 1.0
         while True:
             conn: psycopg.AsyncConnection[Any] | None = None
             try:
-                conn = await psycopg.AsyncConnection.connect(psycopg_dsn(self.dsn), autocommit=True)
+                conn = await psycopg.AsyncConnection.connect(psycopg_dsn(self.dsn), autocommit=True, connect_timeout=3)
+                # LISTEN предшествует recovery/поиску: commits во время catch-up тоже дают hint.
                 await conn.execute("LISTEN sim_events")
                 log.info("agent_listen")
-                async for n in conn.notifies():
-                    await self._notification(n)
+                if recovery_pending:
+                    try:
+                        await self._recover()
+                    except (psycopg.OperationalError, psycopg.InterfaceError):
+                        raise
+                    except Exception as exc:
+                        # Legacy/corrupt checkpoint требует review, а не бесконечного replay.
+                        log.error("agent_startup_recovery_failed", error_type=type(exc).__name__)
+                    recovery_pending = False
+                while True:
+                    await self._catch_up_new()
+                    backoff = 1.0
+                    # Ограниченные batch/окно забирают потерянные при disconnect сигналы
+                    # без переподключения здоровой сессии БД.
+                    async for n in conn.notifies(timeout=2, stop_after=20):
+                        await self._notification(n)
+                    await asyncio.sleep(0)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # noqa: BLE001
-                log.warning("agent_listen_failed", error=str(exc)[:200])
-                await asyncio.sleep(2)
+            except Exception as exc:
+                log.warning("agent_listen_failed", error_type=type(exc).__name__, backoff=backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 30)
             finally:
                 if conn is not None:
                     await conn.close()
