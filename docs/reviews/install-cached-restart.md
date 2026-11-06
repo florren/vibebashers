@@ -6,7 +6,7 @@ Host helper использует native Compose discovery и до первого
 
 Работающий PostgreSQL не останавливается; остановленный запускается тем же ID. Его штатный Docker healthcheck проверяется до apps, бюджет120s. Backend/personal перезапускаются существующими IDs с grace120s. Далее проверяются оба локальных health endpoints с бюджетом120s каждый, без HTTP proxy/DNS: числовые loopback-адреса и bounded curl. Контейнеры/volumes не пересоздаются и не удаляются. При ошибке после начала рестарта возможна частичная готовность процессов; она сообщается явно, fallback к reset/seed отсутствует.
 
-Команда не отправляет simulation Start/Resume, не создаёт run и не пишет историю/RNG. Состояние `interrupted` требует явного Resume через прежние guards. Восстановление работающих процессов после возврата сети описано в [общем review](network-recovery-review.md).
+Команда не отправляет simulation Start/Resume. Host helper сам не направляет mutating SQL/API. Штатные shutdown/startup, migrations и recovery приложения сохраняются; перезапуск не является обещанием отсутствия их служебных записей. Готовность требует JSON `status="ok"` обоих приложений и `db=true` backend; HTTP 200 без этих полей недостаточен. Состояние `interrupted` требует явного Resume через прежние guards. Восстановление работающих процессов после возврата сети описано в [общем review](network-recovery-review.md).
 
 Ошибки preflight build полностью сохраняются в tempfile `0600`. Вывод содержит только путь и явную команду `bash ./install.sh --restart` для существующего стенда. Содержимое логов и `.env` на консоль не переносится.
 
@@ -19,3 +19,5 @@ Native orchestration V5 PASS на собственных cached images: наст
 ## Откат и ограничения
 
 Откат кода не меняет БД. Даже без внешней сети нужны исправный Docker, имеющиеся образы/контейнеры и доступность локальных сервисов. Команда не исправляет повреждение хранилища или недоступность внешнего LLM. Нормальные application startup/recovery effects сохраняются.
+
+Дополнение readiness: старый helper принимает HTTP 200 с непригодным body (RED9); исправленный helper проверяет native JSON backend/personal (26 targeted PASS). Native V6 с теми же health body PASS, три собственных ephemeral containers остановлены/удалены, volumes/networks/primary0.

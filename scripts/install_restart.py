@@ -100,7 +100,7 @@ def wait_postgres(container: str, root: Path = ROOT, budget: float = 120) -> Non
     raise RestartError("PostgreSQL не готов за 120 с; приложения не перезапускались")
 
 
-def wait_http(url: str, budget: float = 120) -> None:
+def wait_http(url: str, budget: float = 120, *, service: str = "backend") -> None:
     deadline = time.monotonic() + budget
     while time.monotonic() < deadline:
         remaining = deadline - time.monotonic()
@@ -114,7 +114,13 @@ def wait_http(url: str, budget: float = 120) -> None:
         except (OSError, subprocess.TimeoutExpired):
             result = None
         if result is not None and result.returncode == 0:
-            return
+            try:
+                body = json.loads(result.stdout)
+            except (ValueError, TypeError):
+                body = None
+            if isinstance(body, dict) and body.get("status") == "ok":
+                if service == "personal" or (service == "backend" and body.get("db") is True):
+                    return
         time.sleep(max(0, min(2, deadline - time.monotonic())))
     raise RestartError(f"Не подтверждена готовность {url}; повторной установки или сброса нет")
 
@@ -129,8 +135,8 @@ def restart_services(
         docker("start", postgres["id"], root=root, timeout=30)
     wait_postgres(postgres["id"], root)
     docker("restart", "--time", "120", plan["backend"]["id"], plan["personal"]["id"], root=root, timeout=270)
-    for url in health_urls:
-        wait_http(url)
+    for service, url in zip(("backend", "personal"), health_urls, strict=True):
+        wait_http(url, service=service)
 
 
 def main() -> int:

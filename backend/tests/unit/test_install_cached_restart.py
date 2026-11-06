@@ -52,6 +52,7 @@ elif args[:2]==['image','inspect']:
     )
     (tools / "curl").write_text(
         f"#!{sys.executable}\nimport json,os,sys\nwith open(os.environ['CALLS'],'a') as f:f.write(json.dumps(['curl',*sys.argv[1:]])+'\\n')\n"
+        + "print(json.dumps({'status':'ok','db':True}))\n"
     )
     for tool in tools.iterdir():
         tool.chmod(0o755)
@@ -189,3 +190,38 @@ def test_http_readiness_deadline_bounds_failures_and_timeouts(monkeypatch, timed
     assert clock[0] == 5
     assert calls and all(0 < item[1]["timeout"] <= 5 for item in calls)
     assert all(item[0][1:3] == ["--noproxy", "*"] for item in calls)
+
+
+@pytest.mark.parametrize(
+    "service,body",
+    [
+        ("backend", b'{"status":"degraded","db":false}'),
+        ("backend", b'{"status":"ok","db":false}'),
+        ("backend", b'{"status":"ok","db":1}'),
+        ("backend", b'{"status":"ok","db":"true"}'),
+        ("backend", b'{"status":"ok"}'),
+        ("personal", b'{"status":true}'),
+        ("personal", b'{"status":"degraded"}'),
+        ("personal", b"[]"),
+        ("personal", b"not json"),
+    ],
+)
+def test_http_200_unready_body_keeps_polling_until_deadline(monkeypatch, service, body):
+    helper = restart_helper()
+    clock = fake_clock(monkeypatch, helper)
+    monkeypatch.setattr(helper.subprocess, "run", lambda args, **kw: subprocess.CompletedProcess(args, 0, body))
+    with pytest.raises(helper.RestartError, match="Не подтверждена готовность"):
+        helper.wait_http("http://127.0.0.1:32123/owned-only", budget=5, service=service)
+    assert clock[0] == 5
+
+
+@pytest.mark.parametrize("service,body", [("backend", b'{"status":"ok","db":true}'), ("personal", b'{"status":"ok"}')])
+def test_http_readiness_requires_native_service_body(monkeypatch, service, body):
+    helper = restart_helper()
+    clock = fake_clock(monkeypatch, helper)
+    responses = iter([b'{"status":"degraded"}', body])
+    monkeypatch.setattr(
+        helper.subprocess, "run", lambda args, **kw: subprocess.CompletedProcess(args, 0, next(responses))
+    )
+    helper.wait_http("http://127.0.0.1:32123/owned-only", budget=5, service=service)
+    assert clock[0] == 2
