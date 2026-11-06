@@ -79,6 +79,9 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
     """Один ответ за цикл; ручное решение выигрывает гонку благодаря штатной блокировке HITL."""
     svc = app.state.agent
     chain, main_profile = await run_profiles(conn, run_id, svc.chain, svc.profile, new=True)
+    # resolve(new=True) берёт credentials.LOCK до конца внешней TX.
+    # LLM accounting и продолжение HITL используют другие соединения с тем же lock.
+    await conn.commit()
     request = Request({"type": "http", "app": app, "headers": []})
     request.state.demo_sim_time = at
     execution_config = await configuration(conn, run_id)
