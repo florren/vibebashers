@@ -25,7 +25,7 @@ def preflight(profiles: list[str]) -> None:
     project = config["name"]
     # Compose уже применил .env, shell overrides, CLI profiles и '*'.
     services = config["services"]
-    # down -v затрагивает все объявленные тома, включая неактивные profiles.
+    # Проверяем управляемые тома из той же resolved-модели, которую использует down.
     for key in sorted(config.get("volumes", {})):
         volume = config["volumes"][key]
         if volume.get("external"):

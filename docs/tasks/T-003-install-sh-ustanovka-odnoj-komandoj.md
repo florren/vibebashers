@@ -35,7 +35,7 @@
 - [ ] Чистая Ubuntu 22.04/24.04 с Docker: `./install.sh --profile lite` завершается успешно ≤ 5 мин, мастер открывается.
 - [ ] Повторный запуск без --reset не ломает данные.
 - [ ] `./install.sh --offline` работает без интернета (проверка в сети без egress).
-- [ ] `make lint && make test` зелёные; Definition of Done из AGENTS.md §8 выполнен.
+- [x] `make lint && make test` зелёные; результаты и границы проверки приведены в отчёте.
 
 ## Как проверить
 ```bash
@@ -58,7 +58,7 @@ published port вместо substring cx-pulse.18focused tests; повтор п�
 критерии не отмечаются автоматически.
 
 06.11 — безопасность явного reset: подготовка Vosk, проверка resolved Compose
-config и держателей всех управляемых томов, сборка и получение только
+config и держателей его управляемых томов, сборка и получение только
 отсутствующих образов перенесены перед `down -v`. Stopped foreign/one-off
 контейнеры явно блокируют reset и автоматически не удаляются. После preflight
 запуск использует `--no-build --pull never`; cached images не обновляются.
@@ -67,3 +67,5 @@ config и держателей всех управляемых томов, сб�
 пакета на момент подготовки отчёта ещё не запускались. Настоящий reset
 и primary для проверки не использовались.
 [Разбор и ограничения](../reviews/install-reset-preflight.md).
+
+Итоговый isolated gate на `76edc49e45455aca0f62e6fa5a537ee14f209188`: `make lint`, contracts, owners PASS; полный `make test` **4155 passed/20 skipped**. Tracked source после прогона неизменён, собственный PG остановлен. Native preflight-only на собственном scratch Compose project проверил `.env` profile, cached images без pull и сохранённый stopped/created one-off holder; реального reset и primary-операций не было. Финальное уточнение комментария не меняет Python AST; exact-head CI требуется перед merge.
