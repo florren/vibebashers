@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from typing import Any
@@ -24,12 +23,8 @@ def preflight(profiles: list[str]) -> None:
     compose = ["compose", *(arg for profile in profiles for arg in ("--profile", profile))]
     config: dict[str, Any] = json.loads(docker(*compose, "config", "--format", "json"))
     project = config["name"]
-    enabled = set(profiles) | set(filter(None, os.environ.get("COMPOSE_PROFILES", "").split(",")))
-    services = {
-        name: service
-        for name, service in config["services"].items()
-        if not service.get("profiles") or "*" in enabled or enabled.intersection(service["profiles"])
-    }
+    # Compose уже применил .env, shell overrides, CLI profiles и '*'.
+    services = config["services"]
     # down -v затрагивает все объявленные тома, включая неактивные profiles.
     for key in sorted(config.get("volumes", {})):
         volume = config["volumes"][key]

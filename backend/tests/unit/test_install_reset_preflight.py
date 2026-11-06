@@ -42,11 +42,27 @@ def test_reset_prepares_explicitly_enabled_optional_profile(tmp_path: Path) -> N
     assert "pull optional-image" in commands
 
 
-def run_install(tmp_path: Path, failure: str, *, cached: bool = False, optional: bool = False):
+def test_reset_prepares_profile_selected_only_by_dotenv(tmp_path: Path) -> None:
+    result, commands = run_install(tmp_path, "", dotenv_only=True)
+    assert "кодом 77" in result.stderr
+    assert "pull optional-image" in commands
+    assert commands.index("pull optional-image") < commands.index("compose down -v --remove-orphans")
+
+
+def run_install(
+    tmp_path: Path,
+    failure: str,
+    *,
+    cached: bool = False,
+    optional: bool = False,
+    dotenv_only: bool = False,
+):
     shutil.copyfile(ROOT / "install.sh", tmp_path / "install.sh")
     (tmp_path / "scripts").mkdir()
     shutil.copyfile(ROOT / "scripts/install_preflight.py", tmp_path / "scripts/install_preflight.py")
-    (tmp_path / ".env").write_text("PROFILE=lite\nSIM_SEED=42\n")
+    (tmp_path / ".env").write_text(
+        "PROFILE=lite\nSIM_SEED=42\n" + ("COMPOSE_PROFILES=telegram\n" if dotenv_only else "")
+    )
     programs = tmp_path / "bin"
     programs.mkdir()
     log = tmp_path / "commands.jsonl"
@@ -57,11 +73,13 @@ args=sys.argv[1:];failure=os.environ['FAILURE']
 with open(os.environ['COMMANDS'],'a') as stream:stream.write(json.dumps(' '.join(args))+'\\n')
 if args[:2]==['compose','config']:
  if failure=='config':print('secret-not-to-be-printed',file=sys.stderr);sys.exit(9)
- print(json.dumps({'name':'custom-project','services':{
+ config={'name':'custom-project','services':{
  'postgres':{'image':'postgres:16','volumes':[{'type':'volume','source':'pgdata'}]},
  'backend':{'image':'built-image','build':{'context':'.'},'volumes':[{'type':'volume','source':'maintenance'}]},
  'personal':{'image':'built-image'},'optional':{'image':'optional-image','profiles':['telegram']}},
- 'volumes':{'pgdata':{'name':'custom-project_pgdata'},'maintenance':{'name':'custom-project_maintenance'}}}))
+ 'volumes':{'pgdata':{'name':'custom-project_pgdata'},'maintenance':{'name':'custom-project_maintenance'}}}
+ config['services']={key:value for key,value in config['services'].items() if key in os.environ['SELECTED_SERVICES'].splitlines()}
+ print(json.dumps(config))
 elif args[:1]==['ps']:print('holder')
 elif args[:1]==['inspect']:
  if failure=='inspect':sys.exit(9)
@@ -86,12 +104,13 @@ elif 'exec' in args:sys.exit(77)
     result = subprocess.run(
         ["bash", str(tmp_path / "install.sh"), "--reset", "--seed", "42"],
         env={
-            **os.environ,
+            **{key: value for key, value in os.environ.items() if key != "COMPOSE_PROFILES"},
             "PATH": str(programs) + os.pathsep + os.environ["PATH"],
             "FAILURE": failure,
             "COMMANDS": str(log),
             "CACHED": "1" if cached else "0",
-            "COMPOSE_PROFILES": "telegram" if optional else "",
+            "SELECTED_SERVICES": "postgres\nbackend\npersonal" + ("\noptional" if optional or dotenv_only else ""),
+            **({} if dotenv_only else {"COMPOSE_PROFILES": "telegram" if optional else ""}),
         },
         capture_output=True,
         text=True,

@@ -15,9 +15,9 @@
 
 ## Проверки
 
-На прежнем `install.sh` из `3683fd5`: новые shell-регрессии **10 failed**. На исправленном коде: **28 passed**, включая все 10 новых и существующие проверки port ownership, record cassettes и seed install. Docker, curl и STT в этих проверках заменены локальными исполняемыми fixtures; настоящий Docker и primary не использовались.
+На прежнем `install.sh` из `3683fd5`: новые shell-регрессии **10 failed**. На исправленном коде: **29 passed**, включая 11 новых и существующие проверки port ownership, record cassettes и seed install. Docker, curl и STT в этих проверках заменены локальными исполняемыми fixtures; настоящий Docker и primary не использовались.
 
-Проверяются ошибки config/build/pull/model/inspect до `down`, stopped foreign/one-off holders, порядок успешной подготовки, отсутствие pull для cached images, получение образа явно включённого optional profile. В ошибку не попадает содержимое resolved config.
+Проверяются ошибки config/build/pull/model/inspect до `down`, stopped foreign/one-off holders, порядок успешной подготовки, отсутствие pull для cached images, получение образа явно включённого optional profile и profile только из `.env`. Список активных сервисов берётся непосредственно из resolved Compose config, без повторного разбора `.env` или объединения profile-переменных; приоритет shell/CLI и `*` определяет сам Compose. Отдельная config-only проверка установленного Compose подтвердила выбор активных сервисов без обращения к Docker daemon. В ошибку не попадает содержимое resolved config.
 
 `bash -n install.sh`, Ruff check и Ruff format проходят. Полные `make lint`/`make test` и реальная Docker-проверка этого пакета ещё не выполнялись. Приватные RED/GREEN журналы находятся в `.runtime/install-reset-preflight-qa/` вне Git.
 

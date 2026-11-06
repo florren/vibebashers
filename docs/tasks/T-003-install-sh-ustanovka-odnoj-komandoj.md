@@ -62,7 +62,7 @@ config и держателей всех управляемых томов, сб�
 отсутствующих образов перенесены перед `down -v`. Stopped foreign/one-off
 контейнеры явно блокируют reset и автоматически не удаляются. После preflight
 запуск использует `--no-build --pull never`; cached images не обновляются.
-Новые 10 shell-регрессий: RED10 на прежнем installer → GREEN28 вместе
+Новые 11 shell-регрессий: RED10 на прежнем installer и RED1 для `.env` profile → GREEN29 вместе
 с соседними installer tests; Ruff и `bash -n` PASS. Полные проверки этого
 пакета на момент подготовки отчёта ещё не запускались. Настоящий reset
 и primary для проверки не использовались.
