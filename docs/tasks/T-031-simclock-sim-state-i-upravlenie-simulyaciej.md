@@ -78,3 +78,21 @@ Review/rollback: [sim-tick-economics-clock](../reviews/sim-tick-economics-clock.
 Пользователь явно подтвердил финансовую границу PR #214 при зелёном общем CI.
 Объединённый full2196unit/19skip прошёл; финальные local composition/CI gates
 ещё обязательны. Полный acceptance карточки этим не объявляется закрытым.
+
+### Reconnect tick: только доказанный PRE
+
+Ветка `codex/fix-sim-network-recovery`: автономный tick после потери PostgreSQL
+проверяет прежний durable run/time/day/seed/raw RNG через новое readonly
+соединение, затем повторно под `sim_state FOR UPDATE` до эффектов writer TX.
+Только PRE разрешает повтор; неизвестный COMMIT/foreign owner запрещает
+дальнейшие controls до backend reload без reset. Local running=false никогда
+не включается по флагу БД; Pause/Stop сохраняют приоритет, включая отмену
+ожидания reconnect. Legacy pending и native Team journal сохраняются.
+Платные HTTP-вызовы retry не инициирует; formulas/caps/HITL не менялись.
+Причина исходного stall 08:33 по доступным логам не доказана.
+Проверки и ограничения: [network-sim-recovery](../reviews/network-sim-recovery.md).
+Это дополнение не заявляет полное восстановление всех процессов проекта.
+Проверено: 34 native PG tests PASS (17 новых + 17 соседних), causal old-engine
+RED на потерянном COMMIT ack; new statements 110/114 = 96.49%. Ruff check/format,
+targeted mypy engine и diff check PASS. Own PG остановлен, egress 0.
+Combined full gate/CI и review перед rollout остаются отдельными этапами.

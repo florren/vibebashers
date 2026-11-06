@@ -337,6 +337,116 @@ async def run_graph(
             await conn.set_autocommit(True)
 
 
+class _SignalEntrySkipped(Exception):
+    """Rollback claim/savepoint освобождает rowlock, сохраняя внешнюю транзакцию caller."""
+
+
+async def _claim_signal_entry(
+    conn: psycopg.AsyncConnection[Any],
+    *,
+    signal_id: int,
+    chain: ProviderChain,
+    profile: LLMProfile,
+    sim_time: dt.datetime | None,
+    new_only: bool,
+    current_run_id: int | None,
+    entry_allowed: Callable[[], bool] | None,
+) -> tuple[dict[str, Any], ProviderChain, LLMProfile, dt.datetime, str, int] | None:
+    try:
+        async with conn.transaction():
+            # Общий claim входа: только подготовка БД и создание AR; граф/HTTP идут после commit.
+            await conn.execute("select id from signals where id=%s for update", (signal_id,))
+            if new_only and (current_run_id is None or entry_allowed is None or not entry_allowed()):
+                raise _SignalEntrySkipped
+            sig = await _load_signal(conn, signal_id)
+            if not sig:
+                raise _SignalEntrySkipped
+            if new_only:
+                if sig["status"] != "new" or sig["run_id"] != current_run_id:
+                    raise _SignalEntrySkipped
+                owner = await (
+                    await conn.execute(
+                        "select st.current_run_id,st.running,r.status from sim_state st "
+                        "join sim_runs r on r.id=st.current_run_id where st.id=1"
+                    )
+                ).fetchone()
+                if owner is None or owner[0] != current_run_id or not owner[1] or owner[2] != "running":
+                    raise _SignalEntrySkipped
+            duplicate_filter = "" if new_only else " and outcome is distinct from 'failed'"
+            dup = await (
+                await conn.execute(
+                    "select id from agent_runs where signal_id = %s and kind = 'agent'" + duplicate_filter,
+                    (signal_id,),
+                )
+            ).fetchone()
+            if dup:
+                raise _SignalEntrySkipped
+            from app.sim.behavior.runtime import require_run
+
+            await require_run(conn, int(sig["run_id"]))
+            chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
+            sim_time = sim_time or (
+                dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
+            )
+            pv = prompt_version()
+            pinned_id = chain.role_profile_ids.get("main")
+            if pinned_id is not None:
+                profile_row = await (
+                    await conn.execute(
+                        "select id,price_in_per_1m,price_out_per_1m from llm_profiles where id=%s", (pinned_id,)
+                    )
+                ).fetchone()
+            else:
+                profile_row = await (
+                    await conn.execute(
+                        "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
+                        (profile.code,),
+                    )
+                ).fetchone()
+            if profile_row is None:
+                profile_row = await (
+                    await conn.execute(
+                        "select id, price_in_per_1m, price_out_per_1m from llm_profiles where provider = %s and model = %s order by id limit 1",
+                        (profile.provider, profile.model),
+                    )
+                ).fetchone()
+            llm_profile_id = int(profile_row[0]) if profile_row else None
+            if (
+                profile_row
+                and not chain.role_profiles_pinned
+                and profile.price_in_per_1m == 0
+                and profile.price_out_per_1m == 0
+                and (float(profile_row[1] or 0) or float(profile_row[2] or 0))
+            ):
+                profile = dataclasses.replace(
+                    profile,
+                    price_in_per_1m=float(profile_row[1] or 0),
+                    price_out_per_1m=float(profile_row[2] or 0),
+                )
+            if new_only and (entry_allowed is None or not entry_allowed()):
+                raise _SignalEntrySkipped
+            row = await (
+                await conn.execute(
+                    "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s,%s::jsonb) returning id",
+                    (
+                        sig["run_id"],
+                        signal_id,
+                        sig["client_id"],
+                        llm_profile_id,
+                        pv,
+                        GRAPH_VERSION,
+                        f"{sig['run_id']}:{signal_id}",
+                        sim_time,
+                        dumps(chain.role_snapshot),
+                    ),
+                )
+            ).fetchone()
+            agent_run_id = int(row[0])  # type: ignore[index]
+            return sig, chain, profile, sim_time, pv, agent_run_id
+    except _SignalEntrySkipped:
+        return None
+
+
 async def process_signal(
     conn: psycopg.AsyncConnection[Any],
     *,
@@ -344,76 +454,24 @@ async def process_signal(
     chain: ProviderChain,
     profile: LLMProfile,
     sim_time: dt.datetime | None = None,
+    new_only: bool = False,
+    current_run_id: int | None = None,
+    entry_allowed: Callable[[], bool] | None = None,
 ) -> AgentState | None:
-    """Полный проход по сигналу: создаёт agent_runs и исполняет граф. Повторный вызов для уже обработанного сигнала — no-op."""
-    sig = await _load_signal(conn, signal_id)
-    if not sig:
-        return None
-    dup = await (
-        await conn.execute(
-            "select id from agent_runs where signal_id = %s and kind = 'agent' and outcome is distinct from 'failed'",
-            (signal_id,),
-        )
-    ).fetchone()
-    if dup:
-        return None
-    from app.sim.behavior.runtime import require_run
-
-    await require_run(conn, int(sig["run_id"]))
-    chain, profile = await run_profiles(conn, int(sig["run_id"]), chain, profile, new=True)
-    sim_time = sim_time or (
-        dt.datetime.fromisoformat(sig["received_sim"]) if sig["received_sim"] else dt.datetime.now(dt.UTC)
+    """Обычный вход допускает явный retry failed; catch-up берёт только ещё не начатые сигналы."""
+    entry = await _claim_signal_entry(
+        conn,
+        signal_id=signal_id,
+        chain=chain,
+        profile=profile,
+        sim_time=sim_time,
+        new_only=new_only,
+        current_run_id=current_run_id,
+        entry_allowed=entry_allowed,
     )
-    pv = prompt_version()
-    pinned_id = chain.role_profile_ids.get("main")
-    if pinned_id is not None:
-        profile_row = await (
-            await conn.execute("select id,price_in_per_1m,price_out_per_1m from llm_profiles where id=%s", (pinned_id,))
-        ).fetchone()
-    else:
-        profile_row = await (
-            await conn.execute(
-                "select id, price_in_per_1m, price_out_per_1m from llm_profiles where code = %s",
-                (profile.code,),
-            )
-        ).fetchone()
-    if profile_row is None:
-        profile_row = await (
-            await conn.execute(
-                "select id, price_in_per_1m, price_out_per_1m from llm_profiles where provider = %s and model = %s order by id limit 1",
-                (profile.provider, profile.model),
-            )
-        ).fetchone()
-    llm_profile_id = int(profile_row[0]) if profile_row else None
-    if (
-        profile_row
-        and not chain.role_profiles_pinned
-        and profile.price_in_per_1m == 0
-        and profile.price_out_per_1m == 0
-        and (float(profile_row[1] or 0) or float(profile_row[2] or 0))
-    ):
-        profile = dataclasses.replace(
-            profile,
-            price_in_per_1m=float(profile_row[1] or 0),
-            price_out_per_1m=float(profile_row[2] or 0),
-        )
-    row = await (
-        await conn.execute(
-            "insert into agent_runs (kind, sim_run_id, signal_id, client_id, llm_profile_id, prompt_version, graph_version, thread_id, started_sim,llm_profiles_snapshot) values ('agent', %s, %s, %s, %s, %s, %s, %s, %s,%s::jsonb) returning id",
-            (
-                sig["run_id"],
-                signal_id,
-                sig["client_id"],
-                llm_profile_id,
-                pv,
-                GRAPH_VERSION,
-                f"{sig['run_id']}:{signal_id}",
-                sim_time,
-                dumps(chain.role_snapshot),
-            ),
-        )
-    ).fetchone()
-    agent_run_id = int(row[0])  # type: ignore[index]
+    if entry is None:
+        return None
+    sig, chain, profile, sim_time, pv, agent_run_id = entry
     await conn.commit()
     deps = await load_deps(
         conn, chain=chain, profile=profile, run_id=int(sig["run_id"]), agent_run_id=agent_run_id, sim_time=sim_time

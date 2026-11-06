@@ -4,14 +4,30 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 
-def docker(*args: str) -> str:
+def docker(*args: str, private_log: bool = False) -> str:
     result = subprocess.run(["docker", *args], capture_output=True, text=True, check=False)
     if result.returncode:
+        if private_log:
+            try:
+                descriptor, path = tempfile.mkstemp(prefix="cx-install-build-", suffix=".log")
+                os.fchmod(descriptor, 0o600)
+                with os.fdopen(descriptor, "w", encoding="utf-8") as log:
+                    log.write(result.stdout)
+                    log.write("\n--- stderr ---\n")
+                    log.write(result.stderr)
+            except OSError:
+                raise RuntimeError("Сборка не выполнена; не удалось сохранить приватный диагностический лог") from None
+            raise RuntimeError(
+                f"Сборка не выполнена. Приватный лог (0600): {path}\n"
+                "Для перезапуска существующего стенда без сборки: bash ./install.sh --restart"
+            )
         # Compose config может содержать секреты: его вывод не попадает в сообщение ошибки.
         raise RuntimeError(
             f"Docker preflight завершился с ошибкой: docker {' '.join(args)}; повторите эту команду отдельно для диагностики"
@@ -43,7 +59,7 @@ def preflight(profiles: list[str]) -> None:
                     f"Reset остановлен: том {name} удерживает посторонний или one-off контейнер "
                     f"{holder[:12]}. Проверьте его вручную; контейнеры автоматически не удаляются."
                 )
-    docker(*compose, "build")
+    docker(*compose, "build", private_log=True)
     for image in sorted({service["image"] for service in services.values()}):
         cached = subprocess.run(["docker", "image", "inspect", image], capture_output=True, check=False)
         if cached.returncode:

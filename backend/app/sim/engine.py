@@ -8,6 +8,7 @@ import contextlib
 import copy
 import datetime as dt
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import psycopg
@@ -39,6 +40,27 @@ class StaleSimulatorError(ValueError):
     """Устаревший контроллер не вправе перезаписывать native state."""
 
 
+@dataclass
+class _ReconnectTick:
+    run_id: int
+    intent: int
+    before: tuple[dt.datetime, int, int, dict[str, Any]]
+    stats: dict[str, int]
+    world: World | None
+    pending: Any
+    faults: Any
+    after: tuple[dt.datetime, int, int, dict[str, Any]] | None = None
+
+
+def _connection_lost(error: BaseException, conn: psycopg.AsyncConnection[Any] | None) -> bool:
+    if not isinstance(error, (psycopg.OperationalError, psycopg.InterfaceError)):
+        return False
+    if error.sqlstate:
+        # Auth/config/SQL ошибки не становятся retry по conn=None.
+        return error.sqlstate.startswith("08") or error.sqlstate in {"57P01", "57P02", "57P03"}
+    return conn is None or conn.closed or conn.broken
+
+
 class Simulator:
     def __init__(self, seed: int = 42, dsn: str | None = None, *, behavior_policy: DemoPolicy | None = None) -> None:
         self.before_resume: Callable[[int, dt.datetime], Awaitable[None]] | None = None
@@ -55,6 +77,10 @@ class Simulator:
         self.run_status: str | None = None
         self._task: asyncio.Task[None] | None = None
         self._lock = asyncio.Lock()
+        self._intent = 0
+        self._reconnect_tick: _ReconnectTick | None = None
+        self._reconnect_expected: tuple[dt.datetime, int, int, dict[str, Any]] | None = None
+        self._reconnect_blocked: str | None = None
         self._last_minute_published: dt.datetime | None = None
         self.stats: dict[str, int] = {"ticks": 0, "ops": 0, "faults": 0, "client_errors": 0, "signals": 0}
 
@@ -76,6 +102,8 @@ class Simulator:
                 (self.clock.sim_time, PRESETS["day_12min"], self.seed),
             )
             await conn.commit()
+            self._reconnect_blocked = None
+            self._reconnect_expected = None
             return
         sim_time, day_no, speed, running, seed, run_id, rng_state, last_tick_at, intensities = row
         self.clock = SimClock(sim_time=sim_time, speed=float(speed), running=False, day_no=int(day_no))
@@ -102,6 +130,9 @@ class Simulator:
                 await conn.execute("update sim_state set running = false where id = 1")
         await conn.commit()
         self._intensities = dict(intensities or {})
+        self._reconnect_blocked = None
+        self._reconnect_expected = None
+        self._reconnect_tick = None
         log.info(
             "sim_state_loaded", sim_time=self.clock.sim_time.isoformat(), run_id=self.run_id, status=self.run_status
         )
@@ -240,6 +271,18 @@ class Simulator:
 
     async def _step_chunk(self, minutes: float) -> None:
         async with self._lock:
+            self._require_reconnect_reviewed()
+            if self.clock.running and self.run_status == "running" and self._task is asyncio.current_task():
+                assert self.run_id is not None
+                self._reconnect_tick = _ReconnectTick(
+                    self.run_id,
+                    self._intent,
+                    self._tick_point(),
+                    dict(self.stats),
+                    self.world,
+                    copy.deepcopy(self.world.pending) if self.world is not None else None,
+                    copy.deepcopy(self.world.active_faults) if self.world is not None else None,
+                )
             await self._reject_scripted_control()
             await self._step_chunk_locked(minutes)
         await self._publish_tick()
@@ -315,6 +358,25 @@ class Simulator:
 
     async def _step_chunk_locked(self, minutes: float) -> None:
         conn = await self.connect()
+        if self._reconnect_expected is not None:
+            row = await (
+                await conn.execute(
+                    "select s.current_run_id,s.sim_time,s.day_no,s.seed,s.rng_state,s.running,r.status "
+                    "from sim_state s left join sim_runs r on r.id=s.current_run_id where s.id=1 for update of s"
+                )
+            ).fetchone()
+            point = (row[1], int(row[2]), int(row[3]), row[4]) if row else None
+            if (
+                not row
+                or row[0] != self.run_id
+                or not row[5]
+                or row[6] != "running"
+                or point != self._reconnect_expected
+            ):
+                await conn.rollback()
+                self.clock.running = False
+                self._reconnect_blocked = "owner_changed"
+                self._require_reconnect_reviewed()
         policy = await effective_policy(conn, self.run_id, self.behavior_policy)
         if (
             policy is not None
@@ -398,6 +460,8 @@ class Simulator:
                 await self.persist()
             # COMMIT мог уже завершиться на сервере до возврата coroutine.
             # Отмена caller не должна превратить durable tick в memory rollback.
+            if self._reconnect_tick is not None and self._task is asyncio.current_task():
+                self._reconnect_tick.after = self._tick_point()
             commit_task = asyncio.create_task(conn.commit())
             while True:
                 try:
@@ -407,6 +471,8 @@ class Simulator:
                     if commit_task.cancelled():
                         raise
                     commit_cancelled = True  # Повторная отмена тоже не отменяет COMMIT.
+            self._reconnect_tick = None
+            self._reconnect_expected = None
 
         except BaseException as error:
             # Любая незафиксированная попытка отменяется вместе с logical
@@ -450,19 +516,156 @@ class Simulator:
         self._last_minute_published = minute
         await hub.publish("sim", "sim.tick", self.state_dict(), self.run_id)
 
+    def _tick_point(self) -> tuple[dt.datetime, int, int, dict[str, Any]]:
+        return self.clock.sim_time, self.clock.day_no, self.seed, self.rng.dump_state()
+
+    def _require_reconnect_reviewed(self) -> None:
+        if self._reconnect_blocked is not None:
+            detail = (
+                "Результат фиксации tick неизвестен"
+                if self._reconnect_blocked == "commit_unknown"
+                else "Переподключение не подтвердило текущие run/time/RNG"
+            )
+            raise StaleSimulatorError(detail + "; перезапустите backend без reset, затем возобновите текущий запуск")
+
+    def _owns_running_intent(self, tick: _ReconnectTick) -> bool:
+        return (
+            self._task is asyncio.current_task()
+            and self._intent == tick.intent
+            and self.clock.running
+            and self.run_status == "running"
+            and self.run_id == tick.run_id
+        )
+
+    async def _reconnect_running_tick(self, tick: _ReconnectTick, error: BaseException) -> None:
+        """Повторяем только доказанный PRE; POST/чужой owner требуют ручного разбора."""
+        attempt = 0
+        previous_error = None
+        while self._owns_running_intent(tick):
+            attempt += 1
+            fresh = None
+            try:
+                async with self._lock:
+                    if not self._owns_running_intent(tick):
+                        return
+                    old, self.conn = self.conn, None
+                    if old is not None:
+                        with contextlib.suppress(psycopg.Error):
+                            await old.close()
+                    async with asyncio.timeout(8):
+                        fresh = await psycopg.AsyncConnection.connect(
+                            psycopg_dsn(self.dsn), autocommit=False, connect_timeout=3
+                        )
+                        await fresh.execute("set transaction read only")
+                        row = await (
+                            await fresh.execute(
+                                "select s.current_run_id,s.sim_time,s.day_no,s.seed,s.rng_state,s.running,r.status "
+                                "from sim_state s left join sim_runs r on r.id=s.current_run_id where s.id=1"
+                            )
+                        ).fetchone()
+                        await fresh.rollback()
+                    if not self._owns_running_intent(tick):
+                        return
+                    point = (row[1], int(row[2]), int(row[3]), row[4]) if row else None
+                    if (
+                        row is None
+                        or row[0] != tick.run_id
+                        or not row[5]
+                        or row[6] != "running"
+                        or point != tick.before
+                    ):
+                        # Не ставим interrupted и не переписываем неизвестный COMMIT.
+                        self.clock.running = False
+                        self._reconnect_blocked = "commit_unknown" if point == tick.after else "owner_changed"
+                        log.error(
+                            "sim_reconnect_rejected",
+                            error_type=type(error).__name__,
+                            stage="commit_unknown" if point == tick.after else "owner_changed",
+                            run_id=tick.run_id,
+                            attempt=attempt,
+                        )
+                        return
+                    self.conn, fresh = fresh, None
+                    self.clock.sim_time, self.clock.day_no, self.seed, rng_state = tick.before
+                    self.rng.load_state(rng_state)
+                    self.stats = dict(tick.stats)
+                    # _ensure_world создаст новый World с новым conn и native журналом,
+                    # сохранив legacy pending, которые не восстанавливаются из БД.
+                    self.world = tick.world
+                    if self.world is not None:
+                        self.world.pending = copy.deepcopy(tick.pending)
+                        self.world.active_faults = copy.deepcopy(tick.faults)
+                    self._reconnect_tick = None
+                    self._reconnect_expected = tick.before
+                    log.info("sim_reconnected", stage="confirmed_pre", run_id=tick.run_id, attempt=attempt)
+                    return
+            except (psycopg.Error, TimeoutError) as reconnect_error:
+                if isinstance(reconnect_error, psycopg.Error) and not _connection_lost(reconnect_error, fresh):
+                    if self._owns_running_intent(tick):
+                        self.clock.running = False
+                        self._reconnect_blocked = "verification"
+                    log.error(
+                        "sim_reconnect_rejected",
+                        error_type=type(reconnect_error).__name__,
+                        stage="verification",
+                        run_id=tick.run_id,
+                        attempt=attempt,
+                    )
+                    return
+                if type(reconnect_error).__name__ != previous_error:
+                    previous_error = type(reconnect_error).__name__
+                    log.warning(
+                        "sim_reconnect_wait",
+                        error_type=previous_error,
+                        stage="connection",
+                        run_id=tick.run_id,
+                        attempt=attempt,
+                    )
+            finally:
+                if fresh is not None:
+                    with contextlib.suppress(psycopg.Error):
+                        await fresh.close()
+            # Lock освобождён; Pause/Stop отменяют backoff и имеют приоритет.
+            await asyncio.sleep(2)
+
     async def _loop(self) -> None:
+        previous_error = None
         while self.clock.running:
             started = asyncio.get_running_loop().time()
             sim_minutes = REAL_TICK_S * self.clock.speed / 60
             try:
                 await self.step(sim_minutes)
-            except Exception:
-                await asyncio.sleep(2)
+            except Exception as error:
+                tick = self._reconnect_tick
+                if tick is not None and _connection_lost(error, self.conn):
+                    self._reconnect_expected = tick.before
+                    log.warning(
+                        "sim_connection_lost",
+                        error_type=type(error).__name__,
+                        stage="tick",
+                        run_id=tick.run_id,
+                        attempt=1,
+                    )
+                    await self._reconnect_running_tick(tick, error)
+                else:
+                    if type(error).__name__ != previous_error:
+                        previous_error = type(error).__name__
+                        log.error(
+                            "sim_loop_step_failed",
+                            error_type=previous_error,
+                            stage="tick",
+                            run_id=self.run_id,
+                            attempt=1,
+                        )
+                    await asyncio.sleep(2)
+            else:
+                previous_error = None
             elapsed = asyncio.get_running_loop().time() - started
             await asyncio.sleep(max(0.05, REAL_TICK_S - elapsed))
 
     # --- управление ----------------------------------------------------------------------------------------------------
     async def control(self, action: str, **kw: Any) -> dict[str, Any]:
+        self._require_reconnect_reviewed()
         if action == "resume" or (
             action == "start" and not kw.get("label") and self.run_status in ("paused", "interrupted")
         ):
@@ -494,6 +697,7 @@ class Simulator:
                         await save(conn, self.run_id, execution)
                     await self.persist()
                     await conn.commit()
+                    self._reconnect_expected = None  # control подтвердил PRE до commit.
                 except BaseException:
                     self.run_status = previous_status
                     await conn.rollback()
@@ -627,6 +831,7 @@ class Simulator:
                             await ensure(conn, self.run_id, running=self.clock.running)
                         await self.persist()
                         await conn.commit()
+                        self._reconnect_expected = None  # Явный Start закрепил проверенного нового owner.
                     except BaseException:
                         await conn.rollback()
                         (
@@ -683,6 +888,7 @@ class Simulator:
                         self.world.pending.clear()
                     await self.persist()
                     await conn.commit()
+                    self._reconnect_expected = None  # reset_day уже проверил исходные time/RNG.
                 await hub.publish("sim", "sim.control", {"action": action, **self.state_dict()}, self.run_id)
                 return self.state_dict()
         elif action == "jump_to":
@@ -711,6 +917,7 @@ class Simulator:
 
     async def resume_run(self) -> dict[str, Any]:
         """Resume продолжает только последний paused/interrupted, не создаёт новый run."""
+        self._require_reconnect_reviewed()
         async with self._lock:
             await self._reject_scripted_control()
             conn = await self.connect()
@@ -757,11 +964,15 @@ class Simulator:
         return self.state_dict()
 
     def _start_loop(self) -> None:
+        self._require_reconnect_reviewed()
+        self._intent += 1
+        self._reconnect_tick = None
         self.clock.running = True
         if self._task is None or self._task.done():
             self._task = start_daemon(self._loop, name="sim-loop")
 
     async def _stop_loop(self) -> None:
+        self._intent += 1  # Ручной intent фиксируется до DB I/O и отмены текущего tick.
         self.clock.running = False
         if self._task and not self._task.done():
             self._task.cancel()

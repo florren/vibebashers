@@ -223,7 +223,8 @@ async def test_listener_dispatches_appended_event_to_reply_pipeline(monkeypatch)
     service = runner.AgentService(object(), object())
     stamp = dt.datetime(2026, 11, 1, tzinfo=dt.UTC)
 
-    async def notifies():
+    async def notifies(*, timeout, stop_after):
+        assert timeout == 2 and stop_after == 20
         yield SimpleNamespace(
             channel="sim_events",
             payload=json.dumps(
