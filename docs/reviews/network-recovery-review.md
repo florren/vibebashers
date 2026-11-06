@@ -8,6 +8,8 @@
 - [Перезапуск контейнеров](install-cached-restart.md): `bash ./install.sh --restart`
   использует существующие контейнеры и образы. Работающий PostgreSQL сохраняется;
   нет build/pull, seed, reset, изменения `.env` или запуска Tuna.
+  После миграций Docker CMD выполняет `exec uvicorn`: SIGTERM получает сервер,
+  чтобы штатный shutdown завершился до перезапуска контейнера.
 - [Симулятор](network-sim-recovery.md): текущий автономный loop ждёт возвращения
   PostgreSQL и повторяет только доказанно незафиксированный tick. PRE проверяется
   повторно внутри транзакции под блокировкой строки. Новый run не создаётся.
@@ -53,6 +55,13 @@ native Compose/PG с проверкой JSON health PASS; agent — 32 адре�
 Privacy-регрессия listener использует те же `timeout=2/stop_after=20`, что native
 psycopg: тестовый двойник обновлён без ослабления проверки доставки appended event.
 Вместе с reconnect unit-регрессиями — 18 passed.
+
+Native image smoke подтвердил реальный startup, оба health, Start → 3 tick →
+Pause → Stop, сохранение run/time/RNG и отсутствие provider attempts. В отдельном
+причинном повторе того же образа единственное изменение CMD — `exec` перед uvicorn:
+PID1 стал uvicorn, `docker stop` завершился exit 0 за 1,359 с со всеми shutdown
+markers; исходный shell CMD завершался exit 137 после 30 с. Это проверка сигнала
+на собственных контейнерах, не утверждение о причине исходной остановки в 08:33.
 
 ## Внедрение и откат
 
