@@ -160,3 +160,109 @@ def test_partial_seed_is_not_automatically_replaced(seeded, conn, monkeypatch, m
     before = snapshot(conn)
     assert seed.preserve_existing(conn.cursor(), "lite") == 4
     assert snapshot(conn) == before
+
+
+def test_installer_seed_requires_reload_before_native_start(migrated_db, monkeypatch):
+    """Сохраняем старую память до seed: reload исправляет только installer boundary."""
+    import importlib.util
+    import io
+    import json
+
+    from app.sim.engine import StaleSimulatorError
+
+    spec = importlib.util.spec_from_file_location("install_seed_state_native", ROOT / "scripts/install_seed_state.py")
+    assert spec and spec.loader
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    url = migrated_db.replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(url, autocommit=True) as conn:
+        conn.execute("drop schema if exists langgraph cascade; drop schema public cascade; create schema public")
+    env = {**os.environ, "DATABASE_URL": migrated_db}
+    migrated = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=ROOT / "backend",
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert migrated.returncode == 0, migrated.stderr
+
+    def fingerprints():
+        with psycopg.connect(url) as conn:
+            tables = conn.execute(
+                "select schemaname,tablename from pg_tables where schemaname in ('public','langgraph','llm_runtime','channel_runtime') order by 1,2"
+            ).fetchall()
+            return {
+                (schema, table): conn.execute(
+                    sql.SQL(
+                        "select count(*),md5(coalesce(string_agg(md5(to_jsonb(t)::text),'' order by md5(to_jsonb(t)::text)),'')) from {}.{} t"
+                    ).format(sql.Identifier(schema), sql.Identifier(table))
+                ).fetchone()
+                for schema, table in tables
+            }
+
+    async def lifecycle():
+        loaded = Simulator(seed=42, dsn=migrated_db)
+        replacement = None
+        current = loaded
+        monkeypatch.setattr(
+            helper.urllib.request, "urlopen", lambda *_args, **_kw: io.StringIO(json.dumps(current.state_dict()))
+        )
+        try:
+            await loaded.load_state()
+            assert loaded.run_id is None
+            seeded = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts/seed/run.py"),
+                    "--if-needed",
+                    "--profile",
+                    "lite",
+                    "--clients",
+                    "200",
+                    "--seed",
+                    "42",
+                ],
+                cwd=ROOT,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            assert seeded.returncode == 0, seeded.stderr
+            with psycopg.connect(url) as conn:
+                persisted = conn.execute(
+                    "select s.current_run_id,s.sim_time,s.seed,s.running,r.kind,r.status from sim_state s join sim_runs r on r.id=s.current_run_id where s.id=1"
+                ).fetchone()
+            assert persisted and persisted[0] is not None and persisted[2:] == (42, False, "baseline", "completed")
+            before = fingerprints()
+            assert helper.check_state(url, "http://owned-test.invalid/sim/state") == 3
+            with pytest.raises(StaleSimulatorError):
+                await loaded.control("start")
+            assert loaded.run_id is None
+            await loaded.shutdown()
+            replacement = Simulator(seed=42, dsn=migrated_db)
+            current = replacement
+            await replacement.load_state()
+            assert replacement.run_id == persisted[0] and replacement.clock.sim_time == persisted[1]
+            assert helper.check_state(url, "http://owned-test.invalid/sim/state") == 0
+            assert fingerprints() == before  # Reload не меняет банк, часы, raw RNG или operational ledger.
+            await replacement.control("start", label="Первый запуск после installer seed")
+            initial_time = replacement.clock.sim_time
+            for _ in range(100):
+                if replacement.clock.sim_time > initial_time:
+                    break
+                await asyncio.sleep(0.05)
+            assert replacement.clock.running and replacement.clock.sim_time > initial_time
+            task = replacement._task
+            assert task and not task.done()
+            assert helper.check_state(url, "http://owned-test.invalid/sim/state") == 0
+            assert replacement._task is task and replacement.clock.running  # Совпавший active World не прерывается.
+            await replacement.control("pause")
+            await replacement.step(480)
+            assert replacement.stats["ops"] > 0 and replacement.stats["signals"] > 0
+        finally:
+            if replacement is not None:
+                await replacement.shutdown()
+            await loaded.shutdown()
+
+    asyncio.run(lifecycle())
