@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import time
+from unittest.mock import patch
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -131,4 +133,19 @@ def _checks() -> None:
         # завершение мастера
         assert c.post("/api/setup").status_code == 204
         assert c.get("/api/setup/status").json()["completed"] is True
-        assert c.post("/api/setup/test-tgbot", json={"token": "123456:ABCDEFGHIJK"}).json()["ok"] is False
+        # Проверяем настоящий route/error mapping без DNS и внешней доставки.
+        requests: list[tuple[str, str]] = []
+
+        def telegram(request: httpx.Request) -> httpx.Response:
+            requests.append((request.method, str(request.url)))
+            return httpx.Response(401, json={"ok": False, "description": "Unauthorized"})
+
+        original_client = httpx.AsyncClient
+        with patch(
+            "app.api.setup.httpx.AsyncClient",
+            side_effect=lambda **kwargs: original_client(transport=httpx.MockTransport(telegram), **kwargs),
+        ):
+            response = c.post("/api/setup/test-tgbot", json={"token": "123456:ABCDEFGHIJK"})
+        assert response.status_code == 200
+        assert response.json() == {"ok": False, "error": "Unauthorized"}
+        assert requests == [("GET", "https://api.telegram.org/bot123456:ABCDEFGHIJK/getMe")]
