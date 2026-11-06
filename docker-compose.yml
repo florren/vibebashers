@@ -23,6 +23,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      network: ${BUILD_NETWORK:-default}
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://cx:cx@postgres:5432/cx_pulse
