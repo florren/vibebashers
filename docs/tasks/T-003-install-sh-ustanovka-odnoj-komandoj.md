@@ -56,3 +56,16 @@ published port вместо substring cx-pulse.18focused tests; повтор п�
 [Review/proof](../reviews/FREEZE-2026-11-03-offline-install.md). Не проверялись
 чистая Ubuntu22/24 VM и сеть с физически запрещённым egress; эти исходные
 критерии не отмечаются автоматически.
+
+06.11 — безопасность явного reset: подготовка Vosk, проверка resolved Compose
+config и держателей его управляемых томов, сборка и получение только
+отсутствующих образов перенесены перед `down -v`. Stopped foreign/one-off
+контейнеры явно блокируют reset и автоматически не удаляются. После preflight
+запуск использует `--no-build --pull never`; cached images не обновляются.
+Новые 11 shell-регрессий: RED10 на прежнем installer и RED1 для `.env` profile → GREEN29 вместе
+с соседними installer tests; Ruff и `bash -n` PASS. Полные проверки этого
+пакета на момент подготовки отчёта ещё не запускались. Настоящий reset
+и primary для проверки не использовались.
+[Разбор и ограничения](../reviews/install-reset-preflight.md).
+
+Итоговый isolated gate на `76edc49e45455aca0f62e6fa5a537ee14f209188`: `make lint`, contracts, owners PASS; полный `make test` **4155 passed/20 skipped**. Tracked source после прогона неизменён, собственный PG остановлен. Native preflight-only на собственном scratch Compose project проверил `.env` profile, cached images без pull и сохранённый stopped/created one-off holder; реального reset и primary-операций не было. Финальное уточнение комментария не меняет Python AST; exact-head CI требуется перед merge.

@@ -71,11 +71,6 @@ if [ "$TGBOT" = 1 ]; then
   python3 scripts/tgbot_env.py --enable --env-file .env || die "Для --with-tgbot заполните TELEGRAM_BOT_TOKEN, TGBOT_PUBLIC_BASE_URL и APP_SECRET; секреты не выводятся"
   PROFILES+=(--profile telegram)
 fi
-if [ "$RESET" = 1 ]; then
-  say "сброс: удаляю тома БД"
-  docker compose "${PROFILES[@]}" down -v --remove-orphans
-fi
-
 if [ "$NO_STT" != 1 ]; then
   if [ "$OFFLINE" != 1 ]; then
     say "подготовка локальной диктовки Vosk"
@@ -84,8 +79,16 @@ if [ "$NO_STT" != 1 ]; then
     say "--offline: модели Vosk нет; диктовка недоступна, заранее выполните make stt-model"
   fi
 fi
+UP_BUILD=(--build)
+if [ "$RESET" = 1 ]; then
+  say "проверка reset: тома, сборка и наличие образов до удаления данных"
+  python3 scripts/install_preflight.py "${PROFILES[@]}" || die "Reset не выполнен: preflight не пройден, данные сохранены"
+  say "сброс: удаляю тома БД"
+  docker compose "${PROFILES[@]}" down -v --remove-orphans
+  UP_BUILD=(--no-build --pull never)
+fi
 say "сборка и запуск (профиль данных: $PROFILE)"
-docker compose "${PROFILES[@]}" up -d --build
+docker compose "${PROFILES[@]}" up -d "${UP_BUILD[@]}"
 say "ожидание PostgreSQL и миграций"
 for i in $(seq 1 60); do
   if curl -fs http://localhost:8000/api/health >/dev/null 2>&1; then break; fi
