@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 # CX Pulse Control — установка одной командой (ТЗ 16.2, T-003).
 # ./install.sh [--profile lite|demo|stress] [--offline] [--record-cassettes] [--reset] [--seed N] [--no-mailpit] [--with-tgbot] [--help]
+# ./install.sh --restart — отдельно от остальных флагов, только существующие контейнеры
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# Ранний путь не меняет .env и не запускает никакие этапы установки.
+for install_argument in "$@"; do
+  if [ "$install_argument" = --restart ]; then
+    if [ "$#" -ne 1 ]; then
+      printf '%s\n' '--restart используется отдельно от флагов установки/reset/seed' >&2
+      exit 2
+    fi
+    command -v python3 >/dev/null || { printf '%s\n' 'Для --restart нужен Python 3' >&2; exit 1; }
+    exec python3 scripts/install_restart.py
+  fi
+done
 
 PROFILE=""; OFFLINE=0
 NO_STT=0; RECORD_CASSETTES=0; RESET=0; SEED=""; MAILPIT=0; TGBOT=0
