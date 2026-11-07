@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { captureAgentScreenshot } from './agent-screenshot'
 
 const emptyFrame = 'page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot'
@@ -42,7 +43,8 @@ test('один пустой bitmap восстанавливается с диа�
   expect(png.readUInt32BE(20)).toBeGreaterThan(page.viewportSize()!.height)
   const diagnostic = info.attachments.find(item => item.name === 'recovered.png-empty-frame')
   expect(diagnostic?.contentType).toBe('application/json')
-  expect(JSON.parse(diagnostic!.body!.toString()).error).toBe(emptyFrame)
+  expect(diagnostic?.path).toBeTruthy()
+  expect(JSON.parse(await readFile(diagnostic!.path!, 'utf8')).error).toBe(emptyFrame)
 })
 
 test('повторный пустой bitmap остаётся ошибкой', async ({ page }, info) => {

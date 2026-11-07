@@ -1,5 +1,6 @@
 import type { Page, TestInfo } from '@playwright/test'
-import { basename } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { basename, dirname } from 'node:path'
 
 const emptyFrame = /^(?:page\.screenshot: )?Protocol error \(Page\.captureScreenshot\): Unable to capture screenshot(?:\r?\n|$)/
 
@@ -23,8 +24,12 @@ export async function captureAgentScreenshot(page: Page, info: Pick<TestInfo, 'a
     // https://chromium.googlesource.com/chromium/src/+/refs/heads/main/content/browser/devtools/protocol/page_handler.cc
     // Восстанавливаем только один потерянный bitmap, а не перезапускаем UI-проверки.
     if (!(error instanceof Error) || !emptyFrame.test(error.message) || page.isClosed() || page.url() !== url) throw error
+    // CI загружает test-results с list reporter: body-вложения остаются в памяти.
+    const diagnosticPath = `${path}.empty-frame.json`
+    await mkdir(dirname(diagnosticPath), { recursive: true })
+    await writeFile(diagnosticPath, JSON.stringify({ url, viewport: page.viewportSize(), error: error.message }, null, 2))
     await info.attach(`${basename(path)}-empty-frame`, {
-      body: JSON.stringify({ url, viewport: page.viewportSize(), error: error.message }, null, 2),
+      path: diagnosticPath,
       contentType: 'application/json',
     })
     await paint(page)
