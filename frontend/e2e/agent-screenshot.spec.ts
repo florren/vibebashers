@@ -12,14 +12,19 @@ test('снимок ждёт кадр и сохраняет всю страниц
   })
   const screenshot = page.screenshot.bind(page)
   let calls = 0
+  let failures = 0
   page.screenshot = async options => {
     calls++
     expect(Number(await page.locator('html').getAttribute('data-frames'))).toBeGreaterThanOrEqual(2)
     expect(options).toMatchObject({ fullPage: true, animations: 'disabled' })
-    return screenshot(options)
+    try { return await screenshot(options) } catch (error) { failures++; throw error }
   }
   const png = await captureAgentScreenshot(page, info, info.outputPath('full-page.png'))
-  expect(calls).toBe(1)
+  // Реальный compositor тоже может вернуть один empty frame: корректное
+  // восстановление не должно превращаться в новый flaky assert числа вызовов.
+  expect(calls).toBe(failures + 1)
+  expect(failures).toBeLessThanOrEqual(1)
+  expect(info.attachments).toHaveLength(failures)
   expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
   expect(png.readUInt32BE(20)).toBeGreaterThan(page.viewportSize()!.height)
 })
