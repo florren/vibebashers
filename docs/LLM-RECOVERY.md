@@ -156,7 +156,9 @@ docker compose up -d --no-deps --no-build backend
 ```
 
 Backend использует host network и PostgreSQL на `127.0.0.1:5432`; порт API
-остаётся 8000. PostgreSQL и personal остаются в обычной сети. Telegram service,
+остаётся 8000. PostgreSQL и personal остаются в обычной сети. Опциональный
+Mailpit доступен backend по опубликованному SMTP-порту `127.0.0.1:1025`, а не
+по Docker DNS-имени `mailpit`. Telegram service,
 если он включён, тоже использует host network и backend `127.0.0.1:8000`;
 пересоздайте его через `docker compose --profile telegram up -d --no-deps --no-build tgbot`.
 Режим предназначен для Linux Docker Engine с поддержкой Compose `!reset`.
