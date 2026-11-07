@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { captureAgentScreenshot } from './agent-screenshot'
 
 // Default serial project; API GET projections only, все browser mutations запрещены.
 for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
@@ -35,11 +36,11 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       await expect(page.locator('[data-execution-status="interrupted"] .animate-pulse')).toHaveCount(0)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
       expect(mutations).toEqual([])
-      await page.screenshot({ path: info.outputPath(`interrupted-${lang}-${mode}.png`), fullPage: true })
+      await captureAgentScreenshot(page, info, info.outputPath(`interrupted-${lang}-${mode}.png`))
       await page.goto('/trace/agent_run/42')
       await expect(page.getByText(lang === 'ru' ? 'прерван' : 'interrupted', { exact: true }).first()).toBeVisible()
       expect(mutations).toEqual([])
-      await page.screenshot({ path: info.outputPath(`trace-interrupted-${lang}-${mode}.png`), fullPage: true })
+      await captureAgentScreenshot(page, info, info.outputPath(`trace-interrupted-${lang}-${mode}.png`))
     } finally {
       await context.unrouteAll({ behavior: 'wait' })
       expect(activeRoutes).toBe(0)
