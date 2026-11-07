@@ -134,3 +134,48 @@ committed reservation до transport, типы SQL-профиля, сохран�
 новых расходов. Сохраните состояние, остановите дальнейшие budgeted вызовы и
 проведите новую reviewed reconciliation. Численные caps, цены и банковские
 правила этой процедурой не меняются.
+
+## Linux: хост видит GigaChat, backend bridge не видит
+
+Сравните доступ к OAuth и API именно из рабочего backend. Успешная сборка с
+`BUILD_NETWORK=host` не проверяет runtime. Например, VPN/TUN может перенаправлять
+исходящие соединения Docker на локальный proxy, недоступный из bridge-сети.
+Не отключайте TLS, VPN или firewall ради диагностики.
+
+Для такого Linux-стенда есть opt-in конфигурация проекта:
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml
+```
+
+Добавьте эту строку в локальный `.env`, затем примените существующий образ:
+
+```bash
+docker compose config --quiet
+docker compose up -d --no-deps --no-build backend
+```
+
+Backend использует host network и PostgreSQL на `127.0.0.1:5432`; порт API
+остаётся 8000. PostgreSQL и personal остаются в обычной сети. Telegram service,
+если он включён, тоже использует host network и backend `127.0.0.1:8000`;
+пересоздайте его через `docker compose --profile telegram up -d --no-deps --no-build tgbot`.
+Режим предназначен для Linux Docker Engine с поддержкой Compose `!reset`.
+Backend разделяет сетевой namespace хоста; это явный выбор окружения, а не
+смена дефолта для CI/других установок. Изменения системных firewall-правил,
+повышенные privileges, новый proxy и отключение проверки сертификатов не нужны.
+
+`--restart` перезапускает уже существующие контейнеры; для смены network mode
+нужен именно `up` выше. Проверка занятых портов при обычной установке/`--reset`
+поддерживает host mode: listener должен принадлежать процессу своего контейнера
+с private PID namespace, а не просто существовать на хосте. Базовая bridge
+конфигурация продолжает проверяться через published ports.
+
+После смены сети проверьте «Проверить подключение» для выбранного LLM-профиля
+и статус accounting из §1. Доступные OAuth/баланс не снимают unknown usage.
+Для свежего ключа без application attempts и legacy floors используется §2;
+для существующего неопределённого расхода — §3–4. Не считайте mock ответом GigaChat.
+
+Откат сети: удалите `COMPOSE_FILE` из локального `.env` и пересоздайте backend
+(и используемый tgbot) с базовым `docker-compose.yml`. Данные и учёт расхода
+не сбрасывайте. Смена сети не исправит первопричину блокировки bridge на хосте,
+поэтому перед откатом убедитесь, что исходный маршрут снова доступен.
