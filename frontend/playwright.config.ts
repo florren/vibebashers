@@ -11,13 +11,14 @@ export default defineConfig({
   timeout: 30_000,
   retries: 0,
   workers: 4,
+  // ci_compose запускает фазы отдельно: каждая очищает только свой outputDir.
   projects: [
-    { name: 'read-only', testMatch: readOnlyFiles, fullyParallel: true },
-    { name: 'settings', testIgnore: [...readOnlyFiles, ...inputFiles, ...scenarioFiles], workers: 1, dependencies: ['read-only'] },
+    { name: 'read-only', outputDir: './test-results/read-only', testMatch: readOnlyFiles, fullyParallel: true },
+    { name: 'settings', outputDir: './test-results/settings', testIgnore: [...readOnlyFiles, ...inputFiles, ...scenarioFiles], workers: 1, dependencies: ['read-only'] },
     // Массовая native preparation не меняет readonly/settings snapshots.
-    { name: 'scenarios', testMatch: scenarioFiles, workers: 1, dependencies: ['settings'] },
+    { name: 'scenarios', outputDir: './test-results/scenarios', testMatch: scenarioFiles, workers: 1, dependencies: ['settings'] },
     // Jury создаёт настоящие обращения; их фоновые эффекты не должны менять Обзор или карту.
-    { name: 'inputs', testMatch: inputFiles, workers: 1, dependencies: ['scenarios'] },
+    { name: 'inputs', outputDir: './test-results/inputs', testMatch: inputFiles, workers: 1, dependencies: ['scenarios'] },
   ],
   reporter: [['list']],
   use: {
