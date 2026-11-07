@@ -1,5 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { captureAgentScreenshot } from './agent-screenshot'
+
+async function closeInterruptedContext(page: Page, context: BrowserContext, activeRoutes: () => number) {
+  // Сначала остановить polling: unrouteAll ждёт только уже известные callbacks.
+  // Иначе поздний route.fetch может завершиться после удаления interceptor.
+  await page.goto('about:blank')
+  await expect.poll(activeRoutes).toBe(0)
+  await context.unrouteAll({ behavior: 'wait' })
+  expect(activeRoutes()).toBe(0)
+  await context.close()
+}
 
 // Default serial project; API GET projections only, все browser mutations запрещены.
 for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
@@ -27,8 +37,8 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
         await route.continue()
       } finally { activeRoutes-- }
     })
+    const page = await context.newPage()
     try {
-      const page = await context.newPage()
       await page.goto('/engine/42?tab=graph')
       await expect(page.getByText(lang === 'ru' ? 'прерван' : 'interrupted', { exact: true }).first()).toBeVisible()
       await expect(page.getByRole('button', { name: lang === 'ru' ? 'Продолжить' : 'Resume', exact: true }).first()).toBeVisible()
@@ -42,9 +52,44 @@ for (const lang of ['ru', 'en']) for (const mode of ['light', 'dark']) {
       expect(mutations).toEqual([])
       await captureAgentScreenshot(page, info, info.outputPath(`trace-interrupted-${lang}-${mode}.png`))
     } finally {
-      await context.unrouteAll({ behavior: 'wait' })
-      expect(activeRoutes).toBe(0)
-      await context.close()
+      await closeInterruptedContext(page, context, () => activeRoutes)
     }
   })
 }
+
+
+test('interrupted fixture завершает pending GET до удаления interceptor', async ({ browser }) => {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  let activeRoutes = 0
+  let fulfilled = false
+  let release!: () => void
+  let started!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  const requested = new Promise<void>(resolve => { started = resolve })
+  await context.route('https://interrupted.test/api/settings', async route => {
+    activeRoutes++
+    started()
+    try {
+      await pending
+      await route.fulfill({ json: {}, headers: { 'access-control-allow-origin': '*' } })
+      fulfilled = true
+    } finally { activeRoutes-- }
+  })
+  await page.goto('data:text/html,<p>interrupted fixture</p>')
+  // Навигация намеренно отменит browser fetch; завершение route проверяется отдельно.
+  await page.evaluate(() => { void fetch('https://interrupted.test/api/settings').catch(() => {}) })
+  await requested
+  const unroute = context.unrouteAll.bind(context)
+  context.unrouteAll = async options => {
+    expect(page.url()).toBe('about:blank')
+    expect(activeRoutes).toBe(0)
+    expect(fulfilled).toBe(true)
+    return unroute(options)
+  }
+  const closing = closeInterruptedContext(page, context, () => activeRoutes)
+  await page.waitForURL('about:blank')
+  expect(activeRoutes).toBe(1)
+  release()
+  await closing
+})
