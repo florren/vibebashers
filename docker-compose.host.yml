@@ -6,6 +6,7 @@ services:
     ports: !reset []
     environment:
       DATABASE_URL: postgresql+psycopg://cx:cx@127.0.0.1:5432/cx_pulse
+      MAILPIT_HOST: 127.0.0.1
   tgbot:
     network_mode: host
     environment:
