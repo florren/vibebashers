@@ -1,0 +1,12 @@
+# Linux opt-in: host egress для LLM при недоступной bridge-сети; firewall не меняется.
+# COMPOSE_FILE=docker-compose.yml:docker-compose.host.yml
+services:
+  backend:
+    network_mode: host
+    ports: !reset []
+    environment:
+      DATABASE_URL: postgresql+psycopg://cx:cx@127.0.0.1:5432/cx_pulse
+  tgbot:
+    network_mode: host
+    environment:
+      TGBOT_BACKEND_URL: http://127.0.0.1:8000

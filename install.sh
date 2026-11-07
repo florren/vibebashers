@@ -63,10 +63,21 @@ for binding in postgres:5432 backend:8000 personal:9999; do
   service=${binding%:*}; p=${binding#*:}
   if (command -v ss >/dev/null && ss -ltn 2>/dev/null | grep -q ":$p ") ; then
     # Имя project может быть любым; разрешён только порт своего работающего service.
-    if ! docker compose ps --status running --services 2>/dev/null | grep -Fxq "$service" ||
-       ! docker compose port "$service" "$p" 2>/dev/null | grep -Eq ":${p}$"; then
+    docker compose ps --status running --services 2>/dev/null | grep -Fxq "$service" ||
       die "Порт $p занят другим процессом"
+    if docker compose port "$service" "$p" 2>/dev/null | grep -Eq ":${p}$"; then
+      continue
     fi
+    # Host mode не публикует ports. Наличие чужого listener недостаточно:
+    # проверяем network mode и fd процессов именно своего контейнера.
+    container=$(docker compose ps --status running --quiet "$service" 2>/dev/null) ||
+      die "Порт $p занят другим процессом"
+    if [[ "$container" =~ ^[0-9a-f]{12,64}$ ]] &&
+       [[ "$(docker inspect --format '{{.HostConfig.NetworkMode}}|{{.HostConfig.PidMode}}' "$container" 2>/dev/null)" =~ ^host\|(private)?$ ]] &&
+       docker compose exec -T "$service" python - "$p" < scripts/install_host_port.py; then
+      continue
+    fi
+    die "Порт $p занят другим процессом"
   fi
 done
 
