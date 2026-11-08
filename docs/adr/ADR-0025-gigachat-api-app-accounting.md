@@ -26,7 +26,60 @@ rejected key. Every actual HTTP inference retains the existing durable attempt,
 shared profile cap and usage validation. Within one pool call, an admitted request
 is not replayed on another key; the existing outer model/provider fallback policy
 remains unchanged and retains separate ledger attempts. Missing usage, cancellation or uncertain
-delivery continues to require reviewed reconciliation, not a new origin.
+delivery remains unknown in audit; it never creates a new origin.
+
+### Availability correction,2026-11-08
+
+Project owner explicitly requires live functionality to take precedence over
+incomplete local accounting. For an existing GigaChat application origin, an
+unknown attempt does not permanently disable the credential. Every new physical
+inference must first receive a fresh positive `/balance` for its selected model;
+an error, missing package or zero balance still refuses admission and permits
+rotation before HTTP inference. Other providers and legacy credentials without
+an origin retain their existing reconciliation requirement.
+
+The old unknown attempt, confirmed token floor, origin and daily request counters
+are preserved. Successful new responses add their validated usage, without
+pretending the old gap is known. A local token cap stops at its confirmed floor;
+it cannot guarantee an exact ceiling across unknown usage. The provider package
+is the availability boundary in this case; `tokens_remaining` stays unknown.
+Reviewed reconciliation is optional for repairing historical totals, not a
+runtime dependency of an otherwise available GigaChat package.
+
+Structured PERS calls wait for the process-wide slot before starting their
+generation deadline. GigaChat normalization receives30s per configured model,
+instead of splitting10s into4/3/3s; other context/provider deadlines are unchanged.
+Queue wait and model retries can exceed the normal latency target. Calls remain
+cancellable, and a queue cancellation has no physical inference reservation.
+
+The demo operator holds the clock/control lock only while committing its HITL
+decision. Graph continuation runs after releasing that lock, as in the public
+HITL route. Waiting for the agent semaphore or GigaChat must not freeze ticks,
+Pause or Stop. Existing decision/current-run checks and transaction are retained.
+
+Longer live observation also found Ultra returning `sla:null` twice. SLA is an
+optional object in the decision contract and is recomputed by deterministic code.
+The default live GigaChat decide prompt v3 requires an SLA object (an empty object
+is valid) for `incident_action=create`, as the conditional contract requires;
+other branches omit it. The code calculates the deadlines in either case; validation
+still rejects null. Offline/replay and explicitly pinned v1/v2 templates retain
+their previous text/hash. No schema or decision-policy relaxation is introduced.
+
+Role capture holds the catalog session lock only for its SQL snapshot. A nested
+transaction/savepoint must not leave a transaction-scoped catalog lock on the
+caller's bank connection: live accounting uses a separate connection and would
+wait for the caller itself. The bank transaction is preserved, and snapshot
+error/cancellation releases the catalog lock before propagation.
+
+A structured transport disconnect may try another pool key within the original
+deadline, with a fresh positive package balance for that key. The interrupted
+attempt remains unknown and consumes its recorded request; no counter is reset.
+This bounded availability retry can incur a second inference charge. Streaming
+output and timed-out inference are not replayed.
+
+The bounded scenario11 recorder halts after its first failed generation, including
+cancellation. Later graph calls cannot reach the provider: ordinary runtime
+recovery does not make an interrupted strict recording valid.
 
 `usage_known` retains its documented app-scoped meaning. Sources
 `gigachat_api_balance_app_origin` / `gigachat_api_balance_app_observed` identify

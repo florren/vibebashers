@@ -1,0 +1,40 @@
+name: Установка uv с проверенным PyPI fallback
+description: После отказа GitHub Releases берёт ту же версию из официального wheel с закреплённым SHA256; ошибки остаются fatal.
+inputs:
+  version:
+    description: Проверенная версия uv
+    default: "0.13.7"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v5
+      id: install
+      continue-on-error: true
+      with:
+        version: ${{ inputs.version }}
+    - name: Проверенный wheel при недоступности GitHub Releases
+      if: steps.install.outcome == 'failure'
+      shell: bash
+      env:
+        UV_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        test "$UV_VERSION" = "0.13.7"
+        test "$(uname -s)" = "Linux"
+        test "$(uname -m)" = "x86_64"
+        tool_dir=$(mktemp -d "$RUNNER_TEMP/uv-bootstrap.XXXXXX")
+        archive="$tool_dir/uv.whl"
+        curl --silent --show-error --fail --location --proto '=https' --tlsv1.2 --retry 3 --retry-all-errors --max-time 60 \
+          'https://files.pythonhosted.org/packages/b9/93/0e053a2ca4523ee9825ccbedeb7121470d0a188933f11688b6d90d7f5c08/uv-0.13.7-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl' \
+          --output "$archive"
+        printf '%s  %s\n' '2c9bdc4a872b60a93c5f26c0791089ea11585a4f9d3b3c017d78eb8487505e25' "$archive" | sha256sum --check --status
+        python3 - "$archive" "$tool_dir" <<'PY'
+        import pathlib, sys, zipfile
+        with zipfile.ZipFile(sys.argv[1]) as wheel:
+            for name in ("uv", "uvx"):
+                target = pathlib.Path(sys.argv[2]) / name
+                target.write_bytes(wheel.read(f"uv-0.13.7.data/scripts/{name}"))
+                target.chmod(0o755)
+        PY
+        "$tool_dir/uv" --version
+        echo "$tool_dir" >> "$GITHUB_PATH"

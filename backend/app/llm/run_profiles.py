@@ -179,14 +179,26 @@ async def resolve(
     run_snapshot = ((row or {}).get("settings_snapshot") or {}).get("llm_profiles")
     snapshot = run_snapshot
     if new:
-        async with conn.transaction():
-            await conn.execute("select pg_advisory_xact_lock(%s)", (credentials.LOCK,))
-            frozen = (
-                run_snapshot
-                if isinstance(run_snapshot, dict) and run_snapshot.get("explicit_main_override") is True
-                else None
-            )
-            snapshot = await capture(conn, None, frozen_main=frozen)
+        try:
+            async with conn.transaction():
+                # Внешняя bank transaction может жить до конца tick. Xact-lock
+                # пережил бы этот savepoint и заблокировал отдельный accounting
+                # connection при последующем HTTP inference той же команды.
+                await conn.execute("select pg_advisory_lock(%s)", (credentials.LOCK,))
+                frozen = (
+                    run_snapshot
+                    if isinstance(run_snapshot, dict) and run_snapshot.get("explicit_main_override") is True
+                    else None
+                )
+                snapshot = await capture(conn, None, frozen_main=frozen)
+        finally:
+            # После rollback savepoint соединение снова пригодно для unlock.
+            # Проверяем и случай отмены во время самого acquire.
+            try:
+                await conn.execute("select pg_advisory_unlock(%s)", (credentials.LOCK,))
+            except BaseException:
+                await conn.close()  # Session lock не должен отравить borrowed connection.
+                raise
         if run_snapshot is None and (default.provider in {"mock", "replay"} or chain.offline_mode is not None):
             # Новый AR старого/offline вызывающего кода получает его явные model/tariffs.
             # Это snapshot до исполнения, а не выдуманная история старого AR.

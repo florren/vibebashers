@@ -374,10 +374,13 @@ async def _llm(
         raise ValueError("agent_prompt_templates: ожидается v1 или v2")
     if template_version is not None:
         live_prompt = template_version == "v2"
+    task_version = "v2" if live_prompt and task in ("classify", "normalize") else "v1"
+    if task == "decide" and template_version is None and live_prompt and requested_profile.provider == "gigachat":
+        task_version = "v3"  # Записанные/явно выбранные v1/v2 сохраняют прежний hash.
     prompt = (
         load_prompt("system").body
         + "\n\n"
-        + load_prompt(task, "v2" if live_prompt and task in ("classify", "normalize") else "v1").render(
+        + load_prompt(task, task_version).render(
             **{k: (v if isinstance(v, str) else dumps(v)) for k, v in system_vars.items()}
         )
     )

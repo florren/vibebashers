@@ -1,5 +1,6 @@
 """Bounded recorder проверяется фиктивным HTTP, без ключей и внешней сети."""
 
+import asyncio
 import json
 from dataclasses import replace
 
@@ -8,6 +9,30 @@ import pytest
 
 from app.llm.base import LLMProfile, ProviderError
 from app.replay.scenario11_record import BASE, LIMITS, MODEL, OAUTH, BoundedTransport, manifest, recording_profile
+
+
+@pytest.mark.parametrize("error", [ProviderError("network", "synthetic"), TimeoutError(), asyncio.CancelledError()])
+async def test_strict_recorder_halts_after_first_failed_generation(boundary, error):
+    from types import SimpleNamespace
+
+    from app.contracts.registry import deref
+    from app.replay.scenario11_record import AuditedProvider
+
+    transport, http_calls = boundary
+    generations = []
+
+    async def fail(*args, **kwargs):
+        generations.append(True)
+        raise error
+
+    audited = AuditedProvider(SimpleNamespace(accounting=object(), complete_structured=fail), transport)
+    profile = recording_profile(LLMProfile(code="record", provider="gigachat", model=MODEL))
+    with pytest.raises(type(error)) as caught:
+        await audited.complete_structured([], deref("agent/normalization"), profile, timeout_s=1)
+    assert caught.value is error
+    with pytest.raises(ProviderError, match="bounded_recording_halted"):
+        await audited.complete_structured([], deref("agent/classification"), profile, timeout_s=1)
+    assert generations == [True] and len(audited.requests) == 1 and http_calls == []
 
 
 @pytest.fixture
@@ -144,6 +169,9 @@ def test_generation_profile_keeps_budget_and_binding():
         (["replay"], "v2", "classify", "v2"),
         (["gigachat"], "v1", "classify", "v1"),
         (["replay"], "v2", "decide", "v1"),
+        (["gigachat"], None, "decide", "v3"),
+        (["replay"], None, "decide", "v1"),
+        (["gigachat"], "v1", "decide", "v1"),
     ],
 )
 async def test_template_opt_in_retains_old_defaults(monkeypatch, names, selector, task, expected):
@@ -189,6 +217,40 @@ async def test_unknown_template_refused_before_provider(monkeypatch):
     with pytest.raises(ValueError, match="agent_prompt_templates"):
         await nodes._llm(deps, "normalize", "agent/normalization", {}, "synthetic")
     assert not called
+
+
+@pytest.mark.parametrize("action", ["none", "link_existing", "create"])
+def test_live_decide_computed_sla_follows_conditional_schema(action):
+    from app.agent.prompts import load
+    from app.contracts.registry import deref, validate_schema
+
+    schema = deref("agent/decision")
+    assert "sla" not in schema["required"]
+    assert schema["properties"]["sla"]["type"] == "object"
+    obj = {
+        "incident_action": action,
+        "complexity": "easy",
+        "criticality": "low",
+        "priority": 3,
+        "needs_human": False,
+        "rationale_ru": "Клиент задал общий вопрос; ответим по действующим условиям.",
+        "route": {"team": "team_cx"},
+        "router_action": "none",
+        "client_action": {"kind": "reply"},
+    }
+    if action == "create":
+        obj.update(incident_type="tech_fault", title_ru="Технический сбой", sla={})
+    elif action == "link_existing":
+        obj["link_incident_id"] = 1
+    assert validate_schema(obj, schema) == []
+    assert any("sla" in error for error in validate_schema({**obj, "sla": None}, schema))
+    if action == "create":
+        assert any("sla" in error for error in validate_schema({k: v for k, v in obj.items() if k != "sla"}, schema))
+    prompt = load("decide", "v3").body
+    assert "При incident_action=create передай sla как объект" in prompt
+    assert "При incident_action=none или link_existing поле sla пропускай" in prompt
+    assert "sla: null недопустимо во всех ветках" in prompt
+    assert "При incident_action=create передай sla как объект" not in load("decide", "v1").body
 
 
 @pytest.mark.parametrize("failure", ["transport", "durable", "slot", "binding", "temperature"])

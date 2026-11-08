@@ -122,6 +122,62 @@ async def test_waiting_for_generation_slot_does_not_cool_down_healthy_key():
         await p.aclose()
 
 
+async def test_chain_waits_for_pers_slot_before_starting_generation_deadline():
+    p = provider(response)
+    chain = ProviderChain([p], append_mock=False, timeouts={"normalization": 0.05})
+    profile = LLMProfile("fast", "gigachat", "GigaChat-3-Lightning")
+    tasks = []
+    try:
+        async with generation_slot(p.scope):
+            # Задачи создаются в независимом контексте, как разные consumers.
+            import contextvars
+
+            for _ in range(2):
+                tasks.append(
+                    asyncio.create_task(
+                        chain.complete_structured([], SCHEMA, profile, context="normalization"),
+                        context=contextvars.Context(),
+                    )
+                )
+            with pytest.raises(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(tasks[0]), timeout=0.1)
+            assert not any(task.done() for task in tasks)
+        results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=2)
+        assert all(result.provider == "gigachat" and not result.fallback_mock for result in results)
+        assert all(result.usage.total_tokens == 8 for result in results)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        await p.aclose()
+
+
+async def test_cancelled_queued_chain_does_not_send_http_or_hold_slot():
+    import contextvars
+
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        return response(request)
+
+    p = provider(handler)
+    chain = ProviderChain([p], append_mock=False)
+    profile = LLMProfile("fast", "gigachat", "GigaChat-3-Lightning")
+    try:
+        async with generation_slot(p.scope):
+            task = asyncio.create_task(chain.complete_structured([], SCHEMA, profile), context=contextvars.Context())
+            await asyncio.sleep(0)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            assert calls == []
+        result = await asyncio.wait_for(chain.complete_structured([], SCHEMA, profile), timeout=2)
+        assert result.provider == "gigachat" and result.usage.total_tokens == 8
+    finally:
+        await p.aclose()
+
+
 def test_transport_cooldown_expires_without_changing_quota_or_token(monkeypatch):
     import app.llm.keys as keys
 

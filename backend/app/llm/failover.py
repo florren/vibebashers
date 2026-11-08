@@ -95,6 +95,7 @@ class ProviderChain:
         self.record_store = record_store
         self.limiter = rate_limiter or default_limiter
         self.timeouts = {**TIMEOUTS_S, **(timeouts or {})}
+        self.gigachat_normalization_timeout_s = (timeouts or {}).get("normalization", 30.0)
         self.scenario_id = scenario_id
         self.prompt_version = prompt_version
 
@@ -117,11 +118,35 @@ class ProviderChain:
         context: Context | str = "default",
         fallback_profile: LLMProfile | None = None,
     ) -> ChainResult:
+        primary = next((p for p in self.providers if p.name == profile.provider), None)
+        slot = getattr(primary, "generation_context", None)
+        if slot is not None and self.offline_mode is None and profile.provider == "gigachat":
+            # Ожидание единственного PERS-потока не должно отменять чужую генерацию
+            # или съедать deadline ещё не отправленного запроса.
+            async with slot():
+                return await self._complete_structured(
+                    messages, schema, profile, context=context, fallback_profile=fallback_profile
+                )
+        return await self._complete_structured(
+            messages, schema, profile, context=context, fallback_profile=fallback_profile
+        )
+
+    async def _complete_structured(
+        self,
+        messages: list[Message],
+        schema: dict[str, Any],
+        profile: LLMProfile,
+        *,
+        context: Context | str = "default",
+        fallback_profile: LLMProfile | None = None,
+    ) -> ChainResult:
         if self.offline_mode is not None:
             profile = replace(profile, provider=self.offline_mode)
             if fallback_profile is not None:
                 fallback_profile = replace(fallback_profile, provider=self.offline_mode)
         timeout_s = self.timeout_for(context)
+        if context == "normalization" and profile.provider == "gigachat":
+            timeout_s = self.gigachat_normalization_timeout_s
         # Используем только настроенные живые профили; роль twin остаётся без изменений.
         backups: list[tuple[Provider, LLMProfile]] = []
         profiles: list[LLMProfile] = []
@@ -140,7 +165,8 @@ class ProviderChain:
             if provider is not None:
                 backups.append((provider, reserved))
                 seen.add(identity)
-        deadline = time.perf_counter() + timeout_s if backups else None
+        separate_budgets = context == "normalization" and profile.provider == "gigachat"
+        deadline = time.perf_counter() + timeout_s if backups and not separate_budgets else None
         backup_index = 0
         failed_usage = Usage(request_count=0)
         attempts: list[Attempt] = []
@@ -156,11 +182,6 @@ class ProviderChain:
                 if candidate.name not in ("mock", "replay") and remaining <= 0:
                     continue
                 budget = remaining if candidate.name not in ("mock", "replay") else timeout_s
-                if context == "normalization" and backups and candidate.name == profile.provider:
-                    # Для Lightning → Pro → Ultra сохраняем 4/3/3 с; неиспользованное
-                    # время получает следующая модель. Две модели сохраняют 5/5 с.
-                    reserve = timeout_s * (0.3 if len(backups) > 1 else 0.5)
-                    budget = max(0.0, budget - reserve * (len(backups) - backup_index))
                 t0 = time.perf_counter()
                 try:
 

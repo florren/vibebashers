@@ -239,6 +239,7 @@ class AuditedProvider:
         self.provider, self.transport = provider, transport
         self.accounting = provider.accounting
         self.requests: list[dict[str, Any]] = []
+        self.halted = False
 
     async def stream(self, messages: list[Message], profile: LLMProfile, *, timeout_s: float) -> AsyncIterator[str]:
         raise ProviderError("unavailable", "bounded_streaming_forbidden")
@@ -247,6 +248,8 @@ class AuditedProvider:
     async def complete_structured(
         self, messages: list[Message], schema: dict[str, Any], profile: LLMProfile, *, timeout_s: float
     ) -> Any:
+        if self.halted:
+            raise ProviderError("quota", "bounded_recording_halted")
         index = len(self.requests)
         if index >= 3 or digest(schema) != manifest()["schema_sha256"][SCHEMAS[index]]:
             raise ProviderError("bad_output", "bounded_graph_order")
@@ -261,7 +264,13 @@ class AuditedProvider:
                 "schema": schema,
             }
         )
-        return await self.provider.complete_structured(messages, schema, profile, timeout_s=timeout_s)
+        try:
+            return await self.provider.complete_structured(messages, schema, profile, timeout_s=timeout_s)
+        except BaseException:
+            # A failed strict recording cannot spend subsequent graph calls,
+            # even when ordinary runtime may recover after unknown usage.
+            self.halted = True
+            raise
 
 
 async def run_graph(

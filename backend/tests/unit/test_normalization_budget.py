@@ -1,4 +1,4 @@
-"""Нормализация резервирует время живой основной модели, общий дедлайн ограничен."""
+"""GigaChat-нормализация даёт каждой модели полный бюджет; остальные контексты сохраняют общий deadline."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -34,17 +34,17 @@ async def test_primary_budget_and_live_backup(monkeypatch, failure):
     if failure in ("auth", "quota", "rate_limit"):
         with pytest.raises(ProviderError):
             await chain.complete_structured([], {}, fast, context="normalization", fallback_profile=main)
-        assert calls == [("fast", 5.0)]
+        assert calls == [("fast", 30.0)]
     else:
         result = await chain.complete_structured([], {}, fast, context="normalization", fallback_profile=main)
         assert result.provider == "gigachat" and result.usage.source == "live"
-        assert calls == [("fast", 5.0), ("main", 5.0)]
-        assert clock[0] == 6
+        assert calls == [("fast", 30.0), ("main", 30.0)]
+        assert clock[0] == 31
     assert chain.timeout_for("fast_path") == 8
     assert chain.timeout_for("normalization") == 10
 
 
-async def test_both_live_models_timeout_without_exceeding_total_budget(monkeypatch):
+async def test_both_live_models_timeout_with_independent_bounded_budgets(monkeypatch):
     clock = [0.0]
     monkeypatch.setattr(failover, "time", SimpleNamespace(perf_counter=lambda: clock[0]))
 
@@ -65,7 +65,7 @@ async def test_both_live_models_timeout_without_exceeding_total_budget(monkeypat
             context="normalization",
             fallback_profile=LLMProfile(code="main", provider="gigachat", model="main"),
         )
-    assert clock[0] == 10
+    assert clock[0] == 60
 
 
 async def test_normalize_uses_dedicated_context(monkeypatch):
@@ -136,12 +136,12 @@ async def test_without_different_live_backup_primary_gets_entire_budget():
     )
     profile = LLMProfile(code="one", provider="gigachat", model="one")
     await chain.complete_structured([], {}, profile, context="normalization", fallback_profile=profile)
-    assert calls == [10.0]
+    assert calls == [30.0]
 
 
 @pytest.mark.parametrize("success_at", ["GigaChat-3-Lightning", "GigaChat-3-Pro", "GigaChat-3-Ultra", None])
 @pytest.mark.parametrize("failure", ["outer_timeout", "bad_output", "unavailable"])
-async def test_lightning_pro_ultra_order_and_shared_budget(monkeypatch, success_at, failure):
+async def test_lightning_pro_ultra_order_and_full_per_model_budget(monkeypatch, success_at, failure):
     clock = [0.0]
     calls = []
     monkeypatch.setattr(failover, "time", SimpleNamespace(perf_counter=lambda: clock[0]))
@@ -173,11 +173,11 @@ async def test_lightning_pro_ultra_order_and_shared_budget(monkeypatch, success_
         assert result.attempts[-1].model == success_at
         if failure != "outer_timeout":
             assert result.usage.prompt_tokens == (len(calls) - 1) * 7
-    expected = list(zip(models, [4.0, 3.0, 3.0], strict=True))
+    expected = list(zip(models, [30.0, 30.0, 30.0], strict=True))
     if success_at:
         expected = expected[: models.index(success_at) + 1]
     assert calls == expected
-    assert clock[0] <= 10
+    assert clock[0] == 30 * len(calls)
 
 
 @pytest.mark.parametrize("failure", ["auth", "quota", "rate_limit"])
@@ -205,7 +205,7 @@ async def test_pro_account_error_does_not_retry_ultra(failure):
     assert calls == ["GigaChat-3-Lightning", "GigaChat-3-Pro"]
 
 
-async def test_unused_lightning_time_goes_to_pro_and_keeps_ultra_reserve(monkeypatch):
+async def test_early_bad_output_does_not_shorten_pro_budget(monkeypatch):
     clock = [0.0]
     calls = []
     monkeypatch.setattr(failover, "time", SimpleNamespace(perf_counter=lambda: clock[0]))
@@ -230,4 +230,4 @@ async def test_unused_lightning_time_goes_to_pro_and_keeps_ultra_reserve(monkeyp
         context="normalization",
         fallback_profile=LLMProfile(code="main", provider="gigachat", model="GigaChat-3-Ultra"),
     )
-    assert calls == [("GigaChat-3-Lightning", 4.0), ("GigaChat-3-Pro", 6.0)]
+    assert calls == [("GigaChat-3-Lightning", 30.0), ("GigaChat-3-Pro", 30.0)]

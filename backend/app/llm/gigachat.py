@@ -12,6 +12,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
+from contextvars import ContextVar
 from typing import Any
 from weakref import WeakKeyDictionary
 
@@ -33,21 +34,33 @@ from app.logging import get_logger
 
 log = get_logger(__name__)
 _PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+_PERS_SLOT_HELD: ContextVar[bool] = ContextVar("gigachat_pers_slot_held", default=False)
 
 
 class _InferenceStarted(ProviderError):
-    """An origin-backed wire attempt cannot be replayed on another pool key."""
+    """Marks an origin-backed wire attempt whose unknown usage must remain audited."""
 
 
 @asynccontextmanager
 async def generation_slot(scope: str) -> AsyncIterator[None]:
     """Freemium/PERS: один поток на процесс, включая разные профили и ключи."""
-    if scope == "GIGACHAT_API_PERS":
+    if scope == "GIGACHAT_API_PERS" and not _PERS_SLOT_HELD.get():
         lock = _PERS_LOCKS.setdefault(asyncio.get_running_loop(), asyncio.Lock())
         async with lock:
             yield
     else:
         yield
+
+
+@asynccontextmanager
+async def generation_context(scope: str) -> AsyncIterator[None]:
+    """Только цепочка передаёт уже занятый слот вложенному SDK-вызову."""
+    async with generation_slot(scope):
+        token = _PERS_SLOT_HELD.set(scope == "GIGACHAT_API_PERS")
+        try:
+            yield
+        finally:
+            _PERS_SLOT_HELD.reset(token)
 
 
 def _bad_authorization(status: int, text: str) -> bool:
@@ -93,6 +106,10 @@ def schema_for_model(schema: dict[str, Any]) -> dict[str, Any]:
 
 class GigaChatProvider:
     name = "gigachat"
+
+    def generation_context(self) -> Any:
+        """Цепочка ждёт PERS-слот до запуска deadline; вложенный SDK использует тот же слот."""
+        return generation_context(self.scope)
 
     def __init__(
         self,
@@ -351,6 +368,7 @@ class GigaChatProvider:
                 self.fetch_balance(key, profile, timeout_s=max(0.01, scope.deadline - time.monotonic()))
             )
             require_balance(balances, profile.model)
+            scope.provider_balance_verified = True
 
     async def _chat(
         self, key: ApiKey, payload: dict[str, Any], profile: LLMProfile, timeout_s: float
@@ -451,7 +469,11 @@ class GigaChatProvider:
             except ProviderError as e:
                 if not isinstance(e, accounting.AdmissionRefused):
                     self.pool.mark_error(key, e)
-                if isinstance(e, _InferenceStarted):
+                # Structured inference has no streamed output to duplicate. A
+                # transport disconnect may try the next key within this deadline;
+                # its fresh scope still requires a positive provider balance.
+                # Keep the first attempt unknown; never retry an expired timeout.
+                if isinstance(e, _InferenceStarted) and e.kind != "network":
                     raise
                 last = e
                 tried.add(key.label)

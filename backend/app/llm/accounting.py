@@ -549,6 +549,7 @@ class KeyScope:
     facts: KeyFacts = field(repr=False)
     uid: uuid.UUID = field(repr=False)
     deadline: float
+    provider_balance_verified: bool = False
 
     async def uses_provider_balance(self) -> bool:
         row = await (
@@ -617,11 +618,13 @@ class KeyScope:
             unresolved = await (
                 await self.conn.execute(
                     "select exists(select 1 from llm_runtime.wire_attempts where credential_uid=%s "
-                    "and state in ('reserved','unknown') and reconciliation_id is null) as value",
-                    (self.uid,),
+                    "and state in ('reserved','unknown') and reconciliation_id is null) as value, "
+                    "exists(select 1 from llm_runtime.gigachat_app_origins where credential_uid=%s) as balance_backed",
+                    (self.uid, self.uid),
                 )
             ).fetchone()
             assert unresolved is not None
+            balance_backed = self.facts.provider == "gigachat" and unresolved["balance_backed"]
             yield {
                 "account": account,
                 "key_day": rows[0],
@@ -631,18 +634,20 @@ class KeyScope:
                 "day": day,
                 "profile_scope": profile_scope,
                 "unresolved": unresolved["value"],
+                "balance_backed": balance_backed,
             }
 
-    def _validate(self, state: dict[str, Any]) -> None:
+    def _validate(self, state: dict[str, Any], *, for_inference: bool = False) -> None:
         tokens, key_rpd, profile_rpd = state["limits"]
         budgeted = self.facts.paid or any(value is not None for value in state["limits"])
         if budgeted and (
-            not state["account"]["usage_known"]
-            or state["unresolved"]
+            ((not state["account"]["usage_known"] or state["unresolved"]) and not state["balance_backed"])
             or not state["key_day"]["requests_known"]
             or (profile_rpd is not None and not state["profile_day"]["requests_known"])
         ):
             raise AdmissionRefused("quota", "расход не подтверждён: требуется operator reconciliation")
+        if for_inference and state["balance_backed"] and not self.provider_balance_verified:
+            raise AdmissionRefused("quota", "остаток пакета выбранной модели не проверен")
         if tokens is not None and state["account"]["confirmed_tokens"] >= tokens:
             raise AdmissionRefused("quota", "подтверждённый token budget исчерпан")
         for maximum, counter in ((key_rpd, state["key_day"]), (profile_rpd, state["profile_day"])):
@@ -753,7 +758,7 @@ class KeyScope:
             if previous is not None:
                 # DB retry is idempotent; it must NEVER be permission to resend HTTP.
                 raise AdmissionRefused("quota", "повтор reservation не разрешает повторный HTTP")
-            self._validate(state)
+            self._validate(state, for_inference=True)
             await self.conn.execute(
                 "insert into llm_runtime.wire_attempts(id,credential_uid,profile_scope,profile_id,profile_code,endpoint,model,utc_day,admitted_at,deadline_at) "
                 "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
