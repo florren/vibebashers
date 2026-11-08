@@ -38,7 +38,7 @@ _PERS_SLOT_HELD: ContextVar[bool] = ContextVar("gigachat_pers_slot_held", defaul
 
 
 class _InferenceStarted(ProviderError):
-    """An origin-backed wire attempt cannot be replayed on another pool key."""
+    """Marks an origin-backed wire attempt whose unknown usage must remain audited."""
 
 
 @asynccontextmanager
@@ -469,7 +469,11 @@ class GigaChatProvider:
             except ProviderError as e:
                 if not isinstance(e, accounting.AdmissionRefused):
                     self.pool.mark_error(key, e)
-                if isinstance(e, _InferenceStarted):
+                # Structured inference has no streamed output to duplicate. A
+                # transport disconnect may try the next key within this deadline;
+                # its fresh scope still requires a positive provider balance.
+                # Keep the first attempt unknown; never retry an expired timeout.
+                if isinstance(e, _InferenceStarted) and e.kind != "network":
                     raise
                 last = e
                 tried.add(key.label)

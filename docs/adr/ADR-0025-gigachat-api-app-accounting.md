@@ -71,6 +71,12 @@ caller's bank connection: live accounting uses a separate connection and would
 wait for the caller itself. The bank transaction is preserved, and snapshot
 error/cancellation releases the catalog lock before propagation.
 
+A structured transport disconnect may try another pool key within the original
+deadline, with a fresh positive package balance for that key. The interrupted
+attempt remains unknown and consumes its recorded request; no counter is reset.
+This bounded availability retry can incur a second inference charge. Streaming
+output and timed-out inference are not replayed.
+
 `usage_known` retains its documented app-scoped meaning. Sources
 `gigachat_api_balance_app_origin` / `gigachat_api_balance_app_observed` identify
 the accounting period; UI labels it. Initial zero means no application attempt

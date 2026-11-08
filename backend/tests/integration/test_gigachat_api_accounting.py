@@ -63,6 +63,8 @@ async def reserve(migrated_db, monkeypatch):
                 json={"balance": [{"usage": name, "value": value} for name, value in balances.items()]},
             )
         assert request.url.path == "/v1/chat/completions"
+        if state.get("chat_network_slot") == request.headers["authorization"]:
+            raise httpx.RemoteProtocolError("synthetic disconnect", request=request)
         if state.get("chat_timeout"):
             raise httpx.ReadTimeout("synthetic", request=request)
         payload = json.loads(request.content)
@@ -310,12 +312,15 @@ async def test_cli_connect_reads_metadata_without_inference_or_raw_secret_output
     assert keys[1].secret not in json.dumps(result, default=str)
 
 
-@pytest.mark.parametrize("streaming", [False, True])
-async def test_unknown_inference_is_not_replayed_on_reserve_within_the_same_pool_call(reserve, streaming):
+@pytest.mark.parametrize("failure,streaming", [("timeout", False), ("timeout", True), ("network", True)])
+async def test_timeout_or_stream_disconnect_is_not_replayed_on_reserve(reserve, failure, streaming):
     profile, service, facts, keys, calls, state, make, _ = reserve
     for fact in facts:
         await service.connect_gigachat(profile, fact, BALANCES, confirmed=True)
-    state["chat_timeout"] = True
+    if failure == "timeout":
+        state["chat_timeout"] = True
+    else:
+        state["chat_network_slot"] = "Bearer synthetic-token-0"
     provider = make()
     try:
         with pytest.raises(ProviderError) as caught:
@@ -330,7 +335,7 @@ async def test_unknown_inference_is_not_replayed_on_reserve_within_the_same_pool
                 await provider.complete_structured(
                     [{"role": "user", "content": "Synthetic ping"}], SCHEMA, profile, timeout_s=5
                 )
-        assert caught.value.kind == "timeout"
+        assert caught.value.kind == failure
         assert len([x for x in calls if x[1] == "/v1/chat/completions"]) == 1
     finally:
         await provider.aclose()
@@ -338,3 +343,31 @@ async def test_unknown_inference_is_not_replayed_on_reserve_within_the_same_pool
     second = await service.snapshot(profile, facts[1], timeout_s=5)
     assert not first.usage_known and first.requests_today == 1
     assert second.usage_known and second.requests_today == 0
+
+
+@pytest.mark.parametrize("reserve_exhausted", [False, True])
+async def test_structured_disconnect_tries_reserve_only_after_fresh_balance(reserve, reserve_exhausted):
+    profile, service, facts, keys, calls, state, make, _ = reserve
+    for fact in facts:
+        await service.connect_gigachat(profile, fact, BALANCES, confirmed=True)
+    state["chat_network_slot"] = "Bearer synthetic-token-0"
+    if reserve_exhausted:
+        state["exhausted_slot"] = "Bearer synthetic-token-1"
+    provider = make()
+    try:
+        if reserve_exhausted:
+            with pytest.raises(ProviderError):
+                await provider.complete_structured([], SCHEMA, profile, timeout_s=5)
+        else:
+            obj, usage, _ = await provider.complete_structured([], SCHEMA, profile, timeout_s=5)
+            assert obj == {"ok": True} and usage.total_tokens == 5 and usage.request_count == 2
+        reserve_calls = [path for _, path, auth in calls if auth == "Bearer synthetic-token-1"]
+        assert reserve_calls == (["/v1/balance"] if reserve_exhausted else ["/v1/balance", "/v1/chat/completions"])
+    finally:
+        await provider.aclose()
+    first = await service.snapshot(profile, facts[0], timeout_s=5)
+    second = await service.snapshot(profile, facts[1], timeout_s=5)
+    assert not first.usage_known and first.requests_today == 1 and first.tokens_used == 0
+    assert first.tokens_remaining is None
+    assert second.usage_known and second.requests_today == (0 if reserve_exhausted else 1)
+    assert second.tokens_used == (0 if reserve_exhausted else 5)
