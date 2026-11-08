@@ -77,6 +77,10 @@ attempt remains unknown and consumes its recorded request; no counter is reset.
 This bounded availability retry can incur a second inference charge. Streaming
 output and timed-out inference are not replayed.
 
+The bounded scenario11 recorder halts after its first failed generation, including
+cancellation. Later graph calls cannot reach the provider: ordinary runtime
+recovery does not make an interrupted strict recording valid.
+
 `usage_known` retains its documented app-scoped meaning. Sources
 `gigachat_api_balance_app_origin` / `gigachat_api_balance_app_observed` identify
 the accounting period; UI labels it. Initial zero means no application attempt

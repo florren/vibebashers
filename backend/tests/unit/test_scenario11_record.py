@@ -1,5 +1,6 @@
 """Bounded recorder проверяется фиктивным HTTP, без ключей и внешней сети."""
 
+import asyncio
 import json
 from dataclasses import replace
 
@@ -8,6 +9,30 @@ import pytest
 
 from app.llm.base import LLMProfile, ProviderError
 from app.replay.scenario11_record import BASE, LIMITS, MODEL, OAUTH, BoundedTransport, manifest, recording_profile
+
+
+@pytest.mark.parametrize("error", [ProviderError("network", "synthetic"), TimeoutError(), asyncio.CancelledError()])
+async def test_strict_recorder_halts_after_first_failed_generation(boundary, error):
+    from types import SimpleNamespace
+
+    from app.contracts.registry import deref
+    from app.replay.scenario11_record import AuditedProvider
+
+    transport, http_calls = boundary
+    generations = []
+
+    async def fail(*args, **kwargs):
+        generations.append(True)
+        raise error
+
+    audited = AuditedProvider(SimpleNamespace(accounting=object(), complete_structured=fail), transport)
+    profile = recording_profile(LLMProfile(code="record", provider="gigachat", model=MODEL))
+    with pytest.raises(type(error)) as caught:
+        await audited.complete_structured([], deref("agent/normalization"), profile, timeout_s=1)
+    assert caught.value is error
+    with pytest.raises(ProviderError, match="bounded_recording_halted"):
+        await audited.complete_structured([], deref("agent/classification"), profile, timeout_s=1)
+    assert generations == [True] and len(audited.requests) == 1 and http_calls == []
 
 
 @pytest.fixture
