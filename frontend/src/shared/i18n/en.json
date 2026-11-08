@@ -95,6 +95,14 @@
     "pause": "Pause",
     "resume": "Resume",
     "stop": "Stop",
+    "resetBaseline": {
+      "button": "Restore starting data and time",
+      "title": "Restore starting state?",
+      "warning": "Starting data and the initial simulation date will be restored. Signals, events, incidents and human decisions accumulated during the simulation will be deleted. Past run summaries will be preserved. The simulation will remain stopped; press Start to begin a new run.",
+      "confirm": "Restore starting data and time",
+      "pending": "Restoring the initial state. Please wait; simulation controls are temporarily unavailable.",
+      "done": "Initial state restored. Press Start to begin a new run."
+    },
     "step": "Step",
     "speed": "Speed",
     "speedX": "×{{n}}",

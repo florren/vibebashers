@@ -626,10 +626,11 @@ export function useBenchCancel() {
 export function useBaselineRestore() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api<{ job_id?: string }>('/api/sim/baseline/restore', { method: 'POST' }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['sim-state'] })
-      void qc.invalidateQueries({ queryKey: ['sim-runs'] })
+    mutationFn: () => api<paths['/api/sim/baseline/restore']['post']['responses'][202]['content']['application/json']>('/api/sim/baseline/restore', { method: 'POST' }),
+    onSuccess: async () => {
+      // После restore старые карточки нельзя оставлять даже при ошибке повторной загрузки.
+      await qc.cancelQueries()
+      await qc.resetQueries()
     },
   })
 }

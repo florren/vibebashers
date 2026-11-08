@@ -11,6 +11,7 @@ vi.mock('@/shared/theme', async (importOriginal) => ({
 
 vi.mock('@/shared/api/hooks', () => ({
   useSimState: () => ({ data: undefined }),
+  useBaselineRestore: () => ({ reset: vi.fn(), isPending: false }),
   useSimControl: () => ({ mutate: vi.fn(), isPending: false }),
   useRefs: () => ({ data: [] }),
   useClients: () => ({ data: [] }),

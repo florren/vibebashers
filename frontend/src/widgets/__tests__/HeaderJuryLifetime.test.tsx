@@ -11,7 +11,7 @@ vi.mock('@/shared/theme',()=>({ThemeSelector:()=>null}))
 vi.mock('@/shared/layout/device',()=>({DeviceSelector:()=>null}))
 vi.mock('@/shared/layout/RoleSelector',()=>({RoleSelector:()=>null}))
 vi.mock('@/shared/components/GlobalSearch',()=>({GlobalSearch:()=>null}))
-vi.mock('@/shared/api/hooks',()=>({useSimState:()=>({data:undefined}),useSimControl:()=>({mutate:vi.fn(),isPending:false}),useDemoStatus:()=>({data:undefined})}))
+vi.mock('@/shared/api/hooks',()=>({useBaselineRestore:()=>({reset:vi.fn(),isPending:false}),useSimState:()=>({data:undefined}),useSimControl:()=>({mutate:vi.fn(),isPending:false}),useDemoStatus:()=>({data:undefined})}))
 vi.mock('../JuryModal',async()=>{
  const{useState}=await import('react')
  return{JuryModal:({open}:{open:boolean})=>{
