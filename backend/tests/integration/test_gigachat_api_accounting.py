@@ -134,7 +134,7 @@ async def test_connect_preserves_shared_profile_cap_and_cannot_reset_usage(reser
     assert any(path == "/v1/balance" for _, path, _ in calls)
 
 
-async def test_unknown_attempt_cannot_be_cleared_by_reconnect_or_provider_balance(reserve):
+async def test_unknown_usage_remains_audited_but_live_balance_allows_next_request(reserve):
     profile, service, facts, keys, calls, state, make, _ = reserve
     await service.connect_gigachat(profile, facts[0], BALANCES, confirmed=True)
     state["missing_usage"] = True
@@ -146,12 +146,23 @@ async def test_unknown_attempt_cannot_be_cleared_by_reconnect_or_provider_balanc
             )
         before = list(calls)
         result = await service.connect_gigachat(profile, facts[0], BALANCES, confirmed=True)
-        assert not result["admission_allowed"] and result["requests_today"] == 1
-        with pytest.raises(ProviderError, match="reconciliation"):
-            await provider.complete_structured(
-                [{"role": "user", "content": "Synthetic ping"}], SCHEMA, profile, timeout_s=5
-            )
-        assert calls == before
+        assert result["admission_allowed"] and result["requests_today"] == 1
+        assert not result["usage_known"]
+        state["missing_usage"] = False
+        # Новый вызов обязан заново проверить пакет, не объявляя старый расход нулём.
+        obj, usage, _ = await provider.complete_structured(
+            [{"role": "user", "content": "Synthetic ping"}], SCHEMA, profile, timeout_s=5
+        )
+        assert obj == {"ok": True} and usage.total_tokens == 5
+        assert [path for _, path, _ in calls[len(before) :]] == ["/v1/balance", "/v1/chat/completions"]
+        after = await service.snapshot(profile, facts[0], timeout_s=5)
+        assert not after.usage_known and after.tokens_used == 5 and after.requests_today == 2
+        assert after.refusal is None and after.tokens_remaining is None
+        state["balance"] = {**BALANCES, "GigaChat-Ultra": 0}
+        before_chat = len([x for x in calls if x[1] == "/v1/chat/completions"])
+        with pytest.raises(ProviderError):
+            await provider.complete_structured([], SCHEMA, profile, timeout_s=5)
+        assert len([x for x in calls if x[1] == "/v1/chat/completions"]) == before_chat
     finally:
         await provider.aclose()
 
@@ -214,10 +225,14 @@ async def test_connect_rejects_existing_usage_and_unknown_origin_without_confirm
     # An admitted attempt is durable even if no HTTP response was observed.
     await service.connect_gigachat(profile, facts[0], BALANCES, confirmed=True)
     async with service.key_scope(profile, facts[0], timeout_s=5) as scope:
+        with pytest.raises(ProviderError, match="не проверен"):
+            async with scope.inference():
+                pytest.fail("inference без live balance запрещён")
+        scope.provider_balance_verified = True
         async with scope.inference():
             pass
     result = await service.connect_gigachat(profile, facts[0], BALANCES, confirmed=True)
-    assert not result["admission_allowed"] and result["requests_today"] == 1
+    assert result["admission_allowed"] and not result["usage_known"] and result["requests_today"] == 1
 
 
 @pytest.mark.parametrize("streaming", [False, True])

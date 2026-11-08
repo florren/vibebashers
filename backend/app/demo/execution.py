@@ -16,7 +16,7 @@ from app.agent.graph import wake_due_followups
 from app.agent.nodes import Deps
 from app.agent.tools.base import ToolContext
 from app.agent.tools.write import link_signal_to_incident, notify_client
-from app.api.hitl import HitlDecisionBody, post_hitl_id
+from app.api.hitl import HitlDecisionBody, record_decision
 from app.compliance.session import ComplianceService
 from app.db.session import psycopg_dsn
 from app.demo.roles import finish_run, respond
@@ -114,11 +114,12 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             "Демонстрационный оператор рассмотрел предложение агента и согласовал исполнение в пределах действующих правил.",
         )
         decision = obj["decision"] if obj["decision"] in ("accept", "reject") else "reject"
+        continuation = None
         async with execution_lock(app, public_demo=public_demo):
             if not await execution_active(app, conn, run_id, manual_only=manual_only):
                 return False
             try:
-                await post_hitl_id(
+                continuation, decision_time = await record_decision(
                     request,
                     int(hid),
                     HitlDecisionBody(
@@ -131,6 +132,9 @@ async def employees(app: Any, conn: Any, run_id: int, at: dt.datetime, *, manual
             except HTTPException as exc:
                 if exc.status_code != 409:
                     raise
+        if continuation is not None:
+            # PERS очередь и продолжение графа не владеют lock часов/control.
+            await continuation.resume(int(hid), decision_time)
         return True
     if manual_only:
         return False

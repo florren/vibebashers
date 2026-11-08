@@ -83,6 +83,15 @@ async def test_both_models_invalid_keep_honest_mock_and_both_reasons():
     assert all(not a.ok for a in result.attempts[:2])
 
 
+async def test_normalization_does_not_split_generation_budget_between_three_models():
+    provider = ModelProvider()
+    configured = chain(provider)
+    configured.role_profiles = {"twin": dataclasses.replace(MAIN, model="GigaChat-3-Pro")}
+    result = await configured.complete_structured([], SCHEMA, FAST, fallback_profile=MAIN, context="normalization")
+    assert result.provider == "gigachat" and not result.fallback_mock
+    assert provider.calls == [(FAST.model, 30.0), ("GigaChat-3-Pro", 30.0)]
+
+
 @pytest.mark.parametrize("kind", ["auth", "quota", "rate_limit", "network"])
 async def test_shared_provider_failure_does_not_retry_another_model(kind):
     provider = ModelProvider(error=kind)

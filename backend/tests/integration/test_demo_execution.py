@@ -209,6 +209,13 @@ async def test_demo_operator_and_manual_priority(seeded, monkeypatch, manual):
                     HitlDecisionBody(decision="accept", decided_by="operator-review", comment="Решение человека"),
                 )
             sim.clock.running = True
+            original_resume = app.state.agent.resume
+
+            async def resume_without_clock_lock(*args, **kwargs):
+                assert not sim._lock.locked(), "HITL graph must not block timer or Pause while waiting for LLM"
+                return await original_resume(*args, **kwargs)
+
+            monkeypatch.setattr(app.state.agent, "resume", resume_without_clock_lock)
             await employees(app, conn, rid, sim.clock.sim_time)
             result = await (
                 await conn.execute("select decision,decided_by,use_as_fewshot from human_decisions where id=%s", (hid,))

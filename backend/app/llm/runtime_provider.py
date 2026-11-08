@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from functools import partial
 from typing import Any
 from weakref import WeakKeyDictionary
@@ -20,7 +20,7 @@ from app.db.session import psycopg_dsn
 from app.llm.base import LLMProfile, Message, Provider, Usage
 from app.llm.budget import load_openrouter_budget
 from app.llm.credentials import CredentialBindingError, validate_binding
-from app.llm.gigachat import GigaChatProvider
+from app.llm.gigachat import GigaChatProvider, generation_context
 from app.llm.keys import ApiKey, KeyPool
 from app.llm.openai_compat import OpenAICompatProvider
 
@@ -66,6 +66,9 @@ class BoundPlaceholder:
 
     def __init__(self, name: str) -> None:
         self.name = name
+
+    def generation_context(self) -> Any:
+        return generation_context(get_settings().gigachat_scope) if self.name == "gigachat" else nullcontext()
 
     async def complete_structured(
         self, messages: list[Message], schema: dict[str, Any], profile: LLMProfile, *, timeout_s: float

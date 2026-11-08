@@ -141,8 +141,8 @@ async def _hitl_sim_time(
     return state["sim_time"] if state else dt.datetime.now(dt.UTC)
 
 
-@router.post("/api/hitl/{id}", summary="Решение человека — возвращается в граф агента")
-async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any:  # noqa: A002
+async def record_decision(request: Request, id: int, body: HitlDecisionBody) -> tuple[Any, dt.datetime]:  # noqa: A002
+    """Фиксирует решение атомарно; длительное продолжение графа выполняет caller после своих locks."""
     role = actor_role(request)
     async with db() as conn:
         async with conn.transaction():
@@ -193,6 +193,12 @@ async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any
                 "select pg_notify('hitl',%s)",
                 (dumps({"type": "decided", "data": {"human_decision_id": id, "decision": body.decision}}),),
             )
+    return svc, sim_time
+
+
+@router.post("/api/hitl/{id}", summary="Решение человека — возвращается в граф агента")
+async def post_hitl_id(request: Request, id: int, body: HitlDecisionBody) -> Any:  # noqa: A002
+    svc, sim_time = await record_decision(request, id, body)
     if svc is not None:
         await svc.resume(id, sim_time)
     async with db() as conn:
