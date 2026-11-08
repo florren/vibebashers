@@ -194,16 +194,38 @@ async def test_unknown_template_refused_before_provider(monkeypatch):
     assert not called
 
 
-def test_live_decide_omits_computed_sla_without_relaxing_schema():
+@pytest.mark.parametrize("action", ["none", "link_existing", "create"])
+def test_live_decide_computed_sla_follows_conditional_schema(action):
     from app.agent.prompts import load
     from app.contracts.registry import deref, validate_schema
 
     schema = deref("agent/decision")
     assert "sla" not in schema["required"]
     assert schema["properties"]["sla"]["type"] == "object"
-    assert any("sla" in error for error in validate_schema({"sla": None}, schema))
-    assert "Поле sla не передавай" in load("decide", "v3").body
-    assert "Поле sla не передавай" not in load("decide", "v1").body
+    obj = {
+        "incident_action": action,
+        "complexity": "easy",
+        "criticality": "low",
+        "priority": 3,
+        "needs_human": False,
+        "rationale_ru": "Клиент задал общий вопрос; ответим по действующим условиям.",
+        "route": {"team": "team_cx"},
+        "router_action": "none",
+        "client_action": {"kind": "reply"},
+    }
+    if action == "create":
+        obj.update(incident_type="tech_fault", title_ru="Технический сбой", sla={})
+    elif action == "link_existing":
+        obj["link_incident_id"] = 1
+    assert validate_schema(obj, schema) == []
+    assert any("sla" in error for error in validate_schema({**obj, "sla": None}, schema))
+    if action == "create":
+        assert any("sla" in error for error in validate_schema({k: v for k, v in obj.items() if k != "sla"}, schema))
+    prompt = load("decide", "v3").body
+    assert "При incident_action=create передай sla как объект" in prompt
+    assert "При incident_action=none или link_existing поле sla пропускай" in prompt
+    assert "sla: null недопустимо во всех ветках" in prompt
+    assert "При incident_action=create передай sla как объект" not in load("decide", "v1").body
 
 
 @pytest.mark.parametrize("failure", ["transport", "durable", "slot", "binding", "temperature"])

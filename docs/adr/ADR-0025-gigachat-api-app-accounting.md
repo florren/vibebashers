@@ -59,7 +59,9 @@ Pause or Stop. Existing decision/current-run checks and transaction are retained
 
 Longer live observation also found Ultra returning `sla:null` twice. SLA is an
 optional object in the decision contract and is recomputed by deterministic code.
-The default live GigaChat decide prompt v3 explicitly omits that field; validation
+The default live GigaChat decide prompt v3 requires an SLA object (an empty object
+is valid) for `incident_action=create`, as the conditional contract requires;
+other branches omit it. The code calculates the deadlines in either case; validation
 still rejects null. Offline/replay and explicitly pinned v1/v2 templates retain
 their previous text/hash. No schema or decision-policy relaxation is introduced.
 
