@@ -4,18 +4,18 @@ import { type ReactNode } from 'react'
 import { useDemoStatus } from '@/shared/api/hooks'
 import { GlobalSearch } from '@/shared/components/GlobalSearch'
 import { clsx } from 'clsx'
-import { Activity, Gauge, Menu, MessageSquarePlus, Pause, Play, Square } from 'lucide-react'
+import { Activity, Gauge, Menu, MessageSquarePlus, Pause, Play, RotateCcw, Square } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LONG_PRESS_MS, useDemoMenu } from './DemoMenu'
-import { useSimControl, useSimState } from '@/shared/api/hooks'
+import { useBaselineRestore, useSimControl, useSimState } from '@/shared/api/hooks'
 import { fmtSimMoscow } from '@/shared/lib/format'
 import { ThemeSelector } from '@/shared/theme'
 import { useWs } from '@/shared/ws/client'
 import { DeviceSelector } from '@/shared/layout/device'
 import { useMobileLayout } from '@/shared/layout/device-store'
-import { Badge, Drawer, ErrorBox } from '@/shared/ui'
+import { Badge, Drawer, ErrorBox, Modal } from '@/shared/ui'
 import { JuryModal } from './JuryModal'
 import { BotQrButton } from './BotQrButton'
 
@@ -31,6 +31,11 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
   const wsStatus = useWs((s) => s.status)
   const sim = q.data ?? null
   const ctl = useSimControl()
+  const restore = useBaselineRestore()
+  const [resetOpen, setResetOpen] = useState(false)
+  const busy = ctl.isPending || restore.isPending
+  const closeReset = () => { if (!restore.isPending) setResetOpen(false) }
+  const openReset = () => { restore.reset(); setMenu(false); setResetOpen(true) }
   const [jury, setJury] = useState(false)
   const [menu, setMenu] = useState(false)
   const mobile = useMobileLayout()
@@ -97,11 +102,12 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
           <p className="text-xs text-muted">{t('sim.clock')} · {fmtSimMoscow(sim?.sim_time, 'EEE dd.MM HH:mm')}</p>
           {v2 && sim?.current_run_id != null && <p className="break-words font-mono text-xs"><RunLabel id={sim.current_run_id} /></p>}
           <div className="flex flex-wrap gap-2">
-            <button className="btn" disabled={ctl.isPending || !sim} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
-            <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={ctl.isPending || !sim || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
+            <button className="btn" disabled={busy || !sim} onClick={() => ctl.mutate({ action: running ? 'pause' : canResume ? 'resume' : 'start' })}>{running ? <Pause size={16} /> : <Play size={16} />}{t(running ? 'sim.pause' : canResume ? 'sim.resume' : 'sim.start')}</button>
+            <button className="btn" aria-label={t('sim.stop')} onClick={() => ctl.mutate({ action: 'stop' })} disabled={busy || !sim || !runStatus || ['stopped', 'completed'].includes(runStatus)}><Square size={16} />{t('sim.stop')}</button>
+            <button className="btn" aria-label={t('sim.resetBaseline.button')} disabled={busy || !sim} onClick={openReset}><RotateCcw size={16} />{t('sim.resetBaseline.button')}</button>
           </div>
           {(ctl.error || q.error) && <ErrorBox error={ctl.error ?? q.error} compact />}
-          <label className="flex items-center gap-2 text-sm">{t('sim.speed')}<select className="input" value={sim?.speed ?? 1} disabled={ctl.isPending || !sim} onChange={e => ctl.mutate({ action: 'set_speed', speed: Number(e.target.value) })}>{[...new Set([...SPEEDS, sim?.speed ?? 1])].sort((a,b) => a-b).map(speed => <option key={speed} value={speed}>{t('sim.speedX', { n: speed })}</option>)}</select></label>
+          <label className="flex items-center gap-2 text-sm">{t('sim.speed')}<select className="input" value={sim?.speed ?? 1} disabled={busy || !sim} onChange={e => ctl.mutate({ action: 'set_speed', speed: Number(e.target.value) })}>{[...new Set([...SPEEDS, sim?.speed ?? 1])].sort((a,b) => a-b).map(speed => <option key={speed} value={speed}>{t('sim.speedX', { n: speed })}</option>)}</select></label>
         </section>
       </div>
     </Drawer>
@@ -154,21 +160,24 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
         </div>
         <div className="flex items-center gap-1">
           {running ? (
-            <button className="btn btn-sm" onClick={() => ctl.mutate({ action: 'pause' })} disabled={ctl.isPending || !sim} title={t('sim.pause')}>
+            <button className="btn btn-sm" onClick={() => ctl.mutate({ action: 'pause' })} disabled={busy || !sim} title={t('sim.pause')}>
               <Pause size={13} /> {t('sim.pause')}
             </button>
           ) : (
-            <button className="btn btn-sm btn-primary" onClick={() => ctl.mutate({ action: canResume ? 'resume' : 'start' })} disabled={ctl.isPending || !sim}>
+            <button className="btn btn-sm btn-primary" onClick={() => ctl.mutate({ action: canResume ? 'resume' : 'start' })} disabled={busy || !sim}>
               <Play size={13} /> {canResume ? t('sim.resume') : t('sim.start')}
             </button>
           )}
           <button
             className="btn btn-sm"
             onClick={() => ctl.mutate({ action: 'stop' })}
-            disabled={ctl.isPending || !sim || !runStatus || runStatus === 'stopped' || runStatus === 'completed'}
+            disabled={busy || !sim || !runStatus || runStatus === 'stopped' || runStatus === 'completed'}
             title={t('sim.stop')}
           >
             <Square size={12} />
+          </button>
+          <button className="btn btn-sm" aria-label={t('sim.resetBaseline.button')} title={t('sim.resetBaseline.button')} disabled={busy || !sim} onClick={openReset}>
+            <RotateCcw size={13} />
           </button>
           <div className="ml-1 hidden items-center gap-0.5 rounded-lg border border-line p-0.5 lg:flex" title={t('sim.speed')}>
             <Gauge size={13} className="ml-1 text-muted" />
@@ -176,7 +185,7 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
               <button
                 key={s}
                 onClick={() => ctl.mutate({ action: 'set_speed', speed: s })}
-                disabled={ctl.isPending || !sim}
+                disabled={busy || !sim}
                 className={clsx(
                   'num h-6 rounded-md px-1.5 text-xs',
                   (sim?.speed ?? 1) === s ? 'bg-brand-soft font-medium text-ink' : 'text-muted hover:bg-raised',
@@ -209,7 +218,16 @@ export function Header({ v2 = false, showSidebarToggle = false, sidebarOpen = fa
       <ThemeSelector className="flex max-w-full flex-wrap items-center gap-1" />
       <DeviceSelector />
     </header>
-  )}{!mobile && (ctl.error || q.error) && <ErrorBox error={ctl.error ?? q.error} compact />}<JuryModal open={jury} onClose={() => setJury(false)} /></>
+  )}{!mobile && (ctl.error || q.error) && <ErrorBox error={ctl.error ?? q.error} compact />}{restore.isSuccess && <p role="status" className="px-3 py-2 text-sm text-muted">{t('sim.resetBaseline.done')}</p>}
+    <Modal open={resetOpen} onClose={closeReset} title={t('sim.resetBaseline.title')}>
+      <p id="baseline-reset-consequence" className="mb-4 text-sm leading-relaxed">{t('sim.resetBaseline.warning')}</p>
+      {restore.error && <ErrorBox error={restore.error} compact />}
+      {restore.isPending && <p role="status" className="mb-4 text-sm text-muted">{t('sim.resetBaseline.pending')}</p>}
+      <div className="flex flex-wrap justify-end gap-2">
+        <button className="btn" disabled={restore.isPending} onClick={closeReset}>{t('attention.cancel')}</button>
+        <button className="btn btn-primary" aria-describedby="baseline-reset-consequence" disabled={busy} onClick={() => restore.mutate(undefined, { onSuccess: () => setResetOpen(false) })}>{t('sim.resetBaseline.confirm')}</button>
+      </div>
+    </Modal><JuryModal open={jury} onClose={() => setJury(false)} /></>
 }
 
 function Nav({ to, label, end }: { to: string; label: string; end?: boolean }) {
