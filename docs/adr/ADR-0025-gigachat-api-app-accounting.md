@@ -63,6 +63,12 @@ The default live GigaChat decide prompt v3 explicitly omits that field; validati
 still rejects null. Offline/replay and explicitly pinned v1/v2 templates retain
 their previous text/hash. No schema or decision-policy relaxation is introduced.
 
+Role capture holds the catalog session lock only for its SQL snapshot. A nested
+transaction/savepoint must not leave a transaction-scoped catalog lock on the
+caller's bank connection: live accounting uses a separate connection and would
+wait for the caller itself. The bank transaction is preserved, and snapshot
+error/cancellation releases the catalog lock before propagation.
+
 `usage_known` retains its documented app-scoped meaning. Sources
 `gigachat_api_balance_app_origin` / `gigachat_api_balance_app_observed` identify
 the accounting period; UI labels it. Initial zero means no application attempt
