@@ -387,6 +387,23 @@ async def _llm(
     messages: list[Message] = [{"role": "system", "content": prompt}, {"role": "user", "content": user_text}]
     schema = deref(schema_name)
     t0 = time.perf_counter()
+    if (
+        fallback_profile is None
+        and task == "decide"
+        and task_version == "v3"
+        and requested_profile.model == "GigaChat-3-Ultra"
+        and getattr(deps.chain, "offline_mode", None) is None
+    ):
+        # Invalid Ultra JSON can use an already configured, frozen Pro profile.
+        # ProviderChain keeps the original deadline, bindings and quota gates.
+        fallback_profile = next(
+            (
+                p
+                for p in getattr(deps.chain, "role_profiles", {}).values()
+                if p.provider == "gigachat" and p.model == "GigaChat-3-Pro"
+            ),
+            None,
+        )
     options: dict[str, Any] = {"fallback_profile": fallback_profile} if fallback_profile is not None else {}
     res = await deps.chain.complete_structured(messages, schema, profile or deps.profile, context=context, **options)
     obj = prune(res.obj, schema)

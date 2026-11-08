@@ -65,6 +65,14 @@ other branches omit it. The code calculates the deadlines in either case; valida
 still rejects null. Offline/replay and explicitly pinned v1/v2 templates retain
 their previous text/hash. No schema or decision-policy relaxation is introduced.
 
+Default live Ultra `decide` also uses an already configured, frozen GigaChat Pro
+profile after invalid structured output or model unavailability. It uses the
+existing fallback mechanism within the original 30-second default deadline;
+bindings, provider balances, request/token caps and failed-call usage still apply.
+No profile or credential is invented. Explicit v1/v2 recordings, offline calls,
+other tasks/providers and an explicitly supplied reserve keep their prior path.
+Mock remains the visible last reserve if configured live models cannot succeed.
+
 Role capture holds the catalog session lock only for its SQL snapshot. A nested
 transaction/savepoint must not leave a transaction-scoped catalog lock on the
 caller's bank connection: live accounting uses a separate connection and would
