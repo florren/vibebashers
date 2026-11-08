@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: ./.github/actions/setup-uv
       - name: Проверка JSON-схем, OpenAPI и карточек
         run: |
           (cd backend && uv sync --frozen)
@@ -49,7 +49,7 @@ jobs:
       PGDATABASE: cx_pulse
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: ./.github/actions/setup-uv
       - name: Зафиксированные backend зависимости
         run: cd backend && uv sync --frozen
       - name: psql
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: ./.github/actions/setup-uv
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: cd backend && uv sync --frozen
@@ -139,7 +139,7 @@ jobs:
       LLM_PROVIDER: mock
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: ./.github/actions/setup-uv
       - name: Утилиты PostgreSQL 16 dump/restore
         run: |
           sudo apt-get update -qq
@@ -161,7 +161,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - uses: astral-sh/setup-uv@v5
+      - uses: ./.github/actions/setup-uv
       - run: cd frontend && npm ci && npm test -- --run && npm run build && npm run -s gen:types
       - run: git diff --exit-code -- frontend/src/shared/api/types.ts
       - name: Локальные шрифты после frontend build

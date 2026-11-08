@@ -1,0 +1,18 @@
+name: Установка uv с ограниченным повтором
+description: Повторяет скачивание uv после временного отказа GitHub Releases; финальная ошибка остаётся ошибкой job.
+inputs:
+  version:
+    description: Проверенная версия uv
+    default: "0.13.7"
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v5
+      id: install
+      continue-on-error: true
+      with:
+        version: ${{ inputs.version }}
+    - uses: astral-sh/setup-uv@v5
+      if: steps.install.outcome == 'failure'
+      with:
+        version: ${{ inputs.version }}
