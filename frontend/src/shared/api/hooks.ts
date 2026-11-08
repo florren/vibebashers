@@ -628,9 +628,9 @@ export function useBaselineRestore() {
   return useMutation({
     mutationFn: () => api<paths['/api/sim/baseline/restore']['post']['responses'][202]['content']['application/json']>('/api/sim/baseline/restore', { method: 'POST' }),
     onSuccess: async () => {
-      // Restore меняет весь снимок: старые in-flight ответы не должны вернуть данные прежнего прогона.
+      // После restore старые карточки нельзя оставлять даже при ошибке повторной загрузки.
       await qc.cancelQueries()
-      await qc.invalidateQueries()
+      await qc.resetQueries()
     },
   })
 }

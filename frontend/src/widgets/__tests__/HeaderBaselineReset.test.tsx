@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -37,9 +37,13 @@ beforeEach(async () => {
   }))
 })
 afterEach(() => { cleanup(); client.clear(); vi.unstubAllGlobals() })
-async function show(mobile = false) {
+function PreviousSignal() {
+  const query = useQuery<{ title: string }>({ queryKey: ['signal', 99], queryFn: async () => { throw new Error('Signal missing after restore') }, staleTime: Infinity })
+  return <p>{query.data?.title ?? query.error?.message ?? 'Loading signal'}</p>
+}
+async function show(mobile = false, previousSignal = false) {
   layout.mobile = mobile
-  render(<QueryClientProvider client={client}><MemoryRouter><Header /></MemoryRouter></QueryClientProvider>)
+  render(<QueryClientProvider client={client}><MemoryRouter><Header />{previousSignal && <PreviousSignal />}</MemoryRouter></QueryClientProvider>)
   if (mobile) fireEvent.click(screen.getByRole('button', { name: /menu/i }))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Restore starting data and time' })).toBeEnabled())
   fireEvent.click(screen.getByRole('button', { name: 'Restore starting data and time' }))
@@ -73,7 +77,7 @@ it.each([false, true])('uses native baseline restore once, refreshes all snapsho
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Restore starting state?' })).not.toBeInTheDocument())
   expect(screen.getByRole('status')).toHaveTextContent('Initial state restored')
   expect(client.getQueryData<{ sim_time: string }>(['sim-state'])?.sim_time).toBe(time)
-  expect(client.getQueryState(['signals', 7])?.isInvalidated).toBe(true)
+  expect(client.getQueryData(['signals', 7])).toBeUndefined()
   expect(writes).toEqual(['/api/sim/baseline/restore'])
 })
 it('shows rejected restore, keeps the current time and allows an explicit retry', async () => {
@@ -87,5 +91,16 @@ it('shows rejected restore, keeps the current time and allows an explicit retry'
   expect(client.getQueryData<{ sim_time: string }>(['sim-state'])?.sim_time).toBe('2026-11-14T03:14:30Z')
   expect(dialog.getByRole('button', { name: 'Restore starting data and time' })).toBeEnabled()
   fireEvent.click(dialog.getByRole('button', { name: 'Go back' }))
+  expect(writes).toEqual(['/api/sim/baseline/restore'])
+})
+
+it('does not display a deleted signal when its active query returns an error after restore', async () => {
+  client.setQueryData(['signal', 99], { title: 'Old deleted signal' })
+  const dialog = await show(false, true)
+  expect(screen.getByText('Old deleted signal')).toBeVisible()
+  fireEvent.click(dialog.getByRole('button', { name: 'Restore starting data and time' }))
+  expect(await screen.findByText('Signal missing after restore')).toBeVisible()
+  expect(screen.queryByText('Old deleted signal')).not.toBeInTheDocument()
+  expect(client.getQueryData(['signal', 99])).toBeUndefined()
   expect(writes).toEqual(['/api/sim/baseline/restore'])
 })
