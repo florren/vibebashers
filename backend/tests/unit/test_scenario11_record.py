@@ -144,6 +144,9 @@ def test_generation_profile_keeps_budget_and_binding():
         (["replay"], "v2", "classify", "v2"),
         (["gigachat"], "v1", "classify", "v1"),
         (["replay"], "v2", "decide", "v1"),
+        (["gigachat"], None, "decide", "v3"),
+        (["replay"], None, "decide", "v1"),
+        (["gigachat"], "v1", "decide", "v1"),
     ],
 )
 async def test_template_opt_in_retains_old_defaults(monkeypatch, names, selector, task, expected):
@@ -189,6 +192,18 @@ async def test_unknown_template_refused_before_provider(monkeypatch):
     with pytest.raises(ValueError, match="agent_prompt_templates"):
         await nodes._llm(deps, "normalize", "agent/normalization", {}, "synthetic")
     assert not called
+
+
+def test_live_decide_omits_computed_sla_without_relaxing_schema():
+    from app.agent.prompts import load
+    from app.contracts.registry import deref, validate_schema
+
+    schema = deref("agent/decision")
+    assert "sla" not in schema["required"]
+    assert schema["properties"]["sla"]["type"] == "object"
+    assert any("sla" in error for error in validate_schema({"sla": None}, schema))
+    assert "Поле sla не передавай" in load("decide", "v3").body
+    assert "Поле sla не передавай" not in load("decide", "v1").body
 
 
 @pytest.mark.parametrize("failure", ["transport", "durable", "slot", "binding", "temperature"])

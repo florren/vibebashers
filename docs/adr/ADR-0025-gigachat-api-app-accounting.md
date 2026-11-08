@@ -57,6 +57,12 @@ decision. Graph continuation runs after releasing that lock, as in the public
 HITL route. Waiting for the agent semaphore or GigaChat must not freeze ticks,
 Pause or Stop. Existing decision/current-run checks and transaction are retained.
 
+Longer live observation also found Ultra returning `sla:null` twice. SLA is an
+optional object in the decision contract and is recomputed by deterministic code.
+The default live GigaChat decide prompt v3 explicitly omits that field; validation
+still rejects null. Offline/replay and explicitly pinned v1/v2 templates retain
+their previous text/hash. No schema or decision-policy relaxation is introduced.
+
 `usage_known` retains its documented app-scoped meaning. Sources
 `gigachat_api_balance_app_origin` / `gigachat_api_balance_app_observed` identify
 the accounting period; UI labels it. Initial zero means no application attempt
