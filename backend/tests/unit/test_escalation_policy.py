@@ -33,6 +33,9 @@ def test_repeat_and_negative_sentiment() -> None:
 def test_critical_severity() -> None:
     classification = {**_BASE, "problem_summary": {"severity": "critical"}}
     assert pol.needs_escalation(_QUIET, classification, pol.PolicyContext()) == "critical_severity"
+    assert pol.needs_human(classification, pol.PolicyContext()) is None
+    assert pol.needs_human(classification, pol.PolicyContext(segment="ultra_vip")) == "ultra_vip"
+    assert pol.needs_human(classification, pol.PolicyContext(repeat_count=3)) == "repeat_3plus"
 
 
 def test_three_signals_in_7_days() -> None:

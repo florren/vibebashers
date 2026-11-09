@@ -88,7 +88,10 @@ async def post_ingest_messages(request: Request, body: dict[str, Any] | list[dic
     if agent is not None and agent.enabled:
         for result in results:
             if result.get("status") == "accepted" and result.get("signal_id"):
-                agent.submit(int(result["signal_id"]))
+                if journey:
+                    agent.submit(int(result["signal_id"]), interactive=True)
+                else:
+                    agent.submit(int(result["signal_id"]))
     return JSONResponse({"items": jsonable_encoder(results)}, status_code=202)
 
 

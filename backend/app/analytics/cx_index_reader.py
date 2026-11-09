@@ -55,20 +55,27 @@ async def _validate_temporal_context(conn: Conn, scope: MetricsScope) -> None:
     положительные классификации не создают такой receipt. Корректность native
     start дополнительно требует upstream stale-controller fence (T-041).
     """
-    run_filter = " AND id=%s" if scope.run_id is not None else ""
-    receipt_filter = " AND run_id=%s" if scope.run_id is not None else ""
-    args: list[Any] = [scope.now, scope.now]
-    if scope.run_id is not None:
-        args.append(scope.run_id)
-    args.append(scope.now)
-    if scope.run_id is not None:
-        args.append(scope.run_id)
+    # После baseline reset архив принадлежит прежнему времени, Journey — своим
+    # подтверждённым фактам. Только обычный World сравнивается с общим SimClock.
+    run_filter = " WHERE r.id=%s" if scope.run_id is not None else ""
+    args: list[Any] = [scope.now, *([scope.run_id] if scope.run_id is not None else [])]
     conflict = await fetch_one(
         conn,
-        f"""SELECT EXISTS (
-          SELECT 1 FROM sim_runs WHERE (started_sim>%s OR finished_sim>%s) {run_filter}
+        f"""WITH clocks AS MATERIALIZED (
+          SELECT r.id,r.started_sim,r.finished_sim,
+            CASE WHEN r.status='archived' AND r.finished_sim IS NOT NULL THEN r.finished_sim
+              WHEN r.kind='live' AND r.settings_snapshot->>'created_by'='journey_demo' THEN
+                greatest(r.started_sim,(SELECT max(at) FROM (
+                  SELECT received_sim AS at FROM signals WHERE run_id=r.id
+                  UNION ALL SELECT sent_sim FROM notifications WHERE run_id=r.id AND status IN ('sent','delivered')
+                  UNION ALL SELECT action_sim FROM team_actions WHERE run_id=r.id
+                ) facts))
+              ELSE %s END AS cutoff
+          FROM sim_runs r {run_filter}
+        ) SELECT EXISTS (
+          SELECT 1 FROM clocks WHERE started_sim>cutoff OR finished_sim>cutoff
         ) OR EXISTS (
-          SELECT 1 FROM behavior_agent_intents WHERE observed_sim>%s {receipt_filter}
+          SELECT 1 FROM behavior_agent_intents b JOIN clocks c ON c.id=b.run_id WHERE b.observed_sim>c.cutoff
         ) AS conflict""",
         args,
     )  # noqa: S608 — predicates внутренние, scope и время параметризованы.

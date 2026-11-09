@@ -45,7 +45,7 @@ async def overview_snapshot(conn: Conn, scope: MetricsScope) -> dict[str, Any]:
             EXISTS(SELECT 1 FROM agent_steps st WHERE st.run_id=a.id AND st.finished_at IS NOT NULL) AS timed
           FROM agent_runs a JOIN customer s ON s.id=a.signal_id
           JOIN signals f ON f.id=s.id AND f.run_id=a.sim_run_id
-          WHERE a.kind='agent' AND a.finished_at IS NOT NULL
+          WHERE a.kind='agent' AND a.outcome IS NOT NULL
         ), incidents AS MATERIALIZED (
           SELECT DISTINCT f.id,f.computed_at,f.prevented_loss_rub FROM v_cabinet_incident_facts f
           WHERE f.created_sim>%s AND f.created_sim<=%s {run_sql}
@@ -54,8 +54,8 @@ async def overview_snapshot(conn: Conn, scope: MetricsScope) -> dict[str, Any]:
           (SELECT count(*) FROM customer WHERE received_sim>=%s AND criticality IN ('low','medium','high')) AS criticality_known_today,
           (SELECT count(*) FROM customer WHERE received_sim>=%s AND criticality='high') AS critical_today,
           (SELECT count(*) FROM runs) AS agent_runs,
-          (SELECT count(*) FROM runs WHERE outcome IN ('completed','failed','fallback_mock','cancelled','awaiting_human','deferred')) AS outcome_known,
-          (SELECT count(*) FROM runs WHERE outcome='completed' AND NOT needed_human) AS autonomous,
+          (SELECT count(*) FROM runs WHERE outcome IN ('completed','noise','duplicate','failed','fallback_mock','cancelled','awaiting_human','deferred')) AS outcome_known,
+          (SELECT count(*) FROM runs WHERE outcome IN ('completed','noise','duplicate','deferred') AND NOT needed_human) AS autonomous,
           (SELECT count(*) FROM runs WHERE timed AND total_latency_ms>=0) AS latency_known,
           (SELECT percentile_cont(0.5) WITHIN GROUP(ORDER BY total_latency_ms) FROM runs WHERE timed AND total_latency_ms>=0) AS latency_p50_ms,
           (SELECT count(*) FROM incidents) AS incidents,

@@ -139,6 +139,6 @@ async def recover(app: Any, conn: Any, run_id: int, config: dict[str, Any]) -> N
     await conn.commit()  # Recovery использует собственное соединение и shared AgentRun ownership.
     for sid, arid in rows:
         if arid is None:
-            svc.submit(int(sid), at)
+            svc.submit(int(sid), at, interactive=True)
         else:
-            await svc._recover_one(int(arid), at)
+            await svc._recover_one(int(arid), at, interactive=True)
