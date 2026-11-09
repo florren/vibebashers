@@ -1,11 +1,10 @@
-"""T-040: реальные exported snapshots и отказ до reset при LLM drift."""
+"""T-040 / ADR-0026: exported snapshots и сохранение текущей LLM-конфигурации при reset."""
 
 from __future__ import annotations
 
 import asyncio
 import json
 import threading
-from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import psycopg
@@ -14,7 +13,8 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import create_app
-from app.sim import baseline
+from app.sim import baseline, baseline_llm
+from app.sim.engine import Simulator
 
 
 @pytest.fixture
@@ -53,33 +53,49 @@ async def test_unchanged_llm_config_passes_preflight_without_material_in_metadat
     }
 
 
-def test_selected_custom_profile_drift_is_409_before_pause_or_reset(seeded, conn, snapshot_dir):
+def test_selected_custom_profile_survives_baseline_reset_and_starts_new_run(seeded, conn, snapshot_dir):
     asyncio.run(make_dump(seeded))
     pid = conn.execute(
         "insert into llm_profiles(code,provider,model,role) values('custom-after-dump','mock','mock-custom','main') returning id"
     ).fetchone()[0]
-    before = conn.execute("select count(*) from clients").fetchone()[0]
+    initial_time = conn.execute("select sim_time from sim_state where id=1").fetchone()[0]
+    before = baseline_llm.read_sync(conn.cursor())
+    conn.execute("update clients set is_active=false")
+    conn.execute("update sim_state set sim_time=sim_time+interval '1 day' where id=1")
     with TestClient(create_app()) as client:
-        sim = SimpleNamespace(clock=SimpleNamespace(running=True), control=AsyncMock(), run_status="running")
-        client.app.state.sim = sim
+
+        async def attach_simulator():
+            sim = Simulator(dsn=seeded)
+            await sim.load_state()
+            client.app.state.sim = sim
+
+        client.portal.call(attach_simulator)
         response = client.post("/api/sim/runs", json={"kind": "free", "reset_mode": "baseline", "llm_profile_id": pid})
-        assert response.status_code == 409 and "LLM" in response.text
-        sim.control.assert_not_awaited()
+        assert response.status_code == 202, response.text
+        run = response.json()
+        assert run["llm_profile_id"] == pid and run["status"] == "running"
+        assert client.get("/api/sim/state").json()["running"] is True
         assert client.app.state.maintenance.phase == "ready"
-    assert conn.execute("select count(*) from clients").fetchone()[0] == before
+        assert client.post("/api/sim/control", json={"action": "stop"}).status_code == 200
+    assert conn.execute("select count(*) from clients where is_active").fetchone()[0] == 200
+    assert conn.execute("select sim_time from sim_state where id=1").fetchone() == (initial_time,)
+    assert baseline_llm.read_sync(conn.cursor()) == before
     assert conn.execute("select id from llm_profiles where id=%s", (pid,)).fetchone() == (pid,)
 
 
-async def test_changed_encrypted_key_registry_refuses_without_exposing_material(seeded, conn, snapshot_dir):
+async def test_changed_encrypted_key_registry_survives_without_exposing_material(seeded, conn, snapshot_dir):
     await make_dump(seeded)
     conn.execute(
         "insert into llm_api_keys(provider,label,encrypted_key,tokens_limit) values('gigachat','synthetic',pgp_sym_encrypt(%s,%s),100)",
         ("synthetic-test-value", "test-only-encryption-key"),
     )
+    before = baseline_llm.read_sync(conn.cursor())
+    encrypted = conn.execute("select encrypted_key from llm_api_keys where label='synthetic'").fetchone()[0]
     async with await connect(seeded) as ac:
-        with pytest.raises(baseline.BaselineUnavailableError, match="изменились") as exc:
-            await baseline.preflight_restore(ac, "lite")
-    assert "synthetic-test-value" not in str(exc.value)
+        await baseline.preflight_restore(ac, "lite")
+        await baseline.restore(ac, profile="lite")
+    assert baseline_llm.read_sync(conn.cursor()) == before
+    assert conn.execute("select encrypted_key from llm_api_keys where label='synthetic'").fetchone() == (encrypted,)
     text = (snapshot_dir / "lite.meta.json").read_text()
     assert "synthetic-test-value" not in text and "encrypted_key" not in text
 
@@ -116,22 +132,25 @@ async def test_digest_and_pg_dump_share_snapshot_during_concurrent_config_change
         observed.append(True)
 
     monkeypatch.setattr(baseline, "_run_pg_dump", blocked)
-    pid, model = conn.execute("select id,model from llm_profiles order by id limit 1").fetchone()
+    before = baseline_llm.read_sync(conn.cursor())
+    pid = conn.execute("select id from llm_profiles order by id limit 1").fetchone()[0]
     task = asyncio.create_task(make_dump(seeded))
     await asyncio.wait_for(started.wait(), 5)
     conn.execute("update llm_profiles set model=%s where id=%s", ("changed-after-export", pid))
     release.set()
     await task
     assert observed
+    meta = json.loads((snapshot_dir / "lite.meta.json").read_text())
+    assert meta["llm_config_fingerprint"] == before
+    current = baseline_llm.read_sync(conn.cursor())
+    assert current != before
     async with await connect(seeded) as ac:
-        with pytest.raises(baseline.BaselineUnavailableError, match="изменились"):
-            await baseline.preflight_restore(ac, "lite")
-    # Явная подготовка test fixture: возвращаем исходный config, затем доказываем
-    # реальным restore, что archive содержит экспортированный A, не более поздний B.
-    conn.execute("update llm_profiles set model=%s where id=%s", (model, pid))
+        await baseline.preflight_restore(ac, "lite")
+    # Archive и fingerprint относятся к A; bank restore обязан сохранить более поздний рабочий B.
     async with await connect(seeded) as ac:
         await baseline.restore(ac, profile="lite")
-    assert conn.execute("select model from llm_profiles where id=%s", (pid,)).fetchone() == (model,)
+    assert conn.execute("select model from llm_profiles where id=%s", (pid,)).fetchone() == ("changed-after-export",)
+    assert baseline_llm.read_sync(conn.cursor()) == current
 
 
 async def test_dump_cancel_waits_process_keeps_snapshot_open_and_preserves_previous_archive(
