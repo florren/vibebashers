@@ -23,7 +23,7 @@ from psycopg.types.json import Jsonb
 from app.config import get_settings
 from app.db.session import psycopg_dsn
 from app.logging import get_logger
-from app.sim import baseline_contract, baseline_llm
+from app.sim import baseline_contract, baseline_llm, baseline_operational
 from app.sim.events import dumps as json_dumps
 
 log = get_logger(__name__)
@@ -94,6 +94,14 @@ def _dump_path(profile: str) -> Path:
 
 def _restore_dump_path(profile: str) -> Path:
     source = _dump_path(profile)
+    # Штатный seed/dump публикует связанный digest. Старая compatible-копия не отменяет новую генерацию.
+    if source.is_file():
+        try:
+            meta = _load_meta(profile) or {}
+        except (OSError, ValueError) as exc:
+            raise BaselineToolingError("Некорректная metadata baseline; восстановление не начато") from exc
+        if isinstance(meta, dict) and meta.get("dump_sha256") == _sha256_file(source):
+            return source
     prepared = source.with_suffix(".compatible.dump")
     if not source.is_file() or not prepared.is_file():
         return source
@@ -131,7 +139,12 @@ def _load_meta(profile: str) -> dict[str, Any] | None:
     path = _meta_path(profile)
     if not path.is_file():
         return None
-    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BaselineToolingError("Некорректная metadata baseline; восстановление не начато") from exc
+    if not isinstance(data, dict):
+        raise BaselineToolingError("Metadata baseline должна быть объектом; восстановление не начато")
     return data
 
 
@@ -357,14 +370,15 @@ async def dump(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -
 
 
 async def preflight_restore(conn: psycopg.AsyncConnection[Any], profile: str | None = None) -> None:
-    """Отказ до pause/export/restore, если архив откатит операторскую LLM-конфигурацию."""
+    """Целостность архива и DB contract проверяются до изменений; рабочая LLM-конфигурация сохраняется."""
     prof = resolve_profile(profile)
     path = _restore_dump_path(prof)
     _csi_repair_script()
     try:
         meta = _load_meta(prof) or {}
         baseline_contract.validate(meta, await baseline_contract.read(conn))
-        baseline_llm.validate(meta, await baseline_llm.read(conn), _sha256_file(path))
+        baseline_llm.validate_archive(meta, _sha256_file(path))
+        await baseline_llm.ensure_canonical(conn)
     except (baseline_llm.LLMConfigDrift, baseline_contract.ContractDrift) as exc:
         raise BaselineUnavailableError(str(exc)) from None
 
@@ -411,6 +425,16 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
     # sim_runs исключена из dump. Её исходящие FK мешают --clean удалять PK
     # scenarios/llm_profiles. Снимаем их и возвращаем в той же транзакции.
     with tempfile.TemporaryDirectory(prefix="cx-restore-") as directory:
+        toc = _bounded_process(
+            [_pg_tool("pg_restore"), "--list", str(dump_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if toc.returncode:
+            raise BaselineToolingError("Архив baseline не читается; восстановление не начато")
+        selection = Path(directory) / "bank.list"
+        selection.write_text(baseline_operational.bank_toc(toc.stdout), encoding="utf-8")
         script = Path(directory) / "restore.sql"
         proc = _bounded_process(
             [
@@ -419,6 +443,8 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
                 "--if-exists",
                 "--no-owner",
                 "--no-acl",
+                "--use-list",
+                str(selection),
                 "-f",
                 str(script),
                 str(dump_path),
@@ -433,10 +459,12 @@ def _run_pg_restore(dsn: str, dump_path: Path) -> None:
             )
         wrapped = Path(directory) / "transaction.sql"
         with wrapped.open("w") as out, script.open() as src:
+            out.write(baseline_operational.PRELUDE)
             out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
             out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
             out.write("DROP INDEX IF EXISTS public.sim_runs_public_id_trgm_idx;\n")
             shutil.copyfileobj(src, out)
+            out.write(baseline_operational.EPILOGUE)
             out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_scenario_fk;\n")
             out.write("ALTER TABLE public.sim_runs DROP CONSTRAINT IF EXISTS sim_runs_llm_profile_fk;\n")
             # Старые запуски могут ссылаться на сценарии/профили, отсутствующие в baseline.
