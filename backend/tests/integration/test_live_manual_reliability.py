@@ -10,11 +10,14 @@ from types import SimpleNamespace
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
 
 from app.agent import policies
+from app.agent.nodes import _policy_context
 from app.agent.runner import AgentService
 from app.agent.tools import router_tools, write
 from app.agent.tools.base import ActFrame, ToolContext
+from app.agent.tools.read import count_same_cause, search_similar_signals
 from app.demo.execution import public_cycle
 from app.main import create_app
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
@@ -181,4 +184,101 @@ async def test_escalation_notice_preserves_autonomy_and_real_approval_remains_bl
         assert (await (await conn.execute("select needed_human from agent_runs where id=%s", (aid,))).fetchone()) == (
             True,
         )
+        await conn.rollback()
+
+
+async def test_repeat_history_is_scoped_and_compares_cause_not_broad_signal_type(seeded):
+    target = {
+        "signal_type": "tech_fault",
+        "confidence": 0.95,
+        "product": "debit_card",
+        "system": "processing",
+        "error_code": "PROC-DOUBLE-DEBIT",
+    }
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid = await new_run(conn, "same cause history")
+        at = await sim_now(conn)
+        cid = (
+            await (
+                await conn.execute(
+                    "insert into clients(display_name,segment_code,psychotype_code,region_code,city_id,clv_estimate_rub) "
+                    "select 'Клиент регрессии повторов',segment_code,psychotype_code,region_code,city_id,clv_estimate_rub "
+                    "from clients where segment_code='mass' limit 1 returning id"
+                )
+            ).fetchone()
+        )[0]
+        baseline_id = (
+            await (await conn.execute("select id from sim_runs where kind='baseline' order by id limit 1")).fetchone()
+        )[0]
+        foreign = (
+            await (
+                await conn.execute(
+                    "insert into sim_runs(kind,label,seed,status,started_sim) values('live','other private case',42,'paused',%s) returning id",
+                    (at,),
+                )
+            ).fetchone()
+        )[0]
+        entries = [
+            (rid, target),
+            (baseline_id, target),
+            (rid, {**target, "error_code": "APP-LOGIN-FAIL"}),
+            (rid, {**target, "error_code": "DEP-TIMEOUT-503"}),
+        ] + [(foreign, target)] * 4
+        for run, classification in entries:
+            await conn.execute(
+                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
+                "values(%s,%s,'chat','Учебное обращение для проверки повторов',%s,'jury','classified',%s)",
+                (run, cid, at - dt.timedelta(minutes=1), Jsonb(classification)),
+            )
+        ctx = ToolContext(conn, run_id=rid, agent_run_id=0, sim_time=at)
+        history = await search_similar_signals(ctx, "Другая проблема", cid)
+        assert history["client_history"]["signals_14d"] == 4
+        current_signal = (
+            await (
+                await conn.execute(
+                    "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
+                    "values(%s,%s,'chat','Текущая жалоба',%s,'jury','classified',%s) returning id",
+                    (rid, cid, at, Jsonb(target)),
+                )
+            ).fetchone()
+        )[0]
+        # COUNT не ограничен20 preview-строками: настоящие повторы могут быть старше новых иных сбоев.
+        for _ in range(30):
+            await conn.execute(
+                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
+                "values(%s,%s,'chat','Другой сбой',%s,'jury','classified',%s)",
+                (rid, cid, at, Jsonb({**target, "error_code": "APP-LOGIN-FAIL"})),
+            )
+        assert await count_same_cause(ctx, cid, current_signal, target, None) == 2
+        state = {
+            "signal": {"id": current_signal},
+            "client": {"client_id": cid},
+            "normalization": {},
+            "classification": target,
+            "context": {"client_history": history["client_history"]},
+        }
+        context = await _policy_context(state, SimpleNamespace(ctx=ctx))  # type: ignore[arg-type]
+        assert context.repeat_count == 3 and policies.needs_human(target, context) == "repeat_3plus"
+        different = {**target, "error_code": "PROC-OTHER-ERROR"}
+        state["classification"] = different
+        context = await _policy_context(state, SimpleNamespace(ctx=ctx))  # type: ignore[arg-type]
+        assert context.repeat_count == 1 and policies.needs_human(different, context) is None
+        summary = {
+            "signal_type": "service_quality",
+            "product": "debit_card",
+            "problem_summary": {"problem": "Ошибка оплаты"},
+        }
+        for product in ("debit_card", "debit_card", "deposit"):
+            await conn.execute(
+                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
+                "values(%s,%s,'chat','История проблемы',%s,'jury','classified',%s)",
+                (
+                    rid,
+                    cid,
+                    at,
+                    Jsonb({**summary, "product": product, "problem_summary": {"problem": "  ОШИБКА   оплаты "}}),
+                ),
+            )
+        assert await count_same_cause(ctx, cid, current_signal, summary, None) == 2
+        assert await count_same_cause(ctx, cid, current_signal, {"signal_type": "tech_fault"}, None) == 0
         await conn.rollback()

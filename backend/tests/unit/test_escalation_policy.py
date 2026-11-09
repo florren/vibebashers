@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
 from app.agent import policies as pol
+from app.agent.nodes import _context_for_prompt, _policy_context
+from app.agent.tools import read
 
 _QUIET = {"negativity": 10, "hidden_negativity": {}, "entities": {}, "intents": []}
 _BASE = {
@@ -36,6 +44,54 @@ def test_critical_severity() -> None:
     assert pol.needs_human(classification, pol.PolicyContext()) is None
     assert pol.needs_human(classification, pol.PolicyContext(segment="ultra_vip")) == "ultra_vip"
     assert pol.needs_human(classification, pol.PolicyContext(repeat_count=3)) == "repeat_3plus"
+
+
+async def test_repeat_hitl_uses_exact_count_and_keeps_legacy_checkpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    fault = {
+        **_BASE,
+        "signal_type": "tech_fault",
+        "product": "debit_card",
+        "system": "processing",
+        "error_code": "PROC-DOUBLE-DEBIT",
+    }
+    counter = AsyncMock(return_value=0)
+    monkeypatch.setattr(read, "count_same_cause", counter)
+    state = {
+        "signal": {"id": 9},
+        "client": {"client_id": 7},
+        "classification": fault,
+        "normalization": {},
+        "context": {"client_history": {"last_types": ["tech_fault"] * 5, "history_scope": "run_and_baseline_v1"}},
+    }
+    deps = SimpleNamespace(ctx=object())
+    context = await _policy_context(state, deps)  # type: ignore[arg-type]
+    assert context.repeat_count == 1 and pol.needs_human(fault, context) is None
+    counter.assert_awaited_once_with(deps.ctx, 7, 9, fault, None)
+    counter.return_value = 2
+    context = await _policy_context(state, deps)  # type: ignore[arg-type]
+    assert context.repeat_count == 3 and pol.needs_human(fault, context) == "repeat_3plus"
+    counter.reset_mock()
+    del state["context"]["client_history"]["history_scope"]
+    assert (await _policy_context(state, deps)).repeat_count == 6  # type: ignore[arg-type]
+    counter.assert_not_awaited()
+
+
+async def test_ambiguous_history_does_not_invent_a_cause_or_repeat_gratitude() -> None:
+    context = SimpleNamespace(fetchone=AsyncMock())
+    for value in (
+        {"signal_type": "tech_fault"},
+        {"signal_type": "gratitude", "system": "processing", "error_code": "PROC-DOUBLE-DEBIT"},
+    ):
+        assert await read.count_same_cause(context, 7, 9, value, None) == 0  # type: ignore[arg-type]
+    context.fetchone.assert_not_awaited()
+
+
+def test_history_scope_marker_does_not_change_prompt_or_replay_identity() -> None:
+    state = {"context": {"client_history": {"signals_14d": 2, "last_types": ["tech_fault"]}}}
+    before = deepcopy(_context_for_prompt(state))  # type: ignore[arg-type]
+    state["context"]["client_history"]["history_scope"] = "run_and_baseline_v1"
+    assert _context_for_prompt(state) == before  # type: ignore[arg-type]
+    assert state["context"]["client_history"]["history_scope"] == "run_and_baseline_v1"
 
 
 def test_three_signals_in_7_days() -> None:
