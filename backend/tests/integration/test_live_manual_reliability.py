@@ -170,13 +170,16 @@ async def test_escalation_notice_preserves_autonomy_and_real_approval_remains_bl
         approval = await write.request_human_decision(
             ctx,
             sid,
-            None,
+            iid,
             "legal_regulatory",
             {},
             policies.human_options("legal_regulatory"),
             "Требуется подтверждение",
         )
         assert approval["human_decision_id"] != notice["hitl_item_id"]
+        assert (await (await conn.execute("select status from incidents where id=%s", (iid,))).fetchone()) == (
+            "escalated",
+        )
         assert (await (await conn.execute("select needed_human from agent_runs where id=%s", (aid,))).fetchone()) == (
             True,
         )

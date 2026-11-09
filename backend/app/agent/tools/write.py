@@ -499,7 +499,15 @@ async def _record_human_decision(
     )
     hid = int(row[0])  # type: ignore[index]
     if blocking and incident_id:
-        await update_incident(ctx, incident_id, "awaiting_human", f"HITL: {reason}")
+        incident = await ctx.fetchone(
+            "select status from incidents where id=%s and run_id=%s for update", (incident_id, ctx.run_id)
+        )
+        if not incident:
+            raise ToolError("HITL требует инцидент своего запуска")
+        # Эскалация уже видна руководителю; FSM не допускает обратный переход.
+        # Обязательный approval остаётся отдельным и блокирует именно AgentRun.
+        if incident[0] != "escalated":
+            await update_incident(ctx, incident_id, "awaiting_human", f"HITL: {reason}")
     if blocking:
         await ctx.conn.execute("update agent_runs set needed_human = true where id = %s", (ctx.agent_run_id,))
     data = {
