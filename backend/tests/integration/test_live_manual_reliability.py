@@ -191,6 +191,92 @@ async def test_escalation_notice_preserves_autonomy_and_real_approval_remains_bl
         await conn.rollback()
 
 
+async def test_concurrent_required_approvals_for_same_incident_do_not_upgrade_fk_locks(seeded, monkeypatch):
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid = await new_run(conn, "concurrent required approvals")
+        at = await sim_now(conn)
+        cid = (await (await conn.execute("select id from clients where segment_code='mass' limit 1")).fetchone())[0]
+        pairs = []
+        for index in range(2):
+            signal = await create_signal(
+                conn,
+                from_api_signal(
+                    {
+                        "client_id": cid,
+                        "text": "Учебная проверка обязательного согласования",
+                        "external_id": f"concurrent-approval-{index}",
+                        "origin": "jury",
+                    }
+                ),
+                source_code="api",
+                run_id=rid,
+                sim_time=at,
+                emit_event=False,
+            )
+            sid = signal["signal_id"]
+            aid = (
+                await (
+                    await conn.execute(
+                        "insert into agent_runs(kind,sim_run_id,signal_id,started_sim,prompt_version) "
+                        "values('agent',%s,%s,%s,'concurrent approvals') returning id",
+                        (rid, sid, at),
+                    )
+                ).fetchone()
+            )[0]
+            pairs.append((sid, aid))
+        ctx = ToolContext(conn, run_id=rid, agent_run_id=pairs[0][1], sim_time=at)
+        incident = await write.create_incident(
+            ctx,
+            pairs[0][0],
+            cid,
+            {
+                "incident_type": "tech_fault",
+                "product": "debit_card",
+                "system": "processing",
+                "criticality": "high",
+                "title_ru": "Проверка параллельных согласований",
+                "team": "team_processing",
+                "priority": 1,
+                "sla": {"due_sim": at + dt.timedelta(days=1), "take_due_sim": at + dt.timedelta(hours=1)},
+            },
+        )
+        iid = incident["incident_id"]
+        await conn.commit()
+        inserted = asyncio.Barrier(2)
+
+        async def request(sid, aid):
+            async with await psycopg.AsyncConnection.connect(dsn(seeded)) as separate:
+                await separate.execute("set local deadlock_timeout='100ms'")
+                context = ToolContext(separate, run_id=rid, agent_run_id=aid, sim_time=at)
+                original = context.fetchone
+
+                async def fetch(sql, args=()):
+                    if sql.startswith("select status from incidents where id=%s and run_id=%s for "):
+                        # Обе INSERT уже держат FK KEY SHARE до чтения статуса.
+                        await asyncio.wait_for(inserted.wait(), 5)
+                    return await original(sql, args)
+
+                monkeypatch.setattr(context, "fetchone", fetch)
+                return await write.request_human_decision(
+                    context, sid, iid, "legal_regulatory", {}, policies.human_options("legal_regulatory"), "Проверить"
+                )
+
+        results = await asyncio.wait_for(
+            asyncio.gather(*(request(*pair) for pair in pairs), return_exceptions=True), 10
+        )
+        assert all(isinstance(result, dict) for result in results), results
+        assert len({result["human_decision_id"] for result in results}) == 2
+        flags = await (
+            await conn.execute(
+                "select needed_human from agent_runs where id=any(%s) order by id", ([p[1] for p in pairs],)
+            )
+        ).fetchall()
+        assert flags == [(True,), (True,)]
+        assert (await (await conn.execute("select status from incidents where id=%s", (iid,))).fetchone()) == (
+            "awaiting_human",
+        )
+
+
 async def test_repeat_history_is_scoped_and_compares_cause_not_broad_signal_type(seeded):
     target = {
         "signal_type": "tech_fault",

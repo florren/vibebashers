@@ -500,10 +500,12 @@ async def _record_human_decision(
     hid = int(row[0])  # type: ignore[index]
     if blocking and incident_id:
         incident = await ctx.fetchone(
-            "select status from incidents where id=%s and run_id=%s for update", (incident_id, ctx.run_id)
+            "select status from incidents where id=%s and run_id=%s for no key update", (incident_id, ctx.run_id)
         )
         if not incident:
             raise ToolError("HITL требует инцидент своего запуска")
+        # FK нового human_decisions держит KEY SHARE: FOR UPDATE дал бы
+        # взаимный lock upgrade двух HITL. PK не меняем, достаточно NO KEY UPDATE.
         # Эскалация уже видна руководителю; FSM не допускает обратный переход.
         # Обязательный approval остаётся отдельным и блокирует именно AgentRun.
         if incident[0] != "escalated":
