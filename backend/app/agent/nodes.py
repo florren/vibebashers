@@ -389,13 +389,14 @@ async def _llm(
     t0 = time.perf_counter()
     if (
         fallback_profile is None
-        and task == "decide"
-        and task_version == "v3"
+        and template_version is None
+        and requested_profile.provider == "gigachat"
+        and ((task == "decide" and task_version == "v3") or (task == "classify" and task_version == "v2"))
         and requested_profile.model == "GigaChat-3-Ultra"
         and getattr(deps.chain, "offline_mode", None) is None
     ):
-        # Invalid Ultra JSON can use an already configured, frozen Pro profile.
-        # ProviderChain keeps the original deadline, bindings and quota gates.
+        # Некорректный Ultra JSON использует уже настроенный frozen Pro профиль.
+        # ProviderChain сохраняет общий deadline, bindings и quota gates.
         fallback_profile = next(
             (
                 p

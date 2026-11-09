@@ -531,7 +531,7 @@ class GigaChatProvider:
             raw = body["choices"][0]["message"]["content"]
             try:
                 obj = extract_json(raw)
-                errors = validate_schema(obj, schema)
+                errors = validate_schema(obj, schema, with_constraints=True)
             except ProviderError as e:
                 errors = [e.detail]
                 obj = {}
@@ -558,7 +558,8 @@ class GigaChatProvider:
                     "role": "user",
                     "content": "Ответ не прошёл валидацию по схеме: "
                     + "; ".join(errors[:5])
-                    + ". Верни исправленный JSON целиком.",
+                    + ". Исправь все перечисленные ошибки, сохрани остальные корректные поля "
+                    "и не удаляй обязательные поля. Верни исправленный JSON целиком.",
                 },
             ]
         total_usage.latency_ms = int((time.perf_counter() - t0) * 1000)

@@ -1,4 +1,4 @@
-"""Default live decide uses configured Pro after invalid Ultra JSON; pinned/offline stays explicit."""
+"""Live classify/decide use configured Pro after invalid Ultra JSON; pinned/offline stays explicit."""
 
 import json
 import time
@@ -29,8 +29,11 @@ def prompt(monkeypatch):
 
 
 @pytest.mark.parametrize("invalid_ultra,invalid_pro", [(False, False), (True, False), (True, True)])
-async def test_actual_sdk_schema_repair_then_configured_pro_before_mock(prompt, invalid_ultra, invalid_pro):
-    schema = deref("agent/decision")
+@pytest.mark.parametrize("task,schema_name", [("decide", "agent/decision"), ("classify", "agent/classification")])
+async def test_actual_sdk_schema_repair_then_configured_pro_before_mock(
+    prompt, invalid_ultra, invalid_pro, task, schema_name
+):
+    schema = deref(schema_name)
     valid, _, _ = await MockProvider().complete_structured(
         [{"role": "user", "content": "Вопрос по условиям карты"}], schema, ULTRA, timeout_s=1
     )
@@ -67,9 +70,7 @@ async def test_actual_sdk_schema_repair_then_configured_pro_before_mock(prompt, 
     chain = ProviderChain([provider, mock], append_mock=False)
     chain.role_profiles = {"main": ULTRA, "twin": PRO}
     try:
-        obj, meta = await nodes._llm(
-            SimpleNamespace(profile=ULTRA, chain=chain), "decide", "agent/decision", {}, "synthetic"
-        )
+        obj, meta = await nodes._llm(SimpleNamespace(profile=ULTRA, chain=chain), task, schema_name, {}, "synthetic")
         assert validate_schema(obj, schema) == []
         expected = [ULTRA.model] * (2 if invalid_ultra else 1)
         if invalid_ultra:
@@ -93,7 +94,13 @@ async def test_actual_sdk_schema_repair_then_configured_pro_before_mock(prompt, 
     "task,selector,offline,model,provider,configured,expected",
     [
         ("decide", None, None, ULTRA.model, "gigachat", True, True),
-        ("classify", None, None, ULTRA.model, "gigachat", True, False),
+        ("classify", None, None, ULTRA.model, "gigachat", True, True),
+        ("classify", "v1", None, ULTRA.model, "gigachat", True, False),
+        ("classify", "v2", None, ULTRA.model, "gigachat", True, False),
+        ("classify", None, "replay", ULTRA.model, "gigachat", True, False),
+        ("classify", None, None, PRO.model, "gigachat", True, False),
+        ("classify", None, None, ULTRA.model, "openai_compatible", True, False),
+        ("classify", None, None, ULTRA.model, "gigachat", False, False),
         ("decide", "v1", None, ULTRA.model, "gigachat", True, False),
         ("decide", "v2", None, ULTRA.model, "gigachat", True, False),
         ("decide", None, "mock", ULTRA.model, "gigachat", True, False),
@@ -116,19 +123,21 @@ async def test_reserve_keeps_pins_offline_other_tasks_and_existing_profile(
         role_profiles={"twin": reserve} if configured else {},
         complete_structured=complete,
     )
-    await nodes._llm(SimpleNamespace(profile=primary, chain=chain), task, "agent/decision", {}, "synthetic")
+    schema_name = "agent/classification" if task == "classify" else "agent/decision"
+    await nodes._llm(SimpleNamespace(profile=primary, chain=chain), task, schema_name, {}, "synthetic")
     assert complete.call_args.kwargs.get("fallback_profile") is (reserve if expected else None)
     assert reserve.id == 12 and reserve.api_key_id == 23 and reserve.rpd_limit == 7 and reserve.role == "twin"
     assert reserve.extra == {"request": {"max_tokens": 1024}} and reserve.temperature == 0.2
 
 
 @pytest.mark.parametrize("kind", ["auth", "quota", "rate_limit", "network", "timeout"])
-async def test_shared_failure_does_not_spend_pro_requests(prompt, kind):
+@pytest.mark.parametrize("task,schema_name", [("decide", "agent/decision"), ("classify", "agent/classification")])
+async def test_shared_failure_does_not_spend_pro_requests(prompt, kind, task, schema_name):
     complete = AsyncMock(side_effect=ProviderError(kind, "controlled"))
     provider = SimpleNamespace(name="gigachat", complete_structured=complete)
     chain = ProviderChain([provider])
     chain.role_profiles = {"twin": PRO}
-    _, meta = await nodes._llm(SimpleNamespace(profile=ULTRA, chain=chain), "decide", "agent/decision", {}, "synthetic")
+    _, meta = await nodes._llm(SimpleNamespace(profile=ULTRA, chain=chain), task, schema_name, {}, "synthetic")
     assert meta["fallback_mock"] and complete.await_count == 1
 
 
@@ -147,7 +156,8 @@ async def test_explicit_reserve_is_not_replaced(prompt):
     assert complete.call_args.kwargs["fallback_profile"] is explicit
 
 
-async def test_decision_reserve_cannot_extend_original_deadline(prompt, monkeypatch):
+@pytest.mark.parametrize("task,schema_name", [("decide", "agent/decision"), ("classify", "agent/classification")])
+async def test_decision_reserve_cannot_extend_original_deadline(prompt, monkeypatch, task, schema_name):
     from app.llm import failover
 
     clock = [0.0]
@@ -161,6 +171,6 @@ async def test_decision_reserve_cannot_extend_original_deadline(prompt, monkeypa
 
     chain = ProviderChain([SimpleNamespace(name="gigachat", complete_structured=complete)])
     chain.role_profiles = {"twin": PRO}
-    _, meta = await nodes._llm(SimpleNamespace(profile=ULTRA, chain=chain), "decide", "agent/decision", {}, "synthetic")
+    _, meta = await nodes._llm(SimpleNamespace(profile=ULTRA, chain=chain), task, schema_name, {}, "synthetic")
     assert models == [ULTRA.model] and clock[0] == 30
     assert meta["fallback_mock"]
