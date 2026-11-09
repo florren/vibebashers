@@ -124,8 +124,7 @@ def needs_human(
         return "repeat_3plus"
     if ctx.rule_based_type and stype and ctx.rule_based_type != stype and classification.get("confidence", 1.0) < 0.9:
         return "classifier_conflict"
-    if (classification.get("problem_summary") or {}).get("severity") == "critical":
-        return "policy_other"
+    # ТЗ 9.3: critical требует эскалации, а не запрета автономной маршрутизации.
     if float(classification.get("confidence", 0.0)) < p["confidence_threshold"]:
         return "low_confidence"
     return None

@@ -424,8 +424,8 @@ class AgentService:
             log.error("agent_timer_recovery_failed", run_id=run_id, error_type=type(exc).__name__)
 
     @writer("agent-recovery")
-    async def _recover_one(self, agent_run_id: int, sim_time: dt.datetime) -> None:
-        async with self.sem:
+    async def _recover_one(self, agent_run_id: int, sim_time: dt.datetime, *, interactive: bool = False) -> None:
+        async with self.personal_sem if interactive else self.sem:
             try:
                 async with await self._conn() as conn:
                     await recover_agent_run(
@@ -580,7 +580,9 @@ class AgentService:
                 async with await self._conn() as lookup:
                     source = await (
                         await lookup.execute(
-                            f"select s.channel_subtype,{AUTOMATIC_EXCLUDED_SQL} from signals s where s.id=%s",
+                            f"select s.channel_subtype,{AUTOMATIC_EXCLUDED_SQL},"
+                            "exists(select 1 from ingest_messages im where im.signal_id=s.id and im.source_code='journey') "
+                            "from signals s where s.id=%s",
                             (sid,),
                         )
                     ).fetchone()
@@ -589,7 +591,7 @@ class AgentService:
                 self.submit(
                     int(sid),
                     dt.datetime.fromisoformat(sim_time) if sim_time else None,
-                    interactive=bool(source and source[0] == "ui_pers_demo"),
+                    interactive=bool(source and (source[0] == "ui_pers_demo" or source[2])),
                 )
 
     def submit(

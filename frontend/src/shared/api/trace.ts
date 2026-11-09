@@ -14,6 +14,6 @@ export const getTraceRelations = (kind: string, ref: string, query: RelationQuer
   api<TraceRelationPage>(`/api/trace/${encodeURIComponent(kind)}/${encodeURIComponent(ref)}/relations`, { query })
 export const getJourney = async (ref?: string, origin: 'jury' | 'feed' | 'sim' | 'any' = 'jury', presenter = false, runId?: string) =>
   api<Journey>(ref ? `/api/journey/${encodeURIComponent(ref)}` : '/api/journey/latest', {
-    query: { run_id: requireRunScope(runId ?? (ref ? 'all' : 'current')), ...(!ref ? { origin } : {}), ...(presenter ? { presenter: 1 } : {}) },
+    query: { run_id: requireRunScope(runId ?? (ref || origin === 'jury' ? 'all' : 'current')), ...(!ref ? { origin } : {}), ...(presenter ? { presenter: 1 } : {}) },
   })
 export const searchObjects = (q: string, signal?: AbortSignal) => api<Search>('/api/search', { query: { q }, signal })

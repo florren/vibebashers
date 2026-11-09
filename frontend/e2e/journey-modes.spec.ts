@@ -1,8 +1,46 @@
 import { expect, test } from '@playwright/test'
 import { recording } from '../src/pages/journey/__tests__/recordings'
 import { readFileSync } from 'node:fs'
+import { captureAgentScreenshot } from './agent-screenshot'
 const ru = JSON.parse(readFileSync(new URL('../src/shared/i18n/ru.json', import.meta.url), 'utf8'))
 const en = JSON.parse(readFileSync(new URL('../src/shared/i18n/en.json', import.meta.url), 'utf8'))
+
+for (const lang of ['ru', 'en'] as const) for (const mode of ['light', 'dark']) {
+  test(`последний ручной Journey вне current после переоткрытия ${lang}/${mode}`, async ({ page }, info) => {
+    const labels = lang === 'ru' ? ru : en
+    const live = recording(8)
+    live.subject.ref = 'SIG-001295'
+    const writes: string[] = []
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.addInitScript(({ lang, mode }) => { localStorage.setItem('cx.lang', lang); localStorage.setItem('cx.ui.mode', mode) }, { lang, mode })
+    await page.routeWebSocket('**/ws/stream', ws => { ws.onMessage(() => {}) })
+    await page.route('**/api/**', async route => {
+      const request = route.request(), url = new URL(request.url()), path = url.pathname
+      if (request.method() !== 'GET') { writes.push(path); return route.abort() }
+      if (path === '/api/journey/latest') {
+        if (url.searchParams.get('run_id') !== 'all' || url.searchParams.get('origin') !== 'jury') return route.fulfill({ status: 404, json: { title: 'No manual case in current World' } })
+        return route.fulfill({ json: live })
+      }
+      const data: Record<string, unknown> = {
+        '/api/settings': { ui: { layout: 'legacy', theme_pack: 'brand', mode } },
+        '/api/sim/state': { running: false, current_run_id: 5, current_run_status: 'paused' },
+        '/api/signals/1295': { id: 1295, agent_runs: [], incidents: [] },
+        '/api/clients': [], '/api/scenarios': [], '/api/stt/providers': [],
+      }
+      return route.fulfill({ json: path.startsWith('/api/refs/') ? [] : data[path] ?? {} })
+    })
+    for (let visit = 0; visit < 2; visit++) {
+      await page.goto('/journey')
+      await expect(page.getByRole('heading', { name: labels.journeyUi.title, exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: /SIG-001295/ }).first()).toBeVisible()
+    }
+    await expect(page.locator('html')).toHaveAttribute('data-mode', mode)
+    await captureAgentScreenshot(page, info, info.outputPath(`manual-latest-${lang}-${mode}.png`))
+    expect(writes).toEqual([])
+    expect(errors).toEqual([])
+  })
+}
 
 for (const scenario of [1, 8, 11] as const) for (const lang of ['ru', 'en'] as const) for (const theme of ['light', 'dark']) {
   test(`запись сценария ${scenario} ${lang} ${theme}: повтор и ведущий без нового агента`, async ({ page }) => {

@@ -17,7 +17,7 @@ from app.agent.tools.write import escalate_to_manager as write_escalate_to_manag
 from app.agent.tools.write import link_signal_to_incident as write_link_signal
 from app.agent.tools.write import notify_client as write_notify_client
 from app.agent.tools.write import notify_team as write_notify_team
-from app.agent.tools.write import request_human_decision as write_request_human
+from app.agent.tools.write import record_escalation_notice as write_request_human
 from app.agent.tools.write import schedule_followup as write_schedule_followup
 from app.agent.tools.write import update_incident as write_update_incident
 from app.sim.events import dumps

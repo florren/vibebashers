@@ -1840,6 +1840,10 @@ async def classify(state: AgentState, deps: Deps) -> AgentState:
 
 def _context_for_prompt(state: AgentState) -> dict[str, Any]:
     ctx, client = state["context"], state.get("client")
+    history = ctx.get("client_history")
+    if isinstance(history, dict) and "history_scope" in history:
+        # Версия внутреннего SQL-контекста не меняет model input/replay hash.
+        history = {key: value for key, value in history.items() if key != "history_scope"}
     return {
         "client": {k: client.get(k) for k in ("segment", "psychotype", "city", "region_code", "state", "churn_risk")}
         if client
@@ -1873,7 +1877,7 @@ def _context_for_prompt(state: AgentState) -> dict[str, Any]:
             }
             for i in ctx.get("related_incidents") or []
         ],
-        "client_history": ctx.get("client_history"),
+        "client_history": history,
         "similar_signals": [
             {k: s.get(k) for k in ("text", "signal_type", "same_client")}
             for s in (ctx.get("similar_signals") or [])[:4]
@@ -1907,10 +1911,21 @@ async def _abs_refund_state(deps: Deps, client_id: int | None, operation_ids: li
     return {"already_refunded": already, "refunds_30d": refunds_30d}
 
 
-def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
+async def _policy_context(state: AgentState, deps: Deps) -> pol.PolicyContext:
     client, ctx, c = state.get("client") or {}, state["context"], state["classification"]
     hist = ctx.get("client_history") or {}
-    repeat = 1 + sum(1 for t in hist.get("last_types") or [] if t == c.get("signal_type"))
+    if hist.get("history_scope") == "run_and_baseline_v1":
+        client_id = client.get("client_id")
+        signal = state["signal"]
+        repeat = 1 + (
+            await rt.count_same_cause(deps.ctx, int(client_id), int(signal["id"]), c, signal.get("source_fault_id"))
+            if client_id
+            else 0
+        )
+    else:
+        # Старые durable checkpoints не содержат причин: сохраняем прежнюю
+        # политику уже принятого решения, не мигрируем историю при resume.
+        repeat = 1 + sum(1 for t in hist.get("last_types") or [] if t == c.get("signal_type"))
     amount = (state["normalization"].get("entities") or {}).get("amount_rub")
     return pol.PolicyContext(
         segment=client.get("segment"),
@@ -1996,7 +2011,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     stype = c["signal_type"]
     flags = list(c.get("flags") or [])
     segment = client.get("segment")
-    pctx = _policy_context(state, deps)
+    pctx = await _policy_context(state, deps)
     p = pol.merged(deps.policies)
     team, co_teams, rule_id = route_team(c, state, deps)
     status = "ok"

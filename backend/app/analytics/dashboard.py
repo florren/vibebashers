@@ -58,12 +58,15 @@ async def dashboard(
         (now - dt.timedelta(hours=24), now - dt.timedelta(hours=24), *args_s),
     )
     sig = sig or {}
+    # deferred — принятое автономное решение ждать клиента/команду, не закрытый
+    # инцидент. Незавершённый LLM-вызов ещё не является решением в знаменателе.
     runs = await fetch_one(
         conn,
         f"""
         select count(*) as total,
-               count(*) filter (where ar.outcome in ('completed','noise','duplicate') and not ar.needed_human) as autonomous,
-               count(*) filter (where ar.needed_human) as hitl,
+               count(*) filter (where ar.outcome is not null) as decided,
+               count(*) filter (where ar.outcome in ('completed','noise','duplicate','deferred') and not ar.needed_human) as autonomous,
+               count(*) filter (where ar.outcome is not null and ar.needed_human) as hitl,
                count(*) filter (where hd.decision in ('modify','reject')) as human_changed,
                percentile_cont(0.5) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null and s.origin is distinct from 'proactive') as p50_min,
                percentile_cont(0.95) within group (order by extract(epoch from (i.created_sim - s.received_sim)) / 60) filter (where i.id is not null and s.origin is distinct from 'proactive') as p95_min,
@@ -151,8 +154,8 @@ async def dashboard(
         "signal_to_incident_p50_min": round(float(runs["p50_min"] or 0), 1),
         "signal_to_incident_p95_min": round(float(runs["p95_min"] or 0), 1),
         "agent_latency_p50_ms": round(float(runs["run_latency_p50_ms"] or 0)),
-        "autonomous_share": _pct(float(runs["autonomous"] or 0), total_runs),
-        "hitl_share": _pct(float(runs["hitl"] or 0), total_runs),
+        "autonomous_share": _pct(float(runs["autonomous"] or 0), int(runs["decided"] or 0)),
+        "hitl_share": _pct(float(runs["hitl"] or 0), int(runs["decided"] or 0)),
         "human_changed_share": _pct(float(runs["human_changed"] or 0), float(runs["hitl"] or 0)),
         "agent_runs": total_runs,
         "tokens_total": int(runs["tokens"] or 0),

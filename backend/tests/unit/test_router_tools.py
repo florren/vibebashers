@@ -624,7 +624,9 @@ async def test_blocked_refund_stays_hitl_instead_of_clarification() -> None:
     assert control["current_node"] == "act"
 
 
-async def test_second_pass_critical_escalates_after_accept(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_second_pass_critical_routes_and_escalates_without_blocking_approval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     deps = _decide_deps()
     # Нехватка сущностей, severity не critical: первый проход — уточнение, без другого HITL.
     first = await decide(_decide_state(already=False, signals_7d=0), deps)  # type: ignore[arg-type]
@@ -639,9 +641,9 @@ async def test_second_pass_critical_escalates_after_accept(monkeypatch: pytest.M
     assert second["decision"]["router_action"] == "escalate"
     assert second["decision"]["escalation"]["severity"] == "critical"
     assert second["decision"]["escalation"]["reason"] == "critical_severity"
-    assert second["decision"]["needs_human"] is True
-    assert second["decision"]["human_reason"] == "policy_other"
-    assert second["current_node"] == "wait_human"
+    assert second["decision"]["needs_human"] is False
+    assert second["decision"]["human_reason"] is None
+    assert second["current_node"] == "act"
 
     seen: dict[str, Any] = {}
     _out, names = await _run_act(
@@ -650,7 +652,6 @@ async def test_second_pass_critical_escalates_after_accept(monkeypatch: pytest.M
         _seen=seen,
         decision=second["decision"],
         classification=second["classification"],
-        human={"status": "accept"},
     )
     assert names.index("route_to_department") < names.index("escalate_to_manager")
     assert seen["write_esc"]["severity"] == "critical"

@@ -442,8 +442,44 @@ async def request_human_decision(
     options: list[dict[str, str]],
     recommendation: str,
 ) -> dict[str, Any]:
+    return await _record_human_decision(
+        ctx, signal_id, incident_id, reason, proposal, options, recommendation, blocking=True
+    )
+
+
+@tool("request_human_decision")
+async def record_escalation_notice(
+    ctx: ToolContext,
+    signal_id: int,
+    incident_id: int | None,
+    reason: str,
+    proposal: dict[str, Any],
+    options: list[dict[str, str]],
+    recommendation: str,
+) -> dict[str, Any]:
+    """Внутренний фасад эскалации: очередь руководителя не блокирует граф (ТЗ 9.3)."""
+    if ctx.act_frame is None or ctx.act_frame.incident_id is None or proposal.get("kind") != "escalation":
+        raise ToolError("Уведомление эскалации требует кадр маршрутизации инцидента")
+    return await _record_human_decision(
+        ctx, signal_id, incident_id, reason, proposal, options, recommendation, blocking=False
+    )
+
+
+async def _record_human_decision(
+    ctx: ToolContext,
+    signal_id: int,
+    incident_id: int | None,
+    reason: str,
+    proposal: dict[str, Any],
+    options: list[dict[str, str]],
+    recommendation: str,
+    *,
+    blocking: bool,
+) -> dict[str, Any]:
     dup = await ctx.fetchone(
-        "select id from human_decisions where agent_run_id = %s and decision is null", (ctx.agent_run_id,)
+        "select id from human_decisions where agent_run_id = %s and decision is null "
+        "and coalesce(agent_proposal->>'kind'='escalation',false)=%s",
+        (ctx.agent_run_id, not blocking),
     )
     if dup:
         return {"human_decision_id": dup[0], "deduplicated": True}
@@ -462,9 +498,18 @@ async def request_human_decision(
         ),
     )
     hid = int(row[0])  # type: ignore[index]
-    if incident_id:
-        await update_incident(ctx, incident_id, "awaiting_human", f"HITL: {reason}")
-    await ctx.conn.execute("update agent_runs set needed_human = true where id = %s", (ctx.agent_run_id,))
+    if blocking and incident_id:
+        incident = await ctx.fetchone(
+            "select status from incidents where id=%s and run_id=%s for update", (incident_id, ctx.run_id)
+        )
+        if not incident:
+            raise ToolError("HITL требует инцидент своего запуска")
+        # Эскалация уже видна руководителю; FSM не допускает обратный переход.
+        # Обязательный approval остаётся отдельным и блокирует именно AgentRun.
+        if incident[0] != "escalated":
+            await update_incident(ctx, incident_id, "awaiting_human", f"HITL: {reason}")
+    if blocking:
+        await ctx.conn.execute("update agent_runs set needed_human = true where id = %s", (ctx.agent_run_id,))
     data = {
         "human_decision_id": hid,
         "signal_id": signal_id,

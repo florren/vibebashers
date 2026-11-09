@@ -9,6 +9,7 @@ from typing import Any
 from app.agent.matching import ClientView, match_clients, nicknames_from_handles, norm_nick, norm_phone
 from app.agent.tools import abs as abs_tools
 from app.agent.tools.base import ToolContext, tool
+from app.contracts.enums import SignalType
 
 WINDOW_H = 72
 
@@ -204,16 +205,63 @@ async def search_similar_signals(
             }
             for r in rows
         ]
-    hist: dict[str, Any] = {"signals_14d": 0, "signals_7d": 0, "same_type_14d": 0, "last_types": []}
+    hist: dict[str, Any] = {
+        "signals_14d": 0,
+        "signals_7d": 0,
+        "same_type_14d": 0,
+        "last_types": [],
+        "history_scope": "run_and_baseline_v1",
+    }
     if client_id:
         rows = await ctx.fetchall(
-            "select received_sim, classification->>'signal_type' from signals where client_id = %s and id is distinct from %s::bigint and received_sim between %s and %s order by received_sim desc limit 20",
-            (client_id, exclude_signal_id, ctx.sim_time - dt.timedelta(days=14), ctx.sim_time),
+            "select s.received_sim,s.classification->>'signal_type' "
+            "from signals s where s.client_id=%s and s.id is distinct from %s::bigint and s.received_sim between %s and %s "
+            "and (s.run_id=%s or exists(select 1 from sim_runs br where br.id=s.run_id and br.kind='baseline')) "
+            "order by s.received_sim desc,s.id desc limit 20",
+            (client_id, exclude_signal_id, ctx.sim_time - dt.timedelta(days=14), ctx.sim_time, ctx.run_id),
         )
         hist["signals_14d"] = len(rows)
         hist["signals_7d"] = sum(1 for r in rows if r[0] >= ctx.sim_time - dt.timedelta(days=7))
         hist["last_types"] = [r[1] for r in rows[:5] if r[1]]
     return {"similar": similar, "client_history": hist, "keywords": words}
+
+
+async def count_same_cause(
+    ctx: ToolContext, client_id: int, signal_id: int, classification: dict[str, Any], source_fault_id: int | None
+) -> int:
+    """Точный COUNT за 14 дней после classify, без ограничения preview-истории 20 строками."""
+    stype = classification.get("signal_type")
+    if not stype or stype in {SignalType.GRATITUDE, SignalType.SUGGESTION, SignalType.INFO_REQUEST}:
+        return 0
+    predicates: list[str] = []
+    values: list[Any] = []
+    if isinstance(source_fault_id, int) and not isinstance(source_fault_id, bool) and source_fault_id > 0:
+        predicates.append("s.source_fault_id=%s")
+        values.append(source_fault_id)
+    system, code = classification.get("system"), classification.get("error_code")
+    if isinstance(system, str) and system and system not in {"other", "unknown"} and isinstance(code, str) and code:
+        predicates.append("(s.classification->>'system'=%s and s.classification->>'error_code'=%s)")
+        values.extend([system, code])
+    else:
+        product = classification.get("product")
+        summary = classification.get("problem_summary")
+        problem = summary.get("problem") if isinstance(summary, dict) else None
+        if isinstance(product, str) and product and isinstance(problem, str) and problem.strip():
+            predicates.append(
+                "(s.classification->>'product'=%s and coalesce(s.classification->>'system','')=%s and "
+                "btrim(regexp_replace(lower(s.classification->'problem_summary'->>'problem'),'[[:space:]]+',' ','g'))=%s)"
+            )
+            values.extend([product, system if isinstance(system, str) else "", " ".join(problem.lower().split())])
+    if not predicates:
+        return 0  # Одинаковый широкий тип не доказывает одну причину.
+    row = await ctx.fetchone(
+        "select count(*) from signals s where s.client_id=%s and s.id<>%s "
+        "and s.received_sim between %s and %s and s.classification->>'signal_type'=%s "
+        "and (s.run_id=%s or exists(select 1 from sim_runs br where br.id=s.run_id and br.kind='baseline')) "
+        f"and ({' or '.join(predicates)})",
+        (client_id, signal_id, ctx.sim_time - dt.timedelta(days=14), ctx.sim_time, stype, ctx.run_id, *values),
+    )  # noqa: S608 — только внутренние predicates, все значения параметризованы.
+    return int(row[0]) if row else 0
 
 
 _NICK_SQL = """

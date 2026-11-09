@@ -135,7 +135,7 @@
     "avgLatency": "Agent response p50",
     "tokens": "Tokens",
     "hint": {
-      "autonomy": "share of agent runs without a human",
+      "autonomy": "share of recorded decisions without a human, including autonomous waiting; processing without a decision is excluded",
       "slaRisk": "less than 2 h until the SLA deadline, or overdue",
       "latency": "median agent run duration (real time)"
     }
