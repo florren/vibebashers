@@ -101,7 +101,22 @@ def deref(name: str) -> dict[str, Any]:
     return result
 
 
-def validate_schema(obj: Any, schema: dict[str, Any]) -> list[str]:
+def validate_schema(obj: Any, schema: dict[str, Any], *, with_constraints: bool = False) -> list[str]:
     """Валидация по произвольной (разыменованной) схеме."""
     v = Draft202012Validator(schema, registry=registry())
-    return [f"{'/'.join(str(x) for x in e.absolute_path) or '<root>'}: {e.message}" for e in v.iter_errors(obj)]
+    errors = []
+    for error in v.iter_errors(obj):
+        message = f"{'/'.join(str(x) for x in error.absolute_path) or '<root>'}: {error.message}"
+        if with_constraints and error.validator in {
+            "minItems",
+            "maxItems",
+            "minLength",
+            "maxLength",
+            "minProperties",
+            "maxProperties",
+        }:
+            # «too short» не сообщает модели минимум, особенно внутри if/then.
+            # Значение берём из схемы; ответ модели не исправляется за неё.
+            message += f" [{error.validator}={json.dumps(error.validator_value, ensure_ascii=False)}]"
+        errors.append(message)
+    return errors
