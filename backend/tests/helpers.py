@@ -78,6 +78,9 @@ async def run_agent_on(
     else:
         body["external_contact"] = {"nick": "@unknown_tester"}
     msg = from_api_signal(body, origin=origin)
+    # Явный run_id не подставляет SimClock в ingest: wall clock делает тест зависимым от даты запуска.
+    if sim_time is None:
+        sim_time = await sim_now(conn)
     res = await create_signal(conn, msg, source_code="api", run_id=run_id, sim_time=sim_time, emit_event=False)
     await conn.commit()
     assert res["status"] == "accepted", res

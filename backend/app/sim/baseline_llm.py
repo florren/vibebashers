@@ -69,13 +69,18 @@ async def read(conn: Any) -> str:
     return fingerprint(profiles, keys, setup[0] if setup else None)
 
 
-def validate(meta: dict[str, Any], actual: str, dump_sha: str) -> None:
+def validate_archive(meta: dict[str, Any], dump_sha: str) -> None:
+    """Проверка привязки архива; текущая рабочая конфигурация при bank restore сохраняется."""
     expected = meta.get("llm_config_fingerprint")
     if not isinstance(expected, str) or len(expected) != 64 or meta.get("dump_sha256") != dump_sha:
         raise LLMConfigDrift(
             "Снимок baseline не подтверждает LLM-конфигурацию. Пересоздайте снимок через существующий baseline dump/prepare и повторите restore; данные не менялись"
         )
-    if expected != actual:
+
+
+def validate(meta: dict[str, Any], actual: str, dump_sha: str) -> None:
+    validate_archive(meta, dump_sha)
+    if meta["llm_config_fingerprint"] != actual:
         raise LLMConfigDrift(
             "LLM-каталог, ключи или настройки ролей изменились после снимка. Пересоздайте совместимый baseline и повторите restore; текущая конфигурация сохранена"
         )

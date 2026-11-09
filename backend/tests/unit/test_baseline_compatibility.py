@@ -13,7 +13,10 @@ def test_restore_fails_for_every_nonzero_exit(monkeypatch, code):
     monkeypatch.setattr(baseline, "_pg_tool", lambda name: name)
 
     def execute(command, **kwargs):
+        if command[0] == "pg_restore" and "--list" in command:
+            return SimpleNamespace(returncode=0, stdout="; archive TOC\n")
         if command[0] == "pg_restore":
+            assert "--use-list" in command
             Path(command[command.index("-f") + 1]).write_text("-- archive SQL\n")
             return SimpleNamespace(returncode=0)
         assert "--single-transaction" in command and "--set=ON_ERROR_STOP=1" in command
