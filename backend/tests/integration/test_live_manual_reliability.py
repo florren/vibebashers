@@ -19,6 +19,7 @@ from app.agent.tools import router_tools, write
 from app.agent.tools.base import ActFrame, ToolContext
 from app.agent.tools.read import count_same_cause, search_similar_signals
 from app.demo.execution import public_cycle
+from app.ingest.normalizer import create_signal, from_api_signal
 from app.main import create_app
 from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, sim_now
 from tests.integration.test_journey_execution_scope import bank_snapshot, message, send, setup
@@ -227,31 +228,43 @@ async def test_repeat_history_is_scoped_and_compares_cause_not_broad_signal_type
             (rid, {**target, "error_code": "APP-LOGIN-FAIL"}),
             (rid, {**target, "error_code": "DEP-TIMEOUT-503"}),
         ] + [(foreign, target)] * 4
-        for run, classification in entries:
-            await conn.execute(
-                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
-                "values(%s,%s,'chat','Учебное обращение для проверки повторов',%s,'jury','classified',%s)",
-                (run, cid, at - dt.timedelta(minutes=1), Jsonb(classification)),
+        serial = 0
+
+        async def history_signal(run, classification, stamp):
+            nonlocal serial
+            serial += 1
+            result = await create_signal(
+                conn,
+                from_api_signal(
+                    {
+                        "client_id": cid,
+                        "text": "Учебное обращение для проверки повторов",
+                        "external_id": f"repeat-history-{serial}",
+                        "origin": "jury",
+                    }
+                ),
+                source_code="api",
+                run_id=run,
+                sim_time=stamp,
+                emit_event=False,
             )
+            assert result["status"] == "accepted"
+            signal_id = result["signal_id"]
+            await conn.execute(
+                "update signals set status='classified',classification=%s where id=%s",
+                (Jsonb(classification), signal_id),
+            )
+            return signal_id
+
+        for run, classification in entries:
+            await history_signal(run, classification, at - dt.timedelta(minutes=1))
         ctx = ToolContext(conn, run_id=rid, agent_run_id=0, sim_time=at)
         history = await search_similar_signals(ctx, "Другая проблема", cid)
         assert history["client_history"]["signals_14d"] == 4
-        current_signal = (
-            await (
-                await conn.execute(
-                    "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
-                    "values(%s,%s,'chat','Текущая жалоба',%s,'jury','classified',%s) returning id",
-                    (rid, cid, at, Jsonb(target)),
-                )
-            ).fetchone()
-        )[0]
+        current_signal = await history_signal(rid, target, at)
         # COUNT не ограничен20 preview-строками: настоящие повторы могут быть старше новых иных сбоев.
         for _ in range(30):
-            await conn.execute(
-                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
-                "values(%s,%s,'chat','Другой сбой',%s,'jury','classified',%s)",
-                (rid, cid, at, Jsonb({**target, "error_code": "APP-LOGIN-FAIL"})),
-            )
+            await history_signal(rid, {**target, "error_code": "APP-LOGIN-FAIL"}, at)
         assert await count_same_cause(ctx, cid, current_signal, target, None) == 2
         state = {
             "signal": {"id": current_signal},
@@ -272,15 +285,10 @@ async def test_repeat_history_is_scoped_and_compares_cause_not_broad_signal_type
             "problem_summary": {"problem": "Ошибка оплаты"},
         }
         for product in ("debit_card", "debit_card", "deposit"):
-            await conn.execute(
-                "insert into signals(run_id,client_id,channel_code,text,received_sim,origin,status,classification) "
-                "values(%s,%s,'chat','История проблемы',%s,'jury','classified',%s)",
-                (
-                    rid,
-                    cid,
-                    at,
-                    Jsonb({**summary, "product": product, "problem_summary": {"problem": "  ОШИБКА   оплаты "}}),
-                ),
+            await history_signal(
+                rid,
+                {**summary, "product": product, "problem_summary": {"problem": "  ОШИБКА   оплаты "}},
+                at,
             )
         assert await count_same_cause(ctx, cid, current_signal, summary, None) == 2
         assert await count_same_cause(ctx, cid, current_signal, {"signal_type": "tech_fault"}, None) == 0
