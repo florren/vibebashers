@@ -12,6 +12,75 @@ from tests.helpers import MOCK_PROFILE, dsn, mock_chain, new_run, run_agent_on, 
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.parametrize("lang", ["ru", "en"])
+@pytest.mark.parametrize("reply", ["missing", "rejected", "valid"])
+@pytest.mark.parametrize(
+    "internal",
+    [
+        "Клиент не смог оформить вклад по промо 20% из-за ошибки, акция недоступна, просит вернуть предложение",
+        "Служебный разбор: sub_deposits, promo_engine, DEP-TIMEOUT-503; проверить идемпотентность",
+    ],
+)
+async def test_initial_reply_never_uses_internal_classification_summary(seeded, monkeypatch, lang, reply, internal):
+    from app.agent import nodes
+
+    valid = (
+        "Мы приняли ваше обращение. Проверим, почему не удалось оформить вклад по предложенным условиям."
+        if lang == "ru"
+        else "We have received your request. We will check why the deposit offer could not be used."
+    )
+    rejected = "Исправим в течение часа." if lang == "ru" else "We guarantee the issue will be resolved."
+    original = nodes._llm
+
+    async def controlled_reply(deps, task, *args, **kwargs):
+        obj, meta = await original(deps, task, *args, **kwargs)
+        if task == "normalize":
+            obj["language"] = lang
+        elif task == "classify":
+            obj["summary_ru"] = internal
+            # Изолируем отправку от уверенности keyword-mock на английском тексте.
+            obj["confidence"] = 0.95
+        elif task == "decide":
+            obj["client_action"]["kind"] = "reply"
+            obj["client_action"]["text_ru"] = {"missing": None, "rejected": rejected, "valid": valid}[reply]
+        return obj, meta
+
+    monkeypatch.setattr(nodes, "_llm", controlled_reply)
+    async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+        rid = await new_run(conn, "customer acknowledgement without internal summary")
+        cid = (
+            await (
+                await conn.execute("select id from clients where segment_code='mass' order by id limit 1")
+            ).fetchone()
+        )[0]
+        sid, state = await run_agent_on(
+            conn,
+            "Не открывается вклад в приложении, ошибка503"
+            if lang == "ru"
+            else "I cannot open a deposit in the app, error503",
+            client_id=cid,
+            run_id=rid,
+        )
+        assert state["classification"]["summary_ru"] == internal
+        assert state["decision"]["client_action"]["text_ru"] == (valid if reply == "valid" else None)
+        if reply == "rejected":
+            assert any(c["rule"] == "forbidden_phrases" and not c["passed"] for c in state["decision"]["policy_checks"])
+        notices = await (
+            await conn.execute(
+                "select body from notifications where signal_id=%s and recipient_type='client' order by id", (sid,)
+            )
+        ).fetchall()
+        assert len(notices) == 1, {
+            "decision": state["decision"],
+            "errors": state["errors"],
+            "outcome": state.get("outcome"),
+        }
+        assert notices[0][0] == (valid if reply == "valid" else nodes._short_ack(lang))
+        assert not any(
+            token in notices[0][0] for token in ("Служебный разбор", "sub_deposits", "promo_engine", "DEP-TIMEOUT")
+        )
+
+
 @pytest.mark.parametrize("artifact_kind", ["verification_report", "release_note"])
 async def test_agent_close_keeps_report_internal_and_gift_awaits_approval(seeded, artifact_kind):
     async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
