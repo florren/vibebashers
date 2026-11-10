@@ -22,7 +22,7 @@ Interrupt графа, карточка решения, продолжение с
 
 ## Зависимости
 - Зависит от: [T-056](T-056-agentstate-graf-langgraph-checkpointer-zapusk-po.md), [T-061](T-061-uzel-decide-sla-marshrutizaciya-prioritet-politi.md), [T-008](T-008-realtime-listen-notify-websocket-hab.md)
-- Блокирует: [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-079](T-079-ui-ocheredi-hitl-i-kartochki-resheniya.md), [T-175](T-175-instrumenty-refund-fee-find-affected-clients-get.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md)
+- Блокирует: [T-078](T-078-podarki-raschet-zadachi-vydacha-posle-podtverzhd.md), [T-079](T-079-ui-ocheredi-hitl-i-kartochki-resheniya.md), [T-175](T-175-instrumenty-refund-fee-find-affected-clients-get.md), [T-186](T-186-schetchik-narushenij-mashina-sostoyanij-sessii-a.md), [T-277](T-277-razbor-hitl-pri-nagruzke-world.md)
 
 ## Что сделать
 1. wait_human: запись human_decisions (предложение, варианты, рекомендация, контекст), статус сигнала/инцидента awaiting_human, публикация hitl/requested, interrupt.
