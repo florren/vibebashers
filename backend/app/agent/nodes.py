@@ -3108,7 +3108,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
                 )
                 mark("notify_client_dm", notification_id=dm.get("notification_id"))
         else:
-            message = (ca.get("text_ru") or summary or "").strip()
+            # summary — внутренний разбор, а не ответ клиенту, в том числе после отклонения текста политикой.
+            message = (ca.get("text_ru") or _short_ack(lang)).strip()
             if len(message) < 10:
                 message = _short_ack(lang)
             message = await _render_client_text(
