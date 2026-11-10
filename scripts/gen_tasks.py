@@ -1478,6 +1478,12 @@ TASKS.extend([
          accept=["Путь старого архива проверен на копии; формат и схема совместимы до применения к стенду.", "При ошибке нет ложного успеха и потери данных/исходного файла."],
          check=["Настоящий старый архив, изолированная PG16 и проверка rollback/повторов"]),
 
+    dict(id=277, title="Разбор HITL при нагрузке World", epic="E5", agent="SA-LLM", size="S", wave=9,
+         goal="Автооператор получает GigaChat-слот при непрерывной обработке новых сигналов, без голодания World.",
+         tz=["9.3", "10"], contracts=[], deps=[77],
+         steps=["Ограниченный приоритет генерации bank_operator в единственной очереди PERS.", "Сохранить FIFO внутри классов, cancellation safety, timeout, rotation и учёт расхода.", "Проверить путь роли через ProviderChain и прежние HITL-пути; ADR-0030."],
+         accept=["HITL обгоняет очередь новых сигналов; при ожидающем World не более двух HITL подряд.", "Нет параллельных PERS-генераций и потери слота при отмене; политики и данные HITL не меняются."],
+         check=["test_generation_scheduling.py; test_gigachat_cold_start.py; test_demo_live_messages.py", "make lint && make test"]),
 ])
 
 
