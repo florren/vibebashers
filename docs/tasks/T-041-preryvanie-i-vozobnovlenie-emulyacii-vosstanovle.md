@@ -117,3 +117,18 @@ caller cancellation ждёт определённого результата и 
 15 unit и отдельное измерение 11/12 новых statements (91,67%) прошли. Human review
 получен условно зелёному итоговому CI; старый QA с пересечением временных baseline
 не засчитывается как общий PASS, полный gate выполняется в свежем checkout.
+
+### Атомарная публикация process proof, 10.11.2026
+
+CI #639 на `47076d6` выявил гонку фикстуры: `Path.write_text()` уже создаёт
+`process.json`, но читатель по `exists()` может открыть ещё пустой файл.
+Ошибка — `JSONDecodeError` в `test_resume_process.py:53`; остальные 976 тестов
+shard прошли. Ветка `codex/durable-proof-publication` публикует все JSON-маркеры
+фикстуры через закрытый временный файл в том же каталоге и атомарный replace.
+DB/kill/restart assertions и deadline не ослаблены; production-код не меняется.
+
+Четыре детерминированные регрессии проверяют чтение во время незавершённой
+записи, сохранение предыдущей версии и cleanup при ошибке write/replace.
+Настоящий kill/restart + graceful restart прошёл три раза подряд на отдельной
+PG16: 16.68s / 16.82s / 15.48s. Ruff/format целевых файлов — green.
+Полный unit и CI проверяются перед merge.
