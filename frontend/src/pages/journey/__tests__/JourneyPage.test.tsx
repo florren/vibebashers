@@ -6,7 +6,7 @@ import i18n from '@/shared/i18n'
 import { JourneyPage } from '..'
 import type { Journey, TraceEvent } from '@/shared/api/trace'
 import { getJourney } from '@/shared/api/trace'
-import { loadSignal, loadRun, loadClient, loadEconomics, sendJourneyMessage } from '../api'
+import { loadSignal, loadRun, loadClient, loadEconomics, sendJourneyMessage, recoverJourneyCase, loadRecoveryIncident } from '../api'
 import { ApiError, type AgentStep } from '@/shared/api/client'
 import { useWs } from '@/shared/ws/client'
 import { elapsedSeconds } from '../timing'
@@ -59,6 +59,8 @@ vi.mock('../api', async (importOriginal) => ({
   loadClient: vi.fn(),
   loadEconomics: vi.fn(),
   sendJourneyMessage: vi.fn(),
+  recoverJourneyCase: vi.fn(),
+  loadRecoveryIncident: vi.fn(),
 }))
 vi.mock('@/shared/api/hooks', () => ({
   useRefName: () => (code: string) => code,
@@ -84,6 +86,7 @@ beforeEach(() => {
   vi.mocked(loadClient).mockResolvedValue({ id: 7, display_name: 'Тестовый клиент', clv_estimate_rub: 100000 })
   vi.mocked(loadEconomics).mockResolvedValue({ potential_loss_rub: 48.05, prevented_loss_rub: 0, formula_ru: '1 × 10% × 50% × 961' })
   vi.mocked(sendJourneyMessage).mockResolvedValue(2)
+  vi.mocked(loadRecoveryIncident).mockResolvedValue({ canRecover: false })
   useWs.setState({ status: 'open', events: [] })
 })
 function mount(path = '/journey/SIG-000001') {
@@ -436,6 +439,35 @@ it('inherits the reloaded parent profile by sending only parent lineage for a fo
   expect(sent.meta).toEqual({ parent_signal_id: 1 })
   expect(sent.meta).not.toHaveProperty('journey_execution')
   expect(sent.origin).toBe('jury')
+})
+
+it('recovers the original escalated incident without sending a new message or starting another case', async () => {
+  const data = structuredClone(journey)
+  data.stages.find(s => s.stage === 'action')!.events = [{
+    ...event, id: 'original-incident', kind: 'incident_created',
+    object_ref: { kind: 'incident', ref: 'INC-000020' }, badges: {},
+  }]
+  vi.mocked(getJourney).mockResolvedValue(data)
+  vi.mocked(loadSignal).mockResolvedValue({ id: 1, origin: 'jury', client: { id: 7 }, agent_runs: [], incidents: [{ id: 21 }] })
+  vi.mocked(recoverJourneyCase).mockResolvedValue({})
+  vi.mocked(loadRecoveryIncident).mockResolvedValue({ canRecover: true })
+  const qc = mount('/journey/SIG-000001')
+  fireEvent.click(await screen.findByRole('button', { name: 'Восстановление после эскалации' }))
+  await waitFor(() => expect(recoverJourneyCase).toHaveBeenCalledWith(20, expect.anything()))
+  expect(sendJourneyMessage).not.toHaveBeenCalled()
+  expect(await screen.findByText(/Восстановление продолжается в том же кейсе/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Дополнение к этому обращению' })).toHaveAttribute('aria-pressed', 'true')
+  vi.mocked(loadRecoveryIncident).mockResolvedValue({ canRecover: false, status: 'closed' })
+  await act(async () => { await qc.invalidateQueries({ queryKey: ['incidents'] }) })
+  await waitFor(() => expect(screen.queryByText(/Восстановление продолжается в том же кейсе/)).not.toBeInTheDocument())
+})
+
+it('does not offer recovery before an unsuccessful attempt', async () => {
+  vi.mocked(loadSignal).mockResolvedValue({ id: 1, origin: 'jury', client: { id: 7 }, agent_runs: [], incidents: [{ id: 20 }] })
+  mount('/journey/SIG-000001')
+  await waitFor(() => expect(loadRecoveryIncident).toHaveBeenCalled())
+  expect(screen.queryByRole('button', { name: 'Восстановление после эскалации' })).not.toBeInTheDocument()
+  expect(recoverJourneyCase).not.toHaveBeenCalled()
 })
 
 it.each(['ru', 'en'])('shows the simulation date across days without changing conversation order in %s', async language => {

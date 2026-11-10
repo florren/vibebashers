@@ -148,6 +148,35 @@ def test_journey_delivered_messages_and_waiting():
     JourneyResponse.model_validate(journey)
 
 
+def test_conversation_delivery_uses_actual_instants_and_excludes_other_case():
+    subject = node("signal", client_id=7)
+    notices = [
+        node(
+            "notification",
+            i,
+            signal_id=sid,
+            client_id=7,
+            recipient_type="client",
+            status="sent",
+            sent_at=at,
+            body=body,
+            channel_code="chat",
+        )
+        for i, sid, at, body in (
+            (2, 1, "2026-11-10T16:00:01+03:00", "позже"),
+            (3, 1, "2026-11-10T13:00:00.999999Z", "раньше"),
+            (4, 99, "2026-11-10T13:00:00Z", "чужой кейс того же клиента"),
+        )
+    ]
+    unrelated_reaction = node("reaction", 5, signal_id=99, client_id=7, text="другой диалог", reacted_sim=TS)
+    assert [
+        m["text_ru"] for m in client_messages([subject, *notices, unrelated_reaction], conversation_signal_ids={1})
+    ] == [
+        "раньше",
+        "позже",
+    ]
+
+
 @pytest.mark.parametrize(
     "kind,status", [("incident", "closed"), ("signal", "noise"), ("task", "done"), ("escalation", "resolved")]
 )

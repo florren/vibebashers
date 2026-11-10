@@ -13,7 +13,7 @@ import { ErrorBox } from '@/shared/ui'
 import { useWs } from '@/shared/ws/client'
 import { ROUTES } from '@/shared/routes'
 import { AgentExecution } from './AgentExecution'
-import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourneyMessage, scopedJourneyHref } from './api'
+import { loadClient, loadEconomics, loadRun, loadSignal, numericRef, sendJourneyMessage, scopedJourneyHref, recoverJourneyCase, loadRecoveryIncident } from './api'
 import { eventStep, relatedEvents, selectedAttempt, type StepSelection } from './stepSelection'
 import { elapsedSeconds, NODE_STAGE } from './timing'
 
@@ -157,7 +157,28 @@ export function LiveJourney({ onSubject, runId: scopeRunId, execution }: { onSub
     queryFn: () => loadClient(currentClientId!),
     enabled: currentClientId !== null,
   })
-  const incidentId = signal.data?.incidents?.at(-1)?.id ?? numericRef(data?.subject.kind === 'incident' ? data.subject.ref : undefined, 'INC')
+  const caseIncident = scopeRunId === undefined && signal.data?.origin === 'jury' ? traceEvents
+    .filter(e => (e.kind === 'incident_created' || e.kind === 'incident_linked') && e.object_ref?.kind === 'incident')
+    .sort((a, b) => compareMessageTimes(a.ts_real, b.ts_real))[0] : undefined
+  const incidentId = numericRef(caseIncident?.object_ref?.ref, 'INC') ?? signal.data?.incidents?.at(-1)?.id ?? numericRef(data?.subject.kind === 'incident' ? data.subject.ref : undefined, 'INC')
+  const recoveryIncidentId = incidentId
+  const recoveryEligibility = useQuery({
+    queryKey: ['incidents', 'journey-recovery', recoveryIncidentId],
+    queryFn: () => loadRecoveryIncident(recoveryIncidentId!),
+    enabled: scopeRunId === undefined && signal.data?.origin === 'jury' && recoveryIncidentId !== null,
+    refetchInterval: 5000,
+  })
+  const recovery = useMutation({
+    mutationFn: recoverJourneyCase,
+    onSuccess: () => {
+      setFollowup(true)
+      for (const key of ['journey', 'signals', 'incidents', 'agent']) void qc.invalidateQueries({ queryKey: [key] })
+    },
+  })
+  const resetRecovery = recovery.reset
+  useEffect(() => { resetRecovery() }, [recoveryIncidentId, resetRecovery])
+  const canRecover = scopeRunId === undefined && signal.data?.origin === 'jury'
+    && recoveryIncidentId !== null && recoveryEligibility.data?.canRecover
   const economics = useQuery({
     queryKey: ['incidents', 'journey-economics', incidentId, scopeRunId],
     queryFn: () => loadEconomics(incidentId!),
@@ -301,6 +322,12 @@ export function LiveJourney({ onSubject, runId: scopeRunId, execution }: { onSub
           <div className="shrink-0 border-b border-line p-3">
             <h2 className="font-semibold">{t('journeyUi.client')}</h2>
             <p className="mt-1 text-xs text-muted">{t('journeyLive.deliveredOnly')}</p>
+            {canRecover && <button type="button" className="btn btn-sm mt-2" disabled={recovery.isPending || recovery.isSuccess}
+              onClick={() => recoveryIncidentId !== null && recovery.mutate(recoveryIncidentId)}>
+              {t('journeyProfile.recoverCase')}
+            </button>}
+            {recovery.isSuccess && recoveryEligibility.data?.status !== 'closed' && <p className="mt-2 text-xs" role="status">{t('journeyProfile.recoveryStarted')}</p>}
+            {recovery.isError && <ErrorBox error={recovery.error} />}
           </div>
           <div
             ref={messageLog}

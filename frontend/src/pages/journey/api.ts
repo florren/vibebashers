@@ -1,4 +1,4 @@
-import { api, type Schemas, type SignalDetail, type AgentRunDetail } from '@/shared/api/client'
+import { api, type Schemas, type SignalDetail, type AgentRunDetail, type IncidentDetail } from '@/shared/api/client'
 import i18n from '@/shared/i18n'
 import type { paths } from '@/shared/api/types'
 
@@ -21,6 +21,14 @@ export const loadSignal = (id: number) => api<SignalDetail>(`/api/signals/${id}`
 export const loadRun = (id: number) => api<AgentRunDetail>(`/api/agent/runs/${id}`)
 export const loadClient = (id: number) => api<Schemas['Client360']>(`/api/clients/${id}/360`)
 export const loadEconomics = (id: number) => api<Schemas['IncidentEconomics']>(`/api/incidents/${id}/economics`)
+export const recoverJourneyCase = (id: number) => api(`/api/demo/incidents/${id}/recover`, { method: 'POST' })
+export async function loadRecoveryIncident(id: number): Promise<{ canRecover: boolean; status?: IncidentDetail['status'] }> {
+  const [incident, artifacts] = await Promise.all([
+    api<IncidentDetail>(`/api/incidents/${id}`),
+    api<Schemas['Artifact'][]>(`/api/incidents/${id}/artifacts`),
+  ])
+  return { canRecover: incident.status === 'escalated' && artifacts.some(a => a.meta?.outcome === 'failed'), status: incident.status }
+}
 
 /** Открывает существующую запись сценария, никогда не запускает сценарий заново. */
 export async function loadScenarioJourney(scenarioId: string) {

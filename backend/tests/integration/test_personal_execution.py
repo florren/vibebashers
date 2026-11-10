@@ -95,6 +95,20 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offse
         bank_run = sim.run_id
         original = sim.clock.sim_time
         await asyncio.gather(svc.submit(first[0], interactive=True), svc.submit(sid, interactive=True))
+        from app.demo import conversation
+
+        async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
+            history = await conversation.messages(conn, sid, first[1])
+            latest_case = await conversation.incident(conn, history)
+            assert (
+                latest_case
+                and latest_case["incident_id"]
+                == (
+                    await (
+                        await conn.execute("select incident_id from incident_signals where signal_id=%s", (sid,))
+                    ).fetchone()
+                )[0]
+            )
         signal_ids = [first[0], sid]
         if offset == 0 and not empty_pointer:
             async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
@@ -147,7 +161,10 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offse
                     (signal_ids,),
                 )
             ).fetchall()
-            assert len(finals) == len(signal_ids) + expected.count("recovered")
+            # Один итог на проблему в сессии; дополнение не дублирует доставку.
+            incident_by_signal = {row[0]: row[2] for row in rows}
+            assert len(finals) == len(set(incident_by_signal.values()))
+            assert {incident_by_signal[sid] for sid, _ in finals} == set(incident_by_signal.values())
         history = client.get("/api/personal/messages").json()
         assert len(history["messages"]) == len(signal_ids)
         assert all(any(n[1] == a["text"] for a in history["answers"]) for n in finals)
@@ -165,7 +182,7 @@ async def test_personal_full_chain_without_bank_clock(seeded, monkeypatch, offse
 
 @pytest.mark.parametrize("initial", ["no_work", "failed"])
 @pytest.mark.parametrize("trigger", ["timer", "repeat"])
-async def test_public_recovery_is_a_second_scenario_for_same_incident(seeded, monkeypatch, initial, trigger):
+async def test_public_recovery_continues_only_a_failed_attempt_for_same_incident(seeded, monkeypatch, initial, trigger):
     from app.demo.public import OUTCOMES, public_context, recover_public_cases
     from app.demo.settings import configuration, save
 
@@ -259,14 +276,30 @@ async def test_public_recovery_is_a_second_scenario_for_same_incident(seeded, mo
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
             await recover_public_cases(app, conn, rid, now=now)
             await recover_public_cases(app, conn, rid, now=now)
-            assert (
+            recovery_count = (
                 await (
                     await conn.execute(
                         "select count(*) from team_actions where incident_id=%s and action='fix_decision' and payload->>'outcome'='recovered'",
                         (iid,),
                     )
                 ).fetchone()
-            )[0] == 1
+            )[0]
+            if initial == "no_work":
+                assert recovery_count == 0
+                assert (await (await conn.execute("select status from incidents where id=%s", (iid,))).fetchone())[
+                    0
+                ] == "escalated"
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from notifications where incident_id=%s and template_code='resolved'",
+                            (iid,),
+                        )
+                    ).fetchone()
+                )[0] == 0
+                assert sim.run_id == bank_run and sim.clock.sim_time == before and not sim.clock.running
+                return
+            assert recovery_count == 1
         for _ in range(16):
             await public_cycle(app)
         async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:

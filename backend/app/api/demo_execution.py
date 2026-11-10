@@ -164,13 +164,21 @@ async def stop_demo(request: Request) -> Any:
     "/api/demo/incidents/{id}/recover", status_code=202, summary="Продолжить неудачную demo-попытку в том же инциденте"
 )
 async def post_demo_recovery(request: Request, id: int) -> Any:
+    from app.demo.execution import execution_lock
     from app.demo.recovery import recover_incident
 
     agent_service(request)
     sim = getattr(request.app.state, "sim", None)
     if sim is None:
         raise HTTPException(503, "симулятор недоступен")
-    async with sim._lock:
-        async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+    async with await psycopg.AsyncConnection.connect(psycopg_dsn()) as conn:
+        row = await (
+            await conn.execute(
+                "select r.settings_snapshot->>'created_by' from incidents i join sim_runs r on r.id=i.run_id where i.id=%s",
+                (id,),
+            )
+        ).fetchone()
+        await conn.commit()
+        async with execution_lock(request.app, public_demo=bool(row and row[0] == "journey_demo")):
             await recover_incident(request.app, conn, id)
     return await get_demo_execution(request)

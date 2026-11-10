@@ -763,6 +763,13 @@ async def _native_service_scope(state: AgentState, deps: Deps, *, for_effect: bo
 async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     sig, client = state["signal"], state.get("client")
     ctx: dict[str, Any] = {}
+    if sig.get("origin") == "jury" or sig.get("channel_subtype") == "ui_pers_demo":
+        from app.demo import conversation
+
+        previous = await conversation.messages(deps.ctx.conn, sig["id"], deps.ctx.run_id, before=True)
+        if previous:
+            ctx["conversation"] = [{"user": row["text"], "agent": row["client_answers"]} for row in previous[-20:]]
+            ctx["case_incident"] = await conversation.incident(deps.ctx.conn, previous)
     native = await _native_service_scope(state, deps)
     if native:
         ctx["proactive_fault"] = proactive.summary(native)
@@ -778,7 +785,13 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
                 systems += op["system_path"]
     else:
         ctx["products"], ctx["operations"] = [], []
-    hint_product = native["product_code"] if native else state["normalization"].get("entities", {}).get("product")
+    hint_product = (
+        native["product_code"]
+        if native
+        else (
+            state["normalization"].get("entities", {}).get("product") or (ctx.get("case_incident") or {}).get("product")
+        )
+    )
     if sig.get("channel_subtype") == "ui_pers_demo":
         form_product = (sig.get("meta") or {}).get("product_code")
         ctx["form_context"] = {
@@ -869,12 +882,9 @@ async def gather_context(state: AgentState, deps: Deps) -> AgentState:
     feedback = await feedback_context(deps.ctx.conn, sig["id"], deps.ctx.run_id)
     if feedback:
         ctx["operator_feedback"] = feedback
-    if sig.get("channel_subtype") == "ui_pers_demo":
-        rows = await deps.ctx.fetchall(
-            "select s.text,(select jsonb_agg(n.body order by n.id) from notifications n where n.signal_id=s.id and n.recipient_type='client') from personal_chat_messages m join signals s on s.id=m.signal_id where m.session_id=(select session_id from personal_chat_messages where signal_id=%s) and m.signal_id<%s order by m.id desc limit 20",
-            (sig["id"], sig["id"]),
-        )
-        ctx["conversation"] = [{"user": r[0], "agent": r[1] or []} for r in reversed(rows)]
+    case = ctx.get("case_incident")
+    if case and all(item["incident_id"] != case["incident_id"] for item in ctx["related_incidents"]):
+        ctx["related_incidents"].append(case)
     state["context"].update(ctx)
     state["current_node"] = "check_rules"
     await deps.record_step(
@@ -1562,6 +1572,15 @@ def _postcheck_classification(obj: dict[str, Any], state: AgentState, deps: Deps
             or (ctx["products"][0]["product"] if ctx.get("products") else None)
         )
     )
+    case = ctx.get("case_incident") or {}
+    if (
+        stype == "info_request"
+        and state["signal"].get("parent_signal_id")
+        and not (norm.get("entities") or {}).get("product")
+        and case.get("product")
+    ):
+        # Дополнение без нового продукта относится к уже известному продукту своего кейса.
+        product = case["product"]
     system = c.get("system")
     # Проверенный catalog допускает shared systems вне общего эвристического пути продукта.
     if not native and product and system and system not in PRODUCT_SYSTEMS.get(product, [system]):
@@ -1851,6 +1870,7 @@ def _context_for_prompt(state: AgentState) -> dict[str, Any]:
         else None,
         **({"operator_feedback": ctx["operator_feedback"]} if ctx.get("operator_feedback") else {}),
         **({"conversation": ctx["conversation"]} if ctx.get("conversation") else {}),
+        **({"case_incident": ctx["case_incident"]} if ctx.get("case_incident") else {}),
         **({"form_context": ctx["form_context"]} if ctx.get("form_context") else {}),
         "identification": ctx.get("identification"),
         "products": [{k: p.get(k) for k in ("product", "status", "card_last4")} for p in ctx.get("products") or []],
@@ -2099,6 +2119,27 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
     )
     ctx["related_incidents"] = related
     link = matching_incident(related, c, incident_type, sig.get("text") or "")
+    case = ctx.get("case_incident")
+    case_followup = bool(
+        stype == "info_request"
+        and sig.get("parent_signal_id")
+        and case
+        and (not (norm.get("entities") or {}).get("product") or norm["entities"]["product"] == case.get("product"))
+    )
+    if case_followup and case and case["status"] not in ("closed", "rejected", "duplicate"):
+        link = case
+        ctx["case_followup"] = True
+        team, co_teams, prio = case["team"], case.get("co_teams") or [], case["priority"]
+        rule_id = case.get("route_rule_id")
+        checks.append(
+            {
+                "rule": "existing_case_route",
+                "passed": True,
+                "note": "Сохраняем инцидент, владельца и приоритет исходного обращения",
+            }
+        )
+        if all(item["incident_id"] != case["incident_id"] for item in related):
+            related.append(case)
     unidentified = not state.get("client")
     status_help = (
         personal_status_help(text, _client_lang(norm.get("language"), text))
@@ -2111,11 +2152,18 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         and ctx.get("conversation")
         else None
     )
-    anonymous_request = unidentified and stype != "gratitude" and not ctx.get("proactive_fault") and not status_help
+    anonymous_request = (
+        unidentified
+        and stype != "gratitude"
+        and not ctx.get("proactive_fault")
+        and not status_help
+        and not case_followup
+    )
     demo_team_task = False
     if (
         stype == "info_request"
         and not status_help
+        and not case_followup
         and (sig.get("origin") in ("scenario", "jury") or sig.get("channel_subtype") == "ui_pers_demo")
     ):
         # В явно запущенной эмуляции даже запрос объяснения должен пройти команду и получить итог.
@@ -2140,6 +2188,7 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         and not fee_rule
         and not anonymous_request
         and not demo_team_task
+        and not (case_followup and link)
     ):
         incident_action, link_id = "none", None
     elif link:
@@ -2266,6 +2315,9 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         router_action = "none"
     elif esc_reason:
         router_action = "escalate"
+    elif case_followup:
+        # Вопрос о статусе добавляет связь и ответ, не назначает задаче новую команду/приоритет/название.
+        router_action = "none"
     else:
         router_action = "route"
     # --- тексты от модели с проверками ---
@@ -2343,7 +2395,11 @@ async def decide(state: AgentState, deps: Deps) -> AgentState:
         "incident_action": incident_action,
         "link_incident_id": link_id,
         "incident_type": incident_type if incident_action != "none" else None,
-        "title_ru": _title(d.get("title_ru") or c.get("summary_ru") or "Обращение клиента"),
+        "title_ru": _title(
+            case["title"]
+            if ctx.get("case_followup") and case
+            else d.get("title_ru") or c.get("summary_ru") or "Обращение клиента"
+        ),
         "complexity": complexity,
         "criticality": crit,
         "priority": prio,
@@ -2600,6 +2656,7 @@ def _act_spec(
         "followup_hours": float(follow.get("wake_in_sim_hours") or 4.0),
         "lang": lang,
         "proactive_service": bool(state["context"].get("proactive_fault")),
+        "case_followup": bool(state["context"].get("case_followup")),
     }
 
 
@@ -2633,6 +2690,7 @@ async def _act_route(deps: Deps, d: dict[str, Any], c: dict[str, Any], mark: Cal
         product_line
         and product_line != "other"
         and not (deps.ctx.act_frame and deps.ctx.act_frame.spec.get("proactive_service"))
+        and not (deps.ctx.act_frame and deps.ctx.act_frame.spec.get("case_followup"))
     ):
         routed = await router_tools.route_to_product_team(deps.ctx, str(product_line), deps.ctx.act_frame.signal_id)  # type: ignore[union-attr]
     else:
@@ -2913,6 +2971,8 @@ async def act(state: AgentState, deps: Deps) -> AgentState:
     elif d["incident_action"] == "link_existing" and "incident" not in done and d.get("link_incident_id"):
         inc = await wt.link_signal_to_incident(deps.ctx, sig["id"], int(d["link_incident_id"]))
         incident_id = int(inc["incident_id"])
+        if deps.ctx.act_frame is not None:
+            deps.ctx.act_frame.incident_id = incident_id
         mark("incident", incident_id=incident_id, linked=True)
     names = _facade_names(deps.ctx.calls)
     matched = _router_matches(router_action, names)

@@ -102,11 +102,12 @@ async def _bind_ticket(
     )
     if public_id and not brief.get("public_id"):
         brief = {**brief, "public_id": public_id}
-    await ctx.conn.execute(
-        "update incidents set title = %s, problem_summary = coalesce(problem_summary, '{}'::jsonb) || %s::jsonb "
-        "where id = %s",
-        (summary[:120], dumps({"problem": summary[:300]}), incident_id),
-    )
+    if not frame.spec.get("case_followup"):
+        await ctx.conn.execute(
+            "update incidents set title = %s, problem_summary = coalesce(problem_summary, '{}'::jsonb) || %s::jsonb "
+            "where id = %s",
+            (summary[:120], dumps({"problem": summary[:300]}), incident_id),
+        )
     return brief, linked
 
 
