@@ -30,10 +30,11 @@ from app.llm.credential_boundary import (
 )
 from app.llm.gigachat_balance import parse_balance, require_balance
 from app.llm.keys import ApiKey, KeyPool
+from app.llm.scheduling import GenerationQueue
 from app.logging import get_logger
 
 log = get_logger(__name__)
-_PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = WeakKeyDictionary()
+_PERS_LOCKS: WeakKeyDictionary[asyncio.AbstractEventLoop, GenerationQueue] = WeakKeyDictionary()
 _PERS_SLOT_HELD: ContextVar[bool] = ContextVar("gigachat_pers_slot_held", default=False)
 
 
@@ -45,8 +46,8 @@ class _InferenceStarted(ProviderError):
 async def generation_slot(scope: str) -> AsyncIterator[None]:
     """Freemium/PERS: один поток на процесс, включая разные профили и ключи."""
     if scope == "GIGACHAT_API_PERS" and not _PERS_SLOT_HELD.get():
-        lock = _PERS_LOCKS.setdefault(asyncio.get_running_loop(), asyncio.Lock())
-        async with lock:
+        queue = _PERS_LOCKS.setdefault(asyncio.get_running_loop(), GenerationQueue())
+        async with queue.slot():
             yield
     else:
         yield

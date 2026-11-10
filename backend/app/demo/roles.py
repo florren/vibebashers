@@ -11,6 +11,7 @@ from app.contracts.registry import deref, validate
 from app.llm.base import LLMProfile, Message
 from app.llm.failover import ProviderChain
 from app.llm.mock import MOCK_HINT_END, MOCK_HINT_START
+from app.llm.scheduling import human_decision_generation
 from app.sim.events import dumps
 
 
@@ -56,7 +57,8 @@ async def respond(
     # Эталон по фактам задаёт детерминированный ответ последнего mock-провайдера.
     hint = {"body": fallback[:2000], "decision": decision}
     messages.append({"role": "assistant", "content": MOCK_HINT_START + dumps(hint) + MOCK_HINT_END})
-    result = await chain.complete_structured(messages, deref("demo/role_response"), profile)
+    with human_decision_generation(role == "bank_operator"):
+        result = await chain.complete_structured(messages, deref("demo/role_response"), profile)
     calls = [result]
     reviews: list[dict[str, Any]] = []
     grounded = True
