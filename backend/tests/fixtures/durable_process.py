@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from app.agent import graph
 from app.ingest import sources
 from app.main import create_app
+from tests.fixtures.process_proof import publish_json
 
 
 async def idle_poll(stop):
@@ -29,7 +30,7 @@ close = graph.NODES["close"]
 
 async def blocked_close(state, deps):
     if "T041 durable-process-proof" in state["signal"]["text"]:
-        output.with_suffix(".blocked").write_text(json.dumps({"agent_run_id": state["agent_run_id"]}))
+        publish_json(output.with_suffix(".blocked"), {"agent_run_id": state["agent_run_id"]})
         await asyncio.Event().wait()
     return await close(state, deps)
 
@@ -68,7 +69,7 @@ with TestClient(create_app()) as client, psycopg.connect(dsn, autocommit=True) a
         assert client.post(f"/api/sim/runs/{rid}/resume").status_code == 200
         arid = json.loads(output.with_suffix(".blocked").read_text())["agent_run_id"]
         sid = db.execute("select signal_id from agent_runs where id=%s", (arid,)).fetchone()[0]
-        output.write_text(json.dumps({"run_id": rid, "signal_id": sid, "operation_id": opid}))
+        publish_json(output, {"run_id": rid, "signal_id": sid, "operation_id": opid})
         while True:
             time.sleep(1)
     else:
@@ -101,15 +102,14 @@ with TestClient(create_app()) as client, psycopg.connect(dsn, autocommit=True) a
             db.execute("select count(*) from agent_steps where run_id=%s and node='normalize'", (row[0],)).fetchone()[0]
             == 1
         )
-        output.with_suffix(f".{phase}").write_text(
-            json.dumps(
-                {
-                    "status_before": status,
-                    "sim_time_before": sim_time.isoformat(),
-                    "agent_run_id": row[0],
-                    "tokens": row[2],
-                    "resumed_before": resumed,
-                    "resumed_after": response.json()["resumed_count"],
-                }
-            )
+        publish_json(
+            output.with_suffix(f".{phase}"),
+            {
+                "status_before": status,
+                "sim_time_before": sim_time.isoformat(),
+                "agent_run_id": row[0],
+                "tokens": row[2],
+                "resumed_before": resumed,
+                "resumed_after": response.json()["resumed_count"],
+            },
         )
