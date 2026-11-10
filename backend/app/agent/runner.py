@@ -50,6 +50,8 @@ class AgentService:
         self.sim = sim
         self.sem = asyncio.Semaphore(concurrency)
         self.personal_sem = asyncio.Semaphore(2)
+        # Записанное решение оператора должно продолжиться даже при очереди новых сигналов/SLA.
+        self.human_sem = asyncio.Semaphore(1)
         self._recover_on_start = True
         self._task: asyncio.Task[None] | None = None
         self._feedback_task: asyncio.Task[None] | None = None
@@ -716,7 +718,7 @@ class AgentService:
 
     @writer("agent")
     async def resume(self, human_decision_id: int, sim_time: dt.datetime | None = None) -> dict[str, Any] | None:
-        async with self.sem, await self._conn() as conn:
+        async with self.human_sem, await self._conn() as conn:
             state = await resume_after_human(
                 conn, human_decision_id=human_decision_id, chain=self.chain, profile=self.profile, sim_time=sim_time
             )

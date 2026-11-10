@@ -80,7 +80,9 @@ def client_messages(
     own_notices = {
         node["data"]["id"]
         for node in nodes
-        if node["kind"] == "notification" and node["data"].get("signal_id") in own_signals
+        if node["kind"] == "notification"
+        and node["data"].get("id") is not None
+        and node["data"].get("signal_id") in own_signals
     }
     for n in nodes:
         k, d = n["kind"], n["data"]

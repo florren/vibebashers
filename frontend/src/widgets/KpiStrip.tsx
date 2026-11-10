@@ -17,7 +17,7 @@ export function KpiStrip({ runId }: { runId: number | undefined }) {
   const autonomy = d?.autonomous_share
   const critical = d?.critical_today ?? 0
   const slaRisk = (d?.sla_risk_count ?? 0) + (d?.sla_overdue_count ?? 0)
-  const hitlN = hitl.data?.items?.length ?? 0
+  const hitlN = hitl.data?.total ?? hitl.data?.items?.length ?? 0
 
   return (
     <div data-block="kpis" className="kpi-strip grid grid-cols-4 gap-2 px-3 py-2 lg:grid-cols-8">

@@ -46,7 +46,17 @@ async def test_personal_journey_keeps_complete_own_conversation(seeded, monkeypa
             state = await process_signal(conn, signal_id=sid, chain=mock_chain(), profile=MOCK_PROFILE, sim_time=at)
             await conn.commit()
         assert state["classification"]["signal_type"] == "info_request"
-        assert state["decision"]["incident_action"] == "none"
+        assert state["decision"]["incident_action"] == "link_existing"
+        assert state["decision"]["router_action"] == "none"
+        assert (
+            await (
+                await conn.execute(
+                    "select count(distinct x.incident_id),count(distinct x.signal_id) "
+                    "from incident_signals x join signals s on s.id=x.signal_id where s.public_id=any(%s)",
+                    (refs,),
+                )
+            ).fetchone()
+        ) == (1, 2)
         assert state["decision"]["gift"] is None and not state["decision"]["needs_human"]
         history = client.get("/api/personal/messages").json()
         bodies = [answer["text"] for answer in history["answers"]]

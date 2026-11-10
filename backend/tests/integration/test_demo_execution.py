@@ -165,7 +165,7 @@ async def test_demo_operator_and_manual_priority(seeded, monkeypatch, manual):
     monkeypatch.setenv("DATABASE_URL", seeded)
     get_settings.cache_clear()
     app = create_app()
-    app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded)
+    app.state.agent = AgentService(mock_chain(), MOCK_PROFILE, dsn=seeded, concurrency=1)
     sim = app.state.sim = Simulator(dsn=seeded)
     await sim.load_state()
     try:
@@ -216,7 +216,9 @@ async def test_demo_operator_and_manual_priority(seeded, monkeypatch, manual):
                 return await original_resume(*args, **kwargs)
 
             monkeypatch.setattr(app.state.agent, "resume", resume_without_clock_lock)
-            await employees(app, conn, rid, sim.clock.sim_time)
+            async with asyncio.timeout(10), app.state.agent.sem:
+                # Входящий поток занят; решение оператора всё равно продолжает реальный Graph.
+                await employees(app, conn, rid, sim.clock.sim_time)
             result = await (
                 await conn.execute("select decision,decided_by,use_as_fewshot from human_decisions where id=%s", (hid,))
             ).fetchone()
