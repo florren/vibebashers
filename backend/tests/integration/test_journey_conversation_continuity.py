@@ -201,6 +201,21 @@ async def test_failed_case_retains_context_history_and_recovers_without_new_inci
             ).fetchall()
             assert [row[0] for row in notices] == ["demo_unresolved", "resolved"]
             assert notices[0][1] <= notices[1][1]
+            assert (
+                await (
+                    await conn.execute(
+                        "select signal_id from notifications where incident_id=%s and template_code='resolved'", (iid,)
+                    )
+                ).fetchone()
+            )[0] == child["signal_id"]
+            settled_runs = (
+                await (await conn.execute("select count(*) from agent_runs where sim_run_id=%s", (rid,))).fetchone()
+            )[0]
+            await manual_cycle(app, conn, rid, await configuration(conn, rid))
+            await conn.commit()
+            assert (
+                await (await conn.execute("select count(*) from agent_runs where sim_run_id=%s", (rid,))).fetchone()
+            )[0] == settled_runs
             assert (await configuration(conn, rid))["team_outcome"] == "failed"
             assert await bank_snapshot(conn) == before
         async with await psycopg.AsyncConnection.connect(dsn(seeded), row_factory=dict_row) as conn:

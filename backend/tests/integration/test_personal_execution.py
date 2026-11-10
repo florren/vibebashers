@@ -257,6 +257,30 @@ async def test_public_recovery_continues_only_a_failed_attempt_for_same_incident
                     )
                 ).fetchone()
             )[0] == 0
+            if initial == "failed":
+                notice_status, sent_at = await (
+                    await conn.execute(
+                        "select status,sent_at from notifications where signal_id=%s and template_code='demo_unresolved'",
+                        (sid,),
+                    )
+                ).fetchone()
+                await conn.execute(
+                    "update notifications set status='queued',sent_at=null where signal_id=%s and template_code='demo_unresolved'",
+                    (sid,),
+                )
+                await recover_public_cases(app, conn, rid, now=first_notice + dt.timedelta(seconds=31))
+                assert (
+                    await (
+                        await conn.execute(
+                            "select count(*) from team_actions where incident_id=%s and payload->>'outcome'='recovered'",
+                            (iid,),
+                        )
+                    ).fetchone()
+                )[0] == 0
+                await conn.execute(
+                    "update notifications set status=%s,sent_at=%s where signal_id=%s and template_code='demo_unresolved'",
+                    (notice_status, sent_at, sid),
+                )
         if trigger == "repeat":
             async with await psycopg.AsyncConnection.connect(dsn(seeded)) as conn:
                 await conn.execute("update personal_chat_sessions set last_message_at=now()-interval '3 seconds'")
@@ -312,11 +336,18 @@ async def test_public_recovery_continues_only_a_failed_attempt_for_same_incident
             assert (
                 await (
                     await conn.execute(
-                        "select template_code from notifications where signal_id=%s and template_code in ('demo_unresolved','resolved') order by id",
-                        (sid,),
+                        "select template_code from notifications where incident_id=%s and template_code in ('demo_unresolved','resolved') order by id",
+                        (iid,),
                     )
                 ).fetchall()
             ) == [("demo_unresolved",), ("resolved",)]
+            assert (
+                await (
+                    await conn.execute(
+                        "select signal_id from notifications where incident_id=%s and template_code='resolved'", (iid,)
+                    )
+                ).fetchone()
+            )[0] == (repeat_sid if trigger == "repeat" else sid)
             config = await configuration(conn, rid)
             assert config["outcome_cursor"] == OUTCOMES.index(initial) + 1
             assert config["incident_outcomes"] == {str(iid): initial}

@@ -6,6 +6,13 @@ from typing import Any
 
 from psycopg.rows import dict_row
 
+# Только внутренние aliases; caller отдельно ограничивает run, адресата, канал и инцидент.
+SAME_DIALOGUE_SQL = (
+    "((r.settings_snapshot->>'created_by'='journey_demo' and previous.origin='jury' and current.origin='jury') "
+    "or exists(select 1 from personal_chat_messages p join personal_chat_messages c on c.session_id=p.session_id "
+    "where p.signal_id=previous.id and c.signal_id=current.id))"
+)
+
 
 async def messages(conn: Any, signal_id: int, run_id: int, *, before: bool = False) -> list[dict[str, Any]]:
     """Один Journey run — один case; personal использует явную membership сессии."""

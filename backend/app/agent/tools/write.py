@@ -318,15 +318,14 @@ async def notify_client(
         return {"notification_id": dup[0], "status": dup[1], "deduplicated": True, "key": key}
     if final:
         # Дополнения одного диалога получают один итог инцидента; другие кейсы/сессии не объединяются.
+        from app.demo.conversation import SAME_DIALOGUE_SQL
+
         dup = await ctx.fetchone(
             "select n.id,n.status from notifications n join signals previous on previous.id=n.signal_id "
             "join signals current on current.id=%s join sim_runs r on r.id=current.run_id "
             "where n.run_id=%s and previous.run_id=current.run_id and previous.client_id is not distinct from current.client_id and n.incident_id=%s "
             "and n.recipient_type='client' and n.client_id is not distinct from %s "
-            "and n.channel_code=%s and n.template_code=%s and ("
-            "(r.settings_snapshot->>'created_by'='journey_demo' and previous.origin='jury' and current.origin='jury') "
-            "or exists(select 1 from personal_chat_messages p join personal_chat_messages c on c.session_id=p.session_id "
-            "where p.signal_id=previous.id and c.signal_id=current.id)) order by n.id limit 1",
+            f"and n.channel_code=%s and n.template_code=%s and {SAME_DIALOGUE_SQL} order by n.id limit 1",
             (signal_id, ctx.run_id, incident_id, client_id, channel, template_code),
         )
         if dup:

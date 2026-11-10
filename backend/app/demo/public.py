@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from fastapi import HTTPException
 from psycopg.rows import tuple_row
 
 from app.demo.settings import configuration, save
@@ -88,4 +89,9 @@ async def recover_public_cases(app: Any, conn: Any, rid: int, *, now: dt.datetim
             )
         ).fetchall()
         for (iid,) in rows:
-            await recover_incident(app, conn, int(iid), public_demo=True)
+            try:
+                await recover_incident(app, conn, int(iid), public_demo=True)
+            except HTTPException as exc:
+                if exc.status_code != 409:
+                    raise
+                # Ответ ещё доставляется или клиент начал дополнение: следующий цикл повторит проверку.
