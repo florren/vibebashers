@@ -23,7 +23,7 @@ export function DemoExecution({ value = DEFAULT_JOURNEY_OPTIONS, onChange }: { v
       </label>
       <label className="flex flex-col gap-1 text-xs">{t('demoExecution.outcome')}
         <select className="input" value={value.team_outcome} onChange={e => change({ team_outcome: e.target.value as JourneyOptions['team_outcome'] })}>
-          {(['on_time', 'late', 'no_work', 'failed', 'recovered'] as const).map(o => <option key={o} value={o}>{t(`demoExecution.outcomes.${o}`)}</option>)}
+          {(['on_time', 'late', 'no_work', 'failed'] as const).map(o => <option key={o} value={o}>{t(`demoExecution.outcomes.${o}`)}</option>)}
         </select>
       </label>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.emulate_humans} onChange={e => change({ emulate_humans: e.target.checked })} />{t('demoExecution.humans')}</label>

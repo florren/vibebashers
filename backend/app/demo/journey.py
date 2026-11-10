@@ -75,6 +75,10 @@ async def context(conn: Any, message: dict[str, Any]) -> tuple[int, dt.datetime]
             ):
                 raise HTTPException(422, "Профиль обращения уже сохранён; создайте новое обращение")
             return int(rid), await clock(conn, int(rid), at)
+        if options.team_outcome == "recovered":
+            raise HTTPException(
+                422, "Восстановление продолжает завершённую неудачную попытку; новое обращение так не запускается"
+            )
         await cur.execute("select seed,sim_time from sim_state where id=1")
         state = await cur.fetchone()
         if state is None:

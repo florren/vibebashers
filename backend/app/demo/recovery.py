@@ -29,7 +29,8 @@ async def recover_incident(app: Any, conn: Any, iid: int, *, public_demo: bool =
         raise HTTPException(404, "Инцидент не найден")
     rid, status, team, title, system, product, arid = row
     config = await configuration(conn, rid)
-    if (public_demo and not config.get("public_demo")) or (not public_demo and rid != sim.run_id):
+    journey_demo = bool(config.get("journey_demo"))
+    if (public_demo and not config.get("public_demo")) or (not public_demo and rid != sim.run_id and not journey_demo):
         raise HTTPException(404, "Инцидент не принадлежит текущему запуску")
     last = await (
         await conn.execute(
@@ -47,7 +48,43 @@ async def recover_incident(app: Any, conn: Any, iid: int, *, public_demo: bool =
     ).fetchone()
     if status != "escalated" or not last or last[0] not in ("failed", "no_work") or not manual:
         raise HTTPException(409, "Нет завершённой неудачной demo-попытки для восстановления")
-    base_time = dt.datetime.fromisoformat(config["base_time"]) if public_demo else sim.clock.sim_time
+    if (public_demo or journey_demo) and last[0] != "failed":
+        raise HTTPException(409, "Восстановление выполняется после попытки, которая не устранила проблему")
+    if public_demo or journey_demo:
+        negative_delivered = await (
+            await conn.execute(
+                "select 1 from notifications where incident_id=%s and run_id=%s and template_code='demo_unresolved' "
+                "and recipient_type='client' and status in ('sent','delivered') and sent_at is not null limit 1",
+                (iid, rid),
+            )
+        ).fetchone()
+        if negative_delivered is None:
+            raise HTTPException(409, "Дождитесь отправки результата неудачной попытки клиенту")
+    pending = await (
+        await conn.execute(
+            "select 1 from incident_signals x join agent_runs a on a.signal_id=x.signal_id "
+            "where x.incident_id=%s and a.kind='agent' and (a.outcome is null or a.outcome='awaiting_human') limit 1",
+            (iid,),
+        )
+    ).fetchone()
+    if pending:
+        raise HTTPException(409, "Дождитесь завершения обработки сообщения или решения человека")
+    base_time = dt.datetime.fromisoformat(config["base_time"]) if public_demo or journey_demo else sim.clock.sim_time
+    if journey_demo:
+        from app.demo.journey import clock
+
+        base_time = await clock(conn, int(rid), base_time)
+    else:
+        latest = await (
+            await conn.execute(
+                "select max(at) from (select s.received_sim as at from signals s join incident_signals x "
+                "on x.signal_id=s.id where x.incident_id=%s union all select n.sent_sim from notifications n "
+                "where n.incident_id=%s and n.status in ('sent','delivered')) facts",
+                (iid, iid),
+            )
+        ).fetchone()
+        if latest and latest[0]:
+            base_time = max(base_time, latest[0])
     at = max(
         base_time,
         last[1],

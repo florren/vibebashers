@@ -46,7 +46,7 @@ it('keeps the default profile local and never starts or saves a global execution
   expect(api).toHaveBeenCalledTimes(1)
   expectReadOnly()
 })
-it.each(['on_time', 'late', 'no_work', 'failed', 'recovered'] as const)('updates only the local draft with outcome %s', async outcome => {
+it.each(['on_time', 'late', 'no_work', 'failed'] as const)('updates only the local draft with outcome %s', async outcome => {
   const onChange = mount()
   await screen.findByRole('option', { name: 'Комиссия' })
   fireEvent.change(screen.getByLabelText(String(i18n.t('demoExecution.scenario'))), { target: { value: 'qr_fee_public_review' } })
@@ -55,6 +55,12 @@ it.each(['on_time', 'late', 'no_work', 'failed', 'recovered'] as const)('updates
   fireEvent.click(screen.getByLabelText('Ускорять ручные обращения до итогового ответа'))
   expect(onChange).toHaveBeenLastCalledWith({ scenario_id: 'qr_fee_public_review', team_outcome: outcome, emulate_humans: false, auto_advance: false })
   expect(screen.getByLabelText('Работа команды')).toHaveValue(outcome)
+  expectReadOnly()
+})
+it('does not offer recovery as a first-attempt outcome', async () => {
+  mount()
+  await screen.findByRole('option', { name: 'Вклад' })
+  expect(screen.queryByRole('option', { name: i18n.t('demoExecution.outcomes.recovered') })).not.toBeInTheDocument()
   expectReadOnly()
 })
 it('preserves the local draft across a scenario-list refresh', async () => {

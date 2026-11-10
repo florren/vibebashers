@@ -77,16 +77,36 @@ def client_messages(
     }
     if subject and subject["kind"] == "post":
         own_posts.add(subject["data"]["id"])
+    own_notices = {
+        node["data"]["id"]
+        for node in nodes
+        if node["kind"] == "notification"
+        and node["data"].get("id") is not None
+        and node["data"].get("signal_id") in own_signals
+    }
     for n in nodes:
         k, d = n["kind"], n["data"]
         if scoped and k == "reply" and d.get("post_id") not in own_posts:
             continue
         if scoped and k == "reaction" and d.get("client_id") != signal["client_id"]:
             continue
+        if (
+            k == "reaction"
+            and conversation_signal_ids is not None
+            and d.get("signal_id") not in own_signals
+            and d.get("notification_id") not in own_notices
+        ):
+            continue
         if k == "notification" and scoped:
             # Общий инцидент содержит доставки нескольким клиентам. В дорожке
             # сигнала показываем его адресата, включая подарок без signal_id.
             if d.get("client_id") != signal["client_id"]:
+                continue
+            if (
+                conversation_signal_ids is not None
+                and d.get("signal_id") is not None
+                and d["signal_id"] not in own_signals
+            ):
                 continue
             if signal["client_id"] is None and (signal["id"] is None or d.get("signal_id") not in own_signals):
                 continue
@@ -131,7 +151,7 @@ def client_messages(
                     "delivered_sim": d.get("reacted_sim"),
                 }
             )
-    return sorted(lane, key=lambda m: m["delivered_at"])
+    return sorted(lane, key=lambda m: datetime.fromisoformat(m["delivered_at"].replace("Z", "+00:00")))
 
 
 def build_journey(
@@ -232,25 +252,30 @@ async def journey(conn: Conn, ref: str, run_id: str = "current", presenter: bool
     trace, nodes = await assemble(conn, kind, ref, run_id=run_id)
     conversation_signal_ids = None
     subject = nodes[0]
-    if subject["kind"] == "signal" and subject["data"].get("client_id") is None:
-        # Только штатная membership personal, а не общий NULL client или parent hint.
-        messages = await fetch_all(
-            conn,
-            "SELECT 'signal' AS kind,to_jsonb(s) AS data,s.run_id AS scope_id "
-            "FROM personal_chat_messages m JOIN signals s ON s.id=m.signal_id "
-            "WHERE m.session_id=(SELECT session_id FROM personal_chat_messages WHERE signal_id=%s) "
-            "AND s.run_id=%s AND s.client_id IS NULL ORDER BY m.id LIMIT 200",
-            (subject["data"]["id"], subject["scope_id"]),
-        )
+    if subject["kind"] == "signal" and (
+        subject["data"].get("client_id") is None
+        or subject["data"].get("origin") == "jury"
+        or subject["data"].get("channel_subtype") == "ui_pers_demo"
+    ):
+        from app.demo import conversation
+
+        signals = await conversation.messages(conn, subject["data"]["id"], subject["scope_id"])
+        messages = [{"kind": "signal", "data": row, "scope_id": row["run_id"]} for row in signals]
         if messages:
+            root = next((row for row in signals if row.get("parent_signal_id") is None), None)
+            if root and root["origin"] == "jury" and root["id"] != subject["data"]["id"]:
+                # Путь дополнения содержит ответы и исполнение исходного кейса, а не только его входной текст.
+                requested_subject = trace["subject"]
+                trace, nodes = await assemble(conn, "signal", root["public_id"], run_id=run_id)
+                trace["subject"] = requested_subject
             conversation_signal_ids = {message["data"]["id"] for message in messages}
             notices = await fetch_all(
                 conn,
                 "SELECT 'notification' AS kind,to_jsonb(n) AS data,n.run_id AS scope_id "
                 "FROM notifications n WHERE n.signal_id=ANY(%s) AND n.run_id=%s "
-                "AND n.client_id IS NULL AND n.recipient_type='client' AND n.status IN ('sent','delivered') "
+                "AND n.client_id IS NOT DISTINCT FROM %s AND n.recipient_type='client' AND n.status IN ('sent','delivered') "
                 "ORDER BY n.id LIMIT 200",
-                (list(conversation_signal_ids), subject["scope_id"]),
+                (list(conversation_signal_ids), subject["scope_id"], subject["data"].get("client_id")),
             )
             seen = {node_key(node) for node in nodes}
             nodes = [*nodes, *(node for node in [*messages, *notices] if node_key(node) not in seen)]

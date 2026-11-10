@@ -295,9 +295,20 @@ async def notify_client(
 ) -> dict[str, Any]:
     """Уведомление клиенту: шаблон по сегменту/каналу (или готовый текст агента), проверка согласий, маскирование ПДн, статус sent, NOTIFY notifications."""
     key = f"{template_code}:{channel}:{recipient_type}"
+    final = recipient_type == "client" and incident_id is not None and template_code in ("resolved", "demo_unresolved")
+    if final:
+        final = bool(
+            await ctx.fetchone(
+                "select 1 from signals s join sim_runs r on r.id=s.run_id where s.id=%s and s.run_id=%s and ("
+                "(s.origin='jury' and r.settings_snapshot->>'created_by'='journey_demo') or "
+                "exists(select 1 from personal_chat_messages m where m.signal_id=s.id))",
+                (signal_id, ctx.run_id),
+            )
+        )
+    scope = f"incident:{incident_id}" if final else str(signal_id)
     await ctx.conn.execute(
         "select pg_advisory_xact_lock(hashtextextended(%s,0))",
-        (f"notification:{ctx.run_id}:{signal_id}:{client_id}:{key}",),
+        (f"notification:{ctx.run_id}:{scope}:{client_id}:{key}",),
     )
     dup = await ctx.fetchone(
         "select id, status from notifications where signal_id = %s and template_code = %s and channel_code = %s and recipient_type = %s and run_id = %s and client_id is not distinct from %s",
@@ -305,6 +316,20 @@ async def notify_client(
     )
     if dup:
         return {"notification_id": dup[0], "status": dup[1], "deduplicated": True, "key": key}
+    if final:
+        # Дополнения одного диалога получают один итог инцидента; другие кейсы/сессии не объединяются.
+        from app.demo.conversation import SAME_DIALOGUE_SQL
+
+        dup = await ctx.fetchone(
+            "select n.id,n.status from notifications n join signals previous on previous.id=n.signal_id "
+            "join signals current on current.id=%s join sim_runs r on r.id=current.run_id "
+            "where n.run_id=%s and previous.run_id=current.run_id and previous.client_id is not distinct from current.client_id and n.incident_id=%s "
+            "and n.recipient_type='client' and n.client_id is not distinct from %s "
+            f"and n.channel_code=%s and n.template_code=%s and {SAME_DIALOGUE_SQL} order by n.id limit 1",
+            (signal_id, ctx.run_id, incident_id, client_id, channel, template_code),
+        )
+        if dup:
+            return {"notification_id": dup[0], "status": dup[1], "deduplicated": True, "key": key}
     subject, body = await render_template(ctx, template_code, channel, segment, variables, lang)
     if text_override:
         body = text_override

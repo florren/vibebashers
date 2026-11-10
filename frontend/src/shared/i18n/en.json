@@ -2859,7 +2859,9 @@
   },
   "journeyProfile": {
     "title": "Manual Journey case profile",
-    "hint": "Applies only to the message entered here. No scenario messages are injected; the bank clock and other cases stay independent. Start a new case without a follow-up to use another profile.",
-    "noScenario": "No scenario profile"
+    "hint": "These settings define the first attempt for a new case. After an unsuccessful attempt, continue the same case using Recovery after escalation in the client conversation. The conversation and incident are preserved; other cases keep their own clocks.",
+    "noScenario": "No scenario profile",
+    "recoverCase": "Recovery after escalation",
+    "recoveryStarted": "Recovery is continuing in the same case. The outcome will appear after verification."
   }
 }

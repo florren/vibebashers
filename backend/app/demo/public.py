@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from fastapi import HTTPException
 from psycopg.rows import tuple_row
 
 from app.demo.settings import configuration, save
@@ -79,7 +80,7 @@ async def recover_public_cases(app: Any, conn: Any, rid: int, *, now: dt.datetim
         rows = await (
             await conn.execute(
                 "select i.id from incidents i where i.run_id=%s and i.status='escalated' "
-                "and (select ta.payload->>'outcome' from team_actions ta where ta.incident_id=i.id order by ta.action_sim desc,ta.id desc limit 1) in ('failed','no_work') "
+                "and (select ta.payload->>'outcome' from team_actions ta where ta.incident_id=i.id order by ta.action_sim desc,ta.id desc limit 1)='failed' "
                 "and exists(select 1 from notifications n where n.incident_id=i.id and n.template_code='demo_unresolved') "
                 "and not exists(select 1 from incident_signals x join signals s on s.id=x.signal_id where x.incident_id=i.id and (s.status in ('new','processing','awaiting_human') or exists(select 1 from agent_runs a where a.signal_id=s.id and a.kind='agent' and (a.outcome is null or a.outcome='awaiting_human')))) "
                 "and ((select min(n.created_at) from notifications n where n.incident_id=i.id and n.template_code='demo_unresolved')<=%s "
@@ -88,4 +89,9 @@ async def recover_public_cases(app: Any, conn: Any, rid: int, *, now: dt.datetim
             )
         ).fetchall()
         for (iid,) in rows:
-            await recover_incident(app, conn, int(iid), public_demo=True)
+            try:
+                await recover_incident(app, conn, int(iid), public_demo=True)
+            except HTTPException as exc:
+                if exc.status_code != 409:
+                    raise
+                # Ответ ещё доставляется или клиент начал дополнение: следующий цикл повторит проверку.

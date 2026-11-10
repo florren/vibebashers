@@ -19,6 +19,7 @@ from app.agent.tools.write import link_signal_to_incident, notify_client
 from app.api.hitl import HitlDecisionBody, record_decision
 from app.compliance.session import ComplianceService
 from app.db.session import psycopg_dsn
+from app.demo.conversation import SAME_DIALOGUE_SQL
 from app.demo.roles import finish_run, respond
 from app.demo.settings import configuration as configuration
 from app.demo.settings import ensure
@@ -293,15 +294,23 @@ async def _compliance_customer_case(
 async def notify_results(
     conn: Any, app: Any, run_id: int, at: dt.datetime, *, incident_ids: list[int] | None = None
 ) -> None:
-    """Один итог на сигнал, включая дедуплицированных клиентов. Тикет = тот же инцидент."""
+    """Один итог на проблему в диалоге; обычные World-сигналы сохраняют отдельные доставки."""
     rows = await (
         await conn.execute(
-            "select i.id,i.status,i.resolution_summary,i.sla_breached,s.id,s.client_id,s.text,c.segment_code,c.consents,s.channel_code "
-            "from incidents i join incident_signals x on x.incident_id=i.id join signals s on s.id=x.signal_id "
-            "left join clients c on c.id=s.client_id where i.run_id=%s and s.run_id=%s "
+            "select i.id,i.status,i.resolution_summary,i.sla_breached,current.id,current.client_id,current.text,c.segment_code,c.consents,current.channel_code "
+            "from incidents i join incident_signals x on x.incident_id=i.id join signals current on current.id=x.signal_id "
+            "join sim_runs r on r.id=i.run_id left join clients c on c.id=current.client_id where i.run_id=%s and current.run_id=%s "
             "and (%s::bigint[] is null or i.id=any(%s::bigint[])) "
             "and (i.status='closed' or exists(select 1 from team_actions ta where ta.incident_id=i.id and ta.action='escalate_ack')) "
-            "and not exists(select 1 from notifications n where n.run_id=i.run_id and n.signal_id=s.id and n.template_code=case when i.status='closed' then 'resolved' else 'demo_unresolved' end) order by s.id",
+            "and not exists(select 1 from notifications n join signals previous on previous.id=n.signal_id "
+            "where n.run_id=i.run_id and n.template_code=case when i.status='closed' then 'resolved' else 'demo_unresolved' end "
+            "and (n.signal_id=current.id or (n.incident_id=i.id and previous.run_id=current.run_id "
+            "and previous.client_id is not distinct from current.client_id and n.client_id is not distinct from current.client_id "
+            "and n.recipient_type='client' and n.channel_code=current.channel_code "
+            f"and {SAME_DIALOGUE_SQL}))) "
+            "order by case when r.settings_snapshot->>'created_by' in ('journey_demo','public_demo') then i.id else 0 end,"
+            "case when r.settings_snapshot->>'created_by' in ('journey_demo','public_demo') "
+            "then -current.id else current.id end",
             (run_id, run_id, incident_ids, incident_ids),
         )
     ).fetchall()
